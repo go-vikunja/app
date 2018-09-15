@@ -28,7 +28,38 @@ class HomePageState extends State<HomePage> {
   }
 
   _addNamespace() {
-    
+    var textController = new TextEditingController();
+    showDialog(context: context, child: new _SystemPadding(
+      child: new AlertDialog(
+        contentPadding: const EdgeInsets.all(4.0),
+        content: new Row(
+          children: <Widget>[ 
+            Expanded(
+                child: new TextField(
+                  autofocus: true,
+                  decoration: new InputDecoration(
+                    labelText: 'Namespace', hintText: 'eg. Family Namespace'
+                  ),
+                  controller: textController,
+              ),
+            )
+          ]
+        ),
+        actions: <Widget>[
+          new FlatButton(
+            child: const Text('CANCEL'),
+            onPressed: () => Navigator.pop(context),
+          ),
+          new FlatButton(
+            child: const Text('ADD'),
+            onPressed: () {
+              namespaces.add(textController.text);
+              Navigator.pop(context);
+            },
+          )
+        ],
+      ),
+    ));
   }
 
   @override
@@ -73,5 +104,20 @@ class HomePageState extends State<HomePage> {
       ),
       body: _getDrawerItemWidget(_selectedDrawerIndex),
     );
+  }
+}
+
+class _SystemPadding extends StatelessWidget {
+  final Widget child;
+
+  _SystemPadding({Key key, this.child}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    var mediaQuery = MediaQuery.of(context);
+    return new AnimatedContainer(
+        padding: mediaQuery.viewInsets,
+        duration: const Duration(milliseconds: 300),
+        child: child);
   }
 }
