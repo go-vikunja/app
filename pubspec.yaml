@@ -78,6 +78,7 @@ flutter:
   # see https://flutter.io/custom-fonts/#from-packages
   assets:
     - assets/graphics/background.jpg
+    - assets/graphics/hypnotize.png
   fonts:
     - family: Quicksand
       fonts:

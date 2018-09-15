@@ -77,6 +77,13 @@ class HomePageState extends State<HomePage> {
         new UserAccountsDrawerHeader(
           accountEmail: const Text('jonas@try.vikunja.io'),
           accountName: const Text('Jonas Franz'),
+          decoration: BoxDecoration(
+            image: DecorationImage(
+                image: AssetImage("assets/graphics/hypnotize.png"),
+                repeat: ImageRepeat.repeat,
+                colorFilter: ColorFilter.mode(Theme.of(context).primaryColor, BlendMode.multiply)
+            ),
+          ),
         ),
         new Expanded(
             child: ListView(
