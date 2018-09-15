@@ -177,7 +177,7 @@ fabric.properties
 
 ### AndroidStudio Patch ###
 
-!/gradle/wrapper/gradle-wrapper.jar
+!android/gradle/wrapper/gradle-wrapper.jar
 
 ### Dart ###
 # See https://www.dartlang.org/guides/libraries/private-files
