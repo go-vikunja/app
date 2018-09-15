@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fluttering_vikunja/style.dart';
 
 void main() => runApp(new MyApp());
 
@@ -7,19 +8,9 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return new MaterialApp(
-      title: 'Flutter Demo',
-      theme: new ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or press Run > Flutter Hot Reload in IntelliJ). Notice that the
-        // counter didn't reset back to zero; the application is not restarted.
-        primarySwatch: Colors.blue,
-      ),
-      home: new MyHomePage(title: 'Flutter Demo Home Page'),
+      title: 'Vikunja',
+      theme: buildVikunjaTheme(),
+      home: new MyHomePage(title: 'Vikunja'),
     );
   }
 }
@@ -70,10 +61,47 @@ class _MyHomePageState extends State<MyHomePage> {
         // the App.build method, and use it to set our appbar title.
         title: new Text(widget.title),
       ),
+      drawer: Drawer(
+        child: ListView(
+          children: <Widget>[
+            new UserAccountsDrawerHeader(
+              decoration: BoxDecoration(
+                image: new DecorationImage(
+                    image: AssetImage('assets/graphics/background.jpg'),
+                    repeat: ImageRepeat.repeat
+                ),
+              ),
+              accountName: new Text(
+                'Max Mustermann',
+                style: TextStyle(color: Colors.black),
+              ),
+              accountEmail: new Text(
+                'max@try.vikunja.io',
+                style: TextStyle(color: Colors.black),
+              ),
+              otherAccountsPictures: <Widget>[
+                GestureDetector(
+                  child: Semantics(
+                    label: 'Switch to Fritz',
+                    child: const CircleAvatar(
+
+                    )
+                  ),
+                )
+              ],
+            ),
+            ListTile(
+              title: new Text('Namespace A'),
+            )
+          ],
+        )
+      ),
       body: new Center(
         // Center is a layout widget. It takes a single child and positions it
         // in the middle of the parent.
-        child: new Column(
+        child: new Container(
+          padding: EdgeInsets.only(left: 16.0),
+          child: new Column(
           // Column is also layout widget. It takes a list of children and
           // arranges them vertically. By default, it sizes itself to fit its
           // children horizontally, and tries to be as tall as its parent.
@@ -87,22 +115,22 @@ class _MyHomePageState extends State<MyHomePage> {
           // center the children vertically; the main axis here is the vertical
           // axis because Columns are vertical (the cross axis would be
           // horizontal).
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.start,
           children: <Widget>[
-            new Text(
-              'You have pushed the button this many times:',
+            new Container(
+              padding: EdgeInsets.only(top: 32.0),
+              child: new Text(
+                'Welcome to Vikunja',
+                style: Theme.of(context).textTheme.headline,
+              ),
             ),
             new Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.display1,
+                'Please select a namespace by clicking the  ☰  icon.',
+                style: Theme.of(context).textTheme.subhead
             ),
           ],
-        ),
-      ),
-      floatingActionButton: new FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: new Icon(Icons.add),
+        )
+        )
       ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
