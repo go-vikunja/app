@@ -23,6 +23,16 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_launcher_icons: "^0.6.1"
+
+
+flutter_icons:
+  image_path: "assets/vikunja_logo.png"
+  image_path_ios: "assets/vikunja_ios.png"
+  android: true
+  ios: true
+  adaptive_icon_background: "#FF455486"
+  adaptive_icon_foreground: "assets/vikunja_logo_adaptive.png"
 
 
 # For information on the generic Dart part of this file, see the
@@ -66,3 +76,10 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.io/custom-fonts/#from-packages
+  assets:
+    - assets/graphics/background.jpg
+  fonts:
+    - family: Quicksand
+      fonts:
+        - asset: assets/fonts/quicksand-v7-latin-regular.ttf
+
