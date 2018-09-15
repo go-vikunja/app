@@ -27,8 +27,7 @@ class HomePageState extends State<HomePage> {
     var textController = new TextEditingController();
     showDialog(
         context: context,
-        child: new _SystemPadding(
-          child: new AlertDialog(
+        child:  new AlertDialog(
             contentPadding: const EdgeInsets.all(16.0),
             content: new Row(children: <Widget>[
               Expanded(
@@ -55,7 +54,7 @@ class HomePageState extends State<HomePage> {
               )
             ],
           ),
-        ));
+        );
   }
 
   @override
@@ -96,20 +95,5 @@ class HomePageState extends State<HomePage> {
       ])),
       body: _getDrawerItemWidget(_selectedDrawerIndex),
     );
-  }
-}
-
-class _SystemPadding extends StatelessWidget {
-  final Widget child;
-
-  _SystemPadding({Key key, this.child}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    var mediaQuery = MediaQuery.of(context);
-    return new AnimatedContainer(
-        padding: mediaQuery.viewInsets,
-        duration: const Duration(milliseconds: 300),
-        child: child);
   }
 }
