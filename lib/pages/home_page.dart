@@ -87,9 +87,10 @@ class HomePageState extends State<HomePage> {
         new UserAccountsDrawerHeader(
           accountEmail: currentUser == null ? null : Text(currentUser.email),
           accountName: currentUser == null ? null : Text(currentUser.username),
-          currentAccountPicture: currentUser == null ? null : CircleAvatar(
-              backgroundImage: GravatarImageProvider(currentUser.username)
-          ),
+          currentAccountPicture: currentUser == null
+              ? null
+              : CircleAvatar(
+                  backgroundImage: GravatarImageProvider(currentUser.username)),
           decoration: BoxDecoration(
             image: DecorationImage(
                 image: AssetImage("assets/graphics/hypnotize.png"),
