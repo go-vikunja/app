@@ -16,7 +16,8 @@ class VikunjaGlobal extends StatefulWidget {
   VikunjaGlobalState createState() => VikunjaGlobalState();
 
   static VikunjaGlobalState of(BuildContext context) {
-    var widget = context.inheritFromWidgetOfExactType(_VikunjaGlobalInherited) as _VikunjaGlobalInherited;
+    var widget = context.inheritFromWidgetOfExactType(_VikunjaGlobalInherited)
+        as _VikunjaGlobalInherited;
     return widget.data;
   }
 }
@@ -93,7 +94,8 @@ class _VikunjaGlobalInherited extends InheritedWidget {
 
   @override
   bool updateShouldNotify(_VikunjaGlobalInherited oldWidget) {
-    return (data.currentUser != null && data.currentUser.id != oldWidget.data.currentUser.id) ||
+    return (data.currentUser != null &&
+            data.currentUser.id != oldWidget.data.currentUser.id) ||
         data.client != oldWidget.data.client;
   }
 }
