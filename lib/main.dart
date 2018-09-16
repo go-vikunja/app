@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:fluttering_vikunja/global.dart';
 import 'package:fluttering_vikunja/pages/home_page.dart';
+import 'package:fluttering_vikunja/pages/login_page.dart';
 import 'package:fluttering_vikunja/style.dart';
 
 void main() => runApp(new VikunjaApp());
@@ -11,7 +15,7 @@ class VikunjaApp extends StatelessWidget {
     return new MaterialApp(
       title: 'Vikunja',
       theme: buildVikunjaTheme(),
-      home: new HomePage(),
+      home: VikunjaGlobal(child: new HomePage(), login: new LoginPage()),
     );
   }
 }
