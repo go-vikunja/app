@@ -63,10 +63,11 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
   void _loadCurrentUser() async {
     var currentUser = await _storage.read(key: 'currentUser');
     var token;
+    var loadedCurrentUser;
     if (currentUser != null) {
       token = await _storage.read(key: currentUser);
+      loadedCurrentUser = await userService.get(int.tryParse(currentUser));
     }
-    var loadedCurrentUser = await userService.get(int.tryParse(currentUser));
     setState(() {
       _currentUser = loadedCurrentUser;
       _client = token != null ? Client(token) : null;
