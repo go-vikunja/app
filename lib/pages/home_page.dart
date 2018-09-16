@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:fluttering_vikunja/components/GravatarImage.dart';
 import 'package:fluttering_vikunja/fragments/namespace.dart';
 import 'package:fluttering_vikunja/fragments/placeholder.dart';
+import 'package:fluttering_vikunja/global.dart';
+import 'package:fluttering_vikunja/models/user.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -26,39 +29,45 @@ class HomePageState extends State<HomePage> {
   _addNamespace() {
     var textController = new TextEditingController();
     showDialog(
-        context: context,
-        child:  new AlertDialog(
-            contentPadding: const EdgeInsets.all(16.0),
-            content: new Row(children: <Widget>[
-              Expanded(
-                child: new TextField(
-                  autofocus: true,
-                  decoration: new InputDecoration(
-                      labelText: 'Namespace', hintText: 'eg. Family Namespace'),
-                  controller: textController,
-                ),
-              )
-            ]),
-            actions: <Widget>[
-              new FlatButton(
-                child: const Text('CANCEL'),
-                onPressed: () => Navigator.pop(context),
-              ),
-              new FlatButton(
-                child: const Text('ADD'),
-                onPressed: () {
-                  if (textController.text.isNotEmpty)
-                    setState(() => namespaces.add(textController.text));
-                  Navigator.pop(context);
-                },
-              )
-            ],
+      context: context,
+      child: new AlertDialog(
+        contentPadding: const EdgeInsets.all(16.0),
+        content: new Row(children: <Widget>[
+          Expanded(
+            child: new TextField(
+              autofocus: true,
+              decoration: new InputDecoration(
+                  labelText: 'Namespace', hintText: 'eg. Family Namespace'),
+              controller: textController,
+            ),
+          )
+        ]),
+        actions: <Widget>[
+          new FlatButton(
+            child: const Text('CANCEL'),
+            onPressed: () => Navigator.pop(context),
           ),
-        );
+          new FlatButton(
+            child: const Text('ADD'),
+            onPressed: () {
+              if (textController.text.isNotEmpty)
+                setState(() => namespaces.add(textController.text));
+              Navigator.pop(context);
+            },
+          )
+        ],
+      ),
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
+    var currentUser = VikunjaGlobal.of(context).currentUser;
     List<Widget> drawerOptions = <Widget>[];
     namespaces.asMap().forEach((i, namespace) => drawerOptions.add(new ListTile(
           leading: const Icon(Icons.folder),
@@ -66,6 +75,7 @@ class HomePageState extends State<HomePage> {
           selected: i == _selectedDrawerIndex,
           onTap: () => _onSelectItem(i),
         )));
+
     return new Scaffold(
       appBar: AppBar(
         title: new Text(_selectedDrawerIndex == -1
@@ -75,14 +85,17 @@ class HomePageState extends State<HomePage> {
       drawer: new Drawer(
           child: new Column(children: <Widget>[
         new UserAccountsDrawerHeader(
-          accountEmail: const Text('jonas@try.vikunja.io'),
-          accountName: const Text('Jonas Franz'),
+          accountEmail: currentUser == null ? null : Text(currentUser.email),
+          accountName: currentUser == null ? null : Text(currentUser.username),
+          currentAccountPicture: currentUser == null ? null : CircleAvatar(
+              backgroundImage: GravatarImageProvider(currentUser.username)
+          ),
           decoration: BoxDecoration(
             image: DecorationImage(
                 image: AssetImage("assets/graphics/hypnotize.png"),
                 repeat: ImageRepeat.repeat,
-                colorFilter: ColorFilter.mode(Theme.of(context).primaryColor, BlendMode.multiply)
-            ),
+                colorFilter: ColorFilter.mode(
+                    Theme.of(context).primaryColor, BlendMode.multiply)),
           ),
         ),
         new Expanded(
