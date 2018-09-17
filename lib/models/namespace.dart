@@ -22,4 +22,12 @@ class Namespace {
         created = DateTime.fromMillisecondsSinceEpoch(json['created']),
         updated = DateTime.fromMillisecondsSinceEpoch(json['updated']),
         owner = User.fromJson(json['owner']);
+
+  toJSON() => {
+        "created": created?.millisecondsSinceEpoch,
+        "updated": updated?.millisecondsSinceEpoch,
+        "name": name,
+        "owner": owner?.toJSON(),
+        "description": description
+      };
 }

@@ -31,9 +31,22 @@ class Client {
         .then(_handleResponse);
   }
 
+  Future<dynamic> delete(String url) {
+    return http
+        .delete('${this.base}$url', headers: _headers)
+        .then(_handleResponse);
+  }
+
   Future<dynamic> post(String url, {dynamic body}) {
     return http
         .post('${this.base}$url',
+            headers: _headers, body: _encoder.convert(body))
+        .then(_handleResponse);
+  }
+
+  Future<dynamic> put(String url, {dynamic body}) {
+    return http
+        .put('${this.base}$url',
             headers: _headers, body: _encoder.convert(body))
         .then(_handleResponse);
   }

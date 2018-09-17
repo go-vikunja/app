@@ -9,6 +9,8 @@ class User {
       : id = json['id'],
         email = json['email'],
         username = json['username'];
+
+  toJSON() => {"id": this.id, "email": this.email, "username": this.username};
 }
 
 class UserTokenPair {

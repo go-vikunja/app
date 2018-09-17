@@ -3,6 +3,8 @@ import 'package:fluttering_vikunja/components/GravatarImage.dart';
 import 'package:fluttering_vikunja/fragments/namespace.dart';
 import 'package:fluttering_vikunja/fragments/placeholder.dart';
 import 'package:fluttering_vikunja/global.dart';
+import 'package:fluttering_vikunja/models/namespace.dart';
+import 'package:fluttering_vikunja/models/task.dart';
 import 'package:fluttering_vikunja/models/user.dart';
 
 class HomePage extends StatefulWidget {
@@ -11,14 +13,18 @@ class HomePage extends StatefulWidget {
 }
 
 class HomePageState extends State<HomePage> {
-  List<String> namespaces = ["Jonas's namespace", 'Another namespace'];
+  List<Namespace> _namespaces = [];
+  Namespace get _currentNamespace =>
+      _selectedDrawerIndex >= 0 && _selectedDrawerIndex < _namespaces.length
+          ? _namespaces[_selectedDrawerIndex]
+          : null;
   int _selectedDrawerIndex = -1;
 
   _getDrawerItemWidget(int pos) {
     if (pos == -1) {
       return new PlaceholderFragment();
     }
-    return new NamespaceFragment(namespace: namespaces[pos]);
+    return new NamespaceFragment(namespace: _namespaces[pos]);
   }
 
   _onSelectItem(int index) {
@@ -26,7 +32,7 @@ class HomePageState extends State<HomePage> {
     Navigator.of(context).pop();
   }
 
-  _addNamespace() {
+  _addNamespaceDialog() {
     var textController = new TextEditingController();
     showDialog(
       context: context,
@@ -50,8 +56,9 @@ class HomePageState extends State<HomePage> {
           new FlatButton(
             child: const Text('ADD'),
             onPressed: () {
-              if (textController.text.isNotEmpty)
-                setState(() => namespaces.add(textController.text));
+              if (textController.text.isNotEmpty) {
+                _addNamespace(textController.text);
+              }
               Navigator.pop(context);
             },
           )
@@ -60,28 +67,42 @@ class HomePageState extends State<HomePage> {
     );
   }
 
+  _addNamespace(String name) {
+    VikunjaGlobal.of(context)
+        .namespaceService
+        .create(Namespace(id: null, name: name))
+        .then((_) => _updateNamespaces());
+  }
+
+  _updateNamespaces() {
+    VikunjaGlobal.of(context).namespaceService.getAll().then((result) {
+      setState(() {
+        _namespaces = result;
+      });
+    });
+  }
+
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _updateNamespaces();
   }
 
   @override
   Widget build(BuildContext context) {
     var currentUser = VikunjaGlobal.of(context).currentUser;
     List<Widget> drawerOptions = <Widget>[];
-    namespaces.asMap().forEach((i, namespace) => drawerOptions.add(new ListTile(
-          leading: const Icon(Icons.folder),
-          title: new Text(namespace),
-          selected: i == _selectedDrawerIndex,
-          onTap: () => _onSelectItem(i),
-        )));
+    _namespaces
+        .asMap()
+        .forEach((i, namespace) => drawerOptions.add(new ListTile(
+              leading: const Icon(Icons.folder),
+              title: new Text(namespace.name),
+              selected: i == _selectedDrawerIndex,
+              onTap: () => _onSelectItem(i),
+            )));
 
     return new Scaffold(
-      appBar: AppBar(
-        title: new Text(_selectedDrawerIndex == -1
-            ? 'Vakunja'
-            : namespaces[_selectedDrawerIndex]),
-      ),
+      appBar: AppBar(title: new Text(_currentNamespace?.name ?? 'Vakunja')),
       drawer: new Drawer(
           child: new Column(children: <Widget>[
         new UserAccountsDrawerHeader(
@@ -110,7 +131,7 @@ class HomePageState extends State<HomePage> {
           child: new ListTile(
             leading: const Icon(Icons.add),
             title: const Text('Add namespace...'),
-            onTap: () => _addNamespace(),
+            onTap: () => _addNamespaceDialog(),
           ),
         ),
       ])),

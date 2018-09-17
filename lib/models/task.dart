@@ -16,7 +16,7 @@ class Task {
       this.due,
       @required this.text,
       this.description,
-      this.done,
+      @required this.done,
       @required this.owner});
 
   Task.fromJson(Map<String, dynamic> json)
@@ -29,6 +29,18 @@ class Task {
         text = json['text'],
         done = json['done'],
         owner = User.fromJson(json['createdBy']);
+
+  toJSON() => {
+        'id': id,
+        'updated': updated?.millisecondsSinceEpoch,
+        'created': created?.millisecondsSinceEpoch,
+        'reminderDate': reminder?.millisecondsSinceEpoch,
+        'dueDate': due?.millisecondsSinceEpoch,
+        'description': description,
+        'text': text,
+        'done': done ?? false,
+        'createdBy': owner?.toJSON()
+      };
 }
 
 class TaskList {
@@ -54,5 +66,17 @@ class TaskList {
         title = json['title'],
         updated = DateTime.fromMillisecondsSinceEpoch(json['updated']),
         created = DateTime.fromMillisecondsSinceEpoch(json['created']),
-        tasks = json['tasks'].map((taskJson) => Task.fromJson(taskJson));
+        tasks = (json['tasks'] as List<dynamic>)
+            ?.map((taskJson) => Task.fromJson(taskJson))
+            ?.toList();
+
+  toJSON() {
+    return {
+      "created": this.created?.millisecondsSinceEpoch,
+      "updated": this.updated?.millisecondsSinceEpoch,
+      "id": this.id,
+      "title": this.title,
+      "owner": this.owner?.toJSON()
+    };
+  }
 }
