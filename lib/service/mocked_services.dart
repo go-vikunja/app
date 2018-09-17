@@ -27,7 +27,7 @@ var _lists = {
   1: TaskList(
       id: 1,
       title: 'List 1',
-      tasks: _tasks.values,
+      tasks: _tasks.values.toList(),
       owner: _users[1],
       description: 'A nice list',
       created: DateTime.now(),
@@ -81,7 +81,8 @@ class MockedNamespaceService implements NamespaceService {
 
 class MockedListService implements ListService {
   @override
-  Future<TaskList> create(TaskList tl) {
+  Future<TaskList> create(namespaceId, TaskList tl) {
+    _nsLists[namespaceId].add(tl.id);
     return Future.value(_lists[tl.id] = tl);
   }
 
@@ -111,7 +112,7 @@ class MockedListService implements ListService {
   Future<TaskList> update(TaskList tl) {
     if (!_lists.containsKey(tl))
       throw Exception('TaskList ${tl.id} does not exists');
-    return create(tl);
+    return Future.value(_lists[tl.id] = tl);
   }
 }
 
@@ -126,7 +127,21 @@ class MockedTaskService implements TaskService {
 
   @override
   Future<Task> update(Task task) {
+    _lists.forEach((_, list) {
+      if (list.tasks.where((t) => t.id == task.id).length > 0) {
+        list.tasks.removeWhere((t) => t.id == task.id);
+        list.tasks.add(task);
+      }
+    });
     return Future.value(_tasks[task.id] = task);
+  }
+
+  @override
+  Future<Task> add(int listId, Task task) {
+    var id = _tasks.keys.last + 1;
+    _tasks[id] = task;
+    _lists[listId].tasks.add(task);
+    return Future.value(task);
   }
 }
 

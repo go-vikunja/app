@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:fluttering_vikunja/api/client.dart';
+import 'package:fluttering_vikunja/api/list_implementation.dart';
+import 'package:fluttering_vikunja/api/namespace_implementation.dart';
+import 'package:fluttering_vikunja/api/task_implementation.dart';
 import 'package:fluttering_vikunja/api/user_implementation.dart';
 import 'package:fluttering_vikunja/managers/user.dart';
 import 'package:fluttering_vikunja/models/user.dart';
@@ -36,6 +39,9 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
   UserManager get userManager => new UserManager(_storage);
   UserService get userService => new UserAPIService(_client);
   UserService newLoginService(base) => new UserAPIService(Client(null, base));
+  NamespaceService get namespaceService => new NamespaceAPIService(client);
+  TaskService get taskService => new TaskAPIService(client);
+  ListService get listService => new ListAPIService(client);
 
   @override
   void initState() {
@@ -84,12 +90,27 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
       });
       return;
     }
+    var client = Client(token, base);
+    var loadedCurrentUser;
+    try {
+      loadedCurrentUser = await UserAPIService(client).getCurrentUser();
+    } on ApiException catch (e) {
+      if (e.errorCode ~/ 100 == 4) {
+        setState(() {
+          _client = null;
+          _currentUser = null;
+          _loading = false;
+        });
+        return;
+      }
+      loadedCurrentUser = User(int.tryParse(currentUser), "", "");
+    } catch (otherExceptions) {
+      loadedCurrentUser = User(int.tryParse(currentUser), "", "");
+    }
     setState(() {
-      _client = Client(token, base);
-    });
-    var loadedCurrentUser = await userService.getCurrentUser();
-    setState(() {
+      _client = client;
       _currentUser = loadedCurrentUser;
+      _loading = false;
     });
   }
 
