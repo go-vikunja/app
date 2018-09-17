@@ -137,7 +137,7 @@ class MockedUserService implements UserService {
   }
 
   @override
-  Future<User> get(int userId) {
-    return Future.value(_users[userId]);
+  Future<User> getCurrentUser() {
+    return Future.value(_users[1]);
   }
 }

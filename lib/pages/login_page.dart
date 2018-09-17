@@ -68,20 +68,23 @@ class _LoginPageState extends State<LoginPage> {
                             obscureText: true,
                           ),
                         ),
-                        ButtonTheme(
-                            height: _loading ? 55.0 : 36.0,
-                            child: RaisedButton(
-                              onPressed: !_loading
-                                  ? () {
-                                      if (_formKey.currentState.validate()) {
-                                        _loginUser(context);
-                                      }
-                                    }
-                                  : null,
-                              child: _loading
-                                  ? CircularProgressIndicator()
-                                  : Text('Login'),
-                            ))
+                        Builder(
+                            builder: (context) => ButtonTheme(
+                                height: _loading ? 55.0 : 36.0,
+                                child: RaisedButton(
+                                  onPressed: !_loading
+                                      ? () {
+                                          if (_formKey.currentState
+                                              .validate()) {
+                                            Form.of(context).save();
+                                            _loginUser(context);
+                                          }
+                                        }
+                                      : null,
+                                  child: _loading
+                                      ? CircularProgressIndicator()
+                                      : Text('Login'),
+                                ))),
                       ],
                     )),
               ),
@@ -90,11 +93,28 @@ class _LoginPageState extends State<LoginPage> {
 
   _loginUser(BuildContext context) async {
     setState(() => _loading = true);
-    var vGlobal = VikunjaGlobal.of(context);
-    var newUser = await vGlobal.userService.login(_username, _password);
-    vGlobal.changeUser(newUser.user, token: newUser.token);
-    setState(() {
-      _loading = false;
-    });
+    try {
+      var vGlobal = VikunjaGlobal.of(context);
+      var newUser =
+          await vGlobal.newLoginService(_server).login(_username, _password);
+      vGlobal.changeUser(newUser.user, token: newUser.token, base: _server);
+    } catch (ex) {
+      print(ex);
+      showDialog(
+          context: context,
+          builder: (context) => new AlertDialog(
+                title:
+                    const Text('Login failed! Please check you credentials.'),
+                actions: <Widget>[
+                  FlatButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('CLOSE'))
+                ],
+              ));
+    } finally {
+      setState(() {
+        _loading = false;
+      });
+    }
   }
 }

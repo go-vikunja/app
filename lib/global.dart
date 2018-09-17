@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:fluttering_vikunja/api/client.dart';
+import 'package:fluttering_vikunja/api/user_implementation.dart';
 import 'package:fluttering_vikunja/managers/user.dart';
 import 'package:fluttering_vikunja/models/user.dart';
 import 'package:fluttering_vikunja/service/mocked_services.dart';
@@ -33,7 +34,8 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
   Client get client => _client;
 
   UserManager get userManager => new UserManager(_storage);
-  UserService get userService => new MockedUserService();
+  UserService get userService => new UserAPIService(_client);
+  UserService newLoginService(base) => new UserAPIService(Client(null, base));
 
   @override
   void initState() {
@@ -41,7 +43,7 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
     _loadCurrentUser();
   }
 
-  void changeUser(User newUser, {String token}) async {
+  void changeUser(User newUser, {String token, String base}) async {
     setState(() {
       _loading = true;
     });
@@ -51,27 +53,43 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
       // Write new token to secure storage
       await _storage.write(key: newUser.id.toString(), value: token);
     }
+    if (base == null) {
+      base = await _storage.read(key: "${newUser.id.toString()}_base");
+    } else {
+      // Write new base to secure storage
+      await _storage.write(key: "${newUser.id.toString()}_base", value: base);
+    }
     // Set current user in storage
     await _storage.write(key: 'currentUser', value: newUser.id.toString());
     setState(() {
       _currentUser = newUser;
-      _client = Client(token);
+      _client = Client(token, base);
       _loading = false;
     });
   }
 
   void _loadCurrentUser() async {
     var currentUser = await _storage.read(key: 'currentUser');
-    var token;
-    var loadedCurrentUser;
-    if (currentUser != null) {
-      token = await _storage.read(key: currentUser);
-      loadedCurrentUser = await userService.get(int.tryParse(currentUser));
+    if (currentUser == null) {
+      setState(() {
+        _loading = false;
+      });
+      return;
+    }
+    var token = await _storage.read(key: currentUser);
+    var base = await _storage.read(key: '${currentUser}_base');
+    if (token == null || base == null) {
+      setState(() {
+        _loading = false;
+      });
+      return;
     }
     setState(() {
+      _client = Client(token, base);
+    });
+    var loadedCurrentUser = await userService.getCurrentUser();
+    setState(() {
       _currentUser = loadedCurrentUser;
-      _client = token != null ? Client(token) : null;
-      _loading = false;
     });
   }
 
