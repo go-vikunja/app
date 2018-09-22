@@ -1,9 +1,9 @@
 import 'dart:async';
 
-import 'package:fluttering_vikunja/models/namespace.dart';
-import 'package:fluttering_vikunja/models/task.dart';
-import 'package:fluttering_vikunja/models/user.dart';
-import 'package:fluttering_vikunja/service/services.dart';
+import 'package:vikunja_app/models/namespace.dart';
+import 'package:vikunja_app/models/task.dart';
+import 'package:vikunja_app/models/user.dart';
+import 'package:vikunja_app/service/services.dart';
 
 // Data for mocked services
 var _users = {1: User(1, 'test@testuser.org', 'test1')};

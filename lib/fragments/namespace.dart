@@ -2,10 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:fluttering_vikunja/global.dart';
-import 'package:fluttering_vikunja/models/namespace.dart';
-import 'package:fluttering_vikunja/models/task.dart';
-import 'package:fluttering_vikunja/pages/list_page.dart';
+import 'package:vikunja_app/global.dart';
+import 'package:vikunja_app/models/namespace.dart';
+import 'package:vikunja_app/models/task.dart';
+import 'package:vikunja_app/pages/list_page.dart';
 
 class NamespaceFragment extends StatefulWidget {
   final Namespace namespace;

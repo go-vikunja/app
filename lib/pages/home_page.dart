@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:fluttering_vikunja/components/GravatarImage.dart';
-import 'package:fluttering_vikunja/fragments/namespace.dart';
-import 'package:fluttering_vikunja/fragments/placeholder.dart';
-import 'package:fluttering_vikunja/global.dart';
-import 'package:fluttering_vikunja/models/namespace.dart';
-import 'package:fluttering_vikunja/models/task.dart';
-import 'package:fluttering_vikunja/models/user.dart';
+import 'package:vikunja_app/components/GravatarImage.dart';
+import 'package:vikunja_app/fragments/namespace.dart';
+import 'package:vikunja_app/fragments/placeholder.dart';
+import 'package:vikunja_app/global.dart';
+import 'package:vikunja_app/models/namespace.dart';
+import 'package:vikunja_app/models/task.dart';
+import 'package:vikunja_app/models/user.dart';
 
 class HomePage extends StatefulWidget {
   @override

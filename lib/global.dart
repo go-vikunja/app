@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:fluttering_vikunja/api/client.dart';
-import 'package:fluttering_vikunja/api/list_implementation.dart';
-import 'package:fluttering_vikunja/api/namespace_implementation.dart';
-import 'package:fluttering_vikunja/api/task_implementation.dart';
-import 'package:fluttering_vikunja/api/user_implementation.dart';
-import 'package:fluttering_vikunja/managers/user.dart';
-import 'package:fluttering_vikunja/models/user.dart';
-import 'package:fluttering_vikunja/service/mocked_services.dart';
-import 'package:fluttering_vikunja/service/services.dart';
+import 'package:vikunja_app/api/client.dart';
+import 'package:vikunja_app/api/list_implementation.dart';
+import 'package:vikunja_app/api/namespace_implementation.dart';
+import 'package:vikunja_app/api/task_implementation.dart';
+import 'package:vikunja_app/api/user_implementation.dart';
+import 'package:vikunja_app/managers/user.dart';
+import 'package:vikunja_app/models/user.dart';
+import 'package:vikunja_app/service/mocked_services.dart';
+import 'package:vikunja_app/service/services.dart';
 
 class VikunjaGlobal extends StatefulWidget {
   final Widget child;

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:fluttering_vikunja/global.dart';
-import 'package:fluttering_vikunja/main.dart';
+import 'package:vikunja_app/global.dart';
+import 'package:vikunja_app/main.dart';
 
 class LoginPage extends StatefulWidget {
   @override

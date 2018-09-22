@@ -1,10 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:fluttering_vikunja/global.dart';
-import 'package:fluttering_vikunja/pages/home_page.dart';
-import 'package:fluttering_vikunja/pages/login_page.dart';
-import 'package:fluttering_vikunja/style.dart';
+import 'package:vikunja_app/global.dart';
+import 'package:vikunja_app/pages/home_page.dart';
+import 'package:vikunja_app/pages/login_page.dart';
+import 'package:vikunja_app/style.dart';
 
 void main() => runApp(VikunjaGlobal(
     child: new VikunjaApp(home: HomePage()),
