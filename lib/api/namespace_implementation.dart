@@ -1,9 +1,9 @@
 import 'dart:async';
 
-import 'package:fluttering_vikunja/api/client.dart';
-import 'package:fluttering_vikunja/api/service.dart';
-import 'package:fluttering_vikunja/models/namespace.dart';
-import 'package:fluttering_vikunja/service/services.dart';
+import 'package:vikunja_app/api/client.dart';
+import 'package:vikunja_app/api/service.dart';
+import 'package:vikunja_app/models/namespace.dart';
+import 'package:vikunja_app/service/services.dart';
 
 class NamespaceAPIService extends APIService implements NamespaceService {
   NamespaceAPIService(Client client) : super(client);

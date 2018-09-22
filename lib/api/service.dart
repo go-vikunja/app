@@ -1,4 +1,4 @@
-import 'package:fluttering_vikunja/api/client.dart';
+import 'package:vikunja_app/api/client.dart';
 import 'package:meta/meta.dart';
 
 class APIService {

@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:fluttering_vikunja/models/namespace.dart';
-import 'package:fluttering_vikunja/models/task.dart';
-import 'package:fluttering_vikunja/models/user.dart';
+import 'package:vikunja_app/models/namespace.dart';
+import 'package:vikunja_app/models/task.dart';
+import 'package:vikunja_app/models/user.dart';
 
 abstract class NamespaceService {
   Future<List<Namespace>> getAll();
