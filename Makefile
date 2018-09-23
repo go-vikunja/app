@@ -19,12 +19,12 @@ build-all: build-release build-debug build-profile
 
 .PHONY: build-release
 build-release:
-	flutter build apk --release --build-name=$(VERSION)
+	flutter build apk --release --build-name=$(VERSION) --flavor main
 
 .PHONY: build-debug
 build-debug:
-	flutter build apk --debug --build-name=$(VERSION)
+	flutter build apk --debug --build-name=$(VERSION) --flavor unsigned
 
 .PHONY: build-profile
 build-profile:
-	flutter build apk --profile --build-name=$(VERSION)
+	flutter build apk --profile --build-name=$(VERSION) --flavor unsigned

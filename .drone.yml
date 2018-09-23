@@ -23,7 +23,7 @@ pipeline:
         - flutter packages get
         - make build-all
         - mkdir apks
-        - mv build/app/outputs/apk/*/*.apk apks
+        - mv build/app/outputs/apk/*/*/*.apk apks
       when:
         event: [ push, tag ]
  

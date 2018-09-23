@@ -38,7 +38,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId "io.vikunja.flutteringvikunja"
+        applicationId "io.vikunja.app"
         minSdkVersion 18
         targetSdkVersion 27
         versionCode flutterVersionCode.toInteger()
@@ -53,6 +53,14 @@ android {
         fdroid {
             dimension "deploy"
             signingConfig null
+        }
+        unsigned {
+            dimension "deploy"
+            signingConfig null
+        }
+	main {
+            dimension "deploy"
+            signingConfig signingConfigs.debug // TODO add signing key
         }
     }
 
