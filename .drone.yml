@@ -1,0 +1,57 @@
+workspace:
+  base: /app
+
+clone:
+  git:
+    image: plugins/git
+    depth: 50
+    tags: true
+
+pipeline:
+  test:
+      image: nathansamson/flutter-builder-docker:v0.6.0
+      pull: true
+      commands:
+        - make test
+      when:
+        event: [ push, tag, pull_request ]
+ 
+  build:
+      image: nathansamson/flutter-builder-docker:v0.6.0
+      pull: true
+      commands:
+        - flutter packages get
+        - make build-all
+        - mkdir apks
+        - mv build/app/outputs/apk/*/*.apk apks
+      when:
+        event: [ push, tag ]
+ 
+  # Push the releases to our pseudo-s3-bucket
+  release:
+    image: plugins/s3:1
+    pull: true
+    secrets: [ aws_access_key_id, aws_secret_access_key ]
+    bucket: vikunja-app
+    endpoint: https://storage.kolaente.de
+    path_style: true
+    strip_prefix: apks/
+    source: apks/*
+    target: /${DRONE_TAG##v}
+    when:
+      event: [ tag ]
+
+  # Push the releases to our pseudo-s3-bucket
+  release:
+    image: plugins/s3:1
+    pull: true
+    secrets: [ aws_access_key_id, aws_secret_access_key ]
+    bucket: vikunja-app
+    endpoint: https://storage.kolaente.de
+    path_style: true
+    strip_prefix: apks/
+    source: apks/*
+    target: /master
+    when:
+      event: [ push ]
+      branch: [ master ]
