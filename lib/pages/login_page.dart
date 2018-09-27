@@ -8,7 +8,7 @@ class LoginPage extends StatefulWidget {
 }
 
 final RegExp _url = new RegExp(
-    r'https?:\/\/[a-zA-Z0-9.]+(:[0-9]+)?');
+    r'https?:\/\/((([a-zA-Z0-9.\-\_]+)\.[a-zA-Z]+)|(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}))(:[0-9]+)?');
 
 class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
