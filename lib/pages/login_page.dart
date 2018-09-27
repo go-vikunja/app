@@ -99,7 +99,6 @@ class _LoginPageState extends State<LoginPage> {
           await vGlobal.newLoginService(_server).login(_username, _password);
       vGlobal.changeUser(newUser.user, token: newUser.token, base: _server);
     } catch (ex) {
-      print(ex);
       showDialog(
           context: context,
           builder: (context) => new AlertDialog(

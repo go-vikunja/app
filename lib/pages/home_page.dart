@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:vikunja_app/components/AddDialog.dart';
 import 'package:vikunja_app/components/GravatarImage.dart';
 import 'package:vikunja_app/fragments/namespace.dart';
 import 'package:vikunja_app/fragments/placeholder.dart';
@@ -19,6 +22,7 @@ class HomePageState extends State<HomePage> {
           ? _namespaces[_selectedDrawerIndex]
           : null;
   int _selectedDrawerIndex = -1;
+  bool _loading = true;
 
   _getDrawerItemWidget(int pos) {
     if (pos == -1) {
@@ -33,38 +37,13 @@ class HomePageState extends State<HomePage> {
   }
 
   _addNamespaceDialog() {
-    var textController = new TextEditingController();
     showDialog(
-      context: context,
-      child: new AlertDialog(
-        contentPadding: const EdgeInsets.all(16.0),
-        content: new Row(children: <Widget>[
-          Expanded(
-            child: new TextField(
-              autofocus: true,
+        context: context,
+        builder: (_) => AddDialog(
+              onAdd: _addNamespace,
               decoration: new InputDecoration(
-                  labelText: 'Namespace', hintText: 'eg. Family Namespace'),
-              controller: textController,
-            ),
-          )
-        ]),
-        actions: <Widget>[
-          new FlatButton(
-            child: const Text('CANCEL'),
-            onPressed: () => Navigator.pop(context),
-          ),
-          new FlatButton(
-            child: const Text('ADD'),
-            onPressed: () {
-              if (textController.text.isNotEmpty) {
-                _addNamespace(textController.text);
-              }
-              Navigator.pop(context);
-            },
-          )
-        ],
-      ),
-    );
+                  labelText: 'Namespace', hintText: 'eg. Personal Namespace'),
+            ));
   }
 
   _addNamespace(String name) {
@@ -74,9 +53,10 @@ class HomePageState extends State<HomePage> {
         .then((_) => _updateNamespaces());
   }
 
-  _updateNamespaces() {
-    VikunjaGlobal.of(context).namespaceService.getAll().then((result) {
+  Future<void> _updateNamespaces() {
+    return VikunjaGlobal.of(context).namespaceService.getAll().then((result) {
       setState(() {
+        _loading = false;
         _namespaces = result;
       });
     });
@@ -121,11 +101,16 @@ class HomePageState extends State<HomePage> {
           ),
         ),
         new Expanded(
-            child: ListView(
-                padding: EdgeInsets.zero,
-                children:
-                    ListTile.divideTiles(context: context, tiles: drawerOptions)
-                        .toList())),
+            child: this._loading
+                ? Center(child: CircularProgressIndicator())
+                : RefreshIndicator(
+                    child: ListView(
+                        padding: EdgeInsets.zero,
+                        children: ListTile.divideTiles(
+                                context: context, tiles: drawerOptions)
+                            .toList()),
+                    onRefresh: _updateNamespaces,
+                  )),
         new Align(
           alignment: FractionalOffset.bottomCenter,
           child: new ListTile(

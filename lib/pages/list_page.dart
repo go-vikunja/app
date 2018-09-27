@@ -1,4 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:vikunja_app/components/AddDialog.dart';
+import 'package:vikunja_app/components/TaskTile.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/models/task.dart';
 
@@ -12,40 +16,15 @@ class ListPage extends StatefulWidget {
 }
 
 class _ListPageState extends State<ListPage> {
-  TaskList items;
+  TaskList _items;
+  List<Task> _loadingTasks = [];
+  bool _loading = true;
 
   @override
   void initState() {
-    items = TaskList(
+    _items = TaskList(
         id: widget.taskList.id, title: widget.taskList.title, tasks: []);
     super.initState();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: new Text(items.title),
-      ),
-      body: ListView(
-        padding: EdgeInsets.symmetric(vertical: 8.0),
-        children: ListTile.divideTiles(
-                context: context,
-                tiles: items?.tasks?.map((task) => CheckboxListTile(
-                          title: Text(task.text),
-                          controlAffinity: ListTileControlAffinity.leading,
-                          value: task.done ?? false,
-                          subtitle: task.description == null
-                              ? null
-                              : Text(task.description),
-                          onChanged: (bool value) => _updateTask(task, value),
-                        )) ??
-                    [])
-            .toList(),
-      ),
-      floatingActionButton: FloatingActionButton(
-          onPressed: () => _addItemDialog(), child: Icon(Icons.add)),
-    );
   }
 
   @override
@@ -54,75 +33,82 @@ class _ListPageState extends State<ListPage> {
     _updateList();
   }
 
-  _updateTask(Task task, bool checked) {
-    // TODO use copyFrom
-    VikunjaGlobal.of(context)
-        .taskService
-        .update(Task(
-          id: task.id,
-          done: checked,
-          text: task.text,
-          description: task.description,
-          owner: null,
-        ))
-        .then((_) => _updateList());
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: new Text(_items.title),
+        actions: <Widget>[
+          IconButton(
+            icon: Icon(Icons.edit),
+            onPressed: () => {/* TODO add edit list functionality */},
+          )
+        ],
+      ),
+      body: !this._loading
+          ? RefreshIndicator(
+              child: ListView(
+                padding: EdgeInsets.symmetric(vertical: 8.0),
+                children:
+                    ListTile.divideTiles(context: context, tiles: _listTasks())
+                        .toList(),
+              ),
+              onRefresh: _updateList,
+            )
+          : Center(child: CircularProgressIndicator()),
+      floatingActionButton: FloatingActionButton(
+          onPressed: () => _addItemDialog(), child: Icon(Icons.add)),
+    );
   }
 
-  _updateList() {
-    VikunjaGlobal.of(context).listService.get(widget.taskList.id).then((tasks) {
+  List<Widget> _listTasks() {
+    var tasks = (_items?.tasks?.map(_buildTile) ?? []).toList();
+    tasks.addAll(_loadingTasks.map(_buildLoadingTile));
+    return tasks;
+  }
+
+  TaskTile _buildTile(Task task) {
+    return TaskTile(task: task, loading: false);
+  }
+
+  TaskTile _buildLoadingTile(Task task) {
+    return TaskTile(
+      task: task,
+      loading: true,
+    );
+  }
+
+  Future<void> _updateList() {
+    return VikunjaGlobal.of(context)
+        .listService
+        .get(widget.taskList.id)
+        .then((tasks) {
       setState(() {
-        items = tasks;
+        _loading = false;
+        _items = tasks;
       });
     });
   }
 
   _addItemDialog() {
-    var textController = new TextEditingController();
     showDialog(
-      context: context,
-      child: new AlertDialog(
-        contentPadding: const EdgeInsets.all(16.0),
-        content: new Row(children: <Widget>[
-          Expanded(
-            child: new TextField(
-              autofocus: true,
-              decoration: new InputDecoration(
-                  labelText: 'List Item', hintText: 'eg. Milk'),
-              controller: textController,
-            ),
-          )
-        ]),
-        actions: <Widget>[
-          new FlatButton(
-            child: const Text('CANCEL'),
-            onPressed: () => Navigator.pop(context),
-          ),
-          new FlatButton(
-            child: const Text('ADD'),
-            onPressed: () {
-              if (textController.text.isNotEmpty) _addItem(textController.text);
-              Navigator.pop(context);
-            },
-          )
-        ],
-      ),
-    );
+        context: context,
+        builder: (_) => AddDialog(
+            onAdd: _addItem,
+            decoration: new InputDecoration(
+                labelText: 'List Item', hintText: 'eg. Milk')));
   }
 
   _addItem(String name) {
     var globalState = VikunjaGlobal.of(context);
-    globalState.taskService
-        .add(
-            items.id,
-            Task(
-                id: null,
-                text: name,
-                owner: globalState.currentUser,
-                done: false))
-        .then((task) {
+    var newTask =
+        Task(id: null, text: name, owner: globalState.currentUser, done: false);
+    setState(() => _loadingTasks.add(newTask));
+    globalState.taskService.add(_items.id, newTask).then((task) {
       setState(() {
-        items.tasks.add(task);
+        _items.tasks.add(task);
       });
-    }).then((_) => _updateList());
+    }).then((_) => _updateList()
+        .then((_) => setState(() => _loadingTasks.remove(newTask))));
   }
 }

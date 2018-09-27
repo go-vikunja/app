@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:vikunja_app/components/AddDialog.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/models/namespace.dart';
 import 'package:vikunja_app/models/task.dart';
@@ -18,35 +19,41 @@ class NamespaceFragment extends StatefulWidget {
 
 class _NamespaceFragmentState extends State<NamespaceFragment> {
   List<TaskList> _lists = [];
+  bool _loading = true;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: new ListView(
-        padding: EdgeInsets.symmetric(vertical: 8.0),
-        children: ListTile.divideTiles(
-            context: context,
-            tiles: _lists.map((ls) => Dismissible(
-                  key: Key(ls.id.toString()),
-                  direction: DismissDirection.startToEnd,
-                  child: ListTile(
-                    title: new Text(ls.title),
-                    onTap: () => _openList(context, ls),
-                    trailing: Icon(Icons.arrow_right),
-                  ),
-                  background: Container(
-                    color: Colors.red,
-                    child: const ListTile(
-                        leading: Icon(Icons.delete,
-                            color: Colors.white, size: 36.0)),
-                  ),
-                  onDismissed: (direction) {
-                    _removeList(ls).then((_) => Scaffold.of(context)
-                        .showSnackBar(
-                            SnackBar(content: Text("${ls.title} removed"))));
-                  },
-                ))).toList(),
-      ),
+      body: !this._loading
+          ? RefreshIndicator(
+              child: new ListView(
+                padding: EdgeInsets.symmetric(vertical: 8.0),
+                children: ListTile.divideTiles(
+                    context: context,
+                    tiles: _lists.map((ls) => Dismissible(
+                          key: Key(ls.id.toString()),
+                          direction: DismissDirection.startToEnd,
+                          child: ListTile(
+                            title: new Text(ls.title),
+                            onTap: () => _openList(context, ls),
+                            trailing: Icon(Icons.arrow_right),
+                          ),
+                          background: Container(
+                            color: Colors.red,
+                            child: const ListTile(
+                                leading: Icon(Icons.delete,
+                                    color: Colors.white, size: 36.0)),
+                          ),
+                          onDismissed: (direction) {
+                            _removeList(ls).then((_) => Scaffold.of(context)
+                                .showSnackBar(SnackBar(
+                                    content: Text("${ls.title} removed"))));
+                          },
+                        ))).toList(),
+              ),
+              onRefresh: _updateLists,
+            )
+          : Center(child: CircularProgressIndicator()),
       floatingActionButton: FloatingActionButton(
           onPressed: () => _addListDialog(), child: const Icon(Icons.add)),
     );
@@ -65,11 +72,14 @@ class _NamespaceFragmentState extends State<NamespaceFragment> {
         .then((_) => _updateLists());
   }
 
-  _updateLists() {
-    VikunjaGlobal.of(context)
+  Future<void> _updateLists() {
+    return VikunjaGlobal.of(context)
         .listService
         .getByNamespace(widget.namespace.id)
-        .then((lists) => setState(() => this._lists = lists));
+        .then((lists) => setState(() {
+              this._lists = lists;
+              this._loading = false;
+            }));
   }
 
   _openList(BuildContext context, TaskList list) {
@@ -78,37 +88,12 @@ class _NamespaceFragmentState extends State<NamespaceFragment> {
   }
 
   _addListDialog() {
-    var textController = new TextEditingController();
     showDialog(
       context: context,
-      child: new AlertDialog(
-        contentPadding: const EdgeInsets.all(16.0),
-        content: new Row(children: <Widget>[
-          Expanded(
-            child: new TextField(
-              autofocus: true,
-              decoration: new InputDecoration(
-                  labelText: 'List Name', hintText: 'eg. Shopping List'),
-              controller: textController,
-            ),
-          )
-        ]),
-        actions: <Widget>[
-          new FlatButton(
-            child: const Text('CANCEL'),
-            onPressed: () => Navigator.pop(context),
-          ),
-          new FlatButton(
-            child: const Text('ADD'),
-            onPressed: () {
-              if (textController.text.isNotEmpty) {
-                _addList(textController.text);
-              }
-              Navigator.pop(context);
-            },
-          )
-        ],
-      ),
+      builder: (_) => AddDialog(
+          onAdd: _addList,
+          decoration: new InputDecoration(
+              labelText: 'List Name', hintText: 'eg. Shopping List')),
     );
   }
 
