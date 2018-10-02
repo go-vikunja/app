@@ -82,7 +82,7 @@ class HomePageState extends State<HomePage> {
             )));
 
     return new Scaffold(
-      appBar: AppBar(title: new Text(_currentNamespace?.name ?? 'Vakunja')),
+      appBar: AppBar(title: new Text(_currentNamespace?.name ?? 'Vikunja')),
       drawer: new Drawer(
           child: new Column(children: <Widget>[
         new UserAccountsDrawerHeader(
