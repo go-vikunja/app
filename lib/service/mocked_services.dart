@@ -152,6 +152,11 @@ class MockedUserService implements UserService {
   }
 
   @override
+  Future<UserTokenPair> register(String username, email, password) {
+    return Future.value(UserTokenPair(_users[1], 'abcdefg'));
+  }
+
+  @override
   Future<User> getCurrentUser() {
     return Future.value(_users[1]);
   }

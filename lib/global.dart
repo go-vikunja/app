@@ -37,8 +37,7 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
   Client get client => _client;
 
   UserManager get userManager => new UserManager(_storage);
-  UserService get userService => new UserAPIService(_client);
-  UserService newLoginService(base) => new UserAPIService(Client(null, base));
+  UserService newUserService(base) => new UserAPIService(Client(null, base));
   NamespaceService get namespaceService => new NamespaceAPIService(client);
   TaskService get taskService => new TaskAPIService(client);
   ListService get listService => new ListAPIService(client);

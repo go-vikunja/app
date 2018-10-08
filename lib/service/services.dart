@@ -29,5 +29,6 @@ abstract class TaskService {
 
 abstract class UserService {
   Future<UserTokenPair> login(String username, password);
+  Future<UserTokenPair> register(String username, email, password);
   Future<User> getCurrentUser();
 }
