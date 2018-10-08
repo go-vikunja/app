@@ -20,6 +20,16 @@ class UserAPIService extends APIService implements UserService {
   }
 
   @override
+  Future<UserTokenPair> register(String username, email, password) async {
+    var newUser = await client.post('/register', body: {
+      'username': username,
+      'email': email,
+      'password': password
+    }).then((resp) => resp['username']);
+    return login(newUser, password);
+  }
+
+  @override
   Future<User> getCurrentUser() {
     return client.get('/user').then((map) => User.fromJson(map));
   }
