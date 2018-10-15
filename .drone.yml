@@ -8,6 +8,18 @@ clone:
     tags: true
 
 pipeline:
+  build:
+      image: nathansamson/flutter-builder-docker:v0.6.0
+      pull: true
+      commands:
+        - flutter packages get
+        - make format-check
+        - make build-all
+        - mkdir apks
+        - mv build/app/outputs/apk/*/*/*.apk apks
+      when:
+        event: [ push, tag ]
+
   test:
       image: nathansamson/flutter-builder-docker:v0.6.0
       pull: true
@@ -15,17 +27,6 @@ pipeline:
         - make test
       when:
         event: [ push, tag, pull_request ]
- 
-  build:
-      image: nathansamson/flutter-builder-docker:v0.6.0
-      pull: true
-      commands:
-        - flutter packages get
-        - make build-all
-        - mkdir apks
-        - mv build/app/outputs/apk/*/*/*.apk apks
-      when:
-        event: [ push, tag ]
  
   # Push the releases to our pseudo-s3-bucket
   release:
