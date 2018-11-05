@@ -52,7 +52,9 @@ class _RegisterPageState extends State<RegisterPage> {
                           child: TextFormField(
                             onSaved: (username) => _username = username.trim(),
                             validator: (username) {
-                              return username.trim().isNotEmpty ? null : 'Please specify a username';
+                              return username.trim().isNotEmpty
+                                  ? null
+                                  : 'Please specify a username';
                             },
                             decoration:
                                 new InputDecoration(labelText: 'Username'),
@@ -77,7 +79,9 @@ class _RegisterPageState extends State<RegisterPage> {
                             controller: passwordController,
                             onSaved: (password) => _password = password,
                             validator: (password) {
-                              return password.length >= 8 ? null : 'Please use at least 8 characters';
+                              return password.length >= 8
+                                  ? null
+                                  : 'Please use at least 8 characters';
                             },
                             decoration:
                                 new InputDecoration(labelText: 'Password'),

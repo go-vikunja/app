@@ -9,7 +9,7 @@ clone:
 
 pipeline:
   build:
-      image: nathansamson/flutter-builder-docker:v0.6.0
+      image: jonasfranz/flutter:master
       pull: true
       commands:
         - flutter packages get
@@ -21,7 +21,7 @@ pipeline:
         event: [ push, tag ]
 
   test:
-      image: nathansamson/flutter-builder-docker:v0.6.0
+      image: jonasfranz/flutter:master
       pull: true
       commands:
         - make test
