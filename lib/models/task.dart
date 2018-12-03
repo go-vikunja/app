@@ -3,7 +3,8 @@ import 'package:meta/meta.dart';
 
 class Task {
   final int id;
-  final DateTime created, updated, reminder, due;
+  final DateTime created, updated, due;
+  final List<DateTime> reminders;
   final String text, description;
   final bool done;
   final User owner;
@@ -12,7 +13,7 @@ class Task {
       {@required this.id,
       this.created,
       this.updated,
-      this.reminder,
+      this.reminders,
       this.due,
       @required this.text,
       this.description,
@@ -23,7 +24,9 @@ class Task {
       : id = json['id'],
         updated = DateTime.fromMillisecondsSinceEpoch(json['updated']),
         created = DateTime.fromMillisecondsSinceEpoch(json['created']),
-        reminder = DateTime.fromMillisecondsSinceEpoch(json['reminderDate']),
+        reminders = (json['reminderDates'] as List<dynamic>)
+            ?.map((milli) => DateTime.fromMillisecondsSinceEpoch(milli))
+            ?.toList(),
         due = DateTime.fromMillisecondsSinceEpoch(json['dueDate']),
         description = json['description'],
         text = json['text'],
@@ -34,7 +37,8 @@ class Task {
         'id': id,
         'updated': updated?.millisecondsSinceEpoch,
         'created': created?.millisecondsSinceEpoch,
-        'reminderDate': reminder?.millisecondsSinceEpoch,
+        'reminderDates':
+            reminders?.map((date) => date.millisecondsSinceEpoch)?.toList(),
         'dueDate': due?.millisecondsSinceEpoch,
         'description': description,
         'text': text,
