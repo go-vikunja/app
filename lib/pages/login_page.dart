@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/pages/register_page.dart';
+import 'package:vikunja_app/theme/button.dart';
+import 'package:vikunja_app/theme/buttonText.dart';
+import 'package:vikunja_app/theme/constants.dart';
 import 'package:vikunja_app/utils/validator.dart';
 
 class LoginPage extends StatefulWidget {
@@ -30,7 +33,7 @@ class _LoginPageState extends State<LoginPage> {
                       padding: const EdgeInsets.symmetric(horizontal: 16.0),
                       children: <Widget>[
                         Padding(
-                          padding: const EdgeInsets.all(8.0),
+                          padding: vStandardVerticalPadding,
                           child: Image(
                             image: AssetImage('assets/vikunja_logo.png'),
                             height: 128.0,
@@ -38,37 +41,40 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ),
                         Padding(
-                          padding: EdgeInsets.all(8.0),
+                          padding: vStandardVerticalPadding,
                           child: TextFormField(
                             onSaved: (serverAddress) => _server = serverAddress,
                             validator: (address) {
                               return isUrl(address) ? null : 'Invalid URL';
                             },
                             decoration: new InputDecoration(
+								border: OutlineInputBorder(),
                                 labelText: 'Server Address'),
                           ),
                         ),
                         Padding(
-                          padding: const EdgeInsets.all(8.0),
+                          padding: vStandardVerticalPadding,
                           child: TextFormField(
                             onSaved: (username) => _username = username,
                             decoration:
-                                new InputDecoration(labelText: 'Username'),
+                                new InputDecoration(
+									border: OutlineInputBorder(),
+									labelText: 'Username'),
                           ),
                         ),
                         Padding(
-                          padding: const EdgeInsets.all(8.0),
+                          padding: vStandardVerticalPadding,
                           child: TextFormField(
                             onSaved: (password) => _password = password,
                             decoration:
-                                new InputDecoration(labelText: 'Password'),
+                                new InputDecoration(
+									border: OutlineInputBorder(),
+									labelText: 'Password'),
                             obscureText: true,
                           ),
                         ),
                         Builder(
-                            builder: (context) => ButtonTheme(
-                                height: _loading ? 55.0 : 36.0,
-                                child: RaisedButton(
+                            builder: (context) => FancyButton(
                                   onPressed: !_loading
                                       ? () {
                                           if (_formKey.currentState
@@ -80,21 +86,17 @@ class _LoginPageState extends State<LoginPage> {
                                       : null,
                                   child: _loading
                                       ? CircularProgressIndicator()
-                                      : Text('Login'),
-                                ))),
+                                      : VikunjaButtonText('Login'),
+                                )),
                         Builder(
-                            builder: (context) => ButtonTheme(
-                                height: _loading ? 55.0 : 36.0,
-                                child: RaisedButton(
+                            builder: (context) => FancyButton(
                                   onPressed: () => Navigator.push(
                                       context,
                                       MaterialPageRoute(
                                           builder: (context) =>
                                               RegisterPage())),
-                                  child: _loading
-                                      ? CircularProgressIndicator()
-                                      : Text('Register'),
-                                ))),
+                                  child: VikunjaButtonText('Register'),
+                                )),
                       ],
                     )),
               ),

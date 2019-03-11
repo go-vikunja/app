@@ -32,7 +32,6 @@ flutter_icons:
 flutter:
   uses-material-design: true
   assets:
-    - assets/graphics/background.jpg
     - assets/graphics/hypnotize.png
     - assets/vikunja_logo.png
   fonts:

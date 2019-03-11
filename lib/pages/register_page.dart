@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/global.dart';
+import 'package:vikunja_app/theme/button.dart';
+import 'package:vikunja_app/theme/buttonText.dart';
+import 'package:vikunja_app/theme/constants.dart';
 import 'package:vikunja_app/utils/validator.dart';
 
 class RegisterPage extends StatefulWidget {
@@ -29,7 +32,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       padding: const EdgeInsets.symmetric(horizontal: 16.0),
                       children: <Widget>[
                         Padding(
-                          padding: const EdgeInsets.all(8.0),
+                          padding: vStandardVerticalPadding,
                           child: Image(
                             image: AssetImage('assets/vikunja_logo.png'),
                             height: 128.0,
@@ -37,18 +40,19 @@ class _RegisterPageState extends State<RegisterPage> {
                           ),
                         ),
                         Padding(
-                          padding: EdgeInsets.all(8.0),
+                          padding: vStandardVerticalPadding,
                           child: TextFormField(
                             onSaved: (serverAddress) => _server = serverAddress,
                             validator: (address) {
                               return isUrl(address) ? null : 'Invalid URL';
                             },
                             decoration: new InputDecoration(
+                                border: OutlineInputBorder(),
                                 labelText: 'Server Address'),
                           ),
                         ),
                         Padding(
-                          padding: const EdgeInsets.all(8.0),
+                          padding: vStandardVerticalPadding,
                           child: TextFormField(
                             onSaved: (username) => _username = username.trim(),
                             validator: (username) {
@@ -56,12 +60,13 @@ class _RegisterPageState extends State<RegisterPage> {
                                   ? null
                                   : 'Please specify a username';
                             },
-                            decoration:
-                                new InputDecoration(labelText: 'Username'),
+                            decoration: new InputDecoration(
+                                border: OutlineInputBorder(),
+                                labelText: 'Username'),
                           ),
                         ),
                         Padding(
-                          padding: const EdgeInsets.all(8.0),
+                          padding: vStandardVerticalPadding,
                           child: TextFormField(
                             onSaved: (email) => _email = email,
                             validator: (email) {
@@ -69,12 +74,13 @@ class _RegisterPageState extends State<RegisterPage> {
                                   ? null
                                   : 'Email adress is invalid';
                             },
-                            decoration:
-                                new InputDecoration(labelText: 'Email Address'),
+                            decoration: new InputDecoration(
+                                border: OutlineInputBorder(),
+                                labelText: 'Email Address'),
                           ),
                         ),
                         Padding(
-                          padding: const EdgeInsets.all(8.0),
+                          padding: vStandardVerticalPadding,
                           child: TextFormField(
                             controller: passwordController,
                             onSaved: (password) => _password = password,
@@ -83,13 +89,14 @@ class _RegisterPageState extends State<RegisterPage> {
                                   ? null
                                   : 'Please use at least 8 characters';
                             },
-                            decoration:
-                                new InputDecoration(labelText: 'Password'),
+                            decoration: new InputDecoration(
+                                border: OutlineInputBorder(),
+                                labelText: 'Password'),
                             obscureText: true,
                           ),
                         ),
                         Padding(
-                          padding: const EdgeInsets.all(8.0),
+                          padding: vStandardVerticalPadding,
                           child: TextFormField(
                             validator: (password) {
                               return passwordController.text == password
@@ -97,14 +104,13 @@ class _RegisterPageState extends State<RegisterPage> {
                                   : 'Passwords don\'t match.';
                             },
                             decoration: new InputDecoration(
+                                border: OutlineInputBorder(),
                                 labelText: 'Repeat Password'),
                             obscureText: true,
                           ),
                         ),
                         Builder(
-                            builder: (context) => ButtonTheme(
-                                height: _loading ? 55.0 : 36.0,
-                                child: RaisedButton(
+                            builder: (context) => FancyButton(
                                   onPressed: !_loading
                                       ? () {
                                           if (_formKey.currentState
@@ -118,8 +124,8 @@ class _RegisterPageState extends State<RegisterPage> {
                                       : null,
                                   child: _loading
                                       ? CircularProgressIndicator()
-                                      : Text('Register'),
-                                ))),
+                                      : VikunjaButtonText('Register'),
+                                )),
                       ],
                     )),
               ),
