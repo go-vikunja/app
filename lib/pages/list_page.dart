@@ -102,7 +102,7 @@ class _ListPageState extends State<ListPage> {
         builder: (_) => AddDialog(
             onAdd: _addItem,
             decoration: new InputDecoration(
-                labelText: 'List Item', hintText: 'eg. Milk')));
+                labelText: 'Task Name', hintText: 'eg. Milk')));
   }
 
   _addItem(String name) {
