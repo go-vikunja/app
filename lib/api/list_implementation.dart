@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:vikunja_app/api/client.dart';
 import 'package:vikunja_app/api/service.dart';
-import 'package:vikunja_app/models/task.dart';
+import 'package:vikunja_app/models/list.dart';
 import 'package:vikunja_app/service/services.dart';
 
 class ListAPIService extends APIService implements ListService {
@@ -40,7 +40,7 @@ class ListAPIService extends APIService implements ListService {
   @override
   Future<TaskList> update(TaskList tl) {
     return client
-        .put('/lists/${tl.id}', body: tl.toJSON())
+        .post('/lists/${tl.id}', body: tl.toJSON())
         .then((map) => TaskList.fromJson(map));
   }
 }

@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:vikunja_app/components/AddDialog.dart';
 import 'package:vikunja_app/components/TaskTile.dart';
 import 'package:vikunja_app/global.dart';
+import 'package:vikunja_app/models/list.dart';
 import 'package:vikunja_app/models/task.dart';
+import 'package:vikunja_app/pages/list_edit_page.dart';
 
 class ListPage extends StatefulWidget {
   final TaskList taskList;
@@ -16,13 +18,13 @@ class ListPage extends StatefulWidget {
 }
 
 class _ListPageState extends State<ListPage> {
-  TaskList _items;
+  TaskList _list;
   List<Task> _loadingTasks = [];
   bool _loading = true;
 
   @override
   void initState() {
-    _items = TaskList(
+    _list = TaskList(
         id: widget.taskList.id, title: widget.taskList.title, tasks: []);
     super.initState();
   }
@@ -37,12 +39,16 @@ class _ListPageState extends State<ListPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: new Text(_items.title),
+        title: new Text(_list.title),
         actions: <Widget>[
           IconButton(
-            icon: Icon(Icons.edit),
-            onPressed: () => {/* TODO add edit list functionality */},
-          )
+              icon: Icon(Icons.edit),
+              onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => ListEditPage(
+                            list: _list,
+                          ))))
         ],
       ),
       body: !this._loading
@@ -62,7 +68,7 @@ class _ListPageState extends State<ListPage> {
   }
 
   List<Widget> _listTasks() {
-    var tasks = (_items?.tasks?.map(_buildTile) ?? []).toList();
+    var tasks = (_list?.tasks?.map(_buildTile) ?? []).toList();
     tasks.addAll(_loadingTasks.map(_buildLoadingTile));
     return tasks;
   }
@@ -85,7 +91,7 @@ class _ListPageState extends State<ListPage> {
         .then((tasks) {
       setState(() {
         _loading = false;
-        _items = tasks;
+        _list = tasks;
       });
     });
   }
@@ -104,9 +110,9 @@ class _ListPageState extends State<ListPage> {
     var newTask =
         Task(id: null, text: name, owner: globalState.currentUser, done: false);
     setState(() => _loadingTasks.add(newTask));
-    globalState.taskService.add(_items.id, newTask).then((task) {
+    globalState.taskService.add(_list.id, newTask).then((task) {
       setState(() {
-        _items.tasks.add(task);
+        _list.tasks.add(task);
       });
     }).then((_) => _updateList()
         .then((_) => setState(() => _loadingTasks.remove(newTask))));

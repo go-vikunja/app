@@ -46,7 +46,11 @@ class TaskTileState extends State<TaskTile> {
             _currentTask.description == null || _currentTask.description.isEmpty
                 ? null
                 : Text(_currentTask.description),
-        trailing: IconButton(icon: Icon(Icons.settings), onPressed: null),
+        trailing: IconButton(
+            icon: Icon(Icons.settings),
+            onPressed: () {
+              null;
+            }),
       );
     }
     return CheckboxListTile(
