@@ -112,12 +112,11 @@ class _LoginPageState extends State<LoginPage> {
       showDialog(
           context: context,
           builder: (context) => new AlertDialog(
-                title:
-                    const Text('Login failed! Please check you credentials.'),
+                title: Text('Login failed! Please check your server url and credentials. ' + ex.toString()),
                 actions: <Widget>[
                   FlatButton(
                       onPressed: () => Navigator.pop(context),
-                      child: const Text('CLOSE'))
+                      child: const Text('Close'))
                 ],
               ));
     } finally {
