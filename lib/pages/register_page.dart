@@ -20,7 +20,7 @@ class _RegisterPageState extends State<RegisterPage> {
   Widget build(BuildContext ctx) {
     return Scaffold(
         appBar: AppBar(
-          title: Text('Register to Vikunja'),
+          title: Text('Register'),
         ),
         body: Builder(
           builder: (BuildContext context) => SafeArea(
@@ -29,16 +29,8 @@ class _RegisterPageState extends State<RegisterPage> {
                 child: Form(
                     key: _formKey,
                     child: ListView(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      padding: const EdgeInsets.all(16),
                       children: <Widget>[
-                        Padding(
-                          padding: vStandardVerticalPadding,
-                          child: Image(
-                            image: AssetImage('assets/vikunja_logo.png'),
-                            height: 128.0,
-                            semanticLabel: 'Vikunja Logo',
-                          ),
-                        ),
                         Padding(
                           padding: vStandardVerticalPadding,
                           child: TextFormField(
