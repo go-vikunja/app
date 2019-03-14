@@ -19,88 +19,95 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext ctx) {
     return Scaffold(
-        appBar: AppBar(
-          title: Text('Login to Vikunja'),
-        ),
-        body: Builder(
-          builder: (BuildContext context) => SafeArea(
-                top: false,
-                bottom: false,
-                child: Form(
-                    autovalidate: true,
-                    key: _formKey,
-                    child: ListView(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      children: <Widget>[
-                        Padding(
-                          padding: vStandardVerticalPadding,
-                          child: Image(
-                            image: AssetImage('assets/vikunja_logo.png'),
-                            height: 128.0,
-                            semanticLabel: 'Vikunja Logo',
-                          ),
-                        ),
-                        Padding(
-                          padding: vStandardVerticalPadding,
-                          child: TextFormField(
-                            onSaved: (serverAddress) => _server = serverAddress,
-                            validator: (address) {
-                              return isUrl(address) ? null : 'Invalid URL';
-                            },
-                            decoration: new InputDecoration(
-								border: OutlineInputBorder(),
-                                labelText: 'Server Address'),
-                          ),
-                        ),
-                        Padding(
-                          padding: vStandardVerticalPadding,
-                          child: TextFormField(
-                            onSaved: (username) => _username = username,
-                            decoration:
-                                new InputDecoration(
-									border: OutlineInputBorder(),
-									labelText: 'Username'),
-                          ),
-                        ),
-                        Padding(
-                          padding: vStandardVerticalPadding,
-                          child: TextFormField(
-                            onSaved: (password) => _password = password,
-                            decoration:
-                                new InputDecoration(
-									border: OutlineInputBorder(),
-									labelText: 'Password'),
-                            obscureText: true,
-                          ),
-                        ),
-                        Builder(
-                            builder: (context) => FancyButton(
-                                  onPressed: !_loading
-                                      ? () {
-                                          if (_formKey.currentState
-                                              .validate()) {
-                                            Form.of(context).save();
-                                            _loginUser(context);
-                                          }
-                                        }
-                                      : null,
-                                  child: _loading
-                                      ? CircularProgressIndicator()
-                                      : VikunjaButtonText('Login'),
-                                )),
-                        Builder(
-                            builder: (context) => FancyButton(
-                                  onPressed: () => Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                          builder: (context) =>
-                                              RegisterPage())),
-                                  child: VikunjaButtonText('Register'),
-                                )),
-                      ],
-                    )),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Builder(
+            builder: (BuildContext context) => Form(
+              autovalidate: true,
+              key: _formKey,
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: <Widget>[
+                    Padding(
+                      padding: EdgeInsets.symmetric(vertical: 30),
+                      child: Image(
+                        image: AssetImage('assets/vikunja_logo_full.png'),
+                        height: 85.0,
+                        semanticLabel: 'Vikunja Logo',
+                      ),
+                    ),
+                    Padding(
+                      padding: vStandardVerticalPadding,
+                      child: TextFormField(
+                        enabled: !_loading,
+                        onSaved: (serverAddress) =>
+                        _server = serverAddress,
+                        validator: (address) {
+                          return isUrl(address)
+                            ? null
+                            : 'Invalid URL';
+                        },
+                        decoration: new InputDecoration(
+                          border: OutlineInputBorder(),
+                          labelText: 'Server Address'),
+                      ),
+                    ),
+                    Padding(
+                      padding: vStandardVerticalPadding,
+                      child: TextFormField(
+                        enabled: !_loading,
+                        onSaved: (username) => _username = username,
+                        decoration: new InputDecoration(
+                          border: OutlineInputBorder(),
+                          labelText: 'Username'),
+                      ),
+                    ),
+                    Padding(
+                      padding: vStandardVerticalPadding,
+                      child: TextFormField(
+                        enabled: !_loading,
+                        onSaved: (password) => _password = password,
+                        decoration: new InputDecoration(
+                          border: OutlineInputBorder(),
+                          labelText: 'Password'),
+                        obscureText: true,
+                      ),
+                    ),
+                    Builder(
+                      builder: (context) => FancyButton(
+                        onPressed: !_loading
+                          ? () {
+                          if (_formKey.currentState
+                            .validate()) {
+                            Form.of(context).save();
+                            _loginUser(context);
+                          }
+                        }
+                          : null,
+                        child: _loading
+                          ? CircularProgressIndicator()
+                          : VikunjaButtonText('Login'),
+                      )),
+                    Builder(
+                      builder: (context) => FancyButton(
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                              RegisterPage())),
+                        child: VikunjaButtonText('Register'),
+                      )),
+                  ],
+                ),
               ),
-        ));
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   _loginUser(BuildContext context) async {
@@ -114,7 +121,9 @@ class _LoginPageState extends State<LoginPage> {
       showDialog(
           context: context,
           builder: (context) => new AlertDialog(
-                title: Text('Login failed! Please check your server url and credentials. ' + ex.toString()),
+                title: Text(
+                    'Login failed! Please check your server url and credentials. ' +
+                        ex.toString()),
                 actions: <Widget>[
                   FlatButton(
                       onPressed: () => Navigator.pop(context),
