@@ -6,11 +6,11 @@ import 'package:vikunja_app/components/AddDialog.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/models/list.dart';
 import 'package:vikunja_app/models/namespace.dart';
-import 'package:vikunja_app/models/task.dart';
 import 'package:vikunja_app/pages/list_page.dart';
 
 class NamespaceFragment extends StatefulWidget {
   final Namespace namespace;
+
   NamespaceFragment({this.namespace})
       : super(key: Key(namespace.id.toString()));
 
@@ -100,8 +100,11 @@ class _NamespaceFragmentState extends State<NamespaceFragment> {
 
   _addList(String name) {
     VikunjaGlobal.of(context)
-        .listService
-        .create(widget.namespace.id, TaskList(id: null, title: name, tasks: []))
-        .then((_) => setState(() {}));
+      .listService
+      .create(widget.namespace.id, TaskList(id: null, title: name, tasks: []))
+      .then((_) {
+        setState(() {});
+        _updateLists();
+    });
   }
 }

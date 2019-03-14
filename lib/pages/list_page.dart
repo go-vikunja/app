@@ -114,7 +114,9 @@ class _ListPageState extends State<ListPage> {
       setState(() {
         _list.tasks.add(task);
       });
-    }).then((_) => _updateList()
-        .then((_) => setState(() => _loadingTasks.remove(newTask))));
+    }).then((_) {
+      _updateList();
+      setState(() => _loadingTasks.remove(newTask));
+    });
   }
 }
