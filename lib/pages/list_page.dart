@@ -32,7 +32,7 @@ class _ListPageState extends State<ListPage> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _updateList();
+    _loadList();
   }
 
   @override
@@ -59,12 +59,13 @@ class _ListPageState extends State<ListPage> {
                     ListTile.divideTiles(context: context, tiles: _listTasks())
                         .toList(),
               ),
-              onRefresh: _updateList,
+              onRefresh: _loadList,
             )
           : Center(child: CircularProgressIndicator()),
-      floatingActionButton: FloatingActionButton(
-          onPressed: () => _addItemDialog(), child: Icon(Icons.add)),
-    );
+      floatingActionButton: Builder(
+        builder: (context) => FloatingActionButton(
+          onPressed: () => _addItemDialog(context), child: Icon(Icons.add)),
+    ));
   }
 
   List<Widget> _listTasks() {
@@ -84,7 +85,7 @@ class _ListPageState extends State<ListPage> {
     );
   }
 
-  Future<void> _updateList() {
+  Future<void> _loadList() {
     return VikunjaGlobal.of(context)
         .listService
         .get(widget.taskList.id)
@@ -96,16 +97,16 @@ class _ListPageState extends State<ListPage> {
     });
   }
 
-  _addItemDialog() {
+  _addItemDialog(BuildContext context) {
     showDialog(
         context: context,
         builder: (_) => AddDialog(
-            onAdd: _addItem,
+            onAdd: (name) => _addItem(name, context),
             decoration: new InputDecoration(
                 labelText: 'Task Name', hintText: 'eg. Milk')));
   }
 
-  _addItem(String name) {
+  _addItem(String name, BuildContext context) {
     var globalState = VikunjaGlobal.of(context);
     var newTask =
         Task(id: null, text: name, owner: globalState.currentUser, done: false);
@@ -115,8 +116,11 @@ class _ListPageState extends State<ListPage> {
         _list.tasks.add(task);
       });
     }).then((_) {
-      _updateList();
+      _loadList();
       setState(() => _loadingTasks.remove(newTask));
+      Scaffold.of(context).showSnackBar(SnackBar(
+        content: Text('The task was added successfully!'),
+      ));
     });
   }
 }
