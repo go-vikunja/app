@@ -38,34 +38,34 @@ class _ListPageState extends State<ListPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: new Text(_list.title),
-        actions: <Widget>[
-          IconButton(
-              icon: Icon(Icons.edit),
-              onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => ListEditPage(
-                            list: _list,
-                          ))))
-        ],
-      ),
-      body: !this._loading
-          ? RefreshIndicator(
-              child: ListView(
-                padding: EdgeInsets.symmetric(vertical: 8.0),
-                children:
-                    ListTile.divideTiles(context: context, tiles: _listTasks())
-                        .toList(),
-              ),
-              onRefresh: _loadList,
-            )
-          : Center(child: CircularProgressIndicator()),
-      floatingActionButton: Builder(
-        builder: (context) => FloatingActionButton(
-          onPressed: () => _addItemDialog(context), child: Icon(Icons.add)),
-    ));
+        appBar: AppBar(
+          title: new Text(_list.title),
+          actions: <Widget>[
+            IconButton(
+                icon: Icon(Icons.edit),
+                onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => ListEditPage(
+                              list: _list,
+                            ))))
+          ],
+        ),
+        body: !this._loading
+            ? RefreshIndicator(
+                child: ListView(
+                  padding: EdgeInsets.symmetric(vertical: 8.0),
+                  children: ListTile.divideTiles(
+                          context: context, tiles: _listTasks())
+                      .toList(),
+                ),
+                onRefresh: _loadList,
+              )
+            : Center(child: CircularProgressIndicator()),
+        floatingActionButton: Builder(
+          builder: (context) => FloatingActionButton(
+              onPressed: () => _addItemDialog(context), child: Icon(Icons.add)),
+        ));
   }
 
   List<Widget> _listTasks() {

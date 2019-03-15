@@ -1,58 +1,117 @@
+kind: pipeline
+name: testing
+
 workspace:
   base: /app
 
 clone:
-  git:
-    image: plugins/git
-    depth: 50
-    tags: true
+  depth: 50
 
-pipeline:
-  build:
-      image: jonasfranz/flutter:master
-      pull: true
-      commands:
-        - flutter packages get
-        - make format-check
-        - make build-all
-        - mkdir apks
-        - mv build/app/outputs/apk/*/*/*.apk apks
-      when:
-        event: [ push, tag ]
+steps:
+  - name: build
+    image: adamantium/flutter
+    pull: true
+    commands:
+      - apt-get update && apt-get install make # We do this here to not have to deal with updating the image itself
+      - flutter packages get
+      - make format-check
+      - make build-debug
 
-  test:
-      image: jonasfranz/flutter:master
-      pull: true
-      commands:
-        - make test
-      when:
-        event: [ push, tag, pull_request ]
- 
-  # Push the releases to our pseudo-s3-bucket
-  release:
+  - name: test
+    image: adamantium/flutter
+    pull: true
+    commands:
+      - apt-get update && apt-get install make # We do this here to not have to deal with updating the image itself
+      - flutter packages get
+      - make test
+
+---
+kind: pipeline
+name: release-latest
+
+depends_on:
+  - testing
+
+trigger:
+  branch:
+  - master
+  event:
+  - push
+
+workspace:
+  base: /app
+
+clone:
+  depth: 50
+
+steps:
+  # Because drone separates the pipelines, we have to add the build step to this pipeline. This is double code, we should change it at some point if possible.
+  - name: build
+    image: adamantium/flutter
+    pull: true
+    commands:
+    - apt-get update && apt-get install make # We do this here to not have to deal with updating the image itself
+    - flutter packages get
+    - make build-all
+    - mkdir apks
+    - mv build/app/outputs/apk/*/*/*.apk apks
+
+    # Push the releases to our pseudo-s3-bucket
+  - name: release
     image: plugins/s3:1
     pull: true
-    secrets: [ aws_access_key_id, aws_secret_access_key ]
-    bucket: vikunja-app
-    endpoint: https://storage.kolaente.de
-    path_style: true
-    strip_prefix: apks/
-    source: apks/*
-    target: /${DRONE_TAG##v}
-    when:
-      event: [ tag ]
+    settings:
+      bucket: vikunja-app
+      access_key:
+        from_secret: aws_access_key_id
+      secret_key:
+        from_secret: aws_secret_access_key
+      endpoint: https://storage.kolaente.de
+      path_style: true
+      strip_prefix: apks/
+      source: apks/*
+      target: /master
 
-  # Push the releases to our pseudo-s3-bucket
-  release:
+---
+kind: pipeline
+name: release-version
+
+depends_on:
+  - testing
+
+trigger:
+  event:
+  - tag
+
+workspace:
+  base: /app
+
+clone:
+  depth: 50
+
+steps:
+  # Because drone separates the pipelines, we have to add the build step to this pipeline. This is double code, we should change it at some point if possible.
+  - name: build
+    image: adamantium/flutter
+    pull: true
+    commands:
+    - apt-get update && apt-get install make # We do this here to not have to deal with updating the image itself
+    - flutter packages get
+    - make build-all
+    - mkdir apks
+    - mv build/app/outputs/apk/*/*/*.apk apks
+    # Push the releases to our pseudo-s3-bucket
+  - name: release
     image: plugins/s3:1
     pull: true
-    secrets: [ aws_access_key_id, aws_secret_access_key ]
-    bucket: vikunja-app
-    endpoint: https://storage.kolaente.de
-    path_style: true
-    strip_prefix: apks/
-    source: apks/*
-    target: /master
-    when:
-      event: [ push ]
-      branch: [ master ]
+    settings:
+      bucket: vikunja-app
+      access_key:
+        from_secret: aws_access_key_id
+      secret_key:
+        from_secret: aws_secret_access_key
+      endpoint: https://storage.kolaente.de
+      path_style: true
+      strip_prefix: apks/
+      source: apks/*
+      target: /${DRONE_TAG##v}
