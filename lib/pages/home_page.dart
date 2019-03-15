@@ -36,21 +36,26 @@ class HomePageState extends State<HomePage> {
     Navigator.of(context).pop();
   }
 
-  _addNamespaceDialog() {
+  _addNamespaceDialog(BuildContext context) {
     showDialog(
         context: context,
         builder: (_) => AddDialog(
-              onAdd: _addNamespace,
+              onAdd: (name) => _addNamespace(name, context),
               decoration: new InputDecoration(
                   labelText: 'Namespace', hintText: 'eg. Personal Namespace'),
             ));
   }
 
-  _addNamespace(String name) {
+  _addNamespace(String name, BuildContext context) {
     VikunjaGlobal.of(context)
         .namespaceService
         .create(Namespace(id: null, name: name))
-        .then((_) => _updateNamespaces());
+        .then((_) {
+          _updateNamespaces();
+          Scaffold.of(context).showSnackBar(SnackBar(
+            content: Text('The namespace was created successfully!'),
+          ));
+    });
   }
 
   Future<void> _updateNamespaces() {
@@ -113,10 +118,12 @@ class HomePageState extends State<HomePage> {
                   )),
         new Align(
           alignment: FractionalOffset.bottomCenter,
-          child: new ListTile(
-            leading: const Icon(Icons.add),
-            title: const Text('Add namespace...'),
-            onTap: () => _addNamespaceDialog(),
+          child: Builder(
+            builder: (context) => ListTile(
+              leading: const Icon(Icons.add),
+              title: const Text('Add namespace...'),
+              onTap: () => _addNamespaceDialog(context),
+            ),
           ),
         ),
       ])),
