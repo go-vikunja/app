@@ -51,10 +51,10 @@ class HomePageState extends State<HomePage> {
         .namespaceService
         .create(Namespace(id: null, name: name))
         .then((_) {
-          _updateNamespaces();
-          Scaffold.of(context).showSnackBar(SnackBar(
-            content: Text('The namespace was created successfully!'),
-          ));
+      _updateNamespaces();
+      Scaffold.of(context).showSnackBar(SnackBar(
+        content: Text('The namespace was created successfully!'),
+      ));
     });
   }
 
@@ -120,10 +120,10 @@ class HomePageState extends State<HomePage> {
           alignment: FractionalOffset.bottomCenter,
           child: Builder(
             builder: (context) => ListTile(
-              leading: const Icon(Icons.add),
-              title: const Text('Add namespace...'),
-              onTap: () => _addNamespaceDialog(context),
-            ),
+                  leading: const Icon(Icons.add),
+                  title: const Text('Add namespace...'),
+                  onTap: () => _addNamespaceDialog(context),
+                ),
           ),
         ),
       ])),

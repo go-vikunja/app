@@ -137,7 +137,9 @@ class _RegisterPageState extends State<RegisterPage> {
       showDialog(
           context: context,
           builder: (context) => new AlertDialog(
-                title: Text('Registration failed! Please check your server url and credentials. ' + ex.toString()),
+                title: Text(
+                    'Registration failed! Please check your server url and credentials. ' +
+                        ex.toString()),
                 actions: <Widget>[
                   FlatButton(
                       onPressed: () => Navigator.pop(context),

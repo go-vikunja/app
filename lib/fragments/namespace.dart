@@ -57,8 +57,8 @@ class _NamespaceFragmentState extends State<NamespaceFragment> {
           : Center(child: CircularProgressIndicator()),
       floatingActionButton: Builder(
           builder: (context) => FloatingActionButton(
-            onPressed: () => _addListDialog(context), child: const Icon(Icons.add))
-      ),
+              onPressed: () => _addListDialog(context),
+              child: const Icon(Icons.add))),
     );
   }
 
@@ -102,16 +102,16 @@ class _NamespaceFragmentState extends State<NamespaceFragment> {
 
   _addList(String name, BuildContext context) {
     VikunjaGlobal.of(context)
-      .listService
-      .create(widget.namespace.id, TaskList(id: null, title: name, tasks: []))
-      .then((_) {
-        setState(() {});
-        _updateLists();
-        Scaffold.of(context).showSnackBar(
-          SnackBar(
-            content: Text('The list was successfully created!'),
-          ),
-        );
+        .listService
+        .create(widget.namespace.id, TaskList(id: null, title: name, tasks: []))
+        .then((_) {
+      setState(() {});
+      _updateLists();
+      Scaffold.of(context).showSnackBar(
+        SnackBar(
+          content: Text('The list was successfully created!'),
+        ),
+      );
     });
   }
 }
