@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/global.dart';
-import 'package:vikunja_app/pages/home_page.dart';
-import 'package:vikunja_app/pages/login_page.dart';
+import 'package:vikunja_app/pages/home.dart';
+import 'package:vikunja_app/pages/user/login.dart';
 import 'package:vikunja_app/theme/theme.dart';
 
 void main() => runApp(VikunjaGlobal(

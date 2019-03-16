@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-class PlaceholderFragment extends StatelessWidget {
+class PlaceholderPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return new Container(
@@ -15,7 +15,7 @@ class PlaceholderFragment extends StatelessWidget {
                 style: Theme.of(context).textTheme.headline,
               ),
             ),
-            new Text('Please select a namespace by clicking the  ☰  icon.',
+            new Text('Please select a namespace by tapping the  ☰  icon.',
                 style: Theme.of(context).textTheme.subhead),
           ],
         ));

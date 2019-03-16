@@ -7,7 +7,6 @@ import 'package:vikunja_app/api/task_implementation.dart';
 import 'package:vikunja_app/api/user_implementation.dart';
 import 'package:vikunja_app/managers/user.dart';
 import 'package:vikunja_app/models/user.dart';
-import 'package:vikunja_app/service/mocked_services.dart';
 import 'package:vikunja_app/service/services.dart';
 
 class VikunjaGlobal extends StatefulWidget {

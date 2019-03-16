@@ -3,12 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/components/AddDialog.dart';
 import 'package:vikunja_app/components/GravatarImage.dart';
-import 'package:vikunja_app/fragments/namespace.dart';
-import 'package:vikunja_app/fragments/placeholder.dart';
+import 'package:vikunja_app/pages/namespace/namespace.dart';
+import 'package:vikunja_app/pages/placeholder.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/models/namespace.dart';
-import 'package:vikunja_app/models/task.dart';
-import 'package:vikunja_app/models/user.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -26,9 +24,9 @@ class HomePageState extends State<HomePage> {
 
   _getDrawerItemWidget(int pos) {
     if (pos == -1) {
-      return new PlaceholderFragment();
+      return new PlaceholderPage();
     }
-    return new NamespaceFragment(namespace: _namespaces[pos]);
+    return new NamespacePage(namespace: _namespaces[pos]);
   }
 
   _onSelectItem(int index) {
@@ -51,14 +49,14 @@ class HomePageState extends State<HomePage> {
         .namespaceService
         .create(Namespace(id: null, name: name))
         .then((_) {
-      _updateNamespaces();
+      _loadNamespaces();
       Scaffold.of(context).showSnackBar(SnackBar(
         content: Text('The namespace was created successfully!'),
       ));
     });
   }
 
-  Future<void> _updateNamespaces() {
+  Future<void> _loadNamespaces() {
     return VikunjaGlobal.of(context).namespaceService.getAll().then((result) {
       setState(() {
         _loading = false;
@@ -70,7 +68,7 @@ class HomePageState extends State<HomePage> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _updateNamespaces();
+    _loadNamespaces();
   }
 
   @override
@@ -114,7 +112,7 @@ class HomePageState extends State<HomePage> {
                         children: ListTile.divideTiles(
                                 context: context, tiles: drawerOptions)
                             .toList()),
-                    onRefresh: _updateNamespaces,
+                    onRefresh: _loadNamespaces,
                   )),
         new Align(
           alignment: FractionalOffset.bottomCenter,
