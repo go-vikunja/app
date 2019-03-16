@@ -6,22 +6,23 @@ import 'package:vikunja_app/components/AddDialog.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/models/list.dart';
 import 'package:vikunja_app/models/namespace.dart';
-import 'package:vikunja_app/pages/list_page.dart';
+import 'package:vikunja_app/pages/list/list.dart';
 
-class NamespaceFragment extends StatefulWidget {
+class NamespacePage extends StatefulWidget {
   final Namespace namespace;
 
-  NamespaceFragment({this.namespace})
-      : super(key: Key(namespace.id.toString()));
+  NamespacePage({this.namespace}) : super(key: Key(namespace.id.toString()));
 
   @override
-  _NamespaceFragmentState createState() => new _NamespaceFragmentState();
+  _NamespacePageState createState() => new _NamespacePageState();
 }
 
-class _NamespaceFragmentState extends State<NamespaceFragment> {
+class _NamespacePageState extends State<NamespacePage> {
   List<TaskList> _lists = [];
   bool _loading = true;
 
+  /////
+  // This essentially shows the lists.
   @override
   Widget build(BuildContext context) {
     return Scaffold(

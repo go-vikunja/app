@@ -1,5 +1,3 @@
-import 'package:meta/meta.dart';
-
 class User {
   final int id;
   final String email, username;

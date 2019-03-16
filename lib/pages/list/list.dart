@@ -6,7 +6,7 @@ import 'package:vikunja_app/components/TaskTile.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/models/list.dart';
 import 'package:vikunja_app/models/task.dart';
-import 'package:vikunja_app/pages/list_edit_page.dart';
+import 'package:vikunja_app/pages/list/list_edit.dart';
 
 class ListPage extends StatefulWidget {
   final TaskList taskList;

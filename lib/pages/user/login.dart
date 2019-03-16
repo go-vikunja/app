@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/global.dart';
-import 'package:vikunja_app/pages/register_page.dart';
+import 'package:vikunja_app/pages/user/register.dart';
 import 'package:vikunja_app/theme/button.dart';
 import 'package:vikunja_app/theme/buttonText.dart';
 import 'package:vikunja_app/theme/constants.dart';
