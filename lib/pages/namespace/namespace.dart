@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:after_layout/after_layout.dart';
+
 import 'package:vikunja_app/components/AddDialog.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/models/list.dart';
@@ -17,9 +19,15 @@ class NamespacePage extends StatefulWidget {
   _NamespacePageState createState() => new _NamespacePageState();
 }
 
-class _NamespacePageState extends State<NamespacePage> {
+class _NamespacePageState extends State<NamespacePage>
+    with AfterLayoutMixin<NamespacePage> {
   List<TaskList> _lists = [];
   bool _loading = true;
+
+  @override
+  void afterFirstLayout(BuildContext context) {
+    _loadLists();
+  }
 
   /////
   // This essentially shows the lists.
@@ -53,7 +61,7 @@ class _NamespacePageState extends State<NamespacePage> {
                           },
                         ))).toList(),
               ),
-              onRefresh: _updateLists,
+              onRefresh: _loadLists,
             )
           : Center(child: CircularProgressIndicator()),
       floatingActionButton: Builder(
@@ -63,20 +71,14 @@ class _NamespacePageState extends State<NamespacePage> {
     );
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _updateLists();
-  }
-
   Future _removeList(TaskList list) {
     return VikunjaGlobal.of(context)
         .listService
         .delete(list.id)
-        .then((_) => _updateLists());
+        .then((_) => _loadLists());
   }
 
-  Future<void> _updateLists() {
+  Future<void> _loadLists() {
     return VikunjaGlobal.of(context)
         .listService
         .getByNamespace(widget.namespace.id)
@@ -107,7 +109,7 @@ class _NamespacePageState extends State<NamespacePage> {
         .create(widget.namespace.id, TaskList(id: null, title: name, tasks: []))
         .then((_) {
       setState(() {});
-      _updateLists();
+      _loadLists();
       Scaffold.of(context).showSnackBar(
         SnackBar(
           content: Text('The list was successfully created!'),

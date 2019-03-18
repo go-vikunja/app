@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:after_layout/after_layout.dart';
+
 import 'package:vikunja_app/components/AddDialog.dart';
 import 'package:vikunja_app/components/GravatarImage.dart';
 import 'package:vikunja_app/pages/namespace/namespace.dart';
@@ -13,7 +15,7 @@ class HomePage extends StatefulWidget {
   State<StatefulWidget> createState() => new HomePageState();
 }
 
-class HomePageState extends State<HomePage> {
+class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
   List<Namespace> _namespaces = [];
   Namespace get _currentNamespace =>
       _selectedDrawerIndex >= 0 && _selectedDrawerIndex < _namespaces.length
@@ -22,52 +24,8 @@ class HomePageState extends State<HomePage> {
   int _selectedDrawerIndex = -1;
   bool _loading = true;
 
-  _getDrawerItemWidget(int pos) {
-    if (pos == -1) {
-      return new PlaceholderPage();
-    }
-    return new NamespacePage(namespace: _namespaces[pos]);
-  }
-
-  _onSelectItem(int index) {
-    setState(() => _selectedDrawerIndex = index);
-    Navigator.of(context).pop();
-  }
-
-  _addNamespaceDialog(BuildContext context) {
-    showDialog(
-        context: context,
-        builder: (_) => AddDialog(
-              onAdd: (name) => _addNamespace(name, context),
-              decoration: new InputDecoration(
-                  labelText: 'Namespace', hintText: 'eg. Personal Namespace'),
-            ));
-  }
-
-  _addNamespace(String name, BuildContext context) {
-    VikunjaGlobal.of(context)
-        .namespaceService
-        .create(Namespace(id: null, name: name))
-        .then((_) {
-      _loadNamespaces();
-      Scaffold.of(context).showSnackBar(SnackBar(
-        content: Text('The namespace was created successfully!'),
-      ));
-    });
-  }
-
-  Future<void> _loadNamespaces() {
-    return VikunjaGlobal.of(context).namespaceService.getAll().then((result) {
-      setState(() {
-        _loading = false;
-        _namespaces = result;
-      });
-    });
-  }
-
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
+  void afterFirstLayout(BuildContext context) {
     _loadNamespaces();
   }
 
@@ -127,5 +85,48 @@ class HomePageState extends State<HomePage> {
       ])),
       body: _getDrawerItemWidget(_selectedDrawerIndex),
     );
+  }
+
+  _getDrawerItemWidget(int pos) {
+    if (pos == -1) {
+      return new PlaceholderPage();
+    }
+    return new NamespacePage(namespace: _namespaces[pos]);
+  }
+
+  _onSelectItem(int index) {
+    setState(() => _selectedDrawerIndex = index);
+    Navigator.of(context).pop();
+  }
+
+  _addNamespaceDialog(BuildContext context) {
+    showDialog(
+        context: context,
+        builder: (_) => AddDialog(
+              onAdd: (name) => _addNamespace(name, context),
+              decoration: new InputDecoration(
+                  labelText: 'Namespace', hintText: 'eg. Personal Namespace'),
+            ));
+  }
+
+  _addNamespace(String name, BuildContext context) {
+    VikunjaGlobal.of(context)
+        .namespaceService
+        .create(Namespace(id: null, name: name))
+        .then((_) {
+      _loadNamespaces();
+      Scaffold.of(context).showSnackBar(SnackBar(
+        content: Text('The namespace was created successfully!'),
+      ));
+    });
+  }
+
+  Future<void> _loadNamespaces() {
+    return VikunjaGlobal.of(context).namespaceService.getAll().then((result) {
+      setState(() {
+        _loading = false;
+        _namespaces = result;
+      });
+    });
   }
 }
