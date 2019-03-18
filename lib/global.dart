@@ -33,12 +33,17 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
   bool _loading = true;
 
   User get currentUser => _currentUser;
+
   Client get client => _client;
 
   UserManager get userManager => new UserManager(_storage);
+
   UserService newUserService(base) => new UserAPIService(Client(null, base));
+
   NamespaceService get namespaceService => new NamespaceAPIService(client);
+
   TaskService get taskService => new TaskAPIService(client);
+
   ListService get listService => new ListAPIService(client);
 
   @override
@@ -69,6 +74,20 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
       _currentUser = newUser;
       _client = Client(token, base);
       _loading = false;
+    });
+  }
+
+  void logoutUser(BuildContext context) {
+    _storage.deleteAll().then((_) {
+      Navigator.pop(context);
+      setState(() {
+        _client = null;
+        _currentUser = null;
+      });
+    }).catchError((err) {
+      Scaffold.of(context).showSnackBar(SnackBar(
+        content: Text('An error occured while logging out!'),
+      ));
     });
   }
 
