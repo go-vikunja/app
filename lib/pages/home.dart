@@ -6,6 +6,7 @@ import 'package:after_layout/after_layout.dart';
 import 'package:vikunja_app/components/AddDialog.dart';
 import 'package:vikunja_app/components/GravatarImage.dart';
 import 'package:vikunja_app/pages/namespace/namespace.dart';
+import 'package:vikunja_app/pages/namespace/namespace_edit.dart';
 import 'package:vikunja_app/pages/placeholder.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/models/namespace.dart';
@@ -71,7 +72,21 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
     var currentUser = VikunjaGlobal.of(context).currentUser;
 
     return new Scaffold(
-      appBar: AppBar(title: new Text(_currentNamespace?.name ?? 'Vikunja')),
+      appBar: AppBar(
+        title: new Text(_currentNamespace?.name ?? 'Vikunja'),
+        actions: _currentNamespace == null
+            ? null
+            : <Widget>[
+                IconButton(
+                    icon: Icon(Icons.edit),
+                    onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => NamespaceEditPage(
+                                  namespace: _currentNamespace,
+                                ))))
+              ],
+      ),
       drawer: new Drawer(
           child: new Column(children: <Widget>[
         new UserAccountsDrawerHeader(
