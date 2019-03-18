@@ -25,7 +25,7 @@ class TaskList {
         title = json['title'],
         updated = DateTime.fromMillisecondsSinceEpoch(json['updated']),
         created = DateTime.fromMillisecondsSinceEpoch(json['created']),
-        tasks = (json['tasks'] as List<dynamic>)
+        tasks = (json['tasks'] == null ? [] : json['tasks'] as List<dynamic>)
             ?.map((taskJson) => Task.fromJson(taskJson))
             ?.toList();
 
