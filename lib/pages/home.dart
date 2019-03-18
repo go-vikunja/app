@@ -17,30 +17,58 @@ class HomePage extends StatefulWidget {
 
 class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
   List<Namespace> _namespaces = [];
+
   Namespace get _currentNamespace =>
       _selectedDrawerIndex >= 0 && _selectedDrawerIndex < _namespaces.length
           ? _namespaces[_selectedDrawerIndex]
           : null;
   int _selectedDrawerIndex = -1;
   bool _loading = true;
+  bool _showUserDetails = false;
 
   @override
   void afterFirstLayout(BuildContext context) {
     _loadNamespaces();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    var currentUser = VikunjaGlobal.of(context).currentUser;
-    List<Widget> drawerOptions = <Widget>[];
+  Widget _namespacesWidget() {
+    List<Widget> namespacesList = <Widget>[];
     _namespaces
         .asMap()
-        .forEach((i, namespace) => drawerOptions.add(new ListTile(
+        .forEach((i, namespace) => namespacesList.add(new ListTile(
               leading: const Icon(Icons.folder),
               title: new Text(namespace.name),
               selected: i == _selectedDrawerIndex,
               onTap: () => _onSelectItem(i),
             )));
+
+    return this._loading
+        ? Center(child: CircularProgressIndicator())
+        : RefreshIndicator(
+            child: ListView(
+                padding: EdgeInsets.zero,
+                children: ListTile.divideTiles(
+                        context: context, tiles: namespacesList)
+                    .toList()),
+            onRefresh: _loadNamespaces,
+          );
+  }
+
+  Widget _userDetailsWidget(BuildContext context) {
+    return ListView(padding: EdgeInsets.zero, children: <Widget>[
+      ListTile(
+        title: Text('Logout'),
+        leading: Icon(Icons.exit_to_app),
+        onTap: () {
+          VikunjaGlobal.of(context).logoutUser(context);
+        },
+      ),
+    ]);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    var currentUser = VikunjaGlobal.of(context).currentUser;
 
     return new Scaffold(
       appBar: AppBar(title: new Text(_currentNamespace?.name ?? 'Vikunja')),
@@ -49,6 +77,11 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
         new UserAccountsDrawerHeader(
           accountEmail: currentUser == null ? null : Text(currentUser.email),
           accountName: currentUser == null ? null : Text(currentUser.username),
+          onDetailsPressed: () {
+            setState(() {
+              _showUserDetails = !_showUserDetails;
+            });
+          },
           currentAccountPicture: currentUser == null
               ? null
               : CircleAvatar(
@@ -61,17 +94,11 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
                     Theme.of(context).primaryColor, BlendMode.multiply)),
           ),
         ),
-        new Expanded(
-            child: this._loading
-                ? Center(child: CircularProgressIndicator())
-                : RefreshIndicator(
-                    child: ListView(
-                        padding: EdgeInsets.zero,
-                        children: ListTile.divideTiles(
-                                context: context, tiles: drawerOptions)
-                            .toList()),
-                    onRefresh: _loadNamespaces,
-                  )),
+        new Builder(
+            builder: (BuildContext context) => Expanded(
+                child: _showUserDetails
+                    ? _userDetailsWidget(context)
+                    : _namespacesWidget())),
         new Align(
           alignment: FractionalOffset.bottomCenter,
           child: Builder(
