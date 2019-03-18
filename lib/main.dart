@@ -12,7 +12,6 @@ class VikunjaApp extends StatelessWidget {
   final Widget home;
 
   const VikunjaApp({Key key, this.home}) : super(key: key);
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return new MaterialApp(
