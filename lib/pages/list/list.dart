@@ -53,12 +53,14 @@ class _ListPageState extends State<ListPage> {
         ),
         body: !this._loading
             ? RefreshIndicator(
-                child: ListView(
-                  padding: EdgeInsets.symmetric(vertical: 8.0),
-                  children: ListTile.divideTiles(
-                          context: context, tiles: _listTasks())
-                      .toList(),
-                ),
+                child: _list.tasks.length > 0
+                    ? ListView(
+                        padding: EdgeInsets.symmetric(vertical: 8.0),
+                        children: ListTile.divideTiles(
+                                context: context, tiles: _listTasks())
+                            .toList(),
+                      )
+                    : Center(child: Text('This list is empty.')),
                 onRefresh: _loadList,
               )
             : Center(child: CircularProgressIndicator()),
@@ -89,10 +91,10 @@ class _ListPageState extends State<ListPage> {
     return VikunjaGlobal.of(context)
         .listService
         .get(widget.taskList.id)
-        .then((tasks) {
+        .then((list) {
       setState(() {
         _loading = false;
-        _list = tasks;
+        _list = list;
       });
     });
   }
