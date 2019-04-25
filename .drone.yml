@@ -9,19 +9,17 @@ clone:
 
 steps:
   - name: build
-    image: adamantium/flutter
+    image: vikunja/flutter-build
     pull: true
     commands:
-      - apt-get update && apt-get install make # We do this here to not have to deal with updating the image itself
       - flutter packages get
       - make format-check
       - make build-debug
 
   - name: test
-    image: adamantium/flutter
+    image: vikunja/flutter-build
     pull: true
     commands:
-      - apt-get update && apt-get install make # We do this here to not have to deal with updating the image itself
       - flutter packages get
       - make test
 
@@ -47,10 +45,9 @@ clone:
 steps:
   # Because drone separates the pipelines, we have to add the build step to this pipeline. This is double code, we should change it at some point if possible.
   - name: build
-    image: adamantium/flutter
+    image: vikunja/flutter-build
     pull: true
     commands:
-    - apt-get update && apt-get install make # We do this here to not have to deal with updating the image itself
     - flutter packages get
     - make build-all
     - mkdir apks
@@ -92,10 +89,9 @@ clone:
 steps:
   # Because drone separates the pipelines, we have to add the build step to this pipeline. This is double code, we should change it at some point if possible.
   - name: build
-    image: adamantium/flutter
+    image: vikunja/flutter-build
     pull: true
     commands:
-    - apt-get update && apt-get install make # We do this here to not have to deal with updating the image itself
     - flutter packages get
     - make build-all
     - mkdir apks
