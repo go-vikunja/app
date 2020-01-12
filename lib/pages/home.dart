@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:after_layout/after_layout.dart';
 
 import 'package:vikunja_app/components/AddDialog.dart';
-import 'package:vikunja_app/components/GravatarImage.dart';
 import 'package:vikunja_app/pages/namespace/namespace.dart';
 import 'package:vikunja_app/pages/namespace/namespace_edit.dart';
 import 'package:vikunja_app/pages/placeholder.dart';
@@ -90,8 +89,10 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
       drawer: new Drawer(
           child: new Column(children: <Widget>[
         new UserAccountsDrawerHeader(
-          accountEmail: currentUser == null ? null : Text(currentUser.email),
-          accountName: currentUser == null ? null : Text(currentUser.username),
+          accountEmail:
+              currentUser?.email == null ? null : Text(currentUser.email),
+          accountName:
+              currentUser?.username == null ? null : Text(currentUser.username),
           onDetailsPressed: () {
             setState(() {
               _showUserDetails = !_showUserDetails;
@@ -100,7 +101,8 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
           currentAccountPicture: currentUser == null
               ? null
               : CircleAvatar(
-                  backgroundImage: GravatarImageProvider(currentUser.username)),
+                  backgroundImage: NetworkImage(currentUser.avatarUrl()),
+                ),
           decoration: BoxDecoration(
             image: DecorationImage(
                 image: AssetImage("assets/graphics/hypnotize.png"),
@@ -118,10 +120,10 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
           alignment: FractionalOffset.bottomCenter,
           child: Builder(
             builder: (context) => ListTile(
-                  leading: const Icon(Icons.add),
-                  title: const Text('Add namespace...'),
-                  onTap: () => _addNamespaceDialog(context),
-                ),
+              leading: const Icon(Icons.add),
+              title: const Text('Add namespace...'),
+              onTap: () => _addNamespaceDialog(context),
+            ),
           ),
         ),
       ])),
