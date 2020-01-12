@@ -26,68 +26,68 @@ class _NamespaceEditPageState extends State<NamespaceEditPage> {
       ),
       body: Builder(
         builder: (BuildContext context) => SafeArea(
-              child: Form(
-                key: _formKey,
-                child: ListView(
-                    padding: const EdgeInsets.all(16.0),
-                    children: <Widget>[
-                      Padding(
-                        padding: EdgeInsets.symmetric(vertical: 10.0),
-                        child: TextFormField(
-                          maxLines: null,
-                          keyboardType: TextInputType.multiline,
-                          initialValue: widget.namespace.name,
-                          onSaved: (name) => _name = name,
-                          validator: (name) {
-                            if (name.length < 3 || name.length > 250) {
-                              return 'The name needs to have between 3 and 250 characters.';
-                            }
-                            return null;
-                          },
-                          decoration: new InputDecoration(
-                            labelText: 'Name',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
+          child: Form(
+            key: _formKey,
+            child: ListView(
+                padding: const EdgeInsets.all(16.0),
+                children: <Widget>[
+                  Padding(
+                    padding: EdgeInsets.symmetric(vertical: 10.0),
+                    child: TextFormField(
+                      maxLines: null,
+                      keyboardType: TextInputType.multiline,
+                      initialValue: widget.namespace.name,
+                      onSaved: (name) => _name = name,
+                      validator: (name) {
+                        if (name.length < 3 || name.length > 250) {
+                          return 'The name needs to have between 3 and 250 characters.';
+                        }
+                        return null;
+                      },
+                      decoration: new InputDecoration(
+                        labelText: 'Name',
+                        border: OutlineInputBorder(),
                       ),
-                      Padding(
-                        padding: EdgeInsets.symmetric(vertical: 10.0),
-                        child: TextFormField(
-                          maxLines: null,
-                          keyboardType: TextInputType.multiline,
-                          initialValue: widget.namespace.description,
-                          onSaved: (description) => _description = description,
-                          validator: (description) {
-                            if (description.length > 1000) {
-                              return 'The description can have a maximum of 1000 characters.';
-                            }
-                            return null;
-                          },
-                          decoration: new InputDecoration(
-                            labelText: 'Description',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
+                    ),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.symmetric(vertical: 10.0),
+                    child: TextFormField(
+                      maxLines: null,
+                      keyboardType: TextInputType.multiline,
+                      initialValue: widget.namespace.description,
+                      onSaved: (description) => _description = description,
+                      validator: (description) {
+                        if (description.length > 1000) {
+                          return 'The description can have a maximum of 1000 characters.';
+                        }
+                        return null;
+                      },
+                      decoration: new InputDecoration(
+                        labelText: 'Description',
+                        border: OutlineInputBorder(),
                       ),
-                      Builder(
-                          builder: (context) => Padding(
-                              padding: EdgeInsets.symmetric(vertical: 10.0),
-                              child: FancyButton(
-                                onPressed: !_loading
-                                    ? () {
-                                        if (_formKey.currentState.validate()) {
-                                          Form.of(context).save();
-                                          _saveNamespace(context);
-                                        }
-                                      }
-                                    : null,
-                                child: _loading
-                                    ? CircularProgressIndicator()
-                                    : VikunjaButtonText('Save'),
-                              ))),
-                    ]),
-              ),
-            ),
+                    ),
+                  ),
+                  Builder(
+                      builder: (context) => Padding(
+                          padding: EdgeInsets.symmetric(vertical: 10.0),
+                          child: FancyButton(
+                            onPressed: !_loading
+                                ? () {
+                                    if (_formKey.currentState.validate()) {
+                                      Form.of(context).save();
+                                      _saveNamespace(context);
+                                    }
+                                  }
+                                : null,
+                            child: _loading
+                                ? CircularProgressIndicator()
+                                : VikunjaButtonText('Save'),
+                          ))),
+                ]),
+          ),
+        ),
       ),
     );
   }

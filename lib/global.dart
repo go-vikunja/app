@@ -120,9 +120,9 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
         });
         return;
       }
-      loadedCurrentUser = User(int.tryParse(currentUser), "", "");
+      loadedCurrentUser = User(int.tryParse(currentUser), "", "", "");
     } catch (otherExceptions) {
-      loadedCurrentUser = User(int.tryParse(currentUser), "", "");
+      loadedCurrentUser = User(int.tryParse(currentUser), "", "", "");
     }
     setState(() {
       _client = client;

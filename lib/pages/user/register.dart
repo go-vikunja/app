@@ -24,103 +24,102 @@ class _RegisterPageState extends State<RegisterPage> {
         ),
         body: Builder(
           builder: (BuildContext context) => SafeArea(
-                top: false,
-                bottom: false,
-                child: Form(
-                    key: _formKey,
-                    child: ListView(
-                      padding: const EdgeInsets.all(16),
-                      children: <Widget>[
-                        Padding(
-                          padding: vStandardVerticalPadding,
-                          child: TextFormField(
-                            onSaved: (serverAddress) => _server = serverAddress,
-                            validator: (address) {
-                              return isUrl(address) ? null : 'Invalid URL';
-                            },
-                            decoration: new InputDecoration(
-                                border: OutlineInputBorder(),
-                                labelText: 'Server Address'),
-                          ),
-                        ),
-                        Padding(
-                          padding: vStandardVerticalPadding,
-                          child: TextFormField(
-                            onSaved: (username) => _username = username.trim(),
-                            validator: (username) {
-                              return username.trim().isNotEmpty
-                                  ? null
-                                  : 'Please specify a username';
-                            },
-                            decoration: new InputDecoration(
-                                border: OutlineInputBorder(),
-                                labelText: 'Username'),
-                          ),
-                        ),
-                        Padding(
-                          padding: vStandardVerticalPadding,
-                          child: TextFormField(
-                            onSaved: (email) => _email = email,
-                            validator: (email) {
-                              return isEmail(email)
-                                  ? null
-                                  : 'Email adress is invalid';
-                            },
-                            decoration: new InputDecoration(
-                                border: OutlineInputBorder(),
-                                labelText: 'Email Address'),
-                          ),
-                        ),
-                        Padding(
-                          padding: vStandardVerticalPadding,
-                          child: TextFormField(
-                            controller: passwordController,
-                            onSaved: (password) => _password = password,
-                            validator: (password) {
-                              return password.length >= 8
-                                  ? null
-                                  : 'Please use at least 8 characters';
-                            },
-                            decoration: new InputDecoration(
-                                border: OutlineInputBorder(),
-                                labelText: 'Password'),
-                            obscureText: true,
-                          ),
-                        ),
-                        Padding(
-                          padding: vStandardVerticalPadding,
-                          child: TextFormField(
-                            validator: (password) {
-                              return passwordController.text == password
-                                  ? null
-                                  : 'Passwords don\'t match.';
-                            },
-                            decoration: new InputDecoration(
-                                border: OutlineInputBorder(),
-                                labelText: 'Repeat Password'),
-                            obscureText: true,
-                          ),
-                        ),
-                        Builder(
-                            builder: (context) => FancyButton(
-                                  onPressed: !_loading
-                                      ? () {
-                                          if (_formKey.currentState
-                                              .validate()) {
-                                            Form.of(context).save();
-                                            _registerUser(context);
-                                          } else {
-                                            print("awhat");
-                                          }
-                                        }
-                                      : null,
-                                  child: _loading
-                                      ? CircularProgressIndicator()
-                                      : VikunjaButtonText('Register'),
-                                )),
-                      ],
-                    )),
-              ),
+            top: false,
+            bottom: false,
+            child: Form(
+                key: _formKey,
+                child: ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: <Widget>[
+                    Padding(
+                      padding: vStandardVerticalPadding,
+                      child: TextFormField(
+                        onSaved: (serverAddress) => _server = serverAddress,
+                        validator: (address) {
+                          return isUrl(address) ? null : 'Invalid URL';
+                        },
+                        decoration: new InputDecoration(
+                            border: OutlineInputBorder(),
+                            labelText: 'Server Address'),
+                      ),
+                    ),
+                    Padding(
+                      padding: vStandardVerticalPadding,
+                      child: TextFormField(
+                        onSaved: (username) => _username = username.trim(),
+                        validator: (username) {
+                          return username.trim().isNotEmpty
+                              ? null
+                              : 'Please specify a username';
+                        },
+                        decoration: new InputDecoration(
+                            border: OutlineInputBorder(),
+                            labelText: 'Username'),
+                      ),
+                    ),
+                    Padding(
+                      padding: vStandardVerticalPadding,
+                      child: TextFormField(
+                        onSaved: (email) => _email = email,
+                        validator: (email) {
+                          return isEmail(email)
+                              ? null
+                              : 'Email adress is invalid';
+                        },
+                        decoration: new InputDecoration(
+                            border: OutlineInputBorder(),
+                            labelText: 'Email Address'),
+                      ),
+                    ),
+                    Padding(
+                      padding: vStandardVerticalPadding,
+                      child: TextFormField(
+                        controller: passwordController,
+                        onSaved: (password) => _password = password,
+                        validator: (password) {
+                          return password.length >= 8
+                              ? null
+                              : 'Please use at least 8 characters';
+                        },
+                        decoration: new InputDecoration(
+                            border: OutlineInputBorder(),
+                            labelText: 'Password'),
+                        obscureText: true,
+                      ),
+                    ),
+                    Padding(
+                      padding: vStandardVerticalPadding,
+                      child: TextFormField(
+                        validator: (password) {
+                          return passwordController.text == password
+                              ? null
+                              : 'Passwords don\'t match.';
+                        },
+                        decoration: new InputDecoration(
+                            border: OutlineInputBorder(),
+                            labelText: 'Repeat Password'),
+                        obscureText: true,
+                      ),
+                    ),
+                    Builder(
+                        builder: (context) => FancyButton(
+                              onPressed: !_loading
+                                  ? () {
+                                      if (_formKey.currentState.validate()) {
+                                        Form.of(context).save();
+                                        _registerUser(context);
+                                      } else {
+                                        print("awhat");
+                                      }
+                                    }
+                                  : null,
+                              child: _loading
+                                  ? CircularProgressIndicator()
+                                  : VikunjaButtonText('Register'),
+                            )),
+                  ],
+                )),
+          ),
         ));
   }
 

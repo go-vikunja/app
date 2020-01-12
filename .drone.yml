@@ -2,16 +2,27 @@ kind: pipeline
 name: testing
 
 workspace:
-  base: /app
+  base: /home/cirrus/app
 
 clone:
   depth: 50
 
+# Only run on prs or pushes to master
+trigger:
+  branch:
+    include:
+      - master
+  event:
+    include:
+      - push
+      - pull_request
+
 steps:
   - name: build
-    image: vikunja/flutter-build
+    image: cirrusci/flutter:stable
     pull: true
     commands:
+      - sudo chown cirrus . -R # The clone step clones everything as root, this is our "fix" until we find a better solution
       - flutter packages get
       - make format-check
       - make build-debug
@@ -32,12 +43,12 @@ depends_on:
 
 trigger:
   branch:
-  - master
+    - master
   event:
-  - push
+    - push
 
 workspace:
-  base: /app
+  base: /home/cirrus/app
 
 clone:
   depth: 50
@@ -45,13 +56,14 @@ clone:
 steps:
   # Because drone separates the pipelines, we have to add the build step to this pipeline. This is double code, we should change it at some point if possible.
   - name: build
-    image: vikunja/flutter-build
+    image: cirrusci/flutter:stable
     pull: true
     commands:
-    - flutter packages get
-    - make build-all
-    - mkdir apks
-    - mv build/app/outputs/apk/*/*/*.apk apks
+      - sudo chown cirrus . -R # The clone step clones everything as root, this is our "fix" until we find a better solution
+      - flutter packages get
+      - make build-all
+      - mkdir apks
+      - mv build/app/outputs/apk/*/*/*.apk apks
 
     # Push the releases to our pseudo-s3-bucket
   - name: release
@@ -78,10 +90,10 @@ depends_on:
 
 trigger:
   event:
-  - tag
+    - tag
 
 workspace:
-  base: /app
+  base: /home/cirrus/app
 
 clone:
   depth: 50
@@ -89,13 +101,14 @@ clone:
 steps:
   # Because drone separates the pipelines, we have to add the build step to this pipeline. This is double code, we should change it at some point if possible.
   - name: build
-    image: vikunja/flutter-build
+    image: cirrusci/flutter:stable
     pull: true
     commands:
-    - flutter packages get
-    - make build-all
-    - mkdir apks
-    - mv build/app/outputs/apk/*/*/*.apk apks
+      - sudo chown cirrus . -R # The clone step clones everything as root, this is our "fix" until we find a better solution
+      - flutter packages get
+      - make build-all
+      - mkdir apks
+      - mv build/app/outputs/apk/*/*/*.apk apks
     # Push the releases to our pseudo-s3-bucket
   - name: release
     image: plugins/s3:1
