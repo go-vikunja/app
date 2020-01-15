@@ -28,7 +28,7 @@ steps:
       - make build-debug
 
   - name: test
-    image: vikunja/flutter-build
+    image: cirrusci/flutter:stable
     pull: true
     commands:
       - flutter packages get
