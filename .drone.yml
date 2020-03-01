@@ -70,7 +70,7 @@ steps:
     image: plugins/s3:1
     pull: true
     settings:
-      bucket: vikunja-app
+      bucket: vikunja
       access_key:
         from_secret: aws_access_key_id
       secret_key:
@@ -79,7 +79,7 @@ steps:
       path_style: true
       strip_prefix: apks/
       source: apks/*
-      target: /master
+      target: /app/master
 
 ---
 kind: pipeline
@@ -114,7 +114,7 @@ steps:
     image: plugins/s3:1
     pull: true
     settings:
-      bucket: vikunja-app
+      bucket: vikunja
       access_key:
         from_secret: aws_access_key_id
       secret_key:
@@ -123,4 +123,4 @@ steps:
       path_style: true
       strip_prefix: apks/
       source: apks/*
-      target: /${DRONE_TAG##v}
+      target: /app/${DRONE_TAG##v}
