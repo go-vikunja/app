@@ -7,7 +7,7 @@ import 'package:vikunja_app/models/user.dart';
 import 'package:vikunja_app/service/services.dart';
 
 // Data for mocked services
-var _users = {1: User(1, 'test@testuser.org', 'test1', '')};
+var _users = {1: User(1, 'test@testuser.org', 'test1')};
 
 var _namespaces = {
   1: Namespace(
