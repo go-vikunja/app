@@ -14,7 +14,10 @@ class User {
   toJSON() => {"id": this.id, "email": this.email, "username": this.username};
 
   String avatarUrl(BuildContext context) {
-    return VikunjaGlobal.of(context).client.base + "/" + this.username + "/avatar";
+    return VikunjaGlobal.of(context).client.base +
+        "/" +
+        this.username +
+        "/avatar";
   }
 }
 
