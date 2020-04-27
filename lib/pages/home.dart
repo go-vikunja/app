@@ -101,7 +101,7 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
           currentAccountPicture: currentUser == null
               ? null
               : CircleAvatar(
-                  backgroundImage: NetworkImage(currentUser.avatarUrl()),
+                  backgroundImage: NetworkImage(currentUser.avatarUrl(context)),
                 ),
           decoration: BoxDecoration(
             image: DecorationImage(

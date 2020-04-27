@@ -23,8 +23,8 @@ class TaskList {
         owner = User.fromJson(json['owner']),
         description = json['description'],
         title = json['title'],
-        updated = DateTime.fromMillisecondsSinceEpoch(json['updated']),
-        created = DateTime.fromMillisecondsSinceEpoch(json['created']),
+        updated = DateTime.parse(json['updated']),
+        created = DateTime.parse(json['created']),
         tasks = (json['tasks'] == null ? [] : json['tasks'] as List<dynamic>)
             ?.map((taskJson) => Task.fromJson(taskJson))
             ?.toList();
@@ -35,8 +35,8 @@ class TaskList {
       "title": this.title,
       "description": this.description,
       "owner": this.owner?.toJSON(),
-      "created": this.created?.millisecondsSinceEpoch,
-      "updated": this.updated?.millisecondsSinceEpoch,
+      "created": this.created?.toIso8601String(),
+      "updated": this.updated?.toIso8601String(),
     };
   }
 }

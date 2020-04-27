@@ -19,13 +19,13 @@ class Namespace {
       : name = json['name'],
         description = json['description'],
         id = json['id'],
-        created = DateTime.fromMillisecondsSinceEpoch(json['created']),
-        updated = DateTime.fromMillisecondsSinceEpoch(json['updated']),
+        created = DateTime.parse(json['created']),
+        updated = DateTime.parse(json['updated']),
         owner = User.fromJson(json['owner']);
 
   toJSON() => {
-        "created": created?.millisecondsSinceEpoch,
-        "updated": updated?.millisecondsSinceEpoch,
+        "created": created?.toIso8601String(),
+        "updated": updated?.toIso8601String(),
         "name": name,
         "owner": owner?.toJSON(),
         "description": description

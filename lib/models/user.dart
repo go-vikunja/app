@@ -1,18 +1,20 @@
+import 'package:flutter/cupertino.dart';
+import 'package:vikunja_app/global.dart';
+
 class User {
   final int id;
-  final String email, username, avatarHash;
+  final String email, username;
 
-  User(this.id, this.email, this.username, this.avatarHash);
+  User(this.id, this.email, this.username);
   User.fromJson(Map<String, dynamic> json)
       : id = json['id'],
         email = json.containsKey('email') ? json['email'] : '',
-        username = json['username'],
-        avatarHash = json['avatarUrl'];
+        username = json['username'];
 
   toJSON() => {"id": this.id, "email": this.email, "username": this.username};
 
-  String avatarUrl() {
-    return "https://secure.gravatar.com/avatar/" + this.avatarHash;
+  String avatarUrl(BuildContext context) {
+    return VikunjaGlobal.of(context).client.base + "/" + this.username + "/avatar";
   }
 }
 

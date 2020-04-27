@@ -22,12 +22,12 @@ class Task {
 
   Task.fromJson(Map<String, dynamic> json)
       : id = json['id'],
-        updated = DateTime.fromMillisecondsSinceEpoch(json['updated']),
-        created = DateTime.fromMillisecondsSinceEpoch(json['created']),
+        updated = DateTime.parse(json['updated']),
+        created = DateTime.parse(json['created']),
         reminders = (json['reminderDates'] as List<dynamic>)
-            ?.map((milli) => DateTime.fromMillisecondsSinceEpoch(milli))
+            ?.map((r) => DateTime.parse(r))
             ?.toList(),
-        due = DateTime.fromMillisecondsSinceEpoch(json['dueDate']),
+        due = DateTime.parse(json['dueDate']),
         description = json['description'],
         text = json['text'],
         done = json['done'],
@@ -35,11 +35,11 @@ class Task {
 
   toJSON() => {
         'id': id,
-        'updated': updated?.millisecondsSinceEpoch,
-        'created': created?.millisecondsSinceEpoch,
+        'updated': updated?.toIso8601String(),
+        'created': created?.toIso8601String(),
         'reminderDates':
-            reminders?.map((date) => date.millisecondsSinceEpoch)?.toList(),
-        'dueDate': due?.millisecondsSinceEpoch,
+            reminders?.map((date) => date.toIso8601String())?.toList(),
+        'dueDate': due?.toIso8601String(),
         'description': description,
         'text': text,
         'done': done ?? false,
