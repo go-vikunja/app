@@ -37,7 +37,7 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
         .asMap()
         .forEach((i, namespace) => namespacesList.add(new ListTile(
               leading: const Icon(Icons.folder),
-              title: new Text(namespace.name),
+              title: new Text(namespace.title),
               selected: i == _selectedDrawerIndex,
               onTap: () => _onSelectItem(i),
             )));
@@ -72,7 +72,7 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
 
     return new Scaffold(
       appBar: AppBar(
-        title: new Text(_currentNamespace?.name ?? 'Vikunja'),
+        title: new Text(_currentNamespace?.title ?? 'Vikunja'),
         actions: _currentNamespace == null
             ? null
             : <Widget>[
@@ -156,7 +156,7 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
   _addNamespace(String name, BuildContext context) {
     VikunjaGlobal.of(context)
         .namespaceService
-        .create(Namespace(id: null, name: name))
+        .create(Namespace(id: null, title: name))
         .then((_) {
       _loadNamespaces();
       Scaffold.of(context).showSnackBar(SnackBar(

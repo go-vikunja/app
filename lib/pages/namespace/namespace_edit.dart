@@ -36,7 +36,7 @@ class _NamespaceEditPageState extends State<NamespaceEditPage> {
                     child: TextFormField(
                       maxLines: null,
                       keyboardType: TextInputType.multiline,
-                      initialValue: widget.namespace.name,
+                      initialValue: widget.namespace.title,
                       onSaved: (name) => _name = name,
                       validator: (name) {
                         if (name.length < 3 || name.length > 250) {
@@ -98,7 +98,7 @@ class _NamespaceEditPageState extends State<NamespaceEditPage> {
     //  aka updating the existing namespace we got from context (setters?)
     Namespace updatedNamespace = Namespace(
         id: widget.namespace.id,
-        name: _name,
+        title: _name,
         description: _description,
         owner: widget.namespace.owner);
 

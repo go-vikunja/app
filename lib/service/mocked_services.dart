@@ -12,7 +12,7 @@ var _users = {1: User(1, 'test@testuser.org', 'test1')};
 var _namespaces = {
   1: Namespace(
     id: 1,
-    name: 'Test 1',
+    title: 'Test 1',
     created: DateTime.now(),
     updated: DateTime.now(),
     description: 'A namespace for testing purposes',
@@ -38,7 +38,7 @@ var _lists = {
 var _tasks = {
   1: Task(
     id: 1,
-    text: 'Task 1',
+    title: 'Task 1',
     owner: _users[1],
     updated: DateTime.now(),
     created: DateTime.now(),

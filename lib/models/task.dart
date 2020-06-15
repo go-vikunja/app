@@ -5,7 +5,7 @@ class Task {
   final int id;
   final DateTime created, updated, due;
   final List<DateTime> reminders;
-  final String text, description;
+  final String title, description;
   final bool done;
   final User owner;
 
@@ -15,7 +15,7 @@ class Task {
       this.updated,
       this.reminders,
       this.due,
-      @required this.text,
+      @required this.title,
       this.description,
       @required this.done,
       @required this.owner});
@@ -29,7 +29,7 @@ class Task {
             ?.toList(),
         due = DateTime.parse(json['dueDate']),
         description = json['description'],
-        text = json['text'],
+        title = json['title'],
         done = json['done'],
         owner = User.fromJson(json['createdBy']);
 
@@ -41,7 +41,7 @@ class Task {
             reminders?.map((date) => date.toIso8601String())?.toList(),
         'dueDate': due?.toIso8601String(),
         'description': description,
-        'text': text,
+        'title': title,
         'done': done ?? false,
         'createdBy': owner?.toJSON()
       };
