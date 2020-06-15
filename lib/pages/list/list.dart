@@ -110,8 +110,8 @@ class _ListPageState extends State<ListPage> {
 
   _addItem(String name, BuildContext context) {
     var globalState = VikunjaGlobal.of(context);
-    var newTask =
-        Task(id: null, title: name, owner: globalState.currentUser, done: false);
+    var newTask = Task(
+        id: null, title: name, owner: globalState.currentUser, done: false);
     setState(() => _loadingTasks.add(newTask));
     globalState.taskService.add(_list.id, newTask).then((task) {
       setState(() {
