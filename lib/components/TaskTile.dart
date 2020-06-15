@@ -41,7 +41,7 @@ class TaskTileState extends State<TaskTile> {
                 strokeWidth: 2.0,
               )),
         ),
-        title: Text(_currentTask.text),
+        title: Text(_currentTask.title),
         subtitle:
             _currentTask.description == null || _currentTask.description.isEmpty
                 ? null
@@ -54,7 +54,7 @@ class TaskTileState extends State<TaskTile> {
       );
     }
     return CheckboxListTile(
-      title: Text(_currentTask.text),
+      title: Text(_currentTask.title),
       controlAffinity: ListTileControlAffinity.leading,
       value: _currentTask.done ?? false,
       subtitle:
@@ -83,7 +83,7 @@ class TaskTileState extends State<TaskTile> {
     return VikunjaGlobal.of(context).taskService.update(Task(
           id: task.id,
           done: checked,
-          text: task.text,
+          title: task.title,
           description: task.description,
           owner: null,
         ));
