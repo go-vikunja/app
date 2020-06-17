@@ -1,14 +1,10 @@
 GIT_LAST_COMMIT := $(shell git describe --tags --always | sed 's/-/+/' | sed 's/^v//')
 FLUTTER ?= flutter
 
-ifneq ($(DRONE_TAG),)
-	VERSION ?= $(subst v,,$(DRONE_TAG))-$(GIT_LAST_COMMIT)
+ifneq ($(DRONE_BUILD_NUMBER),)
+	VERSION ?= $(DRONE_BUILD_NUMBER)
 else
-	ifneq ($(DRONE_BRANCH),)
-		VERSION ?= $(subst release/v,,$(DRONE_BRANCH))-$(GIT_LAST_COMMIT)
-	else
-		VERSION ?= master-$(GIT_LAST_COMMIT)
-	endif
+	VERSION ?= 1
 endif
 
 .PHONY: test
@@ -20,15 +16,19 @@ build-all: build-release build-debug build-profile
 
 .PHONY: build-release
 build-release:
-	$(FLUTTER) build apk --release --build-name=$(VERSION) --flavor main
+	$(FLUTTER) build apk --release --build-number=$(VERSION) --flavor main
 
 .PHONY: build-debug
 build-debug:
-	$(FLUTTER) build apk --debug --build-name=$(VERSION) --flavor unsigned
+	$(FLUTTER) build apk --debug --build-number=$(VERSION) --flavor unsigned
 
 .PHONY: build-profile
 build-profile:
-	$(FLUTTER) build apk --profile --build-name=$(VERSION) --flavor unsigned
+	$(FLUTTER) build apk --profile --build-number=$(VERSION) --flavor unsigned
+
+.PHONY: build-ios
+build-ios:
+	$(FLUTTER) build ios --release --build-number=$(VERSION) --no-codesign
 
 .PHONY: format
 format:
