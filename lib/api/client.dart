@@ -53,12 +53,30 @@ class Client {
 
   dynamic _handleResponse(http.Response response) {
     if (response.statusCode < 200 ||
-        response.statusCode > 400 ||
+        response.statusCode >= 400 ||
         json == null) {
+      if (response.statusCode ~/ 100 == 4) {
+        Map<String, dynamic> error = _decoder.convert(response.body);
+        throw new InvalidRequestApiException(
+            response.statusCode,
+            response.request.url.toString(),
+            error["message"] ?? "Unknown Error");
+      }
       throw new ApiException(
           response.statusCode, response.request.url.toString());
     }
     return _decoder.convert(response.body);
+  }
+}
+
+class InvalidRequestApiException extends ApiException {
+  final String message;
+  InvalidRequestApiException(int errorCode, String path, this.message)
+      : super(errorCode, path);
+
+  @override
+  String toString() {
+    return this.message;
   }
 }
 
