@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:after_layout/after_layout.dart';
 
 import 'package:vikunja_app/components/AddDialog.dart';
+import 'package:vikunja_app/components/ErrorDialog.dart';
 import 'package:vikunja_app/pages/namespace/namespace.dart';
 import 'package:vikunja_app/pages/namespace/namespace_edit.dart';
 import 'package:vikunja_app/pages/placeholder.dart';
@@ -162,7 +163,8 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
       Scaffold.of(context).showSnackBar(SnackBar(
         content: Text('The namespace was created successfully!'),
       ));
-    });
+    }).catchError((error) => showDialog(
+            context: context, builder: (context) => ErrorDialog(error: error)));
   }
 
   Future<void> _loadNamespaces() {

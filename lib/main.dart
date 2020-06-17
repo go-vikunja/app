@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:sentry/sentry.dart';
 import 'package:vikunja_app/constants.dart';
@@ -9,6 +10,11 @@ import 'package:vikunja_app/pages/user/login.dart';
 import 'package:vikunja_app/theme/theme.dart';
 
 void main() {
+  if (!kReleaseMode) {
+    // only log errors in release mode
+    _startApp();
+    return;
+  }
   var sentry = new SentryClient(dsn: SENTRY_DSN);
 
   FlutterError.onError = (details, {bool forceReport = false}) {
@@ -26,9 +32,7 @@ void main() {
   };
 
   runZoned(
-    () => runApp(VikunjaGlobal(
-        child: new VikunjaApp(home: HomePage()),
-        login: new VikunjaApp(home: LoginPage()))),
+    _startApp,
     onError: (Object error, StackTrace stackTrace) {
       try {
         sentry.captureException(
@@ -43,6 +47,10 @@ void main() {
     },
   );
 }
+
+_startApp() => runApp(VikunjaGlobal(
+    child: new VikunjaApp(home: HomePage()),
+    login: new VikunjaApp(home: LoginPage())));
 
 class VikunjaApp extends StatelessWidget {
   final Widget home;
