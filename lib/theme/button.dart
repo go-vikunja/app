@@ -24,7 +24,9 @@ class FancyButton extends StatelessWidget {
           height: height,
           decoration: BoxDecoration(boxShadow: [
             BoxShadow(
-              color: vButtonShadow,
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? vButtonShadowDark
+                  : vButtonShadow,
               offset: Offset(-5, 5),
               blurRadius: 10,
             ),

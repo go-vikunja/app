@@ -15,6 +15,7 @@ const vGreen = Color(0xFF00CE6E);
 
 const vButtonColor = vPrimary;
 const vButtonTextColor = vWhite;
+const vButtonShadowDark = Color(0xFF0b2a4a);
 const vButtonShadow = Color(0xFFb2d9ff);
 
 ///////////
