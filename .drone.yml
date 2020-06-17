@@ -1,4 +1,5 @@
 kind: pipeline
+type: docker
 name: testing
 
 workspace:
@@ -37,6 +38,7 @@ steps:
 
 ---
 kind: pipeline
+type: docker
 name: release-latest
 
 depends_on:
@@ -84,6 +86,7 @@ steps:
 
 ---
 kind: pipeline
+type: docker
 name: release-version
 
 depends_on:
@@ -125,3 +128,51 @@ steps:
       strip_prefix: apks/
       source: apks/*
       target: /app/${DRONE_TAG##v}
+
+---
+kind: pipeline
+type: exec
+name: release-ios
+
+
+trigger:
+  event:
+    - push
+  branch:
+    - master
+
+platform:
+  os: darwin
+  arch: amd64
+
+
+steps:
+  - name: build
+    commands:
+      - make build-ios
+    environment:
+      HOME: /Users/buildslave
+  - name: deploy
+    environment:
+      HOME: /Users/buildslave
+      LC_ALL: en_US.UTF-8
+      LANG: en_US.UTF-8
+      FASTLANE_SKIP_UPDATE_CHECK: true
+      FASTLANE_HIDE_CHANGELOG: true
+      MATCH_PASSWORD:
+        from_secret: match_password
+      FASTLANE_PASSWORD:
+        from_secret: fastlane_password
+      FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD:
+        from_secret: fastlane_apple_password
+      FASTLANE_SESSION:
+        from_secret: fastlane_session
+      KEYCHAIN_PASSWORD:
+        from_secret: keychain_password
+    commands:
+      - cd ios
+      - fastlane ios signing
+      - fastlane ios beta
+
+depends_on:
+  - testing
