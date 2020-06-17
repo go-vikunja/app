@@ -34,6 +34,7 @@ flutter:
     - assets/graphics/hypnotize.png
     - assets/vikunja_logo.png
     - assets/vikunja_logo_full.png
+    - assets/vikunja_logo_full_white.png
   fonts:
     - family: Quicksand
       fonts:

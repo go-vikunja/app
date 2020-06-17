@@ -61,6 +61,7 @@ class VikunjaApp extends StatelessWidget {
     return new MaterialApp(
       title: 'Vikunja',
       theme: buildVikunjaTheme(),
+      darkTheme: buildVikunjaDarkTheme(),
       home: this.home,
     );
   }

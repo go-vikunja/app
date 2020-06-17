@@ -34,7 +34,9 @@ class _LoginPageState extends State<LoginPage> {
                     Padding(
                       padding: EdgeInsets.symmetric(vertical: 30),
                       child: Image(
-                        image: AssetImage('assets/vikunja_logo_full.png'),
+                        image: Theme.of(context).brightness == Brightness.dark
+                            ? AssetImage('assets/vikunja_logo_full_white.png')
+                            : AssetImage('assets/vikunja_logo_full.png'),
                         height: 85.0,
                         semanticLabel: 'Vikunja Logo',
                       ),

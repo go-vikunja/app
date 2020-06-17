@@ -1,8 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/theme/constants.dart';
 
-ThemeData buildVikunjaTheme() {
-  var base = ThemeData.light();
+ThemeData buildVikunjaTheme() => _buildVikunjaTheme(ThemeData.light());
+
+ThemeData buildVikunjaDarkTheme() {
+  ThemeData base = _buildVikunjaTheme(ThemeData.dark());
+  return base.copyWith(
+    accentColor: vWhite,
+  );
+}
+
+ThemeData _buildVikunjaTheme(ThemeData base) {
   return base.copyWith(
     errorColor: vRed,
     primaryColor: vPrimaryDark,
