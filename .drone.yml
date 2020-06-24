@@ -169,6 +169,14 @@ steps:
         from_secret: fastlane_session
       KEYCHAIN_PASSWORD:
         from_secret: keychain_password
+      CONTACT_EMAIL:
+        from_secret: contact_email
+      CONTACT_FIRST_NAME:
+        from_secret: contact_first_name
+      CONTACT_LAST_NAME:
+        from_secret: contact_last_name
+      CONTACT_PHONE:
+        from_secret: contact_phone
     commands:
       - cd ios
       - fastlane ios signing

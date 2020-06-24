@@ -1,2 +1,2 @@
 const SENTRY_DSN =
-    'https://ab786a1feac7418d87187465b6f30ee0@sentry.k8s.jfdev.de/2';
+    'https://b070ed4bd1d043428db6fe7d1ce57908@sentry.kolaente.de/5';
