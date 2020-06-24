@@ -20,7 +20,23 @@ platform :ios do
   lane :beta do
     match(type: "appstore", readonly: true)
     gym
-    upload_to_testflight
+    upload_to_testflight(
+        beta_app_feedback_email: "hello@vikunja.io",
+        beta_app_description: "Automated Vikunja App Build",
+        demo_account_required: true,
+        distribute_external: true,
+        groups: ["PublicBeta"],
+        changelog: "Automated Vikunja Build",
+        beta_app_review_info: {
+            contact_email: ENV["CONTACT_EMAIL"],
+            contact_first_name: ENV["CONTACT_FIRST_NAME"],
+            contact_last_name: ENV["CONTACT_LAST_NAME"],
+            contact_phone: ENV["CONTACT_PHONE"],
+            demo_account_name: "demo",
+            demo_account_password: "demo",
+            notes: "Please use https://try.vikunja.io as URL"
+        }
+    )
   end
   lane :signing do
     match(type: "appstore", readonly: true)
