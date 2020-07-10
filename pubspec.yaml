@@ -10,10 +10,9 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^0.1.3
-  flutter_secure_storage: ^3.3.3
-  http: ^0.12.1
+  flutter_secure_storage: 3.3.1+1
+  http: 0.12.0+3
   after_layout: ^1.0.7
-  sentry: ^3.0.1
 
 dev_dependencies:
   flutter_test:
