@@ -23,7 +23,6 @@ steps:
     image: cirrusci/flutter:stable
     pull: true
     commands:
-      - sudo chown cirrus . -R # The clone step clones everything as root, this is our "fix" until we find a better solution
       - flutter packages get
       - make format-check
       - make build-debug
@@ -62,7 +61,6 @@ steps:
     image: cirrusci/flutter:stable
     pull: true
     commands:
-      - sudo chown cirrus . -R # The clone step clones everything as root, this is our "fix" until we find a better solution
       - flutter packages get
       - make build-all
       - mkdir apks
@@ -108,7 +106,6 @@ steps:
     image: cirrusci/flutter:stable
     pull: true
     commands:
-      - sudo chown cirrus . -R # The clone step clones everything as root, this is our "fix" until we find a better solution
       - flutter packages get
       - make build-all
       - mkdir apks
