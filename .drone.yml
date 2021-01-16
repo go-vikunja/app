@@ -178,8 +178,9 @@ steps:
         from_secret: contact_phone
     commands:
       - cd ios
-      - fastlane ios signing
-      - fastlane ios beta
+      - bundle install
+      - bundle exec fastlane ios signing
+      - bundle exec fastlane ios beta
 
 depends_on:
   - testing
