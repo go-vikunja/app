@@ -185,5 +185,5 @@ steps:
       - bundle exec fastlane ios signing
       - bundle exec fastlane ios beta
 
-depends_on:
-  - testing
+#depends_on:
+#  - testing
