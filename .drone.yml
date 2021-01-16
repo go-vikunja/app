@@ -177,6 +177,7 @@ steps:
       CONTACT_PHONE:
         from_secret: contact_phone
     commands:
+      - rbenv shell 2.5.0
       - cd ios
       - bundle config set --local path '.vendor/bundle'
       - bundle install
