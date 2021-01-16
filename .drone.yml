@@ -178,6 +178,7 @@ steps:
         from_secret: contact_phone
     commands:
       - cd ios
+      - bundle config set --local path '.vendor/bundle'
       - bundle install
       - bundle exec fastlane ios signing
       - bundle exec fastlane ios beta
