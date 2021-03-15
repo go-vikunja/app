@@ -24,8 +24,7 @@ class _ListPageState extends State<ListPage> {
 
   @override
   void initState() {
-    _list = TaskList(
-        id: widget.taskList.id, title: widget.taskList.title, tasks: []);
+    _list = TaskList(id: widget.taskList.id, title: widget.taskList.title, tasks: []);
     super.initState();
   }
 
@@ -39,7 +38,7 @@ class _ListPageState extends State<ListPage> {
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
-          title: new Text(_list.title),
+          title: Text(_list.title),
           actions: <Widget>[
             IconButton(
                 icon: Icon(Icons.edit),
@@ -48,7 +47,10 @@ class _ListPageState extends State<ListPage> {
                     MaterialPageRoute(
                         builder: (context) => ListEditPage(
                               list: _list,
-                            ))))
+                            )
+                    )
+                ),
+            ),
           ],
         ),
         body: !this._loading
@@ -56,9 +58,7 @@ class _ListPageState extends State<ListPage> {
                 child: _list.tasks.length > 0
                     ? ListView(
                         padding: EdgeInsets.symmetric(vertical: 8.0),
-                        children: ListTile.divideTiles(
-                                context: context, tiles: _listTasks())
-                            .toList(),
+                        children: ListTile.divideTiles(context: context, tiles: _listTasks()).toList(),
                       )
                     : Center(child: Text('This list is empty.')),
                 onRefresh: _loadList,
@@ -66,7 +66,8 @@ class _ListPageState extends State<ListPage> {
             : Center(child: CircularProgressIndicator()),
         floatingActionButton: Builder(
           builder: (context) => FloatingActionButton(
-              onPressed: () => _addItemDialog(context), child: Icon(Icons.add)),
+              onPressed: () => _addItemDialog(context), child: Icon(Icons.add),
+          ),
         ));
   }
 
@@ -88,10 +89,7 @@ class _ListPageState extends State<ListPage> {
   }
 
   Future<void> _loadList() {
-    return VikunjaGlobal.of(context)
-        .listService
-        .get(widget.taskList.id)
-        .then((list) {
+    return VikunjaGlobal.of(context).listService.get(widget.taskList.id).then((list) {
       setState(() {
         _loading = false;
         _list = list;
@@ -104,14 +102,14 @@ class _ListPageState extends State<ListPage> {
         context: context,
         builder: (_) => AddDialog(
             onAdd: (name) => _addItem(name, context),
-            decoration: new InputDecoration(
-                labelText: 'Task Name', hintText: 'eg. Milk')));
+            decoration: InputDecoration(labelText: 'Task Name', hintText: 'eg. Milk'),
+        ),
+    );
   }
 
   _addItem(String name, BuildContext context) {
     var globalState = VikunjaGlobal.of(context);
-    var newTask = Task(
-        id: null, title: name, owner: globalState.currentUser, done: false);
+    var newTask = Task(id: null, title: name, owner: globalState.currentUser, done: false);
     setState(() => _loadingTasks.add(newTask));
     globalState.taskService.add(_list.id, newTask).then((task) {
       setState(() {
@@ -120,7 +118,7 @@ class _ListPageState extends State<ListPage> {
     }).then((_) {
       _loadList();
       setState(() => _loadingTasks.remove(newTask));
-      Scaffold.of(context).showSnackBar(SnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('The task was added successfully!'),
       ));
     });

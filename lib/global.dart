@@ -84,7 +84,7 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
         _currentUser = null;
       });
     }).catchError((err) {
-      Scaffold.of(context).showSnackBar(SnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('An error occured while logging out!'),
       ));
     });

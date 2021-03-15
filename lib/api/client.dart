@@ -26,29 +26,29 @@ class Client {
       };
 
   Future<dynamic> get(String url) {
-    return http
-        .get('${this.base}$url', headers: _headers)
-        .then(_handleResponse);
+    return http.get(Uri.parse('${this.base}$url'),
+        headers: _headers,
+    ).then(_handleResponse);
   }
 
   Future<dynamic> delete(String url) {
-    return http
-        .delete('${this.base}$url', headers: _headers)
-        .then(_handleResponse);
+    return http.delete(Uri.parse('${this.base}$url'),
+        headers: _headers,
+    ).then(_handleResponse);
   }
 
   Future<dynamic> post(String url, {dynamic body}) {
-    return http
-        .post('${this.base}$url',
-            headers: _headers, body: _encoder.convert(body))
-        .then(_handleResponse);
+    return http.post(Uri.parse('${this.base}$url'),
+        headers: _headers,
+        body: _encoder.convert(body),
+    ).then(_handleResponse);
   }
 
   Future<dynamic> put(String url, {dynamic body}) {
-    return http
-        .put('${this.base}$url',
-            headers: _headers, body: _encoder.convert(body))
-        .then(_handleResponse);
+    return http.put(Uri.parse('${this.base}$url'),
+        headers: _headers,
+        body: _encoder.convert(body),
+    ).then(_handleResponse);
   }
 
   dynamic _handleResponse(http.Response response) {

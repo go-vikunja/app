@@ -56,11 +56,8 @@ class _NamespacePageState extends State<NamespacePage>
                                           color: Colors.white, size: 36.0)),
                                 ),
                                 onDismissed: (direction) {
-                                  _removeList(ls).then((_) => Scaffold.of(
-                                          context)
-                                      .showSnackBar(SnackBar(
-                                          content:
-                                              Text("${ls.title} removed"))));
+                                  _removeList(ls).then((_) => ScaffoldMessenger.of(context)
+                                      .showSnackBar(SnackBar(content: Text("${ls.title} removed"))));
                                 },
                               ))).toList(),
                     )
@@ -120,7 +117,7 @@ class _NamespacePageState extends State<NamespacePage>
         .then((_) {
       setState(() {});
       _loadLists();
-      Scaffold.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('The list was successfully created!'),
         ),

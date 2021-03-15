@@ -46,16 +46,16 @@ android {
 
     flavorDimensions "deploy"
 
-    productFlavors {
-        fdroid {
-            dimension "deploy"
-            signingConfig null
-        }
-        unsigned {
-            dimension "deploy"
-            signingConfig null
-        }
-    }
+    //productFlavors {
+    //    fdroid {
+    //        dimension "deploy"
+    //        signingConfig null
+    //    }
+    //    unsigned {
+    //        dimension "deploy"
+    //        signingConfig null
+    //    }
+    //}
 
     android.applicationVariants.all { variant ->
         if (variant.flavorName == "fdroid") {

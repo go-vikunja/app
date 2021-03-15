@@ -21,7 +21,7 @@ class Namespace {
         id = json['id'],
         created = DateTime.parse(json['created']),
         updated = DateTime.parse(json['updated']),
-        owner = User.fromJson(json['owner']);
+        owner = json['owner'] == null ? null : User.fromJson(json['owner']);
 
   toJSON() => {
         "created": created?.toIso8601String(),
