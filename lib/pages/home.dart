@@ -32,19 +32,24 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
 
   Widget _namespacesWidget() {
     List<Widget> namespacesList = <Widget>[];
-    _namespaces.asMap().forEach((i, namespace) => namespacesList.add(ListTile(
+    _namespaces.asMap().forEach((i, namespace) => namespacesList.add(
+        ListTile(
           leading: const Icon(Icons.folder),
           title: Text(namespace.title),
           selected: i == _selectedDrawerIndex,
           onTap: () => _onSelectItem(i),
-        )));
+        )
+    ));
 
     return this._loading
         ? Center(child: CircularProgressIndicator())
         : RefreshIndicator(
             child: ListView(
                 padding: EdgeInsets.zero,
-                children: ListTile.divideTiles(context: context, tiles: namespacesList).toList()),
+                children: ListTile.divideTiles(
+                    context: context,
+                    tiles: namespacesList).toList(),
+            ),
             onRefresh: _loadNamespaces,
           );
   }

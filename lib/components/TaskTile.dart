@@ -9,8 +9,7 @@ class TaskTile extends StatefulWidget {
   final VoidCallback onEdit;
   final bool loading;
 
-  const TaskTile(
-      {Key key, @required this.task, this.onEdit, this.loading = false})
+  const TaskTile({Key key, @required this.task, this.onEdit, this.loading = false})
       : assert(task != null),
         super(key: key);
 
@@ -42,27 +41,26 @@ class TaskTileState extends State<TaskTile> {
               )),
         ),
         title: Text(_currentTask.title),
-        subtitle:
-            _currentTask.description == null || _currentTask.description.isEmpty
-                ? null
-                : Text(_currentTask.description),
+        subtitle: _currentTask.description == null || _currentTask.description.isEmpty
+            ? null
+            : Text(_currentTask.description),
         trailing: IconButton(
-            icon: Icon(Icons.settings),
-            onPressed: () {
-              null; // TODO: implement edit task
-            }),
+          icon: Icon(Icons.settings),
+          onPressed: () {}, // TODO: implement edit task
+        ),
       );
     }
     return CheckboxListTile(
       title: Text(_currentTask.title),
       controlAffinity: ListTileControlAffinity.leading,
       value: _currentTask.done ?? false,
-      subtitle:
-          _currentTask.description == null || _currentTask.description.isEmpty
-              ? null
-              : Text(_currentTask.description),
-      secondary:
-          IconButton(icon: Icon(Icons.settings), onPressed: widget.onEdit),
+      subtitle: _currentTask.description == null || _currentTask.description.isEmpty
+          ? null
+          : Text(_currentTask.description),
+      secondary: IconButton(
+          icon: Icon(Icons.settings),
+          onPressed: widget.onEdit,
+      ),
       onChanged: _change,
     );
   }
@@ -80,13 +78,15 @@ class TaskTileState extends State<TaskTile> {
 
   Future<Task> _updateTask(Task task, bool checked) {
     // TODO use copyFrom
-    return VikunjaGlobal.of(context).taskService.update(Task(
+    return VikunjaGlobal.of(context).taskService.update(
+        Task(
           id: task.id,
           done: checked,
           title: task.title,
           description: task.description,
           owner: null,
-        ));
+        )
+    );
   }
 }
 

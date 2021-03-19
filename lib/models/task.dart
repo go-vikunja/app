@@ -27,12 +27,11 @@ class Task {
         reminders = (json['reminder_dates'] as List<dynamic>)
             ?.map((r) => DateTime.parse(r))
             ?.toList(),
-        due =
-            json['due_date'] != null ? DateTime.parse(json['due_date']) : null,
+        due = json['due_date'] != null ? DateTime.parse(json['due_date']) : null,
         description = json['description'],
         title = json['title'],
         done = json['done'],
-        owner = User.fromJson(json['created_by']);
+        owner = json['created_by'] != null ? User.fromJson(json['created_by']) : null;
 
   toJSON() => {
         'id': id,

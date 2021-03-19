@@ -26,7 +26,7 @@ class _NamespacePageState extends State<NamespacePage>
 
   @override
   void afterFirstLayout(BuildContext context) {
-    _loadLists();
+    //_loadLists(); // NOTE: goes right after didChangeDependencies
   }
 
   /////

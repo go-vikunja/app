@@ -117,7 +117,7 @@ class _NamespaceEditPageState extends State<NamespaceEditPage> {
           content: Text('Something went wrong: ' + err.toString()),
           action: SnackBarAction(
               label: 'CLOSE',
-              onPressed: Scaffold.of(context).hideCurrentSnackBar),
+              onPressed: ScaffoldMessenger.of(context).hideCurrentSnackBar),
         ),
       );
     });
