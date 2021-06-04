@@ -3,7 +3,7 @@ import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/pages/home.dart';
 import 'package:vikunja_app/pages/user/login.dart';
 import 'package:vikunja_app/theme/theme.dart';
-import 'package:alice/alice.dart';
+//import 'package:alice/alice.dart';
 
 void main() => runApp(VikunjaGlobal(
     child: new VikunjaApp(home: HomePage()),
@@ -19,12 +19,12 @@ class VikunjaApp extends StatefulWidget {
 }
 
 class _VikunjaAppState extends State<VikunjaApp> {
-  Alice alice = Alice(showNotification: true);
+  //Alice alice = Alice(showNotification: true);
 
   @override
   Widget build(BuildContext context) {
     return new MaterialApp(
-      navigatorKey: alice.getNavigatorKey(),
+      //navigatorKey: alice.getNavigatorKey(),
       title: 'Vikunja',
       theme: buildVikunjaTheme(),
       darkTheme: buildVikunjaDarkTheme(),

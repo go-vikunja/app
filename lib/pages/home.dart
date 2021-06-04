@@ -18,9 +18,10 @@ class HomePage extends StatefulWidget {
 class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
   List<Namespace> _namespaces = [];
 
-  Namespace get _currentNamespace => _selectedDrawerIndex >= 0 && _selectedDrawerIndex < _namespaces.length
-      ? _namespaces[_selectedDrawerIndex]
-      : null;
+  Namespace get _currentNamespace =>
+      _selectedDrawerIndex >= 0 && _selectedDrawerIndex < _namespaces.length
+          ? _namespaces[_selectedDrawerIndex]
+          : null;
   int _selectedDrawerIndex = -1;
   bool _loading = true;
   bool _showUserDetails = false;
@@ -32,14 +33,15 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
 
   Widget _namespacesWidget() {
     List<Widget> namespacesList = <Widget>[];
-    _namespaces.asMap().forEach((i, namespace) => namespacesList.add(
-        ListTile(
-          leading: const Icon(Icons.folder),
-          title: Text(namespace.title),
-          selected: i == _selectedDrawerIndex,
-          onTap: () => _onSelectItem(i),
-        )
-    ));
+    _namespaces
+        .asMap()
+        .forEach((i, namespace) => namespacesList.add(ListTile(
+              leading: const Icon(Icons.folder),
+              title: Text(namespace.title),
+              selected: i == _selectedDrawerIndex,
+              onTap: () => _onSelectItem(i),
+            ))
+    );
 
     return this._loading
         ? Center(child: CircularProgressIndicator())
@@ -92,6 +94,7 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
       drawer: Drawer(
         child: Column(children: <Widget>[
           UserAccountsDrawerHeader(
+            // Removed until we find a way to disable the user email only for some occasions and not everywhere
             accountEmail: currentUser?.email == null ? null : Text(currentUser.email),
             accountName: currentUser?.username == null ? null : Text(currentUser.username),
             onDetailsPressed: () {
@@ -151,17 +154,26 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
         context: context,
         builder: (_) => AddDialog(
               onAdd: (name) => _addNamespace(name, context),
-              decoration: InputDecoration(labelText: 'Namespace', hintText: 'eg. Personal Namespace'),
+              decoration: InputDecoration(
+                  labelText: 'Namespace',
+                  hintText: 'eg. Personal Namespace',
+              ),
             ));
   }
 
   _addNamespace(String name, BuildContext context) {
-    VikunjaGlobal.of(context).namespaceService.create(Namespace(id: null, title: name)).then((_) {
+    VikunjaGlobal.of(context)
+        .namespaceService
+        .create(Namespace(id: null, title: name))
+        .then((_) {
       _loadNamespaces();
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('The namespace was created successfully!'),
       ));
-    }).catchError((error) => showDialog(context: context, builder: (context) => ErrorDialog(error: error)));
+    }).catchError((error) => showDialog(
+        context: context,
+        builder: (context) => ErrorDialog(error: error),
+    ));
   }
 
   Future<void> _loadNamespaces() {

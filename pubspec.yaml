@@ -9,16 +9,24 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  cupertino_icons: 1.0.2
-  flutter_secure_storage: 4.1.0
-  http: 0.12.2
-  after_layout: 1.0.7+2
-  alice: ^0.1.12
+  cupertino_icons: 1.0.3
+  flutter_secure_storage: 4.2.0
+  http: 0.13.3
+  after_layout: 1.1.0
+  #alice: 0.2.1
+  datetime_picker_formfield: 2.0.0
+  flutter_typeahead: 3.1.3
+  build: 2.0.2
+  json_serializable: 4.1.3
+  petitparser: 4.1.0
+  provider: 5.0.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_launcher_icons: 0.8.1
+    version: any
+  test: 1.16.8
+  flutter_launcher_icons: 0.9.0
 
 flutter_icons:
   image_path: "assets/vikunja_logo.png"

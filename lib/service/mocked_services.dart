@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:vikunja_app/api/response.dart';
 import 'package:vikunja_app/models/list.dart';
 import 'package:vikunja_app/models/namespace.dart';
 import 'package:vikunja_app/models/task.dart';
@@ -39,7 +40,7 @@ var _tasks = {
   1: Task(
     id: 1,
     title: 'Task 1',
-    owner: _users[1],
+    createdBy: _users[1],
     updated: DateTime.now(),
     created: DateTime.now(),
     description: 'A descriptive task',
@@ -121,7 +122,8 @@ class MockedTaskService implements TaskService {
   @override
   Future delete(int taskId) {
     _lists.forEach(
-        (_, list) => list.tasks.removeWhere((task) => task.id == taskId));
+        (_, list) => list.tasks.removeWhere((task) => task.id == taskId)
+    );
     _tasks.remove(taskId);
     return Future.value();
   }
@@ -144,6 +146,15 @@ class MockedTaskService implements TaskService {
     _lists[listId].tasks.add(task);
     return Future.value(task);
   }
+
+  @override
+  Future<Response> getAll(int listId,
+      [Map<String, List<String>> queryParameters]) {
+    return Future.value(new Response(_tasks.values.toList(), 200, {}));
+  }
+
+  @override
+  int get maxPages => 1;
 }
 
 class MockedUserService implements UserService {

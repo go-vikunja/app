@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:vikunja_app/api/client.dart';
+import 'package:vikunja_app/api/label_task.dart';
+import 'package:vikunja_app/api/label_task_bulk.dart';
+import 'package:vikunja_app/api/labels.dart';
 import 'package:vikunja_app/api/list_implementation.dart';
 import 'package:vikunja_app/api/namespace_implementation.dart';
 import 'package:vikunja_app/api/task_implementation.dart';
@@ -44,6 +47,13 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
   TaskService get taskService => new TaskAPIService(client);
 
   ListService get listService => new ListAPIService(client);
+
+  LabelService get labelService => new LabelAPIService(client);
+
+  LabelTaskService get labelTaskService => new LabelTaskAPIService(client);
+
+  LabelTaskBulkAPIService get labelTaskBulkService =>
+      new LabelTaskBulkAPIService(client);
 
   @override
   void initState() {

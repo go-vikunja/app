@@ -12,7 +12,7 @@ class NamespaceAPIService extends APIService implements NamespaceService {
   Future<Namespace> create(Namespace ns) {
     return client
         .put('/namespaces', body: ns.toJSON())
-        .then((map) => Namespace.fromJson(map));
+        .then((response) => Namespace.fromJson(response.body));
   }
 
   @override
@@ -24,19 +24,19 @@ class NamespaceAPIService extends APIService implements NamespaceService {
   Future<Namespace> get(int namespaceId) {
     return client
         .get('/namespaces/$namespaceId')
-        .then((map) => Namespace.fromJson(map));
+        .then((response) => Namespace.fromJson(response.body));
   }
 
   @override
   Future<List<Namespace>> getAll() {
-    return client.get('/namespaces').then(
-        (list) => convertList(list, (result) => Namespace.fromJson(result)));
+    return client.get('/namespaces').then((response) =>
+        convertList(response.body, (result) => Namespace.fromJson(result)));
   }
 
   @override
   Future<Namespace> update(Namespace ns) {
     return client
         .post('/namespaces/${ns.id}', body: ns.toJSON())
-        .then((map) => Namespace.fromJson(map));
+        .then((response) => Namespace.fromJson(response.body));
   }
 }

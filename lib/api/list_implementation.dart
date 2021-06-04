@@ -12,7 +12,7 @@ class ListAPIService extends APIService implements ListService {
   Future<TaskList> create(namespaceId, TaskList tl) {
     return client
         .put('/namespaces/$namespaceId/lists', body: tl.toJSON())
-        .then((map) => TaskList.fromJson(map));
+        .then((response) => TaskList.fromJson(response.body));
   }
 
   @override
@@ -22,6 +22,10 @@ class ListAPIService extends APIService implements ListService {
 
   @override
   Future<TaskList> get(int listId) {
+    return client
+        .get('/lists/$listId')
+        .then((response) => TaskList.fromJson(response.body));
+    /*
     return client.get('/lists/$listId').then((map) {
       if (map.containsKey('id')) {
         return client.get("/lists/$listId/tasks").then((tasks) => TaskList.fromJson(
@@ -29,24 +33,25 @@ class ListAPIService extends APIService implements ListService {
       }
       return TaskList.fromJson(map);
     });
+    */
   }
 
   @override
   Future<List<TaskList>> getAll() {
-    return client.get('/lists').then(
-        (list) => convertList(list, (result) => TaskList.fromJson(result)));
+    return client.get('/lists').then((response) =>
+        convertList(response.body, (result) => TaskList.fromJson(result)));
   }
 
   @override
   Future<List<TaskList>> getByNamespace(int namespaceId) {
-    return client.get('/namespaces/$namespaceId/lists').then(
-        (list) => convertList(list, (result) => TaskList.fromJson(result)));
+    return client.get('/namespaces/$namespaceId/lists').then((response) =>
+        convertList(response.body, (result) => TaskList.fromJson(result)));
   }
 
   @override
   Future<TaskList> update(TaskList tl) {
     return client
         .post('/lists/${tl.id}', body: tl.toJSON())
-        .then((map) => TaskList.fromJson(map));
+        .then((response) => TaskList.fromJson(response.body));
   }
 }
