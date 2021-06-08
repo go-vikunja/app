@@ -30,14 +30,14 @@ class _TaskEditPageState extends State<TaskEditPage> {
   List<Label> _labels;
   List<Label>
       _suggestedLabels; // we use this to find the label object after a user taps on the suggestion, because the typeahead only uses strings, not full objects.
-  var _reminderInputs = new List<Widget>();
+  var _reminderInputs = <Widget>[];
   final _labelTypeAheadController = TextEditingController();
 
   @override
   Widget build(BuildContext ctx) {
     // This builds the initial list of reminder inputs only once.
     if (_reminderDates == null) {
-      _reminderDates = widget.task.reminderDates ?? new List();
+      _reminderDates = widget.task.reminderDates ?? [];
 
       _reminderDates?.asMap()?.forEach((i, time) =>
           setState(() => _reminderInputs?.add(VikunjaDateTimePicker(
@@ -48,7 +48,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
     }
 
     if (_labels == null) {
-      _labels = widget.task.labels ?? new List();
+      _labels = widget.task.labels ?? [];
     }
 
     return Scaffold(
@@ -59,8 +59,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
         builder: (BuildContext context) => SafeArea(
           child: Form(
             key: _formKey,
-            child: ListView(padding: const EdgeInsets.all(16.0), children: <
-                Widget>[
+            child: ListView(padding: const EdgeInsets.all(16.0), children: <Widget>[
               Padding(
                 padding: EdgeInsets.symmetric(vertical: 10.0),
                 child: TextFormField(
@@ -321,7 +320,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
         .update(updatedTask, _labels)
         .catchError((err) {
       setState(() => _loading = false);
-      Scaffold.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Something went wrong: ' + err.toString()),
         ),
@@ -330,17 +329,17 @@ class _TaskEditPageState extends State<TaskEditPage> {
 
     VikunjaGlobal.of(context).taskService.update(updatedTask).then((_) {
       setState(() => _loading = false);
-      Scaffold.of(context).showSnackBar(SnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('The task was updated successfully!'),
       ));
     }).catchError((err) {
       setState(() => _loading = false);
-      Scaffold.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Something went wrong: ' + err.toString()),
           action: SnackBarAction(
               label: 'CLOSE',
-              onPressed: Scaffold.of(context).hideCurrentSnackBar),
+              onPressed: ScaffoldMessenger.of(context).hideCurrentSnackBar),
         ),
       );
     });

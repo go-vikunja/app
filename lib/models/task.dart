@@ -40,16 +40,16 @@ class Task {
         title = json['title'],
         description = json['description'],
         done = json['done'],
-        reminderDates = (json['reminderDates'] as List<dynamic>)
-            ?.map((ts) => dateTimeFromUnixTimestamp(ts))
+        reminderDates = (json['reminder_dates'] as List<dynamic>)
+            ?.map((ts) => DateTime.parse(ts))
             ?.cast<DateTime>()
             ?.toList(),
-        dueDate = dateTimeFromUnixTimestamp(json['dueDate']),
-        startDate = dateTimeFromUnixTimestamp(json['startDate']),
-        endDate = dateTimeFromUnixTimestamp(json['endDate']),
-        parentTaskId = json['parentTaskID'],
+        dueDate = DateTime.parse(json['due_date']),
+        startDate = DateTime.parse(json['start_date']),
+        endDate = DateTime.parse(json['end_date']),
+        parentTaskId = json['parent_task_id'],
         priority = json['priority'],
-        repeatAfter = Duration(seconds: json['repeatAfter']),
+        repeatAfter = Duration(seconds: json['repeat_after']),
         labels = (json['labels'] as List<dynamic>)
             ?.map((label) => Label.fromJson(label))
             ?.cast<Label>()
@@ -58,9 +58,9 @@ class Task {
             ?.map((subtask) => Task.fromJson(subtask))
             ?.cast<Task>()
             ?.toList(),
-        updated = dateTimeFromUnixTimestamp(json['updated']),
-        created = dateTimeFromUnixTimestamp(json['created']),
-        createdBy = User.fromJson(json['createdBy']);
+        updated = DateTime.parse(json['updated']),
+        created = DateTime.parse(json['created']),
+        createdBy = User.fromJson(json['created_by']);
 
   toJSON() => {
         'id': id,
