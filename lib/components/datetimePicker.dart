@@ -43,7 +43,7 @@ class VikunjaDateTimePicker extends StatelessWidget {
         return showDatePicker(
             context: context,
             firstDate: DateTime(1900),
-            initialDate: currentValue ?? DateTime.now(),
+            initialDate: currentValue.millisecondsSinceEpoch > 0 ? currentValue : DateTime.now(),
             lastDate: DateTime(2100));
       },
     );

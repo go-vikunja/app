@@ -21,6 +21,7 @@ class ListProvider with ChangeNotifier {
   List<Task> get tasks => _tasks;
 
   void loadTasks({BuildContext context, int listId, int page = 1}) {
+    _tasks = [];
     _isLoading = true;
     notifyListeners();
 
@@ -38,16 +39,49 @@ class ListProvider with ChangeNotifier {
     });
   }
 
-  Future<void> addTask({BuildContext context, String title, int listId}) {
+  Future<void> addTaskByTitle({BuildContext context, String title, int listId}) {
     var globalState = VikunjaGlobal.of(context);
     var newTask = Task(
-        id: null, title: title, createdBy: globalState.currentUser, done: false);
+        id: null,
+        title: title,
+        createdBy: globalState.currentUser,
+        done: false,
+    );
     _isLoading = true;
     notifyListeners();
 
     return globalState.taskService.add(listId, newTask).then((task) {
       _tasks.insert(0, task);
       _isLoading = false;
+      notifyListeners();
+    });
+  }
+
+  Future<void> addTask({BuildContext context, Task newTask, int listId}) {
+    var globalState = VikunjaGlobal.of(context);
+    _isLoading = true;
+    notifyListeners();
+
+    return globalState.taskService.add(listId, newTask).then((task) {
+      _tasks.insert(0, task);
+      _isLoading = false;
+      notifyListeners();
+    });
+  }
+
+  Future<void> updateTask({BuildContext context, int id, bool done}) {
+    var globalState = VikunjaGlobal.of(context);
+    globalState.taskService.update(Task(
+      id: id,
+      done: done,
+    )).then((task) {
+      // FIXME: This is ugly. We should use a redux to not have to do these kind of things.
+      //  This is enough for now (it works™) but we should definitly fix it later.
+      _tasks.asMap().forEach((i, t) {
+        if (task.id == t.id) {
+          _tasks[i] = task;
+        }
+      });
       notifyListeners();
     });
   }
