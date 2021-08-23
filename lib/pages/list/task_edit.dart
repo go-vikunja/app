@@ -28,8 +28,8 @@ class _TaskEditPageState extends State<TaskEditPage> {
   String _title, _description, _repeatAfterType;
   Duration _repeatAfter;
   List<Label> _labels;
-  List<Label>
-      _suggestedLabels; // we use this to find the label object after a user taps on the suggestion, because the typeahead only uses strings, not full objects.
+  // we use this to find the label object after a user taps on the suggestion, because the typeahead only uses strings, not full objects.
+  List<Label> _suggestedLabels;
   var _reminderInputs = <Widget>[];
   final _labelTypeAheadController = TextEditingController();
 
@@ -380,7 +380,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
 
   _createAndAddLabel(String labelTitle) {
     // Only add a label if there are none to add
-    if (labelTitle == '' || _suggestedLabels.length > 0) {
+    if (labelTitle.isEmpty || (_suggestedLabels?.isNotEmpty ?? false)) {
       return;
     }
 
