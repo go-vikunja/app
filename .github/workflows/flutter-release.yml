@@ -38,9 +38,6 @@ jobs:
       - name: Download pub dependencies
         run: flutter pub get
       
-      - name: Run build_runner
-        run: flutter pub run build_runner build --delete-conflicting-outputs
-
       - name: Download Android keystore
         id: android_keystore
         uses: timheuer/base64-to-file@v1.0.3
