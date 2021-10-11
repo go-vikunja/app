@@ -62,5 +62,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: app-release-bundle
-          path: build/app/outputs/bundle/release/
+          path: |
+            build/app/outputs/bundle/release/app-release.aab
+            build/app/outputs/flutter-apk/app-release.apk
 
