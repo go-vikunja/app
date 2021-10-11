@@ -24,7 +24,7 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v1
         with:
-          channel: beta
+          channel: stable
       - name: Flutter version
         run: flutter --version
 
