@@ -2,7 +2,10 @@
 
 name: Flutter release
 
-on:
+on:  
+  push:
+    branches:
+      - main
   release:
     types: [published]
 
