@@ -55,9 +55,12 @@ jobs:
       - name: Build Android App Bundle
         run: flutter build appbundle
 
+      - name: Build Android APK
+        run: flutter build apk
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v2
         with:
           name: app-release-bundle
-          path: build/app/outputs/bundle/release/app-release.aab
+          path: build/app/outputs/bundle/release/
 
