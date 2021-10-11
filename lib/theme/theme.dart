@@ -27,12 +27,12 @@ ThemeData _buildVikunjaTheme(ThemeData base) {
       ),
     ),
     textTheme: base.textTheme.copyWith(
-      headline: base.textTheme.headline.copyWith(
-        fontFamily: 'Quicksand',
-      ),
-      title: base.textTheme.title.copyWith(
-        fontFamily: 'Quicksand',
-      ),
+//      headline: base.textTheme.headline.copyWith(
+//        fontFamily: 'Quicksand',
+//      ),
+//      title: base.textTheme.title.copyWith(
+//        fontFamily: 'Quicksand',
+//      ),
       button: base.textTheme.button.copyWith(
         color:
             vWhite, // This does not work, looks like a bug in Flutter: https://github.com/flutter/flutter/issues/19623
