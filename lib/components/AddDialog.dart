@@ -21,11 +21,11 @@ class AddDialog extends StatelessWidget {
         )
       ]),
       actions: <Widget>[
-        new FlatButton(
+        new TextButton(
           child: const Text('CANCEL'),
           onPressed: () => Navigator.pop(context),
         ),
-        new FlatButton(
+        new TextButton(
           child: const Text('ADD'),
           onPressed: () {
             if (this.onAdd != null && textController.text.isNotEmpty)
