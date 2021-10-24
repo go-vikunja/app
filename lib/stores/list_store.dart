@@ -70,7 +70,7 @@ class ListProvider with ChangeNotifier {
     });
   }
 
-  Future<void> updateTask({BuildContext context, int id, bool done}) {
+  void updateTask({BuildContext context, int id, bool done}) {
     var globalState = VikunjaGlobal.of(context);
     globalState.taskService
         .update(Task(
