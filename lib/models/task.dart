@@ -3,7 +3,6 @@ import 'package:json_annotation/json_annotation.dart';
 
 import 'package:vikunja_app/models/label.dart';
 import 'package:vikunja_app/models/user.dart';
-import 'package:vikunja_app/utils/datetime_to_unix.dart';
 
 @JsonSerializable()
 class Task {

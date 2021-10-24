@@ -1,6 +1,5 @@
 import 'dart:ui';
 
-import 'package:meta/meta.dart';
 import 'package:vikunja_app/models/user.dart';
 
 class Label {
