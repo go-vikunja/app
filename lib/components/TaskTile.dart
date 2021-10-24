@@ -47,9 +47,10 @@ class TaskTileState extends State<TaskTile> {
               )),
         ),
         title: Text(widget.task.title),
-        subtitle: widget.task.description == null || widget.task.description.isEmpty
-            ? null
-            : Text(widget.task.description),
+        subtitle:
+            widget.task.description == null || widget.task.description.isEmpty
+                ? null
+                : Text(widget.task.description),
         trailing: IconButton(
           icon: Icon(Icons.settings),
           onPressed: () => widget.onEdit,
@@ -60,9 +61,10 @@ class TaskTileState extends State<TaskTile> {
       title: Text(widget.task.title),
       controlAffinity: ListTileControlAffinity.leading,
       value: widget.task.done ?? false,
-      subtitle: widget.task.description == null || widget.task.description.isEmpty
-          ? null
-          : Text(widget.task.description),
+      subtitle:
+          widget.task.description == null || widget.task.description.isEmpty
+              ? null
+              : Text(widget.task.description),
       secondary: IconButton(
         icon: Icon(Icons.settings),
         onPressed: widget.onEdit,

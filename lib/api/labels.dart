@@ -8,19 +8,22 @@ class LabelAPIService extends APIService implements LabelService {
 
   @override
   Future<Label> create(Label label) {
-    return client.put('/labels', body: label.toJSON())
+    return client
+        .put('/labels', body: label.toJSON())
         .then((response) => Label.fromJson(response.body));
   }
 
   @override
   Future<Label> delete(Label label) {
-    return client.delete('/labels/${label.id}')
+    return client
+        .delete('/labels/${label.id}')
         .then((response) => Label.fromJson(response.body));
   }
 
   @override
   Future<Label> get(int labelID) {
-    return client.get('/labels/$labelID')
+    return client
+        .get('/labels/$labelID')
         .then((response) => Label.fromJson(response.body));
   }
 

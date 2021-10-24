@@ -60,16 +60,17 @@ class Task {
             ?.toList(),
         updated = DateTime.parse(json['updated']),
         created = DateTime.parse(json['created']),
-        createdBy = json['created_by'] == null ? null : User.fromJson(json['created_by']);
+        createdBy = json['created_by'] == null
+            ? null
+            : User.fromJson(json['created_by']);
 
   toJSON() => {
         'id': id,
         'title': title,
         'description': description,
         'done': done ?? false,
-        'reminder_dates': reminderDates
-            ?.map((date) => date?.toIso8601String())
-            ?.toList(),
+        'reminder_dates':
+            reminderDates?.map((date) => date?.toIso8601String())?.toList(),
         'due_date': dueDate?.toIso8601String(),
         'start_date': startDate?.toIso8601String(),
         'end_date': endDate?.toIso8601String(),

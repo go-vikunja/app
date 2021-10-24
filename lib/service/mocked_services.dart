@@ -122,8 +122,7 @@ class MockedTaskService implements TaskService {
   @override
   Future delete(int taskId) {
     _lists.forEach(
-        (_, list) => list.tasks.removeWhere((task) => task.id == taskId)
-    );
+        (_, list) => list.tasks.removeWhere((task) => task.id == taskId));
     _tasks.remove(taskId);
     return Future.value();
   }

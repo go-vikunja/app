@@ -59,7 +59,8 @@ class _TaskEditPageState extends State<TaskEditPage> {
         builder: (BuildContext context) => SafeArea(
           child: Form(
             key: _formKey,
-            child: ListView(padding: const EdgeInsets.all(16.0), children: <Widget>[
+            child: ListView(padding: const EdgeInsets.all(16.0), children: <
+                Widget>[
               Padding(
                 padding: EdgeInsets.symmetric(vertical: 10.0),
                 child: TextFormField(

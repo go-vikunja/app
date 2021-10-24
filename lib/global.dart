@@ -22,7 +22,8 @@ class VikunjaGlobal extends StatefulWidget {
   VikunjaGlobalState createState() => VikunjaGlobalState();
 
   static VikunjaGlobalState of(BuildContext context) {
-    var widget = context.dependOnInheritedWidgetOfExactType<_VikunjaGlobalInherited>();
+    var widget =
+        context.dependOnInheritedWidgetOfExactType<_VikunjaGlobalInherited>();
     return widget.data;
   }
 }
