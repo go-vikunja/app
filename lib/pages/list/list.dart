@@ -180,6 +180,9 @@ class _ListPageState extends State<ListPage> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('The task was added successfully!'),
       ));
+      setState(() {
+        _loadingTasks.remove(newTask);
+      });
     });
   }
 }
