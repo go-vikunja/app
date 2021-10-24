@@ -106,12 +106,14 @@ class _ListEditPageState extends State<ListEditPage> {
       ));
     }).catchError((err) {
       setState(() => _loading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessengerState scaffoldState = ScaffoldMessenger.of(context);
+      scaffoldState.showSnackBar(
         SnackBar(
           content: Text('Something went wrong: ' + err.toString()),
           action: SnackBarAction(
               label: 'CLOSE',
-              onPressed: Scaffold.of(context).hideCurrentSnackBar),
+              onPressed: (() => scaffoldState.hideCurrentSnackBar(
+                  reason: SnackBarClosedReason.action))),
         ),
       );
     });
