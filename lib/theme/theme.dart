@@ -2,13 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:vikunja_app/theme/constants.dart';
 
 ThemeData buildVikunjaTheme() => _buildVikunjaTheme(ThemeData.light());
-
-ThemeData buildVikunjaDarkTheme() {
-  ThemeData base = _buildVikunjaTheme(ThemeData.dark());
-  return base.copyWith(
-    accentColor: vWhite,
-  );
-}
+ThemeData buildVikunjaDarkTheme() => _buildVikunjaTheme(ThemeData.dark());
 
 ThemeData _buildVikunjaTheme(ThemeData base) {
   return base.copyWith(
