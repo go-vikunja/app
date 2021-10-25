@@ -34,9 +34,6 @@ jobs:
       - name: Download pub dependencies
         run: flutter pub get
       
-      - name: Build Android App Bundle
-        run: flutter build appbundle
-
-      - name: Build Android APK
-        run: flutter build apk
+      - name: Build Debug Build
+        run: make build-debug
 
