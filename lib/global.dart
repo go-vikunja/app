@@ -8,7 +8,6 @@ import 'package:vikunja_app/api/list_implementation.dart';
 import 'package:vikunja_app/api/namespace_implementation.dart';
 import 'package:vikunja_app/api/task_implementation.dart';
 import 'package:vikunja_app/api/user_implementation.dart';
-import 'package:vikunja_app/managers/user.dart';
 import 'package:vikunja_app/models/user.dart';
 import 'package:vikunja_app/service/services.dart';
 
@@ -22,7 +21,8 @@ class VikunjaGlobal extends StatefulWidget {
   VikunjaGlobalState createState() => VikunjaGlobalState();
 
   static VikunjaGlobalState of(BuildContext context) {
-    var widget = context.dependOnInheritedWidgetOfExactType<_VikunjaGlobalInherited>();
+    var widget =
+        context.dependOnInheritedWidgetOfExactType<_VikunjaGlobalInherited>();
     return widget.data;
   }
 }
@@ -37,8 +37,6 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
   User get currentUser => _currentUser;
 
   Client get client => _client;
-
-  UserManager get userManager => new UserManager(_storage);
 
   UserService newUserService(base) => new UserAPIService(Client(null, base));
 

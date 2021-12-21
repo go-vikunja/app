@@ -11,7 +11,6 @@ import 'package:vikunja_app/pages/list/list_edit.dart';
 import 'package:vikunja_app/pages/list/task_edit.dart';
 import 'package:vikunja_app/stores/list_store.dart';
 
-
 class ListPage extends StatefulWidget {
   final TaskList taskList;
 
@@ -41,63 +40,62 @@ class _ListPageState extends State<ListPage> {
   Widget build(BuildContext context) {
     final taskState = Provider.of<ListProvider>(context);
     return Scaffold(
-        appBar: AppBar(
-          title: Text(_list.title),
-          actions: <Widget>[
-            IconButton(
-              icon: Icon(Icons.edit),
-              onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => ListEditPage(
-                        list: _list,
-                      ),
-                  )
-                ),
-            ),
-          ],
-        ),
-        // TODO: it brakes the flow with _loadingTasks and conflicts with the provider
-        body: !taskState.isLoading
-            ? RefreshIndicator(
-                child: taskState.tasks.length > 0
+      appBar: AppBar(
+        title: Text(_list.title),
+        actions: <Widget>[
+          IconButton(
+            icon: Icon(Icons.edit),
+            onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ListEditPage(
+                    list: _list,
+                  ),
+                )),
+          ),
+        ],
+      ),
+      // TODO: it brakes the flow with _loadingTasks and conflicts with the provider
+      body: !taskState.isLoading
+          ? RefreshIndicator(
+              child: taskState.tasks.length > 0
                   ? ListenableProvider.value(
                       value: taskState,
                       child: ListView.builder(
-                        padding: EdgeInsets.symmetric(vertical: 8.0),
-                        itemBuilder: (context, i) {
-                          if (i.isOdd) return Divider();
+                          padding: EdgeInsets.symmetric(vertical: 8.0),
+                          itemBuilder: (context, i) {
+                            if (i.isOdd) return Divider();
 
-                          if (_loadingTasks.isNotEmpty) {
-                            final loadingTask = _loadingTasks.removeLast();
-                            return _buildLoadingTile(loadingTask);
-                          }
+                            if (_loadingTasks.isNotEmpty) {
+                              final loadingTask = _loadingTasks.removeLast();
+                              return _buildLoadingTile(loadingTask);
+                            }
 
-                          final index = i ~/ 2;
+                            final index = i ~/ 2;
 
-                          // This handles the case if there are no more elements in the list left which can be provided by the api
-                          if (taskState.maxPages == _currentPage &&
-                              index == taskState.tasks.length - 1) return null;
+                            // This handles the case if there are no more elements in the list left which can be provided by the api
+                            if (taskState.maxPages == _currentPage &&
+                                index == taskState.tasks.length - 1)
+                              return null;
 
-                          if (index >= taskState.tasks.length &&
-                              _currentPage < taskState.maxPages) {
-                            _currentPage++;
-                            _loadTasksForPage(_currentPage);
-                          }
-                          return index < taskState.tasks.length
-                              ? _buildTile(taskState.tasks[index])
-                              : null;
-                        }
-                    ),
-                  )
+                            if (index >= taskState.tasks.length &&
+                                _currentPage < taskState.maxPages) {
+                              _currentPage++;
+                              _loadTasksForPage(_currentPage);
+                            }
+                            return index < taskState.tasks.length
+                                ? _buildTile(taskState.tasks[index])
+                                : null;
+                          }),
+                    )
                   : Center(child: Text('This list is empty.')),
-                onRefresh: _loadList,
+              onRefresh: _loadList,
             )
-            : Center(child: CircularProgressIndicator()),
-        floatingActionButton: Builder(
-          builder: (context) => FloatingActionButton(
-              onPressed: () => _addItemDialog(context), child: Icon(Icons.add)),
-          ),
+          : Center(child: CircularProgressIndicator()),
+      floatingActionButton: Builder(
+        builder: (context) => FloatingActionButton(
+            onPressed: () => _addItemDialog(context), child: Icon(Icons.add)),
+      ),
     );
   }
 
@@ -156,8 +154,8 @@ class _ListPageState extends State<ListPage> {
       builder: (_) => AddDialog(
         onAdd: (title) => _addItem(title, context),
         decoration: InputDecoration(
-            labelText: 'Task Name',
-            hintText: 'eg. Milk',
+          labelText: 'Task Name',
+          hintText: 'eg. Milk',
         ),
       ),
     );
@@ -174,13 +172,17 @@ class _ListPageState extends State<ListPage> {
     setState(() => _loadingTasks.add(newTask));
     Provider.of<ListProvider>(context, listen: false)
         .addTask(
-          context: context,
-          newTask: newTask,
-          listId: _list.id,
-    ).then((_) {
+      context: context,
+      newTask: newTask,
+      listId: _list.id,
+    )
+        .then((_) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('The task was added successfully!'),
       ));
+      setState(() {
+        _loadingTasks.remove(newTask);
+      });
     });
   }
 }

@@ -33,24 +33,21 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
 
   Widget _namespacesWidget() {
     List<Widget> namespacesList = <Widget>[];
-    _namespaces
-        .asMap()
-        .forEach((i, namespace) => namespacesList.add(ListTile(
-              leading: const Icon(Icons.folder),
-              title: Text(namespace.title),
-              selected: i == _selectedDrawerIndex,
-              onTap: () => _onSelectItem(i),
-            ))
-    );
+    _namespaces.asMap().forEach((i, namespace) => namespacesList.add(ListTile(
+          leading: const Icon(Icons.folder),
+          title: Text(namespace.title),
+          selected: i == _selectedDrawerIndex,
+          onTap: () => _onSelectItem(i),
+        )));
 
     return this._loading
         ? Center(child: CircularProgressIndicator())
         : RefreshIndicator(
             child: ListView(
-                padding: EdgeInsets.zero,
-                children: ListTile.divideTiles(
-                    context: context,
-                    tiles: namespacesList).toList(),
+              padding: EdgeInsets.zero,
+              children:
+                  ListTile.divideTiles(context: context, tiles: namespacesList)
+                      .toList(),
             ),
             onRefresh: _loadNamespaces,
           );
@@ -85,18 +82,18 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
                         MaterialPageRoute(
                             builder: (context) => NamespaceEditPage(
                                   namespace: _currentNamespace,
-                                )
-                        )
-                    )
-                ),
+                                )))),
               ],
       ),
       drawer: Drawer(
         child: Column(children: <Widget>[
           UserAccountsDrawerHeader(
             // Removed until we find a way to disable the user email only for some occasions and not everywhere
-            accountEmail: currentUser?.email == null ? null : Text(currentUser.email),
-            accountName: currentUser?.username == null ? null : Text(currentUser.username),
+            accountEmail:
+                currentUser?.email == null ? null : Text(currentUser.email),
+            accountName: currentUser?.username == null
+                ? null
+                : Text(currentUser.username),
             onDetailsPressed: () {
               setState(() {
                 _showUserDetails = !_showUserDetails;
@@ -105,22 +102,24 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
             currentAccountPicture: currentUser == null
                 ? null
                 : CircleAvatar(
-                    backgroundImage: NetworkImage(currentUser.avatarUrl(context)),
+                    backgroundImage:
+                        NetworkImage(currentUser.avatarUrl(context)),
                   ),
             decoration: BoxDecoration(
               image: DecorationImage(
-                  image: AssetImage("assets/graphics/hypnotize.png"),
-                  repeat: ImageRepeat.repeat,
-                  colorFilter: ColorFilter.mode(Theme.of(context).primaryColor, BlendMode.multiply),
+                image: AssetImage("assets/graphics/hypnotize.png"),
+                repeat: ImageRepeat.repeat,
+                colorFilter: ColorFilter.mode(
+                    Theme.of(context).primaryColor, BlendMode.multiply),
               ),
             ),
           ),
           Builder(
-              builder: (BuildContext context) =>
-                  Expanded(
-                    child: _showUserDetails ? _userDetailsWidget(context) : _namespacesWidget(),
-                  )
-          ),
+              builder: (BuildContext context) => Expanded(
+                    child: _showUserDetails
+                        ? _userDetailsWidget(context)
+                        : _namespacesWidget(),
+                  )),
           Align(
             alignment: FractionalOffset.bottomCenter,
             child: Builder(
@@ -155,8 +154,8 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
         builder: (_) => AddDialog(
               onAdd: (name) => _addNamespace(name, context),
               decoration: InputDecoration(
-                  labelText: 'Namespace',
-                  hintText: 'eg. Personal Namespace',
+                labelText: 'Namespace',
+                hintText: 'eg. Personal Namespace',
               ),
             ));
   }
@@ -171,9 +170,9 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
         content: Text('The namespace was created successfully!'),
       ));
     }).catchError((error) => showDialog(
-        context: context,
-        builder: (context) => ErrorDialog(error: error),
-    ));
+              context: context,
+              builder: (context) => ErrorDialog(error: error),
+            ));
   }
 
   Future<void> _loadNamespaces() {

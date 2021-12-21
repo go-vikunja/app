@@ -14,7 +14,7 @@ class LabelTaskBulkAPIService extends APIService
     return client
         .post('/tasks/${task.id}/labels/bulk',
             body: LabelTaskBulk(labels: labels).toJSON())
-        .then((response) =>
-            convertList(response.body['labels'], (result) => Label.fromJson(result)));
+        .then((response) => convertList(
+            response.body['labels'], (result) => Label.fromJson(result)));
   }
 }

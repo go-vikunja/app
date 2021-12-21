@@ -42,28 +42,36 @@ class Client {
         queryParameters: queryParameters,
         // Because dart takes a Map<String, String> here, it is only possible to sort by one parameter while the api supports n parameters.
         fragment: uri.fragment);
-    return http.get(newUri, headers: _headers)
-        .then(_handleResponse);
+    return http.get(newUri, headers: _headers).then(_handleResponse);
   }
 
   Future<Response> delete(String url) {
-    return http.delete('${this.base}$url'.toUri(),
-        headers: _headers,
-    ).then(_handleResponse);
+    return http
+        .delete(
+          '${this.base}$url'.toUri(),
+          headers: _headers,
+        )
+        .then(_handleResponse);
   }
 
   Future<Response> post(String url, {dynamic body}) {
-    return http.post('${this.base}$url'.toUri(),
-        headers: _headers,
-        body: _encoder.convert(body),
-    ).then(_handleResponse);
+    return http
+        .post(
+          '${this.base}$url'.toUri(),
+          headers: _headers,
+          body: _encoder.convert(body),
+        )
+        .then(_handleResponse);
   }
 
   Future<Response> put(String url, {dynamic body}) {
-    return http.put('${this.base}$url'.toUri(),
-        headers: _headers,
-        body: _encoder.convert(body),
-    ).then(_handleResponse);
+    return http
+        .put(
+          '${this.base}$url'.toUri(),
+          headers: _headers,
+          body: _encoder.convert(body),
+        )
+        .then(_handleResponse);
   }
 
   Response _handleResponse(http.Response response) {
@@ -81,10 +89,7 @@ class Client {
           response.statusCode, response.request.url.toString());
     }
     return Response(
-        _decoder.convert(response.body),
-        response.statusCode,
-        response.headers
-    );
+        _decoder.convert(response.body), response.statusCode, response.headers);
   }
 }
 
