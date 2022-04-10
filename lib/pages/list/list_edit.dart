@@ -101,17 +101,17 @@ class _ListEditPageState extends State<ListEditPage> {
 
     VikunjaGlobal.of(context).listService.update(updatedList).then((_) {
       setState(() => _loading = false);
-      Scaffold.of(context).showSnackBar(SnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('The list was updated successfully!'),
       ));
     }).catchError((err) {
       setState(() => _loading = false);
-      Scaffold.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Something went wrong: ' + err.toString()),
           action: SnackBarAction(
               label: 'CLOSE',
-              onPressed: Scaffold.of(context).hideCurrentSnackBar),
+              onPressed: ScaffoldMessenger.of(context).hideCurrentSnackBar),
         ),
       );
     });

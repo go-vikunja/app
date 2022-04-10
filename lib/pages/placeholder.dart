@@ -12,11 +12,11 @@ class PlaceholderPage extends StatelessWidget {
               padding: EdgeInsets.only(top: 32.0),
               child: new Text(
                 'Welcome to Vikunja',
-                style: Theme.of(context).textTheme.headline,
+                style: Theme.of(context).textTheme.headline4,
               ),
             ),
             new Text('Please select a namespace by tapping the  ☰  icon.',
-                style: Theme.of(context).textTheme.subhead),
+                style: Theme.of(context).textTheme.subtitle1),
           ],
         ));
   }

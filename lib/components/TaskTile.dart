@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/global.dart';
@@ -85,7 +86,7 @@ class TaskTileState extends State<TaskTile> {
           done: checked,
           title: task.title,
           description: task.description,
-          owner: null,
+          owner: task.owner,
         ));
   }
 }

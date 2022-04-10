@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/components/AddDialog.dart';
@@ -120,7 +121,7 @@ class _ListPageState extends State<ListPage> {
     }).then((_) {
       _loadList();
       setState(() => _loadingTasks.remove(newTask));
-      Scaffold.of(context).showSnackBar(SnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('The task was added successfully!'),
       ));
     });

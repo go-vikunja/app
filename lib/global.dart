@@ -19,8 +19,7 @@ class VikunjaGlobal extends StatefulWidget {
   VikunjaGlobalState createState() => VikunjaGlobalState();
 
   static VikunjaGlobalState of(BuildContext context) {
-    var widget = context.inheritFromWidgetOfExactType(_VikunjaGlobalInherited)
-        as _VikunjaGlobalInherited;
+    var widget = context.dependOnInheritedWidgetOfExactType<_VikunjaGlobalInherited>();
     return widget.data;
   }
 }
@@ -85,7 +84,7 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
         _currentUser = null;
       });
     }).catchError((err) {
-      Scaffold.of(context).showSnackBar(SnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('An error occured while logging out!'),
       ));
     });

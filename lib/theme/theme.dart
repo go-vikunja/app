@@ -27,10 +27,10 @@ ThemeData _buildVikunjaTheme(ThemeData base) {
       ),
     ),
     textTheme: base.textTheme.copyWith(
-      headline: base.textTheme.headline.copyWith(
+      headline1: base.textTheme.headline1.copyWith(
         fontFamily: 'Quicksand',
       ),
-      title: base.textTheme.title.copyWith(
+      subtitle1: base.textTheme.subtitle1.copyWith(
         fontFamily: 'Quicksand',
       ),
       button: base.textTheme.button.copyWith(

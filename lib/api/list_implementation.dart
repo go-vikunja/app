@@ -22,7 +22,13 @@ class ListAPIService extends APIService implements ListService {
 
   @override
   Future<TaskList> get(int listId) {
-    return client.get('/lists/$listId').then((map) => TaskList.fromJson(map));
+    return client.get('/lists/$listId').then((listmap) {
+      return client.get('/lists/$listId/tasks').then((value) {
+        listmap["tasks"] = value;
+        return TaskList.fromJson(listmap);
+      });
+    }
+  );
   }
 
   @override

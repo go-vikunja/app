@@ -24,7 +24,7 @@ class _LoginPageState extends State<LoginPage> {
           padding: const EdgeInsets.all(16.0),
           child: Builder(
             builder: (BuildContext context) => Form(
-              autovalidate: true,
+              autovalidateMode: AutovalidateMode.always,
               key: _formKey,
               child: Center(
                 child: Column(

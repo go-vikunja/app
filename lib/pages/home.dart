@@ -102,7 +102,7 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
           currentAccountPicture: currentUser == null
               ? null
               : CircleAvatar(
-                  backgroundImage: NetworkImage(currentUser.avatarUrl(context)),
+                  //backgroundImage: NetworkImage(currentUser.avatarUrl(context)),
                 ),
           decoration: BoxDecoration(
             image: DecorationImage(
@@ -160,7 +160,7 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
         .create(Namespace(id: null, title: name))
         .then((_) {
       _loadNamespaces();
-      Scaffold.of(context).showSnackBar(SnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('The namespace was created successfully!'),
       ));
     }).catchError((error) => showDialog(
