@@ -4,6 +4,7 @@ import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/models/task.dart';
+import 'package:vikunja_app/pages/task/edit_task.dart';
 
 class TaskTile extends StatefulWidget {
   final Task task;
@@ -49,9 +50,15 @@ class TaskTileState extends State<TaskTile> {
                 : Text(_currentTask.description),
         trailing: IconButton(
             icon: Icon(Icons.settings),
-            onPressed: () {
-              null; // TODO: implement edit task
-            }),
+            onPressed:  () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => TaskEditPage(
+                      task: _currentTask,
+                    )));
+            }
+            ),
       );
     }
     return CheckboxListTile(
@@ -63,7 +70,14 @@ class TaskTileState extends State<TaskTile> {
               ? null
               : Text(_currentTask.description),
       secondary:
-          IconButton(icon: Icon(Icons.settings), onPressed: widget.onEdit),
+          IconButton(icon: Icon(Icons.settings), onPressed: () {
+            Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => TaskEditPage(
+                      task: _currentTask,
+                    ))).whenComplete(() => setState((){}));
+          }),
       onChanged: _change,
     );
   }

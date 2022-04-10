@@ -44,12 +44,14 @@ class _ListPageState extends State<ListPage> {
           actions: <Widget>[
             IconButton(
                 icon: Icon(Icons.edit),
-                onPressed: () => Navigator.push(
+                onPressed: ()  =>
+                  Navigator.push(
                     context,
                     MaterialPageRoute(
                         builder: (context) => ListEditPage(
                               list: _list,
-                            ))))
+                            ))).whenComplete(() => setState(() =>_loadList()))
+                )
           ],
         ),
         body: !this._loading
