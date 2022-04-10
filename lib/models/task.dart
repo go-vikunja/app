@@ -2,12 +2,12 @@ import 'package:vikunja_app/models/user.dart';
 import 'package:meta/meta.dart';
 
 class Task {
-  final int id;
-  final DateTime created, updated, due;
-  final List<DateTime> reminders;
-  final String title, description;
-  final bool done;
-  final User owner;
+  int id;
+  DateTime created, updated, due;
+  List<DateTime> reminders;
+  String title, description;
+  bool done;
+  User owner;
 
   Task(
       {@required this.id,
