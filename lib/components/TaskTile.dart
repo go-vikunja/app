@@ -51,12 +51,8 @@ class TaskTileState extends State<TaskTile> {
         trailing: IconButton(
             icon: Icon(Icons.settings),
             onPressed:  () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => TaskEditPage(
-                      task: _currentTask,
-                    )));
+              // we cannot edit a task if it is still loading
+              null;
             }
             ),
       );
