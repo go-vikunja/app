@@ -13,6 +13,7 @@ dependencies:
   flutter_secure_storage: 3.3.5
   http: 0.13.4
   after_layout: ^1.0.7
+  intl: ^0.17.0
 
 dev_dependencies:
   flutter_test:

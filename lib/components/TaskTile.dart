@@ -97,6 +97,7 @@ class TaskTileState extends State<TaskTile> {
           title: task.title,
           description: task.description,
           owner: task.owner,
+          due: task.due
         ));
   }
 }

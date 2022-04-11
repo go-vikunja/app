@@ -1,4 +1,5 @@
 import 'dart:developer';
+import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/models/task.dart';
@@ -22,16 +23,20 @@ class _TaskEditPageState extends State<TaskEditPage> {
   String _title, _description;
   bool _done;
   bool changed = false;
+  DateTime _due;
+  TimeOfDay _temp_due_tod;
   TextEditingController titleController = TextEditingController();
   TextEditingController descriptionController = TextEditingController();
 
   @override
   void initState() {
-    titleController.text = widget.task.title;
+    log("In init state: " + widget.task.due.toIso8601String());
+      titleController.text = widget.task.title;
     descriptionController.text = widget.task.description;
     if(widget.task.done == null)
       widget.task.done = false;
     _done = widget.task.done;
+    _due = widget.task.due;
     super.initState();
   }
 
@@ -105,6 +110,20 @@ class _TaskEditPageState extends State<TaskEditPage> {
                             });
                           }),
                   ),
+                  Padding(
+                    padding: EdgeInsets.symmetric(vertical: 10),
+                    child: Row(
+                      children: [
+                        Text(DateFormat('dd/MM/yy hh:mm a').format(_due).toString()),
+                        Expanded(
+                          child: Padding(
+                            padding: EdgeInsets.fromLTRB(10, 0, 10, 0),
+                              child: FancyButton(
+                            child: const VikunjaButtonText("Pick Due Date"),
+                            onPressed: () => _showDatePicker(context),
+                      )))],
+                    )
+                  ),
                   Builder(
                       builder: (context) => Padding(
                           padding: EdgeInsets.symmetric(vertical: 10.0),
@@ -129,12 +148,34 @@ class _TaskEditPageState extends State<TaskEditPage> {
     );
   }
 
+  _showDatePicker(context) async {
+    DateTime date = await showDialog(
+        context: context,
+        builder: (_) => DatePickerDialog(
+          initialDate: _due,
+          firstDate: DateTime(0),
+          lastDate: DateTime(9999),
+          initialCalendarMode: DatePickerMode.day,
+    ));
+    TimeOfDay time = await showDialog(
+            context: context,
+            builder: (_) => TimePickerDialog(
+                initialTime: TimeOfDay.fromDateTime(_due),
+            )
+        );
+    if(date != null && time != null)
+      setState(() {
+        _due = new DateTime(date.year,date.month, date.day,time.hour,time.minute);
+      });
+  }
+
   _saveTask(BuildContext context) async {
     setState(() => _loading = true);
     Task updatedTask = widget.task;
     updatedTask.title = _title;
     updatedTask.description = _description;
     updatedTask.done = _done;
+    updatedTask.due = _due.toUtc();
 
     VikunjaGlobal.of(context)
         .taskService
