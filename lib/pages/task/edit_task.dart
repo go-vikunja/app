@@ -22,16 +22,21 @@ class _TaskEditPageState extends State<TaskEditPage> {
   String _title, _description;
   bool _done;
   bool changed = false;
-  TextEditingController _title_controller = TextEditingController();
-  TextEditingController _description_controller = new TextEditingController();
+  TextEditingController titleController = TextEditingController();
+  TextEditingController descriptionController = TextEditingController();
 
+  @override
+  void initState() {
+    titleController.text = widget.task.title;
+    descriptionController.text = widget.task.description;
+    if(widget.task.done == null)
+      widget.task.done = false;
+    _done = widget.task.done;
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext ctx) {
-    _title_controller.text = (widget.task.title);
-    _description_controller.text = (widget.task.description);
-    if(widget.task.done == null)
-      widget.task.done = false;
     return new WillPopScope(onWillPop: () {
       if(changed) {
         return _showConfirmationDialog();
@@ -52,7 +57,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
                   Padding(
                     padding: EdgeInsets.symmetric(vertical: 10.0),
                     child: TextFormField(
-                      controller: _title_controller,
+                      controller: titleController,
                       maxLines: null,
                       keyboardType: TextInputType.multiline,
                       onSaved: (title) {_title = title; changed = true;},
@@ -71,7 +76,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
                   Padding(
                     padding: EdgeInsets.symmetric(vertical: 10.0),
                     child: TextFormField(
-                      controller: _description_controller,
+                      controller: descriptionController,
                       maxLines: null,
                       keyboardType: TextInputType.multiline,
                       onSaved: (description) {_description = description; changed = true;},
@@ -92,7 +97,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
                       child: CheckboxListTile(
                           controlAffinity: ListTileControlAffinity.leading,
                           title: const Text("Done"),
-                          value: _done ?? widget.task.done,
+                          value: _done,
                           onChanged: (done) {
                             setState(() {
                             _done = done;
