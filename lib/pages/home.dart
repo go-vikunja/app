@@ -84,7 +84,7 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
                         MaterialPageRoute(
                             builder: (context) => NamespaceEditPage(
                                   namespace: _currentNamespace,
-                                ))))
+                                ))).whenComplete(() => _loadNamespaces()))
               ],
       ),
       drawer: new Drawer(
