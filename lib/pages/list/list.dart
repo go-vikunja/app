@@ -50,7 +50,7 @@ class _ListPageState extends State<ListPage> {
                     MaterialPageRoute(
                         builder: (context) => ListEditPage(
                               list: _list,
-                            ))).whenComplete(() => setState(() =>_loadList()))
+                            ))).whenComplete(() {_loadList(); setState(() {});})
                 )
           ],
         ),
