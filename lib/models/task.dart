@@ -34,7 +34,7 @@ class Task {
         description = json['description'],
         title = json['title'],
         done = json['done'],
-        owner = User.fromJson(json['created_by']);
+        owner = json['created_by'] == null ? null : User.fromJson(json['created_by']);
 
   toJSON() => {
         'id': id,

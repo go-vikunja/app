@@ -50,7 +50,10 @@ class _ListPageState extends State<ListPage> {
                     MaterialPageRoute(
                         builder: (context) => ListEditPage(
                               list: _list,
-                            ))).whenComplete(() {_loadList(); setState(() {});})
+                            ))).whenComplete(() {
+                              _loadList();
+                              setState(() {});
+                            })
                 )
           ],
         ),
@@ -82,7 +85,7 @@ class _ListPageState extends State<ListPage> {
   TaskTile _buildTile(Task task) {
     // key: UniqueKey() seems like a weird workaround to fix the loading issue
     // is there a better way?
-    return TaskTile(key: UniqueKey(), task: task);
+    return TaskTile(key: UniqueKey(), task: task,onEdit: () => _loadList());
   }
 
   Future<void> _loadList() {

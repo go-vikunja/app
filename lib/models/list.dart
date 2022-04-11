@@ -20,7 +20,7 @@ class TaskList {
 
   TaskList.fromJson(Map<String, dynamic> json)
       : id = json['id'],
-        owner = User.fromJson(json['owner']),
+        owner = json['owner'] == null ? null :  User.fromJson(json['owner']),
         description = json['description'],
         title = json['title'],
         updated = DateTime.parse(json['updated']),

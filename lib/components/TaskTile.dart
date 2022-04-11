@@ -8,9 +8,10 @@ import 'package:vikunja_app/pages/task/edit_task.dart';
 
 class TaskTile extends StatefulWidget {
   final Task task;
+  final Function onEdit;
 
   const TaskTile(
-      {Key key, @required this.task})
+      {Key key, @required this.task, this.onEdit})
       : assert(task != null),
         super(key: key);
 /*
@@ -68,7 +69,10 @@ class TaskTileState extends State<TaskTile> {
                 MaterialPageRoute(
                     builder: (context) => TaskEditPage(
                       task: _currentTask,
-                    ))).whenComplete(() => setState((){}));
+                    ))).whenComplete(() {
+                      //setState((){});
+                      widget.onEdit();
+                    });
           }),
       onChanged: _change,
     );

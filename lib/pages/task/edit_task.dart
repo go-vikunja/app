@@ -140,6 +140,13 @@ class _TaskEditPageState extends State<TaskEditPage> {
                                 ? CircularProgressIndicator()
                                 : VikunjaButtonText('Save'),
                           ))),
+                  Builder(
+                      builder: (context) => Padding(
+                          padding: EdgeInsets.symmetric(vertical: 10.0),
+                          child: FancyButton(
+                            onPressed: () {_deleteTask(context);},
+                            child:  VikunjaButtonText('Delete'),
+                          ))),
                 ]),
           ),
         ),
@@ -167,6 +174,13 @@ class _TaskEditPageState extends State<TaskEditPage> {
       setState(() {
         _due = new DateTime(date.year,date.month, date.day,time.hour,time.minute);
       });
+  }
+
+  _deleteTask(BuildContext context) async {
+    await VikunjaGlobal.of(context).taskService.delete(widget.task.id).then(
+            (value) {
+              Navigator.pop(context);
+            });
   }
 
   _saveTask(BuildContext context) async {
