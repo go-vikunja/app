@@ -111,6 +111,8 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _loading = true);
     try {
       var vGlobal = VikunjaGlobal.of(context);
+      if(_server.endsWith("/"))
+        _server = _server.substring(0,_server.length-1);
       var newUser =
           await vGlobal.newUserService(_server).login(_username, _password);
       vGlobal.changeUser(newUser.user, token: newUser.token, base: _server);
