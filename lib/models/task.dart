@@ -8,6 +8,7 @@ class Task {
   String title, description;
   bool done;
   User owner;
+  bool loading = false;
 
   Task(
       {@required this.id,
@@ -18,7 +19,8 @@ class Task {
       @required this.title,
       this.description,
       @required this.done,
-      @required this.owner});
+      @required this.owner,
+      this.loading});
 
   Task.fromJson(Map<String, dynamic> json)
       : id = json['id'],

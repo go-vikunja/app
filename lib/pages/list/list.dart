@@ -32,8 +32,8 @@ class _ListPageState extends State<ListPage> {
 
   @override
   void didChangeDependencies() {
-    super.didChangeDependencies();
     _loadList();
+    super.didChangeDependencies();
   }
 
   @override
@@ -74,20 +74,15 @@ class _ListPageState extends State<ListPage> {
   }
 
   List<Widget> _listTasks() {
-    var tasks = (_list?.tasks?.map(_buildTile) ?? []).toList();
-    tasks.addAll(_loadingTasks.map(_buildLoadingTile));
+    var tasks = (_list.tasks.map(_buildTile) ?? []).toList();
+    //tasks.addAll(_loadingTasks.map(_buildLoadingTile));
     return tasks;
   }
 
   TaskTile _buildTile(Task task) {
-    return TaskTile(task: task, loading: false);
-  }
-
-  TaskTile _buildLoadingTile(Task task) {
-    return TaskTile(
-      task: task,
-      loading: true,
-    );
+    // key: UniqueKey() seems like a weird workaround to fix the loading issue
+    // is there a better way?
+    return TaskTile(key: UniqueKey(), task: task);
   }
 
   Future<void> _loadList() {
@@ -114,18 +109,14 @@ class _ListPageState extends State<ListPage> {
   _addItem(String name, BuildContext context) {
     var globalState = VikunjaGlobal.of(context);
     var newTask = Task(
-        id: null, title: name, owner: globalState.currentUser, done: false);
-    setState(() => _loadingTasks.add(newTask));
-    globalState.taskService.add(_list.id, newTask).then((task) {
-      setState(() {
-        _list.tasks.add(task);
+        id: null, title: name, owner: globalState.currentUser, done: false, loading: true);
+    setState(() => _list.tasks.add(newTask));
+    globalState.taskService.add(_list.id, newTask).then((_) {
+      _loadList().then((_) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('The task was added successfully!'),
+        ));
       });
-    }).then((_) {
-      _loadList();
-      setState(() => _loadingTasks.remove(newTask));
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('The task was added successfully!'),
-      ));
     });
   }
 }

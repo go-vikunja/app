@@ -8,31 +8,31 @@ import 'package:vikunja_app/pages/task/edit_task.dart';
 
 class TaskTile extends StatefulWidget {
   final Task task;
-  final VoidCallback onEdit;
-  final bool loading;
 
   const TaskTile(
-      {Key key, @required this.task, this.onEdit, this.loading = false})
+      {Key key, @required this.task})
       : assert(task != null),
         super(key: key);
-
+/*
   @override
   TaskTileState createState() {
     return new TaskTileState(this.task, this.loading);
   }
+
+ */
+@override
+  TaskTileState createState() => TaskTileState(this.task);
 }
 
 class TaskTileState extends State<TaskTile> {
-  bool _loading;
   Task _currentTask;
 
-  TaskTileState(this._currentTask, this._loading)
-      : assert(_currentTask != null),
-        assert(_loading != null);
+  TaskTileState(this._currentTask)
+      : assert(_currentTask != null);
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
+    if (_currentTask.loading) {
       return ListTile(
         leading: Padding(
           padding: const EdgeInsets.all(8.0),
@@ -49,11 +49,7 @@ class TaskTileState extends State<TaskTile> {
                 ? null
                 : Text(_currentTask.description),
         trailing: IconButton(
-            icon: Icon(Icons.settings),
-            onPressed:  () {
-              // we cannot edit a task if it is still loading
-              null;
-            }
+            icon: Icon(Icons.settings), onPressed: () {  },
             ),
       );
     }
@@ -80,12 +76,12 @@ class TaskTileState extends State<TaskTile> {
 
   void _change(bool value) async {
     setState(() {
-      this._loading = true;
+      this._currentTask.loading = true;
     });
     Task newTask = await _updateTask(_currentTask, value);
     setState(() {
       this._currentTask = newTask;
-      this._loading = false;
+      this._currentTask.loading = false;
     });
   }
 
