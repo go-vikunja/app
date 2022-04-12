@@ -124,7 +124,7 @@ class _LoginPageState extends State<LoginPage> {
                     'Login failed! Please check your server url and credentials. ' +
                         ex.toString()),
                 actions: <Widget>[
-                  FlatButton(
+                  TextButton(
                       onPressed: () => Navigator.pop(context),
                       child: const Text('Close'))
                 ],

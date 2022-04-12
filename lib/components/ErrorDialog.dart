@@ -10,7 +10,7 @@ class ErrorDialog extends StatelessWidget {
     return AlertDialog(
       content: Text(error.toString()),
       actions: <Widget>[
-        FlatButton(
+        TextButton(
           child: Text('Close'),
           onPressed: () => Navigator.of(context).maybePop(),
         )

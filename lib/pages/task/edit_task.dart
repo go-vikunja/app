@@ -24,7 +24,6 @@ class _TaskEditPageState extends State<TaskEditPage> {
   bool _done;
   bool changed = false;
   DateTime _due;
-  TimeOfDay _temp_due_tod;
   TextEditingController titleController = TextEditingController();
   TextEditingController descriptionController = TextEditingController();
 
