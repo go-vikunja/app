@@ -1,10 +1,7 @@
 import 'dart:async';
-import 'dart:developer';
 
-import 'package:flutter/material.dart';
 import 'package:vikunja_app/api/client.dart';
 import 'package:vikunja_app/api/service.dart';
-import 'package:vikunja_app/models/list.dart';
 import 'package:vikunja_app/models/task.dart';
 import 'package:vikunja_app/service/services.dart';
 

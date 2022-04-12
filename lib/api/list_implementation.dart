@@ -1,12 +1,14 @@
 import 'dart:async';
 
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:vikunja_app/api/client.dart';
 import 'package:vikunja_app/api/service.dart';
 import 'package:vikunja_app/models/list.dart';
 import 'package:vikunja_app/service/services.dart';
 
 class ListAPIService extends APIService implements ListService {
-  ListAPIService(Client client) : super(client);
+  FlutterSecureStorage _storage;
+  ListAPIService(Client client, FlutterSecureStorage storage) : _storage = storage, super(client);
 
   @override
   Future<TaskList> create(namespaceId, TaskList tl) {
@@ -48,5 +50,23 @@ class ListAPIService extends APIService implements ListService {
     return client
         .post('/lists/${tl.id}', body: tl.toJSON())
         .then((map) => TaskList.fromJson(map));
+  }
+
+  @override
+  Future<String> getDisplayDoneTasks(int listId) {
+    return _storage.read(key: "display_done_tasks_list_$listId").then((value)
+    {
+      if(value == null) {
+        // TODO: implement default value
+        setDisplayDoneTasks(listId, "1");
+        return Future.value("1");
+      }
+      return value;
+    });
+  }
+
+  @override
+  void setDisplayDoneTasks(int listId, String value) {
+    _storage.write(key: "display_done_tasks_list_$listId", value: value);
   }
 }

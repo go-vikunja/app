@@ -115,6 +115,17 @@ class MockedListService implements ListService {
       throw Exception('TaskList ${tl.id} does not exists');
     return Future.value(_lists[tl.id] = tl);
   }
+
+  @override
+  Future<String> getDisplayDoneTasks(int listId) {
+    // TODO: implement getDisplayDoneTasks
+    throw UnimplementedError();
+  }
+
+  @override
+  void setDisplayDoneTasks(int listId, String value) {
+    // TODO: implement setDisplayDoneTasks
+  }
 }
 
 class MockedTaskService implements TaskService {
@@ -143,6 +154,12 @@ class MockedTaskService implements TaskService {
     _tasks[id] = task;
     _lists[listId].tasks.add(task);
     return Future.value(task);
+  }
+
+  @override
+  Future<List<Task>> get(int taskId) {
+    // TODO: implement get
+    throw UnimplementedError();
   }
 }
 

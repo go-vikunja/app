@@ -20,9 +20,12 @@ abstract class ListService {
   Future<TaskList> create(int namespaceId, TaskList tl);
   Future<TaskList> update(TaskList tl);
   Future delete(int listId);
+  Future<String> getDisplayDoneTasks(int listId);
+  void setDisplayDoneTasks(int listId, String value);
 }
 
 abstract class TaskService {
+  Future<List<Task>> get(int taskId);
   Future<Task> update(Task task);
   Future delete(int taskId);
   Future<Task> add(int listId, Task task);

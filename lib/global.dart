@@ -43,7 +43,7 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
 
   TaskService get taskService => new TaskAPIService(client);
 
-  ListService get listService => new ListAPIService(client);
+  ListService get listService => new ListAPIService(client, _storage);
 
   @override
   void initState() {
@@ -74,14 +74,6 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
       _client = Client(token, base);
       _loading = false;
     });
-  }
-
-  void setSetting(String key, String value) async{
-    await _storage.write(key: key, value: value);
-  }
-
-  Future<String> getSetting(String key) async {
-    return _storage.read(key: key);
   }
 
 

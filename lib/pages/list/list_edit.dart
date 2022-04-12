@@ -19,32 +19,22 @@ class _ListEditPageState extends State<ListEditPage> {
   final _formKey = GlobalKey<FormState>();
   bool _loading = false;
   String _title, _description;
-  Future<String> display_done_tasks;
-  bool display_bool;
-  int list_id;
+  bool displayDoneTasks;
+  int listId;
 
   @override
   void initState(){
-    list_id = widget.list.id;
+    listId = widget.list.id;
     super.initState();
-  }
-
-  Future<String> updateDisplayDoneTasks() async {
-    display_done_tasks = VikunjaGlobal.of(context).getSetting("display_done_tasks_list_$list_id");
-    display_done_tasks.then((value) {
-      if(value == null) {
-        VikunjaGlobal.of(context).setSetting("display_done_tasks_list_$list_id", "1");
-        updateDisplayDoneTasks();
-      }
-    });
-    return display_done_tasks;
   }
 
   @override
   Widget build(BuildContext ctx) {
-    if(display_bool == null)
-      updateDisplayDoneTasks().then(
-              (value) => setState(() => display_bool = value == "1"));
+    if(displayDoneTasks == null)
+      VikunjaGlobal.of(context).listService.getDisplayDoneTasks(listId).then(
+              (value) => setState(() => displayDoneTasks = value == "1"));
+    else
+      log("Display_bool: " + displayDoneTasks?.toString());
     return Scaffold(
       appBar: AppBar(
         title: Text('Edit List'),
@@ -96,17 +86,13 @@ class _ListEditPageState extends State<ListEditPage> {
                   ),
                   Padding(
                     padding: EdgeInsets.symmetric(vertical: 10.0),
-                    child: FutureBuilder<String>(
-                      future: display_done_tasks,
-                    builder: (context, snapshot) =>
-                    snapshot.hasData ?
+                    child: displayDoneTasks != null ?
                         CheckboxListTile(
-                          value:  display_bool,
+                          value:  displayDoneTasks,
                           title: Text("Show done tasks"),
                           onChanged: (value) {
-                            VikunjaGlobal.of(context).setSetting("display_done_tasks_list_$list_id", value == false ? "0" : "1");
-                            //updateDisplayDoneTasks().then((value) =>
-                            setState(() =>  display_bool = value);
+                            VikunjaGlobal.of(context).listService.setDisplayDoneTasks(listId, value == false ? "0" : "1");
+                            setState(() =>  displayDoneTasks = value);
                             },
                         )
                         : ListTile(
@@ -122,9 +108,7 @@ class _ListEditPageState extends State<ListEditPage> {
                         ),
                       ),
                       title: Text("Show done task"),
-                    )
-                    )
-                    ,),
+                    ),),
                   Builder(
                       builder: (context) => Padding(
                           padding: EdgeInsets.symmetric(vertical: 10.0),
