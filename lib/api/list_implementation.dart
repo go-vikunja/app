@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:vikunja_app/api/client.dart';
@@ -41,6 +42,12 @@ class ListAPIService extends APIService implements ListService {
 
   @override
   Future<List<TaskList>> getByNamespace(int namespaceId) {
+    // TODO there needs to be a better way for this. /namespaces/-2/lists should
+    // return favorite lists
+    if(namespaceId == -2) {
+      // Favourites.
+      return getAll().then((value) {value.removeWhere((element) => !element.isFavorite); return value;});
+    }
     return client.get('/namespaces/$namespaceId/lists').then(
         (list) => convertList(list, (result) => TaskList.fromJson(result)));
   }

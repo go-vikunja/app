@@ -8,6 +8,7 @@ class TaskList {
   final User owner;
   final DateTime created, updated;
   final List<Task> tasks;
+  final bool isFavorite;
 
   TaskList(
       {@required this.id,
@@ -16,7 +17,8 @@ class TaskList {
       this.owner,
       this.created,
       this.updated,
-      this.tasks});
+      this.tasks,
+      this.isFavorite});
 
   TaskList.fromJson(Map<String, dynamic> json)
       : id = json['id'],
@@ -25,6 +27,7 @@ class TaskList {
         title = json['title'],
         updated = DateTime.parse(json['updated']),
         created = DateTime.parse(json['created']),
+        isFavorite = json['is_favorite'],
         tasks = (json['tasks'] == null ? [] : json['tasks'] as List<dynamic>)
             ?.map((taskJson) => Task.fromJson(taskJson))
             ?.toList();
