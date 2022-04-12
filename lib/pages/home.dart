@@ -10,6 +10,7 @@ import 'package:vikunja_app/pages/namespace/namespace_edit.dart';
 import 'package:vikunja_app/pages/placeholder.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/models/namespace.dart';
+import 'package:vikunja_app/pages/settings.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -64,6 +65,13 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
           VikunjaGlobal.of(context).logoutUser(context);
         },
       ),
+      ListTile(
+        title: Text('Settings'),
+        leading: Icon(Icons.settings),
+        onTap: () {
+          Navigator.push(context, MaterialPageRoute(builder: (context) => SettingsPage()));
+        },
+      )
     ]);
   }
 

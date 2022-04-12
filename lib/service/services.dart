@@ -22,6 +22,8 @@ abstract class ListService {
   Future delete(int listId);
   Future<String> getDisplayDoneTasks(int listId);
   void setDisplayDoneTasks(int listId, String value);
+  Future<String> getDefaultList();
+  void setDefaultList(int listId);
 }
 
 abstract class TaskService {
