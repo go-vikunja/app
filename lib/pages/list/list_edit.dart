@@ -1,3 +1,5 @@
+import 'dart:ffi';
+import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/models/list.dart';
@@ -17,9 +19,32 @@ class _ListEditPageState extends State<ListEditPage> {
   final _formKey = GlobalKey<FormState>();
   bool _loading = false;
   String _title, _description;
+  Future<String> display_done_tasks;
+  bool display_bool;
+  int list_id;
+
+  @override
+  void initState(){
+    list_id = widget.list.id;
+    super.initState();
+  }
+
+  Future<String> updateDisplayDoneTasks() async {
+    display_done_tasks = VikunjaGlobal.of(context).getSetting("display_done_tasks_list_$list_id");
+    display_done_tasks.then((value) {
+      if(value == null) {
+        VikunjaGlobal.of(context).setSetting("display_done_tasks_list_$list_id", "1");
+        updateDisplayDoneTasks();
+      }
+    });
+    return display_done_tasks;
+  }
 
   @override
   Widget build(BuildContext ctx) {
+    if(display_bool == null)
+      updateDisplayDoneTasks().then(
+              (value) => setState(() => display_bool = value == "1"));
     return Scaffold(
       appBar: AppBar(
         title: Text('Edit List'),
@@ -69,6 +94,37 @@ class _ListEditPageState extends State<ListEditPage> {
                       ),
                     ),
                   ),
+                  Padding(
+                    padding: EdgeInsets.symmetric(vertical: 10.0),
+                    child: FutureBuilder<String>(
+                      future: display_done_tasks,
+                    builder: (context, snapshot) =>
+                    snapshot.hasData ?
+                        CheckboxListTile(
+                          value:  display_bool,
+                          title: Text("Show done tasks"),
+                          onChanged: (value) {
+                            VikunjaGlobal.of(context).setSetting("display_done_tasks_list_$list_id", value == false ? "0" : "1");
+                            //updateDisplayDoneTasks().then((value) =>
+                            setState(() =>  display_bool = value);
+                            },
+                        )
+                        : ListTile(
+                      trailing:
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: SizedBox(
+                            height: Checkbox.width,
+                            width: Checkbox.width,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.0,
+                            )
+                        ),
+                      ),
+                      title: Text("Show done task"),
+                    )
+                    )
+                    ,),
                   Builder(
                       builder: (context) => Padding(
                           padding: EdgeInsets.symmetric(vertical: 10.0),

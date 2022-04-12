@@ -70,7 +70,6 @@ class TaskTileState extends State<TaskTile> {
                     builder: (context) => TaskEditPage(
                       task: _currentTask,
                     ))).whenComplete(() {
-                      //setState((){});
                       widget.onEdit();
                     });
           }),
@@ -87,6 +86,7 @@ class TaskTileState extends State<TaskTile> {
       this._currentTask = newTask;
       this._currentTask.loading = false;
     });
+    widget.onEdit();
   }
 
   Future<Task> _updateTask(Task task, bool checked) {

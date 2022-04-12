@@ -76,6 +76,15 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
     });
   }
 
+  void setSetting(String key, String value) async{
+    await _storage.write(key: key, value: value);
+  }
+
+  Future<String> getSetting(String key) async {
+    return _storage.read(key: key);
+  }
+
+
   void logoutUser(BuildContext context) {
     _storage.deleteAll().then((_) {
       Navigator.pop(context);

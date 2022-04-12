@@ -22,12 +22,24 @@ class _ListPageState extends State<ListPage> {
   TaskList _list;
   List<Task> _loadingTasks = [];
   bool _loading = true;
+  Future<String> display_done_tasks;
+  bool bool_display_done;
+  int list_id;
 
   @override
   void initState() {
     _list = TaskList(
         id: widget.taskList.id, title: widget.taskList.title, tasks: []);
+    list_id = _list.id;
+    Future.delayed(Duration.zero, (){
+      updateDisplayDoneTasks().then((value) => setState((){bool_display_done = value == "1";}));
+    });
     super.initState();
+  }
+
+  Future<String> updateDisplayDoneTasks() async {
+    display_done_tasks = VikunjaGlobal.of(context).getSetting("display_done_tasks_list_$list_id");
+    return display_done_tasks;
   }
 
   @override
@@ -51,8 +63,12 @@ class _ListPageState extends State<ListPage> {
                         builder: (context) => ListEditPage(
                               list: _list,
                             ))).whenComplete(() {
-                              _loadList();
-                              setState(() {});
+                              setState(() {this._loading = true;});
+                              updateDisplayDoneTasks().then((value) {
+                                bool_display_done = value == "1";
+                                _loadList();
+                                setState(() => this._loading = false);
+                              });
                             })
                 )
           ],
@@ -95,6 +111,8 @@ class _ListPageState extends State<ListPage> {
         .then((list) {
       setState(() {
         _loading = false;
+        if(bool_display_done != null && !bool_display_done)
+          list.tasks.removeWhere((element) => element.done);
         _list = list;
       });
     });
