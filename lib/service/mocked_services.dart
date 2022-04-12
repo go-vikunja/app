@@ -126,6 +126,17 @@ class MockedListService implements ListService {
   void setDisplayDoneTasks(int listId, String value) {
     // TODO: implement setDisplayDoneTasks
   }
+
+  @override
+  Future<String> getDefaultList() {
+    // TODO: implement getDefaultList
+    throw UnimplementedError();
+  }
+
+  @override
+  void setDefaultList(int listId) {
+    // TODO: implement setDefaultList
+  }
 }
 
 class MockedTaskService implements TaskService {

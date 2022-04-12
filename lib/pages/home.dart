@@ -7,7 +7,7 @@ import 'package:vikunja_app/components/AddDialog.dart';
 import 'package:vikunja_app/components/ErrorDialog.dart';
 import 'package:vikunja_app/pages/namespace/namespace.dart';
 import 'package:vikunja_app/pages/namespace/namespace_edit.dart';
-import 'package:vikunja_app/pages/placeholder.dart';
+import 'package:vikunja_app/pages/landing_page.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/models/namespace.dart';
 import 'package:vikunja_app/pages/settings.dart';
@@ -97,7 +97,7 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
       ),
       drawer: new Drawer(
           child: new Column(children: <Widget>[
-        new UserAccountsDrawerHeader(
+            new UserAccountsDrawerHeader(
           accountEmail:
               currentUser?.email == null ? null : Text(currentUser.email),
           accountName:
@@ -125,6 +125,18 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
                 child: _showUserDetails
                     ? _userDetailsWidget(context)
                     : _namespacesWidget())),
+            new Align(
+              alignment: FractionalOffset.bottomLeft,
+              child: Builder(
+                builder: (context) => ListTile(
+                  leading: Icon(Icons.house),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    setState(() => _selectedDrawerIndex = -1);
+                  },
+                ),
+              ),
+            ),
         new Align(
           alignment: FractionalOffset.bottomCenter,
           child: Builder(
@@ -142,7 +154,7 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
 
   _getDrawerItemWidget(int pos) {
     if (pos == -1) {
-      return new PlaceholderPage();
+      return new LandingPage();
     }
     return new NamespacePage(namespace: _namespaces[pos]);
   }
