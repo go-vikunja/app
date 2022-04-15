@@ -9,9 +9,10 @@ import 'package:vikunja_app/pages/task/edit_task.dart';
 class TaskTile extends StatefulWidget {
   final Task task;
   final Function onEdit;
+  final bool showInfo;
 
   const TaskTile(
-      {Key key, @required this.task, this.onEdit})
+      {Key key, @required this.task, this.onEdit, this.showInfo = false})
       : assert(task != null),
         super(key: key);
 /*
@@ -55,11 +56,21 @@ class TaskTileState extends State<TaskTile> {
       );
     }
     return CheckboxListTile(
-      title: Text(_currentTask.title),
+      title: widget.showInfo ?
+          RichText(
+            text: TextSpan(
+              text: null,
+              children: <TextSpan> [
+                TextSpan(text: widget.task.list.title+" - ", style: TextStyle(fontWeight: FontWeight.w100)),
+                TextSpan(text: widget.task.title),
+              ]
+            )
+          ) : Text(_currentTask.title),
       controlAffinity: ListTileControlAffinity.leading,
       value: _currentTask.done ?? false,
-      subtitle:
-          _currentTask.description == null || _currentTask.description.isEmpty
+      subtitle: widget.showInfo && _currentTask.due.year > 2 ?
+          Text("Due in " + _currentTask.due.difference(DateTime.now()).inDays.toString() + " days.")
+          : _currentTask.description == null || _currentTask.description.isEmpty
               ? null
               : Text(_currentTask.description),
       secondary:
