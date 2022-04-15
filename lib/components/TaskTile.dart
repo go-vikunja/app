@@ -61,7 +61,7 @@ class TaskTileState extends State<TaskTile> {
             text: TextSpan(
               text: null,
               children: <TextSpan> [
-                TextSpan(text: widget.task.list.title+" - ", style: TextStyle(fontWeight: FontWeight.w100)),
+                TextSpan(text: widget.task.list.title+" - ", style: TextStyle(color: Colors.grey)),
                 TextSpan(text: widget.task.title),
               ]
             )
