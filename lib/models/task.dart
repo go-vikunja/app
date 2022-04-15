@@ -47,7 +47,7 @@ class Task {
         'created': created?.toIso8601String(),
         'reminder_dates':
             reminders?.map((date) => date.toIso8601String())?.toList(),
-        'due_date': due?.toIso8601String(),
+        'due_date': due.toUtc()?.toIso8601String(),
         'description': description,
         'title': title,
         'done': done ?? false,

@@ -72,16 +72,14 @@ class LandingPageState extends State<LandingPage> {
     showDialog(
         context: context,
         builder: (_) => AddDialog(
-            onAdd: (name) => _addItem(name, context),
+            onAddTask: (task) => _addTask(task, context),
             decoration: new InputDecoration(
                 labelText: 'Task Name', hintText: 'eg. Milk')));
   }
 
-  _addItem(String name, BuildContext context) {
+  _addTask(Task task, BuildContext context) {
     var globalState = VikunjaGlobal.of(context);
-    var newTask = Task(
-        id: null, title: name, owner: globalState.currentUser, done: false, loading: true);
-    globalState.taskService.add(defaultList, newTask).then((_) {
+    globalState.taskService.add(defaultList, task).then((_) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('The task was added successfully!'),
         ));

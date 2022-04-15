@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/models/task.dart';
 import 'package:vikunja_app/pages/task/edit_task.dart';
+import 'package:vikunja_app/utils/misc.dart';
 
 class TaskTile extends StatefulWidget {
   final Task task;
@@ -34,6 +35,7 @@ class TaskTileState extends State<TaskTile> {
 
   @override
   Widget build(BuildContext context) {
+    Duration durationUntilDue = _currentTask.due.difference(DateTime.now());
     if (_currentTask.loading) {
       return ListTile(
         leading: Padding(
@@ -69,7 +71,7 @@ class TaskTileState extends State<TaskTile> {
       controlAffinity: ListTileControlAffinity.leading,
       value: _currentTask.done ?? false,
       subtitle: widget.showInfo && _currentTask.due.year > 2 ?
-          Text("Due in " + _currentTask.due.difference(DateTime.now()).inDays.toString() + " days.")
+          Text("Due in " + durationToHumanReadable(durationUntilDue),style: TextStyle(color: durationUntilDue.isNegative ? Colors.red : null),)
           : _currentTask.description == null || _currentTask.description.isEmpty
               ? null
               : Text(_currentTask.description),

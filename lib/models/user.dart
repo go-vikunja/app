@@ -15,9 +15,9 @@ class User {
 
   String avatarUrl(BuildContext context) {
     return VikunjaGlobal.of(context).client.base +
-        "/" +
-        this.username +
-        "/avatar";
+        "/avatar/ " +
+        this.username+
+    "?size=50";
   }
 }
 

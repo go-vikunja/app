@@ -62,7 +62,6 @@ class TaskServiceOptions {
 
     if(result.startsWith('&'))
       result.substring(1);
-    log(result);
     return result;
   }
 }
