@@ -158,7 +158,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
     DateTime date = await showDialog(
         context: context,
         builder: (_) => DatePickerDialog(
-          initialDate: _due,
+          initialDate: _due.year > 1 ? _due : DateTime.now(),
           firstDate: DateTime(0),
           lastDate: DateTime(9999),
           initialCalendarMode: DatePickerMode.day,

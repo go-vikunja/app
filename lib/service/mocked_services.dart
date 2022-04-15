@@ -172,6 +172,12 @@ class MockedTaskService implements TaskService {
     // TODO: implement get
     throw UnimplementedError();
   }
+
+  @override
+  Future<List<Task>> getByOptions(TaskServiceOptions options) {
+    // TODO: implement getByOptions
+    throw UnimplementedError();
+  }
 }
 
 class MockedUserService implements UserService {

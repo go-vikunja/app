@@ -45,6 +45,8 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
 
   ListService get listService => new ListAPIService(client, _storage);
 
+  TaskServiceOptions get taskServiceOptions => new TaskServiceOptions();
+
   @override
   void initState() {
     super.initState();
