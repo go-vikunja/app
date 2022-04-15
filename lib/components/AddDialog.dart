@@ -22,10 +22,10 @@ class AddDialog extends StatefulWidget {
 
 class AddDialogState extends State<AddDialog> {
   NewTaskDue newTaskDue = NewTaskDue.day;
+  var textController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
-    var textController = TextEditingController();
     return new AlertDialog(
       contentPadding: const EdgeInsets.all(16.0),
       content: new Column(
