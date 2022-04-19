@@ -1,13 +1,20 @@
+//import 'dart:math';
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:vikunja_app/api/client.dart';
 import 'package:vikunja_app/api/list_implementation.dart';
 import 'package:vikunja_app/api/namespace_implementation.dart';
 import 'package:vikunja_app/api/task_implementation.dart';
 import 'package:vikunja_app/api/user_implementation.dart';
+import 'package:vikunja_app/managers/notifications.dart';
 import 'package:vikunja_app/managers/user.dart';
 import 'package:vikunja_app/models/user.dart';
 import 'package:vikunja_app/service/services.dart';
+import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 
 class VikunjaGlobal extends StatefulWidget {
   final Widget child;
@@ -45,12 +52,21 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
 
   ListService get listService => new ListAPIService(client, _storage);
 
+  FlutterLocalNotificationsPlugin get notificationsPlugin => new FlutterLocalNotificationsPlugin();
+
   TaskServiceOptions get taskServiceOptions => new TaskServiceOptions();
+
+  NotificationClass get notifications => new NotificationClass();
+
+  NotificationAppLaunchDetails notifLaunch;
+
 
   @override
   void initState() {
     super.initState();
     _loadCurrentUser();
+    tz.initializeTimeZones();
+    notificationInitializer();
   }
 
   void changeUser(User newUser, {String token, String base}) async {
@@ -75,6 +91,27 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
       _currentUser = newUser;
       _client = Client(token, base);
       _loading = false;
+    });
+  }
+
+  void notificationInitializer() async {
+    notifLaunch = await notificationsPlugin.getNotificationAppLaunchDetails();
+    await notifications.initNotifications(notificationsPlugin);
+    requestIOSPermissions(notificationsPlugin);
+
+  }
+
+  void scheduleDueNotifications() {
+    notificationsPlugin.cancelAll().then((value) {
+      taskService.getAll().then((value) =>
+          value.forEach((task) {
+            if(task.reminders != null)
+              task.reminders.forEach((reminder) {
+                scheduleNotification("This is your reminder for '" + task.title + "'", task.description, notificationsPlugin, reminder);
+              });
+            scheduleNotification("The task '" + task.title + "' is due.", task.description, notificationsPlugin, task.due);
+          })
+      );
     });
   }
 
@@ -137,6 +174,9 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
   Widget build(BuildContext context) {
     if (_loading) {
       return new Center(child: new CircularProgressIndicator());
+    }
+    if(client != null) {
+      scheduleDueNotifications();
     }
     return new _VikunjaGlobalInherited(
       data: this,

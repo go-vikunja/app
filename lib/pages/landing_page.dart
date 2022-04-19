@@ -4,6 +4,8 @@ import 'package:vikunja_app/global.dart';
 import '../components/AddDialog.dart';
 import '../components/TaskTile.dart';
 import '../models/task.dart';
+import '../managers/notifications.dart';
+import '../main.dart';
 
 class LandingPage extends StatefulWidget {
   @override
@@ -25,6 +27,7 @@ class LandingPageState extends State<LandingPage> {
   Widget build(BuildContext context) {
     if(_list == null)
       _loadList(context);
+    VikunjaGlobal.of(context).scheduleDueNotifications();
     return new Scaffold(
         body: new Column(
           mainAxisAlignment: MainAxisAlignment.start,

@@ -92,6 +92,7 @@ abstract class TaskService {
   Future<Task> update(Task task);
   Future delete(int taskId);
   Future<Task> add(int listId, Task task);
+  Future<List<Task>> getAll();
   Future<List<Task>> getByOptions(TaskServiceOptions options);
   }
 

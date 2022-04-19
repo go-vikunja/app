@@ -31,6 +31,13 @@ class TaskAPIService extends APIService implements TaskService {
         .post('/tasks/${task.id}', body: task.toJSON())
         .then((map) => Task.fromJson(map));
   }
+  
+  @override
+  Future<List<Task>> getAll() {
+    return client
+        .get('/tasks/all')
+        .then((value) => value.map<Task>((taskJson) => Task.fromJson(taskJson)).toList());
+  }
 
   @override
   Future<List<Task>> getByOptions(TaskServiceOptions options) {
