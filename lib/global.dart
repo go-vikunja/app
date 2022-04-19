@@ -109,7 +109,8 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
               task.reminders.forEach((reminder) {
                 scheduleNotification("This is your reminder for '" + task.title + "'", task.description, notificationsPlugin, reminder);
               });
-            scheduleNotification("The task '" + task.title + "' is due.", task.description, notificationsPlugin, task.due);
+            if(task.due != null)
+              scheduleNotification("The task '" + task.title + "' is due.", task.description, notificationsPlugin, task.due);
           })
       );
     });
