@@ -6,6 +6,9 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <!-- io.flutter.app.FlutterApplication is an android.app.Application that
          calls FlutterMain.startInitialization(this); in its onCreate method.
@@ -31,5 +34,16 @@
                 android:name="flutterEmbedding"
                 android:value="2" />
         </activity>
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
+        <!-- If you want your foreground service to be stopped if
+             your app is stopped, set android:stopWithTask to true.
+             See https://developer.android.com/reference/android/R.attr#stopWithTask -->
+        <service
+            android:name="com.dexterous.flutterlocalnotifications.ForegroundService"
+            android:exported="false"
+            android:stopWithTask="false"/>
     </application>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 </manifest>
