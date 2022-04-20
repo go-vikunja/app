@@ -5,6 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:vikunja_app/api/client.dart';
+import 'package:vikunja_app/api/label_task.dart';
+import 'package:vikunja_app/api/label_task_bulk.dart';
+import 'package:vikunja_app/api/labels.dart';
 import 'package:vikunja_app/api/list_implementation.dart';
 import 'package:vikunja_app/api/namespace_implementation.dart';
 import 'package:vikunja_app/api/task_implementation.dart';
@@ -26,7 +29,8 @@ class VikunjaGlobal extends StatefulWidget {
   VikunjaGlobalState createState() => VikunjaGlobalState();
 
   static VikunjaGlobalState of(BuildContext context) {
-    var widget = context.dependOnInheritedWidgetOfExactType<_VikunjaGlobalInherited>();
+    var widget =
+        context.dependOnInheritedWidgetOfExactType<_VikunjaGlobalInherited>();
     return widget.data;
   }
 }
@@ -60,6 +64,12 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
 
   NotificationAppLaunchDetails notifLaunch;
 
+  LabelService get labelService => new LabelAPIService(client);
+
+  LabelTaskService get labelTaskService => new LabelTaskAPIService(client);
+
+  LabelTaskBulkAPIService get labelTaskBulkService =>
+      new LabelTaskBulkAPIService(client);
 
   @override
   void initState() {
@@ -105,12 +115,12 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
     notificationsPlugin.cancelAll().then((value) {
       taskService.getAll().then((value) =>
           value.forEach((task) {
-            if(task.reminders != null)
-              task.reminders.forEach((reminder) {
+            if(task.reminderDates != null)
+              task.reminderDates.forEach((reminder) {
                 scheduleNotification("This is your reminder for '" + task.title + "'", task.description, notificationsPlugin, reminder);
               });
-            if(task.due != null)
-              scheduleNotification("The task '" + task.title + "' is due.", task.description, notificationsPlugin, task.due);
+            if(task.dueDate != null)
+              scheduleNotification("The task '" + task.title + "' is due.", task.description, notificationsPlugin, task.dueDate);
           })
       );
     });

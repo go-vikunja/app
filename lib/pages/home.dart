@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:after_layout/after_layout.dart';
 
@@ -11,10 +12,12 @@ import 'package:vikunja_app/pages/landing_page.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/models/namespace.dart';
 import 'package:vikunja_app/pages/settings.dart';
+import 'package:vikunja_app/pages/placeholder.dart';
+
 
 class HomePage extends StatefulWidget {
   @override
-  State<StatefulWidget> createState() => new HomePageState();
+  State<StatefulWidget> createState() => HomePageState();
 }
 
 class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {

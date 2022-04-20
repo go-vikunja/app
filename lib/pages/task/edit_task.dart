@@ -1,3 +1,4 @@
+/*
 import 'dart:developer';
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
@@ -29,13 +30,11 @@ class _TaskEditPageState extends State<TaskEditPage> {
 
   @override
   void initState() {
-    log("In init state: " + widget.task.due.toIso8601String());
+    log("In init state: " + widget.task.dueDate.toIso8601String());
       titleController.text = widget.task.title;
     descriptionController.text = widget.task.description;
-    if(widget.task.done == null)
-      widget.task.done = false;
     _done = widget.task.done;
-    _due = widget.task.due;
+    _due = widget.task.dueDate;
     super.initState();
   }
 
@@ -188,7 +187,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
     updatedTask.title = _title;
     updatedTask.description = _description;
     updatedTask.done = _done;
-    updatedTask.due = _due.toUtc();
+    updatedTask.dueDate = _due.toUtc();
 
     VikunjaGlobal.of(context)
         .taskService
@@ -248,3 +247,4 @@ class _TaskEditPageState extends State<TaskEditPage> {
     );
   }
 }
+*/

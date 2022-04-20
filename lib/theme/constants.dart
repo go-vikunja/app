@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 /////////
 // Colors
@@ -18,9 +19,15 @@ const vButtonTextColor = vWhite;
 const vButtonShadowDark = Color(0xFF0b2a4a);
 const vButtonShadow = Color(0xFFb2d9ff);
 
+const vLabelLight = Color(0xFFf2f2f2);
+const vLabelDark = Color(0xFF4a4a4a);
+const vLabelDefaultColor = vGreen;
+
 ///////////
 // Paddings
 ////////
 const vStandardVerticalPadding = EdgeInsets.symmetric(vertical: 5.0);
 const vStandardHorizontalPadding = EdgeInsets.symmetric(horizontal: 5.0);
 const vStandardPadding = EdgeInsets.symmetric(horizontal: 5.0, vertical: 5.0);
+
+var vDateFormatLong = DateFormat("EEEE, MMMM d, yyyy 'at' H:mm");

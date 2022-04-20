@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:vikunja_app/api/response.dart';
 import 'package:vikunja_app/models/list.dart';
 import 'package:vikunja_app/models/namespace.dart';
 import 'package:vikunja_app/models/task.dart';
@@ -39,7 +40,7 @@ var _tasks = {
   1: Task(
     id: 1,
     title: 'Task 1',
-    owner: _users[1],
+    createdBy: _users[1],
     updated: DateTime.now(),
     created: DateTime.now(),
     description: 'A descriptive task',
@@ -168,7 +169,14 @@ class MockedTaskService implements TaskService {
   }
 
   @override
-  Future<List<Task>> get(int taskId) {
+  Future<Response> getAllByList(int listId,
+      [Map<String, List<String>> queryParameters]) {
+    return Future.value(new Response(_tasks.values.toList(), 200, {}));
+  }
+
+  @override
+  int get maxPages => 1;
+  Future<Response> get(int taskId) {
     // TODO: implement get
     throw UnimplementedError();
   }

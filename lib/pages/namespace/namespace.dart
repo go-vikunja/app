@@ -1,13 +1,16 @@
 import 'dart:async';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:after_layout/after_layout.dart';
+import 'package:provider/provider.dart';
 
 import 'package:vikunja_app/components/AddDialog.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/models/list.dart';
 import 'package:vikunja_app/models/namespace.dart';
 import 'package:vikunja_app/pages/list/list.dart';
+import 'package:vikunja_app/stores/list_store.dart';
 
 class NamespacePage extends StatefulWidget {
   final Namespace namespace;
@@ -55,11 +58,11 @@ class _NamespacePageState extends State<NamespacePage>
                                           color: Colors.white, size: 36.0)),
                                 ),
                                 onDismissed: (direction) {
-                                  _removeList(ls).then((_) => ScaffoldMessenger.of(
-                                          context)
-                                      .showSnackBar(SnackBar(
-                                          content:
-                                              Text("${ls.title} removed"))));
+                                  _removeList(ls).then((_) =>
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(SnackBar(
+                                              content: Text(
+                                                  "${ls.title} removed"))));
                                 },
                               ))).toList(),
                     )
@@ -88,6 +91,7 @@ class _NamespacePageState extends State<NamespacePage>
   }
 
   Future<void> _loadLists() {
+    // FIXME: This is called even when the tasks on a list are loaded - which is not needed at all
     return VikunjaGlobal.of(context)
         .listService
         .getByNamespace(widget.namespace.id)
@@ -98,8 +102,15 @@ class _NamespacePageState extends State<NamespacePage>
   }
 
   _openList(BuildContext context, TaskList list) {
-    Navigator.of(context).push(
-        MaterialPageRoute(builder: (context) => ListPage(taskList: list)));
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (context) => ChangeNotifierProvider<ListProvider>(
+        create: (_) => new ListProvider(),
+        child: ListPage(
+          taskList: list,
+        ),
+      ),
+      // ListPage(taskList: list)
+    ));
   }
 
   _addListDialog(BuildContext context) {

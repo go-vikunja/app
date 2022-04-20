@@ -13,7 +13,7 @@ class UserAPIService extends APIService implements UserService {
     var token = await client.post('/login', body: {
       'username': username,
       'password': password
-    }).then((map) => map['token']);
+    }).then((response) => response.body['token']);
     return UserAPIService(Client(token, client.base))
         .getCurrentUser()
         .then((user) => UserTokenPair(user, token));
@@ -25,12 +25,12 @@ class UserAPIService extends APIService implements UserService {
       'username': username,
       'email': email,
       'password': password
-    }).then((resp) => resp['username']);
+    }).then((resp) => resp.body['username']);
     return login(newUser, password);
   }
 
   @override
   Future<User> getCurrentUser() {
-    return client.get('/user').then((map) => User.fromJson(map));
+    return client.get('/user').then((map) => User.fromJson(map.body));
   }
 }

@@ -113,7 +113,7 @@ class LandingPageState extends State<LandingPage> {
           .listService
           .getAll()
           .then((lists) {
-            taskList.forEach((task) {task.list = lists.firstWhere((element) => element.id == task.list_id);});
+            //taskList.forEach((task) {task.list = lists.firstWhere((element) => element.id == task.list_id);});
             setState(() {
               _list = taskList;
             });

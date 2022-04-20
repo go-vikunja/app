@@ -56,7 +56,7 @@ class AddDialogState extends State<AddDialog> {
             if (widget.onAdd != null && textController.text.isNotEmpty)
               widget.onAdd(textController.text);
             if(widget.onAddTask != null && textController.text.isNotEmpty)
-              widget.onAddTask(Task(id: null, title: textController.text, done: false, owner: null, due: DateTime.now().add(newTaskDueToDuration[newTaskDue])));
+              widget.onAddTask(Task(id: null, title: textController.text, done: false, createdBy: null, dueDate: DateTime.now().add(newTaskDueToDuration[newTaskDue])));
             Navigator.pop(context);
           },
         )
@@ -70,16 +70,5 @@ class AddDialogState extends State<AddDialog> {
       Checkbox(value: newTaskDue == thisNewTaskDue, onChanged: (value) { setState(() => newTaskDue = value ? thisNewTaskDue: newTaskDue);}, shape: CircleBorder(),),
       Text(name),
     ]);
-    /*Row(children: [
-    Checkbox(value: newTaskDue == NewTaskDue.week, onChanged: (value) { setState(() => newTaskDue = value ? NewTaskDue.week: newTaskDue);}, shape: CircleBorder(),),
-    Text("1 Week"),
-    ]),
-    Row(children: [
-    Checkbox(value: newTaskDue == NewTaskDue.month, onChanged: (value) { setState(() => newTaskDue = value ? NewTaskDue.month: newTaskDue);}, shape: CircleBorder(),),
-    Text("1 Month"),
-    ])
-    ];
-
-     */
   }
 }

@@ -2,13 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:vikunja_app/theme/constants.dart';
 
 ThemeData buildVikunjaTheme() => _buildVikunjaTheme(ThemeData.light());
-
-ThemeData buildVikunjaDarkTheme() {
-  ThemeData base = _buildVikunjaTheme(ThemeData.dark());
-  return base.copyWith(
-    accentColor: vWhite,
-  );
-}
+ThemeData buildVikunjaDarkTheme() => _buildVikunjaTheme(ThemeData.dark());
 
 ThemeData _buildVikunjaTheme(ThemeData base) {
   return base.copyWith(
@@ -27,12 +21,12 @@ ThemeData _buildVikunjaTheme(ThemeData base) {
       ),
     ),
     textTheme: base.textTheme.copyWith(
-      headline1: base.textTheme.headline1.copyWith(
-        fontFamily: 'Quicksand',
-      ),
-      subtitle1: base.textTheme.subtitle1.copyWith(
-        fontFamily: 'Quicksand',
-      ),
+//      headline: base.textTheme.headline.copyWith(
+//        fontFamily: 'Quicksand',
+//      ),
+//      title: base.textTheme.title.copyWith(
+//        fontFamily: 'Quicksand',
+//      ),
       button: base.textTheme.button.copyWith(
         color:
             vWhite, // This does not work, looks like a bug in Flutter: https://github.com/flutter/flutter/issues/19623

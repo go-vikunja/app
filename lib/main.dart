@@ -3,6 +3,7 @@ import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/pages/home.dart';
 import 'package:vikunja_app/pages/user/login.dart';
 import 'package:vikunja_app/theme/theme.dart';
+//import 'package:alice/alice.dart';
 
 void main() => runApp(VikunjaGlobal(
     child: new VikunjaApp(home: HomePage()),

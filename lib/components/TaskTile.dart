@@ -4,16 +4,19 @@ import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/models/task.dart';
-import 'package:vikunja_app/pages/task/edit_task.dart';
 import 'package:vikunja_app/utils/misc.dart';
+
+import '../pages/list/task_edit.dart';
 
 class TaskTile extends StatefulWidget {
   final Task task;
   final Function onEdit;
   final bool showInfo;
+  final bool loading;
+  final ValueSetter<bool> onMarkedAsDone;
 
   const TaskTile(
-      {Key key, @required this.task, this.onEdit, this.showInfo = false})
+      {Key key, @required this.task, this.onEdit, this.loading = false, this.showInfo = false, this.onMarkedAsDone})
       : assert(task != null),
         super(key: key);
 /*
@@ -35,7 +38,7 @@ class TaskTileState extends State<TaskTile> {
 
   @override
   Widget build(BuildContext context) {
-    Duration durationUntilDue = _currentTask.due.difference(DateTime.now());
+    Duration durationUntilDue = _currentTask.dueDate.difference(DateTime.now());
     if (_currentTask.loading) {
       return ListTile(
         leading: Padding(
@@ -63,14 +66,15 @@ class TaskTileState extends State<TaskTile> {
             text: TextSpan(
               text: null,
               children: <TextSpan> [
-                TextSpan(text: widget.task.list.title+" - ", style: TextStyle(color: Colors.grey)),
+                // TODO: get list name of task
+                //TextSpan(text: widget.task.list.title+" - ", style: TextStyle(color: Colors.grey)),
                 TextSpan(text: widget.task.title),
               ]
             )
           ) : Text(_currentTask.title),
       controlAffinity: ListTileControlAffinity.leading,
       value: _currentTask.done ?? false,
-      subtitle: widget.showInfo && _currentTask.due.year > 2 ?
+      subtitle: widget.showInfo && _currentTask.dueDate.year > 2 ?
           Text("Due in " + durationToHumanReadable(durationUntilDue),style: TextStyle(color: durationUntilDue.isNegative ? Colors.red : null),)
           : _currentTask.description == null || _currentTask.description.isEmpty
               ? null
@@ -109,8 +113,8 @@ class TaskTileState extends State<TaskTile> {
           done: checked,
           title: task.title,
           description: task.description,
-          owner: task.owner,
-          due: task.due
+          createdBy: task.createdBy,
+          dueDate: task.dueDate
         ));
   }
 }
