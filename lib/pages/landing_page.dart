@@ -89,6 +89,8 @@ class LandingPageState extends State<LandingPage> {
 
   Future<void> _loadList(BuildContext context) {
     _list = [];
+    // FIXME: loads and reschedules tasks each time list is updated
+    VikunjaGlobal.of(context).scheduleDueNotifications();
     return VikunjaGlobal.of(context)
         .taskService
         .getByOptions(VikunjaGlobal.of(context).taskServiceOptions)
