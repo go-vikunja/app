@@ -4,8 +4,6 @@ import 'package:vikunja_app/global.dart';
 import '../components/AddDialog.dart';
 import '../components/TaskTile.dart';
 import '../models/task.dart';
-import '../managers/notifications.dart';
-import '../main.dart';
 
 class LandingPage extends StatefulWidget {
   @override
@@ -29,29 +27,15 @@ class LandingPageState extends State<LandingPage> {
       _loadList(context);
     VikunjaGlobal.of(context).scheduleDueNotifications();
     return new Scaffold(
-        body: new Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: <Widget>[
-            new Container(
-              padding: EdgeInsets.only(top: 32.0),
-              child: new Text(
-                // VikunjaGlobal.of(context).taskServiceOptions.getOptions()
-                // TaskServiceOptionSortBy.id.name
-                'Welcome to Vikunja',
-                style: Theme.of(context).textTheme.headline4,
-              ),
-            ),
-            //new Text('Please select a namespace by tapping the  ☰  icon.',
-            //    style: Theme.of(context).textTheme.subtitle1),
-            _list != null ? new Expanded(child: ListView(
+        body: _list != null ? RefreshIndicator(child: ListView(
               scrollDirection: Axis.vertical,
               shrinkWrap: true,
               padding: EdgeInsets.symmetric(vertical: 8.0),
               children: ListTile.divideTiles(
                   context: context, tiles: _listTasks(context)).toList(),
-            )) : new Center(child: CircularProgressIndicator())
-          ],
-        ),
+            ), onRefresh: () => _loadList(context),)
+
+            : new Center(child: CircularProgressIndicator()),
         floatingActionButton: Builder(
             builder: (context) =>
                 defaultList == null ?
