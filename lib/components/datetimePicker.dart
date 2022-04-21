@@ -47,7 +47,7 @@ class VikunjaDateTimePicker extends StatelessWidget {
     );
   }
 
-  _showDatePickerFuture(context, currentValue) {
+  Future<DateTime> _showDatePickerFuture(context, currentValue) {
     return showDialog(
         context: context,
         builder: (_) => DatePickerDialog(
@@ -58,6 +58,8 @@ class VikunjaDateTimePicker extends StatelessWidget {
           lastDate: DateTime(2100),
           initialCalendarMode: DatePickerMode.day,
         )).then((date) {
+          if(date == null)
+            return null;
           return showDialog(
           context: context,
           builder: (_) =>
@@ -65,7 +67,9 @@ class VikunjaDateTimePicker extends StatelessWidget {
                 initialTime: TimeOfDay.fromDateTime(currentValue),
               )
       ).then((time) {
-            return DateTime(date.year,date.month, date.day,time.hour,time.minute);
+        if(time == null)
+          return null;
+        return DateTime(date.year,date.month, date.day,time.hour,time.minute);
           });
     });
   }
