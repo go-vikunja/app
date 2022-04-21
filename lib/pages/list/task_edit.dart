@@ -191,19 +191,14 @@ class _TaskEditPageState extends State<TaskEditPage> {
                     var currentIndex = _reminderDates.length - 1;
 
                     // FIXME: Why does putting this into a row fails?
-                    setState(() => _reminderInputs.add(Row(
-                          children: <Widget>[
+                    setState(() => _reminderInputs.add(
                             VikunjaDateTimePicker(
                               label: 'Reminder',
                               onSaved: (reminder) =>
                                   _reminderDates[currentIndex] = reminder,
+                              initialValue: DateTime.now(),
                             ),
-                            GestureDetector(
-                              onTap: () => print('tapped'),
-                              child: Icon(Icons.close),
-                            )
-                          ],
-                        )));
+                        ));
                   }),
               InputDecorator(
                 isEmpty: _priority == null,
@@ -295,7 +290,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
     );
   }
 
-  _saveTask(BuildContext context) async {
+    _saveTask(BuildContext context) async {
     setState(() => _loading = true);
 
     // Removes all reminders with no value set.

@@ -73,7 +73,7 @@ class Task {
         'description': description,
         'done': done ?? false,
         'reminder_dates':
-            reminderDates?.map((date) => date?.toIso8601String())?.toList(),
+            reminderDates?.map((date) => date?.toUtc()?.toIso8601String())?.toList(),
         'due_date': dueDate?.toUtc()?.toIso8601String(),
         'start_date': startDate?.toUtc()?.toIso8601String(),
         'end_date': endDate?.toUtc()?.toIso8601String(),
@@ -82,7 +82,7 @@ class Task {
         'labels': labels?.map((label) => label.toJSON())?.toList(),
         'subtasks': subtasks?.map((subtask) => subtask.toJSON())?.toList(),
         'created_by': createdBy?.toJSON(),
-        'updated': updated?.toIso8601String(),
-        'created': created?.toIso8601String(),
+        'updated': updated?.toUtc()?.toIso8601String(),
+        'created': created?.toUtc()?.toIso8601String(),
       };
 }
