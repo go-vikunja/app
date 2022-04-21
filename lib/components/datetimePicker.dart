@@ -42,14 +42,31 @@ class VikunjaDateTimePicker extends StatelessWidget {
       onShowPicker: (context, currentValue) {
         if(currentValue == null)
           currentValue = DateTime.now();
-        return showDatePicker(
-            context: context,
-            firstDate: DateTime(1900),
-            initialDate: currentValue.year <= 1
-                ? DateTime.now()
-                : currentValue,
-            lastDate: DateTime(2100));
+        return _showDatePickerFuture(context, currentValue);
       },
     );
+  }
+
+  _showDatePickerFuture(context, currentValue) {
+    return showDialog(
+        context: context,
+        builder: (_) => DatePickerDialog(
+          initialDate: currentValue.year <= 1
+              ? DateTime.now()
+              : currentValue,
+          firstDate: DateTime(1900),
+          lastDate: DateTime(2100),
+          initialCalendarMode: DatePickerMode.day,
+        )).then((date) {
+          return showDialog(
+          context: context,
+          builder: (_) =>
+              TimePickerDialog(
+                initialTime: TimeOfDay.fromDateTime(currentValue),
+              )
+      ).then((time) {
+            return DateTime(date.year,date.month, date.day,time.hour,time.minute);
+          });
+    });
   }
 }
