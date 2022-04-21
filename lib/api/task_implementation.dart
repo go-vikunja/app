@@ -17,13 +17,16 @@ class TaskAPIService extends APIService implements TaskService {
   }
 
   @override
-  Future<Response> get(int listId) {
-    return client.get('/list/$listId/tasks');
+  Future<Task> get(int listId) {
+    return client
+        .get('/list/$listId/tasks')
+        .then((response) => Task.fromJson(response.body));
   }
 
   @override
   Future delete(int taskId) {
-    return client.delete('/tasks/$taskId');
+    return client
+        .delete('/tasks/$taskId');
   }
 
   @override
@@ -37,13 +40,14 @@ class TaskAPIService extends APIService implements TaskService {
   Future<List<Task>> getAll() {
     return client
         .get('/tasks/all')
-        .then((value) => value.body.map<Task>((taskJson) => Task.fromJson(taskJson)).toList());
+        .then((response) => convertList(response.body, (result) => Task.fromJson(result)));
   }
 
   @override
   Future<Response> getAllByList(int listId,
       [Map<String, List<String>> queryParameters]) {
-    return client.get('/lists/$listId/tasks', queryParameters).then(
+    return client
+        .get('/lists/$listId/tasks', queryParameters).then(
             (response) => new Response(
             convertList(response.body, (result) => Task.fromJson(result)),
             response.statusCode,
@@ -56,7 +60,7 @@ class TaskAPIService extends APIService implements TaskService {
     return client
         .get('/tasks/all?$optionString')
         .then((value) {
-          return  value.body.map<Task>((taskJson) => Task.fromJson(taskJson)).toList();
+          return  convertList(value.body, (result) => Task.fromJson(result));
     });
   }
 

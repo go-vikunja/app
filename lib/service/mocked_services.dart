@@ -176,7 +176,7 @@ class MockedTaskService implements TaskService {
 
   @override
   int get maxPages => 1;
-  Future<Response> get(int taskId) {
+  Future<Task> get(int taskId) {
     // TODO: implement get
     throw UnimplementedError();
   }

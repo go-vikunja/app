@@ -92,7 +92,7 @@ abstract class ListService {
 }
 
 abstract class TaskService {
-  Future<Response> get(int taskId);
+  Future<Task> get(int taskId);
   Future<Task> update(Task task);
   Future delete(int taskId);
   Future<Task> add(int listId, Task task);
