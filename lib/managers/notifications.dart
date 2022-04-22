@@ -48,25 +48,15 @@ class NotificationClass{
 
 Future<void> scheduleNotification(String title, String description,
     notifs.FlutterLocalNotificationsPlugin notifsPlugin,
-    DateTime scheduledTime, {String id}) async {
+    DateTime scheduledTime, {int id, notifs.NotificationDetails platformChannelSpecifics}) async {
   if(scheduledTime.difference(DateTime.now()) < Duration.zero)
     return;
   if(id == null)
-    id = DateTime.now().toString();
-  var androidSpecifics = notifs.AndroidNotificationDetails(
-      "Vikunja",
-      "Due Date Reminder",
-      channelDescription: "description",
-      icon: 'vikunja_logo',
-      importance: notifs.Importance.high
-  );
-  var iOSSpecifics = notifs.IOSNotificationDetails();
-  var platformChannelSpecifics = notifs.NotificationDetails(
-      android: androidSpecifics, iOS: iOSSpecifics);
+    id = Random().nextInt(1000000);
   final String currentTimeZone = await FlutterNativeTimezone.getLocalTimezone();
   tz.TZDateTime time = tz.TZDateTime.from(scheduledTime,tz.getLocation(currentTimeZone));
   //time.add(Duration(hours: -2));
-  await notifsPlugin.zonedSchedule(Random().nextInt(100000000), title, description,
+  await notifsPlugin.zonedSchedule(id, title, description,
       time, platformChannelSpecifics, androidAllowWhileIdle: true, uiLocalNotificationDateInterpretation: notifs.UILocalNotificationDateInterpretation.wallClockTime); // This literally schedules the notification
 }
 

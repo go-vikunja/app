@@ -1,8 +1,7 @@
-//import 'dart:math';
+import 'dart:math';
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:vikunja_app/api/client.dart';
 import 'package:vikunja_app/api/label_task.dart';
@@ -18,6 +17,8 @@ import 'package:vikunja_app/models/user.dart';
 import 'package:vikunja_app/service/services.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
+import 'package:flutter_local_notifications/flutter_local_notifications.dart'as notifs;
+
 
 class VikunjaGlobal extends StatefulWidget {
   final Widget child;
@@ -56,13 +57,13 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
 
   ListService get listService => new ListAPIService(client, _storage);
 
-  FlutterLocalNotificationsPlugin get notificationsPlugin => new FlutterLocalNotificationsPlugin();
+  notifs.FlutterLocalNotificationsPlugin get notificationsPlugin => new notifs.FlutterLocalNotificationsPlugin();
 
   TaskServiceOptions get taskServiceOptions => new TaskServiceOptions();
 
   NotificationClass get notifications => new NotificationClass();
 
-  NotificationAppLaunchDetails notifLaunch;
+  notifs.NotificationAppLaunchDetails notifLaunch;
 
   LabelService get labelService => new LabelAPIService(client);
 
@@ -71,12 +72,35 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
   LabelTaskBulkAPIService get labelTaskBulkService =>
       new LabelTaskBulkAPIService(client);
 
+  var androidSpecificsDueDate = notifs.AndroidNotificationDetails(
+      "Vikunja Due",
+      "Due Date Reminder",
+      channelDescription: "description",
+      icon: 'vikunja_logo',
+      importance: notifs.Importance.high
+  );
+  var androidSpecificsReminders = notifs.AndroidNotificationDetails(
+      "Vikunja Reminders",
+      "Due Date Reminder",
+      channelDescription: "description",
+      icon: 'vikunja_logo',
+      importance: notifs.Importance.high
+  );
+  notifs.IOSNotificationDetails iOSSpecifics;
+  notifs.NotificationDetails platformChannelSpecificsDueDate;
+  notifs.NotificationDetails platformChannelSpecificsReminders;
+
   @override
   void initState() {
     super.initState();
     _loadCurrentUser();
     tz.initializeTimeZones();
     notificationInitializer();
+    iOSSpecifics = notifs.IOSNotificationDetails();
+    platformChannelSpecificsDueDate = notifs.NotificationDetails(
+        android: androidSpecificsDueDate, iOS: iOSSpecifics);
+    platformChannelSpecificsReminders = notifs.NotificationDetails(
+        android: androidSpecificsReminders, iOS: iOSSpecifics);
   }
 
   void changeUser(User newUser, {String token, String base}) async {
@@ -117,10 +141,20 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
           value.forEach((task) {
             if(task.reminderDates != null)
               task.reminderDates.forEach((reminder) {
-                scheduleNotification("This is your reminder for '" + task.title + "'", task.description, notificationsPlugin, reminder);
+                scheduleNotification("This is your reminder for '" + task.title + "'",
+                    task.description,
+                    notificationsPlugin,
+                    reminder,
+                    platformChannelSpecifics: platformChannelSpecificsReminders,
+                    id: (reminder.millisecondsSinceEpoch/1000).floor());
               });
             if(task.dueDate != null)
-              scheduleNotification("The task '" + task.title + "' is due.", task.description, notificationsPlugin, task.dueDate);
+              scheduleNotification("The task '" + task.title + "' is due.",
+                  task.description,
+                  notificationsPlugin,
+                  task.dueDate,
+                  platformChannelSpecifics: platformChannelSpecificsDueDate,
+                  id: task.id);
           })
       );
     });
