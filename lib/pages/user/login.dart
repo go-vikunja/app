@@ -14,6 +14,7 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   bool _loading = false;
+  bool _rememberMe = false;
 
   final _serverController = TextEditingController();
   final _usernameController = TextEditingController();
@@ -98,6 +99,14 @@ class _LoginPageState extends State<LoginPage> {
                         obscureText: true,
                       ),
                     ),
+                    Padding(
+                      padding: vStandardVerticalPadding,
+                      child: CheckboxListTile(
+                        value: _rememberMe,
+                        onChanged: (value) => setState( () =>_rememberMe = value),
+                        title: Text("Remember me"),
+                      ),
+                    ),
                     Builder(
                         builder: (context) => FancyButton(
                               onPressed: !_loading
@@ -140,7 +149,7 @@ class _LoginPageState extends State<LoginPage> {
       if(_server.endsWith("/"))
         _server = _server.substring(0,_server.length-1);
       var newUser =
-          await vGlobal.newUserService(_server).login(_username, _password);
+          await vGlobal.newUserService(_server).login(_username, _password, rememberMe: this._rememberMe);
       vGlobal.changeUser(newUser.user, token: newUser.token, base: _server);
     } catch (ex) {
       showDialog(

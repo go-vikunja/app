@@ -9,10 +9,11 @@ class UserAPIService extends APIService implements UserService {
   UserAPIService(Client client) : super(client);
 
   @override
-  Future<UserTokenPair> login(String username, password) async {
+  Future<UserTokenPair> login(String username, password, {bool rememberMe = false}) async {
     var token = await client.post('/login', body: {
       'username': username,
-      'password': password
+      'password': password,
+      'long_token': rememberMe
     }).then((response) => response.body['token']);
     return UserAPIService(Client(token, client.base))
         .getCurrentUser()
