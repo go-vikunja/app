@@ -1,5 +1,5 @@
 import 'dart:math';
-import 'dart:developer';
+import 'dart:developer' as dev;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -42,6 +42,8 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
   User _currentUser;
   Client _client;
   bool _loading = true;
+  bool expired = false;
+
 
   User get currentUser => _currentUser;
 
@@ -191,14 +193,20 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
       });
       return;
     }
-    var client = Client(token, base);
+    _client = Client(token, base);
     var loadedCurrentUser;
     try {
       loadedCurrentUser = await UserAPIService(client).getCurrentUser();
     } on ApiException catch (e) {
+      dev.log("Error code: " + e.errorCode.toString(),level: 1000);
       if (e.errorCode ~/ 100 == 4) {
+        _client.authenticated = false;
+        if (e.errorCode == 401) {
+          // token has expired, but we can reuse username and base. user just has to enter password again
+          expired = true;
+        }
         setState(() {
-          _client = null;
+          _client.authenticated = false;
           _currentUser = null;
           _loading = false;
         });
@@ -220,12 +228,12 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
     if (_loading) {
       return new Center(child: new CircularProgressIndicator());
     }
-    if(client != null) {
+    if(client != null && client.authenticated) {
       scheduleDueNotifications();
     }
     return new _VikunjaGlobalInherited(
       data: this,
-      child: client == null ? widget.login : widget.child,
+      child: client == null || !client.authenticated ? widget.login : widget.child,
     );
   }
 }

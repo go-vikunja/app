@@ -10,10 +10,11 @@ class Client {
   final JsonEncoder _encoder = new JsonEncoder();
   final String _token;
   final String _base;
+  bool authenticated;
 
   String get base => _base;
 
-  Client(this._token, String base)
+  Client(this._token, String base, {this.authenticated = true})
       : _base = base.endsWith('/api/v1') ? base : '$base/api/v1';
 
   bool operator ==(dynamic otherClient) {

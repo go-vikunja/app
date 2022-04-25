@@ -13,8 +13,31 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
-  String _server, _username, _password;
   bool _loading = false;
+
+  final _serverController = TextEditingController();
+  final _usernameController = TextEditingController();
+  final _passwordController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+      Future.delayed(Duration.zero, () {
+        if(VikunjaGlobal.of(context).expired) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(
+              SnackBar(
+                  content: Text(
+                      "Login has expired. Please reenter your details!")));
+          setState(() {
+            _serverController.text = VikunjaGlobal.of(context)?.client?.base;
+            _usernameController.text = VikunjaGlobal.of(context)?.currentUser?.username;
+          });
+        }
+      });
+  }
+
+
 
   @override
   Widget build(BuildContext ctx) {
@@ -45,7 +68,7 @@ class _LoginPageState extends State<LoginPage> {
                       padding: vStandardVerticalPadding,
                       child: TextFormField(
                         enabled: !_loading,
-                        onSaved: (serverAddress) => _server = serverAddress,
+                        controller: _serverController,
                         validator: (address) {
                           return isUrl(address) ? null : 'Invalid URL';
                         },
@@ -58,7 +81,7 @@ class _LoginPageState extends State<LoginPage> {
                       padding: vStandardVerticalPadding,
                       child: TextFormField(
                         enabled: !_loading,
-                        onSaved: (username) => _username = username,
+                        controller: _usernameController,
                         decoration: new InputDecoration(
                             border: OutlineInputBorder(),
                             labelText: 'Username'),
@@ -68,7 +91,7 @@ class _LoginPageState extends State<LoginPage> {
                       padding: vStandardVerticalPadding,
                       child: TextFormField(
                         enabled: !_loading,
-                        onSaved: (password) => _password = password,
+                        controller: _passwordController,
                         decoration: new InputDecoration(
                             border: OutlineInputBorder(),
                             labelText: 'Password'),
@@ -109,6 +132,9 @@ class _LoginPageState extends State<LoginPage> {
 
   _loginUser(BuildContext context) async {
     setState(() => _loading = true);
+    String _server = _serverController.text;
+    String _username = _usernameController.text;
+    String _password = _passwordController.text;
     try {
       var vGlobal = VikunjaGlobal.of(context);
       if(_server.endsWith("/"))
