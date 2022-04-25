@@ -21,6 +21,7 @@ class TaskEditPage extends StatefulWidget {
 class _TaskEditPageState extends State<TaskEditPage> {
   final _formKey = GlobalKey<FormState>();
   bool _loading = false;
+  bool _changed = false;
 
   int _priority;
   DateTime _dueDate, _startDate, _endDate;
@@ -51,7 +52,13 @@ class _TaskEditPageState extends State<TaskEditPage> {
       _labels = widget.task.labels ?? [];
     }
 
-    return Scaffold(
+    return WillPopScope(onWillPop: () {
+      if(_changed) {
+        return _showConfirmationDialog();
+      }
+      return new Future(() => true);
+    },
+    child: Scaffold(
       appBar: AppBar(
         title: Text('Edit Task'),
       ),
@@ -68,6 +75,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
                   keyboardType: TextInputType.multiline,
                   initialValue: widget.task.title,
                   onSaved: (title) => _title = title,
+                  onChanged: (_) => _changed = true,
                   validator: (title) {
                     if (title.length < 3 || title.length > 250) {
                       return 'The title needs to have between 3 and 250 characters.';
@@ -87,6 +95,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
                   keyboardType: TextInputType.multiline,
                   initialValue: widget.task.description,
                   onSaved: (description) => _description = description,
+                  onChanged: (_) => _changed = true,
                   validator: (description) {
                     if (description.length > 1000) {
                       return 'The description can have a maximum of 1000 characters.';
@@ -104,16 +113,19 @@ class _TaskEditPageState extends State<TaskEditPage> {
                 label: 'Due Date',
                 initialValue: widget.task.dueDate,
                 onSaved: (duedate) => _dueDate = duedate,
+                onChanged: (_) => _changed = true,
               ),
               VikunjaDateTimePicker(
                 label: 'Start Date',
                 initialValue: widget.task.startDate,
                 onSaved: (startDate) => _startDate = startDate,
+                onChanged: (_) => _changed = true,
               ),
               VikunjaDateTimePicker(
                 label: 'End Date',
                 initialValue: widget.task.endDate,
                 onSaved: (endDate) => _endDate = endDate,
+                onChanged: (_) => _changed = true,
               ),
               Row(
                 children: [
@@ -126,6 +138,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
                           ?.toString(),
                       onSaved: (repeatAfter) => _repeatAfter =
                           getDurationFromType(repeatAfter, _repeatAfterType),
+                      onChanged: (_) => _changed = true,
                       decoration: new InputDecoration(
                         labelText: 'Repeat after',
                         border: InputBorder.none,
@@ -196,6 +209,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
                               label: 'Reminder',
                               onSaved: (reminder) =>
                                   _reminderDates[currentIndex] = reminder,
+                              onChanged: (_) => _changed = true,
                               initialValue: DateTime.now(),
                             ),
                         ));
@@ -287,7 +301,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
           ),
         ),
       ),
-    );
+    ));
   }
 
     _saveTask(BuildContext context) async {
@@ -324,12 +338,11 @@ class _TaskEditPageState extends State<TaskEditPage> {
     });
 
     VikunjaGlobal.of(context).taskService.update(updatedTask).then((_) {
-      setState(() => _loading = false);
+      setState(() { _loading = false; _changed = false;});
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('The task was updated successfully!'),
       ));
     }).catchError((err) {
-      throw err;
       setState(() => _loading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -429,5 +442,40 @@ class _TaskEditPageState extends State<TaskEditPage> {
       default:
         return null;
     }
+  }
+
+  Future<bool> _showConfirmationDialog() async {
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('You have unsaved changes!'),
+          content: SingleChildScrollView(
+            child: Column(
+              children: <Widget>[
+                Text('Would you like to dismiss those changes?'),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Dismiss'),
+              onPressed: () {
+                Navigator.pop(context);
+                // make sure the list is refreshed
+                Navigator.pop(context);
+              },
+            ),
+            TextButton(
+              child: Text('Keep editing'),
+              onPressed: () {
+                Navigator.pop(context);
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 }

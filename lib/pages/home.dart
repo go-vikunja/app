@@ -88,7 +88,7 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
   @override
   Widget build(BuildContext context) {
     var currentUser = VikunjaGlobal.of(context).currentUser;
-    if(_selectedDrawerIndex != _previousDrawerIndex)
+    if(_selectedDrawerIndex != _previousDrawerIndex || drawerItem == null)
       drawerItem = _getDrawerItemWidget(_selectedDrawerIndex);
 
     return new Scaffold(
