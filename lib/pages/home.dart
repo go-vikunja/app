@@ -27,9 +27,10 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
       _selectedDrawerIndex >= 0 && _selectedDrawerIndex < _namespaces.length
           ? _namespaces[_selectedDrawerIndex]
           : null;
-  int _selectedDrawerIndex = -1;
+  int _selectedDrawerIndex = -1, _previousDrawerIndex = -1;
   bool _loading = true;
   bool _showUserDetails = false;
+  Widget drawerItem;
 
   @override
   void afterFirstLayout(BuildContext context) {
@@ -72,7 +73,13 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
         title: Text('Settings'),
         leading: Icon(Icons.settings),
         onTap: () {
-          Navigator.push(context, MaterialPageRoute(builder: (context) => SettingsPage()));
+          Navigator.push(context, MaterialPageRoute(
+              builder: (context) => SettingsPage()))
+              .whenComplete(() =>
+              setState((){
+                //returning from settings, this needs to be force-refreshed
+                drawerItem = _getDrawerItemWidget(_selectedDrawerIndex, forceReload: true);
+          }));
         },
       )
     ]);
@@ -81,6 +88,8 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
   @override
   Widget build(BuildContext context) {
     var currentUser = VikunjaGlobal.of(context).currentUser;
+    if(_selectedDrawerIndex != _previousDrawerIndex)
+      drawerItem = _getDrawerItemWidget(_selectedDrawerIndex);
 
     return new Scaffold(
       appBar: AppBar(
@@ -151,13 +160,14 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
           ),
         ),
       ])),
-      body: _getDrawerItemWidget(_selectedDrawerIndex),
+      body: drawerItem,
     );
   }
 
-  _getDrawerItemWidget(int pos) {
+  _getDrawerItemWidget(int pos, {bool forceReload = false}) {
+    _previousDrawerIndex = pos;
     if (pos == -1) {
-      return new LandingPage();
+      return forceReload ? new LandingPage(key: UniqueKey()) : new LandingPage();
     }
     return new NamespacePage(namespace: _namespaces[pos]);
   }

@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/global.dart';
 
+import 'dart:developer';
+
 import '../components/AddDialog.dart';
 import '../components/TaskTile.dart';
 import '../models/task.dart';
 
 class LandingPage extends StatefulWidget {
+
+  const LandingPage(
+      {Key key})
+      : super(key: key);
+
   @override
   State<StatefulWidget> createState() => LandingPageState();
 
@@ -15,12 +22,20 @@ class LandingPageState extends State<LandingPage> {
   int defaultList;
   List<Task> _list;
 
+  void _updateDefaultList() {
+    VikunjaGlobal.of(context)
+        .listService
+        .getDefaultList()
+        .then((value) => setState(() => defaultList = value == null ? null : int.tryParse(value)));
+  }
+
   @override
   void initState() {
-    Future.delayed(Duration.zero, () =>
-    VikunjaGlobal.of(context).listService.getDefaultList().then((value) => setState(() => defaultList = value == null ? null : int.tryParse(value))));
+    Future.delayed(Duration.zero, () => _updateDefaultList());
     super.initState();
   }
+
+
   @override
   Widget build(BuildContext context) {
     if(_list == null)

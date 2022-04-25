@@ -27,7 +27,7 @@ class SettingsPageState extends State<SettingsPage> {
           ListTile(
             title: Text("Default List"),
             trailing: DropdownButton(
-              items: taskListList.map((e) => DropdownMenuItem(child: Text(e.title), value: e.id)).toList(),
+              items: [DropdownMenuItem(child: Text("None"), value: null,), ...taskListList.map((e) => DropdownMenuItem(child: Text(e.title), value: e.id)).toList()],
               value: defaultList,
               onChanged: (value){
                 setState(() => defaultList = value);
