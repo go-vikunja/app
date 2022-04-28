@@ -23,6 +23,7 @@ dependencies:
   json_serializable: 6.1.6
   petitparser: 4.1.0
   provider: 6.0.0
+  webview_flutter: 3.0.2
 
 dev_dependencies:
   flutter_test:

@@ -1,10 +1,16 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
+import 'package:vikunja_app/api/client.dart';
+import 'package:vikunja_app/api/user_implementation.dart';
 import 'package:vikunja_app/global.dart';
+import 'package:vikunja_app/pages/user/login_webview.dart';
 import 'package:vikunja_app/pages/user/register.dart';
 import 'package:vikunja_app/theme/button.dart';
 import 'package:vikunja_app/theme/buttonText.dart';
 import 'package:vikunja_app/theme/constants.dart';
 import 'package:vikunja_app/utils/validator.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -129,7 +135,19 @@ class _LoginPageState extends State<LoginPage> {
                                       builder: (context) => RegisterPage())),
                               child: VikunjaButtonText('Register'),
                             )),
-                  ],
+                    Builder(builder: (context) => FancyButton(
+                        onPressed: () {
+                          if(_formKey.currentState.validate()) {
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) =>
+                                    LoginWithWebView(_serverController.text))).then((client) => _loginUserByClientToken(client));
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Please enter your frontend url")));
+                          }
+                        },
+                        child: VikunjaButtonText("Login with Frontend")))
+            ],
                 ),
               ),
             ),
@@ -169,5 +187,18 @@ class _LoginPageState extends State<LoginPage> {
         _loading = false;
       });
     }
+  }
+
+  _loginUserByClientToken(Client client) async {
+    setState(() => _loading = true);
+    try {
+      var newUser = await UserAPIService(client).getCurrentUser();
+      VikunjaGlobal.of(context).changeUser(
+          newUser, token: client.token, base: client.base);
+    } catch (e) {
+      log(e.toString());
+    }
+    setState(() => _loading = false);
+
   }
 }

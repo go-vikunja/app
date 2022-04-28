@@ -13,6 +13,7 @@ class Client {
   bool authenticated;
 
   String get base => _base;
+  String get token => _token;
 
   Client(this._token, String base, {this.authenticated = true})
       : _base = base.endsWith('/api/v1') ? base : '$base/api/v1';
