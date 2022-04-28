@@ -12,7 +12,6 @@ import 'package:vikunja_app/pages/landing_page.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/models/namespace.dart';
 import 'package:vikunja_app/pages/settings.dart';
-import 'package:vikunja_app/pages/placeholder.dart';
 
 
 class HomePage extends StatefulWidget {

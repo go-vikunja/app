@@ -1,4 +1,6 @@
+import 'package:after_layout/after_layout.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:vikunja_app/global.dart';
 
 import 'dart:developer';
@@ -18,12 +20,14 @@ class LandingPage extends StatefulWidget {
 
 }
 
-class LandingPageState extends State<LandingPage> {
+class LandingPageState extends State<LandingPage> with AfterLayoutMixin<LandingPage> {
   int defaultList;
   List<Task> _list;
+  static const platform = const MethodChannel('vikunja');
 
-  void _updateDefaultList() {
-    VikunjaGlobal.of(context)
+
+  Future<void> _updateDefaultList() async {
+    return VikunjaGlobal.of(context)
         .listService
         .getDefaultList()
         .then((value) => setState(() => defaultList = value == null ? null : int.tryParse(value)));
@@ -31,8 +35,35 @@ class LandingPageState extends State<LandingPage> {
 
   @override
   void initState() {
-    Future.delayed(Duration.zero, () => _updateDefaultList());
+    Future.delayed(Duration.zero, () =>
+        _updateDefaultList().then((value) {
+          try {
+          platform.invokeMethod("isQuickTile","").then((value) => {
+          if(value is bool && value)
+            _addItemDialog(context)
+          });
+          } catch (e) {
+            log(e.toString());
+          }}));
     super.initState();
+  }
+
+
+  @override
+  void afterFirstLayout(BuildContext context) {
+    try {
+      // This is needed when app is already open and quicktile is clicked
+      platform.setMethodCallHandler((call) {
+        switch (call.method) {
+          case "open_add_task":
+            _addItemDialog(context);
+            break;
+        }
+        return Future.value();
+      });
+    } catch (e) {
+      log(e.toString());
+    }
   }
 
 
@@ -53,30 +84,28 @@ class LandingPageState extends State<LandingPage> {
             : new Center(child: CircularProgressIndicator()),
         floatingActionButton: Builder(
             builder: (context) =>
-                defaultList == null ?
                 FloatingActionButton(
-                    backgroundColor: Colors.grey,
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text('Please select a default list in the settings'),
-                    ));},
-                    child: const Icon(Icons.add))
-                    :
-                    FloatingActionButton(
                       onPressed: () {
                         _addItemDialog(context);
                       },
                       child: const Icon(Icons.add),
-                    ),
+                    )
         ));
   }
   _addItemDialog(BuildContext context) {
-    showDialog(
-        context: context,
-        builder: (_) => AddDialog(
-            onAddTask: (task) => _addTask(task, context),
-            decoration: new InputDecoration(
-                labelText: 'Task Name', hintText: 'eg. Milk')));
+    if(defaultList == null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Please select a default list in the settings'),
+      ));
+    } else {
+      showDialog(
+          context: context,
+          builder: (_) =>
+              AddDialog(
+                  onAddTask: (task) => _addTask(task, context),
+                  decoration: new InputDecoration(
+                      labelText: 'Task Name', hintText: 'eg. Milk')));
+    }
   }
 
   _addTask(Task task, BuildContext context) {

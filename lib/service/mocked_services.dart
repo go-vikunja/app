@@ -196,7 +196,7 @@ class MockedTaskService implements TaskService {
 
 class MockedUserService implements UserService {
   @override
-  Future<UserTokenPair> login(String username, password) {
+  Future<UserTokenPair> login(String username, password, {bool rememberMe = false}) {
     return Future.value(UserTokenPair(_users[1], 'abcdefg'));
   }
 
@@ -209,4 +209,6 @@ class MockedUserService implements UserService {
   Future<User> getCurrentUser() {
     return Future.value(_users[1]);
   }
+
+
 }

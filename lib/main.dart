@@ -15,6 +15,7 @@ class VikunjaApp extends StatelessWidget {
   const VikunjaApp({Key key, this.home}) : super(key: key);
   @override
   Widget build(BuildContext context) {
+    
     return new MaterialApp(
       title: 'Vikunja',
       theme: buildVikunjaTheme(),
