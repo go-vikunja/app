@@ -23,7 +23,7 @@ class NotificationClass{
 
   Future<void> initNotifications(notifs.FlutterLocalNotificationsPlugin notifsPlugin) async {
     var initializationSettingsAndroid =
-    notifs.AndroidInitializationSettings('vikunja_logo');
+    notifs.AndroidInitializationSettings('ic_launcher_foreground');
     var initializationSettingsIOS = notifs.IOSInitializationSettings(
         requestAlertPermission: false,
         requestBadgePermission: false,
@@ -55,7 +55,6 @@ Future<void> scheduleNotification(String title, String description,
     id = Random().nextInt(1000000);
   final String currentTimeZone = await FlutterNativeTimezone.getLocalTimezone();
   tz.TZDateTime time = tz.TZDateTime.from(scheduledTime,tz.getLocation(currentTimeZone));
-  //time.add(Duration(hours: -2));
   await notifsPlugin.zonedSchedule(id, title, description,
       time, platformChannelSpecifics, androidAllowWhileIdle: true, uiLocalNotificationDateInterpretation: notifs.UILocalNotificationDateInterpretation.wallClockTime); // This literally schedules the notification
 }

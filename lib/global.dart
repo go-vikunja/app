@@ -75,14 +75,14 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
       new LabelTaskBulkAPIService(client);
 
   var androidSpecificsDueDate = notifs.AndroidNotificationDetails(
-      "Vikunja Due",
+      "Vikunja1",
       "Due Date Notifications",
       channelDescription: "description",
       icon: 'ic_launcher_foreground',
       importance: notifs.Importance.high
   );
   var androidSpecificsReminders = notifs.AndroidNotificationDetails(
-      "Vikunja Reminders",
+      "Vikunja2",
       "Reminder Notifications",
       channelDescription: "description",
       icon: 'ic_launcher_foreground',
@@ -97,12 +97,12 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
     super.initState();
     _loadCurrentUser();
     tz.initializeTimeZones();
-    notificationInitializer();
     iOSSpecifics = notifs.IOSNotificationDetails();
     platformChannelSpecificsDueDate = notifs.NotificationDetails(
         android: androidSpecificsDueDate, iOS: iOSSpecifics);
     platformChannelSpecificsReminders = notifs.NotificationDetails(
         android: androidSpecificsReminders, iOS: iOSSpecifics);
+    notificationInitializer();
   }
 
   void changeUser(User newUser, {String token, String base}) async {
@@ -134,12 +134,11 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
     notifLaunch = await notificationsPlugin.getNotificationAppLaunchDetails();
     await notifications.initNotifications(notificationsPlugin);
     requestIOSPermissions(notificationsPlugin);
-
   }
 
   void scheduleDueNotifications() {
     notificationsPlugin.cancelAll().then((value) {
-      taskService.getAll().then((value) =>
+      taskService.getByOptions(taskServiceOptions).then((value) =>
           value.forEach((task) {
             if(task.reminderDates != null)
               task.reminderDates.forEach((reminder) {
