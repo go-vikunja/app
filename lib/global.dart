@@ -76,16 +76,16 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
 
   var androidSpecificsDueDate = notifs.AndroidNotificationDetails(
       "Vikunja Due",
-      "Due Date Reminder",
+      "Due Date Notifications",
       channelDescription: "description",
-      icon: 'vikunja_logo',
+      icon: 'ic_launcher_foreground',
       importance: notifs.Importance.high
   );
   var androidSpecificsReminders = notifs.AndroidNotificationDetails(
       "Vikunja Reminders",
-      "Due Date Reminder",
+      "Reminder Notifications",
       channelDescription: "description",
-      icon: 'vikunja_logo',
+      icon: 'ic_launcher_foreground',
       importance: notifs.Importance.high
   );
   notifs.IOSNotificationDetails iOSSpecifics;
@@ -143,16 +143,14 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
           value.forEach((task) {
             if(task.reminderDates != null)
               task.reminderDates.forEach((reminder) {
-                scheduleNotification("This is your reminder for '" + task.title + "'",
-                    task.description,
+                scheduleNotification("Reminder", "This is your reminder for '" + task.title + "'",
                     notificationsPlugin,
                     reminder,
                     platformChannelSpecifics: platformChannelSpecificsReminders,
                     id: (reminder.millisecondsSinceEpoch/1000).floor());
               });
             if(task.dueDate != null)
-              scheduleNotification("The task '" + task.title + "' is due.",
-                  task.description,
+              scheduleNotification("Due Reminder","The task '" + task.title + "' is due.",
                   notificationsPlugin,
                   task.dueDate,
                   platformChannelSpecifics: platformChannelSpecificsDueDate,
