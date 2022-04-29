@@ -2,6 +2,7 @@ import 'dart:math';
 import 'dart:developer' as dev;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_native_timezone/flutter_native_timezone.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:vikunja_app/api/client.dart';
 import 'package:vikunja_app/api/label_task.dart';
@@ -92,6 +93,10 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
   notifs.NotificationDetails platformChannelSpecificsDueDate;
   notifs.NotificationDetails platformChannelSpecificsReminders;
 
+  String currentTimeZone;
+
+
+
   @override
   void initState() {
     super.initState();
@@ -131,6 +136,7 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
   }
 
   void notificationInitializer() async {
+    currentTimeZone = await FlutterNativeTimezone.getLocalTimezone();
     notifLaunch = await notificationsPlugin.getNotificationAppLaunchDetails();
     await notifications.initNotifications(notificationsPlugin);
     requestIOSPermissions(notificationsPlugin);
@@ -138,13 +144,14 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
 
   void scheduleDueNotifications() {
     notificationsPlugin.cancelAll().then((value) {
-      taskService.getByOptions(taskServiceOptions).then((value) =>
+      taskService.getAll().then((value) =>
           value.forEach((task) {
             if(task.reminderDates != null)
               task.reminderDates.forEach((reminder) {
                 scheduleNotification("Reminder", "This is your reminder for '" + task.title + "'",
                     notificationsPlugin,
                     reminder,
+                    currentTimeZone,
                     platformChannelSpecifics: platformChannelSpecificsReminders,
                     id: (reminder.millisecondsSinceEpoch/1000).floor());
               });
@@ -152,6 +159,7 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
               scheduleNotification("Due Reminder","The task '" + task.title + "' is due.",
                   notificationsPlugin,
                   task.dueDate,
+                  currentTimeZone,
                   platformChannelSpecifics: platformChannelSpecificsDueDate,
                   id: task.id);
           })

@@ -40,7 +40,27 @@ class TaskAPIService extends APIService implements TaskService {
   Future<List<Task>> getAll() {
     return client
         .get('/tasks/all')
-        .then((response) => convertList(response.body, (result) => Task.fromJson(result)));
+        .then((response) {
+          int page_n = 0;
+          if (response.headers["x-pagination-total-pages"] != null) {
+            page_n = int.parse(response.headers["x-pagination-total-pages"]);
+          } else {
+            return Future.value(response.body);
+          }
+
+          List<Future<void>> futureList = [];
+          List<Task> taskList = [];
+
+          for(int i = 0; i < page_n; i++) {
+            Map<String, List<String>> paramMap = {
+              "page": [i.toString()]
+            };
+            futureList.add(client.get('/tasks/all', paramMap).then((pageResponse) { convertList(pageResponse.body, (result) {taskList.add(Task.fromJson(result));});}));
+          }
+          return Future.wait(futureList).then((value) {
+            return taskList;
+          });
+    });
   }
 
   @override

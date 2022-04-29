@@ -1,6 +1,8 @@
 // https://medium.com/@fuzzymemory/adding-scheduled-notifications-in-your-flutter-application-19be1f82ade8
 
 import 'dart:math';
+import 'dart:developer' as dev;
+
 
 import 'package:flutter_native_timezone/flutter_native_timezone.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
@@ -8,6 +10,7 @@ import 'package:timezone/timezone.dart' as tz;
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart'as notifs;
 import 'package:rxdart/subjects.dart' as rxSub;
+import 'package:vikunja_app/global.dart';
 
 class NotificationClass{
   final int id;
@@ -48,13 +51,13 @@ class NotificationClass{
 
 Future<void> scheduleNotification(String title, String description,
     notifs.FlutterLocalNotificationsPlugin notifsPlugin,
-    DateTime scheduledTime, {int id, notifs.NotificationDetails platformChannelSpecifics}) async {
-  if(scheduledTime.difference(DateTime.now()) < Duration.zero)
-    return;
+    DateTime scheduledTime, String currentTimeZone, {int id, notifs.NotificationDetails platformChannelSpecifics}) async {
   if(id == null)
     id = Random().nextInt(1000000);
-  final String currentTimeZone = await FlutterNativeTimezone.getLocalTimezone();
+  // TODO: move to setup
   tz.TZDateTime time = tz.TZDateTime.from(scheduledTime,tz.getLocation(currentTimeZone));
+  if(time.difference(tz.TZDateTime.now(tz.getLocation(currentTimeZone))) < Duration.zero)
+    return;
   await notifsPlugin.zonedSchedule(id, title, description,
       time, platformChannelSpecifics, androidAllowWhileIdle: true, uiLocalNotificationDateInterpretation: notifs.UILocalNotificationDateInterpretation.wallClockTime); // This literally schedules the notification
 }
