@@ -28,7 +28,7 @@ class VikunjaDateTimePicker extends StatelessWidget {
     return DateTimeField(
       //dateOnly: false,
       //editable: false, // Otherwise editing the date is not possible, this setting affects the underlying text field.
-      initialValue: initialValue.year <= 1
+      initialValue: initialValue == null || initialValue.year <= 1
           ? null
           : initialValue.toLocal(),
       format: vDateFormatLong,
