@@ -80,8 +80,9 @@ class _LoginPageState extends State<LoginPage> {
                       child: TextFormField(
                         enabled: !_loading,
                         controller: _serverController,
+                        autocorrect: false,
                         validator: (address) {
-                          return isUrl(address) ? null : 'Invalid URL';
+                          return isUrl(address) || address.isEmpty ? null : 'Invalid URL';
                         },
                         decoration: new InputDecoration(
                             border: OutlineInputBorder(),
@@ -162,10 +163,12 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   _loginUser(BuildContext context) async {
-    setState(() => _loading = true);
     String _server = _serverController.text;
     String _username = _usernameController.text;
     String _password = _passwordController.text;
+    if(_server.isEmpty)
+      return;
+    setState(() => _loading = true);
     try {
       var vGlobal = VikunjaGlobal.of(context);
       if(_server.endsWith("/"))
