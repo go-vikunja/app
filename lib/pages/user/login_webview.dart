@@ -42,7 +42,8 @@ class LoginWithWebViewState extends State<LoginWithWebView> {
       body: webView
     ),
     onWillPop: () async {
-      bool hasPopped = await _handlePageFinished("");
+      String currentUrl = await webViewController.currentUrl();
+      bool hasPopped = await _handlePageFinished(currentUrl);
       return Future.value(!hasPopped);
       },);
   }
@@ -56,10 +57,15 @@ class LoginWithWebViewState extends State<LoginWithWebView> {
       String apiUrl = await webViewController.runJavascriptReturningResult("API_URL");
       if (localStorage != "{}") {
         apiUrl = apiUrl.replaceAll("\"", "");
+        if(!apiUrl.startsWith("http")) {
+          if(pageLocation.endsWith("/"))
+            pageLocation = pageLocation.substring(0,pageLocation.length-1);
+          apiUrl = pageLocation + apiUrl;
+        }
         localStorage = localStorage.replaceAll("\\", "");
         localStorage = localStorage.substring(1, localStorage.length - 1);
         var json = jsonDecode(localStorage);
-        if (apiUrl  != "null" && json["token"] != null) {
+        if (apiUrl != "null" && json["token"] != null) {
           BaseTokenPair baseTokenPair = BaseTokenPair(
               apiUrl, json["token"]);
           Navigator.pop(context, baseTokenPair);
