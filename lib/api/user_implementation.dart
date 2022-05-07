@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:developer';
+import 'dart:ffi';
 
 import 'package:vikunja_app/api/client.dart';
 import 'package:vikunja_app/api/service.dart';
@@ -9,13 +11,15 @@ class UserAPIService extends APIService implements UserService {
   UserAPIService(Client client) : super(client);
 
   @override
-  Future<UserTokenPair> login(String username, password, {bool rememberMe = false}) async {
+  Future<UserTokenPair> login(String username, password, {bool rememberMe = false, String totp}) async {
     var token = await client.post('/login', body: {
-      'username': username,
+      'long_token': rememberMe,
       'password': password,
-      'long_token': rememberMe
+      'totp_passcode': totp,
+      'username': username,
     }).then((response) => response.body['token']);
-    return UserAPIService(Client(token, client.base))
+    client.configure(token: token);
+    return UserAPIService(client)
         .getCurrentUser()
         .then((user) => UserTokenPair(user, token));
   }

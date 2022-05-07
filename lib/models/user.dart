@@ -23,3 +23,9 @@ class UserTokenPair {
   final String token;
   UserTokenPair(this.user, this.token);
 }
+
+class BaseTokenPair {
+  final String base;
+  final String token;
+  BaseTokenPair(this.base, this.token);
+}

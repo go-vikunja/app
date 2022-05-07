@@ -1,9 +1,11 @@
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:vikunja_app/api/client.dart';
 import 'package:vikunja_app/api/user_implementation.dart';
 import 'package:vikunja_app/global.dart';
+import 'package:vikunja_app/models/user.dart';
 import 'package:vikunja_app/pages/user/login_webview.dart';
 import 'package:vikunja_app/pages/user/register.dart';
 import 'package:vikunja_app/theme/button.dart';
@@ -11,6 +13,8 @@ import 'package:vikunja_app/theme/buttonText.dart';
 import 'package:vikunja_app/theme/constants.dart';
 import 'package:vikunja_app/utils/validator.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+
+import '../../models/server.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -141,7 +145,7 @@ class _LoginPageState extends State<LoginPage> {
                             Navigator.push(
                                 context,
                                 MaterialPageRoute(builder: (context) =>
-                                    LoginWithWebView(_serverController.text))).then((client) => _loginUserByClientToken(client));
+                                    LoginWithWebView(_serverController.text))).then((btp) => _loginUserByClientToken(btp));
                           } else {
                             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Please enter your frontend url")));
                           }
@@ -166,8 +170,38 @@ class _LoginPageState extends State<LoginPage> {
       var vGlobal = VikunjaGlobal.of(context);
       if(_server.endsWith("/"))
         _server = _server.substring(0,_server.length-1);
-      var newUser =
-          await vGlobal.newUserService(_server).login(_username, _password, rememberMe: this._rememberMe);
+      vGlobal.client.configure(base: _server);
+      Server info = await vGlobal.serverService.getInfo();
+
+
+      UserTokenPair newUser;
+
+      try {
+        newUser =
+        await vGlobal.newUserService.login(
+            _username, _password, rememberMe: this._rememberMe);
+      } catch (e) {
+        if (e.runtimeType == InvalidRequestApiException && e.errorCode == 412) {
+          TextEditingController totpController = TextEditingController();
+          await showDialog(context: context, builder: (context) =>
+          new AlertDialog(
+            title: Text("Enter One Time Passcode"),
+            content: TextField(controller: totpController,keyboardType: TextInputType.number,
+              inputFormatters: <TextInputFormatter>[FilteringTextInputFormatter.digitsOnly],
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(context), child: Text("Login"))
+            ],
+          ));
+          newUser =
+          await vGlobal.newUserService.login(
+              _username, _password, rememberMe: this._rememberMe,
+              totp: totpController.text);
+        } else {
+          throw e;
+        }
+    }
       vGlobal.changeUser(newUser.user, token: newUser.token, base: _server);
     } catch (ex) {
       showDialog(
@@ -189,16 +223,17 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  _loginUserByClientToken(Client client) async {
+  _loginUserByClientToken(BaseTokenPair baseTokenPair) async {
+    VikunjaGlobalState vGS = VikunjaGlobal.of(context);
+
+    vGS.client.configure(token: baseTokenPair.token, base: baseTokenPair.base, authenticated: true);
     setState(() => _loading = true);
     try {
-      var newUser = await UserAPIService(client).getCurrentUser();
-      VikunjaGlobal.of(context).changeUser(
-          newUser, token: client.token, base: client.base);
+      var newUser = await vGS.newUserService.getCurrentUser();
+      vGS.changeUser(newUser, token: baseTokenPair.token, base: baseTokenPair.base);
     } catch (e) {
       log(e.toString());
     }
     setState(() => _loading = false);
-
   }
 }
