@@ -128,7 +128,7 @@ class _RegisterPageState extends State<RegisterPage> {
     try {
       var vGlobal = VikunjaGlobal.of(context);
       var newUserLoggedIn = await vGlobal
-          .newUserService(_server)
+          .newUserService
           .register(_username, _email, _password);
       vGlobal.changeUser(newUserLoggedIn.user,
           token: newUserLoggedIn.token, base: _server);
