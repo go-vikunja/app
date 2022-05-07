@@ -10,6 +10,7 @@ import 'package:vikunja_app/api/label_task_bulk.dart';
 import 'package:vikunja_app/api/labels.dart';
 import 'package:vikunja_app/api/list_implementation.dart';
 import 'package:vikunja_app/api/namespace_implementation.dart';
+import 'package:vikunja_app/api/server_implementation.dart';
 import 'package:vikunja_app/api/task_implementation.dart';
 import 'package:vikunja_app/api/user_implementation.dart';
 import 'package:vikunja_app/managers/notifications.dart';
@@ -41,9 +42,10 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
   final FlutterSecureStorage _storage = new FlutterSecureStorage();
 
   User _currentUser;
-  Client _client;
   bool _loading = true;
   bool expired = false;
+  Client _client;
+  UserService _newUserService;
 
 
   User get currentUser => _currentUser;
@@ -52,7 +54,9 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
 
   UserManager get userManager => new UserManager(_storage);
 
-  UserService newUserService(base) => new UserAPIService(Client(null, base));
+  UserService get newUserService => _newUserService;
+
+  ServerService get serverService => new ServerAPIService(client);
 
   NamespaceService get namespaceService => new NamespaceAPIService(client);
 
@@ -100,6 +104,8 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
   @override
   void initState() {
     super.initState();
+    _client = Client(this);
+    _newUserService = UserAPIService(client);
     _loadCurrentUser();
     tz.initializeTimeZones();
     iOSSpecifics = notifs.IOSNotificationDetails();
@@ -128,9 +134,9 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
     }
     // Set current user in storage
     await _storage.write(key: 'currentUser', value: newUser.id.toString());
+    client.configure(token: token, base: base, authenticated: true);
     setState(() {
       _currentUser = newUser;
-      _client = Client(token, base);
       _loading = false;
     });
   }
@@ -172,7 +178,7 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
     _storage.deleteAll().then((_) {
       Navigator.pop(context);
       setState(() {
-        _client = null;
+        client.reset();
         _currentUser = null;
       });
     }).catchError((err) {
@@ -198,20 +204,20 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
       });
       return;
     }
-    _client = Client(token, base);
+    client.configure(token: token, base: base);
     var loadedCurrentUser;
     try {
       loadedCurrentUser = await UserAPIService(client).getCurrentUser();
     } on ApiException catch (e) {
       dev.log("Error code: " + e.errorCode.toString(),level: 1000);
       if (e.errorCode ~/ 100 == 4) {
-        _client.authenticated = false;
+        client.authenticated = false;
         if (e.errorCode == 401) {
           // token has expired, but we can reuse username and base. user just has to enter password again
           expired = true;
         }
         setState(() {
-          _client.authenticated = false;
+          client.authenticated = false;
           _currentUser = null;
           _loading = false;
         });
@@ -222,7 +228,6 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
       loadedCurrentUser = User(int.tryParse(currentUser), "", "");
     }
     setState(() {
-      _client = client;
       _currentUser = loadedCurrentUser;
       _loading = false;
     });

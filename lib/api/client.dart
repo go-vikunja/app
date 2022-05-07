@@ -4,23 +4,28 @@ import 'dart:core';
 import 'package:http/http.dart' as http;
 import 'package:vikunja_app/api/response.dart';
 import 'package:vikunja_app/components/string_extension.dart';
+import 'package:vikunja_app/global.dart';
 
 class Client {
+  VikunjaGlobalState global;
   final JsonDecoder _decoder = new JsonDecoder();
   final JsonEncoder _encoder = new JsonEncoder();
-  final String _token;
-  final String _base;
+  String _token;
+  String _base;
   bool authenticated;
 
   String get base => _base;
   String get token => _token;
 
-  Client(this._token, String base, {this.authenticated = true})
-      : _base = base.endsWith('/api/v1') ? base : '$base/api/v1';
+  //Client(this._token, String base, {this.authenticated = true})
+  //    : _base = base.endsWith('/api/v1') ? base : '$base/api/v1';
 
   bool operator ==(dynamic otherClient) {
     return otherClient._token == _token;
   }
+
+  Client(this.global, {String token, String base, bool authenticated = false})
+  { configure(token: token, base: base, authenticated: authenticated);}
 
   @override
   int get hashCode => _token.hashCode;
@@ -29,6 +34,20 @@ class Client {
         'Authorization': _token != null ? 'Bearer $_token' : '',
         'Content-Type': 'application/json'
       };
+
+  void configure({String token, String base, bool authenticated}) {
+    if(token != null)
+      _token = token;
+    if(base != null)
+      _base = base.endsWith('/api/v1') ? base : '$base/api/v1';
+    if(authenticated != null)
+      this.authenticated = authenticated;
+  }
+
+  void reset() {
+    _token = _base = null;
+    authenticated = false;
+  }
 
   Future<Response> get(String url,
       [Map<String, List<String>> queryParameters]) {

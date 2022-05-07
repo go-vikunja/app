@@ -9,6 +9,8 @@ import 'package:vikunja_app/models/namespace.dart';
 import 'package:vikunja_app/models/task.dart';
 import 'package:vikunja_app/models/user.dart';
 
+import '../models/server.dart';
+
 enum TaskServiceOptionSortBy {id, title, description, done, done_at, due_date, created_by_id, list_id, repeat_after, priority, start_date, end_date, hex_color, percent_done, uid, created, updated}
 enum TaskServiceOptionOrderBy {asc,desc}
 enum TaskServiceOptionFilterBy {done, due_date, reminder_dates}
@@ -111,7 +113,7 @@ abstract class TaskService {
 }
 
 abstract class UserService {
-  Future<UserTokenPair> login(String username, password, {bool rememberMe = false});
+  Future<UserTokenPair> login(String username, password, {bool rememberMe = false, String totp});
   Future<UserTokenPair> register(String username, email, password);
   Future<User> getCurrentUser();
 }
@@ -132,4 +134,8 @@ abstract class LabelTaskService {
 
 abstract class LabelTaskBulkService {
   Future<List<Label>> update(Task task, List<Label> labels);
+}
+
+abstract class ServerService {
+  Future<Server> getInfo();
 }
