@@ -27,6 +27,7 @@ class LoginWithWebViewState extends State<LoginWithWebView> {
       initialUrl: widget.frontEndUrl,
       javascriptMode: JavascriptMode.unrestricted,
       onPageFinished: (value) => _handlePageFinished(value),
+      userAgent: "Mozilla/5.0 (Linux; Android 8.0; Pixel 2 Build/OPD3.170816.012) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.82 Mobile Safari/537.36",
       onWebViewCreated: (controller) {
         webViewController = controller;
         webViewController.runJavascript("localStorage.clear(); location.href=location.href;");
