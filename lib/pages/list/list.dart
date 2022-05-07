@@ -80,7 +80,7 @@ class _ListPageState extends State<ListPage> {
 
                             // This handles the case if there are no more elements in the list left which can be provided by the api
                             if (taskState.maxPages == _currentPage &&
-                                index == taskState.tasks.length - 1)
+                                index >= taskState.tasks.length)
                               return null;
 
                             if (index >= taskState.tasks.length &&
