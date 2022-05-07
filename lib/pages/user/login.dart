@@ -146,7 +146,7 @@ class _LoginPageState extends State<LoginPage> {
                             Navigator.push(
                                 context,
                                 MaterialPageRoute(builder: (context) =>
-                                    LoginWithWebView(_serverController.text))).then((btp) => _loginUserByClientToken(btp));
+                                    LoginWithWebView(_serverController.text))).then((btp) { if(btp != null) _loginUserByClientToken(btp);});
                           } else {
                             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Please enter your frontend url")));
                           }

@@ -41,10 +41,13 @@ class LoginWithWebViewState extends State<LoginWithWebView> {
       appBar: AppBar(),
       body: webView
     ),
-    onWillPop: () {_handlePageFinished(""); return Future.value(false);},);
+    onWillPop: () async {
+      bool hasPopped = await _handlePageFinished("");
+      return Future.value(!hasPopped);
+      },);
   }
 
-  void _handlePageFinished(String pageLocation) async {
+  Future<bool> _handlePageFinished(String pageLocation) async {
     log("handlePageFinished");
     if(webViewController != null) {
       String localStorage = await webViewController
@@ -60,9 +63,11 @@ class LoginWithWebViewState extends State<LoginWithWebView> {
           BaseTokenPair baseTokenPair = BaseTokenPair(
               apiUrl, json["token"]);
           Navigator.pop(context, baseTokenPair);
+          return true;
         }
       }
     }
+    return false;
   }
 
 }
