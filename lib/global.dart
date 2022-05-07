@@ -204,7 +204,7 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
       });
       return;
     }
-    client.configure(token: token, base: base);
+    client.configure(token: token, base: base, authenticated: true);
     var loadedCurrentUser;
     try {
       loadedCurrentUser = await UserAPIService(client).getCurrentUser();
