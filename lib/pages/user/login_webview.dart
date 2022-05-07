@@ -48,14 +48,16 @@ class LoginWithWebViewState extends State<LoginWithWebView> {
     if(webViewController != null) {
       String localStorage = await webViewController
           .runJavascriptReturningResult("JSON.stringify(localStorage);");
-      //String documentLocation = await webViewController.runJavascriptReturningResult("JSON.stringify(document.location);");
-      if (localStorage != "null") {
+
+      String apiUrl = await webViewController.runJavascriptReturningResult("API_URL");
+      if (localStorage != "{}") {
+        apiUrl = apiUrl.replaceAll("\"", "");
         localStorage = localStorage.replaceAll("\\", "");
         localStorage = localStorage.substring(1, localStorage.length - 1);
         var json = jsonDecode(localStorage);
-        if (json["API_URL"] != null && json["token"] != null) {
+        if (apiUrl  != "null" && json["token"] != null) {
           BaseTokenPair baseTokenPair = BaseTokenPair(
-              json["API_URL"], json["token"]);
+              apiUrl, json["token"]);
           Navigator.pop(context, baseTokenPair);
         }
       }
