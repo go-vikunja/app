@@ -142,7 +142,7 @@ class _LoginPageState extends State<LoginPage> {
                             )),
                     Builder(builder: (context) => FancyButton(
                         onPressed: () {
-                          if(_formKey.currentState.validate()) {
+                          if(_formKey.currentState.validate() && _serverController.text.isNotEmpty) {
                             Navigator.push(
                                 context,
                                 MaterialPageRoute(builder: (context) =>
