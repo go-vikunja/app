@@ -27,32 +27,39 @@ class LoginWithWebViewState extends State<LoginWithWebView> {
       initialUrl: widget.frontEndUrl,
       javascriptMode: JavascriptMode.unrestricted,
       onPageFinished: (value) => _handlePageFinished(value),
-      onWebViewCreated: (controller) => webViewController = controller,
+      onWebViewCreated: (controller) {
+        webViewController = controller;
+        webViewController.runJavascript("localStorage.clear(); location.href=location.href;");
+        },
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return WillPopScope(child: Scaffold(
       appBar: AppBar(),
       body: webView
-    );
+    ),
+    onWillPop: () {_handlePageFinished(""); return Future.value(false);},);
   }
 
-  void _handlePageFinished(String value) {
+  void _handlePageFinished(String pageLocation) async {
     log("handlePageFinished");
-    if(webView != null)
-      webViewController.runJavascriptReturningResult("JSON.stringify(localStorage);").then((value) {
-        if(value != "null") {
-          value = value.replaceAll("\\", "");
-          value = value.substring(1,value.length-1);
-          var json =  jsonDecode(value);
+    if(webViewController != null) {
+      String localStorage = await webViewController
+          .runJavascriptReturningResult("JSON.stringify(localStorage);");
+      //String documentLocation = await webViewController.runJavascriptReturningResult("JSON.stringify(document.location);");
+      if (localStorage != "null") {
+        localStorage = localStorage.replaceAll("\\", "");
+        localStorage = localStorage.substring(1, localStorage.length - 1);
+        var json = jsonDecode(localStorage);
         if (json["API_URL"] != null && json["token"] != null) {
-          Client client = Client(json["token"], json["API_URL"]);
-          Navigator.pop(context, client);
+          BaseTokenPair baseTokenPair = BaseTokenPair(
+              json["API_URL"], json["token"]);
+          Navigator.pop(context, baseTokenPair);
         }
       }
-    });
+    }
   }
 
 }
