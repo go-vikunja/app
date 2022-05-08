@@ -25,17 +25,26 @@ class ListProvider with ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
-    VikunjaGlobal.of(context).taskService.getAllByList(listId, {
+    Map<String, List<String>> queryParams = {
       "sort_by": ["done", "id"],
       "order_by": ["asc", "desc"],
       "page": [page.toString()]
-    }).then((response) {
+    };
+
+    if(!displayDoneTasks) {
+      queryParams.addAll({
+        "filter_by": ["done"],
+        "filter_value": ["false"]
+      });
+    }
+    VikunjaGlobal.of(context).taskService.getAllByList(listId, queryParams).then((response) {
       if (response.headers["x-pagination-total-pages"] != null) {
         _maxPages = int.parse(response.headers["x-pagination-total-pages"]);
       }
       _tasks.addAll(response.body);
-      if(!displayDoneTasks)
-        _tasks.removeWhere((element) => element.done);
+      if(!displayDoneTasks) {
+        //_tasks.removeWhere((element) => element.done);
+      }
       _isLoading = false;
       notifyListeners();
     });

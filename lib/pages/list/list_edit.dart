@@ -34,7 +34,7 @@ class _ListEditPageState extends State<ListEditPage> {
       VikunjaGlobal.of(context).listService.getDisplayDoneTasks(listId).then(
               (value) => setState(() => displayDoneTasks = value == "1"));
     else
-      log("Display_bool: " + displayDoneTasks?.toString());
+      log("Display done tasks: " + displayDoneTasks?.toString());
     return Scaffold(
       appBar: AppBar(
         title: Text('Edit List'),

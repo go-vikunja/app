@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:developer';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -15,7 +15,8 @@ import 'package:vikunja_app/stores/list_store.dart';
 class ListPage extends StatefulWidget {
   final TaskList taskList;
 
-  ListPage({this.taskList}) : super(key: Key(taskList.id.toString()));
+  //ListPage({this.taskList}) : super(key: Key(taskList.id.toString()));
+  ListPage({this.taskList}) : super(key: Key(Random().nextInt(100000).toString()));
 
   @override
   _ListPageState createState() => _ListPageState();
@@ -27,6 +28,7 @@ class _ListPageState extends State<ListPage> {
   int _currentPage = 1;
   bool _loading = true;
   bool displayDoneTasks;
+  ListProvider taskState;
 
   @override
   void initState() {
@@ -35,15 +37,15 @@ class _ListPageState extends State<ListPage> {
       title: widget.taskList.title,
       tasks: [],
     );
-    Future.delayed(Duration.zero, (){
-      updateDisplayDoneTasks();
-    });
     super.initState();
+    Future.delayed(Duration.zero, (){
+      _loadList();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final taskState = Provider.of<ListProvider>(context);
+    taskState = Provider.of<ListProvider>(context);
     return Scaffold(
       appBar: AppBar(
         title: Text(_list.title),
@@ -56,7 +58,7 @@ class _ListPageState extends State<ListPage> {
                   builder: (context) => ListEditPage(
                     list: _list,
                   ),
-                )).whenComplete(() => updateDisplayDoneTasks()),
+                )).whenComplete(() => _loadList()),
           ),
         ],
       ),
@@ -80,7 +82,7 @@ class _ListPageState extends State<ListPage> {
 
                             // This handles the case if there are no more elements in the list left which can be provided by the api
                             if (taskState.maxPages == _currentPage &&
-                                index >= taskState.tasks.length)
+                                index == taskState.tasks.length)
                               return null;
 
                             if (index >= taskState.tasks.length &&
@@ -129,12 +131,9 @@ class _ListPageState extends State<ListPage> {
     );
   }
 
-  updateDisplayDoneTasks() {
-    VikunjaGlobal.of(context).listService.getDisplayDoneTasks(_list.id)
-        .then((value) {
-      displayDoneTasks = value == "1";
-      _loadList().then((value) => setState((){}));
-    });
+  Future<void> updateDisplayDoneTasks() {
+    return VikunjaGlobal.of(context).listService.getDisplayDoneTasks(_list.id)
+        .then((value) {displayDoneTasks = value == "1";});
   }
 
   TaskTile _buildLoadingTile(Task task) {
@@ -153,7 +152,7 @@ class _ListPageState extends State<ListPage> {
   }
 
   Future<void> _loadList() async {
-    _loadTasksForPage(1);
+    updateDisplayDoneTasks().then((value) => _loadTasksForPage(1));
   }
 
   void _loadTasksForPage(int page) {

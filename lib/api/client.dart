@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:core';
+import 'dart:developer';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:vikunja_app/api/response.dart';
 import 'package:vikunja_app/components/string_extension.dart';
@@ -27,13 +29,13 @@ class Client {
   Client(this.global, {String token, String base, bool authenticated = false})
   { configure(token: token, base: base, authenticated: authenticated);}
 
-  @override
-  int get hashCode => _token.hashCode;
-
   get _headers => {
         'Authorization': _token != null ? 'Bearer $_token' : '',
         'Content-Type': 'application/json'
       };
+
+  @override
+  int get hashCode => _token.hashCode;
 
   void configure({String token, String base, bool authenticated}) {
     if(token != null)
@@ -64,8 +66,9 @@ class Client {
         queryParameters: queryParameters,
         // Because dart takes a Map<String, String> here, it is only possible to sort by one parameter while the api supports n parameters.
         fragment: uri.fragment);
-    return http.get(newUri, headers: _headers).then(_handleResponse);
-  }
+    return http.get(newUri, headers: _headers)
+        .then(_handleResponse, onError: _handleError);
+    }
 
   Future<Response> delete(String url) {
     return http
@@ -73,7 +76,7 @@ class Client {
           '${this.base}$url'.toUri(),
           headers: _headers,
         )
-        .then(_handleResponse);
+        .then(_handleResponse, onError: _handleError);
   }
 
   Future<Response> post(String url, {dynamic body}) {
@@ -83,7 +86,7 @@ class Client {
           headers: _headers,
           body: _encoder.convert(body),
         )
-        .then(_handleResponse);
+        .then(_handleResponse, onError: _handleError);
   }
 
   Future<Response> put(String url, {dynamic body}) {
@@ -93,7 +96,13 @@ class Client {
           headers: _headers,
           body: _encoder.convert(body),
         )
-        .then(_handleResponse);
+        .then(_handleResponse, onError: _handleError);
+  }
+
+  void _handleError(dynamic e) {
+    log(e.toString());
+      ScaffoldMessenger.of(global.context).showSnackBar(
+          SnackBar(content: Text("Error code on request: " + e.toString())));
   }
 
   Response _handleResponse(http.Response response) {
@@ -107,6 +116,7 @@ class Client {
             response.request.url.toString(),
             error["message"] ?? "Unknown Error");
       }
+      //ScaffoldMessenger.of(global.context).showSnackBar(SnackBar(content: Text("Error code "+response.statusCode.toString()+" on request: " + error["message"])));
       throw new ApiException(
           response.statusCode, response.request.url.toString());
     }

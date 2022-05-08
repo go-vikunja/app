@@ -7,7 +7,7 @@ class TaskList {
   final String title, description;
   final User owner;
   final DateTime created, updated;
-  final List<Task> tasks;
+  List<Task> tasks;
   final bool isFavorite;
 
   TaskList(
