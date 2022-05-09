@@ -42,9 +42,7 @@ class ListProvider with ChangeNotifier {
         _maxPages = int.parse(response.headers["x-pagination-total-pages"]);
       }
       _tasks.addAll(response.body);
-      if(!displayDoneTasks) {
-        //_tasks.removeWhere((element) => element.done);
-      }
+
       _isLoading = false;
       notifyListeners();
     });
