@@ -9,7 +9,7 @@ import 'package:vikunja_app/components/string_extension.dart';
 import 'package:vikunja_app/global.dart';
 
 class Client {
-  VikunjaGlobalState global;
+  GlobalKey<ScaffoldMessengerState> global;
   final JsonDecoder _decoder = new JsonDecoder();
   final JsonEncoder _encoder = new JsonEncoder();
   String _token;
@@ -101,22 +101,36 @@ class Client {
 
   void _handleError(dynamic e) {
     log(e.toString());
-      ScaffoldMessenger.of(global.context).showSnackBar(
-          SnackBar(content: Text("Error code on request: " + e.toString())));
+    SnackBar snackBar = SnackBar(content: Text("Error on request: " + e.toString()));
+    global.currentState?.showSnackBar(snackBar);
   }
 
   Response _handleResponse(http.Response response) {
     if (response.statusCode < 200 ||
         response.statusCode >= 400 ||
         json == null) {
+      Map<String, dynamic> error = _decoder.convert(response.body);
       if (response.statusCode ~/ 100 == 4) {
-        Map<String, dynamic> error = _decoder.convert(response.body);
         throw new InvalidRequestApiException(
             response.statusCode,
             response.request.url.toString(),
             error["message"] ?? "Unknown Error");
       }
-      //ScaffoldMessenger.of(global.context).showSnackBar(SnackBar(content: Text("Error code "+response.statusCode.toString()+" on request: " + error["message"])));
+      final SnackBar snackBar = SnackBar(
+        content: Text("Error code "+response.statusCode.toString()+" received."),
+        action: SnackBarAction(
+          label: ("Show Details"),
+          onPressed: (){
+            Builder(
+                builder: (BuildContext context) =>
+                Dialog(
+                  child: Text(error["message"]),
+                )
+            );
+          },
+        ),
+      );
+      global.currentState?.showSnackBar(snackBar);
       throw new ApiException(
           response.statusCode, response.request.url.toString());
     }

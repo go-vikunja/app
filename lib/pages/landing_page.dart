@@ -69,28 +69,29 @@ class LandingPageState extends State<LandingPage> with AfterLayoutMixin<LandingP
 
   @override
   Widget build(BuildContext context) {
-    if(_list == null)
+    if(_list == null || _list.isEmpty)
       _loadList(context);
-    VikunjaGlobal.of(context).scheduleDueNotifications();
     return new Scaffold(
-        body: _list != null ? RefreshIndicator(child: ListView(
-              scrollDirection: Axis.vertical,
-              shrinkWrap: true,
-              padding: EdgeInsets.symmetric(vertical: 8.0),
-              children: ListTile.divideTiles(
-                  context: context, tiles: _listTasks(context)).toList(),
-            ), onRefresh: () => _loadList(context),)
-
-            : new Center(child: CircularProgressIndicator()),
+      body: RefreshIndicator(
+        onRefresh: () => _loadList(context),
+        child: _list != null ? ListView(
+        scrollDirection: Axis.vertical,
+        shrinkWrap: true,
+        padding: EdgeInsets.symmetric(vertical: 8.0),
+        children: ListTile.divideTiles(
+            context: context, tiles: _listTasks(context)).toList(),
+      ) : new Center(child: CircularProgressIndicator(),),
+      ),
         floatingActionButton: Builder(
             builder: (context) =>
                 FloatingActionButton(
-                      onPressed: () {
-                        _addItemDialog(context);
-                      },
-                      child: const Icon(Icons.add),
-                    )
-        ));
+                  onPressed: () {
+                    _addItemDialog(context);
+                  },
+                  child: const Icon(Icons.add),
+                )
+        )
+    );
   }
   _addItemDialog(BuildContext context) {
     if(defaultList == null) {

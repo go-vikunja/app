@@ -52,6 +52,9 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
 
   Client get client => _client;
 
+  final GlobalKey<ScaffoldMessengerState> snackbarKey =
+  GlobalKey<ScaffoldMessengerState>();
+
   UserManager get userManager => new UserManager(_storage);
 
   UserService get newUserService => _newUserService;
@@ -104,7 +107,7 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
   @override
   void initState() {
     super.initState();
-    _client = Client(this);
+    _client = Client(snackbarKey);
     _newUserService = UserAPIService(client);
     _loadCurrentUser();
     tz.initializeTimeZones();

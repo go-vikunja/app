@@ -20,6 +20,7 @@ class VikunjaApp extends StatelessWidget {
       title: 'Vikunja',
       theme: buildVikunjaTheme(),
       darkTheme: buildVikunjaDarkTheme(),
+      scaffoldMessengerKey: VikunjaGlobal.of(context).snackbarKey, // <= this
       home: this.home,
     );
   }
