@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:vikunja_app/components/datetimePicker.dart';
@@ -258,13 +260,9 @@ class _TaskEditPageState extends State<TaskEditPage> {
                           controller: _labelTypeAheadController,
                           decoration:
                               InputDecoration(labelText: 'Add a new label')),
-                      suggestionsCallback: (pattern) {
-                        return _searchLabel(pattern);
-                      },
+                      suggestionsCallback: (pattern) => _searchLabel(pattern),
                       itemBuilder: (context, suggestion) {
-                        return ListTile(
-                          title: Text(suggestion),
-                        );
+                        return Text(suggestion);
                       },
                       transitionBuilder: (context, suggestionsBox, controller) {
                         return suggestionsBox;
@@ -366,6 +364,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
         .labelService
         .getAll(query: query)
         .then((labels) {
+          log("searched");
       // Only show those labels which aren't already added to the task
       labels.removeWhere((labelToRemove) => _labels.contains(labelToRemove));
       _suggestedLabels = labels;
@@ -386,6 +385,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
     if (found) {
       _labelTypeAheadController.clear();
     }
+    setState(() {});
   }
 
   _createAndAddLabel(String labelTitle) {

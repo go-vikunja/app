@@ -36,7 +36,7 @@ class Label {
         'hex_color':
             color?.value?.toRadixString(16)?.padLeft(8, '0')?.substring(2),
         'created_by': createdBy?.toJSON(),
-        'updated': updated?.millisecondsSinceEpoch,
-        'created': created?.millisecondsSinceEpoch,
+        'updated': updated?.toUtc()?.toIso8601String(),
+        'created': created?.toUtc()?.toIso8601String(),
       };
 }

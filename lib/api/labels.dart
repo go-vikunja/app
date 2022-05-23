@@ -32,7 +32,7 @@ class LabelAPIService extends APIService implements LabelService {
     String params =
         query == '' ? null : '?s=' + Uri.encodeQueryComponent(query);
     return client.get('/labels$params').then(
-        (label) => convertList(label, (result) => Label.fromJson(result)));
+        (response) => convertList(response.body, (result) => Label.fromJson(result)));
   }
 
   @override
