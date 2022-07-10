@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/theme/constants.dart';
 
@@ -31,6 +33,17 @@ ThemeData _buildVikunjaTheme(ThemeData base) {
         color:
             vWhite, // This does not work, looks like a bug in Flutter: https://github.com/flutter/flutter/issues/19623
       ),
+    ),
+    bottomNavigationBarTheme: base.bottomNavigationBarTheme.copyWith(
+      // Make bottomNavigationBar backgroundColor darker to provide more separation
+      backgroundColor: () {
+        final _hslColor = HSLColor.fromColor(
+            base.bottomNavigationBarTheme.backgroundColor != null
+            ? base.bottomNavigationBarTheme.backgroundColor
+            : base.scaffoldBackgroundColor
+        );
+        return _hslColor.withLightness(max(_hslColor.lightness - 0.03, 0)).toColor();
+      }(),
     ),
   );
 }

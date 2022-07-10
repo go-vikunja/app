@@ -23,6 +23,7 @@ class ListPage extends StatefulWidget {
 }
 
 class _ListPageState extends State<ListPage> {
+  int _viewIndex = 0;
   TaskList _list;
   List<Task> _loadingTasks = [];
   int _currentPage = 1;
@@ -103,7 +104,29 @@ class _ListPageState extends State<ListPage> {
         builder: (context) => FloatingActionButton(
             onPressed: () => _addItemDialog(context), child: Icon(Icons.add)),
       ),
+      bottomNavigationBar: BottomNavigationBar(
+        items: const <BottomNavigationBarItem>[
+          BottomNavigationBarItem(
+            icon: Icon(Icons.view_list),
+            label: 'List',
+            tooltip: 'List',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.view_kanban),
+            label: 'Kanban',
+            tooltip: 'Kanban',
+          ),
+        ],
+        currentIndex: _viewIndex,
+        onTap: _onViewTapped,
+      ),
     );
+  }
+
+  void _onViewTapped(int index) {
+    setState(() {
+      _viewIndex = index;
+    });
   }
 
   TaskTile _buildTile(Task task) {
