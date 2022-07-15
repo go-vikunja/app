@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/models/task.dart';
+import 'package:vikunja_app/models/bucket.dart';
 import 'package:vikunja_app/global.dart';
 
 class ListProvider with ChangeNotifier {
@@ -8,6 +9,7 @@ class ListProvider with ChangeNotifier {
 
   // TODO: Streams
   List<Task> _tasks = [];
+  List<Bucket> _buckets = [];
 
   bool get isLoading => _isLoading;
 
@@ -19,6 +21,13 @@ class ListProvider with ChangeNotifier {
   }
 
   List<Task> get tasks => _tasks;
+
+  set buckets(List<Bucket> buckets) {
+    _buckets = buckets;
+    notifyListeners();
+  }
+
+  List<Bucket> get buckets => _buckets;
 
   void loadTasks({BuildContext context, int listId, int page = 1, bool displayDoneTasks = true}) {
     _tasks = [];
@@ -42,6 +51,26 @@ class ListProvider with ChangeNotifier {
         _maxPages = int.parse(response.headers["x-pagination-total-pages"]);
       }
       _tasks.addAll(response.body);
+
+      _isLoading = false;
+      notifyListeners();
+    });
+  }
+
+  void loadBuckets({BuildContext context, int listId, int page = 1}) {
+    _buckets = [];
+    _isLoading = true;
+    notifyListeners();
+
+    Map<String, List<String>> queryParams = {
+      "page": [page.toString()]
+    };
+
+    VikunjaGlobal.of(context).bucketService.getAllByList(listId, queryParams).then((response) {
+      if (response.headers["x-pagination-total-pages"] != null) {
+        _maxPages = int.parse(response.headers["x-pagination-total-pages"]);
+      }
+      _buckets.addAll(response.body);
 
       _isLoading = false;
       notifyListeners();
