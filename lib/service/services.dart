@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:developer';
 
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:vikunja_app/api/response.dart';
 import 'package:vikunja_app/models/label.dart';
 import 'package:vikunja_app/models/labelTask.dart';
@@ -138,4 +139,27 @@ abstract class LabelTaskBulkService {
 
 abstract class ServerService {
   Future<Server> getInfo();
+}
+
+class SettingsManager {
+  final FlutterSecureStorage _storage;
+
+  Map<String,String> defaults = {
+  "ignore-certificates" : "0"
+  };
+
+  SettingsManager(this._storage) {
+    defaults.forEach((key, value) {
+      _storage.containsKey(key: key).then((is_created) {
+        if (!is_created)
+          _storage.write(key: key, value: value);
+      });});}
+
+  Future<String> getIgnoreCertificates() {
+    return _storage.read(key: "ignore-certificates");
+  }
+
+  void setIgnoreCertificates(bool value) {
+    _storage.write(key: "ignore-certificates", value: value ? "1" : "0");
+  }
 }
