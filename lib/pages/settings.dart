@@ -21,7 +21,8 @@ class SettingsPageState extends State<SettingsPage> {
     if(defaultList == null)
       VikunjaGlobal.of(context).listService.getDefaultList().then((value) => setState(() => defaultList = value == null ? null : int.tryParse(value)));
 
-    VikunjaGlobal.of(context).settingsManager.getIgnoreCertificates().then((value) => setState(() => ignoreCertificates = value == "1" ? true:false));
+    if(ignoreCertificates == null)
+      VikunjaGlobal.of(context).settingsManager.getIgnoreCertificates().then((value) => setState(() => ignoreCertificates = value == "1" ? true:false));
 
     return new Scaffold(
       appBar: AppBar(title: Text("Settings"),),

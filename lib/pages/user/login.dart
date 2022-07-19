@@ -25,6 +25,7 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   bool _loading = false;
   bool _rememberMe = false;
+  bool ignoreCertificates;
 
   final _serverController = TextEditingController();
   final _usernameController = TextEditingController();
@@ -52,6 +53,9 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext ctx) {
+    if(ignoreCertificates == null)
+      VikunjaGlobal.of(context).settingsManager.getIgnoreCertificates().then((value) => setState(() => ignoreCertificates = value == "1" ? true:false));
+
     return Scaffold(
       body: Center(
         child: SingleChildScrollView(
@@ -151,7 +155,13 @@ class _LoginPageState extends State<LoginPage> {
                             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Please enter your frontend url")));
                           }
                         },
-                        child: VikunjaButtonText("Login with Frontend")))
+                        child: VikunjaButtonText("Login with Frontend"))),
+                    ignoreCertificates != null ?
+                    CheckboxListTile(title: Text("Ignore Certificates"), value: ignoreCertificates, onChanged: (value) {
+                      setState(() => ignoreCertificates = value);
+                      VikunjaGlobal.of(context).settingsManager.setIgnoreCertificates(value);
+                      VikunjaGlobal.of(context).client.ignoreCertificates = value;
+                    }) : ListTile(title: Text("..."))
             ],
                 ),
               ),
