@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/models/task.dart';
+import 'package:vikunja_app/pages/list/task_edit.dart';
 import 'package:vikunja_app/theme/constants.dart';
 
 class BucketTaskCard extends StatefulWidget {
@@ -51,9 +52,17 @@ class _BucketTaskCardState extends State<BucketTaskCard> {
     // TODO: add labels, checklist completion, attachment icon, description icon
 
     return Card(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[numRow, titleRow, labelRow],
+      child: InkWell(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[numRow, titleRow, labelRow],
+        ),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => TaskEditPage(
+            task: _currentTask,
+          )),
+        ),
       ),
     );
   }

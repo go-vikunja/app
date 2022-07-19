@@ -5,10 +5,9 @@ import 'package:vikunja_app/models/task.dart';
 
 class BucketListView extends StatefulWidget {
   final Bucket bucket;
-  final Function onEdit;
   final Function onAddTask;
 
-  const BucketListView({Key key, @required this.bucket, this.onEdit, this.onAddTask})
+  const BucketListView({Key key, @required this.bucket, this.onAddTask})
       : assert(bucket != null),
         super(key: key);
 
@@ -35,8 +34,14 @@ class _BucketListViewState extends State<BucketListView> {
 
           final index = i - 1;
 
-          if (_currentBucket.tasks == null || index >= _currentBucket.tasks.length)
+          if (_currentBucket.tasks == null || index >= _currentBucket.tasks.length) {
+            if (index == 0 || index == _currentBucket.tasks?.length)
+              return TextButton(
+                onPressed: widget.onAddTask,
+                child: Text('+ Add Task'),
+              );
             return null;
+          }
 
           return index < _currentBucket.tasks.length
               ? _buildBucketTaskTile(_currentBucket.tasks[index])

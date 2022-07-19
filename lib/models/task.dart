@@ -7,7 +7,7 @@ import 'package:vikunja_app/models/user.dart';
 
 @JsonSerializable()
 class Task {
-  int id, parentTaskId, priority, listId;
+  int id, parentTaskId, priority, listId, bucketId;
   DateTime created, updated, dueDate, startDate, endDate;
   List<DateTime> reminderDates;
   String title, description;
@@ -17,6 +17,7 @@ class Task {
   List<Task> subtasks;
   List<Label> labels;
   bool loading = false;
+  // TODO: add kanbanPosition, position(?)
 
   Task(
       {@required this.id,
@@ -35,7 +36,8 @@ class Task {
       this.created,
       this.updated,
       this.createdBy,
-      this.listId});
+      this.listId,
+      this.bucketId});
 
   Task.fromJson(Map<String, dynamic> json)
       : id = json['id'],
@@ -63,6 +65,7 @@ class Task {
         updated = DateTime.parse(json['updated']),
         created = DateTime.parse(json['created']),
         listId = json['list_id'],
+        bucketId = json['bucket_id'],
         createdBy = json['created_by'] == null
             ? null
             : User.fromJson(json['created_by']);
@@ -81,6 +84,7 @@ class Task {
         'repeat_after': repeatAfter?.inSeconds,
         'labels': labels?.map((label) => label.toJSON())?.toList(),
         'subtasks': subtasks?.map((subtask) => subtask.toJSON())?.toList(),
+        'bucket_id': bucketId,
         'created_by': createdBy?.toJSON(),
         'updated': updated?.toUtc()?.toIso8601String(),
         'created': created?.toUtc()?.toIso8601String(),

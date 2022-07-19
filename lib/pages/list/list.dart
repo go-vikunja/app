@@ -148,13 +148,19 @@ class _ListPageState extends State<ListPage> {
     );
   }
 
-  ListView _kanbanView(BuildContext context) {
+  ListView _kanbanView(BuildContext buildContext) {
     return ListView.builder(
       scrollDirection: Axis.horizontal,
       padding: EdgeInsets.symmetric(vertical: 10),
       itemBuilder: (context, i) {
-        if (taskState.maxPages == _currentPage && i == taskState.buckets.length)
+        if (taskState.maxPages == _currentPage && i >= taskState.buckets.length) {
+          if (i == taskState.buckets.length)
+            return TextButton(
+              onPressed: () => _addBucketDialog(buildContext),
+              child: Text('+ Create Bucket'),
+            );
           return null;
+        }
 
         if (i >= taskState.buckets.length && _currentPage < taskState.maxPages) {
           _currentPage++;
@@ -195,6 +201,7 @@ class _ListPageState extends State<ListPage> {
   BucketListView _buildBucketTile(Bucket bucket) {
     return BucketListView(
       bucket: bucket,
+      onAddTask: () => _addItemDialog(context, bucket),
     );
   }
 
@@ -250,11 +257,11 @@ class _ListPageState extends State<ListPage> {
     );
   }
 
-  _addItemDialog(BuildContext context) {
+  _addItemDialog(BuildContext context, [Bucket bucket]) {
     showDialog(
       context: context,
       builder: (_) => AddDialog(
-        onAdd: (title) => _addItem(title, context),
+        onAdd: (title) => _addItem(title, context, bucket),
         decoration: InputDecoration(
           labelText: 'Task Name',
           hintText: 'eg. Milk',
@@ -263,13 +270,14 @@ class _ListPageState extends State<ListPage> {
     );
   }
 
-  _addItem(String title, BuildContext context) {
+  _addItem(String title, BuildContext context, [Bucket bucket]) {
     var globalState = VikunjaGlobal.of(context);
     var newTask = Task(
       id: null,
       title: title,
       createdBy: globalState.currentUser,
       done: false,
+      bucketId: bucket?.id,
     );
     setState(() => _loadingTasks.add(newTask));
     Provider.of<ListProvider>(context, listen: false)
@@ -280,11 +288,42 @@ class _ListPageState extends State<ListPage> {
     )
         .then((_) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('The task was added successfully!'),
+        content: Text('The task was added successfully' + (bucket != null ? ' to ${bucket.title}' : '') + '!'),
       ));
       setState(() {
         _loadingTasks.remove(newTask);
       });
+    });
+  }
+
+  _addBucketDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => AddDialog(
+        onAdd: (title) => _addBucket(title, context),
+        decoration: InputDecoration(
+          labelText: 'New Bucket Name',
+          hintText: 'eg. To Do',
+        ),
+      )
+    );
+  }
+
+  _addBucket(String title, BuildContext context) {
+    Provider.of<ListProvider>(context, listen: false).addBucket(
+      context: context,
+      newBucket: Bucket(
+        id: null,
+        title: title,
+        createdBy: VikunjaGlobal.of(context).currentUser,
+        listId: _list.id,
+      ),
+      listId: _list.id,
+    ).then((_) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('The bucket was added successfully!'),
+      ));
+      setState(() {});
     });
   }
 }

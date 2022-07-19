@@ -102,7 +102,16 @@ class ListProvider with ChangeNotifier {
     notifyListeners();
 
     return globalState.taskService.add(listId, newTask).then((task) {
-      _tasks.insert(0, task);
+      if (newTask.bucketId == null) {
+        _tasks.insert(0, task);
+      } else {
+        final bucket = _buckets[_buckets.indexWhere((b) => task.bucketId == b.id)];
+        if (bucket.tasks != null) {
+          bucket.tasks.add(task);
+        } else {
+          bucket.tasks = <Task>[task];
+        }
+      }
       _isLoading = false;
       notifyListeners();
     });
@@ -125,5 +134,27 @@ class ListProvider with ChangeNotifier {
       });
       notifyListeners();
     });
+  }
+
+  Future<void> addBucket({BuildContext context, Bucket newBucket, int listId}) {
+    _isLoading = true;
+    notifyListeners();
+    return VikunjaGlobal.of(context).bucketService.add(listId, newBucket)
+        .then((bucket) {
+          _buckets.add(bucket);
+          _isLoading = false;
+          notifyListeners();
+        });
+  }
+
+  Future<void> updateBucket({BuildContext context, Bucket bucket}) {
+    _isLoading = true;
+    notifyListeners();
+    return VikunjaGlobal.of(context).bucketService.update(bucket)
+        .then((rBucket) {
+          _buckets[_buckets.indexWhere((b) => rBucket.id == b.id)] = rBucket;
+          _isLoading = false;
+          notifyListeners();
+        });
   }
 }
