@@ -23,31 +23,23 @@ class _BucketListViewState extends State<BucketListView> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: MediaQuery.of(context).size.width * 0.8,
-      child: ListView.builder(
-        padding: EdgeInsets.symmetric(horizontal: 10),
-        itemBuilder: (context, i) {
-          if (i == 0) {
-            return Text(_currentBucket.title);
-          }
+    return ListView.builder(
+      padding: EdgeInsets.symmetric(horizontal: 10),
+      itemBuilder: (context, i) {
+        if (_currentBucket.tasks == null || i >= _currentBucket.tasks.length) {
+          if (i == 0 || i == _currentBucket.tasks?.length)
+            return TextButton.icon(
+              onPressed: widget.onAddTask,
+              label: Text('Add Task'),
+              icon: Icon(Icons.add),
+            );
+          return null;
+        }
 
-          final index = i - 1;
-
-          if (_currentBucket.tasks == null || index >= _currentBucket.tasks.length) {
-            if (index == 0 || index == _currentBucket.tasks?.length)
-              return TextButton(
-                onPressed: widget.onAddTask,
-                child: Text('+ Add Task'),
-              );
-            return null;
-          }
-
-          return index < _currentBucket.tasks.length
-              ? _buildBucketTaskTile(_currentBucket.tasks[index])
-              : null;
-        },
-      ),
+        return i < _currentBucket.tasks.length
+            ? _buildBucketTaskTile(_currentBucket.tasks[i])
+            : null;
+      },
     );
   }
 

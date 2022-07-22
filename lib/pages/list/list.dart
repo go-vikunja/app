@@ -151,14 +151,10 @@ class _ListPageState extends State<ListPage> {
   ListView _kanbanView(BuildContext buildContext) {
     return ListView.builder(
       scrollDirection: Axis.horizontal,
-      padding: EdgeInsets.symmetric(vertical: 10),
       itemBuilder: (context, i) {
         if (taskState.maxPages == _currentPage && i >= taskState.buckets.length) {
           if (i == taskState.buckets.length)
-            return TextButton(
-              onPressed: () => _addBucketDialog(buildContext),
-              child: Text('+ Create Bucket'),
-            );
+            return _buildBucketTile();
           return null;
         }
 
@@ -198,10 +194,38 @@ class _ListPageState extends State<ListPage> {
     );
   }
 
-  BucketListView _buildBucketTile(Bucket bucket) {
-    return BucketListView(
-      bucket: bucket,
-      onAddTask: () => _addItemDialog(context, bucket),
+  Container _buildBucketTile([Bucket bucket]) {
+    return Container(
+      width: MediaQuery.of(context).size.width * 0.8,
+      child: Column(
+        children: () {
+          if (bucket != null) {
+            return <Widget>[
+              ListTile(
+                title: Text(bucket.title),
+                trailing: Icon(Icons.more_vert),
+              ),
+              Expanded(
+                child: BucketListView(
+                  bucket: bucket,
+                  onAddTask: () => _addItemDialog(context, bucket),
+                ),
+              ),
+            ];
+          } else {
+            return <Widget>[
+              ListTile(
+                title: TextButton.icon(
+                  onPressed: () => _addBucketDialog(context),
+                  label: Text('Create Bucket'),
+                  icon: Icon(Icons.add),
+                ),
+              ),
+              Spacer(),
+            ];
+          }
+        }(),
+      ),
     );
   }
 
