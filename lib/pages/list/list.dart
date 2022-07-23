@@ -71,16 +71,28 @@ class _ListPageState extends State<ListPage> {
               child: taskState.tasks.length > 0 || taskState.buckets.length > 0
                   ? ListenableProvider.value(
                       value: taskState,
-                      child: () {
-                        switch (_viewIndex) {
-                          case 0:
-                            return _listView(context);
-                          case 1:
-                            return _kanbanView(context);
-                          default:
-                            return _listView(context);
-                        }
-                      }(),
+                      child: Theme(
+                        data: (ThemeData base) {
+                          return base.copyWith(
+                            chipTheme: base.chipTheme.copyWith(
+                              labelPadding: EdgeInsets.symmetric(horizontal: 2),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.all(Radius.circular(5)),
+                              ),
+                            ),
+                          );
+                        }(Theme.of(context)),
+                        child: () {
+                          switch (_viewIndex) {
+                            case 0:
+                              return _listView(context);
+                            case 1:
+                              return _kanbanView(context);
+                            default:
+                              return _listView(context);
+                          }
+                        }(),
+                      ),
                     )
                   : Center(child: Text('This list is empty.')),
               onRefresh: _loadList,
@@ -195,14 +207,22 @@ class _ListPageState extends State<ListPage> {
   }
 
   Container _buildBucketTile([Bucket bucket]) {
+    final deviceData = MediaQuery.of(context);
     return Container(
-      width: MediaQuery.of(context).size.width * 0.8,
+      width: deviceData.size.width
+          * (deviceData.orientation == Orientation.portrait ?  0.8 : 0.4),
       child: Column(
         children: () {
           if (bucket != null) {
             return <Widget>[
               ListTile(
-                title: Text(bucket.title),
+                title: Text(
+                  bucket.title,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 18,
+                  ),
+                ),
                 trailing: Icon(Icons.more_vert),
               ),
               Expanded(
@@ -218,6 +238,7 @@ class _ListPageState extends State<ListPage> {
                 title: TextButton.icon(
                   onPressed: () => _addBucketDialog(context),
                   label: Text('Create Bucket'),
+                  style: ButtonStyle(alignment: Alignment.centerLeft),
                   icon: Icon(Icons.add),
                 ),
               ),
@@ -287,7 +308,7 @@ class _ListPageState extends State<ListPage> {
       builder: (_) => AddDialog(
         onAdd: (title) => _addItem(title, context, bucket),
         decoration: InputDecoration(
-          labelText: 'Task Name',
+          labelText: (bucket != null ? '${bucket.title}: ' : '') + 'New Task Name',
           hintText: 'eg. Milk',
         ),
       ),

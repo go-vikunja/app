@@ -1,9 +1,10 @@
-import 'package:meta/meta.dart';
+import 'package:flutter/material.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:vikunja_app/components/date_extension.dart';
 
 import 'package:vikunja_app/models/label.dart';
 import 'package:vikunja_app/models/user.dart';
+import 'package:vikunja_app/models/taskAttachment.dart';
 
 @JsonSerializable()
 class Task {
@@ -12,10 +13,12 @@ class Task {
   List<DateTime> reminderDates;
   String title, description;
   bool done;
+  Color color;
   User createdBy;
   Duration repeatAfter;
   List<Task> subtasks;
   List<Label> labels;
+  List<TaskAttachment> attachments;
   bool loading = false;
   // TODO: add kanbanPosition, position(?)
 
@@ -31,8 +34,10 @@ class Task {
       this.parentTaskId,
       this.priority,
       this.repeatAfter,
+      this.color,
       this.subtasks,
       this.labels,
+      this.attachments,
       this.created,
       this.updated,
       this.createdBy,
@@ -54,6 +59,9 @@ class Task {
         parentTaskId = json['parent_task_id'],
         priority = json['priority'],
         repeatAfter = Duration(seconds: json['repeat_after']),
+        color = json['hex_color'] == ''
+            ? null
+            : new Color(int.parse(json['hex_color'], radix: 16) + 0xFF000000),
         labels = (json['labels'] as List<dynamic>)
             ?.map((label) => Label.fromJson(label))
             ?.cast<Label>()
@@ -61,6 +69,10 @@ class Task {
         subtasks = (json['subtasks'] as List<dynamic>)
             ?.map((subtask) => Task.fromJson(subtask))
             ?.cast<Task>()
+            ?.toList(),
+        attachments = (json['attachments'] as List<dynamic>)
+            ?.map((attachment) => TaskAttachment.fromJSON(attachment))
+            ?.cast<TaskAttachment>()
             ?.toList(),
         updated = DateTime.parse(json['updated']),
         created = DateTime.parse(json['created']),
@@ -82,11 +94,17 @@ class Task {
         'end_date': endDate?.toUtc()?.toIso8601String(),
         'priority': priority,
         'repeat_after': repeatAfter?.inSeconds,
+        'hex_color': color?.value?.toRadixString(16)?.padLeft(8, '0')?.substring(2),
         'labels': labels?.map((label) => label.toJSON())?.toList(),
         'subtasks': subtasks?.map((subtask) => subtask.toJSON())?.toList(),
+        'attachments': attachments?.map((attachment) => attachment.toJSON())?.toList(),
         'bucket_id': bucketId,
         'created_by': createdBy?.toJSON(),
         'updated': updated?.toUtc()?.toIso8601String(),
         'created': created?.toUtc()?.toIso8601String(),
       };
+
+  Color get textColor => color != null
+      ? color.computeLuminance() > 0.5 ? Colors.black : Colors.white
+      : null;
 }

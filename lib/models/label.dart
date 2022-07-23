@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:vikunja_app/models/user.dart';
+import 'package:vikunja_app/theme/constants.dart';
 
 class Label {
   final int id;
@@ -13,7 +14,7 @@ class Label {
       {this.id,
       this.title,
       this.description,
-      this.color,
+      this.color = vLabelDefaultColor,
       this.created,
       this.updated,
       this.createdBy});
@@ -39,4 +40,6 @@ class Label {
         'updated': updated?.toUtc()?.toIso8601String(),
         'created': created?.toUtc()?.toIso8601String(),
       };
+
+  Color get textColor => color.computeLuminance() > 0.5 ? vLabelDark : vLabelLight;
 }

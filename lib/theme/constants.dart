@@ -21,7 +21,7 @@ const vButtonShadow = Color(0xFFb2d9ff);
 
 const vLabelLight = Color(0xFFf2f2f2);
 const vLabelDark = Color(0xFF4a4a4a);
-const vLabelDefaultColor = vGreen;
+const vLabelDefaultColor = Color(0xFFe8e8e8);
 
 ///////////
 // Paddings

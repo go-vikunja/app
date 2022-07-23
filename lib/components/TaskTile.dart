@@ -75,7 +75,7 @@ class TaskTileState extends State<TaskTile> {
       controlAffinity: ListTileControlAffinity.leading,
       value: _currentTask.done ?? false,
       subtitle: widget.showInfo && _currentTask.dueDate.year > 2 ?
-          Text("Due in " + durationToHumanReadable(durationUntilDue),style: TextStyle(color: durationUntilDue.isNegative ? Colors.red : null),)
+          Text("Due " + durationToHumanReadable(durationUntilDue), style: TextStyle(color: durationUntilDue.isNegative ? Colors.red : null),)
           : _currentTask.description == null || _currentTask.description.isEmpty
               ? null
               : Text(_currentTask.description),
