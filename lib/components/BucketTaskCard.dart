@@ -174,12 +174,14 @@ class _BucketTaskCardState extends State<BucketTaskCard> {
             ),
           ),
         ),
-        onTap: () => Navigator.push(
+        onTap: () => Navigator.push<Task>(
           context,
           MaterialPageRoute(builder: (context) => TaskEditPage(
             task: _currentTask,
           )),
-        ),
+        ).then((task) => setState(() {
+          if (task != null) _currentTask = task;
+        })),
       ),
     );
   }

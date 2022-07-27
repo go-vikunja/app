@@ -107,4 +107,42 @@ class Task {
   Color get textColor => color != null
       ? color.computeLuminance() > 0.5 ? Colors.black : Colors.white
       : null;
+
+  Task copyWith({
+    int id, int parentTaskId, int priority, int listId, int bucketId,
+    DateTime created, DateTime updated, DateTime dueDate, DateTime startDate, DateTime endDate,
+    List<DateTime> reminderDates,
+    String title, String description,
+    bool done,
+    Color color,
+    bool resetColor,
+    User createdBy,
+    Duration repeatAfter,
+    List<Task> subtasks,
+    List<Label> labels,
+    List<TaskAttachment> attachments,
+  }) {
+    return Task(
+      id: id ?? this.id,
+      parentTaskId: parentTaskId ?? this.parentTaskId,
+      priority: priority ?? this.priority,
+      listId: listId ?? this.listId,
+      bucketId: bucketId ?? this.bucketId,
+      created: created ?? this.created,
+      updated: updated ?? this.updated,
+      dueDate: dueDate ?? this.dueDate,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
+      reminderDates: reminderDates ?? this.reminderDates,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      done: done ?? this.done,
+      color: (resetColor ?? false) ? null : color ?? this.color,
+      createdBy: createdBy ?? this.createdBy,
+      repeatAfter: repeatAfter ?? this.repeatAfter,
+      subtasks: subtasks ?? this.subtasks,
+      labels: labels ?? this.labels,
+      attachments: attachments ?? this.attachments,
+    );
+  }
 }

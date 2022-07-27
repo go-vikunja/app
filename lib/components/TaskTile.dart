@@ -81,14 +81,16 @@ class TaskTileState extends State<TaskTile> {
               : Text(_currentTask.description),
       secondary:
           IconButton(icon: Icon(Icons.settings), onPressed: () {
-            Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => TaskEditPage(
-                      task: _currentTask,
-                    ))).whenComplete(() {
-                      widget.onEdit();
-                    });
+            Navigator.push<Task>(
+              context,
+              MaterialPageRoute(
+                builder: (context) => TaskEditPage(
+                  task: _currentTask,
+                ),
+              ),
+            ).then((task) => setState(() {
+              if (task != null) _currentTask = task;
+            })).whenComplete(() => widget.onEdit());
           }),
       onChanged: _change,
     );
@@ -107,15 +109,9 @@ class TaskTileState extends State<TaskTile> {
   }
 
   Future<Task> _updateTask(Task task, bool checked) {
-    // TODO use copyFrom
-    return VikunjaGlobal.of(context).taskService.update(Task(
-          id: task.id,
-          done: checked,
-          title: task.title,
-          description: task.description,
-          createdBy: task.createdBy,
-          dueDate: task.dueDate
-        ));
+    return VikunjaGlobal.of(context).taskService.update(task.copyWith(
+      done: checked,
+    ));
   }
 }
 

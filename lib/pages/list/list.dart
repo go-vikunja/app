@@ -224,14 +224,16 @@ class _ListPageState extends State<ListPage> {
       onReorderStart: (oldIndex) => setState(() => _draggedBucketIndex = oldIndex),
       onReorder: (oldIndex, newIndex) {},
       onReorderEnd: (newIndex) => setState(() {
-        if (newIndex > _draggedBucketIndex) newIndex -= 1;
-        taskState.buckets.insert(newIndex, taskState.buckets.removeAt(_draggedBucketIndex));
         bool indexUpdated = false;
+        if (newIndex > _draggedBucketIndex) {
+          newIndex -= 1;
+          indexUpdated = true;
+        }
+        taskState.buckets.insert(newIndex, taskState.buckets.removeAt(_draggedBucketIndex));
         if (newIndex == 0) {
           taskState.buckets[0].position = 0;
           _updateBucket(context, taskState.buckets[0]);
           newIndex = 1;
-          indexUpdated = true;
         }
         taskState.buckets[newIndex].position = newIndex == taskState.buckets.length - 1
             ? taskState.buckets[newIndex - 1].position + 1
@@ -239,7 +241,9 @@ class _ListPageState extends State<ListPage> {
                 + taskState.buckets[newIndex + 1].position) / 2.0;
         _updateBucket(context, taskState.buckets[newIndex]);
         _draggedBucketIndex = null;
-        _pageController.jumpToPage(indexUpdated ? 0 : newIndex);
+        if (indexUpdated)
+          _pageController.jumpToPage((newIndex
+              / (deviceData.orientation == Orientation.portrait ? 1 : 2)).floor());
       }),
     );
   }
