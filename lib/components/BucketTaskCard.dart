@@ -17,7 +17,7 @@ class BucketTaskCard extends StatefulWidget {
   State<BucketTaskCard> createState() => _BucketTaskCardState(this.task);
 }
 
-class _BucketTaskCardState extends State<BucketTaskCard> {
+class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAliveClientMixin {
   Task _currentTask;
 
   _BucketTaskCardState(this._currentTask)
@@ -25,6 +25,7 @@ class _BucketTaskCardState extends State<BucketTaskCard> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     // default chip height: 32
     const double chipHeight = 28;
     final chipConstraints = BoxConstraints(maxHeight: chipHeight);
@@ -185,4 +186,7 @@ class _BucketTaskCardState extends State<BucketTaskCard> {
       ),
     );
   }
+
+  @override
+  bool get wantKeepAlive => _currentTask != widget.task;
 }

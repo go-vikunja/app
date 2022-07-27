@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:developer';
 
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/global.dart';
@@ -30,7 +29,7 @@ class TaskTile extends StatefulWidget {
   TaskTileState createState() => TaskTileState(this.task);
 }
 
-class TaskTileState extends State<TaskTile> {
+class TaskTileState extends State<TaskTile> with AutomaticKeepAliveClientMixin {
   Task _currentTask;
 
   TaskTileState(this._currentTask)
@@ -38,6 +37,7 @@ class TaskTileState extends State<TaskTile> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     Duration durationUntilDue = _currentTask.dueDate.difference(DateTime.now());
     if (_currentTask.loading) {
       return ListTile(
@@ -113,6 +113,9 @@ class TaskTileState extends State<TaskTile> {
       done: checked,
     ));
   }
+
+  @override
+  bool get wantKeepAlive => _currentTask != widget.task;
 }
 
 typedef Future<void> TaskChanged(Task task, bool newValue);
