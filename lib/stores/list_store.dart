@@ -57,7 +57,7 @@ class ListProvider with ChangeNotifier {
     });
   }
 
-  void loadBuckets({BuildContext context, int listId, int page = 1}) {
+  Future<void> loadBuckets({BuildContext context, int listId, int page = 1}) {
     _buckets = [];
     _isLoading = true;
     notifyListeners();
@@ -66,7 +66,7 @@ class ListProvider with ChangeNotifier {
       "page": [page.toString()]
     };
 
-    VikunjaGlobal.of(context).bucketService.getAllByList(listId, queryParams).then((response) {
+    return VikunjaGlobal.of(context).bucketService.getAllByList(listId, queryParams).then((response) {
       if (response.headers["x-pagination-total-pages"] != null) {
         _maxPages = int.parse(response.headers["x-pagination-total-pages"]);
       }
@@ -148,12 +148,9 @@ class ListProvider with ChangeNotifier {
   }
 
   Future<void> updateBucket({BuildContext context, Bucket bucket}) {
-    _isLoading = true;
-    notifyListeners();
     return VikunjaGlobal.of(context).bucketService.update(bucket)
         .then((rBucket) {
           _buckets[_buckets.indexWhere((b) => rBucket.id == b.id)] = rBucket;
-          _isLoading = false;
           notifyListeners();
         });
   }

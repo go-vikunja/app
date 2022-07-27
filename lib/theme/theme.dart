@@ -12,11 +12,19 @@ ThemeData _buildVikunjaTheme(ThemeData base) {
     primaryColor: vPrimaryDark,
     primaryColorLight: vPrimary,
     primaryColorDark: vBlueDark,
+    colorScheme: base.colorScheme.copyWith(
+      primary: vPrimaryDark,
+      secondary: vPrimary,
+    ),
+    floatingActionButtonTheme: base.floatingActionButtonTheme.copyWith(
+      foregroundColor: vWhite,
+    ),
     buttonTheme: base.buttonTheme.copyWith(
       buttonColor: vPrimary,
       textTheme: ButtonTextTheme.normal,
       colorScheme: base.buttonTheme.colorScheme.copyWith(
         // Why does this not work?
+        // ButtonTheme seems to be obsolete see: https://api.flutter.dev/flutter/material/ButtonThemeData-class.html
         onSurface: vWhite,
         onSecondary: vWhite,
         background: vBlue,

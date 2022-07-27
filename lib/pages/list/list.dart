@@ -1,11 +1,14 @@
 import 'dart:async';
 import 'dart:math';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:provider/provider.dart';
 import 'package:vikunja_app/components/AddDialog.dart';
 import 'package:vikunja_app/components/TaskTile.dart';
-import 'package:vikunja_app/components/BucketListView.dart';
+import 'package:vikunja_app/components/SliverBucketList.dart';
+import 'package:vikunja_app/components/SliverBucketPersistentHeader.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/models/list.dart';
 import 'package:vikunja_app/models/task.dart';
@@ -32,6 +35,11 @@ class _ListPageState extends State<ListPage> {
   bool _loading = true;
   bool displayDoneTasks;
   ListProvider taskState;
+  PageController _pageController;
+  Map<int, ValueKey<int>> _bucketKeys = {};
+  Map<int, bool> _bucketScrollable = {};
+  Map<int, ScrollController> _controllers = {};
+  int _draggedBucketIndex;
 
   @override
   void initState() {
@@ -160,24 +168,79 @@ class _ListPageState extends State<ListPage> {
     );
   }
 
-  ListView _kanbanView(BuildContext buildContext) {
-    return ListView.builder(
+  Widget _kanbanView(BuildContext context) {
+    final deviceData = MediaQuery.of(context);
+    final bucketWidth = deviceData.size.width
+        * (deviceData.orientation == Orientation.portrait ?  0.8 : 0.4);
+    if (_pageController == null) _pageController = PageController(viewportFraction: 0.8);
+    return ReorderableListView.builder(
       scrollDirection: Axis.horizontal,
-      itemBuilder: (context, i) {
-        if (taskState.maxPages == _currentPage && i >= taskState.buckets.length) {
-          if (i == taskState.buckets.length)
-            return _buildBucketTile();
-          return null;
-        }
-
-        if (i >= taskState.buckets.length && _currentPage < taskState.maxPages) {
-          _currentPage++;
-          _loadBucketsForPage(_currentPage);
-        }
-        return i < taskState.buckets.length
-            ? _buildBucketTile(taskState.buckets[i])
-            : null;
+      scrollController: _pageController,
+      physics: PageScrollPhysics(),
+      itemCount: taskState.buckets.length,
+      itemExtent: bucketWidth,
+      cacheExtent: bucketWidth,
+      buildDefaultDragHandles: false,
+      itemBuilder: (context, index) {
+        if (index > taskState.buckets.length) return null;
+        return ReorderableDelayedDragStartListener(
+          key: ValueKey<int>(index),
+          index: index,
+          enabled: taskState.buckets.length > 1,
+          child: _buildBucketTile(taskState.buckets[index]),
+        );
       },
+      proxyDecorator: (child, index, animation) {
+        return AnimatedBuilder(
+          animation: animation,
+          child: child,
+          builder: (context, child) {
+            return Transform.scale(
+              scale: lerpDouble(1.0, 0.75, Curves.easeInOut.transform(animation.value)),
+              child: child,
+            );
+          },
+        );
+      },
+      footer: _draggedBucketIndex != null ? null : SizedBox(
+        width: bucketWidth,
+        child: Column(
+          children: [
+            ListTile(
+              title: Align(
+                alignment: Alignment.centerLeft,
+                child: ElevatedButton.icon(
+                  onPressed: () => _addBucketDialog(context),
+                  label: Text('Create Bucket'),
+                  //style: ButtonStyle(alignment: Alignment.centerLeft),
+                  icon: Icon(Icons.add),
+                ),
+              ),
+            ),
+            Spacer(),
+          ],
+        ),
+      ),
+      onReorderStart: (oldIndex) => setState(() => _draggedBucketIndex = oldIndex),
+      onReorder: (oldIndex, newIndex) {},
+      onReorderEnd: (newIndex) => setState(() {
+        if (newIndex > _draggedBucketIndex) newIndex -= 1;
+        taskState.buckets.insert(newIndex, taskState.buckets.removeAt(_draggedBucketIndex));
+        bool indexUpdated = false;
+        if (newIndex == 0) {
+          taskState.buckets[0].position = 0;
+          _updateBucket(context, taskState.buckets[0]);
+          newIndex = 1;
+          indexUpdated = true;
+        }
+        taskState.buckets[newIndex].position = newIndex == taskState.buckets.length - 1
+            ? taskState.buckets[newIndex - 1].position + 1
+            : (taskState.buckets[newIndex - 1].position
+                + taskState.buckets[newIndex + 1].position) / 2.0;
+        _updateBucket(context, taskState.buckets[newIndex]);
+        _draggedBucketIndex = null;
+        _pageController.jumpToPage(indexUpdated ? 0 : newIndex);
+      }),
     );
   }
 
@@ -206,47 +269,77 @@ class _ListPageState extends State<ListPage> {
     );
   }
 
-  Container _buildBucketTile([Bucket bucket]) {
-    final deviceData = MediaQuery.of(context);
-    return Container(
-      width: deviceData.size.width
-          * (deviceData.orientation == Orientation.portrait ?  0.8 : 0.4),
-      child: Column(
-        children: () {
-          if (bucket != null) {
-            return <Widget>[
-              ListTile(
-                title: Text(
-                  bucket.title,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 18,
+  Widget _buildBucketTile(Bucket bucket) {
+    final theme = Theme.of(context);
+    final addTaskButton = ElevatedButton.icon(
+      icon: Icon(Icons.add),
+      label: Text('Add Task'),
+      onPressed: () => _addItemDialog(context, bucket),
+    );
+
+    if (_controllers[bucket.id] == null) {
+      _controllers[bucket.id] = ScrollController();
+    }
+    if (_bucketKeys[bucket.id] == null) {
+      if (_bucketKeys[bucket.id] == null)
+        _bucketKeys[bucket.id] = ValueKey<int>(bucket.id);
+    }
+
+    return Stack(
+      key: _bucketKeys[bucket.id],
+      children: <Widget>[
+        CustomScrollView(
+          controller: _controllers[bucket.id],
+          slivers: <Widget>[
+            SliverBucketPersistentHeader(
+              minExtent: 56,
+              maxExtent: 56,
+              child: Material(
+                color: theme.scaffoldBackgroundColor,
+                child: ListTile(
+                  title: Text(
+                    bucket.title,
+                    style: theme.textTheme.titleLarge,
                   ),
-                ),
-                trailing: Icon(Icons.more_vert),
-              ),
-              Expanded(
-                child: BucketListView(
-                  bucket: bucket,
-                  onAddTask: () => _addItemDialog(context, bucket),
+                  trailing: Icon(Icons.more_vert),
                 ),
               ),
-            ];
-          } else {
-            return <Widget>[
-              ListTile(
-                title: TextButton.icon(
-                  onPressed: () => _addBucketDialog(context),
-                  label: Text('Create Bucket'),
-                  style: ButtonStyle(alignment: Alignment.centerLeft),
-                  icon: Icon(Icons.add),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              sliver: SliverBucketList(
+                bucket: bucket,
+                onLast: () {
+                  if (_bucketScrollable[bucket.id] == null) {
+                    SchedulerBinding.instance.addPostFrameCallback((_) {
+                      setState(() {
+                        _bucketScrollable[bucket.id] = _controllers[bucket.id].position.maxScrollExtent > 0;
+                      });
+                    });
+                  }
+                },
+              ),
+            ),
+            SliverVisibility(
+              visible: !(_bucketScrollable[bucket.id] ?? false),
+              maintainState: true,
+              maintainAnimation: true,
+              maintainSize: true,
+              sliver: SliverFillRemaining(
+                hasScrollBody: false,
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: addTaskButton,
                 ),
               ),
-              Spacer(),
-            ];
-          }
-        }(),
-      ),
+            ),
+          ],
+        ),
+        if (_bucketScrollable[bucket.id] ?? false) Align(
+          alignment: Alignment.bottomCenter,
+          child: addTaskButton,
+        ),
+      ],
     );
   }
 
@@ -271,13 +364,18 @@ class _ListPageState extends State<ListPage> {
   }
 
   Future<void> _loadList() async {
-    updateDisplayDoneTasks().then((value) {
+    updateDisplayDoneTasks().then((value) async {
       switch (_viewIndex) {
         case 0:
           _loadTasksForPage(1);
           break;
         case 1:
-          _loadBucketsForPage(1);
+          await _loadBucketsForPage(1);
+          // load all buckets to get length for RecordableListView
+          while (_currentPage < taskState.maxPages) {
+            _currentPage++;
+            await _loadBucketsForPage(_currentPage);
+          }
           break;
         default:
           _loadTasksForPage(1);
@@ -294,8 +392,8 @@ class _ListPageState extends State<ListPage> {
     );
   }
 
-  void _loadBucketsForPage(int page) {
-    Provider.of<ListProvider>(context, listen: false).loadBuckets(
+  Future<void> _loadBucketsForPage(int page) {
+    return Provider.of<ListProvider>(context, listen: false).loadBuckets(
       context: context,
       listId: _list.id,
       page: page
@@ -370,5 +468,12 @@ class _ListPageState extends State<ListPage> {
       ));
       setState(() {});
     });
+  }
+
+  _updateBucket(BuildContext context, Bucket bucket) async {
+    await Provider.of<ListProvider>(context, listen: false).updateBucket(
+      context: context,
+      bucket: bucket,
+    );
   }
 }

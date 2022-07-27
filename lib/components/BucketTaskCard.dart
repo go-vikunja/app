@@ -28,12 +28,13 @@ class _BucketTaskCardState extends State<BucketTaskCard> {
     // default chip height: 32
     const double chipHeight = 28;
     final chipConstraints = BoxConstraints(maxHeight: chipHeight);
+    final theme = Theme.of(context);
 
     final numRow = Row(
       children: <Widget>[
         Text(
           '#${_currentTask.id}',
-          style: TextStyle(
+          style: theme.textTheme.subtitle2.copyWith(
             color: Colors.grey,
           ),
         ),
@@ -46,9 +47,9 @@ class _BucketTaskCardState extends State<BucketTaskCard> {
         child: FittedBox(
           child: Chip(
             label: Text('Done'),
-            labelStyle: TextStyle(
+            labelStyle: theme.textTheme.labelLarge.copyWith(
               fontWeight: FontWeight.bold,
-              color: Theme.of(context).brightness == Brightness.dark
+              color: theme.brightness == Brightness.dark
                   ? Colors.black : Colors.white,
             ),
             backgroundColor: vGreen,
@@ -62,8 +63,7 @@ class _BucketTaskCardState extends State<BucketTaskCard> {
         Expanded(
           child: Text(
             _currentTask.title,
-            style: TextStyle(
-              fontSize: 16,
+            style: theme.textTheme.titleMedium.copyWith(
               color: _currentTask.textColor,
             ),
           ),
@@ -82,7 +82,9 @@ class _BucketTaskCardState extends State<BucketTaskCard> {
               color: duration.isNegative ? Colors.red : null,
             ),
             label: Text(durationToHumanReadable(duration)),
-            labelStyle: duration.isNegative ? TextStyle(color: Colors.red) : null,
+            labelStyle: theme.textTheme.labelLarge.copyWith(
+              color: duration.isNegative ? Colors.red : null,
+            ),
             backgroundColor: duration.isNegative ? Colors.red.withAlpha(20) : null,
           ),
         ),
@@ -98,7 +100,9 @@ class _BucketTaskCardState extends State<BucketTaskCard> {
     _currentTask.labels?.asMap()?.forEach((i, label) {
       labelRow.children.add(Chip(
         label: Text(label.title),
-        labelStyle: TextStyle(color: label.textColor),
+        labelStyle: theme.textTheme.labelLarge.copyWith(
+          color: label.textColor,
+        ),
         backgroundColor: label.color,
       ));
     });
@@ -107,9 +111,10 @@ class _BucketTaskCardState extends State<BucketTaskCard> {
       final completedTaskCount = '* [x]'.allMatches(_currentTask.description).length;
       final taskCount = uncompletedTaskCount + completedTaskCount;
       if (taskCount > 0) {
+        final iconSize = (theme.textTheme.labelLarge.fontSize ?? 14) + 2;
         labelRow.children.add(Chip(
           avatar: Container(
-            constraints: BoxConstraints(maxHeight: 16, maxWidth: 16),
+            constraints: BoxConstraints(maxHeight: iconSize, maxWidth: iconSize),
             child: CircularProgressIndicator(
               value: uncompletedTaskCount == 0
                   ? 1 : uncompletedTaskCount.toDouble() / taskCount.toDouble(),
