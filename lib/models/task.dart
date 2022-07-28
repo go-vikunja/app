@@ -14,13 +14,14 @@ class Task {
   String title, description;
   bool done;
   Color color;
+  double kanbanPosition;
   User createdBy;
   Duration repeatAfter;
   List<Task> subtasks;
   List<Label> labels;
   List<TaskAttachment> attachments;
   bool loading = false;
-  // TODO: add kanbanPosition, position(?)
+  // TODO: add position(?)
 
   Task(
       {@required this.id,
@@ -35,6 +36,7 @@ class Task {
       this.priority,
       this.repeatAfter,
       this.color,
+      this.kanbanPosition,
       this.subtasks,
       this.labels,
       this.attachments,
@@ -62,6 +64,9 @@ class Task {
         color = json['hex_color'] == ''
             ? null
             : new Color(int.parse(json['hex_color'], radix: 16) + 0xFF000000),
+        kanbanPosition = json['kanban_position'] is int
+            ? json['kanban_position'].toDouble()
+            : json['kanban_position'],
         labels = (json['labels'] as List<dynamic>)
             ?.map((label) => Label.fromJson(label))
             ?.cast<Label>()
@@ -95,6 +100,7 @@ class Task {
         'priority': priority,
         'repeat_after': repeatAfter?.inSeconds,
         'hex_color': color?.value?.toRadixString(16)?.padLeft(8, '0')?.substring(2),
+        'kanban_position': kanbanPosition,
         'labels': labels?.map((label) => label.toJSON())?.toList(),
         'subtasks': subtasks?.map((subtask) => subtask.toJSON())?.toList(),
         'attachments': attachments?.map((attachment) => attachment.toJSON())?.toList(),
@@ -116,6 +122,7 @@ class Task {
     bool done,
     Color color,
     bool resetColor,
+    double kanbanPosition,
     User createdBy,
     Duration repeatAfter,
     List<Task> subtasks,
@@ -137,7 +144,8 @@ class Task {
       title: title ?? this.title,
       description: description ?? this.description,
       done: done ?? this.done,
-      color: (resetColor ?? false) ? null : color ?? this.color,
+      color: (resetColor ?? false) ? null : (color ?? this.color),
+      kanbanPosition: kanbanPosition ?? this.kanbanPosition,
       createdBy: createdBy ?? this.createdBy,
       repeatAfter: repeatAfter ?? this.repeatAfter,
       subtasks: subtasks ?? this.subtasks,

@@ -98,7 +98,7 @@ class ListProvider with ChangeNotifier {
 
   Future<void> addTask({BuildContext context, Task newTask, int listId}) {
     var globalState = VikunjaGlobal.of(context);
-    _isLoading = true;
+    if (newTask.bucketId == null) _isLoading = true;
     notifyListeners();
 
     return globalState.taskService.add(listId, newTask).then((task) {
@@ -137,12 +137,10 @@ class ListProvider with ChangeNotifier {
   }
 
   Future<void> addBucket({BuildContext context, Bucket newBucket, int listId}) {
-    _isLoading = true;
     notifyListeners();
     return VikunjaGlobal.of(context).bucketService.add(listId, newBucket)
         .then((bucket) {
           _buckets.add(bucket);
-          _isLoading = false;
           notifyListeners();
         });
   }
@@ -151,6 +149,15 @@ class ListProvider with ChangeNotifier {
     return VikunjaGlobal.of(context).bucketService.update(bucket)
         .then((rBucket) {
           _buckets[_buckets.indexWhere((b) => rBucket.id == b.id)] = rBucket;
+          _buckets.sort((a, b) => a.position.compareTo(b.position));
+          notifyListeners();
+        });
+  }
+  
+  Future<void> deleteBucket({BuildContext context, int listId, int bucketId}) {
+    return VikunjaGlobal.of(context).bucketService.delete(listId, bucketId)
+        .then((_) {
+          _buckets.removeWhere((bucket) => bucket.id == bucketId);
           notifyListeners();
         });
   }

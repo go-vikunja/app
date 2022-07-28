@@ -175,14 +175,17 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
             ),
           ),
         ),
-        onTap: () => Navigator.push<Task>(
-          context,
-          MaterialPageRoute(builder: (context) => TaskEditPage(
-            task: _currentTask,
-          )),
-        ).then((task) => setState(() {
-          if (task != null) _currentTask = task;
-        })),
+        onTap: () {
+          FocusScope.of(context).unfocus();
+          Navigator.push<Task>(
+            context,
+            MaterialPageRoute(builder: (context) => TaskEditPage(
+                  task: _currentTask,
+            )),
+          ).then((task) => setState(() {
+                if (task != null) _currentTask = task;
+          }));
+        },
       ),
     );
   }
