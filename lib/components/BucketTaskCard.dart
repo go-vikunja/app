@@ -243,7 +243,7 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
 
         final dropBoxSize = _dropData?.size ?? _cardSize;
         final dropBox = DottedBorder(
-          color: Colors.white,
+          color: Colors.grey,
           child: SizedBox.fromSize(size: dropBoxSize),
         );
         final dropAbove = taskState.taskDragging && _dropLocation == DropLocation.above;

@@ -509,7 +509,7 @@ class _ListPageState extends State<ListPage> {
                     Column(
                       children: <Widget>[
                         if (_bucketProps[bucket.id].taskDropSize != null) DottedBorder(
-                          color: Colors.white,
+                          color: Colors.grey,
                           child: SizedBox.fromSize(size: _bucketProps[bucket.id].taskDropSize),
                         ),
                         Align(

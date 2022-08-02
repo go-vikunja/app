@@ -69,7 +69,10 @@ class TaskTileState extends State<TaskTile> with AutomaticKeepAliveClientMixin {
                 // TODO: get list name of task
                 //TextSpan(text: widget.task.list.title+" - ", style: TextStyle(color: Colors.grey)),
                 TextSpan(text: widget.task.title),
-              ]
+              ],
+              style: TextStyle(
+                color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+              ),
             )
           ) : Text(_currentTask.title),
       controlAffinity: ListTileControlAffinity.leading,
