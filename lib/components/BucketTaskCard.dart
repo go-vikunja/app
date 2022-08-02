@@ -99,8 +99,9 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
         ),
       ],
     );
-    final duration = widget.task.dueDate.difference(DateTime.now());
     if (widget.task.dueDate.year > 2) {
+      final duration = widget.task.dueDate.difference(DateTime.now());
+      final pastDue = duration.isNegative && !widget.task.done;
       titleRow.children.add(Container(
         constraints: chipConstraints,
         padding: EdgeInsets.only(left: 4),
@@ -108,13 +109,13 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
           child: Chip(
             avatar: Icon(
               Icons.calendar_month,
-              color: duration.isNegative ? Colors.red : null,
+              color: pastDue ? Colors.red : null,
             ),
             label: Text(durationToHumanReadable(duration)),
             labelStyle: theme.textTheme.labelLarge.copyWith(
-              color: duration.isNegative ? Colors.red : null,
+              color: pastDue ? Colors.red : null,
             ),
-            backgroundColor: duration.isNegative ? Colors.red.withAlpha(20) : null,
+            backgroundColor: pastDue ? Colors.red.withAlpha(20) : null,
           ),
         ),
       ));
@@ -190,15 +191,14 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
                   constraints: rowConstraints,
                   child: identifierRow,
                 ),
-                Container(
-                  constraints: rowConstraints,
-                  child: titleRow,
-                ),
                 Padding(
-                  padding: labelRow.children.isNotEmpty
-                      ? const EdgeInsets.only(top: 8) : EdgeInsets.zero,
-                  child: labelRow,
+                  padding: EdgeInsets.only(top: 4, bottom: labelRow.children.isNotEmpty ? 8 : 0),
+                  child: Container(
+                    constraints: rowConstraints,
+                    child: titleRow,
+                  ),
                 ),
+                labelRow,
               ],
             ),
           ),
