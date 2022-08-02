@@ -58,10 +58,11 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
     const chipConstraints = BoxConstraints(maxHeight: chipHeight);
     final theme = Theme.of(context);
 
-    final numRow = Row(
+    final identifierRow = Row(
       children: <Widget>[
         Text(
-          '#${widget.task.id}',
+          widget.task.identifier.isNotEmpty
+              ? '#${widget.task.identifier.substring(1)}' : '${widget.task.id}',
           style: theme.textTheme.subtitle2.copyWith(
             color: Colors.grey,
           ),
@@ -69,7 +70,7 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
       ],
     );
     if (widget.task.done) {
-      numRow.children.insert(0, Container(
+      identifierRow.children.insert(0, Container(
         constraints: chipConstraints,
         padding: EdgeInsets.only(right: 4),
         child: FittedBox(
@@ -187,7 +188,7 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
               children: <Widget>[
                 Container(
                   constraints: rowConstraints,
-                  child: numRow,
+                  child: identifierRow,
                 ),
                 Container(
                   constraints: rowConstraints,

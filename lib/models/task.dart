@@ -11,7 +11,7 @@ class Task {
   int id, parentTaskId, priority, listId, bucketId;
   DateTime created, updated, dueDate, startDate, endDate;
   List<DateTime> reminderDates;
-  String title, description;
+  String title, description, identifier;
   bool done;
   Color color;
   double kanbanPosition;
@@ -27,6 +27,7 @@ class Task {
       {@required this.id,
       this.title,
       this.description,
+      this.identifier,
       this.done = false,
       this.reminderDates,
       this.dueDate,
@@ -50,6 +51,7 @@ class Task {
       : id = json['id'],
         title = json['title'],
         description = json['description'],
+        identifier = json['identifier'],
         done = json['done'],
         reminderDates = (json['reminder_dates'] as List<dynamic>)
             ?.map((ts) => DateTime.parse(ts))
@@ -91,6 +93,7 @@ class Task {
         'id': id,
         'title': title,
         'description': description,
+        'identifier': identifier,
         'done': done ?? false,
         'reminder_dates':
             reminderDates?.map((date) => date?.toUtc()?.toIso8601String())?.toList(),
@@ -118,7 +121,7 @@ class Task {
     int id, int parentTaskId, int priority, int listId, int bucketId,
     DateTime created, DateTime updated, DateTime dueDate, DateTime startDate, DateTime endDate,
     List<DateTime> reminderDates,
-    String title, String description,
+    String title, String description, String identifier,
     bool done,
     Color color,
     bool resetColor,
@@ -143,6 +146,7 @@ class Task {
       reminderDates: reminderDates ?? this.reminderDates,
       title: title ?? this.title,
       description: description ?? this.description,
+      identifier: identifier ?? this.identifier,
       done: done ?? this.done,
       color: (resetColor ?? false) ? null : (color ?? this.color),
       kanbanPosition: kanbanPosition ?? this.kanbanPosition,
