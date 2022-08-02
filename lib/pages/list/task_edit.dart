@@ -262,7 +262,8 @@ class _TaskEditPageState extends State<TaskEditPage> {
                               InputDecoration(labelText: 'Add a new label')),
                       suggestionsCallback: (pattern) => _searchLabel(pattern),
                       itemBuilder: (context, suggestion) {
-                        return Text(suggestion);
+                        print(suggestion);
+                        return new ListTile(title: Text(suggestion));
                       },
                       transitionBuilder: (context, suggestionsBox, controller) {
                         return suggestionsBox;
@@ -364,11 +365,11 @@ class _TaskEditPageState extends State<TaskEditPage> {
         .labelService
         .getAll(query: query)
         .then((labels) {
-          log("searched");
       // Only show those labels which aren't already added to the task
       labels.removeWhere((labelToRemove) => _labels.contains(labelToRemove));
       _suggestedLabels = labels;
-      return labels.map((label) => label.title).toList();
+      List<String> labelText = labels.map((label) => label.title).toList();
+      return labelText;
     });
   }
 
