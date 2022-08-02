@@ -280,6 +280,7 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
                     height: (_cardSize.height / 2) + (dropAbove ? dropBoxSize.height : 0),
                     child: DragTarget<TaskData>(
                       onWillAccept: (data) {
+                        if (bucket.limit != 0 && bucket.tasks.length >= bucket.limit) return false;
                         setState(() {
                           _dropLocation = DropLocation.above;
                           _dropData = data;
@@ -295,6 +296,7 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
                     height: (_cardSize.height / 2) + (dropBelow ? dropBoxSize.height : 0),
                     child: DragTarget<TaskData>(
                       onWillAccept: (data) {
+                        if (bucket.limit != 0 && bucket.tasks.length >= bucket.limit) return false;
                         setState(() {
                           _dropLocation = DropLocation.below;
                           _dropData = data;
