@@ -39,7 +39,7 @@ class ListProvider with ChangeNotifier {
 
   List<Bucket> get buckets => _buckets;
 
-  void loadTasks({BuildContext context, int listId, int page = 1, bool displayDoneTasks = true}) {
+  Future<void> loadTasks({BuildContext context, int listId, int page = 1, bool displayDoneTasks = true}) {
     _tasks = [];
     _isLoading = true;
     notifyListeners();
@@ -56,7 +56,7 @@ class ListProvider with ChangeNotifier {
         "filter_value": ["false"]
       });
     }
-    VikunjaGlobal.of(context).taskService.getAllByList(listId, queryParams).then((response) {
+    return VikunjaGlobal.of(context).taskService.getAllByList(listId, queryParams).then((response) {
       if (response.headers["x-pagination-total-pages"] != null) {
         _maxPages = int.parse(response.headers["x-pagination-total-pages"]);
       }

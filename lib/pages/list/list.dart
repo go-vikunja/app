@@ -254,7 +254,7 @@ class _ListPageState extends State<ListPage> {
         setState(() => _draggedBucketIndex = oldIndex);
       },
       onReorder: (_, __) {},
-      onReorderEnd: (newIndex) => setState(() {
+      onReorderEnd: (newIndex) async {
         bool indexUpdated = false;
         if (newIndex > _draggedBucketIndex) {
           newIndex -= 1;
@@ -263,21 +263,23 @@ class _ListPageState extends State<ListPage> {
         taskState.buckets.insert(newIndex, taskState.buckets.removeAt(_draggedBucketIndex));
         if (newIndex == 0) {
           taskState.buckets[0].position = 0;
-          _updateBucket(context, taskState.buckets[0]);
+          await _updateBucket(context, taskState.buckets[0]);
           newIndex = 1;
         }
-        taskState.buckets[newIndex].position = newIndex == taskState.buckets.length - 1
-            ? taskState.buckets[newIndex - 1].position + pow(2.0, 16.0)
-            : (taskState.buckets[newIndex - 1].position
-                + taskState.buckets[newIndex + 1].position) / 2.0;
-        _updateBucket(context, taskState.buckets[newIndex]);
-        _draggedBucketIndex = null;
+        if (taskState.buckets[newIndex].position <= taskState.buckets[newIndex - 1].position) {
+          taskState.buckets[newIndex].position = newIndex == taskState.buckets.length - 1
+              ? taskState.buckets[newIndex - 1].position + pow(2.0, 16.0)
+              : (taskState.buckets[newIndex - 1].position
+                  + taskState.buckets[newIndex + 1].position) / 2.0;
+          _updateBucket(context, taskState.buckets[newIndex]);
+        }
         if (indexUpdated && portrait) _pageController.animateToPage(
           newIndex - 1,
           duration: Duration(milliseconds: 100),
           curve: Curves.easeInOut,
         );
-      }),
+        setState(() => _draggedBucketIndex = null);
+      },
     );
   }
 
@@ -591,8 +593,8 @@ class _ListPageState extends State<ListPage> {
     });
   }
 
-  void _loadTasksForPage(int page) {
-    Provider.of<ListProvider>(context, listen: false).loadTasks(
+  Future<void> _loadTasksForPage(int page) {
+    return Provider.of<ListProvider>(context, listen: false).loadTasks(
       context: context,
       listId: _list.id,
       page: page,
@@ -608,8 +610,8 @@ class _ListPageState extends State<ListPage> {
     );
   }
 
-  _addItemDialog(BuildContext context, [Bucket bucket]) {
-    showDialog(
+  Future<void> _addItemDialog(BuildContext context, [Bucket bucket]) {
+    return showDialog(
       context: context,
       builder: (_) => AddDialog(
         onAdd: (title) => _addItem(title, context, bucket),
@@ -621,7 +623,7 @@ class _ListPageState extends State<ListPage> {
     );
   }
 
-  _addItem(String title, BuildContext context, [Bucket bucket]) {
+  Future<void> _addItem(String title, BuildContext context, [Bucket bucket]) {
     var globalState = VikunjaGlobal.of(context);
     var newTask = Task(
       id: null,
@@ -631,7 +633,7 @@ class _ListPageState extends State<ListPage> {
       bucketId: bucket?.id,
     );
     setState(() => _loadingTasks.add(newTask));
-    Provider.of<ListProvider>(context, listen: false)
+    return Provider.of<ListProvider>(context, listen: false)
         .addTask(
       context: context,
       newTask: newTask,
@@ -647,9 +649,9 @@ class _ListPageState extends State<ListPage> {
     });
   }
 
-  _addBucketDialog(BuildContext context) {
+  Future<void> _addBucketDialog(BuildContext context) {
     FocusScope.of(context).unfocus();
-    showDialog(
+    return showDialog(
       context: context,
       builder: (_) => AddDialog(
         onAdd: (title) => _addBucket(title, context),
@@ -661,8 +663,8 @@ class _ListPageState extends State<ListPage> {
     );
   }
 
-  _addBucket(String title, BuildContext context) {
-    Provider.of<ListProvider>(context, listen: false).addBucket(
+  Future<void> _addBucket(String title, BuildContext context) {
+    return Provider.of<ListProvider>(context, listen: false).addBucket(
       context: context,
       newBucket: Bucket(
         id: null,
@@ -679,8 +681,8 @@ class _ListPageState extends State<ListPage> {
     });
   }
 
-  _updateBucket(BuildContext context, Bucket bucket) async {
-    await Provider.of<ListProvider>(context, listen: false).updateBucket(
+  Future<void> _updateBucket(BuildContext context, Bucket bucket) {
+    return Provider.of<ListProvider>(context, listen: false).updateBucket(
       context: context,
       bucket: bucket,
     ).then((_) {
@@ -691,7 +693,7 @@ class _ListPageState extends State<ListPage> {
     });
   }
 
-  _deleteBucket(BuildContext context, Bucket bucket) {
+  Future<void> _deleteBucket(BuildContext context, Bucket bucket) {
     // Move bucket's tasks to default bucket (the one with the lowest id)
     if (bucket.tasks.length > 0) {
       int defaultBucketId = taskState.buckets[0].id;
@@ -707,7 +709,7 @@ class _ListPageState extends State<ListPage> {
         ));
       });
     }
-    Provider.of<ListProvider>(context, listen: false).deleteBucket(
+    return Provider.of<ListProvider>(context, listen: false).deleteBucket(
       context: context,
       listId: bucket.listId,
       bucketId: bucket.id,
