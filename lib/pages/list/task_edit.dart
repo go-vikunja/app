@@ -372,12 +372,13 @@ class _TaskEditPageState extends State<TaskEditPage> {
       endDate: _endDate,
       priority: _priority,
       repeatAfter: _repeatAfter,
+      labels: _labels,
       color: _resetColor ? null : (_color ?? widget.task.color),
       resetColor: _resetColor,
     );
 
     // update the labels
-    VikunjaGlobal.of(context)
+    await VikunjaGlobal.of(context)
         .labelTaskBulkService
         .update(updatedTask, _labels)
         .catchError((err) {
