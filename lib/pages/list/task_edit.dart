@@ -8,12 +8,19 @@ import 'package:vikunja_app/components/label.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/models/label.dart';
 import 'package:vikunja_app/models/task.dart';
+import 'package:vikunja_app/stores/list_store.dart';
 import 'package:vikunja_app/utils/repeat_after_parse.dart';
 
 class TaskEditPage extends StatefulWidget {
   final Task task;
+  final ListProvider taskState;
 
-  TaskEditPage({this.task}) : super(key: Key(task.toString()));
+  TaskEditPage({
+    @required this.task,
+    @required this.taskState,
+  }) : assert(task != null),
+       assert(taskState != null),
+       super(key: Key(task.toString()));
 
   @override
   State<StatefulWidget> createState() => _TaskEditPageState();
@@ -381,7 +388,10 @@ class _TaskEditPageState extends State<TaskEditPage> {
       );
     });
 
-    VikunjaGlobal.of(context).taskService.update(updatedTask).then((result) {
+    widget.taskState.updateTask(
+      context: context,
+      task: updatedTask,
+    ).then((result) {
       setState(() { _loading = false; _changed = false;});
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('The task was updated successfully!'),

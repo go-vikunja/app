@@ -5,12 +5,14 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:provider/provider.dart';
+import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
 import 'package:vikunja_app/components/AddDialog.dart';
 import 'package:vikunja_app/components/TaskTile.dart';
 import 'package:vikunja_app/components/SliverBucketList.dart';
 import 'package:vikunja_app/components/SliverBucketPersistentHeader.dart';
 import 'package:vikunja_app/components/BucketLimitDialog.dart';
+import 'package:vikunja_app/components/BucketTaskCard.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/models/list.dart';
 import 'package:vikunja_app/models/task.dart';
@@ -22,11 +24,12 @@ import 'package:vikunja_app/stores/list_store.dart';
 enum BucketMenu {limit, done, delete}
 
 class BucketProps {
-  final ValueKey<int> key;
-  bool scrollable = false;
   final ScrollController controller = ScrollController();
   final TextEditingController titleController = TextEditingController();
-  BucketProps(this.key);
+  bool scrollable = false;
+  bool portrait = true;
+  int bucketLength = 0;
+  Size taskDropSize;
 }
 
 class ListPage extends StatefulWidget {
@@ -40,7 +43,7 @@ class ListPage extends StatefulWidget {
 }
 
 class _ListPageState extends State<ListPage> {
-  final _globalKey = GlobalKey();
+  final _keyboardController = KeyboardVisibilityController();
   int _viewIndex = 0;
   TaskList _list;
   List<Task> _loadingTasks = [];
@@ -51,6 +54,7 @@ class _ListPageState extends State<ListPage> {
   PageController _pageController;
   Map<int, BucketProps> _bucketProps = {};
   int _draggedBucketIndex;
+  Duration _lastTaskDragUpdateAction = Duration.zero;
 
   @override
   void initState() {
@@ -59,6 +63,9 @@ class _ListPageState extends State<ListPage> {
       title: widget.taskList.title,
       tasks: [],
     );
+    _keyboardController.onChange.listen((visible) {
+      if (!visible && mounted) FocusScope.of(context).unfocus();
+    });
     super.initState();
     Future.delayed(Duration.zero, (){
       _loadList();
@@ -68,13 +75,7 @@ class _ListPageState extends State<ListPage> {
   @override
   Widget build(BuildContext context) {
     taskState = Provider.of<ListProvider>(context);
-    KeyboardVisibilityController().onChange.listen((visible) {
-      if (!visible) try {
-        FocusScope.of(_globalKey.currentContext ?? context).unfocus();
-      } catch (e) {}
-    });
     return GestureDetector(
-      key: _globalKey,
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
         appBar: AppBar(
@@ -190,25 +191,31 @@ class _ListPageState extends State<ListPage> {
 
   Widget _kanbanView(BuildContext context) {
     final deviceData = MediaQuery.of(context);
-    final bucketWidth = deviceData.size.width
-        * (deviceData.orientation == Orientation.portrait ?  0.8 : 0.4);
-    if (_pageController == null) _pageController = PageController(viewportFraction: 0.8);
+    final portrait = deviceData.orientation == Orientation.portrait;
+    final bucketFraction = portrait ?  0.8 : 0.4;
+    final bucketWidth = deviceData.size.width * bucketFraction;
+
+    if (_pageController == null) _pageController = PageController(viewportFraction: bucketFraction);
+    else if (_pageController.viewportFraction != bucketFraction)
+      _pageController = PageController(viewportFraction: bucketFraction);
+
     return ReorderableListView.builder(
       scrollDirection: Axis.horizontal,
       scrollController: _pageController,
       physics: PageScrollPhysics(),
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       itemCount: taskState.buckets.length,
-      itemExtent: bucketWidth,
-      cacheExtent: bucketWidth,
       buildDefaultDragHandles: false,
       itemBuilder: (context, index) {
         if (index > taskState.buckets.length) return null;
         return ReorderableDelayedDragStartListener(
           key: ValueKey<int>(index),
           index: index,
-          enabled: taskState.buckets.length > 1,
-          child: _buildBucketTile(taskState.buckets[index]),
+          enabled: taskState.buckets.length > 1 && !taskState.taskDragging,
+          child: SizedBox(
+            width: bucketWidth,
+            child: _buildBucketTile(taskState.buckets[index], portrait),
+          ),
         );
       },
       proxyDecorator: (child, index, animation) {
@@ -224,26 +231,29 @@ class _ListPageState extends State<ListPage> {
         );
       },
       footer: _draggedBucketIndex != null ? null : SizedBox(
-        width: bucketWidth,
-        child: Column(
-          children: [
-            ListTile(
-              title: Align(
-                alignment: Alignment.centerLeft,
-                child: ElevatedButton.icon(
-                  onPressed: () => _addBucketDialog(context),
-                  label: Text('Create Bucket'),
-                  //style: ButtonStyle(alignment: Alignment.centerLeft),
-                  icon: Icon(Icons.add),
-                ),
+        width: deviceData.size.width * (1 - bucketFraction) * (portrait ? 1 : 2),
+        child: Align(
+          alignment: Alignment.topLeft,
+          child: Padding(
+            padding: EdgeInsets.only(
+              top: portrait ? 14 : 5,
+            ),
+            child: RotatedBox(
+              quarterTurns: portrait ? 1 : 0,
+              child: ElevatedButton.icon(
+                onPressed: () => _addBucketDialog(context),
+                label: Text('Create Bucket'),
+                icon: Icon(Icons.add),
               ),
             ),
-            Spacer(),
-          ],
+          ),
         ),
       ),
-      onReorderStart: (oldIndex) => setState(() => _draggedBucketIndex = oldIndex),
-      onReorder: (oldIndex, newIndex) {},
+      onReorderStart: (oldIndex) {
+        FocusScope.of(context).unfocus();
+        setState(() => _draggedBucketIndex = oldIndex);
+      },
+      onReorder: (_, __) {},
       onReorderEnd: (newIndex) => setState(() {
         bool indexUpdated = false;
         if (newIndex > _draggedBucketIndex) {
@@ -257,78 +267,79 @@ class _ListPageState extends State<ListPage> {
           newIndex = 1;
         }
         taskState.buckets[newIndex].position = newIndex == taskState.buckets.length - 1
-            ? taskState.buckets[newIndex - 1].position + 1
+            ? taskState.buckets[newIndex - 1].position + pow(2.0, 16.0)
             : (taskState.buckets[newIndex - 1].position
                 + taskState.buckets[newIndex + 1].position) / 2.0;
         _updateBucket(context, taskState.buckets[newIndex]);
         _draggedBucketIndex = null;
-        if (indexUpdated)
-          _pageController.jumpToPage((newIndex
-              / (deviceData.orientation == Orientation.portrait ? 1 : 2)).floor());
+        if (indexUpdated && portrait) _pageController.animateToPage(
+          newIndex - 1,
+          duration: Duration(milliseconds: 100),
+          curve: Curves.easeInOut,
+        );
       }),
     );
   }
 
-  TaskTile _buildTile(Task task) {
-    return TaskTile(
-      task: task,
-      loading: false,
-      onEdit: () {
-        /*Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) =>
-                TaskEditPage(
-                  task: task,
-                ),
-          ),
-        );*/
-      },
-      onMarkedAsDone: (done) {
-        Provider.of<ListProvider>(context, listen: false).updateTask(
-          context: context,
-          id: task.id,
-          done: done,
-        );
-      },
+  Widget _buildTile(Task task) {
+    return ListenableProvider.value(
+      value: taskState,
+      child: TaskTile(
+        task: task,
+        loading: false,
+        onEdit: () {},
+        onMarkedAsDone: (done) {
+          Provider.of<ListProvider>(context, listen: false).updateTask(
+            context: context,
+            task: task.copyWith(done: done),
+          );
+        },
+      ),
     );
   }
 
-  Widget _buildBucketTile(Bucket bucket) {
+  Widget _buildBucketTile(Bucket bucket, bool portrait) {
     final theme = Theme.of(context);
+    const bucketTitleHeight = 56.0;
     final addTaskButton = ElevatedButton.icon(
       icon: Icon(Icons.add),
       label: Text('Add Task'),
-      onPressed: (bucket.tasks?.length ?? -1) < bucket.limit
-          ? () => _addItemDialog(context, bucket)
+      onPressed: bucket.limit == 0 || bucket.tasks.length < bucket.limit
+          ? () {
+              FocusScope.of(context).unfocus();
+              _addItemDialog(context, bucket);
+            }
           : null,
     );
 
-    if (_bucketProps[bucket.id] == null) {
-      _bucketProps[bucket.id] = BucketProps(ValueKey<int>(bucket.id));
+    if (_bucketProps[bucket.id] == null)
+      _bucketProps[bucket.id] = BucketProps();
+    if (_bucketProps[bucket.id].bucketLength != (bucket.tasks.length)
+        || _bucketProps[bucket.id].portrait != portrait)
       SchedulerBinding.instance.addPostFrameCallback((_) {
-        setState(() {
+        if (_bucketProps[bucket.id].controller.hasClients) setState(() {
+          _bucketProps[bucket.id].bucketLength = bucket.tasks.length;
           _bucketProps[bucket.id].scrollable = _bucketProps[bucket.id].controller.position.maxScrollExtent > 0;
+          _bucketProps[bucket.id].portrait = portrait;
         });
       });
-    }
     if (_bucketProps[bucket.id].titleController.text.isEmpty)
       _bucketProps[bucket.id].titleController.text = bucket.title;
 
     return Stack(
-      key: _bucketProps[bucket.id].key,
       children: <Widget>[
         CustomScrollView(
           controller: _bucketProps[bucket.id].controller,
           slivers: <Widget>[
             SliverBucketPersistentHeader(
-              minExtent: 56,
-              maxExtent: 56,
+              minExtent: bucketTitleHeight,
+              maxExtent: bucketTitleHeight,
               child: Material(
                 color: theme.scaffoldBackgroundColor,
                 child: ListTile(
                   minLeadingWidth: 15,
                   horizontalTitleGap: 4,
+                  contentPadding: const EdgeInsets.only(left: 16, right: 10),
                   leading: bucket.isDoneBucket ? Icon(
                     Icons.done_all,
                     color: Colors.green,
@@ -357,75 +368,87 @@ class _ListPageState extends State<ListPage> {
                           },
                         ),
                       ),
-                      if (bucket.limit != 0)
-                        Text(
-                          '${bucket.tasks?.length ?? 0}/${bucket.limit}',
+                      if (bucket.limit != 0) Padding(
+                        padding: const EdgeInsets.only(right: 2),
+                        child: Text(
+                          '${bucket.tasks.length}/${bucket.limit}',
                           style: theme.textTheme.titleMedium.copyWith(
-                            color: (bucket.tasks?.length ?? -1) >= bucket.limit
+                            color: bucket.limit != 0 && bucket.tasks.length >= bucket.limit
                                 ? Colors.red : null,
                           ),
                         ),
+                      ),
                     ],
                   ),
-                  trailing: PopupMenuButton<BucketMenu>(
-                    child: Icon(Icons.more_vert),
-                    onSelected: (item) {
-                      switch (item) {
-                        case BucketMenu.limit:
-                          showDialog<int>(context: context,
-                            builder: (_) => BucketLimitDialog(
-                              bucket: bucket,
-                            ),
-                          ).then((limit) {
-                            if (limit != null) {
-                              bucket.limit = limit;
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Icon(Icons.drag_handle),
+                      PopupMenuButton<BucketMenu>(
+                        child: Icon(Icons.more_vert),
+                        onSelected: (item) {
+                          switch (item) {
+                            case BucketMenu.limit:
+                              showDialog<int>(context: context,
+                                builder: (_) => BucketLimitDialog(
+                                  bucket: bucket,
+                                ),
+                              ).then((limit) {
+                                if (limit != null) {
+                                  bucket.limit = limit;
+                                  _updateBucket(context, bucket);
+                                }
+                              });
+                              break;
+                            case BucketMenu.done:
+                              bucket.isDoneBucket = !bucket.isDoneBucket;
                               _updateBucket(context, bucket);
-                            }
-                          });
-                          break;
-                        case BucketMenu.done:
-                          bucket.isDoneBucket = !bucket.isDoneBucket;
-                          _updateBucket(context, bucket);
-                          break;
-                        case BucketMenu.delete:
-                          _deleteBucket(context, bucket);
-                      }
-                    },
-                    itemBuilder: (context) => <PopupMenuEntry<BucketMenu>>[
-                      PopupMenuItem<BucketMenu>(
-                        value: BucketMenu.limit,
-                        child: Text('Limit: ${bucket.limit}'),
-                      ),
-                      PopupMenuItem<BucketMenu>(
-                        value: BucketMenu.done,
-                        child: Row(
-                          children: <Widget>[
-                            Padding(
-                              padding: const EdgeInsets.only(right: 4),
-                              child: Icon(
-                                Icons.done_all,
-                                color: bucket.isDoneBucket ? Colors.green : null,
+                              break;
+                            case BucketMenu.delete:
+                              _deleteBucket(context, bucket);
+                          }
+                        },
+                        itemBuilder: (context) {
+                          final enableDelete = taskState.buckets.length > 1;
+                          return <PopupMenuEntry<BucketMenu>>[
+                            PopupMenuItem<BucketMenu>(
+                              value: BucketMenu.limit,
+                              child: Text('Limit: ${bucket.limit}'),
+                            ),
+                            PopupMenuItem<BucketMenu>(
+                              value: BucketMenu.done,
+                              child: Row(
+                                children: <Widget>[
+                                  Padding(
+                                    padding: const EdgeInsets.only(right: 4),
+                                    child: Icon(
+                                      Icons.done_all,
+                                      color: bucket.isDoneBucket ? Colors.green : null,
+                                    ),
+                                  ),
+                                  Text('Done Bucket'),
+                                ],
                               ),
                             ),
-                            Text('Done Bucket'),
-                          ],
-                        ),
-                      ),
-                      const PopupMenuDivider(),
-                      PopupMenuItem<BucketMenu>(
-                        value: BucketMenu.delete,
-                        child: Row(
-                          children: <Widget>[
-                            Icon(
-                              Icons.delete,
-                              color: Colors.red,
+                            const PopupMenuDivider(),
+                            PopupMenuItem<BucketMenu>(
+                              value: BucketMenu.delete,
+                              enabled: enableDelete,
+                              child: Row(
+                                children: <Widget>[
+                                  Icon(
+                                    Icons.delete,
+                                    color: enableDelete ? Colors.red : null,
+                                  ),
+                                  Text(
+                                    'Delete',
+                                    style: enableDelete ? TextStyle(color: Colors.red) : null,
+                                  ),
+                                ],
+                              ),
                             ),
-                            Text(
-                              'Delete',
-                              style: TextStyle(color: Colors.red),
-                            ),
-                          ],
-                        ),
+                          ];
+                        },
                       ),
                     ],
                   ),
@@ -434,8 +457,42 @@ class _ListPageState extends State<ListPage> {
             ),
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
-              sliver: SliverBucketList(
-                bucket: bucket,
+              sliver: ListenableProvider.value(
+                value: taskState,
+                child: SliverBucketList(
+                  bucket: bucket,
+                  onTaskDragUpdate: (details) { // scroll when dragging a task
+                    if (details.sourceTimeStamp - _lastTaskDragUpdateAction > const Duration(milliseconds: 600)) {
+                      final screenSize = MediaQuery.of(context).size;
+                      const scrollDuration = Duration(milliseconds: 250);
+                      const scrollCurve = Curves.easeInOut;
+                      final updateAction = () => setState(() => _lastTaskDragUpdateAction = details.sourceTimeStamp);
+                      if (details.globalPosition.dx < screenSize.width * 0.1) { // scroll left
+                        if (_pageController.position.extentBefore != 0)
+                          _pageController.previousPage(duration: scrollDuration, curve: scrollCurve);
+                        updateAction();
+                      } else if (details.globalPosition.dx > screenSize.width * 0.9) { // scroll right
+                        if (_pageController.position.extentAfter != 0)
+                          _pageController.nextPage(duration: scrollDuration, curve: scrollCurve);
+                        updateAction();
+                      } else {
+                        final viewingBucket = taskState.buckets[_pageController.page.floor()];
+                        final bucketController = _bucketProps[viewingBucket.id].controller;
+                        if (details.globalPosition.dy < screenSize.height * 0.2) { // scroll up
+                          if (bucketController.position.extentBefore != 0)
+                            bucketController.animateTo(bucketController.offset - 80,
+                                duration: scrollDuration, curve: scrollCurve);
+                          updateAction();
+                        } else if (details.globalPosition.dy > screenSize.height * 0.8) { // scroll down
+                          if (bucketController.position.extentAfter != 0)
+                            bucketController.animateTo(bucketController.offset + 80,
+                                duration: scrollDuration, curve: scrollCurve);
+                          updateAction();
+                        }
+                      }
+                    }
+                  },
+                ),
               ),
             ),
             SliverVisibility(
@@ -445,9 +502,41 @@ class _ListPageState extends State<ListPage> {
               maintainSize: true,
               sliver: SliverFillRemaining(
                 hasScrollBody: false,
-                child: Align(
-                  alignment: Alignment.topCenter,
-                  child: addTaskButton,
+                child: Stack(
+                  children: <Widget>[
+                    Column(
+                      children: <Widget>[
+                        if (_bucketProps[bucket.id].taskDropSize != null) DottedBorder(
+                          color: Colors.white,
+                          child: SizedBox.fromSize(size: _bucketProps[bucket.id].taskDropSize),
+                        ),
+                        Align(
+                          alignment: Alignment.topCenter,
+                          child: addTaskButton,
+                        ),
+                      ],
+                    ),
+                    // DragTarget to drop tasks in empty buckets
+                    if (bucket.tasks.length == 0) DragTarget<TaskData>(
+                      onWillAccept: (data) {
+                        setState(() => _bucketProps[bucket.id].taskDropSize = data.size);
+                        return true;
+                      },
+                      onAccept: (data) {
+                        Provider.of<ListProvider>(context, listen: false).moveTaskToBucket(
+                          context: context,
+                          task: data.task,
+                          newBucketId: bucket.id,
+                          index: 0,
+                        ).then((_) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text('${data.task.title} was moved to ${bucket.title} successfully!'),
+                        )));
+                        setState(() => _bucketProps[bucket.id].taskDropSize = null);
+                      },
+                      onLeave: (_) => setState(() => _bucketProps[bucket.id].taskDropSize = null),
+                      builder: (_, __, ___) => SizedBox.expand(),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -475,6 +564,7 @@ class _ListPageState extends State<ListPage> {
         MaterialPageRoute(
           builder: (context) => TaskEditPage(
             task: task,
+            taskState: taskState,
           ),
         ),
       ),
@@ -602,8 +692,9 @@ class _ListPageState extends State<ListPage> {
   }
 
   _deleteBucket(BuildContext context, Bucket bucket) {
-    if ((bucket.tasks?.length ?? 0) > 0) {
-      int defaultBucketId = taskState.buckets[0]?.id ?? 100;
+    // Move bucket's tasks to default bucket (the one with the lowest id)
+    if (bucket.tasks.length > 0) {
+      int defaultBucketId = taskState.buckets[0].id;
       taskState.buckets.forEach((b) {
         if (b.id < defaultBucketId)
           defaultBucketId = b.id;

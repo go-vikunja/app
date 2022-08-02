@@ -1,11 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:vikunja_app/global.dart';
+import 'package:provider/provider.dart';
 import 'package:vikunja_app/models/task.dart';
 import 'package:vikunja_app/utils/misc.dart';
-
-import '../pages/list/task_edit.dart';
+import 'package:vikunja_app/pages/list/task_edit.dart';
+import 'package:vikunja_app/stores/list_store.dart';
 
 class TaskTile extends StatefulWidget {
   final Task task;
@@ -84,8 +84,9 @@ class TaskTileState extends State<TaskTile> with AutomaticKeepAliveClientMixin {
             Navigator.push<Task>(
               context,
               MaterialPageRoute(
-                builder: (context) => TaskEditPage(
+                builder: (buildContext) => TaskEditPage(
                   task: _currentTask,
+                  taskState: Provider.of<ListProvider>(context),
                 ),
               ),
             ).then((task) => setState(() {
@@ -109,9 +110,12 @@ class TaskTileState extends State<TaskTile> with AutomaticKeepAliveClientMixin {
   }
 
   Future<Task> _updateTask(Task task, bool checked) {
-    return VikunjaGlobal.of(context).taskService.update(task.copyWith(
-      done: checked,
-    ));
+    return Provider.of<ListProvider>(context, listen: false).updateTask(
+      context: context,
+      task: task.copyWith(
+        done: checked,
+      ),
+    );
   }
 
   @override

@@ -26,6 +26,7 @@ dependencies:
   webview_flutter: ^3.0.4
   flutter_colorpicker: ^1.0.3
   flutter_keyboard_visibility: ^5.3.0
+  dotted_border: ^2.0.0+2
 
 dev_dependencies:
   flutter_test:

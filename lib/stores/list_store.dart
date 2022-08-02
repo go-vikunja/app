@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/models/task.dart';
 import 'package:vikunja_app/models/bucket.dart';
@@ -5,6 +7,7 @@ import 'package:vikunja_app/global.dart';
 
 class ListProvider with ChangeNotifier {
   bool _isLoading = false;
+  bool _taskDragging = false;
   int _maxPages = 0;
 
   // TODO: Streams
@@ -12,6 +15,13 @@ class ListProvider with ChangeNotifier {
   List<Bucket> _buckets = [];
 
   bool get isLoading => _isLoading;
+
+  bool get taskDragging => _taskDragging;
+
+  set taskDragging(bool value) {
+    _taskDragging = value;
+    notifyListeners();
+  }
 
   int get maxPages => _maxPages;
 
@@ -117,14 +127,8 @@ class ListProvider with ChangeNotifier {
     });
   }
 
-  void updateTask({BuildContext context, int id, bool done}) {
-    var globalState = VikunjaGlobal.of(context);
-    globalState.taskService
-        .update(Task(
-      id: id,
-      done: done,
-    ))
-        .then((task) {
+  Future<Task> updateTask({BuildContext context, Task task}) {
+    return VikunjaGlobal.of(context).taskService.update(task).then((task) {
       // FIXME: This is ugly. We should use a redux to not have to do these kind of things.
       //  This is enough for now (it works™) but we should definitly fix it later.
       _tasks.asMap().forEach((i, t) {
@@ -132,7 +136,13 @@ class ListProvider with ChangeNotifier {
           _tasks[i] = task;
         }
       });
+      _buckets.asMap().forEach((i, b) => b.tasks.asMap().forEach((v, t) {
+        if (task.id == t.id){
+          _buckets[i].tasks[v] = task;
+        }
+      }));
       notifyListeners();
+      return task;
     });
   }
 
@@ -160,5 +170,61 @@ class ListProvider with ChangeNotifier {
           _buckets.removeWhere((bucket) => bucket.id == bucketId);
           notifyListeners();
         });
+  }
+
+  Future<void> moveTaskToBucket({BuildContext context, Task task, int newBucketId, int index}) async {
+    final sameBucket = task.bucketId == newBucketId;
+    final newBucketIndex = _buckets.indexWhere((b) => b.id == newBucketId);
+    if (sameBucket && index > _buckets[newBucketIndex].tasks.indexWhere((t) => t.id == task.id)) index--;
+
+    _buckets[_buckets.indexWhere((b) => b.id == task.bucketId)].tasks.remove(task);
+    if (index >= _buckets[newBucketIndex].tasks.length)
+      _buckets[newBucketIndex].tasks.add(task);
+    else
+      _buckets[newBucketIndex].tasks.insert(index, task);
+
+    double kanbanPosition;
+    if (_buckets[newBucketIndex].tasks.length == 1) // only task
+      kanbanPosition = 0.0;
+    else if (index == 0) // first task
+      kanbanPosition = _buckets[newBucketIndex].tasks[1].kanbanPosition / 2.0;
+    else if (index == _buckets[newBucketIndex].tasks.length - 1) // last task
+      kanbanPosition = _buckets[newBucketIndex].tasks[index - 1].kanbanPosition + pow(2.0, 16.0);
+    else // in the middle
+      kanbanPosition = (_buckets[newBucketIndex].tasks[index - 1].kanbanPosition
+          + _buckets[newBucketIndex].tasks[index + 1].kanbanPosition) / 2.0;
+
+    task = await VikunjaGlobal.of(context).taskService.update(task.copyWith(
+      bucketId: newBucketId ?? task.bucketId,
+      kanbanPosition: kanbanPosition,
+    ));
+    _buckets[newBucketIndex].tasks[index] = task;
+
+    // make sure first 2 tasks don't have 0 kanbanPosition
+    Task secondTask;
+    if (index == 0 && _buckets[newBucketIndex].tasks.length > 1
+        && _buckets[newBucketIndex].tasks[1].kanbanPosition == 0) {
+      if (_buckets[newBucketIndex].tasks.length == 2) // last task
+        kanbanPosition = _buckets[newBucketIndex].tasks[0].kanbanPosition + pow(2.0, 16.0);
+      else // in the middle
+        kanbanPosition = (_buckets[newBucketIndex].tasks[0].kanbanPosition
+            + _buckets[newBucketIndex].tasks[2].kanbanPosition) / 2.0;
+
+      secondTask = await VikunjaGlobal.of(context).taskService.update(
+          _buckets[newBucketIndex].tasks[1].copyWith(
+            kanbanPosition: kanbanPosition,
+          ));
+      _buckets[newBucketIndex].tasks[1] = secondTask;
+    }
+
+    if (_tasks.isNotEmpty) {
+      _tasks[_tasks.indexWhere((t) => t.id == task.id)] = task;
+      if (secondTask != null) _tasks[_tasks.indexWhere((t) => t.id == secondTask.id)] = secondTask;
+    }
+
+    _buckets[newBucketIndex].tasks[_buckets[newBucketIndex].tasks.indexWhere((t) => t.id == task.id)] = task;
+    _buckets[newBucketIndex].tasks.sort((a, b) => a.kanbanPosition.compareTo(b.kanbanPosition));
+
+    notifyListeners();
   }
 }
