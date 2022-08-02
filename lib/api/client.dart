@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:core';
 import 'dart:developer';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:vikunja_app/api/response.dart';
@@ -15,19 +16,24 @@ class Client {
   String _token;
   String _base;
   bool authenticated;
+  bool ignoreCertificates = false;
 
   String get base => _base;
   String get token => _token;
 
-  //Client(this._token, String base, {this.authenticated = true})
-  //    : _base = base.endsWith('/api/v1') ? base : '$base/api/v1';
+  String post_body;
+
+  HttpClient client = new HttpClient();
 
   bool operator ==(dynamic otherClient) {
     return otherClient._token == _token;
   }
 
   Client(this.global, {String token, String base, bool authenticated = false})
-  { configure(token: token, base: base, authenticated: authenticated);}
+  {
+    configure(token: token, base: base, authenticated: authenticated);
+    client.badCertificateCallback = (_,__,___) => ignoreCertificates;
+  }
 
   get _headers => {
         'Authorization': _token != null ? 'Bearer $_token' : '',
@@ -45,6 +51,8 @@ class Client {
     if(authenticated != null)
       this.authenticated = authenticated;
   }
+
+
 
   void reset() {
     _token = _base = null;
@@ -66,37 +74,34 @@ class Client {
         queryParameters: queryParameters,
         // Because dart takes a Map<String, String> here, it is only possible to sort by one parameter while the api supports n parameters.
         fragment: uri.fragment);
-    return http.get(newUri, headers: _headers)
-        .then(_handleResponse, onError: _handleError);
+    return client.getUrl(newUri)
+        .then(_handleResponseF, onError: _handleError);
     }
 
   Future<Response> delete(String url) {
-    return http
-        .delete(
+    return client
+        .deleteUrl(
           '${this.base}$url'.toUri(),
-          headers: _headers,
         )
-        .then(_handleResponse, onError: _handleError);
+        .then(_handleResponseF, onError: _handleError);
   }
 
   Future<Response> post(String url, {dynamic body}) {
-    return http
-        .post(
+    post_body = _encoder.convert(body);
+    return client
+        .postUrl(
           '${this.base}$url'.toUri(),
-          headers: _headers,
-          body: _encoder.convert(body),
         )
-        .then(_handleResponse, onError: _handleError);
+        .then(_handleResponseF, onError: _handleError);
   }
 
   Future<Response> put(String url, {dynamic body}) {
-    return http
-        .put(
+    post_body = _encoder.convert(body);
+    return client
+        .putUrl(
           '${this.base}$url'.toUri(),
-          headers: _headers,
-          body: _encoder.convert(body),
         )
-        .then(_handleResponse, onError: _handleError);
+        .then(_handleResponseF, onError: _handleError);
   }
 
   void _handleError(dynamic e) {
@@ -105,7 +110,36 @@ class Client {
     global.currentState?.showSnackBar(snackBar);
   }
 
-  Response _handleResponse(http.Response response) {
+  Map<String,String> headersToMap(HttpHeaders headers) {
+    Map<String,String> map = {};
+    headers.forEach((name, values) {map[name] = values[0].toString();});
+    return map;
+  }
+
+  Future<Response> _handleResponseF(HttpClientRequest request) {
+    _headers.forEach((k, v) => request.headers.set(k, v));
+    if(post_body != "") {
+      request.write(post_body);
+      post_body = "";
+    }
+
+    return request.close().then((response) {
+      final completer = Completer<String>();
+      final contents = StringBuffer();
+      response.transform(utf8.decoder).listen((data) {
+        contents.write(data);
+      }, onDone: () => completer.complete(contents.toString()));
+      return completer.future.then((body) {
+
+        Response res = Response(json.decode(body), response.statusCode, headersToMap(response.headers));
+        _handleResponseErrors(res);
+        return res;
+      });
+    });
+    //return Response(body, statusCode, headers)
+  }
+
+  void _handleResponseErrors(Response response) {
     if (response.statusCode < 200 ||
         response.statusCode >= 400 ||
         json == null) {
@@ -113,7 +147,7 @@ class Client {
       if (response.statusCode ~/ 100 == 4) {
         throw new InvalidRequestApiException(
             response.statusCode,
-            response.request.url.toString(),
+            "",
             error["message"] ?? "Unknown Error");
       }
       final SnackBar snackBar = SnackBar(
@@ -132,10 +166,8 @@ class Client {
       );
       global.currentState?.showSnackBar(snackBar);
       throw new ApiException(
-          response.statusCode, response.request.url.toString());
+          response.statusCode, "");
     }
-    return Response(
-        _decoder.convert(response.body), response.statusCode, response.headers);
   }
 }
 

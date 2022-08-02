@@ -62,6 +62,8 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
 
   ServerService get serverService => new ServerAPIService(client);
 
+  SettingsManager get settingsManager => new SettingsManager(_storage);
+
   NamespaceService get namespaceService => new NamespaceAPIService(client);
 
   TaskService get taskService => new TaskAPIService(client);
@@ -111,6 +113,7 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
   void initState() {
     super.initState();
     _client = Client(snackbarKey);
+    settingsManager.getIgnoreCertificates().then((value) => value == "1" ? client.ignoreCertificates = true : client.ignoreCertificates = false);
     _newUserService = UserAPIService(client);
     _loadCurrentUser();
     tz.initializeTimeZones();
@@ -120,6 +123,7 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
     platformChannelSpecificsReminders = notifs.NotificationDetails(
         android: androidSpecificsReminders, iOS: iOSSpecifics);
     notificationInitializer();
+
   }
 
   void changeUser(User newUser, {String token, String base}) async {

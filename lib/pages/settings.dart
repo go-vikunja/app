@@ -12,6 +12,7 @@ class SettingsPage extends StatefulWidget {
 class SettingsPageState extends State<SettingsPage> {
   List<TaskList> taskListList;
   int defaultList;
+  bool ignoreCertificates;
 
   @override
   Widget build(BuildContext context) {
@@ -19,6 +20,9 @@ class SettingsPageState extends State<SettingsPage> {
       VikunjaGlobal.of(context).listService.getAll().then((value) => setState(() => taskListList = value));
     if(defaultList == null)
       VikunjaGlobal.of(context).listService.getDefaultList().then((value) => setState(() => defaultList = value == null ? null : int.tryParse(value)));
+
+    VikunjaGlobal.of(context).settingsManager.getIgnoreCertificates().then((value) => setState(() => ignoreCertificates = value == "1" ? true:false));
+
     return new Scaffold(
       appBar: AppBar(title: Text("Settings"),),
       body: Column(
@@ -33,7 +37,13 @@ class SettingsPageState extends State<SettingsPage> {
                 setState(() => defaultList = value);
                 VikunjaGlobal.of(context).listService.setDefaultList(value);
                 },
-            ),) : ListTile(title: Text("..."),)
+            ),) : ListTile(title: Text("..."),),
+          ignoreCertificates != null ?
+              CheckboxListTile(title: Text("Ignore Certificates"), value: ignoreCertificates, onChanged: (value) {
+                setState(() => ignoreCertificates = value);
+                VikunjaGlobal.of(context).settingsManager.setIgnoreCertificates(value);
+                VikunjaGlobal.of(context).client.ignoreCertificates = value;
+              }) : ListTile(title: Text("..."))
         ],
       ),
     );

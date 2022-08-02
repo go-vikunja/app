@@ -225,7 +225,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
                             VikunjaDateTimePicker(
                               label: 'Reminder',
                               onSaved: (reminder) =>
-                              _reminderDates[currentIndex] = reminder,
+                                  _reminderDates[currentIndex] = reminder,
                               onChanged: (_) => _changed = true,
                               initialValue: DateTime.now(),
                             ),
@@ -277,7 +277,8 @@ class _TaskEditPageState extends State<TaskEditPage> {
                                 InputDecoration(labelText: 'Add a new label')),
                             suggestionsCallback: (pattern) => _searchLabel(pattern),
                             itemBuilder: (context, suggestion) {
-                              return Text(suggestion);
+                              print(suggestion);
+                              return new ListTile(title: Text(suggestion));
                             },
                             transitionBuilder: (context, suggestionsBox, controller) {
                               return suggestionsBox;
@@ -391,12 +392,12 @@ class _TaskEditPageState extends State<TaskEditPage> {
     widget.taskState.updateTask(
       context: context,
       task: updatedTask,
-    ).then((result) {
+    ).then((task) {
       setState(() { _loading = false; _changed = false;});
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('The task was updated successfully!'),
       ));
-      Navigator.of(context).pop(result);
+      Navigator.of(context).pop(task);
     }).catchError((err) {
       setState(() => _loading = false);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -419,11 +420,11 @@ class _TaskEditPageState extends State<TaskEditPage> {
   _searchLabel(String query) {
     return VikunjaGlobal.of(context)
         .labelService.getAll(query: query).then((labels) {
-          log("searched");
           // Only show those labels which aren't already added to the task
           labels.removeWhere((labelToRemove) => _labels.contains(labelToRemove));
           _suggestedLabels = labels;
-          return labels.map((label) => label.title).toList();
+          List<String> labelText = labels.map((label) => label.title).toList();
+          return labelText;
         });
   }
 
