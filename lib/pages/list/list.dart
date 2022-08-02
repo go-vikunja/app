@@ -266,7 +266,8 @@ class _ListPageState extends State<ListPage> {
           await _updateBucket(context, taskState.buckets[0]);
           newIndex = 1;
         }
-        if (taskState.buckets[newIndex].position <= taskState.buckets[newIndex - 1].position) {
+        if (taskState.buckets[newIndex].position <= taskState.buckets[newIndex - 1].position
+            || taskState.buckets[newIndex].position >= taskState.buckets[newIndex + 1].position) {
           taskState.buckets[newIndex].position = newIndex == taskState.buckets.length - 1
               ? taskState.buckets[newIndex - 1].position + pow(2.0, 16.0)
               : (taskState.buckets[newIndex - 1].position
