@@ -253,6 +253,16 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
           _dropLocation = DropLocation.none;
           _dropData = null;
         });
+        final dragTargetOnWillAccept = (TaskData data, DropLocation dropLocation) {
+          if (data.task.bucketId != bucket.id)
+            if (bucket.limit != 0 && bucket.tasks.length >= bucket.limit)
+              return false;
+          setState(() {
+            _dropLocation = dropLocation;
+            _dropData = data;
+          });
+          return true;
+        };
         final DragTargetAccept<TaskData> dragTargetOnAccept = (data) {
           final index = bucket.tasks.indexOf(widget.task);
           widget.onAccept(data.task, _dropLocation == DropLocation.above ? index : index + 1);
@@ -264,7 +274,7 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
 
         return SizedBox(
           width: _cardSize.width,
-          height: _cardSize.height + (dropAbove || dropBelow ? dropBoxSize.height + 4: 0),
+          height: _cardSize.height + (dropAbove || dropBelow ? dropBoxSize.height + 4 : 0),
           child: Stack(
             children: <Widget>[
               Column(
@@ -279,14 +289,7 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
                   SizedBox(
                     height: (_cardSize.height / 2) + (dropAbove ? dropBoxSize.height : 0),
                     child: DragTarget<TaskData>(
-                      onWillAccept: (data) {
-                        if (bucket.limit != 0 && bucket.tasks.length >= bucket.limit) return false;
-                        setState(() {
-                          _dropLocation = DropLocation.above;
-                          _dropData = data;
-                        });
-                        return true;
-                      },
+                      onWillAccept: (data) => dragTargetOnWillAccept(data, DropLocation.above),
                       onAccept: dragTargetOnAccept,
                       onLeave: dragTargetOnLeave,
                       builder: (_, __, ___) => SizedBox.expand(),
@@ -295,14 +298,7 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
                   SizedBox(
                     height: (_cardSize.height / 2) + (dropBelow ? dropBoxSize.height : 0),
                     child: DragTarget<TaskData>(
-                      onWillAccept: (data) {
-                        if (bucket.limit != 0 && bucket.tasks.length >= bucket.limit) return false;
-                        setState(() {
-                          _dropLocation = DropLocation.below;
-                          _dropData = data;
-                        });
-                        return true;
-                      },
+                      onWillAccept: (data) => dragTargetOnWillAccept(data, DropLocation.below),
                       onAccept: dragTargetOnAccept,
                       onLeave: dragTargetOnLeave,
                       builder: (_, __, ___) => SizedBox.expand(),
