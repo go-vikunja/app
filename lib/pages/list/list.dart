@@ -694,23 +694,8 @@ class _ListPageState extends State<ListPage> {
     });
   }
 
-  Future<void> _deleteBucket(BuildContext context, Bucket bucket) {
-    // Move bucket's tasks to default bucket (the one with the lowest id)
-    if (bucket.tasks.length > 0) {
-      int defaultBucketId = taskState.buckets[0].id;
-      taskState.buckets.forEach((b) {
-        if (b.id < defaultBucketId)
-          defaultBucketId = b.id;
-      });
-      final defaultBucketIndex = taskState.buckets.indexWhere((b) => b.id == defaultBucketId);
-      bucket.tasks.forEach((task) {
-        taskState.buckets[defaultBucketIndex].tasks.add(task.copyWith(
-          bucketId: defaultBucketId,
-          kanbanPosition: taskState.buckets[defaultBucketIndex].tasks.last.kanbanPosition + 1.0,
-        ));
-      });
-    }
-    return Provider.of<ListProvider>(context, listen: false).deleteBucket(
+  Future<void> _deleteBucket(BuildContext context, Bucket bucket) async {
+    await Provider.of<ListProvider>(context, listen: false).deleteBucket(
       context: context,
       listId: bucket.listId,
       bucketId: bucket.id,
@@ -723,7 +708,7 @@ class _ListPageState extends State<ListPage> {
           ],
         ),
       ));
-      setState(() {});
     });
+    _onViewTapped(1);
   }
 }
