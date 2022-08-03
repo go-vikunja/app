@@ -112,9 +112,9 @@ class ListProvider with ChangeNotifier {
     notifyListeners();
 
     return globalState.taskService.add(listId, newTask).then((task) {
-      if (newTask.bucketId == null) {
+      if (_tasks.isNotEmpty)
         _tasks.insert(0, task);
-      } else {
+      if (_buckets.isNotEmpty) {
         final bucket = _buckets[_buckets.indexWhere((b) => task.bucketId == b.id)];
         if (bucket.tasks != null) {
           bucket.tasks.add(task);
