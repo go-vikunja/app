@@ -115,7 +115,8 @@ abstract class TaskService {
 }
 
 abstract class BucketService {
-  Future<Bucket> get(int listId, int bucketId);
+  // Not implemented in the Vikunja API
+  // Future<Bucket> get(int listId, int bucketId);
   Future<Bucket> update(Bucket bucket);
   Future delete(int listId, int bucketId);
   Future<Bucket> add(int listId, Bucket bucket);

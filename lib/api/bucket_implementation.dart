@@ -20,13 +20,14 @@ class BucketAPIService extends APIService implements BucketService {
         .delete('/lists/$listId/buckets/$bucketId');
   }
 
+  /* Not implemented in the Vikunja API
   @override
   Future<Bucket> get(int listId, int bucketId) {
-    // Might not exist in the API, it isn't in the docs
     return client
         .get('/lists/$listId/buckets/$bucketId')
         .then((response) => Bucket.fromJSON(response.body));
   }
+  */
 
   @override
   Future<Response> getAllByList(int listId,
