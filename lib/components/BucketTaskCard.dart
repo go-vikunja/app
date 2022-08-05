@@ -136,27 +136,22 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
         backgroundColor: label.color,
       ));
     });
-    if (widget.task.description.isNotEmpty) {
-      final uncompletedTaskCount = '* [ ]'.allMatches(widget.task.description).length;
-      final completedTaskCount = '* [x]'.allMatches(widget.task.description).length;
-      final taskCount = uncompletedTaskCount + completedTaskCount;
-      if (taskCount > 0) {
-        final iconSize = (theme.textTheme.labelLarge.fontSize ?? 14) + 2;
-        labelRow.children.add(Chip(
-          avatar: Container(
-            constraints: BoxConstraints(maxHeight: iconSize, maxWidth: iconSize),
-            child: CircularProgressIndicator(
-              value: uncompletedTaskCount == 0
-                  ? 1 : uncompletedTaskCount.toDouble() / taskCount.toDouble(),
-              backgroundColor: Colors.grey,
-            )  ,
+    if (widget.task.hasCheckboxes) {
+      final checkboxStatistics = widget.task.checkboxStatistics;
+      final iconSize = (theme.textTheme.labelLarge.fontSize ?? 14) + 2;
+      labelRow.children.add(Chip(
+        avatar: Container(
+          constraints: BoxConstraints(maxHeight: iconSize, maxWidth: iconSize),
+          child: CircularProgressIndicator(
+            value: checkboxStatistics.checked / checkboxStatistics.total,
+            backgroundColor: Colors.grey,
           ),
-          label: Text(
-              (uncompletedTaskCount == 0 ? '' : '$completedTaskCount of ')
-                  + '$taskCount tasks'
-          ),
-        ));
-      }
+        ),
+        label: Text(
+            (checkboxStatistics.checked == checkboxStatistics.total ? '' : '${checkboxStatistics.checked} of ')
+                + '${checkboxStatistics.total} tasks'
+        ),
+      ));
     }
     if (widget.task.attachments != null && widget.task.attachments.isNotEmpty) {
       labelRow.children.add(Chip(

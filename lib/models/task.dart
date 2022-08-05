@@ -5,47 +5,53 @@ import 'package:vikunja_app/components/date_extension.dart';
 import 'package:vikunja_app/models/label.dart';
 import 'package:vikunja_app/models/user.dart';
 import 'package:vikunja_app/models/taskAttachment.dart';
+import 'package:vikunja_app/utils/checkboxes_in_text.dart';
 
 @JsonSerializable()
 class Task {
-  int id, parentTaskId, priority, listId, bucketId;
-  DateTime created, updated, dueDate, startDate, endDate;
-  List<DateTime> reminderDates;
-  String title, description, identifier;
-  bool done;
-  Color color;
-  double kanbanPosition;
-  User createdBy;
-  Duration repeatAfter;
-  List<Task> subtasks;
-  List<Label> labels;
-  List<TaskAttachment> attachments;
-  bool loading = false;
+  final int id, parentTaskId, priority, listId, bucketId;
+  final DateTime created, updated, dueDate, startDate, endDate;
+  final List<DateTime> reminderDates;
+  final String title, description, identifier;
+  final bool done;
+  final Color color;
+  final double kanbanPosition;
+  final User createdBy;
+  final Duration repeatAfter;
+  final List<Task> subtasks;
+  final List<Label> labels;
+  final List<TaskAttachment> attachments;
   // TODO: add position(?)
 
-  Task(
-      {@required this.id,
-      this.title,
-      this.description,
-      this.identifier,
-      this.done = false,
-      this.reminderDates,
-      this.dueDate,
-      this.startDate,
-      this.endDate,
-      this.parentTaskId,
-      this.priority,
-      this.repeatAfter,
-      this.color,
-      this.kanbanPosition,
-      this.subtasks,
-      this.labels,
-      this.attachments,
-      this.created,
-      this.updated,
-      this.createdBy,
-      this.listId,
-      this.bucketId});
+  // // TODO: use `late final` once upgraded to current dart version
+  CheckboxStatistics _checkboxStatistics;
+
+  bool loading = false;
+
+  Task({
+    @required this.id,
+    this.title,
+    this.description,
+    this.identifier,
+    this.done = false,
+    this.reminderDates,
+    this.dueDate,
+    this.startDate,
+    this.endDate,
+    this.parentTaskId,
+    this.priority,
+    this.repeatAfter,
+    this.color,
+    this.kanbanPosition,
+    this.subtasks,
+    this.labels,
+    this.attachments,
+    this.created,
+    this.updated,
+    this.createdBy,
+    this.listId,
+    this.bucketId,
+  });
 
   Task.fromJson(Map<String, dynamic> json)
       : id = json['id'],
@@ -116,6 +122,24 @@ class Task {
   Color get textColor => color != null
       ? color.computeLuminance() > 0.5 ? Colors.black : Colors.white
       : null;
+
+  CheckboxStatistics get checkboxStatistics {
+    if (_checkboxStatistics != null)
+      return _checkboxStatistics;
+    if (description.isEmpty)
+      return null;
+
+    _checkboxStatistics = getCheckboxStatistics(description);
+    return _checkboxStatistics;
+  }
+
+  bool get hasCheckboxes {
+    final checkboxStatistics = this.checkboxStatistics;
+    if (checkboxStatistics != null && checkboxStatistics.total != 0)
+      return true;
+    else
+      return false;
+  }
 
   Task copyWith({
     int id, int parentTaskId, int priority, int listId, int bucketId,
