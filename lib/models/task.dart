@@ -141,6 +141,8 @@ class Task {
       return false;
   }
 
+  bool get hasDueDate => dueDate.year != 1;
+
   Task copyWith({
     int id, int parentTaskId, int priority, int listId, int bucketId,
     DateTime created, DateTime updated, DateTime dueDate, DateTime startDate, DateTime endDate,

@@ -99,7 +99,7 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
         ),
       ],
     );
-    if (widget.task.dueDate.year > 2) {
+    if (widget.task.hasDueDate) {
       final duration = widget.task.dueDate.difference(DateTime.now());
       final pastDue = duration.isNegative && !widget.task.done;
       titleRow.children.add(Container(

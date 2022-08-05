@@ -77,7 +77,7 @@ class TaskTileState extends State<TaskTile> with AutomaticKeepAliveClientMixin {
           ) : Text(_currentTask.title),
       controlAffinity: ListTileControlAffinity.leading,
       value: _currentTask.done ?? false,
-      subtitle: widget.showInfo && _currentTask.dueDate.year > 2 ?
+      subtitle: widget.showInfo && _currentTask.hasDueDate ?
           Text("Due " + durationToHumanReadable(durationUntilDue), style: TextStyle(color: durationUntilDue.isNegative ? Colors.red : null),)
           : _currentTask.description == null || _currentTask.description.isEmpty
               ? null
