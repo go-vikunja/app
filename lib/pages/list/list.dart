@@ -20,6 +20,7 @@ import 'package:vikunja_app/models/bucket.dart';
 import 'package:vikunja_app/pages/list/list_edit.dart';
 import 'package:vikunja_app/pages/list/task_edit.dart';
 import 'package:vikunja_app/stores/list_store.dart';
+import 'package:vikunja_app/utils/calculate_item_position.dart';
 
 enum BucketMenu {limit, done, delete}
 
@@ -260,25 +261,38 @@ class _ListPageState extends State<ListPage> {
           newIndex -= 1;
           indexUpdated = true;
         }
-        taskState.buckets.insert(newIndex, taskState.buckets.removeAt(_draggedBucketIndex));
-        if (newIndex == 0) {
-          taskState.buckets[0].position = 0;
-          await _updateBucket(context, taskState.buckets[0]);
-          newIndex = 1;
+
+        final movedBucket = taskState.buckets.removeAt(_draggedBucketIndex);
+        if (newIndex >= taskState.buckets.length) {
+          taskState.buckets.add(movedBucket);
+        } else {
+          taskState.buckets.insert(newIndex, movedBucket);
         }
-        if (taskState.buckets[newIndex].position <= taskState.buckets[newIndex - 1].position
-            || taskState.buckets[newIndex].position >= taskState.buckets[newIndex + 1].position) {
-          taskState.buckets[newIndex].position = newIndex == taskState.buckets.length - 1
-              ? taskState.buckets[newIndex - 1].position + pow(2.0, 16.0)
-              : (taskState.buckets[newIndex - 1].position
-                  + taskState.buckets[newIndex + 1].position) / 2.0;
-          _updateBucket(context, taskState.buckets[newIndex]);
+
+        taskState.buckets[newIndex].position = calculateItemPosition(
+          positionBefore: newIndex != 0
+              ? taskState.buckets[newIndex - 1].position : null,
+          positionAfter: newIndex < taskState.buckets.length - 1
+              ? taskState.buckets[newIndex + 1].position : null,
+        );
+        await _updateBucket(context, taskState.buckets[newIndex]);
+
+        // make sure the first 2 buckets don't have 0 position
+        if (newIndex == 0 && taskState.buckets.length > 1 && taskState.buckets[1].position == 0) {
+          taskState.buckets[1].position = calculateItemPosition(
+            positionBefore: taskState.buckets[0].position,
+            positionAfter: 1 < taskState.buckets.length - 1
+                ? taskState.buckets[2].position : null,
+          );
+          _updateBucket(context, taskState.buckets[1]);
         }
+
         if (indexUpdated && portrait) _pageController.animateToPage(
           newIndex - 1,
           duration: Duration(milliseconds: 100),
           curve: Curves.easeInOut,
         );
+
         setState(() => _draggedBucketIndex = null);
       },
     );

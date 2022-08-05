@@ -1,8 +1,7 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/models/task.dart';
 import 'package:vikunja_app/models/bucket.dart';
+import 'package:vikunja_app/utils/calculate_item_position.dart';
 import 'package:vikunja_app/global.dart';
 
 class ListProvider with ChangeNotifier {
@@ -183,36 +182,28 @@ class ListProvider with ChangeNotifier {
     else
       _buckets[newBucketIndex].tasks.insert(index, task);
 
-    double kanbanPosition;
-    if (_buckets[newBucketIndex].tasks.length == 1) // only task
-      kanbanPosition = 0.0;
-    else if (index == 0) // first task
-      kanbanPosition = _buckets[newBucketIndex].tasks[1].kanbanPosition / 2.0;
-    else if (index == _buckets[newBucketIndex].tasks.length - 1) // last task
-      kanbanPosition = _buckets[newBucketIndex].tasks[index - 1].kanbanPosition + pow(2.0, 16.0);
-    else // in the middle
-      kanbanPosition = (_buckets[newBucketIndex].tasks[index - 1].kanbanPosition
-          + _buckets[newBucketIndex].tasks[index + 1].kanbanPosition) / 2.0;
-
     task = await VikunjaGlobal.of(context).taskService.update(task.copyWith(
       bucketId: newBucketId ?? task.bucketId,
-      kanbanPosition: kanbanPosition,
+      kanbanPosition: calculateItemPosition(
+        positionBefore: index != 0
+            ? _buckets[newBucketIndex].tasks[index - 1].kanbanPosition : null,
+        positionAfter: index < _buckets[newBucketIndex].tasks.length - 1
+            ? _buckets[newBucketIndex].tasks[index + 1].kanbanPosition : null,
+      ),
     ));
     _buckets[newBucketIndex].tasks[index] = task;
 
-    // make sure first 2 tasks don't have 0 kanbanPosition
+    // make sure the first 2 tasks don't have 0 kanbanPosition
     Task secondTask;
     if (index == 0 && _buckets[newBucketIndex].tasks.length > 1
         && _buckets[newBucketIndex].tasks[1].kanbanPosition == 0) {
-      if (_buckets[newBucketIndex].tasks.length == 2) // last task
-        kanbanPosition = _buckets[newBucketIndex].tasks[0].kanbanPosition + pow(2.0, 16.0);
-      else // in the middle
-        kanbanPosition = (_buckets[newBucketIndex].tasks[0].kanbanPosition
-            + _buckets[newBucketIndex].tasks[2].kanbanPosition) / 2.0;
-
       secondTask = await VikunjaGlobal.of(context).taskService.update(
           _buckets[newBucketIndex].tasks[1].copyWith(
-            kanbanPosition: kanbanPosition,
+            kanbanPosition: calculateItemPosition(
+              positionBefore: task.kanbanPosition,
+              positionAfter: 1 < _buckets[newBucketIndex].tasks.length - 1
+                  ? _buckets[newBucketIndex].tasks[2].kanbanPosition : null,
+            ),
           ));
       _buckets[newBucketIndex].tasks[1] = secondTask;
     }
