@@ -4,6 +4,7 @@ import 'dart:developer' as dev;
 import 'package:flutter/material.dart';
 import 'package:flutter_native_timezone/flutter_native_timezone.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:vikunja_app/api/bucket_implementation.dart';
 import 'package:vikunja_app/api/client.dart';
 import 'package:vikunja_app/api/label_task.dart';
 import 'package:vikunja_app/api/label_task_bulk.dart';
@@ -66,6 +67,8 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
   NamespaceService get namespaceService => new NamespaceAPIService(client);
 
   TaskService get taskService => new TaskAPIService(client);
+
+  BucketService get bucketService => new BucketAPIService(client);
 
   ListService get listService => new ListAPIService(client, _storage);
 

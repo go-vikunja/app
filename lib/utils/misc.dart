@@ -1,17 +1,21 @@
 String durationToHumanReadable(Duration dur) {
+  var durString = '';
   if(dur.inDays.abs() > 1)
-    return dur.inDays.toString() + " days";
-  if(dur.inDays.abs() == 1)
-    return dur.inDays.toString() + " day";
+    durString = dur.inDays.abs().toString() + " days";
+  else if(dur.inDays.abs() == 1)
+    durString = dur.inDays.abs().toString() + " day";
 
-  if(dur.inHours.abs() > 1)
-    return dur.inHours.toString() + " hours";
-  if(dur.inHours.abs() == 1)
-    return dur.inHours.toString() + " hour";
+  else if(dur.inHours.abs() > 1)
+    durString = dur.inHours.abs().toString() + " hours";
+  else if(dur.inHours.abs() == 1)
+    durString = dur.inHours.abs().toString() + " hour";
 
-  if(dur.inMinutes.abs() > 1)
-    return dur.inMinutes.toString() + " minutes";
-  if(dur.inMinutes.abs() == 1)
-    return dur.inMinutes.toString() + " minute";
-  return "under 1 minute";
+  else if(dur.inMinutes.abs() > 1)
+    durString = dur.inMinutes.abs().toString() + " minutes";
+  else if(dur.inMinutes.abs() == 1)
+    durString = dur.inMinutes.abs().toString() + " minute";
+  else durString = "less than a minute";
+
+  if (dur.isNegative) return durString + " ago";
+  return "in " + durString;
 }

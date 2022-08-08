@@ -1,12 +1,11 @@
 import 'dart:async';
-import 'dart:developer';
 
 import 'package:flutter/material.dart';
-import 'package:vikunja_app/global.dart';
+import 'package:provider/provider.dart';
 import 'package:vikunja_app/models/task.dart';
 import 'package:vikunja_app/utils/misc.dart';
-
-import '../pages/list/task_edit.dart';
+import 'package:vikunja_app/pages/list/task_edit.dart';
+import 'package:vikunja_app/stores/list_store.dart';
 
 class TaskTile extends StatefulWidget {
   final Task task;
@@ -30,7 +29,7 @@ class TaskTile extends StatefulWidget {
   TaskTileState createState() => TaskTileState(this.task);
 }
 
-class TaskTileState extends State<TaskTile> {
+class TaskTileState extends State<TaskTile> with AutomaticKeepAliveClientMixin {
   Task _currentTask;
 
   TaskTileState(this._currentTask)
@@ -38,6 +37,7 @@ class TaskTileState extends State<TaskTile> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     Duration durationUntilDue = _currentTask.dueDate.difference(DateTime.now());
     if (_currentTask.loading) {
       return ListTile(
@@ -69,26 +69,32 @@ class TaskTileState extends State<TaskTile> {
                 // TODO: get list name of task
                 //TextSpan(text: widget.task.list.title+" - ", style: TextStyle(color: Colors.grey)),
                 TextSpan(text: widget.task.title),
-              ]
+              ],
+              style: TextStyle(
+                color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+              ),
             )
           ) : Text(_currentTask.title),
       controlAffinity: ListTileControlAffinity.leading,
       value: _currentTask.done ?? false,
-      subtitle: widget.showInfo && _currentTask.dueDate.year > 2 ?
-          Text("Due in " + durationToHumanReadable(durationUntilDue),style: TextStyle(color: durationUntilDue.isNegative ? Colors.red : null),)
+      subtitle: widget.showInfo && _currentTask.hasDueDate ?
+          Text("Due " + durationToHumanReadable(durationUntilDue), style: TextStyle(color: durationUntilDue.isNegative ? Colors.red : null),)
           : _currentTask.description == null || _currentTask.description.isEmpty
               ? null
               : Text(_currentTask.description),
       secondary:
           IconButton(icon: Icon(Icons.settings), onPressed: () {
-            Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => TaskEditPage(
-                      task: _currentTask,
-                    ))).whenComplete(() {
-                      widget.onEdit();
-                    });
+            Navigator.push<Task>(
+              context,
+              MaterialPageRoute(
+                builder: (buildContext) => TaskEditPage(
+                  task: _currentTask,
+                  taskState: Provider.of<ListProvider>(context),
+                ),
+              ),
+            ).then((task) => setState(() {
+              if (task != null) _currentTask = task;
+            })).whenComplete(() => widget.onEdit());
           }),
       onChanged: _change,
     );
@@ -107,16 +113,16 @@ class TaskTileState extends State<TaskTile> {
   }
 
   Future<Task> _updateTask(Task task, bool checked) {
-    // TODO use copyFrom
-    return VikunjaGlobal.of(context).taskService.update(Task(
-          id: task.id,
-          done: checked,
-          title: task.title,
-          description: task.description,
-          createdBy: task.createdBy,
-          dueDate: task.dueDate
-        ));
+    return Provider.of<ListProvider>(context, listen: false).updateTask(
+      context: context,
+      task: task.copyWith(
+        done: checked,
+      ),
+    );
   }
+
+  @override
+  bool get wantKeepAlive => _currentTask != widget.task;
 }
 
 typedef Future<void> TaskChanged(Task task, bool newValue);
