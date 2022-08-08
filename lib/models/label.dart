@@ -41,5 +41,5 @@ class Label {
         'created': created?.toUtc()?.toIso8601String(),
       };
 
-  Color get textColor => color.computeLuminance() > 0.5 ? vLabelDark : vLabelLight;
+  Color get textColor => color != null && color.computeLuminance() <= 0.5 ? vLabelLight : vLabelDark;
 }
