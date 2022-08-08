@@ -9,6 +9,7 @@ import 'package:vikunja_app/models/list.dart';
 import 'package:vikunja_app/models/namespace.dart';
 import 'package:vikunja_app/models/task.dart';
 import 'package:vikunja_app/models/user.dart';
+import 'package:vikunja_app/models/bucket.dart';
 
 import '../models/server.dart';
 
@@ -109,6 +110,18 @@ abstract class TaskService {
   Future<Response> getAllByList(int listId,
       [Map<String, List<String>> queryParameters]);
   Future<List<Task>> getByOptions(TaskServiceOptions options);
+
+  int get maxPages;
+}
+
+abstract class BucketService {
+  // Not implemented in the Vikunja API
+  // Future<Bucket> get(int listId, int bucketId);
+  Future<Bucket> update(Bucket bucket);
+  Future delete(int listId, int bucketId);
+  Future<Bucket> add(int listId, Bucket bucket);
+  Future<Response> getAllByList(int listId,
+      [Map<String, List<String>> queryParameters]);
 
   int get maxPages;
 }
