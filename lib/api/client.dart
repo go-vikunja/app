@@ -143,7 +143,11 @@ class Client {
     if (response.statusCode < 200 ||
         response.statusCode >= 400 ||
         json == null) {
-      Map<String, dynamic> error = _decoder.convert(response.body);
+      Map<String, dynamic> error;
+      if(response.body is String)
+         error = _decoder.convert(response.body);
+      else
+        error = response.body;
       if (response.statusCode ~/ 100 == 4) {
         throw new InvalidRequestApiException(
             response.statusCode,
