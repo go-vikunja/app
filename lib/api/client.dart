@@ -9,6 +9,16 @@ import 'package:vikunja_app/api/response.dart';
 import 'package:vikunja_app/components/string_extension.dart';
 import 'package:vikunja_app/global.dart';
 
+class IgnoreCertHttpOverrides extends HttpOverrides {
+  bool ignoreCertificates = false;
+  IgnoreCertHttpOverrides(bool ignore) {ignoreCertificates = ignore;}
+  @override
+  HttpClient createHttpClient(SecurityContext context) {
+    return super.createHttpClient(context)
+      ..badCertificateCallback = (_, __, ___) => ignoreCertificates;
+  }
+}
+
 class Client {
   GlobalKey<ScaffoldMessengerState> global;
   final JsonDecoder _decoder = new JsonDecoder();
@@ -23,7 +33,7 @@ class Client {
 
   String post_body;
 
-  HttpClient client = new HttpClient();
+  //HttpClient client = new HttpClient();
 
   bool operator ==(dynamic otherClient) {
     return otherClient._token == _token;
@@ -32,7 +42,8 @@ class Client {
   Client(this.global, {String token, String base, bool authenticated = false})
   {
     configure(token: token, base: base, authenticated: authenticated);
-    client.badCertificateCallback = (_,__,___) => ignoreCertificates;
+    //client.badCertificateCallback = (_,__,___) => ignoreCertificates;
+    HttpOverrides.global = IgnoreCertHttpOverrides(ignoreCertificates);
   }
 
   get _headers => {
@@ -74,34 +85,37 @@ class Client {
         queryParameters: queryParameters,
         // Because dart takes a Map<String, String> here, it is only possible to sort by one parameter while the api supports n parameters.
         fragment: uri.fragment);
-    return client.getUrl(newUri)
-        .then(_handleResponseF, onError: _handleError);
+    return http.get(newUri, headers: _headers)
+        .then(_handleResponse, onError: _handleError);
     }
 
   Future<Response> delete(String url) {
-    return client
-        .deleteUrl(
-          '${this.base}$url'.toUri(),
-        )
-        .then(_handleResponseF, onError: _handleError);
+    return http
+        .delete(
+      '${this.base}$url'.toUri(),
+      headers: _headers,
+    )
+        .then(_handleResponse, onError: _handleError);
   }
 
   Future<Response> post(String url, {dynamic body}) {
-    post_body = _encoder.convert(body);
-    return client
-        .postUrl(
-          '${this.base}$url'.toUri(),
-        )
-        .then(_handleResponseF, onError: _handleError);
+    return http
+        .post(
+      '${this.base}$url'.toUri(),
+      headers: _headers,
+      body: _encoder.convert(body),
+    )
+        .then(_handleResponse, onError: _handleError);
   }
 
   Future<Response> put(String url, {dynamic body}) {
-    post_body = _encoder.convert(body);
-    return client
-        .putUrl(
-          '${this.base}$url'.toUri(),
-        )
-        .then(_handleResponseF, onError: _handleError);
+    return http
+        .put(
+      '${this.base}$url'.toUri(),
+      headers: _headers,
+      body: _encoder.convert(body),
+    )
+        .then(_handleResponse, onError: _handleError);
   }
 
   void _handleError(dynamic e) {
@@ -116,6 +130,7 @@ class Client {
     return map;
   }
 
+  /*
   Future<Response> _handleResponseF(HttpClientRequest request) {
     _headers.forEach((k, v) => request.headers.set(k, v));
     if(post_body != "") {
@@ -137,17 +152,14 @@ class Client {
       });
     });
     //return Response(body, statusCode, headers)
-  }
+  }*/
 
-  void _handleResponseErrors(Response response) {
+  void _handleResponseErrors(http.Response response) {
     if (response.statusCode < 200 ||
         response.statusCode >= 400 ||
         json == null) {
       Map<String, dynamic> error;
-      if(response.body is String)
-         error = _decoder.convert(response.body);
-      else
-        error = response.body;
+      error = _decoder.convert(response.body);
       if (response.statusCode ~/ 100 == 4) {
         throw new InvalidRequestApiException(
             response.statusCode,
@@ -172,6 +184,12 @@ class Client {
       throw new ApiException(
           response.statusCode, "");
     }
+  }
+
+  Response _handleResponse(http.Response response) {
+    _handleResponseErrors(response);
+    return Response(
+        _decoder.convert(response.body), response.statusCode, response.headers);
   }
 }
 
