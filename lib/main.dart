@@ -1,13 +1,28 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/pages/home.dart';
 import 'package:vikunja_app/pages/user/login.dart';
 import 'package:vikunja_app/theme/theme.dart';
-//import 'package:alice/alice.dart';
+import 'package:http/http.dart';
 
-void main() => runApp(VikunjaGlobal(
-    child: new VikunjaApp(home: HomePage()),
-    login: new VikunjaApp(home: LoginPage())));
+class IgnoreCertHttpOverrides extends HttpOverrides {
+  bool ignoreCerts;
+  IgnoreCertHttpOverrides(bool  _ignore) {ignoreCerts = _ignore;}
+  @override
+  HttpClient createHttpClient(SecurityContext context) {
+    return super.createHttpClient(context)
+      ..badCertificateCallback = (_, __, ___) => ignoreCerts;
+  }
+}
+
+void main() {
+    runApp(VikunjaGlobal(
+        child: new VikunjaApp(home: HomePage()),
+        login: new VikunjaApp(home: LoginPage())));
+}
+
 
 class VikunjaApp extends StatelessWidget {
   final Widget home;
@@ -15,7 +30,7 @@ class VikunjaApp extends StatelessWidget {
   const VikunjaApp({Key key, this.home}) : super(key: key);
   @override
   Widget build(BuildContext context) {
-    
+
     return new MaterialApp(
       title: 'Vikunja',
       theme: buildVikunjaTheme(),

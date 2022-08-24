@@ -42,8 +42,7 @@ class SettingsPageState extends State<SettingsPage> {
           ignoreCertificates != null ?
               CheckboxListTile(title: Text("Ignore Certificates"), value: ignoreCertificates, onChanged: (value) {
                 setState(() => ignoreCertificates = value);
-                VikunjaGlobal.of(context).settingsManager.setIgnoreCertificates(value);
-                VikunjaGlobal.of(context).client.ignoreCertificates = value;
+                VikunjaGlobal.of(context).client.reload_ignore_certs(value);
               }) : ListTile(title: Text("..."))
         ],
       ),

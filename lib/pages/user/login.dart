@@ -25,7 +25,6 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   bool _loading = false;
   bool _rememberMe = false;
-  bool ignoreCertificates;
 
   final _serverController = TextEditingController();
   final _usernameController = TextEditingController();
@@ -53,8 +52,9 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext ctx) {
-    if(ignoreCertificates == null)
-      VikunjaGlobal.of(context).settingsManager.getIgnoreCertificates().then((value) => setState(() => ignoreCertificates = value == "1" ? true:false));
+    Client client = VikunjaGlobal.of(context).client;
+    if(client.ignoreCertificates == null)
+      VikunjaGlobal.of(context).settingsManager.getIgnoreCertificates().then((value) => setState(() => client.ignoreCertificates = value == "1" ? true:false));
 
     return Scaffold(
       body: Center(
@@ -156,9 +156,9 @@ class _LoginPageState extends State<LoginPage> {
                           }
                         },
                         child: VikunjaButtonText("Login with Frontend"))),
-                    ignoreCertificates != null ?
-                    CheckboxListTile(title: Text("Ignore Certificates"), value: ignoreCertificates, onChanged: (value) {
-                      setState(() => ignoreCertificates = value);
+                    client.ignoreCertificates != null ?
+                    CheckboxListTile(title: Text("Ignore Certificates"), value: client.ignoreCertificates, onChanged: (value) {
+                      setState(() => client.reload_ignore_certs(value));
                       VikunjaGlobal.of(context).settingsManager.setIgnoreCertificates(value);
                       VikunjaGlobal.of(context).client.ignoreCertificates = value;
                     }) : ListTile(title: Text("..."))
@@ -216,7 +216,9 @@ class _LoginPageState extends State<LoginPage> {
         }
     }
       vGlobal.changeUser(newUser.user, token: newUser.token, base: _server);
-    } catch (ex) {
+    } catch (ex, stacktrace) {
+      log(stacktrace.toString());
+      throw ex;
       showDialog(
           context: context,
           builder: (context) => new AlertDialog(

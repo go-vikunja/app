@@ -9,15 +9,8 @@ import 'package:vikunja_app/api/response.dart';
 import 'package:vikunja_app/components/string_extension.dart';
 import 'package:vikunja_app/global.dart';
 
-class IgnoreCertHttpOverrides extends HttpOverrides {
-  bool ignoreCertificates = false;
-  IgnoreCertHttpOverrides(bool ignore) {ignoreCertificates = ignore;}
-  @override
-  HttpClient createHttpClient(SecurityContext context) {
-    return super.createHttpClient(context)
-      ..badCertificateCallback = (_, __, ___) => ignoreCertificates;
-  }
-}
+import '../main.dart';
+
 
 class Client {
   GlobalKey<ScaffoldMessengerState> global;
@@ -39,14 +32,19 @@ class Client {
     return otherClient._token == _token;
   }
 
-  Client(this.global, {String token, String base, bool authenticated = false})
-  {
+  Client(this.global, {String token, String base, bool authenticated = false}) {
     configure(token: token, base: base, authenticated: authenticated);
-    //client.badCertificateCallback = (_,__,___) => ignoreCertificates;
-    HttpOverrides.global = IgnoreCertHttpOverrides(ignoreCertificates);
   }
 
-  get _headers => {
+  void reload_ignore_certs(bool val) {
+    ignoreCertificates = val;
+    HttpOverrides.global = new IgnoreCertHttpOverrides(ignoreCertificates);
+    VikunjaGlobal.of(global.currentContext).settingsManager.setIgnoreCertificates(val);
+
+  }
+
+  get _headers =>
+      {
         'Authorization': _token != null ? 'Bearer $_token' : '',
         'Content-Type': 'application/json'
       };
@@ -55,14 +53,13 @@ class Client {
   int get hashCode => _token.hashCode;
 
   void configure({String token, String base, bool authenticated}) {
-    if(token != null)
+    if (token != null)
       _token = token;
-    if(base != null)
+    if (base != null)
       _base = base.endsWith('/api/v1') ? base : '$base/api/v1';
-    if(authenticated != null)
+    if (authenticated != null)
       this.authenticated = authenticated;
   }
-
 
 
   void reset() {
@@ -87,7 +84,7 @@ class Client {
         fragment: uri.fragment);
     return http.get(newUri, headers: _headers)
         .then(_handleResponse, onError: _handleError);
-    }
+  }
 
   Future<Response> delete(String url) {
     return http
@@ -99,6 +96,7 @@ class Client {
   }
 
   Future<Response> post(String url, {dynamic body}) {
+    log('post');
     return http
         .post(
       '${this.base}$url'.toUri(),
@@ -120,13 +118,16 @@ class Client {
 
   void _handleError(dynamic e) {
     log(e.toString());
-    SnackBar snackBar = SnackBar(content: Text("Error on request: " + e.toString()));
+    SnackBar snackBar = SnackBar(
+        content: Text("Error on request: " + e.toString()));
     global.currentState?.showSnackBar(snackBar);
   }
 
-  Map<String,String> headersToMap(HttpHeaders headers) {
-    Map<String,String> map = {};
-    headers.forEach((name, values) {map[name] = values[0].toString();});
+  Map<String, String> headersToMap(HttpHeaders headers) {
+    Map<String, String> map = {};
+    headers.forEach((name, values) {
+      map[name] = values[0].toString();
+    });
     return map;
   }
 
@@ -159,6 +160,7 @@ class Client {
         response.statusCode >= 400 ||
         json == null) {
       Map<String, dynamic> error;
+      log(response.body);
       error = _decoder.convert(response.body);
       if (response.statusCode ~/ 100 == 4) {
         throw new InvalidRequestApiException(
@@ -167,15 +169,16 @@ class Client {
             error["message"] ?? "Unknown Error");
       }
       final SnackBar snackBar = SnackBar(
-        content: Text("Error code "+response.statusCode.toString()+" received."),
+        content: Text(
+            "Error code " + response.statusCode.toString() + " received."),
         action: SnackBarAction(
           label: ("Show Details"),
-          onPressed: (){
+          onPressed: () {
             Builder(
                 builder: (BuildContext context) =>
-                Dialog(
-                  child: Text(error["message"]),
-                )
+                    Dialog(
+                      child: Text(error["message"]),
+                    )
             );
           },
         ),
