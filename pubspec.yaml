@@ -10,16 +10,16 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.5
-  http: 0.13.4
-  after_layout: ^1.1.0
+  http: ^0.13.5
+  after_layout: ^1.2.0
   intl: ^0.17.0
-  flutter_local_notifications: ^9.0.0
-  rxdart: ^0.27.4
+  flutter_local_notifications: ^9.8.0+1
+  rxdart: ^0.27.5
   flutter_native_timezone: ^2.0.0
-  flutter_secure_storage: ^5.0.2
-  datetime_picker_formfield: 2.0.0
+  flutter_secure_storage: ^6.0.0
+  datetime_picker_formfield: ^2.0.1
   flutter_typeahead: ^4.0.0
-  build: 2.3.0
+  build: ^2.3.0
   json_serializable: ^6.3.1
   petitparser: ^5.0.0
   provider: ^6.0.3
@@ -32,8 +32,8 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
     version: any
-  test: any
-  flutter_launcher_icons: ^0.9.3
+  test: ^1.21.4
+  flutter_launcher_icons: ^0.10.0
 
 flutter_icons:
   image_path: "assets/vikunja_logo.png"
