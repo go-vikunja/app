@@ -16,15 +16,15 @@ class Client {
   GlobalKey<ScaffoldMessengerState> global;
   final JsonDecoder _decoder = new JsonDecoder();
   final JsonEncoder _encoder = new JsonEncoder();
-  String _token;
-  String _base;
-  bool authenticated;
+  String? _token;
+  String? _base;
+  bool authenticated = false;
   bool ignoreCertificates = false;
 
-  String get base => _base;
-  String get token => _token;
+  String? get base => _base;
+  String? get token => _token;
 
-  String post_body;
+  String? post_body;
 
   //HttpClient client = new HttpClient();
 
@@ -32,14 +32,14 @@ class Client {
     return otherClient._token == _token;
   }
 
-  Client(this.global, {String token, String base, bool authenticated = false}) {
+  Client(this.global, {String? token, String? base, bool authenticated = false}) {
     configure(token: token, base: base, authenticated: authenticated);
   }
 
   void reload_ignore_certs(bool val) {
     ignoreCertificates = val;
     HttpOverrides.global = new IgnoreCertHttpOverrides(ignoreCertificates);
-    VikunjaGlobal.of(global.currentContext).settingsManager.setIgnoreCertificates(val);
+    VikunjaGlobal.of(global.currentContext!).settingsManager.setIgnoreCertificates(val);
 
   }
 
@@ -52,13 +52,10 @@ class Client {
   @override
   int get hashCode => _token.hashCode;
 
-  void configure({String token, String base, bool authenticated}) {
-    if (token != null)
-      _token = token;
-    if (base != null)
-      _base = base.endsWith('/api/v1') ? base : '$base/api/v1';
-    if (authenticated != null)
-      this.authenticated = authenticated;
+  void configure({String? token, String? base, bool? authenticated}) {
+    _token = token!;
+    _base = base!.endsWith('/api/v1') ? base : '$base/api/v1';
+    this.authenticated = authenticated!;
   }
 
 
@@ -68,7 +65,7 @@ class Client {
   }
 
   Future<Response> get(String url,
-      [Map<String, List<String>> queryParameters]) {
+      [Map<String, List<String>>? queryParameters]) {
     // TODO: This could be moved to a seperate function
     var uri = Uri.parse('${this.base}$url');
     // Because these are all final values, we can't just add the queryParameters and must instead build a new Uri Object every time this method is called.

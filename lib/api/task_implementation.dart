@@ -44,7 +44,7 @@ class TaskAPIService extends APIService implements TaskService {
         .then((response) {
           int page_n = 0;
           if (response.headers["x-pagination-total-pages"] != null) {
-            page_n = int.parse(response.headers["x-pagination-total-pages"]);
+            page_n = int.parse(response.headers["x-pagination-total-pages"]!);
           } else {
             return Future.value(response.body);
           }
@@ -66,7 +66,7 @@ class TaskAPIService extends APIService implements TaskService {
 
   @override
   Future<Response> getAllByList(int listId,
-      [Map<String, List<String>> queryParameters]) {
+      [Map<String, List<String>>? queryParameters]) {
     return client
         .get('/lists/$listId/tasks', queryParameters).then(
             (response) => new Response(

@@ -9,22 +9,22 @@ import 'package:vikunja_app/utils/checkboxes_in_text.dart';
 
 @JsonSerializable()
 class Task {
-  final int id, parentTaskId, priority, listId, bucketId;
-  final DateTime created, updated, dueDate, startDate, endDate;
-  final List<DateTime> reminderDates;
-  final String title, description, identifier;
-  final bool done;
-  final Color color;
-  final double kanbanPosition;
-  final User createdBy;
-  final Duration repeatAfter;
-  final List<Task> subtasks;
-  final List<Label> labels;
-  final List<TaskAttachment> attachments;
+  final int? id, parentTaskId, priority, listId, bucketId;
+  final DateTime? created, updated, dueDate, startDate, endDate;
+  final List<DateTime>? reminderDates;
+  final String? title, description, identifier;
+  final bool? done;
+  final Color? color;
+  final double? kanbanPosition;
+  final User? createdBy;
+  final Duration? repeatAfter;
+  final List<Task>? subtasks;
+  final List<Label>? labels;
+  final List<TaskAttachment>? attachments;
   // TODO: add position(?)
 
   // // TODO: use `late final` once upgraded to current dart version
-  CheckboxStatistics _checkboxStatistics;
+  late final CheckboxStatistics _checkboxStatistics;
 
   bool loading = false;
 
@@ -102,25 +102,25 @@ class Task {
         'identifier': identifier,
         'done': done ?? false,
         'reminder_dates':
-            reminderDates?.map((date) => date?.toUtc()?.toIso8601String())?.toList(),
-        'due_date': dueDate?.toUtc()?.toIso8601String(),
-        'start_date': startDate?.toUtc()?.toIso8601String(),
-        'end_date': endDate?.toUtc()?.toIso8601String(),
+            reminderDates?.map((date) => date.toUtc().toIso8601String()).toList(),
+        'due_date': dueDate?.toUtc().toIso8601String(),
+        'start_date': startDate?.toUtc().toIso8601String(),
+        'end_date': endDate?.toUtc().toIso8601String(),
         'priority': priority,
         'repeat_after': repeatAfter?.inSeconds,
-        'hex_color': color?.value?.toRadixString(16)?.padLeft(8, '0')?.substring(2),
+        'hex_color': color?.value.toRadixString(16).padLeft(8, '0').substring(2),
         'kanban_position': kanbanPosition,
-        'labels': labels?.map((label) => label.toJSON())?.toList(),
-        'subtasks': subtasks?.map((subtask) => subtask.toJSON())?.toList(),
-        'attachments': attachments?.map((attachment) => attachment.toJSON())?.toList(),
+        'labels': labels?.map((label) => label.toJSON()).toList(),
+        'subtasks': subtasks?.map((subtask) => subtask.toJSON()).toList(),
+        'attachments': attachments?.map((attachment) => attachment.toJSON()).toList(),
         'bucket_id': bucketId,
         'created_by': createdBy?.toJSON(),
-        'updated': updated?.toUtc()?.toIso8601String(),
-        'created': created?.toUtc()?.toIso8601String(),
+        'updated': updated?.toUtc().toIso8601String(),
+        'created': created?.toUtc().toIso8601String(),
       };
 
-  Color get textColor => color != null
-      ? color.computeLuminance() > 0.5 ? Colors.black : Colors.white
+  Color? get textColor => color != null
+      ? color!.computeLuminance() > 0.5 ? Colors.black : Colors.white
       : null;
 
   CheckboxStatistics get checkboxStatistics {

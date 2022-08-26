@@ -11,7 +11,7 @@ class UserAPIService extends APIService implements UserService {
   UserAPIService(Client client) : super(client);
 
   @override
-  Future<UserTokenPair> login(String username, password, {bool rememberMe = false, String totp}) async {
+  Future<UserTokenPair> login(String username, password, {bool rememberMe = false, String? totp}) async {
     var token = await client.post('/login', body: {
       'long_token': rememberMe,
       'password': password,

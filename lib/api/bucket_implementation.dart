@@ -31,7 +31,7 @@ class BucketAPIService extends APIService implements BucketService {
 
   @override
   Future<Response> getAllByList(int listId,
-      [Map<String, List<String>> queryParameters]) {
+      [Map<String, List<String>>? queryParameters]) {
     return client
         .get('/lists/$listId/buckets', queryParameters)
         .then((response) => new Response(

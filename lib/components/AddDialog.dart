@@ -11,10 +11,10 @@ Map<NewTaskDue, Duration> newTaskDueToDuration = {
 };
 
 class AddDialog extends StatefulWidget {
-  final ValueChanged<String> onAdd;
-  final ValueChanged<Task> onAddTask;
-  final InputDecoration decoration;
-  const AddDialog({Key key, this.onAdd, this.decoration, this.onAddTask}) : super(key: key);
+  final ValueChanged<String>? onAdd;
+  final ValueChanged<Task>? onAddTask;
+  final InputDecoration? decoration;
+  const AddDialog({Key? key, this.onAdd, this.decoration, this.onAddTask}) : super(key: key);
 
   @override
   State<StatefulWidget> createState() => AddDialogState();
@@ -23,13 +23,13 @@ class AddDialog extends StatefulWidget {
 
 class AddDialogState extends State<AddDialog> {
   NewTaskDue newTaskDue = NewTaskDue.day;
-  DateTime customDueDate;
+  DateTime? customDueDate;
   var textController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
     if(newTaskDue != NewTaskDue.custom)
-      customDueDate = DateTime.now().add(newTaskDueToDuration[newTaskDue]);
+      customDueDate = DateTime.now().add(newTaskDueToDuration[newTaskDue]!);
     return new AlertDialog(
       contentPadding: const EdgeInsets.all(16.0),
       content: new Column(
@@ -63,9 +63,9 @@ class AddDialogState extends State<AddDialog> {
           child: const Text('ADD'),
           onPressed: () {
             if (widget.onAdd != null && textController.text.isNotEmpty)
-              widget.onAdd(textController.text);
+              widget.onAdd!(textController.text);
             if(widget.onAddTask != null && textController.text.isNotEmpty) {
-              widget.onAddTask(Task(id: null,
+              widget.onAddTask!(Task(id: null,
                   title: textController.text,
                   done: false,
                   createdBy: null,

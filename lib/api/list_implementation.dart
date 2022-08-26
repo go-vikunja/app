@@ -83,7 +83,7 @@ class ListAPIService extends APIService implements ListService {
   }
 
   @override
-  Future<String> getDefaultList() {
+  Future<String?> getDefaultList() {
     return _storage.read(key: "default_list_id");
   }
 

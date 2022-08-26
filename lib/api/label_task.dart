@@ -22,9 +22,9 @@ class LabelTaskAPIService extends APIService implements LabelTaskService {
   }
 
   @override
-  Future<List<Label>> getAll(LabelTask lt, {String query}) async {
-    String params =
-        query == '' ? null : '?s=' + Uri.encodeQueryComponent(query);
+  Future<List<Label>> getAll(LabelTask lt, {String? query}) async {
+    String? params =
+        query == null ? null : '?s=' + Uri.encodeQueryComponent(query);
 
     return client.get('/tasks/${lt.task.id}/labels$params').then(
         (label) => convertList(label, (result) => Label.fromJson(result)));
