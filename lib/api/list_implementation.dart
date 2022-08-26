@@ -13,6 +13,7 @@ class ListAPIService extends APIService implements ListService {
 
   @override
   Future<TaskList> create(namespaceId, TaskList tl) {
+    tl.namespaceId = namespaceId;
     return client
         .put('/namespaces/$namespaceId/lists', body: tl.toJSON())
         .then((response) => TaskList.fromJson(response.body));

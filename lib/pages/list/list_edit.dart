@@ -136,10 +136,9 @@ class _ListEditPageState extends State<ListEditPage> {
     setState(() => _loading = true);
     // FIXME: is there a way we can update the list without creating a new list object?
     //  aka updating the existing list we got from context (setters?)
-    TaskList updatedList =
-        TaskList(id: widget.list.id, title: _title, description: _description);
-
-    VikunjaGlobal.of(context).listService.update(updatedList).then((_) {
+    widget.list.title = _title;
+    widget.list.description = _description;
+    VikunjaGlobal.of(context).listService.update(widget.list).then((_) {
       setState(() => _loading = false);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('The list was updated successfully!'),

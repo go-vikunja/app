@@ -4,7 +4,8 @@ import 'package:vikunja_app/models/user.dart';
 
 class TaskList {
   final int id;
-  final String title, description;
+  int namespaceId;
+  String title, description;
   final User owner;
   final DateTime created, updated;
   List<Task> tasks;
@@ -12,13 +13,14 @@ class TaskList {
 
   TaskList(
       {@required this.id,
-      @required this.title,
       this.description,
+      @required this.title,
       this.owner,
       this.created,
       this.updated,
       this.tasks,
-      this.isFavorite});
+      this.isFavorite,
+      this.namespaceId});
 
   TaskList.fromJson(Map<String, dynamic> json)
       : id = json['id'],
@@ -28,6 +30,7 @@ class TaskList {
         updated = DateTime.parse(json['updated']),
         created = DateTime.parse(json['created']),
         isFavorite = json['is_favorite'],
+        namespaceId = json['namespace_id'],
         tasks = (json['tasks'] == null ? [] : json['tasks'] as List<dynamic>)
             ?.map((taskJson) => Task.fromJson(taskJson))
             ?.toList();
@@ -40,6 +43,7 @@ class TaskList {
       "owner": this.owner?.toJSON(),
       "created": this.created?.toIso8601String(),
       "updated": this.updated?.toIso8601String(),
+      "namespace_id": this.namespaceId
     };
   }
 }
