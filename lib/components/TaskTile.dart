@@ -12,12 +12,11 @@ class TaskTile extends StatefulWidget {
   final Function onEdit;
   final bool showInfo;
   final bool loading;
-  final ValueSetter<bool> onMarkedAsDone;
+  final ValueSetter<bool>? onMarkedAsDone;
 
   const TaskTile(
-      {Key key, @required this.task, this.onEdit, this.loading = false, this.showInfo = false, this.onMarkedAsDone})
-      : assert(task != null),
-        super(key: key);
+      {Key? key, required this.task, required this.onEdit, this.loading = false, this.showInfo = false, this.onMarkedAsDone})
+      : super(key: key);
 /*
   @override
   TaskTileState createState() {
@@ -32,13 +31,12 @@ class TaskTile extends StatefulWidget {
 class TaskTileState extends State<TaskTile> with AutomaticKeepAliveClientMixin {
   Task _currentTask;
 
-  TaskTileState(this._currentTask)
-      : assert(_currentTask != null);
+  TaskTileState(this._currentTask);
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    Duration durationUntilDue = _currentTask.dueDate.difference(DateTime.now());
+    Duration? durationUntilDue = _currentTask.dueDate?.difference(DateTime.now());
     if (_currentTask.loading) {
       return ListTile(
         leading: Padding(
@@ -50,11 +48,11 @@ class TaskTileState extends State<TaskTile> with AutomaticKeepAliveClientMixin {
                 strokeWidth: 2.0,
               )),
         ),
-        title: Text(_currentTask.title),
+        title: Text(_currentTask.title ?? ""),
         subtitle:
-            _currentTask.description == null || _currentTask.description.isEmpty
+            _currentTask.description == null || _currentTask.description!.isEmpty
                 ? null
-                : Text(_currentTask.description),
+                : Text(_currentTask.description ?? ""),
         trailing: IconButton(
             icon: Icon(Icons.settings), onPressed: () {  },
             ),
@@ -74,14 +72,14 @@ class TaskTileState extends State<TaskTile> with AutomaticKeepAliveClientMixin {
                 color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
               ),
             )
-          ) : Text(_currentTask.title),
+          ) : Text(_currentTask.title ?? ""),
       controlAffinity: ListTileControlAffinity.leading,
       value: _currentTask.done ?? false,
       subtitle: widget.showInfo && _currentTask.hasDueDate ?
-          Text("Due " + durationToHumanReadable(durationUntilDue), style: TextStyle(color: durationUntilDue.isNegative ? Colors.red : null),)
-          : _currentTask.description == null || _currentTask.description.isEmpty
+          Text("Due " + durationToHumanReadable(durationUntilDue!), style: TextStyle(color: durationUntilDue.isNegative ? Colors.red : null),)
+          : _currentTask.description == null || _currentTask.description!.isEmpty
               ? null
-              : Text(_currentTask.description),
+              : Text(_currentTask.description ?? ""),
       secondary:
           IconButton(icon: Icon(Icons.settings), onPressed: () {
             Navigator.push<Task>(
@@ -100,7 +98,8 @@ class TaskTileState extends State<TaskTile> with AutomaticKeepAliveClientMixin {
     );
   }
 
-  void _change(bool value) async {
+  void _change(bool? value) async {
+    value = value ?? false;
     setState(() {
       this._currentTask.loading = true;
     });

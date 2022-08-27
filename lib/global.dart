@@ -27,7 +27,7 @@ class VikunjaGlobal extends StatefulWidget {
   final Widget child;
   final Widget login;
 
-  VikunjaGlobal({this.child, this.login});
+  VikunjaGlobal({required this.child, required this.login});
 
   @override
   VikunjaGlobalState createState() => VikunjaGlobalState();
@@ -35,21 +35,21 @@ class VikunjaGlobal extends StatefulWidget {
   static VikunjaGlobalState of(BuildContext context) {
     var widget =
         context.dependOnInheritedWidgetOfExactType<_VikunjaGlobalInherited>();
-    return widget.data;
+    return widget!.data;
   }
 }
 
 class VikunjaGlobalState extends State<VikunjaGlobal> {
   final FlutterSecureStorage _storage = new FlutterSecureStorage();
 
-  User _currentUser;
+  User? _currentUser;
   bool _loading = true;
   bool expired = false;
-  Client _client;
-  UserService _newUserService;
+  late Client _client;
+  UserService? _newUserService;
 
 
-  User get currentUser => _currentUser;
+  User? get currentUser => _currentUser;
 
   Client get client => _client;
 
@@ -58,7 +58,7 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
 
   UserManager get userManager => new UserManager(_storage);
 
-  UserService get newUserService => _newUserService;
+  UserService? get newUserService => _newUserService;
 
   ServerService get serverService => new ServerAPIService(client);
 
@@ -78,7 +78,7 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
 
   NotificationClass get notifications => new NotificationClass();
 
-  notifs.NotificationAppLaunchDetails notifLaunch;
+  notifs.NotificationAppLaunchDetails? notifLaunch;
 
   LabelService get labelService => new LabelAPIService(client);
 
@@ -101,11 +101,11 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
       icon: 'ic_launcher_foreground',
       importance: notifs.Importance.high
   );
-  notifs.IOSNotificationDetails iOSSpecifics;
-  notifs.NotificationDetails platformChannelSpecificsDueDate;
-  notifs.NotificationDetails platformChannelSpecificsReminders;
+  late notifs.IOSNotificationDetails iOSSpecifics;
+  late notifs.NotificationDetails platformChannelSpecificsDueDate;
+  late notifs.NotificationDetails platformChannelSpecificsReminders;
 
-  String currentTimeZone;
+  late String currentTimeZone;
 
 
 
@@ -126,7 +126,7 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
 
   }
 
-  void changeUser(User newUser, {String token, String base}) async {
+  void changeUser(User newUser, {String? token, String? base}) async {
     setState(() {
       _loading = true;
     });
@@ -163,20 +163,20 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
       taskService.getAll().then((value) =>
           value.forEach((task) {
             if(task.reminderDates != null)
-              task.reminderDates.forEach((reminder) {
-                scheduleNotification("Reminder", "This is your reminder for '" + task.title + "'",
+              task.reminderDates!.forEach((reminder) {
+                scheduleNotification("Reminder", "This is your reminder for '" + task.title! + "'",
                     notificationsPlugin,
-                    reminder,
+                    reminder!,
                     currentTimeZone,
-                    platformChannelSpecifics: platformChannelSpecificsReminders,
+                    platformChannelSpecificsReminders,
                     id: (reminder.millisecondsSinceEpoch/1000).floor());
               });
             if(task.dueDate != null)
-              scheduleNotification("Due Reminder","The task '" + task.title + "' is due.",
+              scheduleNotification("Due Reminder","The task '" + task.title! + "' is due.",
                   notificationsPlugin,
-                  task.dueDate,
+                  task.dueDate!,
                   currentTimeZone,
-                  platformChannelSpecifics: platformChannelSpecificsDueDate,
+                  platformChannelSpecificsDueDate,
                   id: task.id);
           })
       );
@@ -233,9 +233,9 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
         });
         return;
       }
-      loadedCurrentUser = User(int.tryParse(currentUser), "", "");
+      loadedCurrentUser = User(int.tryParse(currentUser)!, "", "");
     } catch (otherExceptions) {
-      loadedCurrentUser = User(int.tryParse(currentUser), "", "");
+      loadedCurrentUser = User(int.tryParse(currentUser)!, "", "");
     }
     setState(() {
       _currentUser = loadedCurrentUser;
@@ -248,12 +248,13 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
     if (_loading) {
       return new Center(child: new CircularProgressIndicator());
     }
-    if(client != null && client.authenticated) {
+    if(client.authenticated) {
       scheduleDueNotifications();
     }
     return new _VikunjaGlobalInherited(
       data: this,
-      child: client == null || !client.authenticated ? widget.login : widget.child,
+      key: UniqueKey(),
+      child: !client.authenticated ? widget.login : widget.child,
     );
   }
 }
@@ -261,13 +262,13 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
 class _VikunjaGlobalInherited extends InheritedWidget {
   final VikunjaGlobalState data;
 
-  _VikunjaGlobalInherited({Key key, this.data, Widget child})
+  _VikunjaGlobalInherited({Key? key, required this.data, required Widget child})
       : super(key: key, child: child);
 
   @override
   bool updateShouldNotify(_VikunjaGlobalInherited oldWidget) {
     return (data.currentUser != null &&
-            data.currentUser.id != oldWidget.data.currentUser.id) ||
+            data.currentUser!.id != oldWidget.data.currentUser!.id) ||
         data.client != oldWidget.data.client;
   }
 }

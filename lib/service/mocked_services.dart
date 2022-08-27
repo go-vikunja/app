@@ -45,6 +45,7 @@ var _tasks = {
     created: DateTime.now(),
     description: 'A descriptive task',
     done: false,
+    identifier: '',
   )
 };
 
@@ -84,7 +85,7 @@ class MockedNamespaceService implements NamespaceService {
 class MockedListService implements ListService {
   @override
   Future<TaskList> create(namespaceId, TaskList tl) {
-    _nsLists[namespaceId].add(tl.id);
+    _nsLists[namespaceId]?.add(tl.id);
     return Future.value(_lists[tl.id] = tl);
   }
 
@@ -107,7 +108,7 @@ class MockedListService implements ListService {
   @override
   Future<List<TaskList>> getByNamespace(int namespaceId) {
     return Future.value(
-        _nsLists[namespaceId].map((listId) => _lists[listId]).toList());
+        _nsLists[namespaceId]!.map((listId) => _lists[listId]!).toList());
   }
 
   @override
@@ -135,7 +136,7 @@ class MockedListService implements ListService {
   }
 
   @override
-  void setDefaultList(int listId) {
+  void setDefaultList(int? listId) {
     // TODO: implement setDefaultList
   }
 }
@@ -144,7 +145,7 @@ class MockedTaskService implements TaskService {
   @override
   Future delete(int taskId) {
     _lists.forEach(
-        (_, list) => list.tasks.removeWhere((task) => task.id == taskId));
+        (_, list) => list.tasks.removeWhere((task) => task?.id == taskId));
     _tasks.remove(taskId);
     return Future.value();
   }
@@ -152,25 +153,25 @@ class MockedTaskService implements TaskService {
   @override
   Future<Task> update(Task task) {
     _lists.forEach((_, list) {
-      if (list.tasks.where((t) => t.id == task.id).length > 0) {
-        list.tasks.removeWhere((t) => t.id == task.id);
+      if (list.tasks.where((t) => t?.id == task.id).length > 0) {
+        list.tasks.removeWhere((t) => t?.id == task.id);
         list.tasks.add(task);
       }
     });
-    return Future.value(_tasks[task.id] = task);
+    return Future.value(_tasks[task.id ?? 0] = task);
   }
 
   @override
   Future<Task> add(int listId, Task task) {
     var id = _tasks.keys.last + 1;
     _tasks[id] = task;
-    _lists[listId].tasks.add(task);
+    _lists[listId]!.tasks.add(task);
     return Future.value(task);
   }
 
   @override
   Future<Response> getAllByList(int listId,
-      [Map<String, List<String>> queryParameters]) {
+      [Map<String, List<String>>? queryParameters]) {
     return Future.value(new Response(_tasks.values.toList(), 200, {}));
   }
 
@@ -196,13 +197,13 @@ class MockedTaskService implements TaskService {
 
 class MockedUserService implements UserService {
   @override
-  Future<UserTokenPair> login(String username, password, {bool rememberMe = false, String totp}) {
-    return Future.value(UserTokenPair(_users[1], 'abcdefg'));
+  Future<UserTokenPair> login(String username, password, {bool rememberMe = false, String? totp}) {
+    return Future.value(UserTokenPair(_users[1]!, 'abcdefg'));
   }
 
   @override
   Future<UserTokenPair> register(String username, email, password) {
-    return Future.value(UserTokenPair(_users[1], 'abcdefg'));
+    return Future.value(UserTokenPair(_users[1]!, 'abcdefg'));
   }
 
   @override

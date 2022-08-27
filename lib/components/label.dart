@@ -6,7 +6,7 @@ class LabelComponent extends StatefulWidget {
   final Label label;
   final VoidCallback onDelete;
 
-  const LabelComponent({Key key, @required this.label, this.onDelete})
+  const LabelComponent({Key? key, required this.label, required this.onDelete})
       : super(key: key);
 
   @override
@@ -24,7 +24,7 @@ class LabelComponentState extends State<LabelComponent> {
 
     return Chip(
       label: Text(
-        widget.label.title,
+        widget.label.title ?? "",
         style: TextStyle(
           color: textColor,
         ),

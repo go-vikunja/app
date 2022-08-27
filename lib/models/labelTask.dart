@@ -4,9 +4,9 @@ import 'package:vikunja_app/models/task.dart';
 
 class LabelTask {
   final Label label;
-  final Task task;
+  final Task? task;
 
-  LabelTask({@required this.label, @required this.task});
+  LabelTask({required this.label, required this.task});
 
   LabelTask.fromJson(Map<String, dynamic> json)
       : label = new Label(id: json['label_id']),

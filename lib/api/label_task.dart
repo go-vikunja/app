@@ -10,14 +10,14 @@ class LabelTaskAPIService extends APIService implements LabelTaskService {
   @override
   Future<Label> create(LabelTask lt) async {
     return client
-        .put('/tasks/${lt.task.id}/labels', body: lt.toJSON())
+        .put('/tasks/${lt.task!.id}/labels', body: lt.toJSON())
         .then((result) => Label.fromJson(result.body));
   }
 
   @override
   Future<Label> delete(LabelTask lt) async {
     return client
-        .delete('/tasks/${lt.task.id}/labels/${lt.label.id}')
+        .delete('/tasks/${lt.task!.id}/labels/${lt.label.id}')
         .then((result) => Label.fromJson(result.body));
   }
 
@@ -26,7 +26,7 @@ class LabelTaskAPIService extends APIService implements LabelTaskService {
     String? params =
         query == null ? null : '?s=' + Uri.encodeQueryComponent(query);
 
-    return client.get('/tasks/${lt.task.id}/labels$params').then(
+    return client.get('/tasks/${lt.task!.id}/labels$params').then(
         (label) => convertList(label, (result) => Label.fromJson(result)));
   }
 }

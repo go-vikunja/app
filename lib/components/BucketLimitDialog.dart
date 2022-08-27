@@ -5,7 +5,7 @@ import 'package:vikunja_app/models/bucket.dart';
 class BucketLimitDialog extends StatefulWidget {
   final Bucket bucket;
 
-  const BucketLimitDialog({Key key, @required this.bucket}) : super(key: key);
+  const BucketLimitDialog({Key? key, required this.bucket}) : super(key: key);
 
   @override
   State<BucketLimitDialog> createState() => _BucketLimitDialogState();

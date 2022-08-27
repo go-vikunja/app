@@ -5,13 +5,14 @@ import 'package:vikunja_app/theme/constants.dart';
 
 class Label {
   final int id;
-  final String title, description;
-  final DateTime created, updated;
-  final User createdBy;
+  final String? title, description;
+  final DateTime? created, updated;
+  final User? createdBy;
   final Color color;
 
   Label(
-      {this.id,
+      {
+      required this.id,
       this.title,
       this.description,
       this.color = vLabelDefaultColor,
@@ -24,7 +25,7 @@ class Label {
         title = json['title'],
         description = json['description'],
         color = json['hex_color'] == ''
-            ? null
+            ? vLabelDefaultColor
             : new Color(int.parse(json['hex_color'], radix: 16) + 0xFF000000),
         updated = DateTime.parse(json['updated']),
         created = DateTime.parse(json['created']),

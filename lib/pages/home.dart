@@ -22,14 +22,14 @@ class HomePage extends StatefulWidget {
 class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
   List<Namespace> _namespaces = [];
 
-  Namespace get _currentNamespace =>
+  Namespace? get _currentNamespace =>
       _selectedDrawerIndex >= 0 && _selectedDrawerIndex < _namespaces.length
           ? _namespaces[_selectedDrawerIndex]
           : null;
   int _selectedDrawerIndex = -1, _previousDrawerIndex = -1;
   bool _loading = true;
   bool _showUserDetails = false;
-  Widget drawerItem;
+  Widget? drawerItem;
 
   @override
   void afterFirstLayout(BuildContext context) {
@@ -42,7 +42,7 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
         .asMap()
         .forEach((i, namespace) => namespacesList.add(new ListTile(
               leading: const Icon(Icons.folder),
-              title: new Text(namespace.title),
+              title: new Text(namespace.title ?? ""),
               selected: i == _selectedDrawerIndex,
               onTap: () => _onSelectItem(i),
             )));
@@ -102,7 +102,7 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
                         context,
                         MaterialPageRoute(
                             builder: (context) => NamespaceEditPage(
-                                  namespace: _currentNamespace,
+                                  namespace: _currentNamespace!,
                                 ))).whenComplete(() => _loadNamespaces()))
               ],
       ),
@@ -110,9 +110,9 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
           child: new Column(children: <Widget>[
             new UserAccountsDrawerHeader(
           accountEmail:
-              currentUser?.email == null ? null : Text(currentUser.email),
+              currentUser?.email == null ? null : Text(currentUser?.email ?? ""),
           accountName:
-              currentUser?.username == null ? null : Text(currentUser.username),
+              currentUser?.username == null ? null : Text(currentUser?.username ?? ""),
           onDetailsPressed: () {
             setState(() {
               _showUserDetails = !_showUserDetails;
@@ -189,7 +189,7 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
   _addNamespace(String name, BuildContext context) {
     VikunjaGlobal.of(context)
         .namespaceService
-        .create(Namespace(id: null, title: name))
+        .create(Namespace(id: 0, title: name))
         .then((_) {
       _loadNamespaces();
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(

@@ -88,7 +88,7 @@ class ListAPIService extends APIService implements ListService {
   }
 
   @override
-  void setDefaultList(int listId) {
+  void setDefaultList(int? listId) {
     _storage.write(key: "default_list_id", value: listId.toString());
   }
 }

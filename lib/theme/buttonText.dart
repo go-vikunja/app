@@ -6,7 +6,7 @@ class VikunjaButtonText extends StatelessWidget {
 
   const VikunjaButtonText(
     this.text, {
-    Key key,
+    Key? key,
   }) : super(key: key);
 
   @override

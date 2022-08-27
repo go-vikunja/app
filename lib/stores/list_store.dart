@@ -38,7 +38,7 @@ class ListProvider with ChangeNotifier {
 
   List<Bucket> get buckets => _buckets;
 
-  Future<void> loadTasks({BuildContext context, int listId, int page = 1, bool displayDoneTasks = true}) {
+  Future<void> loadTasks({required BuildContext context, required int listId, int page = 1, bool displayDoneTasks = true}) {
     _tasks = [];
     _isLoading = true;
     notifyListeners();
@@ -57,7 +57,7 @@ class ListProvider with ChangeNotifier {
     }
     return VikunjaGlobal.of(context).taskService.getAllByList(listId, queryParams).then((response) {
       if (response.headers["x-pagination-total-pages"] != null) {
-        _maxPages = int.parse(response.headers["x-pagination-total-pages"]);
+        _maxPages = int.parse(response.headers["x-pagination-total-pages"]!);
       }
       _tasks.addAll(response.body);
 
@@ -66,7 +66,7 @@ class ListProvider with ChangeNotifier {
     });
   }
 
-  Future<void> loadBuckets({BuildContext context, int listId, int page = 1}) {
+  Future<void> loadBuckets({required BuildContext context, required int listId, int page = 1}) {
     _buckets = [];
     _isLoading = true;
     notifyListeners();
@@ -77,7 +77,7 @@ class ListProvider with ChangeNotifier {
 
     return VikunjaGlobal.of(context).bucketService.getAllByList(listId, queryParams).then((response) {
       if (response.headers["x-pagination-total-pages"] != null) {
-        _maxPages = int.parse(response.headers["x-pagination-total-pages"]);
+        _maxPages = int.parse(response.headers["x-pagination-total-pages"]!);
       }
       _buckets.addAll(response.body);
 
@@ -87,10 +87,11 @@ class ListProvider with ChangeNotifier {
   }
 
   Future<void> addTaskByTitle(
-      {BuildContext context, String title, int listId}) {
+      {required BuildContext context, required String title, required int listId}) {
     var globalState = VikunjaGlobal.of(context);
     var newTask = Task(
-      id: null,
+      id: 0,
+      identifier: '',
       title: title,
       createdBy: globalState.currentUser,
       done: false,
@@ -105,7 +106,7 @@ class ListProvider with ChangeNotifier {
     });
   }
 
-  Future<void> addTask({BuildContext context, Task newTask, int listId}) {
+  Future<void> addTask({required BuildContext context, required Task newTask, required int listId}) {
     var globalState = VikunjaGlobal.of(context);
     if (newTask.bucketId == null) _isLoading = true;
     notifyListeners();
@@ -126,7 +127,7 @@ class ListProvider with ChangeNotifier {
     });
   }
 
-  Future<Task> updateTask({BuildContext context, Task task}) {
+  Future<Task> updateTask({required BuildContext context, required Task task}) {
     return VikunjaGlobal.of(context).taskService.update(task).then((task) {
       // FIXME: This is ugly. We should use a redux to not have to do these kind of things.
       //  This is enough for now (it works™) but we should definitly fix it later.
@@ -145,7 +146,7 @@ class ListProvider with ChangeNotifier {
     });
   }
 
-  Future<void> addBucket({BuildContext context, Bucket newBucket, int listId}) {
+  Future<void> addBucket({required BuildContext context, required Bucket newBucket, required int listId}) {
     notifyListeners();
     return VikunjaGlobal.of(context).bucketService.add(listId, newBucket)
         .then((bucket) {
@@ -154,7 +155,7 @@ class ListProvider with ChangeNotifier {
         });
   }
 
-  Future<void> updateBucket({BuildContext context, Bucket bucket}) {
+  Future<void> updateBucket({required BuildContext context, required Bucket bucket}) {
     return VikunjaGlobal.of(context).bucketService.update(bucket)
         .then((rBucket) {
           _buckets[_buckets.indexWhere((b) => rBucket.id == b.id)] = rBucket;
@@ -163,7 +164,7 @@ class ListProvider with ChangeNotifier {
         });
   }
   
-  Future<void> deleteBucket({BuildContext context, int listId, int bucketId}) {
+  Future<void> deleteBucket({required BuildContext context, required int listId, required int bucketId}) {
     return VikunjaGlobal.of(context).bucketService.delete(listId, bucketId)
         .then((_) {
           _buckets.removeWhere((bucket) => bucket.id == bucketId);
@@ -171,7 +172,7 @@ class ListProvider with ChangeNotifier {
         });
   }
 
-  Future<void> moveTaskToBucket({BuildContext context, Task task, int newBucketId, int index}) async {
+  Future<void> moveTaskToBucket({required BuildContext context, required Task task, required int newBucketId, required int index}) async {
     final sameBucket = task.bucketId == newBucketId;
     final newBucketIndex = _buckets.indexWhere((b) => b.id == newBucketId);
     if (sameBucket && index > _buckets[newBucketIndex].tasks.indexWhere((t) => t.id == task.id)) index--;
@@ -194,7 +195,7 @@ class ListProvider with ChangeNotifier {
     _buckets[newBucketIndex].tasks[index] = task;
 
     // make sure the first 2 tasks don't have 0 kanbanPosition
-    Task secondTask;
+    Task? secondTask;
     if (index == 0 && _buckets[newBucketIndex].tasks.length > 1
         && _buckets[newBucketIndex].tasks[1].kanbanPosition == 0) {
       secondTask = await VikunjaGlobal.of(context).taskService.update(
@@ -210,11 +211,12 @@ class ListProvider with ChangeNotifier {
 
     if (_tasks.isNotEmpty) {
       _tasks[_tasks.indexWhere((t) => t.id == task.id)] = task;
-      if (secondTask != null) _tasks[_tasks.indexWhere((t) => t.id == secondTask.id)] = secondTask;
+      if (secondTask != null)
+        _tasks[_tasks.indexWhere((t) => t.id == secondTask?.id)] = secondTask;
     }
 
     _buckets[newBucketIndex].tasks[_buckets[newBucketIndex].tasks.indexWhere((t) => t.id == task.id)] = task;
-    _buckets[newBucketIndex].tasks.sort((a, b) => a.kanbanPosition.compareTo(b.kanbanPosition));
+    _buckets[newBucketIndex].tasks.sort((a, b) => a.kanbanPosition!.compareTo(b.kanbanPosition!));
 
     notifyListeners();
   }

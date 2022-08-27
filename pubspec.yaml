@@ -4,7 +4,7 @@ description: Vikunja as Flutter cross platform app
 version: 0.2.0+200099
 
 environment:
-  sdk: ">=2.6.0 <3.0.0"
+  sdk: ">=2.12.0 <3.0.0"
 
 dependencies:
   flutter:

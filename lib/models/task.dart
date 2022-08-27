@@ -5,16 +5,18 @@ import 'package:vikunja_app/components/date_extension.dart';
 import 'package:vikunja_app/models/label.dart';
 import 'package:vikunja_app/models/user.dart';
 import 'package:vikunja_app/models/taskAttachment.dart';
+import 'package:vikunja_app/theme/constants.dart';
 import 'package:vikunja_app/utils/checkboxes_in_text.dart';
 
 @JsonSerializable()
 class Task {
   final int? id, parentTaskId, priority, listId, bucketId;
   final DateTime? created, updated, dueDate, startDate, endDate;
-  final List<DateTime>? reminderDates;
-  final String? title, description, identifier;
-  final bool? done;
-  final Color? color;
+  final List<DateTime?>? reminderDates;
+  final String identifier;
+  final String? title, description;
+  final bool done;
+  final Color color;
   final double? kanbanPosition;
   final User? createdBy;
   final Duration? repeatAfter;
@@ -23,16 +25,14 @@ class Task {
   final List<TaskAttachment>? attachments;
   // TODO: add position(?)
 
-  // // TODO: use `late final` once upgraded to current dart version
   late final CheckboxStatistics _checkboxStatistics;
 
-  bool loading = false;
-
+  // // TODO: use `late final` once upgraded to current dart version
   Task({
-    @required this.id,
+    required this.id,
+    required this.identifier,
     this.title,
     this.description,
-    this.identifier,
     this.done = false,
     this.reminderDates,
     this.dueDate,
@@ -41,7 +41,7 @@ class Task {
     this.parentTaskId,
     this.priority,
     this.repeatAfter,
-    this.color,
+    this.color = vBlue, // TODO: decide on color
     this.kanbanPosition,
     this.subtasks,
     this.labels,
@@ -53,16 +53,18 @@ class Task {
     this.bucketId,
   });
 
+  bool loading = false;
+
   Task.fromJson(Map<String, dynamic> json)
       : id = json['id'],
         title = json['title'],
         description = json['description'],
         identifier = json['identifier'],
         done = json['done'],
-        reminderDates = (json['reminder_dates'] as List<dynamic>)
-            ?.map((ts) => DateTime.parse(ts))
-            ?.cast<DateTime>()
-            ?.toList(),
+        reminderDates = json['reminder_dates'] != null ? (json['reminder_dates'] as List<dynamic>)
+            .map((ts) => DateTime.parse(ts))
+            .cast<DateTime>()
+            .toList() : null,
         dueDate = DateTime.parse(json['due_date']),
         startDate = DateTime.parse(json['start_date']),
         endDate = DateTime.parse(json['end_date']),
@@ -70,23 +72,23 @@ class Task {
         priority = json['priority'],
         repeatAfter = Duration(seconds: json['repeat_after']),
         color = json['hex_color'] == ''
-            ? null
+            ? vBlue
             : new Color(int.parse(json['hex_color'], radix: 16) + 0xFF000000),
         kanbanPosition = json['kanban_position'] is int
             ? json['kanban_position'].toDouble()
             : json['kanban_position'],
-        labels = (json['labels'] as List<dynamic>)
-            ?.map((label) => Label.fromJson(label))
-            ?.cast<Label>()
-            ?.toList(),
-        subtasks = (json['subtasks'] as List<dynamic>)
-            ?.map((subtask) => Task.fromJson(subtask))
-            ?.cast<Task>()
-            ?.toList(),
-        attachments = (json['attachments'] as List<dynamic>)
-            ?.map((attachment) => TaskAttachment.fromJSON(attachment))
-            ?.cast<TaskAttachment>()
-            ?.toList(),
+        labels = ((json['labels'] ?? []) as List<dynamic>)
+            .map((label) => Label.fromJson(label))
+            .cast<Label>()
+            .toList(),
+        subtasks = ((json['subtasks'] ?? []) as List<dynamic>)
+            .map((subtask) => Task.fromJson(subtask))
+            .cast<Task>()
+            .toList(),
+        attachments = ((json['attachments'] ?? []) as List<dynamic>)
+            .map((attachment) => TaskAttachment.fromJSON(attachment))
+            .cast<TaskAttachment>()
+            .toList(),
         updated = DateTime.parse(json['updated']),
         created = DateTime.parse(json['created']),
         listId = json['list_id'],
@@ -102,13 +104,13 @@ class Task {
         'identifier': identifier,
         'done': done ?? false,
         'reminder_dates':
-            reminderDates?.map((date) => date.toUtc().toIso8601String()).toList(),
+            reminderDates?.map((date) => date?.toUtc().toIso8601String()).toList(),
         'due_date': dueDate?.toUtc().toIso8601String(),
         'start_date': startDate?.toUtc().toIso8601String(),
         'end_date': endDate?.toUtc().toIso8601String(),
         'priority': priority,
         'repeat_after': repeatAfter?.inSeconds,
-        'hex_color': color?.value.toRadixString(16).padLeft(8, '0').substring(2),
+        'hex_color': color.value.toRadixString(16).padLeft(8, '0').substring(2),
         'kanban_position': kanbanPosition,
         'labels': labels?.map((label) => label.toJSON()).toList(),
         'subtasks': subtasks?.map((subtask) => subtask.toJSON()).toList(),
@@ -119,17 +121,15 @@ class Task {
         'created': created?.toUtc().toIso8601String(),
       };
 
-  Color? get textColor => color != null
-      ? color!.computeLuminance() > 0.5 ? Colors.black : Colors.white
-      : null;
+  Color? get textColor => color.computeLuminance() > 0.5 ? Colors.black : Colors.white;
 
-  CheckboxStatistics get checkboxStatistics {
+  CheckboxStatistics? get checkboxStatistics {
     if (_checkboxStatistics != null)
       return _checkboxStatistics;
-    if (description.isEmpty)
+    if (description!.isEmpty)
       return null;
 
-    _checkboxStatistics = getCheckboxStatistics(description);
+    _checkboxStatistics = getCheckboxStatistics(description!);
     return _checkboxStatistics;
   }
 
@@ -141,22 +141,22 @@ class Task {
       return false;
   }
 
-  bool get hasDueDate => dueDate.year != 1;
+  bool get hasDueDate => dueDate?.year != 1;
 
   Task copyWith({
-    int id, int parentTaskId, int priority, int listId, int bucketId,
-    DateTime created, DateTime updated, DateTime dueDate, DateTime startDate, DateTime endDate,
-    List<DateTime> reminderDates,
-    String title, String description, String identifier,
-    bool done,
-    Color color,
-    bool resetColor,
-    double kanbanPosition,
-    User createdBy,
-    Duration repeatAfter,
-    List<Task> subtasks,
-    List<Label> labels,
-    List<TaskAttachment> attachments,
+    int? id, int? parentTaskId, int? priority, int? listId, int? bucketId,
+    DateTime? created, DateTime? updated, DateTime? dueDate, DateTime? startDate, DateTime? endDate,
+    List<DateTime?>? reminderDates,
+    String? title, String? description, String? identifier,
+    bool? done,
+    Color? color,
+    bool? resetColor,
+    double? kanbanPosition,
+    User? createdBy,
+    Duration? repeatAfter,
+    List<Task>? subtasks,
+    List<Label>? labels,
+    List<TaskAttachment>? attachments,
   }) {
     return Task(
       id: id ?? this.id,
@@ -174,7 +174,7 @@ class Task {
       description: description ?? this.description,
       identifier: identifier ?? this.identifier,
       done: done ?? this.done,
-      color: (resetColor ?? false) ? null : (color ?? this.color),
+      color: (resetColor ?? false) ? vBlue : (color ?? this.color),
       kanbanPosition: kanbanPosition ?? this.kanbanPosition,
       createdBy: createdBy ?? this.createdBy,
       repeatAfter: repeatAfter ?? this.repeatAfter,

@@ -10,9 +10,9 @@ class SettingsPage extends StatefulWidget {
 }
 
 class SettingsPageState extends State<SettingsPage> {
-  List<TaskList> taskListList;
-  int defaultList;
-  bool ignoreCertificates;
+  List<TaskList>? taskListList;
+  int? defaultList;
+  bool? ignoreCertificates;
 
   @override
   Widget build(BuildContext context) {
@@ -31,10 +31,10 @@ class SettingsPageState extends State<SettingsPage> {
           taskListList != null ?
           ListTile(
             title: Text("Default List"),
-            trailing: DropdownButton(
-              items: [DropdownMenuItem(child: Text("None"), value: null,), ...taskListList.map((e) => DropdownMenuItem(child: Text(e.title), value: e.id)).toList()],
+            trailing: DropdownButton<int>(
+              items: [DropdownMenuItem(child: Text("None"), value: null,), ...taskListList!.map((e) => DropdownMenuItem(child: Text(e.title ?? ""), value: e.id)).toList()],
               value: defaultList,
-              onChanged: (value){
+              onChanged: (int? value){
                 setState(() => defaultList = value);
                 VikunjaGlobal.of(context).listService.setDefaultList(value);
                 },

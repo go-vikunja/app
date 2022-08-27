@@ -7,7 +7,7 @@ import 'package:vikunja_app/theme/buttonText.dart';
 class NamespaceEditPage extends StatefulWidget {
   final Namespace namespace;
 
-  NamespaceEditPage({this.namespace}) : super(key: Key(namespace.toString()));
+  NamespaceEditPage({required this.namespace}) : super(key: Key(namespace.toString()));
 
   @override
   State<StatefulWidget> createState() => _NamespaceEditPageState();
@@ -16,7 +16,7 @@ class NamespaceEditPage extends StatefulWidget {
 class _NamespaceEditPageState extends State<NamespaceEditPage> {
   final _formKey = GlobalKey<FormState>();
   bool _loading = false;
-  String _name, _description;
+  String? _name, _description;
 
   @override
   Widget build(BuildContext ctx) {
@@ -39,9 +39,9 @@ class _NamespaceEditPageState extends State<NamespaceEditPage> {
                       initialValue: widget.namespace.title,
                       onSaved: (name) => _name = name,
                       validator: (name) {
-                        if (name.length < 3 || name.length > 250) {
-                          return 'The name needs to have between 3 and 250 characters.';
-                        }
+                        //if (name.length < 3 || name.length > 250) {
+                        //  return 'The name needs to have between 3 and 250 characters.';
+                        //}
                         return null;
                       },
                       decoration: new InputDecoration(
@@ -58,9 +58,9 @@ class _NamespaceEditPageState extends State<NamespaceEditPage> {
                       initialValue: widget.namespace.description,
                       onSaved: (description) => _description = description,
                       validator: (description) {
-                        if (description.length > 1000) {
-                          return 'The description can have a maximum of 1000 characters.';
-                        }
+                        //if (description.length > 1000) {
+                        //  return 'The description can have a maximum of 1000 characters.';
+                        //}
                         return null;
                       },
                       decoration: new InputDecoration(
@@ -75,12 +75,12 @@ class _NamespaceEditPageState extends State<NamespaceEditPage> {
                           child: FancyButton(
                             onPressed: !_loading
                                 ? () {
-                                    if (_formKey.currentState.validate()) {
-                                      Form.of(context).save();
+                                    if (_formKey.currentState!.validate()) {
+                                      Form.of(context)?.save();
                                       _saveNamespace(context);
                                     }
                                   }
-                                : null,
+                                : () => null,
                             child: _loading
                                 ? CircularProgressIndicator()
                                 : VikunjaButtonText('Save'),

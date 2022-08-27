@@ -6,8 +6,8 @@ class SliverBucketPersistentHeader extends StatelessWidget {
   final double maxExtent;
 
   const SliverBucketPersistentHeader({
-    Key key,
-    @required this.child,
+    Key? key,
+    required this.child,
     this.minExtent = 10.0,
     this.maxExtent = 10.0,
   }) : super(key: key);

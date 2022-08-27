@@ -10,12 +10,10 @@ class SliverBucketList extends StatelessWidget {
   final DragUpdateCallback onTaskDragUpdate;
 
   const SliverBucketList({
-    Key key,
-    @required this.bucket,
-    @required this.onTaskDragUpdate,
-  }) : assert(bucket != null),
-       assert(onTaskDragUpdate != null),
-       super(key: key);
+    Key? key,
+    required this.bucket,
+    required this.onTaskDragUpdate,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {

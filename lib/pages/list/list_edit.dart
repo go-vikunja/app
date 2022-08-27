@@ -9,7 +9,7 @@ import 'package:vikunja_app/theme/buttonText.dart';
 class ListEditPage extends StatefulWidget {
   final TaskList list;
 
-  ListEditPage({this.list}) : super(key: Key(list.toString()));
+  ListEditPage({required this.list}) : super(key: Key(list.toString()));
 
   @override
   State<StatefulWidget> createState() => _ListEditPageState();
@@ -18,9 +18,9 @@ class ListEditPage extends StatefulWidget {
 class _ListEditPageState extends State<ListEditPage> {
   final _formKey = GlobalKey<FormState>();
   bool _loading = false;
-  String _title, _description;
-  bool displayDoneTasks;
-  int listId;
+  String? _title, _description;
+  bool? displayDoneTasks;
+  int listId = -1;
 
   @override
   void initState(){
@@ -34,7 +34,7 @@ class _ListEditPageState extends State<ListEditPage> {
       VikunjaGlobal.of(context).listService.getDisplayDoneTasks(listId).then(
               (value) => setState(() => displayDoneTasks = value == "1"));
     else
-      log("Display done tasks: " + displayDoneTasks?.toString());
+      log("Display done tasks: " + displayDoneTasks.toString());
     return Scaffold(
       appBar: AppBar(
         title: Text('Edit List'),
@@ -54,9 +54,9 @@ class _ListEditPageState extends State<ListEditPage> {
                       initialValue: widget.list.title,
                       onSaved: (title) => _title = title,
                       validator: (title) {
-                        if (title.length < 3 || title.length > 250) {
-                          return 'The title needs to have between 3 and 250 characters.';
-                        }
+                        //if (title?.length < 3 || title.length > 250) {
+                        //  return 'The title needs to have between 3 and 250 characters.';
+                        //}
                         return null;
                       },
                       decoration: new InputDecoration(
@@ -73,6 +73,8 @@ class _ListEditPageState extends State<ListEditPage> {
                       initialValue: widget.list.description,
                       onSaved: (description) => _description = description,
                       validator: (description) {
+                        if(description == null)
+                          return null;
                         if (description.length > 1000) {
                           return 'The description can have a maximum of 1000 characters.';
                         }
@@ -115,12 +117,12 @@ class _ListEditPageState extends State<ListEditPage> {
                           child: FancyButton(
                             onPressed: !_loading
                                 ? () {
-                                    if (_formKey.currentState.validate()) {
-                                      Form.of(context).save();
+                                    if (_formKey.currentState!.validate()) {
+                                      Form.of(context)?.save();
                                       _saveList(context);
                                     }
                                   }
-                                : null,
+                                : () {},
                             child: _loading
                                 ? CircularProgressIndicator()
                                 : VikunjaButtonText('Save'),

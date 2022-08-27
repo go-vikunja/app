@@ -41,8 +41,8 @@ class _LoginPageState extends State<LoginPage> {
                   content: Text(
                       "Login has expired. Please reenter your details!")));
           setState(() {
-            _serverController.text = VikunjaGlobal.of(context)?.client?.base;
-            _usernameController.text = VikunjaGlobal.of(context)?.currentUser?.username;
+            _serverController.text = VikunjaGlobal.of(context).client.base ?? "";
+            _usernameController.text = VikunjaGlobal.of(context).currentUser?.username ?? "";
           });
         }
       });
@@ -86,7 +86,7 @@ class _LoginPageState extends State<LoginPage> {
                         controller: _serverController,
                         autocorrect: false,
                         validator: (address) {
-                          return isUrl(address) || address.isEmpty ? null : 'Invalid URL';
+                          return (isUrl(address) || address != null || address!.isEmpty) ? null : 'Invalid URL';
                         },
                         decoration: new InputDecoration(
                             border: OutlineInputBorder(),
@@ -118,7 +118,7 @@ class _LoginPageState extends State<LoginPage> {
                       padding: vStandardVerticalPadding,
                       child: CheckboxListTile(
                         value: _rememberMe,
-                        onChanged: (value) => setState( () =>_rememberMe = value),
+                        onChanged: (value) => setState( () => _rememberMe = value ?? false),
                         title: Text("Remember me"),
                       ),
                     ),
@@ -126,12 +126,12 @@ class _LoginPageState extends State<LoginPage> {
                         builder: (context) => FancyButton(
                               onPressed: !_loading
                                   ? () {
-                                      if (_formKey.currentState.validate()) {
-                                        Form.of(context).save();
+                                      if (_formKey.currentState!.validate()) {
+                                        Form.of(context)?.save();
                                         _loginUser(context);
                                       }
                                     }
-                                  : null,
+                                  : () => null,
                               child: _loading
                                   ? CircularProgressIndicator()
                                   : VikunjaButtonText('Login'),
@@ -146,7 +146,7 @@ class _LoginPageState extends State<LoginPage> {
                             )),
                     Builder(builder: (context) => FancyButton(
                         onPressed: () {
-                          if(_formKey.currentState.validate() && _serverController.text.isNotEmpty) {
+                          if(_formKey.currentState!.validate()  && _serverController.text.isNotEmpty) {
                             Navigator.push(
                                 context,
                                 MaterialPageRoute(builder: (context) =>
@@ -158,9 +158,9 @@ class _LoginPageState extends State<LoginPage> {
                         child: VikunjaButtonText("Login with Frontend"))),
                     client.ignoreCertificates != null ?
                     CheckboxListTile(title: Text("Ignore Certificates"), value: client.ignoreCertificates, onChanged: (value) {
-                      setState(() => client.reload_ignore_certs(value));
-                      VikunjaGlobal.of(context).settingsManager.setIgnoreCertificates(value);
-                      VikunjaGlobal.of(context).client.ignoreCertificates = value;
+                      setState(() => client.reload_ignore_certs(value ?? false));
+                      VikunjaGlobal.of(context).settingsManager.setIgnoreCertificates(value ?? false);
+                      VikunjaGlobal.of(context).client.ignoreCertificates = value ?? false;
                     }) : ListTile(title: Text("..."))
             ],
                 ),
@@ -187,14 +187,14 @@ class _LoginPageState extends State<LoginPage> {
       Server info = await vGlobal.serverService.getInfo();
 
 
-      UserTokenPair newUser;
+      UserTokenPair? newUser;
 
       try {
         newUser =
-        await vGlobal.newUserService.login(
+        await vGlobal.newUserService?.login(
             _username, _password, rememberMe: this._rememberMe);
       } catch (e) {
-        if (e.runtimeType == InvalidRequestApiException && e.errorCode == 412) {
+        if (e is ApiException && e.errorCode == 412) {
           TextEditingController totpController = TextEditingController();
           await showDialog(context: context, builder: (context) =>
           new AlertDialog(
@@ -208,14 +208,15 @@ class _LoginPageState extends State<LoginPage> {
             ],
           ));
           newUser =
-          await vGlobal.newUserService.login(
+          await vGlobal.newUserService?.login(
               _username, _password, rememberMe: this._rememberMe,
               totp: totpController.text);
         } else {
           throw e;
         }
     }
-      vGlobal.changeUser(newUser.user, token: newUser.token, base: _server);
+    if(newUser != null)
+        vGlobal.changeUser(newUser.user, token: newUser.token, base: _server);
     } catch (ex, stacktrace) {
       log(stacktrace.toString());
       throw ex;
@@ -244,8 +245,9 @@ class _LoginPageState extends State<LoginPage> {
     vGS.client.configure(token: baseTokenPair.token, base: baseTokenPair.base, authenticated: true);
     setState(() => _loading = true);
     try {
-      var newUser = await vGS.newUserService.getCurrentUser();
-      vGS.changeUser(newUser, token: baseTokenPair.token, base: baseTokenPair.base);
+      var newUser = await vGS.newUserService?.getCurrentUser();
+      if(newUser != null)
+        vGS.changeUser(newUser, token: baseTokenPair.token, base: baseTokenPair.base);
     } catch (e) {
       log(e.toString());
     }

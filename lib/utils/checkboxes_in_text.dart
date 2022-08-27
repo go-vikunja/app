@@ -5,8 +5,8 @@ class CheckboxStatistics {
   final int checked;
 
   const CheckboxStatistics({
-    @required this.total,
-    @required this.checked,
+    required this.total,
+    required this.checked,
   });
 }
 
@@ -15,8 +15,8 @@ class MatchedCheckboxes {
   final Iterable<Match> unchecked;
 
   const MatchedCheckboxes({
-    @required this.checked,
-    @required this.unchecked,
+    required this.checked,
+    required this.unchecked,
   });
 }
 
@@ -28,7 +28,7 @@ MatchedCheckboxes getCheckboxesInText(String text) {
   final matches = RegExp(r'[*-] \[[ x]]').allMatches(text);
 
   for (final match in matches) {
-    if (match[0].endsWith(checkedString))
+    if (match[0]!.endsWith(checkedString))
       checked.add(match);
     else
       unchecked.add(match);

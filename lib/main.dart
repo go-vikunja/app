@@ -8,10 +8,10 @@ import 'package:vikunja_app/theme/theme.dart';
 import 'package:http/http.dart';
 
 class IgnoreCertHttpOverrides extends HttpOverrides {
-  bool ignoreCerts;
+  bool ignoreCerts = false;
   IgnoreCertHttpOverrides(bool  _ignore) {ignoreCerts = _ignore;}
   @override
-  HttpClient createHttpClient(SecurityContext context) {
+  HttpClient createHttpClient(SecurityContext? context) {
     return super.createHttpClient(context)
       ..badCertificateCallback = (_, __, ___) => ignoreCerts;
   }
@@ -19,15 +19,15 @@ class IgnoreCertHttpOverrides extends HttpOverrides {
 
 void main() {
     runApp(VikunjaGlobal(
-        child: new VikunjaApp(home: HomePage()),
-        login: new VikunjaApp(home: LoginPage())));
+        child: new VikunjaApp(home: HomePage(), key: UniqueKey(),),
+        login: new VikunjaApp(home: LoginPage(), key: UniqueKey(),)));
 }
 
 
 class VikunjaApp extends StatelessWidget {
   final Widget home;
 
-  const VikunjaApp({Key key, this.home}) : super(key: key);
+  const VikunjaApp({Key? key, required this.home}) : super(key: key);
   @override
   Widget build(BuildContext context) {
 

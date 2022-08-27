@@ -43,7 +43,7 @@ class TaskServiceOption<T> {
 }
 
 class TaskServiceOptions {
-  List<TaskServiceOption> options;
+  List<TaskServiceOption>? options;
 
   TaskServiceOptions({this.options}) {
     if(this.options == null)
@@ -58,16 +58,18 @@ class TaskServiceOptions {
   }
 
   void setOption(TaskServiceOption option, dynamic value) {
-    options.firstWhere((element) => element.name == option.name).value = value;
+    options?.firstWhere((element) => element.name == option.name).value = value;
   }
 
   String getOptions() {
     String result = '';
-    for(TaskServiceOption option in options) {
+    if(options == null)
+      return '';
+    for(TaskServiceOption option in options!) {
       dynamic value = option.getValue();
       if (value is List) {
-        for (dynamic value_entry in value) {
-          result += '&' + option.name + '[]=' + value_entry;
+        for (dynamic valueEntry in value) {
+          result += '&' + option.name + '[]=' + valueEntry;
         }
       } else {
         result += '&' + option.name + '=' + value;
@@ -98,7 +100,7 @@ abstract class ListService {
   Future<String> getDisplayDoneTasks(int listId);
   void setDisplayDoneTasks(int listId, String value);
   Future<String?> getDefaultList();
-  void setDefaultList(int listId);
+  void setDefaultList(int? listId);
 }
 
 abstract class TaskService {
@@ -168,7 +170,7 @@ class SettingsManager {
           _storage.write(key: key, value: value);
       });});}
 
-  Future<String> getIgnoreCertificates() {
+  Future<String?> getIgnoreCertificates() {
     return _storage.read(key: "ignore-certificates");
   }
 

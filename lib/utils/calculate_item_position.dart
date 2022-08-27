@@ -1,6 +1,6 @@
 import 'dart:math';
 
-double calculateItemPosition({double positionBefore, double positionAfter}) {
+double calculateItemPosition({double? positionBefore, double? positionAfter}) {
   // only
   if (positionBefore == null && positionAfter == null) {
     return 0;
@@ -17,5 +17,5 @@ double calculateItemPosition({double positionBefore, double positionAfter}) {
   }
 
   // in the middle (positionBefore != null && positionAfter != null)
-  return (positionBefore + positionAfter) / 2;
+  return (positionBefore! + positionAfter!) / 2;
 }

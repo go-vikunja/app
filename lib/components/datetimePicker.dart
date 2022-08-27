@@ -5,16 +5,16 @@ import 'package:vikunja_app/theme/constants.dart';
 
 class VikunjaDateTimePicker extends StatelessWidget {
   final String label;
-  final Function onSaved;
-  final Function onChanged;
-  final DateTime initialValue;
+  final void Function(DateTime?)? onSaved;
+  final void Function(DateTime?)? onChanged;
+  final DateTime? initialValue;
   final EdgeInsetsGeometry padding;
   final Icon icon;
   final InputBorder border;
 
   const VikunjaDateTimePicker({
-    Key key,
-    @required this.label,
+    Key? key,
+    required this.label,
     this.onSaved,
     this.onChanged,
     this.initialValue,
@@ -28,9 +28,9 @@ class VikunjaDateTimePicker extends StatelessWidget {
     return DateTimeField(
       //dateOnly: false,
       //editable: false, // Otherwise editing the date is not possible, this setting affects the underlying text field.
-      initialValue: initialValue == null || initialValue.year <= 1
+      initialValue: initialValue == null || initialValue!.year <= 1
           ? null
-          : initialValue.toLocal(),
+          : initialValue!.toLocal(),
       format: vDateFormatLong,
       decoration: InputDecoration(
         labelText: label,
@@ -47,7 +47,7 @@ class VikunjaDateTimePicker extends StatelessWidget {
     );
   }
 
-  Future<DateTime> _showDatePickerFuture(context, currentValue) {
+  Future<DateTime?> _showDatePickerFuture(context, currentValue) {
     return showDialog(
         context: context,
         builder: (_) => DatePickerDialog(

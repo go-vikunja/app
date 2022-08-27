@@ -1,3 +1,3 @@
 extension StringExtensions on String {
-  Uri toUri() => Uri.tryParse(this);
+  Uri? toUri() => Uri.tryParse(this);
 }

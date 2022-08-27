@@ -13,10 +13,10 @@ import 'package:rxdart/subjects.dart' as rxSub;
 import 'package:vikunja_app/global.dart';
 
 class NotificationClass{
-  final int id;
-  final String title;
-  final String body;
-  final String payload;
+  final int? id;
+  final String? title;
+  final String? body;
+  final String? payload;
   NotificationClass({this.id, this.body, this.payload, this.title});
 
   final rxSub.BehaviorSubject<NotificationClass> didReceiveLocalNotificationSubject =
@@ -32,18 +32,18 @@ class NotificationClass{
         requestBadgePermission: false,
         requestSoundPermission: false,
         onDidReceiveLocalNotification:
-            (int id, String title, String body, String payload) async {
+            (int? id, String? title, String? body, String? payload) async {
           didReceiveLocalNotificationSubject
               .add(NotificationClass(id: id, title: title, body: body, payload: payload));
         });
     var initializationSettings = notifs.InitializationSettings(
         android: initializationSettingsAndroid, iOS: initializationSettingsIOS);
     await notifsPlugin.initialize(initializationSettings,
-        onSelectNotification: (String payload) async {
+        onSelectNotification: (String? payload) async {
           if (payload != null) {
             print('notification payload: ' + payload);
+            selectNotificationSubject.add(payload);
           }
-          selectNotificationSubject.add(payload);
         });
     print("Notifications initialised successfully");
   }
@@ -51,7 +51,7 @@ class NotificationClass{
 
 Future<void> scheduleNotification(String title, String description,
     notifs.FlutterLocalNotificationsPlugin notifsPlugin,
-    DateTime scheduledTime, String currentTimeZone, {int id, notifs.NotificationDetails platformChannelSpecifics}) async {
+    DateTime scheduledTime, String currentTimeZone, notifs.NotificationDetails platformChannelSpecifics, {int? id}) async {
   if(id == null)
     id = Random().nextInt(1000000);
   // TODO: move to setup

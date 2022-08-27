@@ -4,12 +4,12 @@ import 'package:vikunja_app/theme/constants.dart';
 class FancyButton extends StatelessWidget {
   final double width;
   final double height;
-  final Function onPressed;
+  final VoidCallback? onPressed;
   final Widget child;
 
   const FancyButton({
-    Key key,
-    @required this.child,
+    Key? key,
+    required this.child,
     this.width = double.infinity,
     this.height = 35,
     this.onPressed,

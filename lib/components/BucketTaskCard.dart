@@ -25,11 +25,11 @@ class BucketTaskCard extends StatefulWidget {
   final void Function(Task, int) onAccept;
 
   const BucketTaskCard({
-    Key key,
-    @required this.task,
-    @required this.index,
-    @required this.onDragUpdate,
-    @required this.onAccept,
+    Key? key,
+    required this.task,
+    required this.index,
+    required this.onDragUpdate,
+    required this.onAccept,
   }) : assert(task != null),
        assert(index != null),
        assert(onDragUpdate != null),
@@ -41,10 +41,10 @@ class BucketTaskCard extends StatefulWidget {
 }
 
 class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAliveClientMixin {
-  Size _cardSize;
+  Size? _cardSize;
   bool _dragging = false;
   DropLocation _dropLocation = DropLocation.none;
-  TaskData _dropData;
+  TaskData? _dropData;
 
   @override
   Widget build(BuildContext context) {
@@ -63,20 +63,20 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
         Text(
           widget.task.identifier.isNotEmpty
               ? '#${widget.task.identifier.substring(1)}' : '${widget.task.id}',
-          style: theme.textTheme.subtitle2.copyWith(
+          style: theme.textTheme.subtitle2?.copyWith(
             color: Colors.grey,
           ),
         ),
       ],
     );
-    if (widget.task.done) {
+    if (widget.task.done ?? false) {
       identifierRow.children.insert(0, Container(
         constraints: chipConstraints,
         padding: EdgeInsets.only(right: 4),
         child: FittedBox(
           child: Chip(
             label: Text('Done'),
-            labelStyle: theme.textTheme.labelLarge.copyWith(
+            labelStyle: theme.textTheme.labelLarge?.copyWith(
               fontWeight: FontWeight.bold,
               color: theme.brightness == Brightness.dark
                   ? Colors.black : Colors.white,
@@ -91,8 +91,8 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
       children: <Widget>[
         Expanded(
           child: Text(
-            widget.task.title,
-            style: theme.textTheme.titleMedium.copyWith(
+            widget.task.title ?? "",
+            style: theme.textTheme.titleMedium?.copyWith(
               color: widget.task.textColor,
             ),
           ),
@@ -100,7 +100,7 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
       ],
     );
     if (widget.task.hasDueDate) {
-      final duration = widget.task.dueDate.difference(DateTime.now());
+      final duration = widget.task.dueDate!.difference(DateTime.now());
       final pastDue = duration.isNegative && !widget.task.done;
       titleRow.children.add(Container(
         constraints: chipConstraints,
@@ -112,7 +112,7 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
               color: pastDue ? Colors.red : null,
             ),
             label: Text(durationToHumanReadable(duration)),
-            labelStyle: theme.textTheme.labelLarge.copyWith(
+            labelStyle: theme.textTheme.labelLarge?.copyWith(
               color: pastDue ? Colors.red : null,
             ),
             backgroundColor: pastDue ? Colors.red.withAlpha(20) : null,
@@ -126,19 +126,19 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
       spacing: 4,
       runSpacing: 4,
     );
-    widget.task.labels?.sort((a, b) => a.title.compareTo(b.title));
-    widget.task.labels?.asMap()?.forEach((i, label) {
+    widget.task.labels?.sort((a, b) => a.title?.compareTo(b.title ?? "") ?? 0);
+    widget.task.labels?.asMap().forEach((i, label) {
       labelRow.children.add(Chip(
-        label: Text(label.title),
-        labelStyle: theme.textTheme.labelLarge.copyWith(
+        label: Text(label.title ?? ""),
+        labelStyle: theme.textTheme.labelLarge?.copyWith(
           color: label.textColor,
         ),
         backgroundColor: label.color,
       ));
     });
     if (widget.task.hasCheckboxes) {
-      final checkboxStatistics = widget.task.checkboxStatistics;
-      final iconSize = (theme.textTheme.labelLarge.fontSize ?? 14) + 2;
+      final checkboxStatistics = widget.task.checkboxStatistics!;
+      final iconSize = (theme.textTheme.labelLarge?.fontSize ?? 14) + 2;
       labelRow.children.add(Chip(
         avatar: Container(
           constraints: BoxConstraints(maxHeight: iconSize, maxWidth: iconSize),
@@ -153,7 +153,7 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
         ),
       ));
     }
-    if (widget.task.attachments != null && widget.task.attachments.isNotEmpty) {
+    if (widget.task.attachments != null && widget.task.attachments!.isNotEmpty) {
       labelRow.children.add(Chip(
         label: Transform.rotate(
           angle: -pi / 4.0,
@@ -161,7 +161,7 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
         ),
       ));
     }
-    if (widget.task.description.isNotEmpty) {
+    if (widget.task.description != null && widget.task.description!.isNotEmpty) {
       labelRow.children.add(Chip(
         label: Icon(Icons.notes),
       ));
@@ -214,7 +214,7 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
     );
 
     return LongPressDraggable<TaskData>(
-      data: TaskData(widget.task, _cardSize),
+      data: TaskData(widget.task, _cardSize!),
       maxSimultaneousDrags: taskState.taskDragging ? 0 : 1, // only one task can be dragged at a time
       onDragStarted: () {
         taskState.taskDragging = true;
@@ -268,8 +268,8 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
         };
 
         return SizedBox(
-          width: _cardSize.width,
-          height: _cardSize.height + (dropAbove || dropBelow ? dropBoxSize.height + 4 : 0),
+          width: _cardSize!.width,
+          height: _cardSize!.height + (dropAbove || dropBelow ? dropBoxSize!.height + 4 : 0),
           child: Stack(
             children: <Widget>[
               Column(
@@ -282,18 +282,18 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
               Column(
                 children: <SizedBox>[
                   SizedBox(
-                    height: (_cardSize.height / 2) + (dropAbove ? dropBoxSize.height : 0),
+                    height: (_cardSize!.height / 2) + (dropAbove ? dropBoxSize!.height : 0),
                     child: DragTarget<TaskData>(
-                      onWillAccept: (data) => dragTargetOnWillAccept(data, DropLocation.above),
+                      onWillAccept: (data) => dragTargetOnWillAccept(data!, DropLocation.above),
                       onAccept: dragTargetOnAccept,
                       onLeave: dragTargetOnLeave,
                       builder: (_, __, ___) => SizedBox.expand(),
                     ),
                   ),
                   SizedBox(
-                    height: (_cardSize.height / 2) + (dropBelow ? dropBoxSize.height : 0),
+                    height: (_cardSize!.height / 2) + (dropBelow ? dropBoxSize!.height : 0),
                     child: DragTarget<TaskData>(
-                      onWillAccept: (data) => dragTargetOnWillAccept(data, DropLocation.below),
+                      onWillAccept: (data) => dragTargetOnWillAccept(data!, DropLocation.below),
                       onAccept: dragTargetOnAccept,
                       onLeave: dragTargetOnLeave,
                       builder: (_, __, ___) => SizedBox.expand(),

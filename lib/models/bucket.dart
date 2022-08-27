@@ -7,25 +7,25 @@ import 'package:vikunja_app/models/user.dart';
 @JsonSerializable()
 class Bucket {
   int id, listId, limit;
+  String? title;
   double position;
-  String title;
-  DateTime created, updated;
-  User createdBy;
+  DateTime? created, updated;
+  User? createdBy;
   bool isDoneBucket;
-  List<Task> tasks;
-
   Bucket({
-    @required this.id,
-    @required this.listId,
+    required this.id,
+    required this.listId,
     this.title,
-    this.position,
-    this.limit,
-    this.isDoneBucket,
+    this.position = 0,
+    required this.limit,
+    this.isDoneBucket = false,
     this.created,
     this.updated,
     this.createdBy,
-    this.tasks,
+    this.tasks = const <Task>[],
   });
+
+  List<Task> tasks = [];
 
   Bucket.fromJSON(Map<String, dynamic> json)
     : id = json['id'],
@@ -42,9 +42,9 @@ class Bucket {
         ? null
         : User.fromJson(json['created_by']),
       tasks = (json['tasks'] as List<dynamic>)
-        ?.map((task) => Task.fromJson(task))
-        ?.cast<Task>()
-        ?.toList() ?? <Task>[];
+        .map((task) => Task.fromJson(task))
+        .cast<Task>()
+        .toList() ?? <Task>[];
 
   toJSON() => {
     'id': id,
@@ -53,9 +53,9 @@ class Bucket {
     'position': position,
     'limit': limit,
     'is_done_bucket': isDoneBucket ?? false,
-    'created': created?.toUtc()?.toIso8601String(),
-    'updated': updated?.toUtc()?.toIso8601String(),
+    'created': created?.toUtc().toIso8601String(),
+    'updated': updated?.toUtc().toIso8601String(),
     'createdBy': createdBy?.toJSON(),
-    'tasks': tasks?.map((task) => task.toJSON())?.toList(),
+    'tasks': tasks?.map((task) => task.toJSON()).toList(),
   };
 }

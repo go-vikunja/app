@@ -36,10 +36,10 @@ class Client {
     configure(token: token, base: base, authenticated: authenticated);
   }
 
-  void reload_ignore_certs(bool val) {
-    ignoreCertificates = val;
+  void reload_ignore_certs(bool? val) {
+    ignoreCertificates = val ?? false;
     HttpOverrides.global = new IgnoreCertHttpOverrides(ignoreCertificates);
-    VikunjaGlobal.of(global.currentContext!).settingsManager.setIgnoreCertificates(val);
+    VikunjaGlobal.of(global.currentContext!).settingsManager.setIgnoreCertificates(ignoreCertificates);
 
   }
 
@@ -53,9 +53,12 @@ class Client {
   int get hashCode => _token.hashCode;
 
   void configure({String? token, String? base, bool? authenticated}) {
-    _token = token!;
-    _base = base!.endsWith('/api/v1') ? base : '$base/api/v1';
-    this.authenticated = authenticated!;
+    if(token != null)
+      _token = token;
+    if(base != null)
+      _base = base.endsWith('/api/v1') ? base : '$base/api/v1';
+    if(authenticated != null)
+      this.authenticated = authenticated;
   }
 
 
@@ -86,7 +89,7 @@ class Client {
   Future<Response> delete(String url) {
     return http
         .delete(
-      '${this.base}$url'.toUri(),
+      '${this.base}$url'.toUri()!,
       headers: _headers,
     )
         .then(_handleResponse, onError: _handleError);
@@ -96,7 +99,7 @@ class Client {
     log('post');
     return http
         .post(
-      '${this.base}$url'.toUri(),
+      '${this.base}$url'.toUri()!,
       headers: _headers,
       body: _encoder.convert(body),
     )
@@ -106,7 +109,7 @@ class Client {
   Future<Response> put(String url, {dynamic body}) {
     return http
         .put(
-      '${this.base}$url'.toUri(),
+      '${this.base}$url'.toUri()!,
       headers: _headers,
       body: _encoder.convert(body),
     )

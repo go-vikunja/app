@@ -12,7 +12,7 @@ import '../models/task.dart';
 class LandingPage extends StatefulWidget {
 
   const LandingPage(
-      {Key key})
+      {Key? key})
       : super(key: key);
 
   @override
@@ -21,8 +21,8 @@ class LandingPage extends StatefulWidget {
 }
 
 class LandingPageState extends State<LandingPage> with AfterLayoutMixin<LandingPage> {
-  int defaultList;
-  List<Task> _list;
+  int? defaultList;
+  List<Task>? _list;
   static const platform = const MethodChannel('vikunja');
 
 
@@ -69,7 +69,7 @@ class LandingPageState extends State<LandingPage> with AfterLayoutMixin<LandingP
 
   @override
   Widget build(BuildContext context) {
-    if(_list == null || _list.isEmpty)
+    if(_list == null || _list!.isEmpty)
       _loadList(context);
     return new Scaffold(
       body: RefreshIndicator(
@@ -111,7 +111,7 @@ class LandingPageState extends State<LandingPage> with AfterLayoutMixin<LandingP
 
   _addTask(Task task, BuildContext context) {
     var globalState = VikunjaGlobal.of(context);
-    globalState.taskService.add(defaultList, task).then((_) {
+    globalState.taskService.add(defaultList!, task).then((_) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('The task was added successfully!'),
         ));
@@ -121,7 +121,7 @@ class LandingPageState extends State<LandingPage> with AfterLayoutMixin<LandingP
 
 
   List<Widget> _listTasks(BuildContext context) {
-    var tasks = (_list.map((task) => _buildTile(task, context)) ?? []).toList();
+    var tasks = (_list?.map((task) => _buildTile(task, context)) ?? []).toList();
     //tasks.addAll(_loadingTasks.map(_buildLoadingTile));
     return tasks;
   }

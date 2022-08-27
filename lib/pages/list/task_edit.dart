@@ -16,11 +16,9 @@ class TaskEditPage extends StatefulWidget {
   final ListProvider taskState;
 
   TaskEditPage({
-    @required this.task,
-    @required this.taskState,
-  }) : assert(task != null),
-       assert(taskState != null),
-       super(key: Key(task.toString()));
+    required this.task,
+    required this.taskState,
+  }) : super(key: Key(task.toString()));
 
   @override
   State<StatefulWidget> createState() => _TaskEditPageState();
@@ -32,18 +30,18 @@ class _TaskEditPageState extends State<TaskEditPage> {
   bool _loading = false;
   bool _changed = false;
 
-  int _priority;
-  DateTime _dueDate, _startDate, _endDate;
-  List<DateTime> _reminderDates;
-  String _title, _description, _repeatAfterType;
-  Duration _repeatAfter;
-  List<Label> _labels;
+  int? _priority;
+  DateTime? _dueDate, _startDate, _endDate;
+  List<DateTime?>? _reminderDates;
+  String? _title, _description, _repeatAfterType;
+  Duration? _repeatAfter;
+  List<Label>? _labels;
   // we use this to find the label object after a user taps on the suggestion, because the typeahead only uses strings, not full objects.
-  List<Label> _suggestedLabels;
+  List<Label>? _suggestedLabels;
   var _reminderInputs = <Widget>[];
   final _labelTypeAheadController = TextEditingController();
-  Color _color;
-  Color _pickerColor;
+  Color? _color;
+  Color? _pickerColor;
   bool _resetColor = false;
 
   @override
@@ -52,11 +50,11 @@ class _TaskEditPageState extends State<TaskEditPage> {
     if (_reminderDates == null) {
       _reminderDates = widget.task.reminderDates ?? [];
 
-      _reminderDates?.asMap()?.forEach((i, time) =>
-          setState(() => _reminderInputs?.add(VikunjaDateTimePicker(
+      _reminderDates!.asMap().forEach((i, time) =>
+          setState(() => _reminderInputs.add(VikunjaDateTimePicker(
             initialValue: time,
             label: 'Reminder',
-            onSaved: (reminder) => _reminderDates[i] = reminder,
+            onSaved: (reminder) { if(reminder == null) return null; _reminderDates![i] = reminder; },
           )))
       );
     }
@@ -68,7 +66,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
     return WillPopScope(
       onWillPop: () {
         if(_changed) {
-          return _showConfirmationDialog();
+          return (_showConfirmationDialog() ?? Future.value(false));
         }
         return new Future(() => true);
       },
@@ -95,9 +93,9 @@ class _TaskEditPageState extends State<TaskEditPage> {
                         onSaved: (title) => _title = title,
                         onChanged: (_) => _changed = true,
                         validator: (title) {
-                          if (title.length < 3 || title.length > 250) {
-                            return 'The title needs to have between 3 and 250 characters.';
-                          }
+                          //if (title.length < 3 || title.length > 250) {
+                          //  return 'The title needs to have between 3 and 250 characters.';
+                          //}
                           return null;
                         },
                         decoration: new InputDecoration(
@@ -115,6 +113,8 @@ class _TaskEditPageState extends State<TaskEditPage> {
                         onSaved: (description) => _description = description,
                         onChanged: (_) => _changed = true,
                         validator: (description) {
+                          if (description == null)
+                            return null;
                           if (description.length > 1000) {
                             return 'The description can have a maximum of 1000 characters.';
                           }
@@ -170,7 +170,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
                             value: _repeatAfterType ??
                                 getRepeatAfterTypeFromDuration(
                                     widget.task.repeatAfter),
-                            onChanged: (String newValue) {
+                            onChanged: (String? newValue) {
                               setState(() {
                                 _repeatAfterType = newValue;
                               });
@@ -217,15 +217,15 @@ class _TaskEditPageState extends State<TaskEditPage> {
                         ),
                         onTap: () {
                           // We add a new entry every time we add a new input, to make sure all inputs have a place where they can put their value.
-                          _reminderDates.add(null);
-                          var currentIndex = _reminderDates.length - 1;
+                          _reminderDates!.add(null);
+                          var currentIndex = _reminderDates!.length - 1;
 
                           // FIXME: Why does putting this into a row fails?
                           setState(() => _reminderInputs.add(
                             VikunjaDateTimePicker(
                               label: 'Reminder',
                               onSaved: (reminder) =>
-                                  _reminderDates[currentIndex] = reminder,
+                                  _reminderDates![currentIndex] = reminder,
                               onChanged: (_) => _changed = true,
                               initialValue: DateTime.now(),
                             ),
@@ -242,7 +242,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
                         value: _priorityToString(_priority),
                         isExpanded: true,
                         isDense: true,
-                        onChanged: (String newValue) {
+                        onChanged: (String? newValue) {
                           setState(() {
                             _priority = _priorityFromString(newValue);
                           });
@@ -258,7 +258,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
                     ),
                     Wrap(
                         spacing: 10,
-                        children: _labels.map((Label label) {
+                        children: _labels!.map((Label label) {
                           return LabelComponent(
                             label: label,
                             onDelete: () {
@@ -277,14 +277,13 @@ class _TaskEditPageState extends State<TaskEditPage> {
                                 InputDecoration(labelText: 'Add a new label')),
                             suggestionsCallback: (pattern) => _searchLabel(pattern),
                             itemBuilder: (context, suggestion) {
-                              print(suggestion);
-                              return new ListTile(title: Text(suggestion));
+                              return new ListTile(title: Text(suggestion.toString()));
                             },
                             transitionBuilder: (context, suggestionsBox, controller) {
                               return suggestionsBox;
                             },
                             onSuggestionSelected: (suggestion) {
-                              _addLabel(suggestion);
+                              _addLabel(suggestion.toString());
                             },
                           ),
                         ),
@@ -309,7 +308,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
                           ElevatedButton(
                             child: Text(
                               'Color',
-                              style: _resetColor || (_color ?? widget.task.color) == null ? null : TextStyle(
+                              style: _resetColor ? null : TextStyle(
                                 color: (_color ?? widget.task.color)
                                     .computeLuminance() > 0.5 ? Colors.black : Colors.white,
                               ),
@@ -323,8 +322,8 @@ class _TaskEditPageState extends State<TaskEditPage> {
                           Padding(
                             padding: const EdgeInsets.only(left: 15),
                             child: () {
-                              String colorString = (_resetColor ? null : (_color ?? widget.task.color))?.toString();
-                              colorString = colorString?.substring(10, colorString.length - 1)?.toUpperCase();
+                              String? colorString = (_resetColor ? null : (_color ?? widget.task.color))?.toString();
+                              colorString = colorString?.substring(10, colorString.length - 1).toUpperCase();
                               colorString = colorString != null ? '#$colorString' : 'None';
                               return Text(
                                 '$colorString',
@@ -345,9 +344,9 @@ class _TaskEditPageState extends State<TaskEditPage> {
           ),
           floatingActionButton: FloatingActionButton(
             onPressed: !_loading ? () {
-              if (_formKey.currentState.validate()) {
-                Form.of(_listKey.currentContext).save();
-                _saveTask(_listKey.currentContext);
+              if (_formKey.currentState!.validate()) {
+                Form.of(_listKey.currentContext!)!.save();
+                _saveTask(_listKey.currentContext!);
               }
             } : null,
             child: Icon(Icons.save),
@@ -361,7 +360,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
     setState(() => _loading = true);
 
     // Removes all reminders with no value set.
-    _reminderDates.removeWhere((d) => d == null);
+    _reminderDates?.removeWhere((d) => d == null);
 
     Task updatedTask = widget.task.copyWith(
       title: _title,
@@ -414,7 +413,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
 
   _removeLabel(Label label) {
     setState(() {
-      _labels.removeWhere((l) => l.id == label.id);
+      _labels?.removeWhere((l) => l.id == label.id);
     });
   }
 
@@ -422,9 +421,9 @@ class _TaskEditPageState extends State<TaskEditPage> {
     return VikunjaGlobal.of(context)
         .labelService.getAll(query: query).then((labels) {
           // Only show those labels which aren't already added to the task
-          labels.removeWhere((labelToRemove) => _labels.contains(labelToRemove));
+          labels.removeWhere((labelToRemove) => _labels!.contains(labelToRemove));
           _suggestedLabels = labels;
-          List<String> labelText = labels.map((label) => label.title).toList();
+          List<String?> labelText = labels.map((label) => label.title).toList();
           return labelText;
         });
   }
@@ -432,9 +431,9 @@ class _TaskEditPageState extends State<TaskEditPage> {
   _addLabel(String labelTitle) {
     // FIXME: This is not an optimal solution...
     bool found = false;
-    _suggestedLabels.forEach((label) {
+    _suggestedLabels?.forEach((label) {
       if (label.title == labelTitle) {
-        _labels.add(label);
+        _labels?.add(label);
         found = true;
       }
     });
@@ -451,20 +450,20 @@ class _TaskEditPageState extends State<TaskEditPage> {
       return;
     }
 
-    Label newLabel = Label(title: labelTitle);
+    Label newLabel = Label(title: labelTitle, id: 0);
     VikunjaGlobal.of(context)
         .labelService
         .create(newLabel)
         .then((createdLabel) {
       setState(() {
-        _labels.add(createdLabel);
+        _labels?.add(createdLabel);
         _labelTypeAheadController.clear();
       });
     });
   }
 
   // FIXME: Move the following two functions to an extra class or type.
-  _priorityFromString(String priority) {
+  _priorityFromString(String? priority) {
     switch (priority) {
       case 'Low':
         return 1;
@@ -482,7 +481,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
     }
   }
 
-  _priorityToString(int priority) {
+  _priorityToString(int? priority) {
     switch (priority) {
       case 0:
         return 'Unset';
@@ -502,7 +501,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
   }
 
   _onColorEdit() {
-    _pickerColor = _resetColor || (_color ?? widget.task.color) == null
+    _pickerColor = _resetColor
         ? Colors.black
         : _color ?? widget.task.color;
     showDialog(
@@ -511,7 +510,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
         title: const Text('Task Color'),
         content: SingleChildScrollView(
           child: ColorPicker(
-            pickerColor: _pickerColor,
+            pickerColor: _pickerColor!,
             enableAlpha: false,
             labelTypes: const [ColorLabelType.hsl, ColorLabelType.rgb],
             paletteType: PaletteType.hslWithLightness,
@@ -557,7 +556,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
   }
 
   Future<bool> _showConfirmationDialog() async {
-    return showDialog<bool>(
+    return await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
@@ -588,6 +587,6 @@ class _TaskEditPageState extends State<TaskEditPage> {
           ],
         );
       },
-    );
+    ) ?? false;
   }
 }

@@ -6,13 +6,13 @@ import 'package:vikunja_app/models/user.dart';
 @JsonSerializable()
 class TaskAttachment {
   int id, taskId;
-  DateTime created;
-  User createdBy;
+  DateTime? created;
+  User? createdBy;
   // TODO: add file
 
   TaskAttachment({
-    @required this.id,
-    @required this.taskId,
+    required this.id,
+    required this.taskId,
     this.created,
     this.createdBy,
   });

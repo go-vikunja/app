@@ -17,8 +17,8 @@ class LoginWithWebView extends StatefulWidget {
 
 class LoginWithWebViewState extends State<LoginWithWebView> {
 
-  WebView webView;
-  WebViewController webViewController;
+  WebView? webView;
+  WebViewController? webViewController;
 
   @override
   void initState() {
@@ -30,7 +30,7 @@ class LoginWithWebViewState extends State<LoginWithWebView> {
       userAgent: "Mozilla/5.0 (Linux; Android 8.0; Pixel 2 Build/OPD3.170816.012) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.82 Mobile Safari/537.36",
       onWebViewCreated: (controller) {
         webViewController = controller;
-        webViewController.runJavascript("localStorage.clear(); location.href=location.href;");
+        webViewController!.runJavascript("localStorage.clear(); location.href=location.href;");
         },
     );
   }
@@ -42,19 +42,22 @@ class LoginWithWebViewState extends State<LoginWithWebView> {
       body: webView
     ),
     onWillPop: () async {
-      String currentUrl = await webViewController.currentUrl();
-      bool hasPopped = await _handlePageFinished(currentUrl);
-      return Future.value(!hasPopped);
+      String? currentUrl = await webViewController?.currentUrl();
+      if (currentUrl != null) {
+        bool hasPopped = await _handlePageFinished(currentUrl);
+        return Future.value(!hasPopped);
+      }
+      return Future.value(false);
       },);
   }
 
   Future<bool> _handlePageFinished(String pageLocation) async {
     log("handlePageFinished");
     if(webViewController != null) {
-      String localStorage = await webViewController
+      String localStorage = await webViewController!
           .runJavascriptReturningResult("JSON.stringify(localStorage);");
 
-      String apiUrl = await webViewController.runJavascriptReturningResult("API_URL");
+      String apiUrl = await webViewController!.runJavascriptReturningResult("API_URL");
       if (localStorage != "{}") {
         apiUrl = apiUrl.replaceAll("\"", "");
         if(!apiUrl.startsWith("http")) {
