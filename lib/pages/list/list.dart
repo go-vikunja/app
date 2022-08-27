@@ -59,11 +59,7 @@ class _ListPageState extends State<ListPage> {
 
   @override
   void initState() {
-    _list = TaskList(
-      id: widget.taskList.id,
-      title: widget.taskList.title,
-      tasks: [],
-    );
+    _list = widget.taskList;
     _keyboardController.onChange.listen((visible) {
       if (!visible && mounted) FocusScope.of(context).unfocus();
     });
