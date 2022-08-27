@@ -5,7 +5,7 @@ import 'package:vikunja_app/models/user.dart';
 class TaskList {
   final int id;
   int namespaceId;
-  final String? title, description;
+  String? title, description;
   final User? owner;
   final DateTime? created, updated;
   List<Task?> tasks;

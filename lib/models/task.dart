@@ -25,7 +25,7 @@ class Task {
   final List<TaskAttachment>? attachments;
   // TODO: add position(?)
 
-  late final CheckboxStatistics _checkboxStatistics;
+  CheckboxStatistics? _checkboxStatistics;
 
   // // TODO: use `late final` once upgraded to current dart version
   Task({

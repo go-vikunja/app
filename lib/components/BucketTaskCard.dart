@@ -14,7 +14,7 @@ enum DropLocation {above, below, none}
 
 class TaskData {
   final Task task;
-  final Size size;
+  final Size? size;
   TaskData(this.task, this.size);
 }
 
@@ -214,7 +214,7 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
     );
 
     return LongPressDraggable<TaskData>(
-      data: TaskData(widget.task, _cardSize!),
+      data: TaskData(widget.task, _cardSize),
       maxSimultaneousDrags: taskState.taskDragging ? 0 : 1, // only one task can be dragged at a time
       onDragStarted: () {
         taskState.taskDragging = true;

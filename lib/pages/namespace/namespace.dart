@@ -15,7 +15,8 @@ import 'package:vikunja_app/stores/list_store.dart';
 class NamespacePage extends StatefulWidget {
   final Namespace namespace;
 
-  NamespacePage({required this.namespace}) : super(key: Key(namespace.id.toString()));
+  NamespacePage({required this.namespace})
+      : super(key: Key(namespace.id.toString()));
 
   @override
   _NamespacePageState createState() => new _NamespacePageState();
@@ -126,7 +127,13 @@ class _NamespacePageState extends State<NamespacePage>
   _addList(String name, BuildContext context) {
     VikunjaGlobal.of(context)
         .listService
-        .create(widget.namespace.id, TaskList(id: 0, title: name, tasks: []))
+        .create(
+            widget.namespace.id,
+            TaskList(
+                id: 0,
+                title: name,
+                tasks: [],
+                namespaceId: widget.namespace.id))
         .then((_) {
       setState(() {});
       _loadLists();

@@ -33,7 +33,8 @@ var _lists = {
       owner: _users[1],
       description: 'A nice list',
       created: DateTime.now(),
-      updated: DateTime.now())
+      updated: DateTime.now(),
+      namespaceId: 1)
 };
 
 var _tasks = {
