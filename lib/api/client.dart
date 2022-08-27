@@ -96,8 +96,6 @@ class Client {
   }
 
   Future<Response> post(String url, {dynamic body}) {
-    log('post');
-    log('body: ' + body.toString());
     return http
         .post(
       '${this.base}$url'.toUri()!,
@@ -161,7 +159,6 @@ class Client {
         response.statusCode >= 400 ||
         json == null) {
       Map<String, dynamic> error;
-      log(response.body);
       error = _decoder.convert(response.body);
       if (response.statusCode ~/ 100 == 4) {
         throw new InvalidRequestApiException(
