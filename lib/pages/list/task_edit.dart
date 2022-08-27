@@ -48,13 +48,17 @@ class _TaskEditPageState extends State<TaskEditPage> {
   Widget build(BuildContext ctx) {
     // This builds the initial list of reminder inputs only once.
     if (_reminderDates == null) {
-      _reminderDates = widget.task.reminderDates ?? [];
+      _reminderDates = [];
+      widget.task.reminderDates?.forEach((element) { _reminderDates?.add(element ?? null);});
 
       _reminderDates!.asMap().forEach((i, time) =>
           setState(() => _reminderInputs.add(VikunjaDateTimePicker(
             initialValue: time,
             label: 'Reminder',
-            onSaved: (reminder) { if(reminder == null) return null; _reminderDates![i] = reminder; },
+            onSaved: (reminder) {
+              _reminderDates![i] = reminder;
+              return null;
+              },
           )))
       );
     }
