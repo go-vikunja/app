@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:after_layout/after_layout.dart';
+import 'package:provider/provider.dart';
 
 import 'package:vikunja_app/components/AddDialog.dart';
 import 'package:vikunja_app/components/ErrorDialog.dart';
@@ -12,7 +13,7 @@ import 'package:vikunja_app/pages/landing_page.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/models/namespace.dart';
 import 'package:vikunja_app/pages/settings.dart';
-
+import 'package:vikunja_app/stores/list_store.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -72,13 +73,13 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
         title: Text('Settings'),
         leading: Icon(Icons.settings),
         onTap: () {
-          Navigator.push(context, MaterialPageRoute(
-              builder: (context) => SettingsPage()))
-              .whenComplete(() =>
-              setState((){
-                //returning from settings, this needs to be force-refreshed
-                drawerItem = _getDrawerItemWidget(_selectedDrawerIndex, forceReload: true);
-          }));
+          Navigator.push(context,
+                  MaterialPageRoute(builder: (context) => SettingsPage()))
+              .whenComplete(() => setState(() {
+                    //returning from settings, this needs to be force-refreshed
+                    drawerItem = _getDrawerItemWidget(_selectedDrawerIndex,
+                        forceReload: true);
+                  }));
         },
       )
     ]);
@@ -87,7 +88,7 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
   @override
   Widget build(BuildContext context) {
     var currentUser = VikunjaGlobal.of(context).currentUser;
-    if(_selectedDrawerIndex != _previousDrawerIndex || drawerItem == null)
+    if (_selectedDrawerIndex != _previousDrawerIndex || drawerItem == null)
       drawerItem = _getDrawerItemWidget(_selectedDrawerIndex);
 
     return new Scaffold(
@@ -108,11 +109,13 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
       ),
       drawer: new Drawer(
           child: new Column(children: <Widget>[
-            new UserAccountsDrawerHeader(
-          accountEmail:
-              currentUser?.email == null ? null : Text(currentUser?.email ?? ""),
-          accountName:
-              currentUser?.username == null ? null : Text(currentUser?.username ?? ""),
+        new UserAccountsDrawerHeader(
+          accountEmail: currentUser?.email == null
+              ? null
+              : Text(currentUser?.email ?? ""),
+          accountName: currentUser?.username == null
+              ? null
+              : Text(currentUser?.username ?? ""),
           onDetailsPressed: () {
             setState(() {
               _showUserDetails = !_showUserDetails;
@@ -122,7 +125,7 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
               ? null
               : CircleAvatar(
                   //backgroundImage: NetworkImage(currentUser.avatarUrl(context)),
-                ),
+                  ),
           decoration: BoxDecoration(
             image: DecorationImage(
                 image: AssetImage("assets/graphics/hypnotize.png"),
@@ -136,18 +139,18 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
                 child: _showUserDetails
                     ? _userDetailsWidget(context)
                     : _namespacesWidget())),
-            new Align(
-              alignment: FractionalOffset.bottomLeft,
-              child: Builder(
-                builder: (context) => ListTile(
-                  leading: Icon(Icons.house),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    setState(() => _selectedDrawerIndex = -1);
-                  },
-                ),
-              ),
+        new Align(
+          alignment: FractionalOffset.bottomLeft,
+          child: Builder(
+            builder: (context) => ListTile(
+              leading: Icon(Icons.house),
+              onTap: () {
+                Navigator.of(context).pop();
+                setState(() => _selectedDrawerIndex = -1);
+              },
             ),
+          ),
+        ),
         new Align(
           alignment: FractionalOffset.bottomCenter,
           child: Builder(
@@ -166,7 +169,14 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
   _getDrawerItemWidget(int pos, {bool forceReload = false}) {
     _previousDrawerIndex = pos;
     if (pos == -1) {
-      return forceReload ? new LandingPage(key: UniqueKey()) : new LandingPage();
+      //return forceReload
+      //    ? new LandingPage(key: UniqueKey())
+      //    : new LandingPage();
+
+      return ChangeNotifierProvider<ListProvider>(
+        create: (_) => new ListProvider(),
+        child: forceReload ? LandingPage(key: UniqueKey()) : LandingPage(),
+      );
     }
     return new NamespacePage(namespace: _namespaces[pos]);
   }
