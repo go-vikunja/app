@@ -41,7 +41,7 @@ class Bucket {
       createdBy = json['created_by'] == null
         ? null
         : User.fromJson(json['created_by']),
-      tasks = (json['tasks'] as List<dynamic>)
+      tasks = (((json['tasks']  == null) ? [] : json['tasks']) as List<dynamic>)
         .map((task) => Task.fromJson(task))
         .cast<Task>()
         .toList();

@@ -1,16 +1,16 @@
 class Server {
-  bool caldavEnabled;
-  bool emailRemindersEnabled;
-  String frontendUrl;
-  bool linkSharingEnabled;
-  String maxFileSize;
-  String motd;
-  bool registrationEnabled;
-  bool taskAttachmentsEnabled;
-  bool taskCommentsEnabled;
-  bool totpEnabled;
-  bool userDeletion;
-  String version;
+  bool? caldavEnabled;
+  bool? emailRemindersEnabled;
+  String? frontendUrl;
+  bool? linkSharingEnabled;
+  String? maxFileSize;
+  String? motd;
+  bool? registrationEnabled;
+  bool? taskAttachmentsEnabled;
+  bool? taskCommentsEnabled;
+  bool? totpEnabled;
+  bool? userDeletion;
+  String? version;
 
   Server.fromJson(Map<String, dynamic> json)
       :
