@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - null-safety-migration
 
 jobs:
   build-app:
