@@ -69,7 +69,7 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
         ),
       ],
     );
-    if (widget.task.done ?? false) {
+    if (widget.task.done) {
       identifierRow.children.insert(0, Container(
         constraints: chipConstraints,
         padding: EdgeInsets.only(right: 4),

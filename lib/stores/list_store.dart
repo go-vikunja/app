@@ -184,7 +184,7 @@ class ListProvider with ChangeNotifier {
       _buckets[newBucketIndex].tasks.insert(index, task);
 
     task = await VikunjaGlobal.of(context).taskService.update(task.copyWith(
-      bucketId: newBucketId ?? task.bucketId,
+      bucketId: newBucketId,
       kanbanPosition: calculateItemPosition(
         positionBefore: index != 0
             ? _buckets[newBucketIndex].tasks[index - 1].kanbanPosition : null,

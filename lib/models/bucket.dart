@@ -44,7 +44,7 @@ class Bucket {
       tasks = (json['tasks'] as List<dynamic>)
         .map((task) => Task.fromJson(task))
         .cast<Task>()
-        .toList() ?? <Task>[];
+        .toList();
 
   toJSON() => {
     'id': id,
@@ -52,10 +52,10 @@ class Bucket {
     'title': title,
     'position': position,
     'limit': limit,
-    'is_done_bucket': isDoneBucket ?? false,
+    'is_done_bucket': isDoneBucket,
     'created': created?.toUtc().toIso8601String(),
     'updated': updated?.toUtc().toIso8601String(),
     'createdBy': createdBy?.toJSON(),
-    'tasks': tasks?.map((task) => task.toJSON()).toList(),
+    'tasks': tasks.map((task) => task.toJSON()).toList(),
   };
 }

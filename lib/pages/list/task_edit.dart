@@ -66,7 +66,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
     return WillPopScope(
       onWillPop: () {
         if(_changed) {
-          return (_showConfirmationDialog() ?? Future.value(false));
+          return (_showConfirmationDialog());
         }
         return new Future(() => true);
       },
@@ -375,6 +375,11 @@ class _TaskEditPageState extends State<TaskEditPage> {
       color: _resetColor ? null : (_color ?? widget.task.color),
       resetColor: _resetColor,
     );
+    if(_dueDate != null)
+      log(_dueDate.toString());
+    else
+      log("due date is null");
+    log(updatedTask.toJSON().toString());
 
     // update the labels
     await VikunjaGlobal.of(context)

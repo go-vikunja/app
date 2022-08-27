@@ -97,6 +97,7 @@ class Client {
 
   Future<Response> post(String url, {dynamic body}) {
     log('post');
+    log('body: ' + body.toString());
     return http
         .post(
       '${this.base}$url'.toUri()!,

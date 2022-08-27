@@ -36,6 +36,7 @@ class TaskTileState extends State<TaskTile> with AutomaticKeepAliveClientMixin {
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final taskState = Provider.of<ListProvider>(context);
     Duration? durationUntilDue = _currentTask.dueDate?.difference(DateTime.now());
     if (_currentTask.loading) {
       return ListTile(
@@ -74,7 +75,7 @@ class TaskTileState extends State<TaskTile> with AutomaticKeepAliveClientMixin {
             )
           ) : Text(_currentTask.title ?? ""),
       controlAffinity: ListTileControlAffinity.leading,
-      value: _currentTask.done ?? false,
+      value: _currentTask.done,
       subtitle: widget.showInfo && _currentTask.hasDueDate ?
           Text("Due " + durationToHumanReadable(durationUntilDue!), style: TextStyle(color: durationUntilDue.isNegative ? Colors.red : null),)
           : _currentTask.description == null || _currentTask.description!.isEmpty
@@ -87,7 +88,7 @@ class TaskTileState extends State<TaskTile> with AutomaticKeepAliveClientMixin {
               MaterialPageRoute(
                 builder: (buildContext) => TaskEditPage(
                   task: _currentTask,
-                  taskState: Provider.of<ListProvider>(context),
+                  taskState: taskState,
                 ),
               ),
             ).then((task) => setState(() {

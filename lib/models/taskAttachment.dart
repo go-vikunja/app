@@ -28,7 +28,7 @@ class TaskAttachment {
   toJSON() => {
     'id': id,
     'task_id': taskId,
-    'created': created?.toUtc()?.toIso8601String(),
+    'created': created?.toUtc().toIso8601String(),
     'created_by': createdBy?.toJSON(),
   };
 }

@@ -18,7 +18,7 @@ class LabelComponent extends StatefulWidget {
 class LabelComponentState extends State<LabelComponent> {
   @override
   Widget build(BuildContext context) {
-    Color backgroundColor = widget.label.color ?? vLabelDefaultColor;
+    Color backgroundColor = widget.label.color;
     Color textColor =
         backgroundColor.computeLuminance() > 0.5 ? vLabelDark : vLabelLight;
 
