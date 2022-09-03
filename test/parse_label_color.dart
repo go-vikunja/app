@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:test/test.dart';
 import 'package:vikunja_app/models/label.dart';
+import 'package:vikunja_app/models/user.dart';
 
 void main() {
   test('label color from json', () {
@@ -14,9 +15,9 @@ void main() {
   });
 
   test('hex color string from object', () {
-    Label label = Label(id: 1, color: Color(0xFFe8e8e8));
+    Label label = Label(id: 1, title: '', color: Color(0xFFe8e8e8), createdBy: User(id: 0, username: ''));
     var json = label.toJSON();
 
-    expect(json.toString(), '{id: 1, title: null, description: null, hex_color: e8e8e8, created_by: null, updated: null, created: null}');
+    expect(json.toString(), '{id: 1, title: , description: null, hex_color: e8e8e8, created_by: {id: 0, username: ,}, updated: null, created: null}');
   });
 }

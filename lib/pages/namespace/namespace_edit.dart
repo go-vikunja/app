@@ -16,7 +16,14 @@ class NamespaceEditPage extends StatefulWidget {
 class _NamespaceEditPageState extends State<NamespaceEditPage> {
   final _formKey = GlobalKey<FormState>();
   bool _loading = false;
-  String? _name, _description;
+  late String _name, _description;
+
+  @override
+  void initState() {
+    _name = widget.namespace.title;
+    _description = widget.namespace.description;
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext ctx) {
@@ -37,7 +44,7 @@ class _NamespaceEditPageState extends State<NamespaceEditPage> {
                       maxLines: null,
                       keyboardType: TextInputType.multiline,
                       initialValue: widget.namespace.title,
-                      onSaved: (name) => _name = name,
+                      onSaved: (name) => _name = name ?? '',
                       validator: (name) {
                         //if (name.length < 3 || name.length > 250) {
                         //  return 'The name needs to have between 3 and 250 characters.';
@@ -56,7 +63,7 @@ class _NamespaceEditPageState extends State<NamespaceEditPage> {
                       maxLines: null,
                       keyboardType: TextInputType.multiline,
                       initialValue: widget.namespace.description,
-                      onSaved: (description) => _description = description,
+                      onSaved: (description) => _description = description ?? '',
                       validator: (description) {
                         //if (description.length > 1000) {
                         //  return 'The description can have a maximum of 1000 characters.';
@@ -80,7 +87,7 @@ class _NamespaceEditPageState extends State<NamespaceEditPage> {
                                       _saveNamespace(context);
                                     }
                                   }
-                                : () => null,
+                                : null,
                             child: _loading
                                 ? CircularProgressIndicator()
                                 : VikunjaButtonText('Save'),
@@ -97,10 +104,13 @@ class _NamespaceEditPageState extends State<NamespaceEditPage> {
     // FIXME: is there a way we can update the namespace without creating a new namespace object?
     //  aka updating the existing namespace we got from context (setters?)
     Namespace updatedNamespace = Namespace(
-        id: widget.namespace.id,
-        title: _name,
-        description: _description,
-        owner: widget.namespace.owner);
+      id: widget.namespace.id,
+      title: _name,
+      description: _description,
+      owner: widget.namespace.owner,
+      created: widget.namespace.created,
+      updated: widget.namespace.updated,
+    );
 
     VikunjaGlobal.of(context)
         .namespaceService

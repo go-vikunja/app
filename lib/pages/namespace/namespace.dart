@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:after_layout/after_layout.dart';
 import 'package:provider/provider.dart';
@@ -48,7 +47,7 @@ class _NamespacePageState extends State<NamespacePage>
                                 key: Key(ls.id.toString()),
                                 direction: DismissDirection.startToEnd,
                                 child: ListTile(
-                                  title: new Text(ls.title ?? ""),
+                                  title: new Text(ls.title),
                                   onTap: () => _openList(context, ls),
                                   trailing: Icon(Icons.arrow_right),
                                 ),
@@ -84,7 +83,7 @@ class _NamespacePageState extends State<NamespacePage>
     _loadLists();
   }
 
-  Future _removeList(TaskList list) {
+  Future<void> _removeList(TaskList list) {
     return VikunjaGlobal.of(context)
         .listService
         .delete(list.id)
@@ -124,16 +123,22 @@ class _NamespacePageState extends State<NamespacePage>
     );
   }
 
-  _addList(String name, BuildContext context) {
+  void _addList(String name, BuildContext context) {
+    final curentUser = VikunjaGlobal.of(context).currentUser;
+    if (curentUser == null) {
+      return;
+    }
+
     VikunjaGlobal.of(context)
         .listService
         .create(
             widget.namespace.id,
             TaskList(
-                id: 0,
-                title: name,
-                tasks: [],
-                namespaceId: widget.namespace.id))
+              title: name,
+              tasks: [],
+              namespaceId: widget.namespace.id,
+              owner: curentUser,
+            ))
         .then((_) {
       setState(() {});
       _loadLists();

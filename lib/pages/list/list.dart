@@ -50,7 +50,7 @@ class _ListPageState extends State<ListPage> {
   List<Task> _loadingTasks = [];
   int _currentPage = 1;
   bool _loading = true;
-  bool? displayDoneTasks;
+  bool displayDoneTasks = false;
   ListProvider? taskState;
   PageController? _pageController;
   Map<int, BucketProps> _bucketProps = {};
@@ -159,7 +159,7 @@ class _ListPageState extends State<ListPage> {
   ListView _listView(BuildContext context) {
     return ListView.builder(
       padding: EdgeInsets.symmetric(vertical: 8.0),
-      itemCount: taskState!.tasks.length,
+      itemCount: taskState!.tasks.length * 2,
       itemBuilder: (context, i) {
         if (i.isOdd) return Divider();
 
@@ -170,11 +170,6 @@ class _ListPageState extends State<ListPage> {
 
         final index = i ~/ 2;
 
-
-        // This handles the case if there are no more elements in the list left which can be provided by the api
-
-        // TODO
-        // should never happen due to itemCount
         if (taskState!.maxPages == _currentPage &&
             index == taskState!.tasks.length)
           throw Exception("Check itemCount attribute");
@@ -341,7 +336,7 @@ class _ListPageState extends State<ListPage> {
         });
       });
     if (_bucketProps[bucket.id]!.titleController.text.isEmpty)
-      _bucketProps[bucket.id]!.titleController.text = bucket.title ?? "";
+      _bucketProps[bucket.id]!.titleController.text = bucket.title;
 
     return Stack(
       children: <Widget>[
@@ -389,7 +384,7 @@ class _ListPageState extends State<ListPage> {
                         padding: const EdgeInsets.only(right: 2),
                         child: Text(
                           '${bucket.tasks.length}/${bucket.limit}',
-                          style: theme.textTheme.titleMedium?.copyWith(
+                          style: (theme.textTheme.titleMedium ?? TextStyle(fontSize: 16)).copyWith(
                             color: bucket.limit != 0 && bucket.tasks.length >= bucket.limit
                                 ? Colors.red : null,
                           ),
@@ -426,7 +421,7 @@ class _ListPageState extends State<ListPage> {
                           }
                         },
                         itemBuilder: (context) {
-                          final bool enableDelete = (taskState?.buckets.length ?? 0) > 1;
+                          final bool enableDelete = taskState!.buckets.length > 1;
                           return <PopupMenuEntry<BucketMenu>>[
                             PopupMenuItem<BucketMenu>(
                               value: BucketMenu.limit,
@@ -613,7 +608,7 @@ class _ListPageState extends State<ListPage> {
       context: context,
       listId: _list!.id,
       page: page,
-      displayDoneTasks: displayDoneTasks ?? false
+      displayDoneTasks: displayDoneTasks
     );
   }
 
@@ -638,15 +633,18 @@ class _ListPageState extends State<ListPage> {
     );
   }
 
-  Future<void> _addItem(String title, BuildContext context, [Bucket? bucket]) {
-    var globalState = VikunjaGlobal.of(context);
-    var newTask = Task(
-      id: null,
+  Future<void> _addItem(String title, BuildContext context, [Bucket? bucket]) async {
+    final currentUser = VikunjaGlobal.of(context).currentUser;
+    if (currentUser == null) {
+      return;
+    }
+
+    final newTask = Task(
       title: title,
-      createdBy: globalState.currentUser,
+      createdBy: currentUser,
       done: false,
       bucketId: bucket?.id,
-      identifier: '',
+      listId: _list!.id,
     );
     setState(() => _loadingTasks.add(newTask));
     return Provider.of<ListProvider>(context, listen: false)
@@ -679,23 +677,27 @@ class _ListPageState extends State<ListPage> {
     );
   }
 
-  Future<void> _addBucket(String title, BuildContext context) {
-    return Provider.of<ListProvider>(context, listen: false).addBucket(
+  Future<void> _addBucket(String title, BuildContext context) async {
+    final currentUser = VikunjaGlobal.of(context).currentUser;
+    if (currentUser == null) {
+      return;
+    }
+
+    await Provider.of<ListProvider>(context, listen: false).addBucket(
       context: context,
       newBucket: Bucket(
-        id: 0,
         title: title,
-        createdBy: VikunjaGlobal.of(context).currentUser,
+        createdBy: currentUser,
         listId: _list!.id,
         limit: 0,
       ),
       listId: _list!.id,
-    ).then((_) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('The bucket was added successfully!'),
-      ));
-      setState(() {});
-    });
+    );
+
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('The bucket was added successfully!'),
+    ));
+    setState(() {});
   }
 
   Future<void> _updateBucket(BuildContext context, Bucket bucket) {
@@ -715,16 +717,17 @@ class _ListPageState extends State<ListPage> {
       context: context,
       listId: bucket.listId,
       bucketId: bucket.id,
-    ).then((_) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Row(
-          children: <Widget>[
-            Text('${bucket.title} was deleted.'),
-            Icon(Icons.delete),
-          ],
-        ),
-      ));
-    });
+    );
+
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Row(
+        children: <Widget>[
+          Text('${bucket.title} was deleted.'),
+          Icon(Icons.delete),
+        ],
+      ),
+    ));
+
     _onViewTapped(1);
   }
 }

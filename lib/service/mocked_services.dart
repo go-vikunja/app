@@ -8,7 +8,7 @@ import 'package:vikunja_app/models/user.dart';
 import 'package:vikunja_app/service/services.dart';
 
 // Data for mocked services
-var _users = {1: User(1, 'test@testuser.org', 'test1')};
+var _users = {1: User(id: 1, username: 'test1')};
 
 var _namespaces = {
   1: Namespace(
@@ -17,7 +17,7 @@ var _namespaces = {
     created: DateTime.now(),
     updated: DateTime.now(),
     description: 'A namespace for testing purposes',
-    owner: _users[1],
+    owner: _users[1]!,
   )
 };
 
@@ -30,7 +30,7 @@ var _lists = {
       id: 1,
       title: 'List 1',
       tasks: _tasks.values.toList(),
-      owner: _users[1],
+      owner: _users[1]!,
       description: 'A nice list',
       created: DateTime.now(),
       updated: DateTime.now(),
@@ -41,12 +41,12 @@ var _tasks = {
   1: Task(
     id: 1,
     title: 'Task 1',
-    createdBy: _users[1],
+    createdBy: _users[1]!,
     updated: DateTime.now(),
     created: DateTime.now(),
     description: 'A descriptive task',
     done: false,
-    identifier: '',
+    listId: 1,
   )
 };
 
@@ -146,7 +146,7 @@ class MockedTaskService implements TaskService {
   @override
   Future delete(int taskId) {
     _lists.forEach(
-        (_, list) => list.tasks.removeWhere((task) => task?.id == taskId));
+        (_, list) => list.tasks.removeWhere((task) => task.id == taskId));
     _tasks.remove(taskId);
     return Future.value();
   }
@@ -154,12 +154,12 @@ class MockedTaskService implements TaskService {
   @override
   Future<Task> update(Task task) {
     _lists.forEach((_, list) {
-      if (list.tasks.where((t) => t?.id == task.id).length > 0) {
-        list.tasks.removeWhere((t) => t?.id == task.id);
+      if (list.tasks.where((t) => t.id == task.id).length > 0) {
+        list.tasks.removeWhere((t) => t.id == task.id);
         list.tasks.add(task);
       }
     });
-    return Future.value(_tasks[task.id ?? 0] = task);
+    return Future.value(_tasks[task.id] = task);
   }
 
   @override

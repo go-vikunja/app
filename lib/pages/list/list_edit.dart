@@ -18,9 +18,9 @@ class ListEditPage extends StatefulWidget {
 class _ListEditPageState extends State<ListEditPage> {
   final _formKey = GlobalKey<FormState>();
   bool _loading = false;
-  String? _title, _description;
+  String _title = '', _description = '';
   bool? displayDoneTasks;
-  int listId = -1;
+  late int listId;
 
   @override
   void initState(){
@@ -52,7 +52,7 @@ class _ListEditPageState extends State<ListEditPage> {
                       maxLines: null,
                       keyboardType: TextInputType.multiline,
                       initialValue: widget.list.title,
-                      onSaved: (title) => _title = title,
+                      onSaved: (title) => _title = title ?? '',
                       validator: (title) {
                         //if (title?.length < 3 || title.length > 250) {
                         //  return 'The title needs to have between 3 and 250 characters.';
@@ -71,7 +71,7 @@ class _ListEditPageState extends State<ListEditPage> {
                       maxLines: null,
                       keyboardType: TextInputType.multiline,
                       initialValue: widget.list.description,
-                      onSaved: (description) => _description = description,
+                      onSaved: (description) => _description = description ?? '',
                       validator: (description) {
                         if(description == null)
                           return null;
@@ -88,29 +88,16 @@ class _ListEditPageState extends State<ListEditPage> {
                   ),
                   Padding(
                     padding: EdgeInsets.symmetric(vertical: 10.0),
-                    child: displayDoneTasks != null ?
-                        CheckboxListTile(
-                          value:  displayDoneTasks,
-                          title: Text("Show done tasks"),
-                          onChanged: (value) {
-                            VikunjaGlobal.of(context).listService.setDisplayDoneTasks(listId, value == false ? "0" : "1");
-                            setState(() =>  displayDoneTasks = value);
-                            },
-                        )
-                        : ListTile(
-                      trailing:
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: SizedBox(
-                            height: Checkbox.width,
-                            width: Checkbox.width,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.0,
-                            )
-                        ),
-                      ),
-                      title: Text("Show done task"),
-                    ),),
+                    child: CheckboxListTile(
+                      value: displayDoneTasks ?? false,
+                      title: Text("Show done tasks"),
+                      onChanged: (value) {
+                        value ??= false;
+                        VikunjaGlobal.of(context).listService.setDisplayDoneTasks(listId, value ? "1" : "0");
+                        setState(() => displayDoneTasks = value);
+                      },
+                    ),
+                  ),
                   Builder(
                       builder: (context) => Padding(
                           padding: EdgeInsets.symmetric(vertical: 10.0),

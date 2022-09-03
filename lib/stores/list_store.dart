@@ -87,14 +87,17 @@ class ListProvider with ChangeNotifier {
   }
 
   Future<void> addTaskByTitle(
-      {required BuildContext context, required String title, required int listId}) {
-    var globalState = VikunjaGlobal.of(context);
-    var newTask = Task(
-      id: 0,
-      identifier: '',
+      {required BuildContext context, required String title, required int listId}) async{
+    final globalState = VikunjaGlobal.of(context);
+    if (globalState.currentUser == null) {
+      return;
+    }
+
+    final newTask = Task(
       title: title,
-      createdBy: globalState.currentUser,
+      createdBy: globalState.currentUser!,
       done: false,
+      listId: listId,
     );
     _isLoading = true;
     notifyListeners();
@@ -116,11 +119,7 @@ class ListProvider with ChangeNotifier {
         _tasks.insert(0, task);
       if (_buckets.isNotEmpty) {
         final bucket = _buckets[_buckets.indexWhere((b) => task.bucketId == b.id)];
-        if (bucket.tasks != null) {
-          bucket.tasks.add(task);
-        } else {
-          bucket.tasks = <Task>[task];
-        }
+        bucket.tasks.add(task);
       }
       _isLoading = false;
       notifyListeners();
@@ -159,7 +158,7 @@ class ListProvider with ChangeNotifier {
     return VikunjaGlobal.of(context).bucketService.update(bucket)
         .then((rBucket) {
           _buckets[_buckets.indexWhere((b) => rBucket.id == b.id)] = rBucket;
-          _buckets.sort((a, b) => a.position.compareTo(b.position));
+          _buckets.sort((a, b) => a.position!.compareTo(b.position!));
           notifyListeners();
         });
   }
@@ -172,7 +171,7 @@ class ListProvider with ChangeNotifier {
         });
   }
 
-  Future<void> moveTaskToBucket({required BuildContext context, required Task task, required int newBucketId, required int index}) async {
+  Future<void> moveTaskToBucket({required BuildContext context, required Task task, int? newBucketId, required int index}) async {
     final sameBucket = task.bucketId == newBucketId;
     final newBucketIndex = _buckets.indexWhere((b) => b.id == newBucketId);
     if (sameBucket && index > _buckets[newBucketIndex].tasks.indexWhere((t) => t.id == task.id)) index--;
@@ -212,7 +211,7 @@ class ListProvider with ChangeNotifier {
     if (_tasks.isNotEmpty) {
       _tasks[_tasks.indexWhere((t) => t.id == task.id)] = task;
       if (secondTask != null)
-        _tasks[_tasks.indexWhere((t) => t.id == secondTask?.id)] = secondTask;
+        _tasks[_tasks.indexWhere((t) => t.id == secondTask!.id)] = secondTask;
     }
 
     _buckets[newBucketIndex].tasks[_buckets[newBucketIndex].tasks.indexWhere((t) => t.id == task.id)] = task;

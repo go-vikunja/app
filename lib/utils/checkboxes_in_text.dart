@@ -1,5 +1,3 @@
-import 'package:meta/meta.dart';
-
 class CheckboxStatistics {
   final int total;
   final int checked;
@@ -28,7 +26,7 @@ MatchedCheckboxes getCheckboxesInText(String text) {
   final matches = RegExp(r'[*-] \[[ x]]').allMatches(text);
 
   for (final match in matches) {
-    if (match[0]!.endsWith(checkedString))
+    if (match[0]?.endsWith(checkedString) ?? false)
       checked.add(match);
     else
       unchecked.add(match);

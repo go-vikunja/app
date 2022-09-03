@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/models/label.dart';
-import 'package:vikunja_app/theme/constants.dart';
 
-class LabelComponent extends StatefulWidget {
+class LabelComponent extends StatelessWidget {
   final Label label;
   final VoidCallback onDelete;
 
@@ -10,31 +9,20 @@ class LabelComponent extends StatefulWidget {
       : super(key: key);
 
   @override
-  State<StatefulWidget> createState() {
-    return new LabelComponentState();
-  }
-}
-
-class LabelComponentState extends State<LabelComponent> {
-  @override
   Widget build(BuildContext context) {
-    Color backgroundColor = widget.label.color;
-    Color textColor =
-        backgroundColor.computeLuminance() > 0.5 ? vLabelDark : vLabelLight;
-
     return Chip(
       label: Text(
-        widget.label.title ?? "",
+        label.title,
         style: TextStyle(
-          color: textColor,
+          color: label.textColor,
         ),
       ),
-      backgroundColor: backgroundColor,
+      backgroundColor: label.color,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.all(Radius.circular(3)),
       ),
-      onDeleted: widget.onDelete,
-      deleteIconColor: textColor,
+      onDeleted: onDelete,
+      deleteIconColor: label.textColor,
       deleteIcon: Container(
         padding: EdgeInsets.all(3),
         decoration: BoxDecoration(
@@ -43,7 +31,7 @@ class LabelComponentState extends State<LabelComponent> {
         ),
         child: Icon(
           Icons.close,
-          color: textColor,
+          color: label.textColor,
           size: 15,
         ),
       ),

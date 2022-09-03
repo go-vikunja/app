@@ -29,8 +29,8 @@ class LabelAPIService extends APIService implements LabelService {
 
   @override
   Future<List<Label>> getAll({String? query}) {
-    String? params =
-        query == null ? null : '?s=' + Uri.encodeQueryComponent(query);
+    String params =
+        query == null ? '' : '?s=' + Uri.encodeQueryComponent(query);
     return client.get('/labels$params').then(
         (response) => convertList(response.body, (result) => Label.fromJson(result)));
   }

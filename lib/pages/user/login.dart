@@ -33,28 +33,28 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
-      Future.delayed(Duration.zero, () {
-        if(VikunjaGlobal.of(context).expired) {
-          ScaffoldMessenger.of(context)
-              .showSnackBar(
-              SnackBar(
-                  content: Text(
-                      "Login has expired. Please reenter your details!")));
-          setState(() {
-            _serverController.text = VikunjaGlobal.of(context).client.base ?? "";
-            _usernameController.text = VikunjaGlobal.of(context).currentUser?.username ?? "";
-          });
-        }
-      });
+    Future.delayed(Duration.zero, () {
+      if(VikunjaGlobal.of(context).expired) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(
+            SnackBar(
+                content: Text(
+                    "Login has expired. Please reenter your details!")));
+        setState(() {
+          _serverController.text = VikunjaGlobal.of(context).client.base;
+          _usernameController.text = VikunjaGlobal.of(context).currentUser?.username ?? "";
+        });
+      }
+      final client = VikunjaGlobal.of(context).client;
+      VikunjaGlobal.of(context).settingsManager.getIgnoreCertificates().then((value) => setState(() => client.ignoreCertificates = value == "1"));
+    });
   }
 
 
 
   @override
   Widget build(BuildContext ctx) {
-    Client client = VikunjaGlobal.of(context).client;
-    if(client.ignoreCertificates == null)
-      VikunjaGlobal.of(context).settingsManager.getIgnoreCertificates().then((value) => setState(() => client.ignoreCertificates = value == "1" ? true:false));
+    Client client = VikunjaGlobal.of(context).client;      
 
     return Scaffold(
       body: Center(
@@ -131,7 +131,7 @@ class _LoginPageState extends State<LoginPage> {
                                         _loginUser(context);
                                       }
                                     }
-                                  : () => null,
+                                  : null,
                               child: _loading
                                   ? CircularProgressIndicator()
                                   : VikunjaButtonText('Login'),

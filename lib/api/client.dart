@@ -16,13 +16,13 @@ class Client {
   GlobalKey<ScaffoldMessengerState> global;
   final JsonDecoder _decoder = new JsonDecoder();
   final JsonEncoder _encoder = new JsonEncoder();
-  String? _token;
-  String? _base;
+  String _token = '';
+  String _base = '';
   bool authenticated = false;
   bool ignoreCertificates = false;
 
-  String? get base => _base;
-  String? get token => _token;
+  String get base => _base;
+  String get token => _token;
 
   String? post_body;
 
@@ -45,7 +45,7 @@ class Client {
 
   get _headers =>
       {
-        'Authorization': _token != null ? 'Bearer $_token' : '',
+        'Authorization': _token != '' ? 'Bearer $_token' : '',
         'Content-Type': 'application/json'
       };
 
@@ -63,26 +63,14 @@ class Client {
 
 
   void reset() {
-    _token = _base = null;
+    _token = _base = '';
     authenticated = false;
   }
 
   Future<Response> get(String url,
       [Map<String, List<String>>? queryParameters]) {
-    // TODO: This could be moved to a seperate function
-    var uri = Uri.parse('${this.base}$url');
-    // Because these are all final values, we can't just add the queryParameters and must instead build a new Uri Object every time this method is called.
-    var newUri = Uri(
-        scheme: uri.scheme,
-        userInfo: uri.userInfo,
-        host: uri.host,
-        port: uri.port,
-        path: uri.path,
-        query: uri.query,
-        queryParameters: queryParameters,
-        // Because dart takes a Map<String, String> here, it is only possible to sort by one parameter while the api supports n parameters.
-        fragment: uri.fragment);
-    return http.get(newUri, headers: _headers)
+    final uri = Uri.parse('${this.base}$url').replace(queryParameters: queryParameters);
+    return http.get(uri, headers: _headers)
         .then(_handleResponse, onError: _handleError);
   }
 

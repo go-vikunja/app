@@ -43,7 +43,7 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
         .asMap()
         .forEach((i, namespace) => namespacesList.add(new ListTile(
               leading: const Icon(Icons.folder),
-              title: new Text(namespace.title ?? ""),
+              title: new Text(namespace.title),
               selected: i == _selectedDrawerIndex,
               onTap: () => _onSelectItem(i),
             )));
@@ -87,7 +87,7 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    var currentUser = VikunjaGlobal.of(context).currentUser;
+    final currentUser = VikunjaGlobal.of(context).currentUser;
     if (_selectedDrawerIndex != _previousDrawerIndex || drawerItem == null)
       drawerItem = _getDrawerItemWidget(_selectedDrawerIndex);
 
@@ -107,15 +107,15 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
                                 ))).whenComplete(() => _loadNamespaces()))
               ],
       ),
-      drawer: new Drawer(
-          child: new Column(children: <Widget>[
-        new UserAccountsDrawerHeader(
-          accountEmail: currentUser?.email == null
-              ? null
-              : Text(currentUser?.email ?? ""),
-          accountName: currentUser?.username == null
-              ? null
-              : Text(currentUser?.username ?? ""),
+      drawer: Drawer(
+          child: Column(children: <Widget>[
+        UserAccountsDrawerHeader(
+          accountName: currentUser != null
+              ? Text(currentUser.username)
+              : null,
+          accountEmail: currentUser != null
+              ? Text(currentUser.name)
+              : null,
           onDetailsPressed: () {
             setState(() {
               _showUserDetails = !_showUserDetails;
@@ -134,12 +134,12 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
                     Theme.of(context).primaryColor, BlendMode.multiply)),
           ),
         ),
-        new Builder(
+        Builder(
             builder: (BuildContext context) => Expanded(
                 child: _showUserDetails
                     ? _userDetailsWidget(context)
                     : _namespacesWidget())),
-        new Align(
+        Align(
           alignment: FractionalOffset.bottomLeft,
           child: Builder(
             builder: (context) => ListTile(
@@ -151,7 +151,7 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
             ),
           ),
         ),
-        new Align(
+        Align(
           alignment: FractionalOffset.bottomCenter,
           child: Builder(
             builder: (context) => ListTile(
@@ -197,9 +197,14 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
   }
 
   _addNamespace(String name, BuildContext context) {
+    final currentUser = VikunjaGlobal.of(context).currentUser;
+    if (currentUser == null) {
+      return;
+    }
+
     VikunjaGlobal.of(context)
         .namespaceService
-        .create(Namespace(id: 0, title: name))
+        .create(Namespace(title: name, owner: currentUser))
         .then((_) {
       _loadNamespaces();
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(

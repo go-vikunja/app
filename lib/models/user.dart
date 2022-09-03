@@ -3,18 +3,37 @@ import 'package:vikunja_app/global.dart';
 
 class User {
   final int id;
-  final String email, username;
+  final String name, username;
+  late final DateTime created, updated;
 
-  User(this.id, this.email, this.username);
+  User({
+    this.id = -1,
+    this.name = '',
+    required this.username,
+    DateTime? created,
+    DateTime? updated,
+  }) {
+    this.created = created ?? DateTime.now();
+    this.updated = updated ?? DateTime.now();
+  }
+
   User.fromJson(Map<String, dynamic> json)
       : id = json['id'],
-        email = json.containsKey('email') ? json['email'] : '',
-        username = json['username'];
+        name = json.containsKey('name') ? json['name'] : '',
+        username = json['username'],
+        created = DateTime.parse(json['created']),
+        updated = DateTime.parse(json['updated']);
 
-  toJSON() => {"id": this.id, "email": this.email, "username": this.username};
+  toJSON() => {
+        'id': id != -1 ? id : null,
+        'name': name,
+        'username': username,
+        'created': created.toUtc().toIso8601String(),
+        'updated': updated.toUtc().toIso8601String(),
+      };
 
-  String? avatarUrl(BuildContext context) {
-    return VikunjaGlobal.of(context).client.base! + "/avatar/${this.username}";
+  String avatarUrl(BuildContext context) {
+    return VikunjaGlobal.of(context).client.base + "/avatar/${this.username}";
   }
 }
 

@@ -103,20 +103,31 @@ class LandingPageState extends State<LandingPage> with AfterLayoutMixin<LandingP
           context: context,
           builder: (_) =>
               AddDialog(
-                  onAddTask: (task) => _addTask(task, context),
+                  onAddTask: (title, dueDate) => _addTask(title, dueDate, context),
                   decoration: new InputDecoration(
                       labelText: 'Task Name', hintText: 'eg. Milk')));
     }
   }
 
-  _addTask(Task task, BuildContext context) {
-    var globalState = VikunjaGlobal.of(context);
-    globalState.taskService.add(defaultList!, task).then((_) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('The task was added successfully!'),
-        ));
-        _loadList(context).then((value) => setState((){}));
-    });
+  Future<void> _addTask(
+      String title, DateTime? dueDate, BuildContext context) async {
+    final globalState = VikunjaGlobal.of(context);
+    if (globalState.currentUser == null) {
+      return;
+    }
+
+    await globalState.taskService.add(
+      defaultList!,
+      Task(
+        createdBy: globalState.currentUser!,
+        listId: defaultList!,
+      ),
+    );
+
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('The task was added successfully!'),
+    ));
+    _loadList(context).then((value) => setState(() {}));
   }
 
 
