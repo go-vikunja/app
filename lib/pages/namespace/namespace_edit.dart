@@ -101,15 +101,9 @@ class _NamespaceEditPageState extends State<NamespaceEditPage> {
 
   _saveNamespace(BuildContext context) async {
     setState(() => _loading = true);
-    // FIXME: is there a way we can update the namespace without creating a new namespace object?
-    //  aka updating the existing namespace we got from context (setters?)
-    Namespace updatedNamespace = Namespace(
-      id: widget.namespace.id,
+    final updatedNamespace = widget.namespace.copyWith(
       title: _name,
       description: _description,
-      owner: widget.namespace.owner,
-      created: widget.namespace.created,
-      updated: widget.namespace.updated,
     );
 
     VikunjaGlobal.of(context)

@@ -24,7 +24,7 @@ class Namespace {
         updated = DateTime.parse(json['updated']),
         owner = User.fromJson(json['owner']);
 
-  toJSON() => {
+  Map<String, dynamic> toJSON() => {
         'id': id != -1 ? id : null,
         'created': created.toIso8601String(),
         'updated': updated.toIso8601String(),
@@ -32,4 +32,22 @@ class Namespace {
         'owner': owner.toJSON(),
         'description': description
       };
+
+  Namespace copyWith({
+    int? id,
+    DateTime? created,
+    DateTime? updated,
+    String? title,
+    String? description,
+    User? owner,
+  }) {
+    return Namespace(
+      id: id ?? this.id,
+      created: created ?? this.created,
+      updated: updated ?? this.updated,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      owner: owner ?? this.owner,
+    );
+  }
 }
