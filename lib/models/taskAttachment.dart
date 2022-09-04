@@ -5,7 +5,7 @@ import 'package:vikunja_app/models/user.dart';
 @JsonSerializable()
 class TaskAttachment {
   final int id, taskId;
-  late final DateTime created;
+  final DateTime created;
   final User createdBy;
   // TODO: add file
 
@@ -14,9 +14,7 @@ class TaskAttachment {
     required this.taskId,
     DateTime? created,
     required this.createdBy,
-  }) {
-    this.created = created ?? DateTime.now();
-  }
+  }) : this.created = created ?? DateTime.now();
 
   TaskAttachment.fromJSON(Map<String, dynamic> json)
       : id = json['id'],

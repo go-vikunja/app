@@ -4,7 +4,7 @@ import 'package:vikunja_app/global.dart';
 class User {
   final int id;
   final String name, username;
-  late final DateTime created, updated;
+  final DateTime created, updated;
 
   User({
     this.id = -1,
@@ -12,10 +12,8 @@ class User {
     required this.username,
     DateTime? created,
     DateTime? updated,
-  }) {
-    this.created = created ?? DateTime.now();
-    this.updated = updated ?? DateTime.now();
-  }
+  })  : this.created = created ?? DateTime.now(),
+        this.updated = updated ?? DateTime.now();
 
   User.fromJson(Map<String, dynamic> json)
       : id = json['id'],

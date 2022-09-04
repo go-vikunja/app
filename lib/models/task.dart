@@ -11,7 +11,7 @@ class Task {
   final int id;
   final int? parentTaskId, priority, bucketId;
   final int listId;
-  late final DateTime created, updated;
+  final DateTime created, updated;
   final DateTime? dueDate, startDate, endDate;
   final List<DateTime> reminderDates;
   final String identifier;
@@ -26,7 +26,7 @@ class Task {
   final List<TaskAttachment> attachments;
   // TODO: add position(?)
 
-  late final CheckboxStatistics checkboxStatistics = getCheckboxStatistics(description);
+  late final checkboxStatistics = getCheckboxStatistics(description);
   late final hasCheckboxes = checkboxStatistics.total != 0;
   late final textColor = (color != null && color!.computeLuminance() > 0.5) ? Colors.black : Colors.white;
   late final hasDueDate = dueDate?.year != 1;
@@ -54,10 +54,8 @@ class Task {
     required this.createdBy,
     required this.listId,
     this.bucketId,
-  }) {
-    this.created = DateTime.now();
-    this.updated = DateTime.now();
-  }
+  })  : this.created = created ?? DateTime.now(),
+        this.updated = updated ?? DateTime.now();
 
   bool loading = false;
 

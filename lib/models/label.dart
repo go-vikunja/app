@@ -6,7 +6,7 @@ import 'package:vikunja_app/theme/constants.dart';
 class Label {
   final int id;
   final String title, description;
-  late final DateTime created, updated;
+  final DateTime created, updated;
   final User createdBy;
   final Color? color;
 
@@ -20,10 +20,8 @@ class Label {
     DateTime? created,
     DateTime? updated,
     required this.createdBy,
-  }) {
-    this.created = created ?? DateTime.now();
-    this.updated = updated ?? DateTime.now();
-  }
+  })  : this.created = created ?? DateTime.now(),
+        this.updated = updated ?? DateTime.now();
 
   Label.fromJson(Map<String, dynamic> json)
       : id = json['id'],

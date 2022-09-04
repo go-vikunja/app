@@ -8,10 +8,10 @@ class Bucket {
   int id, listId, limit;
   String title;
   double? position;
-  late final DateTime created, updated;
+  final DateTime created, updated;
   User createdBy;
   bool isDoneBucket;
-  late final List<Task> tasks;
+  final List<Task> tasks;
 
   Bucket({
     this.id = -1,
@@ -24,11 +24,9 @@ class Bucket {
     DateTime? updated,
     required this.createdBy,
     List<Task>? tasks,
-  }) {
-    this.created = created ?? DateTime.now();
-    this.updated = created ?? DateTime.now();
-    this.tasks = tasks ?? [];
-  }
+  })  : this.created = created ?? DateTime.now(),
+        this.updated = created ?? DateTime.now(),
+        this.tasks = tasks ?? [];
 
   Bucket.fromJSON(Map<String, dynamic> json)
       : id = json['id'],

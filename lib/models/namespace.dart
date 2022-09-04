@@ -2,7 +2,7 @@ import 'package:vikunja_app/models/user.dart';
 
 class Namespace {
   final int id;
-  late final DateTime created, updated;
+  final DateTime created, updated;
   final String title, description;
   final User owner;
 
@@ -13,10 +13,8 @@ class Namespace {
     required this.title,
     this.description = '',
     required this.owner,
-  }) {
-    this.created = created ?? DateTime.now();
-    this.updated = updated ?? DateTime.now();
-  }
+  })  : this.created = created ?? DateTime.now(),
+        this.updated = updated ?? DateTime.now();
 
   Namespace.fromJson(Map<String, dynamic> json)
       : title = json['title'],

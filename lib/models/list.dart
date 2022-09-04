@@ -6,8 +6,8 @@ class TaskList {
   int namespaceId;
   String title, description;
   final User owner;
-  late final DateTime created, updated;
-  late final List<Task> tasks;
+  final DateTime created, updated;
+  final List<Task> tasks;
   final bool isFavorite;
 
   TaskList({
@@ -20,11 +20,9 @@ class TaskList {
     DateTime? updated,
     List<Task>? tasks,
     this.isFavorite = false,
-  }) {
-    this.created = created ?? DateTime.now();
-    this.updated = updated ?? DateTime.now();
-    this.tasks = tasks ?? [];
-  }
+  })  : this.created = created ?? DateTime.now(),
+        this.updated = updated ?? DateTime.now(),
+        this.tasks = tasks ?? [];
 
   TaskList.fromJson(Map<String, dynamic> json)
       : id = json['id'],
