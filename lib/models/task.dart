@@ -14,7 +14,7 @@ class Task {
   late final DateTime created, updated;
   final DateTime? dueDate, startDate, endDate;
   final List<DateTime> reminderDates;
-  final String? identifier;
+  final String identifier;
   final String title, description;
   final bool done;
   final Color? color;
@@ -33,7 +33,7 @@ class Task {
 
   Task({
     this.id = -1,
-    this.identifier,
+    this.identifier = '',
     this.title = '',
     this.description = '',
     this.done = false,
@@ -109,7 +109,7 @@ class Task {
         'id': id != -1 ? id : null,
         'title': title,
         'description': description,
-        'identifier': identifier,
+        'identifier': identifier.isNotEmpty ? identifier : null,
         'done': done,
         'reminder_dates': reminderDates
             .map((date) => date.toUtc().toIso8601String())
