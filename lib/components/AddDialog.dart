@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/components/datetimePicker.dart';
+import 'package:vikunja_app/global.dart';
 import 'dart:developer';
 import '../models/task.dart';
 
 enum NewTaskDue {day,week, month, custom}
+// TODO: add to enum above
 Map<NewTaskDue, Duration> newTaskDueToDuration = {
   NewTaskDue.day: Duration(days: 1),
   NewTaskDue.week: Duration(days: 7),
@@ -12,7 +14,7 @@ Map<NewTaskDue, Duration> newTaskDueToDuration = {
 
 class AddDialog extends StatefulWidget {
   final ValueChanged<String>? onAdd;
-  final ValueChanged<Task>? onAddTask;
+  final void Function(String title, DateTime? dueDate)? onAddTask;
   final InputDecoration? decoration;
   const AddDialog({Key? key, this.onAdd, this.decoration, this.onAddTask}) : super(key: key);
 
@@ -65,11 +67,7 @@ class AddDialogState extends State<AddDialog> {
             if (widget.onAdd != null && textController.text.isNotEmpty)
               widget.onAdd!(textController.text);
             if(widget.onAddTask != null && textController.text.isNotEmpty) {
-              widget.onAddTask!(Task(id: 0,
-                  title: textController.text,
-                  done: false,
-                  createdBy: null,
-                  dueDate: customDueDate, identifier: ''));
+              widget.onAddTask!(textController.text, customDueDate);
             }
             Navigator.pop(context);
           },

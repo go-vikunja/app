@@ -14,9 +14,14 @@ class TaskTile extends StatefulWidget {
   final bool loading;
   final ValueSetter<bool>? onMarkedAsDone;
 
-  const TaskTile(
-      {Key? key, required this.task, required this.onEdit, this.loading = false, this.showInfo = false, this.onMarkedAsDone})
-      : super(key: key);
+  const TaskTile({
+    Key? key,
+    required this.task,
+    required this.onEdit,
+    this.loading = false,
+    this.showInfo = false,
+    this.onMarkedAsDone,
+  }) : super(key: key);
 /*
   @override
   TaskTileState createState() {
@@ -49,11 +54,11 @@ class TaskTileState extends State<TaskTile> with AutomaticKeepAliveClientMixin {
                 strokeWidth: 2.0,
               )),
         ),
-        title: Text(_currentTask.title ?? ""),
+        title: Text(_currentTask.title),
         subtitle:
-            _currentTask.description == null || _currentTask.description!.isEmpty
+            _currentTask.description.isEmpty
                 ? null
-                : Text(_currentTask.description ?? ""),
+                : Text(_currentTask.description),
         trailing: IconButton(
             icon: Icon(Icons.settings), onPressed: () {  },
             ),
@@ -73,14 +78,14 @@ class TaskTileState extends State<TaskTile> with AutomaticKeepAliveClientMixin {
                 color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
               ),
             )
-          ) : Text(_currentTask.title ?? ""),
+          ) : Text(_currentTask.title),
       controlAffinity: ListTileControlAffinity.leading,
       value: _currentTask.done,
       subtitle: widget.showInfo && _currentTask.hasDueDate ?
-          Text("Due " + durationToHumanReadable(durationUntilDue!), style: TextStyle(color: durationUntilDue.isNegative ? Colors.red : null),)
-          : _currentTask.description == null || _currentTask.description!.isEmpty
+          Text("Due " + durationToHumanReadable(durationUntilDue!), style: durationUntilDue.isNegative ? TextStyle(color: Colors.red) : null,)
+          : _currentTask.description.isEmpty
               ? null
-              : Text(_currentTask.description ?? ""),
+              : Text(_currentTask.description),
       secondary:
           IconButton(icon: Icon(Icons.settings), onPressed: () {
             Navigator.push<Task>(

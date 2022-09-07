@@ -19,7 +19,6 @@ class SliverBucketList extends StatelessWidget {
   Widget build(BuildContext context) {
     return SliverList(
       delegate: SliverChildBuilderDelegate((context, index) {
-        if (bucket.tasks == null) return null;
         return index >= bucket.tasks.length ? null : BucketTaskCard(
           key: ObjectKey(bucket.tasks[index]),
           task: bucket.tasks[index],
@@ -33,14 +32,16 @@ class SliverBucketList extends StatelessWidget {
     );
   }
 
-  Future<void> _moveTaskToBucket(BuildContext context, Task task, int index) {
-    return Provider.of<ListProvider>(context, listen: false).moveTaskToBucket(
+  Future<void> _moveTaskToBucket(BuildContext context, Task task, int index) async {
+    await Provider.of<ListProvider>(context, listen: false).moveTaskToBucket(
       context: context,
       task: task,
       newBucketId: bucket.id,
       index: index,
-    ).then((_) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text('${task.title} was moved to ${bucket.title} successfully!'),
-    )));
+    );
+
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('\'${task.title}\' was moved to \'${bucket.title}\' successfully!'),
+    ));
   }
 }

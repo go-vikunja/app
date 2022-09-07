@@ -4,7 +4,11 @@
             "name": "Flutter",
             "request": "launch",
             "type": "dart",
-            "flutterMode": "debug"
+            "flutterMode": "debug",
+            "args": [
+                "--flavor",
+                "main"
+            ],
         }
     ]
 }

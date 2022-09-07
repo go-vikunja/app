@@ -158,29 +158,33 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
     requestIOSPermissions(notificationsPlugin);
   }
 
-  void scheduleDueNotifications() {
-    notificationsPlugin.cancelAll().then((value) {
-      taskService.getAll().then((value) =>
-          value.forEach((task) {
-            if(task.reminderDates != null)
-              task.reminderDates!.forEach((reminder) {
-                scheduleNotification("Reminder", "This is your reminder for '" + task.title! + "'",
-                    notificationsPlugin,
-                    reminder!,
-                    currentTimeZone,
-                    platformChannelSpecificsReminders,
-                    id: (reminder.millisecondsSinceEpoch/1000).floor());
-              });
-            if(task.dueDate != null)
-              scheduleNotification("Due Reminder","The task '" + task.title! + "' is due.",
-                  notificationsPlugin,
-                  task.dueDate!,
-                  currentTimeZone,
-                  platformChannelSpecificsDueDate,
-                  id: task.id);
-          })
-      );
-    });
+  Future<void> scheduleDueNotifications() async {
+    await notificationsPlugin.cancelAll();
+    final tasks = await taskService.getAll();
+    for (final task in tasks) {
+      for (final reminder in task.reminderDates) {
+        scheduleNotification(
+          "Reminder",
+          "This is your reminder for '" + task.title + "'",
+          notificationsPlugin,
+          reminder,
+          currentTimeZone,
+          platformChannelSpecificsReminders,
+          id: (reminder.millisecondsSinceEpoch / 1000).floor(),
+        );
+      }
+      if (task.hasDueDate) {
+        scheduleNotification(
+          "Due Reminder",
+          "The task '" + task.title + "' is due.",
+          notificationsPlugin,
+          task.dueDate!,
+          currentTimeZone,
+          platformChannelSpecificsDueDate,
+          id: task.id,
+        );
+      }
+    }
   }
 
 
@@ -215,7 +219,7 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
       return;
     }
     client.configure(token: token, base: base, authenticated: true);
-    var loadedCurrentUser;
+    User loadedCurrentUser;
     try {
       loadedCurrentUser = await UserAPIService(client).getCurrentUser();
     } on ApiException catch (e) {
@@ -233,9 +237,9 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
         });
         return;
       }
-      loadedCurrentUser = User(int.tryParse(currentUser)!, "", "");
+      loadedCurrentUser = User(id: int.parse(currentUser), username: '');
     } catch (otherExceptions) {
-      loadedCurrentUser = User(int.tryParse(currentUser)!, "", "");
+      loadedCurrentUser = User(id: int.parse(currentUser), username: '');
     }
     setState(() {
       _currentUser = loadedCurrentUser;

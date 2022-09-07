@@ -32,7 +32,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
     version: any
-  test: 1.21.1
+  test: ^1.21.1
   flutter_launcher_icons: ^0.10.0
 
 flutter_icons:
