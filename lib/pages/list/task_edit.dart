@@ -60,6 +60,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
     }
 
     _labels = widget.task.labels;
+    _priority = widget.task.priority;
 
     super.initState();
   }
