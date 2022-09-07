@@ -119,6 +119,8 @@ class LandingPageState extends State<LandingPage> with AfterLayoutMixin<LandingP
     await globalState.taskService.add(
       defaultList!,
       Task(
+        title: title,
+        dueDate: dueDate,
         createdBy: globalState.currentUser!,
         listId: defaultList!,
       ),
