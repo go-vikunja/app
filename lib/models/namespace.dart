@@ -26,8 +26,8 @@ class Namespace {
 
   Map<String, dynamic> toJSON() => {
         'id': id != -1 ? id : null,
-        'created': created.toIso8601String(),
-        'updated': updated.toIso8601String(),
+        'created': created.toUtc().toIso8601String(),
+        'updated': updated.toUtc().toIso8601String(),
         'title': title,
         'owner': owner.toJSON(),
         'description': description

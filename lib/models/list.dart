@@ -43,8 +43,8 @@ class TaskList {
       'title': title,
       'description': description,
       'owner': owner.toJSON(),
-      'created': created.toIso8601String(),
-      'updated': updated.toIso8601String(),
+      'created': created.toUtc().toIso8601String(),
+      'updated': updated.toUtc().toIso8601String(),
       'namespace_id': namespaceId
     };
   }
