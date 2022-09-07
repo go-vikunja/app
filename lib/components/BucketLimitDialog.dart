@@ -18,7 +18,7 @@ class _BucketLimitDialogState extends State<BucketLimitDialog> {
   Widget build(BuildContext context) {
     if (_controller.text.isEmpty) _controller.text = '${widget.bucket.limit}';
     return AlertDialog(
-      title: Text('Limit for ${widget.bucket.title}'),
+      title: Text('Limit for \'${widget.bucket.title}\''),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

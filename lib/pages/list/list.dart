@@ -541,7 +541,7 @@ class _ListPageState extends State<ListPage> {
                           newBucketId: bucket.id,
                           index: 0,
                         ).then((_) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content: Text('${data.task.title} was moved to ${bucket.title} successfully!'),
+                          content: Text('\'${data.task.title}\' was moved to \'${bucket.title}\' successfully!'),
                         )));
                         setState(() => _bucketProps[bucket.id]!.taskDropSize = null);
                       },
@@ -626,7 +626,7 @@ class _ListPageState extends State<ListPage> {
       builder: (_) => AddDialog(
         onAdd: (title) => _addItem(title, context, bucket),
         decoration: InputDecoration(
-          labelText: (bucket != null ? '${bucket.title}: ' : '') + 'New Task Name',
+          labelText: (bucket != null ? '\'${bucket.title}\': ' : '') + 'New Task Name',
           hintText: 'eg. Milk',
         ),
       ),
@@ -655,7 +655,7 @@ class _ListPageState extends State<ListPage> {
     )
         .then((_) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('The task was added successfully' + (bucket != null ? ' to ${bucket.title}' : '') + '!'),
+        content: Text('The task was added successfully' + (bucket != null ? ' to \'${bucket.title}\'' : '') + '!'),
       ));
       setState(() {
         _loadingTasks.remove(newTask);
@@ -706,7 +706,7 @@ class _ListPageState extends State<ListPage> {
       bucket: bucket,
     ).then((_) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('${bucket.title} bucket updated successfully!'),
+        content: Text('\'${bucket.title}\' bucket updated successfully!'),
       ));
       setState(() {});
     });
@@ -722,7 +722,7 @@ class _ListPageState extends State<ListPage> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Row(
         children: <Widget>[
-          Text('${bucket.title} was deleted.'),
+          Text('\'${bucket.title}\' was deleted.'),
           Icon(Icons.delete),
         ],
       ),

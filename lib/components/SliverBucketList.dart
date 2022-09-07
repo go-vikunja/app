@@ -41,7 +41,7 @@ class SliverBucketList extends StatelessWidget {
     );
 
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text('${task.title} was moved to ${bucket.title} successfully!'),
+      content: Text('\'${task.title}\' was moved to \'${bucket.title}\' successfully!'),
     ));
   }
 }
