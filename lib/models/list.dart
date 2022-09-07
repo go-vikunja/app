@@ -11,7 +11,7 @@ class TaskList {
   final bool isFavorite;
 
   TaskList({
-    this.id = -1,
+    this.id = 0,
     required this.title,
     required this.namespaceId,
     this.description = '',
@@ -39,7 +39,7 @@ class TaskList {
 
   toJSON() {
     return {
-      'id': id != -1 ? id : null,
+      'id': id,
       'title': title,
       'description': description,
       'owner': owner.toJSON(),

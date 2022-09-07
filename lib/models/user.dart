@@ -7,7 +7,7 @@ class User {
   final DateTime created, updated;
 
   User({
-    this.id = -1,
+    this.id = 0,
     this.name = '',
     required this.username,
     DateTime? created,
@@ -23,7 +23,7 @@ class User {
         updated = DateTime.parse(json['updated']);
 
   toJSON() => {
-        'id': id != -1 ? id : null,
+        'id': id,
         'name': name,
         'username': username,
         'created': created.toUtc().toIso8601String(),

@@ -32,7 +32,7 @@ class Task {
   late final hasDueDate = dueDate?.year != 1;
 
   Task({
-    this.id = -1,
+    this.id = 0,
     this.identifier = '',
     this.title = '',
     this.description = '',
@@ -104,7 +104,7 @@ class Task {
         createdBy = User.fromJson(json['created_by']);
 
   toJSON() => {
-        'id': id != -1 ? id : null,
+        'id': id,
         'title': title,
         'description': description,
         'identifier': identifier.isNotEmpty ? identifier : null,

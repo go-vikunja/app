@@ -7,7 +7,7 @@ class Namespace {
   final User owner;
 
   Namespace({
-    this.id = -1,
+    this.id = 0,
     DateTime? created,
     DateTime? updated,
     required this.title,
@@ -25,7 +25,7 @@ class Namespace {
         owner = User.fromJson(json['owner']);
 
   Map<String, dynamic> toJSON() => {
-        'id': id != -1 ? id : null,
+        'id': id,
         'created': created.toUtc().toIso8601String(),
         'updated': updated.toUtc().toIso8601String(),
         'title': title,
