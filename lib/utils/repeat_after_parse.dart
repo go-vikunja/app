@@ -1,4 +1,4 @@
-getRepeatAfterTypeFromDuration(Duration? repeatAfter) {
+String? getRepeatAfterTypeFromDuration(Duration? repeatAfter) {
   if (repeatAfter == null || repeatAfter.inSeconds == 0) {
     return null;
   }
@@ -18,7 +18,7 @@ getRepeatAfterTypeFromDuration(Duration? repeatAfter) {
   return 'Hours';
 }
 
-getRepeatAfterValueFromDuration(Duration? repeatAfter) {
+int? getRepeatAfterValueFromDuration(Duration? repeatAfter) {
   if (repeatAfter == null || repeatAfter.inSeconds == 0) {
     return null;
   }
@@ -43,13 +43,16 @@ getRepeatAfterValueFromDuration(Duration? repeatAfter) {
   return repeatAfter.inHours;
 }
 
-getDurationFromType(String? value, String? type) {
+Duration? getDurationFromType(String? value, String? type) {
   // Return an empty duration if either of the values is not set
   if (value == null || value == '' || type == null || type == '') {
     return Duration();
   }
 
-  int val = int.parse(value);
+  int? val = int.tryParse(value);
+  if (val == null) {
+    return null;
+  }
 
   switch (type) {
     case 'Hours':
@@ -63,4 +66,6 @@ getDurationFromType(String? value, String? type) {
     case 'Years':
       return Duration(days: val * 365);
   }
+  
+  return null;
 }

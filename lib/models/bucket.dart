@@ -14,7 +14,7 @@ class Bucket {
   final List<Task> tasks;
 
   Bucket({
-    this.id = -1,
+    this.id = 0,
     required this.listId,
     required this.title,
     this.position,
@@ -47,7 +47,7 @@ class Bucket {
                 .toList();
 
   toJSON() => {
-    'id': id != -1 ? id : null,
+    'id': id,
     'list_id': listId,
     'title': title,
     'position': position,

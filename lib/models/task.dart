@@ -12,15 +12,15 @@ class Task {
   final int? parentTaskId, priority, bucketId;
   final int listId;
   final DateTime created, updated;
-  final DateTime? dueDate, startDate, endDate;
+  DateTime? dueDate, startDate, endDate;
   final List<DateTime> reminderDates;
   final String identifier;
   final String title, description;
   final bool done;
-  final Color? color;
+  Color? color;
   final double? kanbanPosition;
   final User createdBy;
-  final Duration? repeatAfter;
+  Duration? repeatAfter;
   final List<Task> subtasks;
   final List<Label> labels;
   final List<TaskAttachment> attachments;
@@ -28,11 +28,9 @@ class Task {
 
   late final checkboxStatistics = getCheckboxStatistics(description);
   late final hasCheckboxes = checkboxStatistics.total != 0;
-  late final textColor = (color != null && color!.computeLuminance() > 0.5) ? Colors.black : Colors.white;
-  late final hasDueDate = dueDate?.year != 1;
 
   Task({
-    this.id = -1,
+    this.id = 0,
     this.identifier = '',
     this.title = '',
     this.description = '',
@@ -58,6 +56,14 @@ class Task {
         this.updated = updated ?? DateTime.now();
 
   bool loading = false;
+
+  Color get textColor {
+    if (color != null && color!.computeLuminance() > 0.5) {
+      return Colors.black;
+    }
+    return Colors.white;
+  }
+  bool get hasDueDate => dueDate?.year != 1;
 
   Task.fromJson(Map<String, dynamic> json)
       : id = json['id'],
@@ -104,7 +110,7 @@ class Task {
         createdBy = User.fromJson(json['created_by']);
 
   toJSON() => {
-        'id': id != -1 ? id : null,
+        'id': id,
         'title': title,
         'description': description,
         'identifier': identifier.isNotEmpty ? identifier : null,
@@ -146,7 +152,6 @@ class Task {
     String? identifier,
     bool? done,
     Color? color,
-    bool? resetColor,
     double? kanbanPosition,
     User? createdBy,
     Duration? repeatAfter,
@@ -170,7 +175,7 @@ class Task {
       description: description ?? this.description,
       identifier: identifier ?? this.identifier,
       done: done ?? this.done,
-      color: (resetColor ?? false) ? null : (color ?? this.color),
+      color: color ?? this.color,
       kanbanPosition: kanbanPosition ?? this.kanbanPosition,
       createdBy: createdBy ?? this.createdBy,
       repeatAfter: repeatAfter ?? this.repeatAfter,

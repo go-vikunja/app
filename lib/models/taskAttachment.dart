@@ -10,7 +10,7 @@ class TaskAttachment {
   // TODO: add file
 
   TaskAttachment({
-    this.id = -1,
+    this.id = 0,
     required this.taskId,
     DateTime? created,
     required this.createdBy,
@@ -23,7 +23,7 @@ class TaskAttachment {
         createdBy = User.fromJson(json['created_by']);
 
   toJSON() => {
-    'id': id != -1 ? id : null,
+    'id': id,
     'task_id': taskId,
     'created': created.toUtc().toIso8601String(),
     'created_by': createdBy.toJSON(),

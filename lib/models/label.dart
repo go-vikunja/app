@@ -13,7 +13,7 @@ class Label {
   late final Color textColor = color != null && color!.computeLuminance() <= 0.5 ? vLabelLight : vLabelDark;
 
   Label({
-    this.id = -1,
+    this.id = 0,
     required this.title,
     this.description = '',
     this.color,
@@ -35,7 +35,7 @@ class Label {
         createdBy = User.fromJson(json['created_by']);
 
   toJSON() => {
-        'id': id != -1 ? id : null,
+        'id': id,
         'title': title,
         'description': description,
         'hex_color':

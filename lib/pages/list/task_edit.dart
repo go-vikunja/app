@@ -365,19 +365,18 @@ class _TaskEditPageState extends State<TaskEditPage> {
     // Removes all reminders with no value set.
     _reminderDates.removeWhere((d) => d == DateTime(0));
 
-    Task updatedTask = widget.task.copyWith(
+    final updatedTask = widget.task.copyWith(
       title: _title,
       description: _description,
       reminderDates: _reminderDates,
-      dueDate: _dueDate,
-      startDate: _startDate,
-      endDate: _endDate,
       priority: _priority,
-      repeatAfter: _repeatAfter,
       labels: _labels,
-      color: _resetColor ? null : (_color ?? widget.task.color),
-      resetColor: _resetColor,
-    );
+    )
+      ..dueDate = _dueDate
+      ..startDate = _startDate
+      ..endDate = _endDate
+      ..color = _resetColor ? null : (_color ?? widget.task.color)
+      ..repeatAfter = _repeatAfter;
 
     // update the labels
     await VikunjaGlobal.of(context)
