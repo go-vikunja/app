@@ -12,15 +12,15 @@ class Task {
   final int? parentTaskId, priority, bucketId;
   final int listId;
   final DateTime created, updated;
-  final DateTime? dueDate, startDate, endDate;
+  DateTime? dueDate, startDate, endDate;
   final List<DateTime> reminderDates;
   final String identifier;
   final String title, description;
   final bool done;
-  final Color? color;
+  Color? color;
   final double? kanbanPosition;
   final User createdBy;
-  final Duration? repeatAfter;
+  Duration? repeatAfter;
   final List<Task> subtasks;
   final List<Label> labels;
   final List<TaskAttachment> attachments;
@@ -28,8 +28,6 @@ class Task {
 
   late final checkboxStatistics = getCheckboxStatistics(description);
   late final hasCheckboxes = checkboxStatistics.total != 0;
-  late final textColor = (color != null && color!.computeLuminance() > 0.5) ? Colors.black : Colors.white;
-  late final hasDueDate = dueDate?.year != 1;
 
   Task({
     this.id = 0,
@@ -58,6 +56,14 @@ class Task {
         this.updated = updated ?? DateTime.now();
 
   bool loading = false;
+
+  Color get textColor {
+    if (color != null && color!.computeLuminance() > 0.5) {
+      return Colors.black;
+    }
+    return Colors.white;
+  }
+  bool get hasDueDate => dueDate?.year != 1;
 
   Task.fromJson(Map<String, dynamic> json)
       : id = json['id'],
@@ -138,22 +144,17 @@ class Task {
     DateTime? created,
     DateTime? updated,
     DateTime? dueDate,
-    bool? clearDueDate,
     DateTime? startDate,
-    bool? clearStartDate,
     DateTime? endDate,
-    bool? clearEndDate,
     List<DateTime>? reminderDates,
     String? title,
     String? description,
     String? identifier,
     bool? done,
     Color? color,
-    bool? resetColor,
     double? kanbanPosition,
     User? createdBy,
     Duration? repeatAfter,
-    bool? clearRepeatAfter,
     List<Task>? subtasks,
     List<Label>? labels,
     List<TaskAttachment>? attachments,
@@ -166,18 +167,18 @@ class Task {
       bucketId: bucketId ?? this.bucketId,
       created: created ?? this.created,
       updated: updated ?? this.updated,
-      dueDate: (clearDueDate ?? false) ? null : (dueDate ?? this.dueDate),
-      startDate: (clearStartDate ?? false) ? null : (startDate ?? this.startDate),
-      endDate: (clearEndDate ?? false) ? null : (endDate ?? this.endDate),
+      dueDate: dueDate ?? this.dueDate,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
       reminderDates: reminderDates ?? this.reminderDates,
       title: title ?? this.title,
       description: description ?? this.description,
       identifier: identifier ?? this.identifier,
       done: done ?? this.done,
-      color: (resetColor ?? false) ? null : (color ?? this.color),
+      color: color ?? this.color,
       kanbanPosition: kanbanPosition ?? this.kanbanPosition,
       createdBy: createdBy ?? this.createdBy,
-      repeatAfter: (clearRepeatAfter ?? false) ? null : (repeatAfter ?? this.repeatAfter),
+      repeatAfter: repeatAfter ?? this.repeatAfter,
       subtasks: subtasks ?? this.subtasks,
       labels: labels ?? this.labels,
       attachments: attachments ?? this.attachments,
