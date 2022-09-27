@@ -32,15 +32,18 @@ class Client {
     return otherClient._token == _token;
   }
 
-  Client(this.global, {String? token, String? base, bool authenticated = false}) {
+  Client(this.global,
+      {String? token, String? base, bool authenticated = false}) {
     configure(token: token, base: base, authenticated: authenticated);
   }
 
   void reload_ignore_certs(bool? val) {
     ignoreCertificates = val ?? false;
     HttpOverrides.global = new IgnoreCertHttpOverrides(ignoreCertificates);
-    VikunjaGlobal.of(global.currentContext!).settingsManager.setIgnoreCertificates(ignoreCertificates);
-
+    VikunjaGlobal
+        .of(global.currentContext!)
+        .settingsManager
+        .setIgnoreCertificates(ignoreCertificates);
   }
 
   get _headers =>
@@ -53,11 +56,11 @@ class Client {
   int get hashCode => _token.hashCode;
 
   void configure({String? token, String? base, bool? authenticated}) {
-    if(token != null)
+    if (token != null)
       _token = token;
-    if(base != null)
+    if (base != null)
       _base = base.endsWith('/api/v1') ? base : '$base/api/v1';
-    if(authenticated != null)
+    if (authenticated != null)
       this.authenticated = authenticated;
   }
 
@@ -69,9 +72,11 @@ class Client {
 
   Future<Response> get(String url,
       [Map<String, List<String>>? queryParameters]) {
-    final uri = Uri.parse('${this.base}$url').replace(queryParameters: queryParameters);
+    final uri = Uri.parse('${this.base}$url').replace(
+        queryParameters: queryParameters);
     return http.get(uri, headers: _headers)
-        .then(_handleResponse, onError: _handleError);
+        .then(_handleResponse).onError((error, stackTrace) =>
+        _handleError(error, stackTrace));
   }
 
   Future<Response> delete(String url) {
@@ -80,7 +85,8 @@ class Client {
       '${this.base}$url'.toUri()!,
       headers: _headers,
     )
-        .then(_handleResponse, onError: _handleError);
+        .then(_handleResponse).onError((error, stackTrace) =>
+        _handleError(error, stackTrace));
   }
 
   Future<Response> post(String url, {dynamic body}) {
@@ -90,7 +96,8 @@ class Client {
       headers: _headers,
       body: _encoder.convert(body),
     )
-        .then(_handleResponse, onError: _handleError);
+        .then(_handleResponse).onError((error, stackTrace) =>
+        _handleError(error, stackTrace));
   }
 
   Future<Response> put(String url, {dynamic body}) {
@@ -100,14 +107,16 @@ class Client {
       headers: _headers,
       body: _encoder.convert(body),
     )
-        .then(_handleResponse, onError: _handleError);
+        .then(_handleResponse).onError((error, stackTrace) =>
+        _handleError(error, stackTrace));
   }
 
-  void _handleError(dynamic e) {
-    log(e.toString());
+  FutureOr<Response> _handleError(Object? e, StackTrace? st) {
     SnackBar snackBar = SnackBar(
-        content: Text("Error on request: " + e.toString()));
+      content: Text("Error on request: " + e.toString()),
+      action: SnackBarAction(label: "Clear", onPressed: () => global.currentState?.clearSnackBars()),);
     global.currentState?.showSnackBar(snackBar);
+    return Response("", 0, {}, error: true);
   }
 
   Map<String, String> headersToMap(HttpHeaders headers) {

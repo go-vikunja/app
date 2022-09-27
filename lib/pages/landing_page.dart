@@ -10,44 +10,41 @@ import '../components/TaskTile.dart';
 import '../models/task.dart';
 
 class LandingPage extends StatefulWidget {
-
-  const LandingPage(
-      {Key? key})
-      : super(key: key);
+  const LandingPage({Key? key}) : super(key: key);
 
   @override
   State<StatefulWidget> createState() => LandingPageState();
-
 }
 
-class LandingPageState extends State<LandingPage> with AfterLayoutMixin<LandingPage> {
+enum LandingPageStatus { built, loading, success, error }
+
+class LandingPageState extends State<LandingPage>
+    with AfterLayoutMixin<LandingPage> {
   int? defaultList;
-  List<Task>? _list;
+  List<Task> _list = [];
+  LandingPageStatus landingPageStatus = LandingPageStatus.built;
   static const platform = const MethodChannel('vikunja');
 
-
   Future<void> _updateDefaultList() async {
-    return VikunjaGlobal.of(context)
-        .listService
-        .getDefaultList()
-        .then((value) => setState(() => defaultList = value == null ? null : int.tryParse(value)));
+    return VikunjaGlobal.of(context).listService.getDefaultList().then(
+        (value) => setState(
+            () => defaultList = value == null ? null : int.tryParse(value)));
   }
 
   @override
   void initState() {
-    Future.delayed(Duration.zero, () =>
-        _updateDefaultList().then((value) {
-          try {
-          platform.invokeMethod("isQuickTile","").then((value) => {
-          if(value is bool && value)
-            _addItemDialog(context)
-          });
-          } catch (e) {
-            log(e.toString());
-          }}));
+    Future.delayed(
+        Duration.zero,
+        () => _updateDefaultList().then((value) {
+              try {
+                platform.invokeMethod("isQuickTile", "").then((value) =>
+                    {if (value is bool && value) _addItemDialog(context)});
+              } catch (e) {
+                log(e.toString());
+              }
+            }));
     super.initState();
   }
-
 
   @override
   void afterFirstLayout(BuildContext context) {
@@ -66,46 +63,55 @@ class LandingPageState extends State<LandingPage> with AfterLayoutMixin<LandingP
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
-    if(_list == null || _list!.isEmpty)
-      _loadList(context);
+    Widget body;
+    switch (landingPageStatus) {
+      case LandingPageStatus.built:
+        _loadList(context);
+        body = new Stack(children: [ListView(), Center(child: CircularProgressIndicator(),)]);
+        break;
+      case LandingPageStatus.loading:
+        body = new Stack(children: [ListView(), Center(child: CircularProgressIndicator(),)]);
+        break;
+      case LandingPageStatus.error:
+        body = new Stack(children: [ListView(), Center(child: Text("There was an error loading this view"))]);
+        break;
+      case LandingPageStatus.success:
+        body = ListView(
+          scrollDirection: Axis.vertical,
+          shrinkWrap: true,
+          padding: EdgeInsets.symmetric(vertical: 8.0),
+          children:
+              ListTile.divideTiles(context: context, tiles: _listTasks(context))
+                  .toList(),
+        );
+        break;
+    }
     return new Scaffold(
-      body: RefreshIndicator(
-        onRefresh: () => _loadList(context),
-        child: _list != null ? ListView(
-        scrollDirection: Axis.vertical,
-        shrinkWrap: true,
-        padding: EdgeInsets.symmetric(vertical: 8.0),
-        children: ListTile.divideTiles(
-            context: context, tiles: _listTasks(context)).toList(),
-      ) : new Center(child: CircularProgressIndicator(),),
-      ),
+        body:
+            RefreshIndicator(onRefresh: () => _loadList(context), child: body),
         floatingActionButton: Builder(
-            builder: (context) =>
-                FloatingActionButton(
+            builder: (context) => FloatingActionButton(
                   onPressed: () {
                     _addItemDialog(context);
                   },
                   child: const Icon(Icons.add),
-                )
-        )
-    );
+                )));
   }
+
   _addItemDialog(BuildContext context) {
-    if(defaultList == null) {
+    if (defaultList == null) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('Please select a default list in the settings'),
       ));
     } else {
       showDialog(
           context: context,
-          builder: (_) =>
-              AddDialog(
-                  onAddTask: (title, dueDate) => _addTask(title, dueDate, context),
-                  decoration: new InputDecoration(
-                      labelText: 'Task Name', hintText: 'eg. Milk')));
+          builder: (_) => AddDialog(
+              onAddTask: (title, dueDate) => _addTask(title, dueDate, context),
+              decoration: new InputDecoration(
+                  labelText: 'Task Name', hintText: 'eg. Milk')));
     }
   }
 
@@ -132,9 +138,8 @@ class LandingPageState extends State<LandingPage> with AfterLayoutMixin<LandingP
     _loadList(context).then((value) => setState(() {}));
   }
 
-
   List<Widget> _listTasks(BuildContext context) {
-    var tasks = (_list?.map((task) => _buildTile(task, context)) ?? []).toList();
+    var tasks = (_list.map((task) => _buildTile(task, context))).toList();
     //tasks.addAll(_loadingTasks.map(_buildLoadingTile));
     return tasks;
   }
@@ -142,28 +147,36 @@ class LandingPageState extends State<LandingPage> with AfterLayoutMixin<LandingP
   TaskTile _buildTile(Task task, BuildContext context) {
     // key: UniqueKey() seems like a weird workaround to fix the loading issue
     // is there a better way?
-    return TaskTile(key: UniqueKey(), task: task,onEdit: () => _loadList(context), showInfo: true,);
+    return TaskTile(
+      key: UniqueKey(),
+      task: task,
+      onEdit: () => _loadList(context),
+      showInfo: true,
+    );
   }
 
   Future<void> _loadList(BuildContext context) {
+    log("reloading list");
     _list = [];
+    landingPageStatus = LandingPageStatus.loading;
     // FIXME: loads and reschedules tasks each time list is updated
     VikunjaGlobal.of(context).scheduleDueNotifications();
     return VikunjaGlobal.of(context)
         .taskService
         .getByOptions(VikunjaGlobal.of(context).taskServiceOptions)
-        .then((taskList) {
-          VikunjaGlobal.of(context)
-          .listService
-          .getAll()
-          .then((lists) {
-            //taskList.forEach((task) {task.list = lists.firstWhere((element) => element.id == task.list_id);});
-            setState(() {
-              _list = taskList;
-            });
-          });
+        .then<Future<void>?>((taskList) {
+      if (taskList.isEmpty) {
+        landingPageStatus = LandingPageStatus.error;
+        return null;
+      }
+      return VikunjaGlobal.of(context).listService.getAll().then((lists) {
+        //taskList.forEach((task) {task.list = lists.firstWhere((element) => element.id == task.list_id);});
+        setState(() {
+          _list = taskList;
+          landingPageStatus = LandingPageStatus.success;
         });
+        return null;
+      });
+    });
   }
-
-
 }

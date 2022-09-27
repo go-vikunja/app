@@ -43,7 +43,10 @@ class ListAPIService extends APIService implements ListService {
   @override
   Future<List<TaskList>> getAll() {
     return client.get('/lists').then(
-        (list) => convertList(list.body, (result) => TaskList.fromJson(result)));
+        (list) {
+          if (list.body.toString().isEmpty)
+            return Future.value([]);
+          return convertList(list.body, (result) => TaskList.fromJson(result));});
   }
 
   @override

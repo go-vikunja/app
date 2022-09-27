@@ -119,7 +119,7 @@ class _ListPageState extends State<ListPage> {
                           }(),
                         ),
                       )
-                    : Center(child: Text('This list is empty.')),
+                    : Stack(children: [ListView(), Center(child: Text('This list is empty.'))]),
                 onRefresh: _loadList,
               )
             : Center(child: CircularProgressIndicator()),

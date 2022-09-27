@@ -43,6 +43,8 @@ class TaskAPIService extends APIService implements TaskService {
         .get('/tasks/all')
         .then((response) {
           int page_n = 0;
+          if(response.error)
+            return Future.value([]);
           if (response.headers["x-pagination-total-pages"] != null) {
             page_n = int.parse(response.headers["x-pagination-total-pages"]!);
           } else {
@@ -69,10 +71,14 @@ class TaskAPIService extends APIService implements TaskService {
       [Map<String, List<String>>? queryParameters]) {
     return client
         .get('/lists/$listId/tasks', queryParameters).then(
-            (response) => new Response(
-            convertList(response.body, (result) => Task.fromJson(result)),
-            response.statusCode,
-            response.headers));
+            (response) {
+              if(response.error)
+                return Response("", 0, {}, error: true);
+              return new Response(
+                  convertList(response.body, (result) => Task.fromJson(result)),
+                  response.statusCode,
+                  response.headers);
+            });
   }
 
   @override
@@ -81,7 +87,9 @@ class TaskAPIService extends APIService implements TaskService {
     return client
         .get('/tasks/all?$optionString')
         .then((value) {
-          return  convertList(value.body, (result) => Task.fromJson(result));
+          if(value.error)
+            return Future.value([]);
+          return convertList(value.body, (result) => Task.fromJson(result));
     });
   }
 

@@ -66,7 +66,7 @@ class _NamespacePageState extends State<NamespacePage>
                                 },
                               ))).toList(),
                     )
-                  : Center(child: Text('This namespace is empty.')),
+                  : Stack(children: [ListView(),Center(child: Text('This namespace is empty.'))]),
               onRefresh: _loadLists,
             )
           : Center(child: CircularProgressIndicator()),

@@ -1,5 +1,5 @@
 import 'dart:async';
-
+import 'dart:developer';
 import 'package:vikunja_app/api/client.dart';
 import 'package:vikunja_app/api/service.dart';
 import 'package:vikunja_app/models/namespace.dart';
@@ -29,8 +29,10 @@ class NamespaceAPIService extends APIService implements NamespaceService {
 
   @override
   Future<List<Namespace>> getAll() {
-    return client.get('/namespaces').then((response) =>
-        convertList(response.body, (result) => Namespace.fromJson(result)));
+    return client.get('/namespaces').then((response) {
+      if(response.error)
+        return Future.value([]);
+      return convertList(response.body, (result) => Namespace.fromJson(result));});
   }
 
   @override
