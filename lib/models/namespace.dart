@@ -4,7 +4,7 @@ class Namespace {
   final int id;
   final DateTime created, updated;
   final String title, description;
-  final User owner;
+  final User? owner;
 
   Namespace({
     this.id = 0,
@@ -22,14 +22,14 @@ class Namespace {
         id = json['id'],
         created = DateTime.parse(json['created']),
         updated = DateTime.parse(json['updated']),
-        owner = User.fromJson(json['owner']);
+        owner = json['owner'] != null ? User.fromJson(json['owner']) : null;
 
   Map<String, dynamic> toJSON() => {
         'id': id,
         'created': created.toUtc().toIso8601String(),
         'updated': updated.toUtc().toIso8601String(),
         'title': title,
-        'owner': owner.toJSON(),
+        'owner': owner?.toJSON(),
         'description': description
       };
 
