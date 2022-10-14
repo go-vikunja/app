@@ -8,10 +8,13 @@ class BucketAPIService extends APIService implements BucketService {
   BucketAPIService(Client client) : super(client);
 
   @override
-  Future<Bucket> add(int listId, Bucket bucket) {
+  Future<Bucket?> add(int listId, Bucket bucket) {
     return client
         .put('/lists/$listId/buckets', body: bucket.toJSON())
-        .then((response) => Bucket.fromJSON(response.body));
+        .then((response) {
+          if (response == null) return null;
+          return Bucket.fromJSON(response.body);
+        });
   }
 
   @override
@@ -30,15 +33,15 @@ class BucketAPIService extends APIService implements BucketService {
   */
 
   @override
-  Future<Response> getAllByList(int listId,
+  Future<Response?> getAllByList(int listId,
       [Map<String, List<String>>? queryParameters]) {
     return client
         .get('/lists/$listId/buckets', queryParameters)
-        .then((response) => new Response(
+        .then((response) => response != null ? new Response(
             convertList(response.body, (result) => Bucket.fromJSON(result)),
             response.statusCode,
             response.headers
-        ));
+        ) : null);
   }
 
   @override
@@ -46,9 +49,12 @@ class BucketAPIService extends APIService implements BucketService {
   int get maxPages => maxPages;
 
   @override
-  Future<Bucket> update(Bucket bucket) {
+  Future<Bucket?> update(Bucket bucket) {
     return client
         .post('/lists/${bucket.listId}/buckets/${bucket.id}', body: bucket.toJSON())
-        .then((response) => Bucket.fromJSON(response.body));
+        .then((response) {
+          if (response == null) return null;
+          return Bucket.fromJSON(response.body);
+        });
   }
 }

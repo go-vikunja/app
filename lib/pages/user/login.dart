@@ -85,6 +85,7 @@ class _LoginPageState extends State<LoginPage> {
                         enabled: !_loading,
                         controller: _serverController,
                         autocorrect: false,
+                        autofillHints: [AutofillHints.url],
                         validator: (address) {
                           return (isUrl(address) || address != null || address!.isEmpty) ? null : 'Invalid URL';
                         },
@@ -98,6 +99,7 @@ class _LoginPageState extends State<LoginPage> {
                       child: TextFormField(
                         enabled: !_loading,
                         controller: _usernameController,
+                        autofillHints: [AutofillHints.username],
                         decoration: new InputDecoration(
                             border: OutlineInputBorder(),
                             labelText: 'Username'),
@@ -108,6 +110,7 @@ class _LoginPageState extends State<LoginPage> {
                       child: TextFormField(
                         enabled: !_loading,
                         controller: _passwordController,
+                        autofillHints: [AutofillHints.password],
                         decoration: new InputDecoration(
                             border: OutlineInputBorder(),
                             labelText: 'Password'),
@@ -184,8 +187,9 @@ class _LoginPageState extends State<LoginPage> {
       if(_server.endsWith("/"))
         _server = _server.substring(0,_server.length-1);
       vGlobal.client.configure(base: _server);
-      Server info = await vGlobal.serverService.getInfo();
-
+      Server? info = await vGlobal.serverService.getInfo();
+      if(info == null)
+        throw Exception("Getting server info failed");
 
       UserTokenPair? newUser;
 
@@ -219,7 +223,6 @@ class _LoginPageState extends State<LoginPage> {
         vGlobal.changeUser(newUser.user, token: newUser.token, base: _server);
     } catch (ex, stacktrace) {
       log(stacktrace.toString());
-      throw ex;
       showDialog(
           context: context,
           builder: (context) => new AlertDialog(

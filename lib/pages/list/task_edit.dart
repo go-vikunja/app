@@ -423,6 +423,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
     return VikunjaGlobal.of(context)
         .labelService.getAll(query: query).then((labels) {
           // Only show those labels which aren't already added to the task
+          if(labels == null) return [];
           labels.removeWhere((labelToRemove) => _labels.contains(labelToRemove));
           _suggestedLabels = labels;
           List<String?> labelText = labels.map((label) => label.title).toList();
@@ -465,6 +466,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
         .labelService
         .create(newLabel)
         .then((createdLabel) {
+          if(createdLabel == null) return null;
       setState(() {
         _labels.add(createdLabel);
         _labelTypeAheadController.clear();

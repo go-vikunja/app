@@ -96,9 +96,10 @@ class _NamespacePageState extends State<NamespacePage>
         .listService
         .getByNamespace(widget.namespace.id)
         .then((lists) => setState(() {
-              this._lists = lists;
-              this._loading = false;
-            }));
+          this._loading = false;
+          if(lists != null)
+            this._lists = lists;
+        }));
   }
 
   _openList(BuildContext context, TaskList list) {

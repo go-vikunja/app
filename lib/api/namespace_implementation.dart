@@ -9,10 +9,11 @@ class NamespaceAPIService extends APIService implements NamespaceService {
   NamespaceAPIService(Client client) : super(client);
 
   @override
-  Future<Namespace> create(Namespace ns) {
-    return client
-        .put('/namespaces', body: ns.toJSON())
-        .then((response) => Namespace.fromJson(response.body));
+  Future<Namespace?> create(Namespace ns) {
+    return client.put('/namespaces', body: ns.toJSON()).then((response) {
+      if (response == null) return null;
+      return Namespace.fromJson(response.body);
+    });
   }
 
   @override
@@ -21,24 +22,28 @@ class NamespaceAPIService extends APIService implements NamespaceService {
   }
 
   @override
-  Future<Namespace> get(int namespaceId) {
-    return client
-        .get('/namespaces/$namespaceId')
-        .then((response) => Namespace.fromJson(response.body));
+  Future<Namespace?> get(int namespaceId) {
+    return client.get('/namespaces/$namespaceId').then((response) {
+      if (response == null) return null;
+      return Namespace.fromJson(response.body);
+    });
   }
 
   @override
-  Future<List<Namespace>> getAll() {
+  Future<List<Namespace>?> getAll() {
     return client.get('/namespaces').then((response) {
-      if(response.error)
-        return Future.value([]);
-      return convertList(response.body, (result) => Namespace.fromJson(result));});
+      if (response == null) return null;
+      return convertList(response.body, (result) => Namespace.fromJson(result));
+    });
   }
 
   @override
-  Future<Namespace> update(Namespace ns) {
+  Future<Namespace?> update(Namespace ns) {
     return client
         .post('/namespaces/${ns.id}', body: ns.toJSON())
-        .then((response) => Namespace.fromJson(response.body));
+        .then((response) {
+          if (response == null) return null;
+          return Namespace.fromJson(response.body);
+    });
   }
 }

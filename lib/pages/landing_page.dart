@@ -69,13 +69,26 @@ class LandingPageState extends State<LandingPage>
     switch (landingPageStatus) {
       case LandingPageStatus.built:
         _loadList(context);
-        body = new Stack(children: [ListView(), Center(child: CircularProgressIndicator(),)]);
+        body = new Stack(children: [
+          ListView(),
+          Center(
+            child: CircularProgressIndicator(),
+          )
+        ]);
         break;
       case LandingPageStatus.loading:
-        body = new Stack(children: [ListView(), Center(child: CircularProgressIndicator(),)]);
+        body = new Stack(children: [
+          ListView(),
+          Center(
+            child: CircularProgressIndicator(),
+          )
+        ]);
         break;
       case LandingPageStatus.error:
-        body = new Stack(children: [ListView(), Center(child: Text("There was an error loading this view"))]);
+        body = new Stack(children: [
+          ListView(),
+          Center(child: Text("There was an error loading this view"))
+        ]);
         break;
       case LandingPageStatus.success:
         body = ListView(
@@ -165,15 +178,19 @@ class LandingPageState extends State<LandingPage>
         .taskService
         .getByOptions(VikunjaGlobal.of(context).taskServiceOptions)
         .then<Future<void>?>((taskList) {
-      if (taskList.isEmpty) {
+      if (taskList != null && taskList.isEmpty) {
         landingPageStatus = LandingPageStatus.error;
         return null;
       }
       return VikunjaGlobal.of(context).listService.getAll().then((lists) {
         //taskList.forEach((task) {task.list = lists.firstWhere((element) => element.id == task.list_id);});
         setState(() {
-          _list = taskList;
-          landingPageStatus = LandingPageStatus.success;
+          if (taskList != null) {
+            _list = taskList;
+            landingPageStatus = LandingPageStatus.success;
+          } else {
+            landingPageStatus = LandingPageStatus.error;
+          }
         });
         return null;
       });

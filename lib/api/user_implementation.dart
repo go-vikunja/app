@@ -17,7 +17,7 @@ class UserAPIService extends APIService implements UserService {
       'password': password,
       'totp_passcode': totp,
       'username': username,
-    }).then((response) => response.body['token']);
+    }).then((response) => response?.body['token']);
     client.configure(token: token);
     return UserAPIService(client)
         .getCurrentUser()
@@ -30,12 +30,12 @@ class UserAPIService extends APIService implements UserService {
       'username': username,
       'email': email,
       'password': password
-    }).then((resp) => resp.body['username']);
+    }).then((resp) => resp?.body['username']);
     return login(newUser, password);
   }
 
   @override
   Future<User> getCurrentUser() {
-    return client.get('/user').then((map) => User.fromJson(map.body));
+    return client.get('/user').then((map) => User.fromJson(map?.body));
   }
 }

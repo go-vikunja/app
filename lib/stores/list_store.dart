@@ -57,7 +57,7 @@ class ListProvider with ChangeNotifier {
     }
     return VikunjaGlobal.of(context).taskService.getAllByList(listId, queryParams).then((response) {
       _isLoading = false;
-      if(response.error)
+      if(response == null)
         return;
       if (response.headers["x-pagination-total-pages"] != null) {
         _maxPages = int.parse(response.headers["x-pagination-total-pages"]!);
@@ -77,6 +77,8 @@ class ListProvider with ChangeNotifier {
     };
 
     return VikunjaGlobal.of(context).bucketService.getAllByList(listId, queryParams).then((response) {
+      if(response == null)
+        return;
       if (response.headers["x-pagination-total-pages"] != null) {
         _maxPages = int.parse(response.headers["x-pagination-total-pages"]!);
       }
@@ -104,8 +106,9 @@ class ListProvider with ChangeNotifier {
     notifyListeners();
 
     return globalState.taskService.add(listId, newTask).then((task) {
-      _tasks.insert(0, task);
       _isLoading = false;
+      if(task != null)
+        _tasks.insert(0, task);
       notifyListeners();
     });
   }
@@ -116,6 +119,8 @@ class ListProvider with ChangeNotifier {
     notifyListeners();
 
     return globalState.taskService.add(listId, newTask).then((task) {
+      if (task == null)
+        return;
       if (_tasks.isNotEmpty)
         _tasks.insert(0, task);
       if (_buckets.isNotEmpty) {
@@ -127,10 +132,12 @@ class ListProvider with ChangeNotifier {
     });
   }
 
-  Future<Task> updateTask({required BuildContext context, required Task task}) {
+  Future<Task?> updateTask({required BuildContext context, required Task task}) {
     return VikunjaGlobal.of(context).taskService.update(task).then((task) {
       // FIXME: This is ugly. We should use a redux to not have to do these kind of things.
       //  This is enough for now (it works™) but we should definitly fix it later.
+      if(task == null)
+        return null;
       _tasks.asMap().forEach((i, t) {
         if (task.id == t.id) {
           _tasks[i] = task;
@@ -150,6 +157,8 @@ class ListProvider with ChangeNotifier {
     notifyListeners();
     return VikunjaGlobal.of(context).bucketService.add(listId, newBucket)
         .then((bucket) {
+          if(bucket == null)
+            return null;
           _buckets.add(bucket);
           notifyListeners();
         });
@@ -158,6 +167,8 @@ class ListProvider with ChangeNotifier {
   Future<void> updateBucket({required BuildContext context, required Bucket bucket}) {
     return VikunjaGlobal.of(context).bucketService.update(bucket)
         .then((rBucket) {
+          if(rBucket == null)
+            return null;
           _buckets[_buckets.indexWhere((b) => rBucket.id == b.id)] = rBucket;
           _buckets.sort((a, b) => a.position!.compareTo(b.position!));
           notifyListeners();
@@ -172,12 +183,14 @@ class ListProvider with ChangeNotifier {
         });
   }
 
-  Future<void> moveTaskToBucket({required BuildContext context, required Task task, int? newBucketId, required int index}) async {
+  Future<void> moveTaskToBucket({required BuildContext context, required Task? task, int? newBucketId, required int index}) async {
+    if(task == null)
+      throw Exception("Task to be moved may not be null");
     final sameBucket = task.bucketId == newBucketId;
     final newBucketIndex = _buckets.indexWhere((b) => b.id == newBucketId);
-    if (sameBucket && index > _buckets[newBucketIndex].tasks.indexWhere((t) => t.id == task.id)) index--;
+    if (sameBucket && index > _buckets[newBucketIndex].tasks.indexWhere((t) => t.id == task?.id)) index--;
 
-    _buckets[_buckets.indexWhere((b) => b.id == task.bucketId)].tasks.remove(task);
+    _buckets[_buckets.indexWhere((b) => b.id == task?.bucketId)].tasks.remove(task);
     if (index >= _buckets[newBucketIndex].tasks.length)
       _buckets[newBucketIndex].tasks.add(task);
     else
@@ -192,6 +205,8 @@ class ListProvider with ChangeNotifier {
             ? _buckets[newBucketIndex].tasks[index + 1].kanbanPosition : null,
       ),
     ));
+    if(task == null)
+      return;
     _buckets[newBucketIndex].tasks[index] = task;
 
     // make sure the first 2 tasks don't have 0 kanbanPosition
@@ -206,16 +221,17 @@ class ListProvider with ChangeNotifier {
                   ? _buckets[newBucketIndex].tasks[2].kanbanPosition : null,
             ),
           ));
-      _buckets[newBucketIndex].tasks[1] = secondTask;
+      if(secondTask != null)
+        _buckets[newBucketIndex].tasks[1] = secondTask;
     }
 
     if (_tasks.isNotEmpty) {
-      _tasks[_tasks.indexWhere((t) => t.id == task.id)] = task;
+      _tasks[_tasks.indexWhere((t) => t.id == task?.id)] = task;
       if (secondTask != null)
         _tasks[_tasks.indexWhere((t) => t.id == secondTask!.id)] = secondTask;
     }
 
-    _buckets[newBucketIndex].tasks[_buckets[newBucketIndex].tasks.indexWhere((t) => t.id == task.id)] = task;
+    _buckets[newBucketIndex].tasks[_buckets[newBucketIndex].tasks.indexWhere((t) => t.id == task?.id)] = task;
     _buckets[newBucketIndex].tasks.sort((a, b) => a.kanbanPosition!.compareTo(b.kanbanPosition!));
 
     notifyListeners();

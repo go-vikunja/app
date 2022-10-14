@@ -12,11 +12,14 @@ class ListAPIService extends APIService implements ListService {
   ListAPIService(Client client, FlutterSecureStorage storage) : _storage = storage, super(client);
 
   @override
-  Future<TaskList> create(namespaceId, TaskList tl) {
+  Future<TaskList?> create(namespaceId, TaskList tl) {
     tl.namespaceId = namespaceId;
     return client
         .put('/namespaces/$namespaceId/lists', body: tl.toJSON())
-        .then((response) => TaskList.fromJson(response.body));
+        .then((response) {
+          if (response == null) return null;
+          return TaskList.fromJson(response.body);
+        });
   }
 
   @override
@@ -25,14 +28,15 @@ class ListAPIService extends APIService implements ListService {
   }
 
   @override
-  Future<TaskList> get(int listId) {
+  Future<TaskList?> get(int listId) {
     return client.get('/lists/$listId').then((response) {
+      if (response == null) return null;
       final map = response.body;
       if (map.containsKey('id')) {
         return client
             .get("/lists/$listId/tasks")
             .then((tasks) {
-              map['tasks'] = tasks.body;
+              map['tasks'] = tasks?.body;
               return TaskList.fromJson(map);
             });
       }
@@ -41,31 +45,40 @@ class ListAPIService extends APIService implements ListService {
   }
 
   @override
-  Future<List<TaskList>> getAll() {
+  Future<List<TaskList>?> getAll() {
     return client.get('/lists').then(
         (list) {
+          if (list == null) return null;
           if (list.body.toString().isEmpty)
             return Future.value([]);
           return convertList(list.body, (result) => TaskList.fromJson(result));});
   }
 
   @override
-  Future<List<TaskList>> getByNamespace(int namespaceId) {
+  Future<List<TaskList>?> getByNamespace(int namespaceId) {
     // TODO there needs to be a better way for this. /namespaces/-2/lists should
     // return favorite lists
     if(namespaceId == -2) {
       // Favourites.
-      return getAll().then((value) {value.removeWhere((element) => !element.isFavorite); return value;});
+      return getAll().then((value) {
+        if (value == null) return null;
+        value.removeWhere((element) => !element.isFavorite); return value;});
     }
     return client.get('/namespaces/$namespaceId/lists').then(
-        (list) => convertList(list.body, (result) => TaskList.fromJson(result)));
+        (list) {
+          if (list == null) return null;
+          return convertList(list.body, (result) => TaskList.fromJson(result));
+        });
   }
 
   @override
-  Future<TaskList> update(TaskList tl) {
+  Future<TaskList?> update(TaskList tl) {
     return client
         .post('/lists/${tl.id}', body: tl.toJSON())
-        .then((response) => TaskList.fromJson(response.body));
+        .then((response) {
+          if (response == null) return null;
+          return TaskList.fromJson(response.body);
+        });
   }
 
   @override

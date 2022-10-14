@@ -7,38 +7,53 @@ class LabelAPIService extends APIService implements LabelService {
   LabelAPIService(Client client) : super(client);
 
   @override
-  Future<Label> create(Label label) {
+  Future<Label?> create(Label label) {
     return client
         .put('/labels', body: label.toJSON())
-        .then((response) => Label.fromJson(response.body));
+        .then((response) {
+          if (response == null) return null;
+          return Label.fromJson(response.body);
+        });
   }
 
   @override
-  Future<Label> delete(Label label) {
+  Future<Label?> delete(Label label) {
     return client
         .delete('/labels/${label.id}')
-        .then((response) => Label.fromJson(response.body));
+        .then((response) {
+          if (response == null) return null;
+          return Label.fromJson(response.body);
+        });
   }
 
   @override
-  Future<Label> get(int labelID) {
+  Future<Label?> get(int labelID) {
     return client
         .get('/labels/$labelID')
-        .then((response) => Label.fromJson(response.body));
+        .then((response) {
+          if (response == null) return null;
+          return Label.fromJson(response.body);
+        });
   }
 
   @override
-  Future<List<Label>> getAll({String? query}) {
+  Future<List<Label>?> getAll({String? query}) {
     String params =
         query == null ? '' : '?s=' + Uri.encodeQueryComponent(query);
     return client.get('/labels$params').then(
-        (response) => convertList(response.body, (result) => Label.fromJson(result)));
+        (response) {
+          if (response == null) return null;
+          return convertList(response.body, (result) => Label.fromJson(result));
+        });
   }
 
   @override
-  Future<Label> update(Label label) {
+  Future<Label?> update(Label label) {
     return client
         .post('/labels/${label.id}', body: label)
-        .then((response) => Label.fromJson(response.body));
+        .then((response) {
+          if (response == null) return null;
+          return Label.fromJson(response.body);
+        });
   }
 }

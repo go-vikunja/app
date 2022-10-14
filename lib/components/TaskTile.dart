@@ -109,15 +109,16 @@ class TaskTileState extends State<TaskTile> with AutomaticKeepAliveClientMixin {
     setState(() {
       this._currentTask.loading = true;
     });
-    Task newTask = await _updateTask(_currentTask, value);
+    Task? newTask = await _updateTask(_currentTask, value);
     setState(() {
-      this._currentTask = newTask;
+      if(newTask != null)
+        this._currentTask = newTask;
       this._currentTask.loading = false;
     });
     widget.onEdit();
   }
 
-  Future<Task> _updateTask(Task task, bool checked) {
+  Future<Task?> _updateTask(Task task, bool checked) {
     return Provider.of<ListProvider>(context, listen: false).updateTask(
       context: context,
       task: task.copyWith(

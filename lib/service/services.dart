@@ -83,35 +83,35 @@ class TaskServiceOptions {
 }
 
 abstract class NamespaceService {
-  Future<List<Namespace>> getAll();
-  Future<Namespace> get(int namespaceId);
-  Future<Namespace> create(Namespace ns);
-  Future<Namespace> update(Namespace ns);
+  Future<List<Namespace>?> getAll();
+  Future<Namespace?> get(int namespaceId);
+  Future<Namespace?> create(Namespace ns);
+  Future<Namespace?> update(Namespace ns);
   Future delete(int namespaceId);
 }
 
 abstract class ListService {
-  Future<List<TaskList>> getAll();
-  Future<TaskList> get(int listId);
-  Future<List<TaskList>> getByNamespace(int namespaceId);
-  Future<TaskList> create(int namespaceId, TaskList tl);
-  Future<TaskList> update(TaskList tl);
+  Future<List<TaskList>?> getAll();
+  Future<TaskList?> get(int listId);
+  Future<List<TaskList>?> getByNamespace(int namespaceId);
+  Future<TaskList?> create(int namespaceId, TaskList tl);
+  Future<TaskList?> update(TaskList tl);
   Future delete(int listId);
-  Future<String> getDisplayDoneTasks(int listId);
+  Future<String?> getDisplayDoneTasks(int listId);
   void setDisplayDoneTasks(int listId, String value);
   Future<String?> getDefaultList();
   void setDefaultList(int? listId);
 }
 
 abstract class TaskService {
-  Future<Task> get(int taskId);
-  Future<Task> update(Task task);
+  Future<Task?> get(int taskId);
+  Future<Task?> update(Task task);
   Future delete(int taskId);
-  Future<Task> add(int listId, Task task);
-  Future<List<Task>> getAll();
-  Future<Response> getAllByList(int listId,
+  Future<Task?> add(int listId, Task task);
+  Future<List<Task>?> getAll();
+  Future<Response?> getAllByList(int listId,
       [Map<String, List<String>> queryParameters]);
-  Future<List<Task>> getByOptions(TaskServiceOptions options);
+  Future<List<Task>?> getByOptions(TaskServiceOptions options);
 
   int get maxPages;
 }
@@ -119,41 +119,41 @@ abstract class TaskService {
 abstract class BucketService {
   // Not implemented in the Vikunja API
   // Future<Bucket> get(int listId, int bucketId);
-  Future<Bucket> update(Bucket bucket);
+  Future<Bucket?> update(Bucket bucket);
   Future delete(int listId, int bucketId);
-  Future<Bucket> add(int listId, Bucket bucket);
-  Future<Response> getAllByList(int listId,
+  Future<Bucket?> add(int listId, Bucket bucket);
+  Future<Response?> getAllByList(int listId,
       [Map<String, List<String>> queryParameters]);
 
   int get maxPages;
 }
 
 abstract class UserService {
-  Future<UserTokenPair> login(String username, String password, {bool rememberMe = false, String totp});
-  Future<UserTokenPair> register(String username, email, password);
-  Future<User> getCurrentUser();
+  Future<UserTokenPair?> login(String username, String password, {bool rememberMe = false, String totp});
+  Future<UserTokenPair?> register(String username, email, password);
+  Future<User?> getCurrentUser();
 }
 
 abstract class LabelService {
-  Future<List<Label>> getAll({String query});
-  Future<Label> get(int labelID);
-  Future<Label> create(Label label);
-  Future<Label> delete(Label label);
-  Future<Label> update(Label label);
+  Future<List<Label>?> getAll({String query});
+  Future<Label?> get(int labelID);
+  Future<Label?> create(Label label);
+  Future<Label?> delete(Label label);
+  Future<Label?> update(Label label);
 }
 
 abstract class LabelTaskService {
-  Future<List<Label>> getAll(LabelTask lt, {String query});
-  Future<Label> create(LabelTask lt);
-  Future<Label> delete(LabelTask lt);
+  Future<List<Label>?> getAll(LabelTask lt, {String query});
+  Future<Label?> create(LabelTask lt);
+  Future<Label?> delete(LabelTask lt);
 }
 
 abstract class LabelTaskBulkService {
-  Future<List<Label>> update(Task task, List<Label> labels);
+  Future<List<Label>?> update(Task task, List<Label> labels);
 }
 
 abstract class ServerService {
-  Future<Server> getInfo();
+  Future<Server?> getInfo();
 }
 
 class SettingsManager {

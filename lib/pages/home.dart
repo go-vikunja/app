@@ -218,7 +218,8 @@ class HomePageState extends State<HomePage> with AfterLayoutMixin<HomePage> {
     return VikunjaGlobal.of(context).namespaceService.getAll().then((result) {
       setState(() {
         _loading = false;
-        _namespaces = result;
+        if(result != null)
+          _namespaces = result;
       });
     });
   }

@@ -159,8 +159,12 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
   }
 
   Future<void> scheduleDueNotifications() async {
-    await notificationsPlugin.cancelAll();
     final tasks = await taskService.getAll();
+    if(tasks == null) {
+      dev.log("did not receive tasks on notification update");
+      return;
+    }
+    await notificationsPlugin.cancelAll();
     for (final task in tasks) {
       for (final reminder in task.reminderDates) {
         scheduleNotification(

@@ -11,17 +11,23 @@ class TaskAPIService extends APIService implements TaskService {
   TaskAPIService(Client client) : super(client);
 
   @override
-  Future<Task> add(int listId, Task task) {
+  Future<Task?> add(int listId, Task task) {
     return client
         .put('/lists/$listId', body: task.toJSON())
-        .then((response) => Task.fromJson(response.body));
+        .then((response) {
+          if (response == null) return null;
+          return Task.fromJson(response.body);
+        });
   }
 
   @override
-  Future<Task> get(int listId) {
+  Future<Task?> get(int listId) {
     return client
         .get('/list/$listId/tasks')
-        .then((response) => Task.fromJson(response.body));
+        .then((response) {
+          if (response == null) return null;
+          return Task.fromJson(response.body);
+        });
   }
 
   @override
@@ -31,20 +37,22 @@ class TaskAPIService extends APIService implements TaskService {
   }
 
   @override
-  Future<Task> update(Task task) {
+  Future<Task?> update(Task task) {
     return client
         .post('/tasks/${task.id}', body: task.toJSON())
-        .then((response) => Task.fromJson(response.body));
+        .then((response) {
+        if (response == null) return null;
+        return Task.fromJson(response.body);
+        });
   }
 
   @override
-  Future<List<Task>> getAll() {
+  Future<List<Task>?> getAll() {
     return client
         .get('/tasks/all')
         .then((response) {
           int page_n = 0;
-          if(response.error)
-            return Future.value([]);
+          if (response == null) return null;
           if (response.headers["x-pagination-total-pages"] != null) {
             page_n = int.parse(response.headers["x-pagination-total-pages"]!);
           } else {
@@ -58,7 +66,7 @@ class TaskAPIService extends APIService implements TaskService {
             Map<String, List<String>> paramMap = {
               "page": [i.toString()]
             };
-            futureList.add(client.get('/tasks/all', paramMap).then((pageResponse) { convertList(pageResponse.body, (result) {taskList.add(Task.fromJson(result));});}));
+            futureList.add(client.get('/tasks/all', paramMap).then((pageResponse) {convertList(pageResponse?.body, (result) {taskList.add(Task.fromJson(result));});}));
           }
           return Future.wait(futureList).then((value) {
             return taskList;
@@ -67,29 +75,27 @@ class TaskAPIService extends APIService implements TaskService {
   }
 
   @override
-  Future<Response> getAllByList(int listId,
+  Future<Response?> getAllByList(int listId,
       [Map<String, List<String>>? queryParameters]) {
     return client
         .get('/lists/$listId/tasks', queryParameters).then(
             (response) {
-              if(response.error)
-                return Response("", 0, {}, error: true);
-              return new Response(
+              return response != null ?
+              new Response(
                   convertList(response.body, (result) => Task.fromJson(result)),
                   response.statusCode,
-                  response.headers);
+                  response.headers) : null;
             });
   }
 
   @override
-  Future<List<Task>> getByOptions(TaskServiceOptions options) {
+  Future<List<Task>?> getByOptions(TaskServiceOptions options) {
     String optionString = options.getOptions();
     return client
         .get('/tasks/all?$optionString')
-        .then((value) {
-          if(value.error)
-            return Future.value([]);
-          return convertList(value.body, (result) => Task.fromJson(result));
+        .then((response) {
+          if (response == null) return null;
+        return convertList(response.body, (result) => Task.fromJson(result));
     });
   }
 

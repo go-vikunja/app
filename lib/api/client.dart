@@ -70,16 +70,16 @@ class Client {
     authenticated = false;
   }
 
-  Future<Response> get(String url,
+  Future<Response?> get(String url,
       [Map<String, List<String>>? queryParameters]) {
     final uri = Uri.parse('${this.base}$url').replace(
         queryParameters: queryParameters);
     return http.get(uri, headers: _headers)
-        .then(_handleResponse).onError((error, stackTrace) =>
-        _handleError(error, stackTrace));
+        .then(_handleResponse).catchError((error) =>
+        _handleError(error, null));
   }
 
-  Future<Response> delete(String url) {
+  Future<Response?> delete(String url) {
     return http
         .delete(
       '${this.base}$url'.toUri()!,
@@ -89,7 +89,7 @@ class Client {
         _handleError(error, stackTrace));
   }
 
-  Future<Response> post(String url, {dynamic body}) {
+  Future<Response?> post(String url, {dynamic body}) {
     return http
         .post(
       '${this.base}$url'.toUri()!,
@@ -100,7 +100,7 @@ class Client {
         _handleError(error, stackTrace));
   }
 
-  Future<Response> put(String url, {dynamic body}) {
+  Future<Response?> put(String url, {dynamic body}) {
     return http
         .put(
       '${this.base}$url'.toUri()!,
@@ -111,12 +111,12 @@ class Client {
         _handleError(error, stackTrace));
   }
 
-  FutureOr<Response> _handleError(Object? e, StackTrace? st) {
+  Response? _handleError(Object? e, StackTrace? st) {
     SnackBar snackBar = SnackBar(
       content: Text("Error on request: " + e.toString()),
       action: SnackBarAction(label: "Clear", onPressed: () => global.currentState?.clearSnackBars()),);
     global.currentState?.showSnackBar(snackBar);
-    return Response("", 0, {}, error: true);
+    return null;
   }
 
   Map<String, String> headersToMap(HttpHeaders headers) {
@@ -153,8 +153,7 @@ class Client {
 
   void _handleResponseErrors(http.Response response) {
     if (response.statusCode < 200 ||
-        response.statusCode >= 400 ||
-        json == null) {
+        response.statusCode >= 400) {
       Map<String, dynamic> error;
       error = _decoder.convert(response.body);
       if (response.statusCode ~/ 100 == 4) {
@@ -184,7 +183,7 @@ class Client {
     }
   }
 
-  Response _handleResponse(http.Response response) {
+  Response? _handleResponse(http.Response response) {
     _handleResponseErrors(response);
     return Response(
         _decoder.convert(response.body), response.statusCode, response.headers);
