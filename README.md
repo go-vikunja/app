@@ -1,4 +1,4 @@
-# Vikunja Cross-Plattform App
+# Vikunja Cross-Platform App
 
 Download from [Releases](https://github.com/go-vikunja/app/releases/latest)
 
