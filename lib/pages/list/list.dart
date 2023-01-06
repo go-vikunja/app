@@ -17,7 +17,7 @@ import 'package:vikunja_app/stores/list_store.dart';
 
 import '../../components/pagestatus.dart';
 
-enum BucketMenu {limit, done, delete}
+enum BucketMenu { limit, done, delete }
 
 class BucketProps {
   final ScrollController controller = ScrollController();
@@ -32,7 +32,8 @@ class ListPage extends StatefulWidget {
   final TaskList taskList;
 
   //ListPage({this.taskList}) : super(key: Key(taskList.id.toString()));
-  ListPage({required this.taskList}) : super(key: Key(Random().nextInt(100000).toString()));
+  ListPage({required this.taskList})
+      : super(key: Key(Random().nextInt(100000).toString()));
 
   @override
   _ListPageState createState() => _ListPageState();
@@ -48,8 +49,7 @@ class _ListPageState extends State<ListPage> {
   ListProvider? taskState;
   late KanbanClass _kanban;
 
-
-  PageStatus pagestatus = PageStatus.built;
+  PageStatus pageStatus = PageStatus.built;
 
   @override
   void initState() {
@@ -58,9 +58,6 @@ class _ListPageState extends State<ListPage> {
       if (!visible && mounted) FocusScope.of(context).unfocus();
     });
     super.initState();
-    Future.delayed(Duration.zero, (){
-      _loadList();
-    });
   }
 
   void nullSetState() {
@@ -70,79 +67,109 @@ class _ListPageState extends State<ListPage> {
   @override
   Widget build(BuildContext context) {
     taskState = Provider.of<ListProvider>(context);
-    _kanban = KanbanClass(context, nullSetState, _onViewTapped, _addItemDialog, _list);
+    _kanban = KanbanClass(
+        context, nullSetState, _onViewTapped, _addItemDialog, _list);
 
-    return GestureDetector(
-      onTap: () => FocusScope.of(context).unfocus(),
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(_list.title),
-          actions: <Widget>[
-            IconButton(
-              icon: Icon(Icons.edit),
-              onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ListEditPage(
-                      list: _list,
-                    ),
-                  )).whenComplete(() => _loadList()),
-            ),
-          ],
-        ),
-        // TODO: it brakes the flow with _loadingTasks and conflicts with the provider
-        body: !taskState!.isLoading
-            ? RefreshIndicator(
-                child: taskState!.tasks.length > 0 || taskState!.buckets.length > 0
-                    ? ListenableProvider.value(
-                        value: taskState,
-                        child: Theme(
-                          data: (ThemeData base) {
-                            return base.copyWith(
-                              chipTheme: base.chipTheme.copyWith(
-                                labelPadding: EdgeInsets.symmetric(horizontal: 2),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.all(Radius.circular(5)),
-                                ),
-                              ),
-                            );
-                          }(Theme.of(context)),
-                          child: () {
-                            switch (_viewIndex) {
-                              case 0:
-                                return _listView(context);
-                              case 1:
-                                return _kanban.kanbanView();
-                              default:
-                                return _listView(context);
-                            }
-                          }(),
+    Widget body;
+
+    switch (pageStatus) {
+      case PageStatus.built:
+        _loadList();
+        body = new Stack(children: [
+          ListView(),
+          Center(
+            child: CircularProgressIndicator(),
+          )
+        ]);
+        break;
+      case PageStatus.loading:
+        body = new Stack(children: [
+          ListView(),
+          Center(
+            child: CircularProgressIndicator(),
+          )
+        ]);
+        break;
+      case PageStatus.error:
+        body = new Stack(children: [
+          ListView(),
+          Center(child: Text("There was an error loading this view"))
+        ]);
+        break;
+
+      case PageStatus.success:
+        body = taskState!.tasks.length > 0 || taskState!.buckets.length > 0
+            ? ListenableProvider.value(
+                value: taskState,
+                child: Theme(
+                  data: (ThemeData base) {
+                    return base.copyWith(
+                      chipTheme: base.chipTheme.copyWith(
+                        labelPadding: EdgeInsets.symmetric(horizontal: 2),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(5)),
                         ),
-                      )
-                    : Stack(children: [ListView(), Center(child: Text('This list is empty.'))]),
-                onRefresh: _loadList,
+                      ),
+                    );
+                  }(Theme.of(context)),
+                  child: () {
+                    switch (_viewIndex) {
+                      case 0:
+                        return _listView(context);
+                      case 1:
+                        return _kanban.kanbanView();
+                      default:
+                        return _listView(context);
+                    }
+                  }(),
+                ),
               )
-            : Center(child: CircularProgressIndicator()),
-        floatingActionButton: _viewIndex == 1 ? null : Builder(
-          builder: (context) => FloatingActionButton(
-              onPressed: () => _addItemDialog(context), child: Icon(Icons.add)),
-        ),
-        bottomNavigationBar: BottomNavigationBar(
-          items: const <BottomNavigationBarItem>[
-            BottomNavigationBarItem(
-              icon: Icon(Icons.view_list),
-              label: 'List',
-              tooltip: 'List',
+            : Stack(children: [
+                ListView(),
+                Center(child: Text('This list is empty.'))
+              ]);
+        break;
+    }
+
+    return new Scaffold(
+      appBar: AppBar(
+        title: Text(_list.title),
+        actions: <Widget>[
+          IconButton(
+            icon: Icon(Icons.edit),
+            onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ListEditPage(
+                    list: _list,
+                  ),
+                )).whenComplete(() => _loadList()),
+          ),
+        ],
+      ),
+      body: RefreshIndicator(onRefresh: () => _loadList(), child: body),
+      floatingActionButton: _viewIndex == 1
+          ? null
+          : Builder(
+              builder: (context) => FloatingActionButton(
+                  onPressed: () => _addItemDialog(context),
+                  child: Icon(Icons.add)),
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.view_kanban),
-              label: 'Kanban',
-              tooltip: 'Kanban',
-            ),
-          ],
-          currentIndex: _viewIndex,
-          onTap: _onViewTapped,
-        ),
+      bottomNavigationBar: BottomNavigationBar(
+        items: const <BottomNavigationBarItem>[
+          BottomNavigationBarItem(
+            icon: Icon(Icons.view_list),
+            label: 'List',
+            tooltip: 'List',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.view_kanban),
+            label: 'Kanban',
+            tooltip: 'Kanban',
+          ),
+        ],
+        currentIndex: _viewIndex,
+        onTap: _onViewTapped,
       ),
     );
   }
@@ -158,31 +185,29 @@ class _ListPageState extends State<ListPage> {
 
   ListView _listView(BuildContext context) {
     return ListView.builder(
-      padding: EdgeInsets.symmetric(vertical: 8.0),
-      itemCount: taskState!.tasks.length * 2,
-      itemBuilder: (context, i) {
-        if (i.isOdd) return Divider();
+        padding: EdgeInsets.symmetric(vertical: 8.0),
+        itemCount: taskState!.tasks.length * 2,
+        itemBuilder: (context, i) {
+          if (i.isOdd) return Divider();
 
-        if (_loadingTasks.isNotEmpty) {
-          final loadingTask = _loadingTasks.removeLast();
-          return _buildLoadingTile(loadingTask);
-        }
+          if (_loadingTasks.isNotEmpty) {
+            final loadingTask = _loadingTasks.removeLast();
+            return _buildLoadingTile(loadingTask);
+          }
 
-        final index = i ~/ 2;
+          final index = i ~/ 2;
 
-        if (taskState!.maxPages == _currentPage &&
-            index == taskState!.tasks.length)
-          throw Exception("Check itemCount attribute");
+          if (taskState!.maxPages == _currentPage &&
+              index == taskState!.tasks.length)
+            throw Exception("Check itemCount attribute");
 
-        if (index >= taskState!.tasks.length &&
-            _currentPage < taskState!.maxPages) {
-          _currentPage++;
-          _loadTasksForPage(_currentPage);
-        }
-        return _buildTile(taskState!.tasks[index]);
-
-      }
-    );
+          if (index >= taskState!.tasks.length &&
+              _currentPage < taskState!.maxPages) {
+            _currentPage++;
+            _loadTasksForPage(_currentPage);
+          }
+          return _buildTile(taskState!.tasks[index]);
+        });
   }
 
   Widget _buildTile(Task task) {
@@ -203,8 +228,12 @@ class _ListPageState extends State<ListPage> {
   }
 
   Future<void> updateDisplayDoneTasks() {
-    return VikunjaGlobal.of(context).listService.getDisplayDoneTasks(_list.id)
-        .then((value) {displayDoneTasks = value == "1";});
+    return VikunjaGlobal.of(context)
+        .listService
+        .getDisplayDoneTasks(_list.id)
+        .then((value) {
+      displayDoneTasks = value == "1";
+    });
   }
 
   TaskTile _buildLoadingTile(Task task) {
@@ -225,19 +254,25 @@ class _ListPageState extends State<ListPage> {
 
   Future<void> _loadList() async {
     setState(() {
-      pagestatus = PageStatus.loading;
+      pageStatus = PageStatus.loading;
     });
+
     updateDisplayDoneTasks().then((value) async {
       switch (_viewIndex) {
         case 0:
           _loadTasksForPage(1);
           break;
         case 1:
-          await _kanban.loadBucketsForPage(1);
+          await _kanban
+              .loadBucketsForPage(1)
+              .onError((error, stackTrace) => pageStatus = PageStatus.error)
+              .then((value) => pageStatus = PageStatus.success);
           // load all buckets to get length for RecordableListView
           while (_currentPage < taskState!.maxPages) {
             _currentPage++;
-            await _kanban.loadBucketsForPage(_currentPage);
+            await _kanban.loadBucketsForPage(_currentPage)
+                .onError((error, stackTrace) => pageStatus = PageStatus.error)
+                .then((value) => pageStatus = PageStatus.success);
           }
           break;
         default:
@@ -247,12 +282,14 @@ class _ListPageState extends State<ListPage> {
   }
 
   Future<void> _loadTasksForPage(int page) {
-    return Provider.of<ListProvider>(context, listen: false).loadTasks(
-      context: context,
-      listId: _list.id,
-      page: page,
-      displayDoneTasks: displayDoneTasks
-    );
+    return Provider.of<ListProvider>(context, listen: false)
+        .loadTasks(
+            context: context,
+            listId: _list.id,
+            page: page,
+            displayDoneTasks: displayDoneTasks)
+        .onError((error, stackTrace) => {pageStatus = PageStatus.error})
+        .then((value) => {pageStatus = PageStatus.success});
   }
 
   Future<void> _addItemDialog(BuildContext context, [Bucket? bucket]) {
@@ -261,14 +298,16 @@ class _ListPageState extends State<ListPage> {
       builder: (_) => AddDialog(
         onAdd: (title) => _addItem(title, context, bucket),
         decoration: InputDecoration(
-          labelText: (bucket != null ? '\'${bucket.title}\': ' : '') + 'New Task Name',
+          labelText:
+              (bucket != null ? '\'${bucket.title}\': ' : '') + 'New Task Name',
           hintText: 'eg. Milk',
         ),
       ),
     );
   }
 
-  Future<void> _addItem(String title, BuildContext context, [Bucket? bucket]) async {
+  Future<void> _addItem(String title, BuildContext context,
+      [Bucket? bucket]) async {
     final currentUser = VikunjaGlobal.of(context).currentUser;
     if (currentUser == null) {
       return;
@@ -290,12 +329,13 @@ class _ListPageState extends State<ListPage> {
     )
         .then((_) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('The task was added successfully' + (bucket != null ? ' to \'${bucket.title}\'' : '') + '!'),
+        content: Text('The task was added successfully' +
+            (bucket != null ? ' to \'${bucket.title}\'' : '') +
+            '!'),
       ));
       setState(() {
         _loadingTasks.remove(newTask);
       });
     });
   }
-
 }

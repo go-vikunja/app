@@ -58,13 +58,13 @@ class ListProvider with ChangeNotifier {
     return VikunjaGlobal.of(context).taskService.getAllByList(listId, queryParams).then((response) {
       _isLoading = false;
       if(response == null)
-        return;
+        throw Error();
       if (response.headers["x-pagination-total-pages"] != null) {
         _maxPages = int.parse(response.headers["x-pagination-total-pages"]!);
       }
       _tasks.addAll(response.body);
       notifyListeners();
-    }).onError((error, stackTrace) {_isLoading = false;});
+    });
   }
 
   Future<void> loadBuckets({required BuildContext context, required int listId, int page = 1}) {
