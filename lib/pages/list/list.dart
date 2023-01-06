@@ -1,19 +1,12 @@
 import 'dart:async';
 import 'dart:math';
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:provider/provider.dart';
-import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
 import 'package:vikunja_app/components/AddDialog.dart';
 import 'package:vikunja_app/components/KanbanWidget.dart';
 import 'package:vikunja_app/components/TaskTile.dart';
-import 'package:vikunja_app/components/SliverBucketList.dart';
-import 'package:vikunja_app/components/SliverBucketPersistentHeader.dart';
-import 'package:vikunja_app/components/BucketLimitDialog.dart';
-import 'package:vikunja_app/components/BucketTaskCard.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/models/list.dart';
 import 'package:vikunja_app/models/task.dart';
@@ -21,7 +14,6 @@ import 'package:vikunja_app/models/bucket.dart';
 import 'package:vikunja_app/pages/list/list_edit.dart';
 import 'package:vikunja_app/pages/list/task_edit.dart';
 import 'package:vikunja_app/stores/list_store.dart';
-import 'package:vikunja_app/utils/calculate_item_position.dart';
 
 import '../../components/pagestatus.dart';
 
@@ -52,10 +44,8 @@ class _ListPageState extends State<ListPage> {
   late TaskList _list;
   List<Task> _loadingTasks = [];
   int _currentPage = 1;
-  bool _loading = true;
   bool displayDoneTasks = false;
   ListProvider? taskState;
-  PageController? _pageController;
   late KanbanClass _kanban;
 
 
