@@ -11,6 +11,8 @@ import 'package:vikunja_app/models/namespace.dart';
 import 'package:vikunja_app/pages/list/list.dart';
 import 'package:vikunja_app/stores/list_store.dart';
 
+import '../../components/pagestatus.dart';
+
 class NamespacePage extends StatefulWidget {
   final Namespace namespace;
 
@@ -21,20 +23,76 @@ class NamespacePage extends StatefulWidget {
   _NamespacePageState createState() => new _NamespacePageState();
 }
 
-class _NamespacePageState extends State<NamespacePage>
-    with AfterLayoutMixin<NamespacePage> {
+class _NamespacePageState extends State<NamespacePage> {
   List<TaskList> _lists = [];
+  PageStatus namespacestatus = PageStatus.loading;
   bool _loading = true;
-
-  @override
-  void afterFirstLayout(BuildContext context) {
-    _loadLists();
-  }
 
   /////
   // This essentially shows the lists.
   @override
   Widget build(BuildContext context) {
+    Widget body;
+    switch (namespacestatus) {
+      case PageStatus.built:
+        _loadLists();
+        body = new Stack(children: [
+          ListView(),
+          Center(
+            child: CircularProgressIndicator(),
+          )
+        ]);
+        break;
+      case PageStatus.loading:
+        body = new Stack(children: [
+          ListView(),
+          Center(
+            child: CircularProgressIndicator(),
+          )
+        ]);
+        break;
+      case PageStatus.error:
+        body = new Stack(children: [
+          ListView(),
+          Center(child: Text("There was an error loading this view"))
+        ]);
+        break;
+      case PageStatus.success:
+        body = new ListView(
+          padding: EdgeInsets.symmetric(vertical: 8.0),
+          children: ListTile.divideTiles(
+              context: context,
+              tiles: _lists.map((ls) => Dismissible(
+                    key: Key(ls.id.toString()),
+                    direction: DismissDirection.startToEnd,
+                    child: ListTile(
+                      title: new Text(ls.title),
+                      onTap: () => _openList(context, ls),
+                      trailing: Icon(Icons.arrow_right),
+                    ),
+                    background: Container(
+                      color: Colors.red,
+                      child: const ListTile(
+                          leading: Icon(Icons.delete,
+                              color: Colors.white, size: 36.0)),
+                    ),
+                    onDismissed: (direction) {
+                      _removeList(ls).then((_) => ScaffoldMessenger.of(context)
+                          .showSnackBar(
+                              SnackBar(content: Text("${ls.title} removed"))));
+                    },
+                  ))).toList(),
+        );
+        break;
+    }
+    return new Scaffold(
+      body: RefreshIndicator(onRefresh: () => _loadLists(), child: body),
+      floatingActionButton: Builder(
+          builder: (context) => FloatingActionButton(
+              onPressed: () => _addListDialog(context),
+              child: const Icon(Icons.add))),
+    );
+
     return Scaffold(
       body: !this._loading
           ? RefreshIndicator(
@@ -66,7 +124,10 @@ class _NamespacePageState extends State<NamespacePage>
                                 },
                               ))).toList(),
                     )
-                  : Stack(children: [ListView(),Center(child: Text('This namespace is empty.'))]),
+                  : Stack(children: [
+                      ListView(),
+                      Center(child: Text('This namespace is empty.'))
+                    ]),
               onRefresh: _loadLists,
             )
           : Center(child: CircularProgressIndicator()),
@@ -92,14 +153,18 @@ class _NamespacePageState extends State<NamespacePage>
 
   Future<void> _loadLists() {
     // FIXME: This is called even when the tasks on a list are loaded - which is not needed at all
+    namespacestatus = PageStatus.loading;
     return VikunjaGlobal.of(context)
         .listService
         .getByNamespace(widget.namespace.id)
         .then((lists) => setState(() {
-          this._loading = false;
-          if(lists != null)
-            this._lists = lists;
-        }));
+              if (lists != null) {
+                this._lists = lists;
+                namespacestatus = PageStatus.success;
+              } else {
+                namespacestatus = PageStatus.error;
+              }
+            }));
   }
 
   _openList(BuildContext context, TaskList list) {
