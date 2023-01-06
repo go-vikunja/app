@@ -7,6 +7,7 @@ import 'dart:developer';
 
 import '../components/AddDialog.dart';
 import '../components/TaskTile.dart';
+import '../components/pagestatus.dart';
 import '../models/task.dart';
 
 class LandingPage extends StatefulWidget {
@@ -16,13 +17,12 @@ class LandingPage extends StatefulWidget {
   State<StatefulWidget> createState() => LandingPageState();
 }
 
-enum LandingPageStatus { built, loading, success, error }
 
 class LandingPageState extends State<LandingPage>
     with AfterLayoutMixin<LandingPage> {
   int? defaultList;
   List<Task> _list = [];
-  LandingPageStatus landingPageStatus = LandingPageStatus.built;
+  PageStatus landingPageStatus = PageStatus.built;
   static const platform = const MethodChannel('vikunja');
 
   Future<void> _updateDefaultList() async {
@@ -67,7 +67,7 @@ class LandingPageState extends State<LandingPage>
   Widget build(BuildContext context) {
     Widget body;
     switch (landingPageStatus) {
-      case LandingPageStatus.built:
+      case PageStatus.built:
         _loadList(context);
         body = new Stack(children: [
           ListView(),
@@ -76,7 +76,7 @@ class LandingPageState extends State<LandingPage>
           )
         ]);
         break;
-      case LandingPageStatus.loading:
+      case PageStatus.loading:
         body = new Stack(children: [
           ListView(),
           Center(
@@ -84,13 +84,13 @@ class LandingPageState extends State<LandingPage>
           )
         ]);
         break;
-      case LandingPageStatus.error:
+      case PageStatus.error:
         body = new Stack(children: [
           ListView(),
           Center(child: Text("There was an error loading this view"))
         ]);
         break;
-      case LandingPageStatus.success:
+      case PageStatus.success:
         body = ListView(
           scrollDirection: Axis.vertical,
           shrinkWrap: true,
@@ -171,7 +171,7 @@ class LandingPageState extends State<LandingPage>
   Future<void> _loadList(BuildContext context) {
     log("reloading list");
     _list = [];
-    landingPageStatus = LandingPageStatus.loading;
+    landingPageStatus = PageStatus.loading;
     // FIXME: loads and reschedules tasks each time list is updated
     VikunjaGlobal.of(context).scheduleDueNotifications();
     return VikunjaGlobal.of(context)
@@ -179,7 +179,7 @@ class LandingPageState extends State<LandingPage>
         .getByOptions(VikunjaGlobal.of(context).taskServiceOptions)
         .then<Future<void>?>((taskList) {
       if (taskList != null && taskList.isEmpty) {
-        landingPageStatus = LandingPageStatus.error;
+        landingPageStatus = PageStatus.error;
         return null;
       }
       return VikunjaGlobal.of(context).listService.getAll().then((lists) {
@@ -187,9 +187,9 @@ class LandingPageState extends State<LandingPage>
         setState(() {
           if (taskList != null) {
             _list = taskList;
-            landingPageStatus = LandingPageStatus.success;
+            landingPageStatus = PageStatus.success;
           } else {
-            landingPageStatus = LandingPageStatus.error;
+            landingPageStatus = PageStatus.error;
           }
         });
         return null;
