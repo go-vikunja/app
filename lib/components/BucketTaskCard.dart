@@ -89,7 +89,8 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
           child: Text(
             widget.task.title,
             style: (theme.textTheme.titleMedium ?? TextStyle(fontSize: 16)).copyWith(
-              color: widget.task.textColor,
+              color: theme.brightness == Brightness.dark
+                  ? Colors.white : Colors.black,
             ),
           ),
         ),
