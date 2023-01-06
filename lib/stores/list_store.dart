@@ -4,8 +4,9 @@ import 'package:vikunja_app/models/bucket.dart';
 import 'package:vikunja_app/utils/calculate_item_position.dart';
 import 'package:vikunja_app/global.dart';
 
+import '../components/pagestatus.dart';
+
 class ListProvider with ChangeNotifier {
-  bool _isLoading = false;
   bool _taskDragging = false;
   int _maxPages = 0;
 
@@ -13,7 +14,6 @@ class ListProvider with ChangeNotifier {
   List<Task> _tasks = [];
   List<Bucket> _buckets = [];
 
-  bool get isLoading => _isLoading;
 
   bool get taskDragging => _taskDragging;
 
@@ -38,9 +38,19 @@ class ListProvider with ChangeNotifier {
 
   List<Bucket> get buckets => _buckets;
 
+
+  PageStatus _pageStatus = PageStatus.built;
+
+  PageStatus get pageStatus => _pageStatus;
+
+  set pageStatus(PageStatus ps) {
+    _pageStatus = ps;
+    print("new PageStatus: ${ps.toString()}");
+    notifyListeners();
+  }
+
   Future<void> loadTasks({required BuildContext context, required int listId, int page = 1, bool displayDoneTasks = true}) {
     _tasks = [];
-    _isLoading = true;
     notifyListeners();
 
     Map<String, List<String>> queryParams = {
@@ -56,20 +66,21 @@ class ListProvider with ChangeNotifier {
       });
     }
     return VikunjaGlobal.of(context).taskService.getAllByList(listId, queryParams).then((response) {
-      _isLoading = false;
-      if(response == null)
-        throw Error();
+      if(response == null) {
+        pageStatus = PageStatus.error;
+        return;
+      }
       if (response.headers["x-pagination-total-pages"] != null) {
         _maxPages = int.parse(response.headers["x-pagination-total-pages"]!);
       }
       _tasks.addAll(response.body);
-      notifyListeners();
+      pageStatus = PageStatus.success;
     });
   }
 
   Future<void> loadBuckets({required BuildContext context, required int listId, int page = 1}) {
     _buckets = [];
-    _isLoading = true;
+    pageStatus = PageStatus.loading;
     notifyListeners();
 
     Map<String, List<String>> queryParams = {
@@ -77,15 +88,16 @@ class ListProvider with ChangeNotifier {
     };
 
     return VikunjaGlobal.of(context).bucketService.getAllByList(listId, queryParams).then((response) {
-      if(response == null)
+      if(response == null) {
+        pageStatus = PageStatus.error;
         return;
+      }
       if (response.headers["x-pagination-total-pages"] != null) {
         _maxPages = int.parse(response.headers["x-pagination-total-pages"]!);
       }
       _buckets.addAll(response.body);
 
-      _isLoading = false;
-      notifyListeners();
+      pageStatus = PageStatus.success;
     });
   }
 
@@ -102,40 +114,39 @@ class ListProvider with ChangeNotifier {
       done: false,
       listId: listId,
     );
-    _isLoading = true;
-    notifyListeners();
+    pageStatus = PageStatus.loading;
 
     return globalState.taskService.add(listId, newTask).then((task) {
-      _isLoading = false;
       if(task != null)
         _tasks.insert(0, task);
-      notifyListeners();
+      pageStatus = PageStatus.success;
     });
   }
 
   Future<void> addTask({required BuildContext context, required Task newTask, required int listId}) {
     var globalState = VikunjaGlobal.of(context);
-    if (newTask.bucketId == null) _isLoading = true;
+    if (newTask.bucketId == null) pageStatus = PageStatus.loading;
     notifyListeners();
 
     return globalState.taskService.add(listId, newTask).then((task) {
-      if (task == null)
+      if (task == null) {
+        pageStatus = PageStatus.error;
         return;
+      }
       if (_tasks.isNotEmpty)
         _tasks.insert(0, task);
       if (_buckets.isNotEmpty) {
         final bucket = _buckets[_buckets.indexWhere((b) => task.bucketId == b.id)];
         bucket.tasks.add(task);
       }
-      _isLoading = false;
-      notifyListeners();
+      pageStatus = PageStatus.success;
     });
   }
 
   Future<Task?> updateTask({required BuildContext context, required Task task}) {
     return VikunjaGlobal.of(context).taskService.update(task).then((task) {
       // FIXME: This is ugly. We should use a redux to not have to do these kind of things.
-      //  This is enough for now (it works™) but we should definitly fix it later.
+      //  This is enough for now (it works™) but we should definitely fix it later.
       if(task == null)
         return null;
       _tasks.asMap().forEach((i, t) {

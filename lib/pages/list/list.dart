@@ -46,10 +46,8 @@ class _ListPageState extends State<ListPage> {
   List<Task> _loadingTasks = [];
   int _currentPage = 1;
   bool displayDoneTasks = false;
-  ListProvider? taskState;
+  late ListProvider taskState;
   late KanbanClass _kanban;
-
-  PageStatus pageStatus = PageStatus.built;
 
   @override
   void initState() {
@@ -72,9 +70,9 @@ class _ListPageState extends State<ListPage> {
 
     Widget body;
 
-    switch (pageStatus) {
+    switch (taskState.pageStatus) {
       case PageStatus.built:
-        _loadList();
+        Future.delayed(Duration.zero, _loadList);
         body = new Stack(children: [
           ListView(),
           Center(
@@ -96,9 +94,8 @@ class _ListPageState extends State<ListPage> {
           Center(child: Text("There was an error loading this view"))
         ]);
         break;
-
       case PageStatus.success:
-        body = taskState!.tasks.length > 0 || taskState!.buckets.length > 0
+        body = taskState.tasks.length > 0 || taskState.buckets.length > 0
             ? ListenableProvider.value(
                 value: taskState,
                 child: Theme(
@@ -186,7 +183,7 @@ class _ListPageState extends State<ListPage> {
   ListView _listView(BuildContext context) {
     return ListView.builder(
         padding: EdgeInsets.symmetric(vertical: 8.0),
-        itemCount: taskState!.tasks.length * 2,
+        itemCount: taskState.tasks.length * 2,
         itemBuilder: (context, i) {
           if (i.isOdd) return Divider();
 
@@ -197,16 +194,16 @@ class _ListPageState extends State<ListPage> {
 
           final index = i ~/ 2;
 
-          if (taskState!.maxPages == _currentPage &&
-              index == taskState!.tasks.length)
+          if (taskState.maxPages == _currentPage &&
+              index == taskState.tasks.length)
             throw Exception("Check itemCount attribute");
 
-          if (index >= taskState!.tasks.length &&
-              _currentPage < taskState!.maxPages) {
+          if (index >= taskState.tasks.length &&
+              _currentPage < taskState.maxPages) {
             _currentPage++;
             _loadTasksForPage(_currentPage);
           }
-          return _buildTile(taskState!.tasks[index]);
+          return _buildTile(taskState.tasks[index]);
         });
   }
 
@@ -245,7 +242,7 @@ class _ListPageState extends State<ListPage> {
         MaterialPageRoute(
           builder: (context) => TaskEditPage(
             task: task,
-            taskState: taskState!,
+            taskState: taskState,
           ),
         ),
       ),
@@ -253,9 +250,7 @@ class _ListPageState extends State<ListPage> {
   }
 
   Future<void> _loadList() async {
-    setState(() {
-      pageStatus = PageStatus.loading;
-    });
+    taskState.pageStatus = (PageStatus.loading);
 
     updateDisplayDoneTasks().then((value) async {
       switch (_viewIndex) {
@@ -264,15 +259,12 @@ class _ListPageState extends State<ListPage> {
           break;
         case 1:
           await _kanban
-              .loadBucketsForPage(1)
-              .onError((error, stackTrace) => pageStatus = PageStatus.error)
-              .then((value) => pageStatus = PageStatus.success);
+              .loadBucketsForPage(1);
           // load all buckets to get length for RecordableListView
-          while (_currentPage < taskState!.maxPages) {
+          while (_currentPage < taskState.maxPages) {
             _currentPage++;
-            await _kanban.loadBucketsForPage(_currentPage)
-                .onError((error, stackTrace) => pageStatus = PageStatus.error)
-                .then((value) => pageStatus = PageStatus.success);
+            await _kanban
+                .loadBucketsForPage(_currentPage);
           }
           break;
         default:
@@ -287,9 +279,7 @@ class _ListPageState extends State<ListPage> {
             context: context,
             listId: _list.id,
             page: page,
-            displayDoneTasks: displayDoneTasks)
-        .onError((error, stackTrace) => {pageStatus = PageStatus.error})
-        .then((value) => {pageStatus = PageStatus.success});
+            displayDoneTasks: displayDoneTasks);
   }
 
   Future<void> _addItemDialog(BuildContext context, [Bucket? bucket]) {
