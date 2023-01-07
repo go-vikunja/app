@@ -114,7 +114,7 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
   void initState() {
     super.initState();
     _client = Client(snackbarKey);
-    settingsManager.getIgnoreCertificates().then((value) => value == "1" ? client.ignoreCertificates = true : client.ignoreCertificates = false);
+    settingsManager.getIgnoreCertificates().then((value) => client.reload_ignore_certs(value == "1"));
     _newUserService = UserAPIService(client);
     _loadCurrentUser();
     tz.initializeTimeZones();
