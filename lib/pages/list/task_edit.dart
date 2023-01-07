@@ -44,8 +44,11 @@ class _TaskEditPageState extends State<TaskEditPage> {
 
   @override
   void initState() {
-    _reminderDates = widget.task.reminderDates;
     _repeatAfter = widget.task.repeatAfter;
+    if(_repeatAfterType == null)
+        _repeatAfterType = getRepeatAfterTypeFromDuration(_repeatAfter);
+
+    _reminderDates = widget.task.reminderDates;
     for (var i = 0; i < _reminderDates.length; i++) {
       _reminderInputs.add(VikunjaDateTimePicker(
         initialValue: _reminderDates[i],
@@ -153,8 +156,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
                           child: TextFormField(
                             keyboardType: TextInputType.number,
                             initialValue: getRepeatAfterValueFromDuration(
-                                    widget.task.repeatAfter)
-                                ?.toString(),
+                                    _repeatAfter)?.toString(),
                             onSaved: (repeatAfter) => _repeatAfter =
                                 getDurationFromType(
                                     repeatAfter, _repeatAfterType),
@@ -172,7 +174,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
                             isDense: true,
                             value: _repeatAfterType ??
                                 getRepeatAfterTypeFromDuration(
-                                    widget.task.repeatAfter),
+                                    _repeatAfter),
                             onChanged: (String? newValue) {
                               setState(() {
                                 _repeatAfterType = newValue;
