@@ -134,7 +134,7 @@ class SettingsPageState extends State<SettingsPage> {
               onPressed: () => VikunjaGlobal.of(context)
                   .versionChecker
                   .getLatestVersionTag()
-                  .then((value) => newestVersionTag = value),
+                  .then((value) => setState(() => newestVersionTag = value)),
               child: Text("Check for latest version")),
           Text("Current version: ${versionTag ?? "loading"}"),
           Text(newestVersionTag != null
