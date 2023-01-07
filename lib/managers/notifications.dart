@@ -1,16 +1,11 @@
 // https://medium.com/@fuzzymemory/adding-scheduled-notifications-in-your-flutter-application-19be1f82ade8
 
 import 'dart:math';
-import 'dart:developer' as dev;
 
-
-import 'package:flutter_native_timezone/flutter_native_timezone.dart';
-import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart'as notifs;
 import 'package:rxdart/subjects.dart' as rxSub;
-import 'package:vikunja_app/global.dart';
 
 class NotificationClass{
   final int? id;
@@ -26,7 +21,7 @@ class NotificationClass{
 
   Future<void> initNotifications(notifs.FlutterLocalNotificationsPlugin notifsPlugin) async {
     var initializationSettingsAndroid =
-    notifs.AndroidInitializationSettings('ic_launcher_foreground');
+    notifs.AndroidInitializationSettings('vikunja_logo');
     var initializationSettingsIOS = notifs.IOSInitializationSettings(
         requestAlertPermission: false,
         requestBadgePermission: false,
@@ -61,6 +56,11 @@ Future<void> scheduleNotification(String title, String description,
   await notifsPlugin.zonedSchedule(id, title, description,
       time, platformChannelSpecifics, androidAllowWhileIdle: true, uiLocalNotificationDateInterpretation: notifs.UILocalNotificationDateInterpretation.wallClockTime); // This literally schedules the notification
 }
+
+void sendTestNotification(notifs.FlutterLocalNotificationsPlugin notifsPlugin, notifs.NotificationDetails platformChannelSpecifics) {
+  notifsPlugin.show(Random().nextInt(10000000), "Test Notification", "This is a test notification", platformChannelSpecifics);
+}
+
 
 void requestIOSPermissions(
     notifs.FlutterLocalNotificationsPlugin notifsPlugin) {

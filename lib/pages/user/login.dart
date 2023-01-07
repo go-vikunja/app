@@ -222,7 +222,7 @@ class _LoginPageState extends State<LoginPage> {
     if(newUser != null)
         vGlobal.changeUser(newUser.user, token: newUser.token, base: _server);
     } catch (ex, stacktrace) {
-      log(stacktrace.toString());
+    /*  log(stacktrace.toString());
       showDialog(
           context: context,
           builder: (context) => new AlertDialog(
@@ -235,6 +235,7 @@ class _LoginPageState extends State<LoginPage> {
                       child: const Text('Close'))
                 ],
               ));
+     */
     } finally {
       setState(() {
         _loading = false;

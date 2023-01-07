@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/models/list.dart';
+import 'package:vikunja_app/managers/notifications.dart';
 
 class SettingsPage extends StatefulWidget {
   @override
@@ -95,6 +96,10 @@ class SettingsPageState extends State<SettingsPage> {
                       VikunjaGlobal.of(context).settingsManager.setVersionNotifications(value);
                   })
               : ListTile(title: Text("...")),
+          TextButton(onPressed: ()  {
+            sendTestNotification(VikunjaGlobal.of(context).notificationsPlugin
+                , VikunjaGlobal.of(context).platformChannelSpecificsReminders);
+          }, child: Text("Send test notification")),
           TextButton(
               onPressed: () => VikunjaGlobal.of(context)
                   .versionChecker
@@ -103,7 +108,7 @@ class SettingsPageState extends State<SettingsPage> {
               child: Text("Check for latest version")),
           Text("Current version: ${versionTag ?? "loading"}"),
           Text(newestVersionTag != null
-              ? "Newest version: $newestVersionTag"
+              ? "Latest version: $newestVersionTag"
               : "")
         ],
       ),
