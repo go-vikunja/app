@@ -38,14 +38,11 @@ android {
         main.java.srcDirs += 'src/main/kotlin'
     }
 
-    lintOptions {
-        disable 'InvalidPackage'
-    }
 
     defaultConfig {
         applicationId "io.vikunja.app"
         minSdkVersion 19
-        targetSdkVersion 31
+        targetSdkVersion 33
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
@@ -74,7 +71,7 @@ android {
             dimension "deploy"
             //signingConfig null
         }
-	main {
+	    core {
             dimension "deploy"
             signingConfig signingConfigs.debug // TODO add signing key
         }
@@ -98,6 +95,10 @@ android {
             //signingConfig signingConfigs.debug
         }
     }
+    lint {
+        disable 'InvalidPackage'
+    }
+    namespace 'io.vikunja.flutteringvikunja'
 }
 
 flutter {
@@ -106,7 +107,7 @@ flutter {
 
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.6.20"
-    testImplementation 'junit:junit:4.12'
+    testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'com.android.support.test:runner:1.0.2'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
 }

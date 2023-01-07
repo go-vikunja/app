@@ -1,7 +1,7 @@
 name: vikunja_app
 description: Vikunja as Flutter cross platform app
 
-version: 0.0.23-alpha
+version: 0.0.24-alpha
 
 environment:
   sdk: ">=2.12.0 <3.0.0"
@@ -15,7 +15,7 @@ dependencies:
   intl: ^0.17.0
   flutter_local_notifications: ^9.8.0+1
   rxdart: ^0.27.5
-  flutter_native_timezone: ^2.0.0
+  flutter_timezone: ^1.0.4
   flutter_secure_storage: ^6.0.0
   datetime_picker_formfield: ^2.0.1
   flutter_typeahead: ^4.0.0

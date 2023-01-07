@@ -1,7 +1,7 @@
 import 'dart:developer' as dev;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_native_timezone/flutter_native_timezone.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:vikunja_app/api/bucket_implementation.dart';
 import 'package:vikunja_app/api/client.dart';
@@ -157,7 +157,7 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
   }
 
   void notificationInitializer() async {
-    currentTimeZone = await FlutterNativeTimezone.getLocalTimezone();
+    currentTimeZone = await FlutterTimezone.getLocalTimezone();
     notifLaunch = await notificationsPlugin.getNotificationAppLaunchDetails();
     await notifications.initNotifications(notificationsPlugin);
     requestIOSPermissions(notificationsPlugin);
