@@ -62,7 +62,7 @@ void callbackDispatcher() {
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  Workmanager().initialize(callbackDispatcher, isInDebugMode: true);
+  Workmanager().initialize(callbackDispatcher, isInDebugMode: false);
   runApp(VikunjaGlobal(
       child: new VikunjaApp(
         home: HomePage(),
