@@ -1,5 +1,3 @@
-import 'dart:developer';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
@@ -69,7 +67,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
   Widget build(BuildContext ctx) {
     return WillPopScope(
       onWillPop: () {
-        if(_changed) {
+        if (_changed) {
           return (_showConfirmationDialog());
         }
         return new Future(() => true);
@@ -117,8 +115,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
                         onSaved: (description) => _description = description,
                         onChanged: (_) => _changed = true,
                         validator: (description) {
-                          if (description == null)
-                            return null;
+                          if (description == null) return null;
                           if (description.length > 1000) {
                             return 'The description can have a maximum of 1000 characters.';
                           }
@@ -156,9 +153,11 @@ class _TaskEditPageState extends State<TaskEditPage> {
                           child: TextFormField(
                             keyboardType: TextInputType.number,
                             initialValue: getRepeatAfterValueFromDuration(
-                                widget.task.repeatAfter)?.toString(),
+                                    widget.task.repeatAfter)
+                                ?.toString(),
                             onSaved: (repeatAfter) => _repeatAfter =
-                                getDurationFromType(repeatAfter, _repeatAfterType),
+                                getDurationFromType(
+                                    repeatAfter, _repeatAfterType),
                             onChanged: (_) => _changed = true,
                             decoration: new InputDecoration(
                               labelText: 'Repeat after',
@@ -226,14 +225,15 @@ class _TaskEditPageState extends State<TaskEditPage> {
 
                           // FIXME: Why does putting this into a row fails?
                           setState(() => _reminderInputs.add(
-                            VikunjaDateTimePicker(
-                              label: 'Reminder',
-                              onSaved: (reminder) =>
-                                  _reminderDates[currentIndex] = reminder ?? DateTime(0),
-                              onChanged: (_) => _changed = true,
-                              initialValue: DateTime.now(),
-                            ),
-                          ));
+                                VikunjaDateTimePicker(
+                                  label: 'Reminder',
+                                  onSaved: (reminder) =>
+                                      _reminderDates[currentIndex] =
+                                          reminder ?? DateTime(0),
+                                  onChanged: (_) => _changed = true,
+                                  initialValue: DateTime.now(),
+                                ),
+                              ));
                         }),
                     InputDecorator(
                       isEmpty: _priority == null,
@@ -251,8 +251,14 @@ class _TaskEditPageState extends State<TaskEditPage> {
                             _priority = _priorityFromString(newValue);
                           });
                         },
-                        items: ['Unset', 'Low', 'Medium', 'High', 'Urgent', 'DO NOW']
-                            .map((String value) {
+                        items: [
+                          'Unset',
+                          'Low',
+                          'Medium',
+                          'High',
+                          'Urgent',
+                          'DO NOW'
+                        ].map((String value) {
                           return new DropdownMenuItem(
                             value: value,
                             child: new Text(value),
@@ -260,30 +266,48 @@ class _TaskEditPageState extends State<TaskEditPage> {
                         }).toList(),
                       ),
                     ),
-                    Wrap(
-                        spacing: 10,
-                        children: _labels.map((Label label) {
-                          return LabelComponent(
-                            label: label,
-                            onDelete: () {
-                              _removeLabel(label);
-                            },
-                          );
-                        }).toList()),
+                    Row(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(right: 15, left: 2),
+                          child: Icon(
+                            Icons.label,
+                            color: Colors.grey,
+                          ),
+                        ),
+                        Wrap(
+                            spacing: 10,
+                            children: _labels.map((Label label) {
+                              return LabelComponent(
+                                label: label,
+                                onDelete: () {
+                                  _removeLabel(label);
+                                },
+                              );
+                            }).toList()),
+                      ],
+                    ),
                     Row(
                       children: <Widget>[
+                        Padding(
+                            padding: EdgeInsets.only(
+                                right: 15,
+                                left: 2.0 + (IconTheme.of(context).size??0))),
                         Container(
-                          width: MediaQuery.of(context).size.width - 80,
+                          width: MediaQuery.of(context).size.width - 80 - ((IconTheme.of(context).size ?? 0) * 2),
                           child: TypeAheadFormField(
                             textFieldConfiguration: TextFieldConfiguration(
                                 controller: _labelTypeAheadController,
-                                decoration:
-                                InputDecoration(labelText: 'Add a new label')),
-                            suggestionsCallback: (pattern) => _searchLabel(pattern),
+                                decoration: InputDecoration(
+                                    labelText: 'Add a new label')),
+                            suggestionsCallback: (pattern) =>
+                                _searchLabel(pattern),
                             itemBuilder: (context, suggestion) {
-                              return new ListTile(title: Text(suggestion.toString()));
+                              return new ListTile(
+                                  title: Text(suggestion.toString()));
                             },
-                            transitionBuilder: (context, suggestionsBox, controller) {
+                            transitionBuilder:
+                                (context, suggestionsBox, controller) {
                               return suggestionsBox;
                             },
                             onSuggestionSelected: (suggestion) {
@@ -292,8 +316,8 @@ class _TaskEditPageState extends State<TaskEditPage> {
                           ),
                         ),
                         IconButton(
-                          onPressed: () =>
-                              _createAndAddLabel(_labelTypeAheadController.text),
+                          onPressed: () => _createAndAddLabel(
+                              _labelTypeAheadController.text),
                           icon: Icon(Icons.add),
                         )
                       ],
@@ -311,23 +335,40 @@ class _TaskEditPageState extends State<TaskEditPage> {
                           ),
                           ElevatedButton(
                             child: Text(
-                              'Color',
-                              style: (_resetColor || (_color ?? widget.task.color) == null) ? null : TextStyle(
-                                color: (_color ?? widget.task.color)!.computeLuminance() > 0.5 ? Colors.black : Colors.white,
-                              ),
+                              'Set Color',
+                              style: (_resetColor ||
+                                      (_color ?? widget.task.color) == null)
+                                  ? null
+                                  : TextStyle(
+                                      color: (_color ?? widget.task.color)!
+                                                  .computeLuminance() >
+                                              0.5
+                                          ? Colors.black
+                                          : Colors.white,
+                                    ),
                             ),
-                            style: _resetColor ? null : ButtonStyle(
-                              backgroundColor: MaterialStateProperty
-                                  .resolveWith((_) => _color ?? widget.task.color),
-                            ),
+                            style: _resetColor
+                                ? null
+                                : ButtonStyle(
+                                    backgroundColor:
+                                        MaterialStateProperty.resolveWith(
+                                            (_) => _color ?? widget.task.color),
+                                  ),
                             onPressed: _onColorEdit,
                           ),
                           Padding(
                             padding: const EdgeInsets.only(left: 15),
                             child: () {
-                              String? colorString = (_resetColor ? null : (_color ?? widget.task.color))?.toString();
-                              colorString = colorString?.substring(10, colorString.length - 1).toUpperCase();
-                              colorString = colorString != null ? '#$colorString' : 'None';
+                              String? colorString = (_resetColor
+                                      ? null
+                                      : (_color ?? widget.task.color))
+                                  ?.toString();
+                              colorString = colorString
+                                  ?.substring(10, colorString.length - 1)
+                                  .toUpperCase();
+                              colorString = colorString != null
+                                  ? '#$colorString'
+                                  : 'None';
                               return Text(
                                 '$colorString',
                                 style: TextStyle(
@@ -346,12 +387,14 @@ class _TaskEditPageState extends State<TaskEditPage> {
             ),
           ),
           floatingActionButton: FloatingActionButton(
-            onPressed: !_loading ? () {
-              if (_formKey.currentState!.validate()) {
-                Form.of(_listKey.currentContext!)!.save();
-                _saveTask(_listKey.currentContext!);
-              }
-            } : null,
+            onPressed: !_loading
+                ? () {
+                    if (_formKey.currentState!.validate()) {
+                      Form.of(_listKey.currentContext!)!.save();
+                      _saveTask(_listKey.currentContext!);
+                    }
+                  }
+                : null,
             child: Icon(Icons.save),
           ),
         ),
@@ -371,6 +414,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
       reminderDates: _reminderDates,
       priority: _priority,
       labels: _labels,
+      repeatAfter: _repeatAfter,
     )
       ..dueDate = _dueDate
       ..startDate = _startDate
@@ -391,11 +435,16 @@ class _TaskEditPageState extends State<TaskEditPage> {
       );
     });
 
-    widget.taskState.updateTask(
+    widget.taskState
+        .updateTask(
       context: context,
       task: updatedTask,
-    ).then((task) {
-      setState(() { _loading = false; _changed = false;});
+    )
+        .then((task) {
+      setState(() {
+        _loading = false;
+        _changed = false;
+      });
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('The task was updated successfully!'),
       ));
@@ -421,14 +470,16 @@ class _TaskEditPageState extends State<TaskEditPage> {
 
   _searchLabel(String query) {
     return VikunjaGlobal.of(context)
-        .labelService.getAll(query: query).then((labels) {
-          // Only show those labels which aren't already added to the task
-          if(labels == null) return [];
-          labels.removeWhere((labelToRemove) => _labels.contains(labelToRemove));
-          _suggestedLabels = labels;
-          List<String?> labelText = labels.map((label) => label.title).toList();
-          return labelText;
-        });
+        .labelService
+        .getAll(query: query)
+        .then((labels) {
+      // Only show those labels which aren't already added to the task
+      if (labels == null) return [];
+      labels.removeWhere((labelToRemove) => _labels.contains(labelToRemove));
+      _suggestedLabels = labels;
+      List<String?> labelText = labels.map((label) => label.title).toList();
+      return labelText;
+    });
   }
 
   _addLabel(String labelTitle) {
@@ -466,7 +517,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
         .labelService
         .create(newLabel)
         .then((createdLabel) {
-          if(createdLabel == null) return null;
+      if (createdLabel == null) return null;
       setState(() {
         _labels.add(createdLabel);
         _labelTypeAheadController.clear();
@@ -549,16 +600,18 @@ class _TaskEditPageState extends State<TaskEditPage> {
           TextButton(
             child: Text('OK'),
             onPressed: () {
-              if (_pickerColor != Colors.black) setState(() {
-                _color = _pickerColor;
-                _resetColor = false;
-                _changed = _color != widget.task.color;
-              });
-              else setState(() {
-                _color = null;
-                _resetColor = true;
-                _changed = _color != widget.task.color;
-              });
+              if (_pickerColor != Colors.black)
+                setState(() {
+                  _color = _pickerColor;
+                  _resetColor = false;
+                  _changed = _color != widget.task.color;
+                });
+              else
+                setState(() {
+                  _color = null;
+                  _resetColor = true;
+                  _changed = _color != widget.task.color;
+                });
               Navigator.of(context).pop();
             },
           ),
@@ -569,36 +622,37 @@ class _TaskEditPageState extends State<TaskEditPage> {
 
   Future<bool> _showConfirmationDialog() async {
     return await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('You have unsaved changes!'),
-          content: SingleChildScrollView(
-            child: Column(
-              children: <Widget>[
-                Text('Would you like to dismiss those changes?'),
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Text('You have unsaved changes!'),
+              content: SingleChildScrollView(
+                child: Column(
+                  children: <Widget>[
+                    Text('Would you like to dismiss those changes?'),
+                  ],
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  child: Text('Dismiss'),
+                  onPressed: () {
+                    Navigator.pop(context);
+                    // make sure the list is refreshed
+                    Navigator.pop(context);
+                  },
+                ),
+                TextButton(
+                  child: Text('Keep editing'),
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                ),
               ],
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text('Dismiss'),
-              onPressed: () {
-                Navigator.pop(context);
-                // make sure the list is refreshed
-                Navigator.pop(context);
-              },
-            ),
-            TextButton(
-              child: Text('Keep editing'),
-              onPressed: () {
-                Navigator.pop(context);
-              },
-            ),
-          ],
-        );
-      },
-    ) ?? false;
+            );
+          },
+        ) ??
+        false;
   }
 }
