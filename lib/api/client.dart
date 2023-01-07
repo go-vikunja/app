@@ -13,7 +13,7 @@ import '../main.dart';
 
 
 class Client {
-  GlobalKey<ScaffoldMessengerState> global;
+  GlobalKey<ScaffoldMessengerState>? global;
   final JsonDecoder _decoder = new JsonDecoder();
   final JsonEncoder _encoder = new JsonEncoder();
   String _token = '';
@@ -40,8 +40,9 @@ class Client {
   void reload_ignore_certs(bool? val) {
     ignoreCertificates = val ?? false;
     HttpOverrides.global = new IgnoreCertHttpOverrides(ignoreCertificates);
+    if(global == null) return;
     VikunjaGlobal
-        .of(global.currentContext!)
+        .of(global!.currentContext!)
         .settingsManager
         .setIgnoreCertificates(ignoreCertificates);
   }
@@ -112,10 +113,11 @@ class Client {
   }
 
   Response? _handleError(Object? e, StackTrace? st) {
+    if(global == null) return null;
     SnackBar snackBar = SnackBar(
       content: Text("Error on request: " + e.toString()),
-      action: SnackBarAction(label: "Clear", onPressed: () => global.currentState?.clearSnackBars()),);
-    global.currentState?.showSnackBar(snackBar);
+      action: SnackBarAction(label: "Clear", onPressed: () => global!.currentState?.clearSnackBars()),);
+    global!.currentState?.showSnackBar(snackBar);
     return null;
   }
 
@@ -177,7 +179,10 @@ class Client {
           },
         ),
       );
-      global.currentState?.showSnackBar(snackBar);
+      if(global != null)
+        global!.currentState?.showSnackBar(snackBar);
+      else
+        print("error on request: ${error["message"]}");
       throw new ApiException(
           response.statusCode, "");
     }
