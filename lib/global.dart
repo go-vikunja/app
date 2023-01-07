@@ -92,14 +92,14 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
       "Vikunja1",
       "Due Date Notifications",
       channelDescription: "description",
-      icon: 'ic_launcher_foreground',
+      icon: 'vikunja_notification_logo',
       importance: notifs.Importance.high
   );
   var androidSpecificsReminders = notifs.AndroidNotificationDetails(
       "Vikunja2",
       "Reminder Notifications",
       channelDescription: "description",
-      icon: 'ic_launcher_foreground',
+      icon: 'vikunja_notification_logo',
       importance: notifs.Importance.high
   );
   late notifs.IOSNotificationDetails iOSSpecifics;
