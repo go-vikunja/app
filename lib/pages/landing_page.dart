@@ -173,7 +173,7 @@ class LandingPageState extends State<LandingPage>
     _list = [];
     landingPageStatus = PageStatus.loading;
     // FIXME: loads and reschedules tasks each time list is updated
-    VikunjaGlobal.of(context).scheduleDueNotifications();
+    VikunjaGlobal.of(context).notifications.scheduleDueNotifications(VikunjaGlobal.of(context).taskService);
     return VikunjaGlobal.of(context)
         .taskService
         .getByOptions(VikunjaGlobal.of(context).taskServiceOptions)

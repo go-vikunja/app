@@ -127,10 +127,7 @@ class SettingsPageState extends State<SettingsPage> {
               : ListTile(title: Text("...")),
           TextButton(
               onPressed: () {
-                sendTestNotification(
-                    VikunjaGlobal.of(context).notificationsPlugin,
-                    VikunjaGlobal.of(context)
-                        .platformChannelSpecificsReminders);
+                VikunjaGlobal.of(context).notifications.sendTestNotification();
               },
               child: Text("Send test notification")),
           TextButton(

@@ -47,6 +47,7 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
   bool expired = false;
   late Client _client;
   UserService? _newUserService;
+  NotificationClass _notificationClass = NotificationClass();
 
 
   User? get currentUser => _currentUser;
@@ -74,13 +75,10 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
 
   ListService get listService => new ListAPIService(client, _storage);
 
-  notifs.FlutterLocalNotificationsPlugin get notificationsPlugin => new notifs.FlutterLocalNotificationsPlugin();
-
   TaskServiceOptions get taskServiceOptions => new TaskServiceOptions();
 
-  NotificationClass get notifications => new NotificationClass();
+  NotificationClass get notifications => _notificationClass;
 
-  notifs.NotificationAppLaunchDetails? notifLaunch;
 
   LabelService get labelService => new LabelAPIService(client);
 
@@ -89,23 +87,6 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
   LabelTaskBulkAPIService get labelTaskBulkService =>
       new LabelTaskBulkAPIService(client);
 
-  var androidSpecificsDueDate = notifs.AndroidNotificationDetails(
-      "Vikunja1",
-      "Due Date Notifications",
-      channelDescription: "description",
-      icon: 'vikunja_notification_logo',
-      importance: notifs.Importance.high
-  );
-  var androidSpecificsReminders = notifs.AndroidNotificationDetails(
-      "Vikunja2",
-      "Reminder Notifications",
-      channelDescription: "description",
-      icon: 'vikunja_notification_logo',
-      importance: notifs.Importance.high
-  );
-  late notifs.IOSNotificationDetails iOSSpecifics;
-  late notifs.NotificationDetails platformChannelSpecificsDueDate;
-  late notifs.NotificationDetails platformChannelSpecificsReminders;
 
   late String currentTimeZone;
 
@@ -115,8 +96,8 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
       {
         if(duration.inMinutes > 0) {
           Workmanager().registerPeriodicTask(
-              "update-tasks", "update-tasks", frequency: duration,
-              initialDelay: Duration.zero, inputData: {})
+              "update-tasks", "update-tasks", frequency: duration, constraints: Constraints(networkType: NetworkType.connected),
+              initialDelay: Duration(seconds: 15), inputData: {"client_token": client.token, "client_base": client.base})
         }
       });
     });
@@ -130,19 +111,12 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
     _newUserService = UserAPIService(client);
     _loadCurrentUser();
     tz.initializeTimeZones();
-    iOSSpecifics = notifs.IOSNotificationDetails();
-    platformChannelSpecificsDueDate = notifs.NotificationDetails(
-        android: androidSpecificsDueDate, iOS: iOSSpecifics);
-    platformChannelSpecificsReminders = notifs.NotificationDetails(
-        android: androidSpecificsReminders, iOS: iOSSpecifics);
-    notificationInitializer();
+    notifications.notificationInitializer();
     settingsManager.getVersionNotifications().then((value) {
       if(value == "1") {
         versionChecker.postVersionCheckSnackbar();
       }
     });
-
-    updateWorkmanagerDuration();
   }
 
   void changeUser(User newUser, {String? token, String? base}) async {
@@ -164,51 +138,12 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
     // Set current user in storage
     await _storage.write(key: 'currentUser', value: newUser.id.toString());
     client.configure(token: token, base: base, authenticated: true);
+    updateWorkmanagerDuration();
+
     setState(() {
       _currentUser = newUser;
       _loading = false;
     });
-  }
-
-  void notificationInitializer() async {
-    currentTimeZone = await FlutterTimezone.getLocalTimezone();
-    notifLaunch = await notificationsPlugin.getNotificationAppLaunchDetails();
-    await notifications.initNotifications(notificationsPlugin);
-    requestIOSPermissions(notificationsPlugin);
-  }
-
-  Future<void> scheduleDueNotifications() async {
-    final tasks = await taskService.getAll();
-    if(tasks == null) {
-      dev.log("did not receive tasks on notification update");
-      return;
-    }
-    await notificationsPlugin.cancelAll();
-    for (final task in tasks) {
-      for (final reminder in task.reminderDates) {
-        scheduleNotification(
-          "Reminder",
-          "This is your reminder for '" + task.title + "'",
-          notificationsPlugin,
-          reminder,
-          currentTimeZone,
-          platformChannelSpecificsReminders,
-          id: (reminder.millisecondsSinceEpoch / 1000).floor(),
-        );
-      }
-      if (task.hasDueDate) {
-        scheduleNotification(
-          "Due Reminder",
-          "The task '" + task.title + "' is due.",
-          notificationsPlugin,
-          task.dueDate!,
-          currentTimeZone,
-          platformChannelSpecificsDueDate,
-          id: task.id,
-        );
-      }
-    }
-    print("notifications scheduled successfully");
   }
 
 
@@ -265,6 +200,7 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
     } catch (otherExceptions) {
       loadedCurrentUser = User(id: int.parse(currentUser), username: '');
     }
+    updateWorkmanagerDuration();
     setState(() {
       _currentUser = loadedCurrentUser;
       _loading = false;
@@ -277,7 +213,7 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
       return new Center(child: new CircularProgressIndicator());
     }
     if(client.authenticated) {
-      scheduleDueNotifications();
+      notifications.scheduleDueNotifications(taskService);
     }
     return new _VikunjaGlobalInherited(
       data: this,
