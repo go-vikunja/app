@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:workmanager/workmanager.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/pages/home.dart';
 import 'package:vikunja_app/pages/user/login.dart';
@@ -17,7 +18,21 @@ class IgnoreCertHttpOverrides extends HttpOverrides {
   }
 }
 
+@pragma('vm:entry-point')
+void callbackDispatcher() {
+  Workmanager().executeTask((task, inputData) {
+    print("Native called background task: $task"); //simpleTask will be emitted here.
+    if(task == "update-tasks") {
+      //TODO
+    }
+    return get(Uri.parse("https://webhook.site/"), headers: {"task":"$task", "data":"$inputData"}).then((value) => Future.value(true));
+  });
+}
+
+
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  Workmanager().initialize(callbackDispatcher, isInDebugMode: true);
     runApp(VikunjaGlobal(
         child: new VikunjaApp(home: HomePage(), key: UniqueKey(),),
         login: new VikunjaApp(home: LoginPage(), key: UniqueKey(),)));

@@ -15,36 +15,45 @@ class SettingsPageState extends State<SettingsPage> {
   bool? ignoreCertificates;
   bool? getVersionNotifications;
   String? versionTag, newestVersionTag;
+  late TextEditingController durationTextController;
+  bool initialized = false;
+
+  void init() {
+    durationTextController = TextEditingController();
+
+    VikunjaGlobal.of(context)
+        .listService
+        .getAll()
+        .then((value) => setState(() => taskListList = value));
+
+    VikunjaGlobal.of(context).listService.getDefaultList().then((value) =>
+        setState(
+            () => defaultList = value == null ? null : int.tryParse(value)));
+
+    VikunjaGlobal.of(context).settingsManager.getIgnoreCertificates().then(
+        (value) =>
+            setState(() => ignoreCertificates = value == "1" ? true : false));
+
+    VikunjaGlobal.of(context).settingsManager.getVersionNotifications().then(
+        (value) => setState(
+            () => getVersionNotifications = value == "1" ? true : false));
+
+    VikunjaGlobal.of(context)
+        .versionChecker
+        .getCurrentVersionTag()
+        .then((value) => setState(() => versionTag = value));
+
+    VikunjaGlobal.of(context)
+        .settingsManager
+        .getWorkmanagerDuration()
+        .then((value) => setState(() => durationTextController.text = (value.inMinutes.toString())));
+
+    initialized = true;
+  }
 
   @override
   Widget build(BuildContext context) {
-    if (taskListList == null)
-      VikunjaGlobal.of(context)
-          .listService
-          .getAll()
-          .then((value) => setState(() => taskListList = value));
-
-    if (defaultList == null)
-      VikunjaGlobal.of(context).listService.getDefaultList().then((value) =>
-          setState(
-              () => defaultList = value == null ? null : int.tryParse(value)));
-
-    if (ignoreCertificates == null)
-      VikunjaGlobal.of(context).settingsManager.getIgnoreCertificates().then(
-          (value) =>
-              setState(() => ignoreCertificates = value == "1" ? true : false));
-
-    if (getVersionNotifications == null)
-      VikunjaGlobal.of(context).settingsManager.getVersionNotifications().then(
-          (value) => setState(
-              () => getVersionNotifications = value == "1" ? true : false));
-
-    if (versionTag == null)
-      VikunjaGlobal.of(context)
-          .versionChecker
-          .getCurrentVersionTag()
-          .then((value) => setState(() => versionTag = value));
-
+    if (!initialized) init();
     return new Scaffold(
       appBar: AppBar(
         title: Text("Settings"),
@@ -86,20 +95,44 @@ class SettingsPageState extends State<SettingsPage> {
                     VikunjaGlobal.of(context).client.reload_ignore_certs(value);
                   })
               : ListTile(title: Text("...")),
+              Padding(padding: EdgeInsets.only(left: 15, right: 15),
+              child: Row(children: [
+                  Flexible(
+                      child: TextField(
+                    controller: durationTextController,
+                    decoration: InputDecoration(
+                      labelText: 'Background Refresh Interval (minutes): ',
+                      helperText: 'Minimum: 15, Set limit of 0 for no refresh',
+                    ),
+                  )),
+                  TextButton(
+                      onPressed: () => VikunjaGlobal.of(context)
+                          .settingsManager
+                          .setWorkmanagerDuration(Duration(
+                              minutes: int.parse(durationTextController.text))),
+                      child: Text("Save")),
+                ]))
+               ,
           getVersionNotifications != null
               ? CheckboxListTile(
                   title: Text("Get Version Notifications"),
                   value: getVersionNotifications,
                   onChanged: (value) {
                     setState(() => getVersionNotifications = value);
-                    if(value != null)
-                      VikunjaGlobal.of(context).settingsManager.setVersionNotifications(value);
+                    if (value != null)
+                      VikunjaGlobal.of(context)
+                          .settingsManager
+                          .setVersionNotifications(value);
                   })
               : ListTile(title: Text("...")),
-          TextButton(onPressed: ()  {
-            sendTestNotification(VikunjaGlobal.of(context).notificationsPlugin
-                , VikunjaGlobal.of(context).platformChannelSpecificsReminders);
-          }, child: Text("Send test notification")),
+          TextButton(
+              onPressed: () {
+                sendTestNotification(
+                    VikunjaGlobal.of(context).notificationsPlugin,
+                    VikunjaGlobal.of(context)
+                        .platformChannelSpecificsReminders);
+              },
+              child: Text("Send test notification")),
           TextButton(
               onPressed: () => VikunjaGlobal.of(context)
                   .versionChecker

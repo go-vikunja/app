@@ -20,6 +20,7 @@ import 'package:vikunja_app/models/user.dart';
 import 'package:vikunja_app/service/services.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart'as notifs;
+import 'package:workmanager/workmanager.dart';
 
 
 class VikunjaGlobal extends StatefulWidget {
@@ -108,7 +109,18 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
 
   late String currentTimeZone;
 
-
+  void updateWorkmanagerDuration() {
+    Workmanager().cancelAll().then((value) {
+      settingsManager.getWorkmanagerDuration().then((duration) =>
+      {
+        if(duration.inMinutes > 0) {
+          Workmanager().registerPeriodicTask(
+              "update-tasks", "update-tasks", frequency: duration,
+              initialDelay: Duration.zero, inputData: {})
+        }
+      });
+    });
+  }
 
   @override
   void initState() {
@@ -129,6 +141,8 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
         versionChecker.postVersionCheckSnackbar();
       }
     });
+
+    updateWorkmanagerDuration();
   }
 
   void changeUser(User newUser, {String? token, String? base}) async {
@@ -194,6 +208,7 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
         );
       }
     }
+    print("notifications scheduled successfully");
   }
 
 

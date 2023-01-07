@@ -231,7 +231,8 @@ class SettingsManager {
 
   Map<String, String> defaults = {
     "ignore-certificates": "0",
-    "get-version-notifications": "1"
+    "get-version-notifications": "1",
+    "workmanager-duration": "0"
   };
 
   SettingsManager(this._storage) {
@@ -245,16 +246,26 @@ class SettingsManager {
   Future<String?> getIgnoreCertificates() {
     return _storage.read(key: "ignore-certificates");
   }
-
-  Future<String?> getVersionNotifications() {
-    return _storage.read(key: "get-version-notifications");
-  }
-
   void setIgnoreCertificates(bool value) {
     _storage.write(key: "ignore-certificates", value: value ? "1" : "0");
   }
 
+
+  Future<String?> getVersionNotifications() {
+    return _storage.read(key: "get-version-notifications");
+  }
   void setVersionNotifications(bool value) {
     _storage.write(key: "get-version-notifications", value: value ? "1" : "0");
   }
+
+
+  Future<Duration> getWorkmanagerDuration() {
+    return _storage.read(key: "workmanager-duration").then((value) => Duration(minutes: int.parse(value ?? "0")));
+  }
+  void setWorkmanagerDuration(Duration duration) {
+    _storage.write(key: "workmanager-duration", value: duration.inMinutes.toString());
+  }
+
+
+
 }
