@@ -45,7 +45,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
   @override
   void initState() {
     _reminderDates = widget.task.reminderDates;
-
+    _repeatAfter = widget.task.repeatAfter;
     for (var i = 0; i < _reminderDates.length; i++) {
       _reminderInputs.add(VikunjaDateTimePicker(
         initialValue: _reminderDates[i],
