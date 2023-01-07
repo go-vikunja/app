@@ -124,8 +124,11 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
     platformChannelSpecificsReminders = notifs.NotificationDetails(
         android: androidSpecificsReminders, iOS: iOSSpecifics);
     notificationInitializer();
-    versionChecker.postVersionCheckSnackbar();
-
+    settingsManager.getVersionNotifications().then((value) {
+      if(value == "1") {
+        versionChecker.postVersionCheckSnackbar();
+      }
+    });
   }
 
   void changeUser(User newUser, {String? token, String? base}) async {
