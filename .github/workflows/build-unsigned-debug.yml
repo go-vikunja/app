@@ -35,5 +35,5 @@ jobs:
         run: flutter pub get
 
       - name: Build Debug Build
-        run: flutter build apk --debug --flavor main
+        run: flutter build apk --debug --flavor core
 
