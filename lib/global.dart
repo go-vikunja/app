@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'dart:developer' as dev;
 
 import 'package:flutter/material.dart';
@@ -14,12 +13,12 @@ import 'package:vikunja_app/api/namespace_implementation.dart';
 import 'package:vikunja_app/api/server_implementation.dart';
 import 'package:vikunja_app/api/task_implementation.dart';
 import 'package:vikunja_app/api/user_implementation.dart';
+import 'package:vikunja_app/api/version_check.dart';
 import 'package:vikunja_app/managers/notifications.dart';
 import 'package:vikunja_app/managers/user.dart';
 import 'package:vikunja_app/models/user.dart';
 import 'package:vikunja_app/service/services.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
-import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart'as notifs;
 
 
@@ -63,6 +62,8 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
   ServerService get serverService => new ServerAPIService(client);
 
   SettingsManager get settingsManager => new SettingsManager(_storage);
+
+  VersionChecker get versionChecker => new VersionChecker(snackbarKey);
 
   NamespaceService get namespaceService => new NamespaceAPIService(client);
 
@@ -123,6 +124,7 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
     platformChannelSpecificsReminders = notifs.NotificationDetails(
         android: androidSpecificsReminders, iOS: iOSSpecifics);
     notificationInitializer();
+    versionChecker.postVersionCheckSnackbar();
 
   }
 

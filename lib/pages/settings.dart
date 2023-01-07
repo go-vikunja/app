@@ -13,6 +13,7 @@ class SettingsPageState extends State<SettingsPage> {
   List<TaskList>? taskListList;
   int? defaultList;
   bool? ignoreCertificates;
+  String? versionTag, newestVersionTag;
 
   @override
   Widget build(BuildContext context) {
@@ -20,9 +21,10 @@ class SettingsPageState extends State<SettingsPage> {
       VikunjaGlobal.of(context).listService.getAll().then((value) => setState(() => taskListList = value));
     if(defaultList == null)
       VikunjaGlobal.of(context).listService.getDefaultList().then((value) => setState(() => defaultList = value == null ? null : int.tryParse(value)));
-
     if(ignoreCertificates == null)
       VikunjaGlobal.of(context).settingsManager.getIgnoreCertificates().then((value) => setState(() => ignoreCertificates = value == "1" ? true:false));
+    if(versionTag == null)
+      VikunjaGlobal.of(context).versionChecker.getCurrentVersionTag().then((value) => setState(() => versionTag = value));
 
     return new Scaffold(
       appBar: AppBar(title: Text("Settings"),),
@@ -43,7 +45,10 @@ class SettingsPageState extends State<SettingsPage> {
               CheckboxListTile(title: Text("Ignore Certificates"), value: ignoreCertificates, onChanged: (value) {
                 setState(() => ignoreCertificates = value);
                 VikunjaGlobal.of(context).client.reload_ignore_certs(value);
-              }) : ListTile(title: Text("..."))
+              }) : ListTile(title: Text("...")),
+          TextButton(onPressed: () => VikunjaGlobal.of(context).versionChecker.getLatestVersionTag().then((value) => newestVersionTag = value), child: Text("Check for latest version")),
+          Text("Current version: ${versionTag ?? "loading"}"),
+          Text(newestVersionTag != null ? "Newest version: $newestVersionTag" : "")
         ],
       ),
     );
