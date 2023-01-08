@@ -262,8 +262,8 @@ class SettingsManager {
   Future<Duration> getWorkmanagerDuration() {
     return _storage.read(key: "workmanager-duration").then((value) => Duration(minutes: int.parse(value ?? "0")));
   }
-  void setWorkmanagerDuration(Duration duration) {
-    _storage.write(key: "workmanager-duration", value: duration.inMinutes.toString());
+  Future<void> setWorkmanagerDuration(Duration duration) {
+    return _storage.write(key: "workmanager-duration", value: duration.inMinutes.toString());
   }
 
 

@@ -2,7 +2,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/models/list.dart';
-import 'package:vikunja_app/managers/notifications.dart';
 
 class SettingsPage extends StatefulWidget {
   @override
@@ -109,7 +108,7 @@ class SettingsPageState extends State<SettingsPage> {
                       onPressed: () => VikunjaGlobal.of(context)
                           .settingsManager
                           .setWorkmanagerDuration(Duration(
-                              minutes: int.parse(durationTextController.text))),
+                              minutes: int.parse(durationTextController.text))).then((value) => VikunjaGlobal.of(context).updateWorkmanagerDuration()),
                       child: Text("Save")),
                 ]))
                ,
