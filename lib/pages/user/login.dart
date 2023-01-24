@@ -184,8 +184,6 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _loading = true);
     try {
       var vGlobal = VikunjaGlobal.of(context);
-      if(_server.endsWith("/"))
-        _server = _server.substring(0,_server.length-1);
       vGlobal.client.configure(base: _server);
       Server? info = await vGlobal.serverService.getInfo();
       if(info == null)

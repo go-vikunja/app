@@ -59,8 +59,12 @@ class Client {
   void configure({String? token, String? base, bool? authenticated}) {
     if (token != null)
       _token = token;
-    if (base != null)
+    if (base != null) {
+      base = base.replaceAll(" ", "");
+      if(base.endsWith("/"))
+        base = base.substring(0,base.length-1);
       _base = base.endsWith('/api/v1') ? base : '$base/api/v1';
+    }
     if (authenticated != null)
       this.authenticated = authenticated;
   }
