@@ -3,7 +3,6 @@ import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:vikunja_app/api/client.dart';
-import 'package:vikunja_app/api/user_implementation.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/models/user.dart';
 import 'package:vikunja_app/pages/user/login_webview.dart';
@@ -12,7 +11,6 @@ import 'package:vikunja_app/theme/button.dart';
 import 'package:vikunja_app/theme/buttonText.dart';
 import 'package:vikunja_app/theme/constants.dart';
 import 'package:vikunja_app/utils/validator.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../models/server.dart';
 
@@ -130,7 +128,7 @@ class _LoginPageState extends State<LoginPage> {
                               onPressed: !_loading
                                   ? () {
                                       if (_formKey.currentState!.validate()) {
-                                        Form.of(context)?.save();
+                                        Form.of(context).save();
                                         _loginUser(context);
                                       }
                                     }
@@ -189,37 +187,39 @@ class _LoginPageState extends State<LoginPage> {
       if(info == null)
         throw Exception("Getting server info failed");
 
-      UserTokenPair? newUser;
+      UserTokenPair newUser;
 
-      try {
-        newUser =
-        await vGlobal.newUserService?.login(
-            _username, _password, rememberMe: this._rememberMe);
-      } catch (e) {
-        if (e is ApiException && e.errorCode == 412) {
-          TextEditingController totpController = TextEditingController();
-          await showDialog(context: context, builder: (context) =>
-          new AlertDialog(
-            title: Text("Enter One Time Passcode"),
-            content: TextField(controller: totpController,keyboardType: TextInputType.number,
-              inputFormatters: <TextInputFormatter>[FilteringTextInputFormatter.digitsOnly],
-            ),
-            actions: [
-              TextButton(
-                  onPressed: () => Navigator.pop(context), child: Text("Login"))
+      newUser =
+      await vGlobal.newUserService!.login(
+          _username, _password, rememberMe: this._rememberMe);
+
+      if (newUser.error == 412) {
+        TextEditingController totpController = TextEditingController();
+        await showDialog(context: context, builder: (context) =>
+        new AlertDialog(
+          title: Text("Enter One Time Passcode"),
+          content: TextField(
+            controller: totpController, keyboardType: TextInputType.number,
+            inputFormatters: <TextInputFormatter>[
+              FilteringTextInputFormatter.digitsOnly
             ],
-          ));
-          newUser =
-          await vGlobal.newUserService?.login(
-              _username, _password, rememberMe: this._rememberMe,
-              totp: totpController.text);
-        } else {
-          throw e;
-        }
-    }
-    if(newUser != null)
-        vGlobal.changeUser(newUser.user, token: newUser.token, base: _server);
-    } catch (ex, stacktrace) {
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context), child: Text("Login"))
+          ],
+        ));
+        newUser =
+        await vGlobal.newUserService!.login(
+            _username, _password, rememberMe: this._rememberMe,
+            totp: totpController.text);
+
+        if (newUser.error == 0)
+          vGlobal.changeUser(
+              newUser.user!, token: newUser.token, base: _server);
+      }
+
+    } catch (ex) {
     /*  log(stacktrace.toString());
       showDialog(
           context: context,

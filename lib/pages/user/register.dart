@@ -106,7 +106,7 @@ class _RegisterPageState extends State<RegisterPage> {
                               onPressed: !_loading
                                   ? () {
                                       if (_formKey.currentState!.validate()) {
-                                        Form.of(context)?.save();
+                                        Form.of(context).save();
                                         _registerUser(context);
                                       } else {
                                         print("awhat");
@@ -131,7 +131,7 @@ class _RegisterPageState extends State<RegisterPage> {
           .newUserService
           ?.register(_username!, _email, _password);
       if(newUserLoggedIn != null)
-        vGlobal.changeUser(newUserLoggedIn.user,
+        vGlobal.changeUser(newUserLoggedIn.user!,
             token: newUserLoggedIn.token, base: _server!);
     } catch (ex) {
       showDialog(

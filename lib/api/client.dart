@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:core';
-import 'dart:developer';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -77,11 +76,8 @@ class Client {
 
   Future<Response?> get(String url,
       [Map<String, List<String>>? queryParameters]) {
-    final uri = Uri.parse('${this.base}$url').replace(
-        queryParameters: queryParameters);
-    return http.get(uri, headers: _headers)
-        .then(_handleResponse).catchError((error) =>
-        _handleError(error, null));
+    return http.get('${this.base}$url'.toUri()!, headers: _headers)
+        .then(_handleResponse).catchError((Object? obj) {print(obj);});
   }
 
   Future<Response?> delete(String url) {
@@ -101,8 +97,7 @@ class Client {
       headers: _headers,
       body: _encoder.convert(body),
     )
-        .then(_handleResponse).onError((error, stackTrace) =>
-        _handleError(error, stackTrace));
+        .then(_handleResponse).catchError((Object? obj) {print(obj);});
   }
 
   Future<Response?> put(String url, {dynamic body}) {
@@ -112,8 +107,7 @@ class Client {
       headers: _headers,
       body: _encoder.convert(body),
     )
-        .then(_handleResponse).onError((error, stackTrace) =>
-        _handleError(error, stackTrace));
+        .then(_handleResponse);
   }
 
   Response? _handleError(Object? e, StackTrace? st) {
@@ -122,7 +116,6 @@ class Client {
       content: Text("Error on request: " + e.toString()),
       action: SnackBarAction(label: "Clear", onPressed: () => global!.currentState?.clearSnackBars()),);
     global!.currentState?.showSnackBar(snackBar);
-    return null;
   }
 
   Map<String, String> headersToMap(HttpHeaders headers) {
@@ -158,15 +151,19 @@ class Client {
   }*/
 
   void _handleResponseErrors(http.Response response) {
+    if(response.statusCode == 412)
+      return;
     if (response.statusCode < 200 ||
         response.statusCode >= 400) {
       Map<String, dynamic> error;
       error = _decoder.convert(response.body);
       if (response.statusCode ~/ 100 == 4) {
-        throw new InvalidRequestApiException(
+        /*throw new InvalidRequestApiException(
             response.statusCode,
             "",
             error["message"] ?? "Unknown Error");
+
+         */
       }
       final SnackBar snackBar = SnackBar(
         content: Text(
@@ -187,8 +184,6 @@ class Client {
         global!.currentState?.showSnackBar(snackBar);
       else
         print("error on request: ${error["message"]}");
-      throw new ApiException(
-          response.statusCode, "");
     }
   }
 

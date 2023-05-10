@@ -190,7 +190,7 @@ abstract class BucketService {
 }
 
 abstract class UserService {
-  Future<UserTokenPair?> login(String username, String password,
+  Future<UserTokenPair> login(String username, String password,
       {bool rememberMe = false, String totp});
 
   Future<UserTokenPair?> register(String username, email, password);

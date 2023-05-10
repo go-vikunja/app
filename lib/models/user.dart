@@ -36,9 +36,10 @@ class User {
 }
 
 class UserTokenPair {
-  final User user;
-  final String token;
-  UserTokenPair(this.user, this.token);
+  final User? user;
+  final String? token;
+  final int error;
+  UserTokenPair(this.user, this.token, {this.error = 0});
 }
 
 class BaseTokenPair {
