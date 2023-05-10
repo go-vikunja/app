@@ -39,7 +39,7 @@ class Client {
   void reload_ignore_certs(bool? val) {
     ignoreCertificates = val ?? false;
     HttpOverrides.global = new IgnoreCertHttpOverrides(ignoreCertificates);
-    if(global == null) return;
+    if(global == null || global!.currentContext == null) return;
     VikunjaGlobal
         .of(global!.currentContext!)
         .settingsManager
@@ -97,7 +97,7 @@ class Client {
       headers: _headers,
       body: _encoder.convert(body),
     )
-        .then(_handleResponse).catchError((Object? obj) {print(obj);});
+        .then(_handleResponse);
   }
 
   Future<Response?> put(String url, {dynamic body}) {

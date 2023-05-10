@@ -39,7 +39,8 @@ class UserTokenPair {
   final User? user;
   final String? token;
   final int error;
-  UserTokenPair(this.user, this.token, {this.error = 0});
+  final String errorString;
+  UserTokenPair(this.user, this.token, {this.error = 0, this.errorString = ""});
 }
 
 class BaseTokenPair {

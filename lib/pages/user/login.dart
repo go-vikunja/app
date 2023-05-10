@@ -193,7 +193,7 @@ class _LoginPageState extends State<LoginPage> {
       await vGlobal.newUserService!.login(
           _username, _password, rememberMe: this._rememberMe);
 
-      if (newUser.error == 412) {
+      if (newUser.error == 1017) {
         TextEditingController totpController = TextEditingController();
         await showDialog(context: context, builder: (context) =>
         new AlertDialog(
@@ -213,11 +213,13 @@ class _LoginPageState extends State<LoginPage> {
         await vGlobal.newUserService!.login(
             _username, _password, rememberMe: this._rememberMe,
             totp: totpController.text);
-
-        if (newUser.error == 0)
-          vGlobal.changeUser(
-              newUser.user!, token: newUser.token, base: _server);
+      } else if(newUser.error > 0) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(newUser.errorString)));
       }
+
+      if (newUser.error == 0)
+        vGlobal.changeUser(
+            newUser.user!, token: newUser.token, base: _server);
 
     } catch (ex) {
     /*  log(stacktrace.toString());

@@ -10,15 +10,20 @@ class UserAPIService extends APIService implements UserService {
 
   @override
   Future<UserTokenPair> login(String username, password, {bool rememberMe = false, String? totp}) async {
-    var response = await client.post('/login', body: {
+    var body = {
       'long_token': rememberMe,
       'password': password,
-      'totp_passcode': totp,
       'username': username,
-    });
+    };
+    if(totp != null) {
+      body['totp_passcode'] = totp;
+  }
+    var response = await client.post('/login', body: body);
     var token = response?.body["token"];
     if(token == null || response == null || response.error)
-      return Future.value(UserTokenPair(null, null, error: response != null ? response.statusCode : 0));
+      return Future.value(UserTokenPair(null, null,
+          error: response != null ? response.body["code"] : 0,
+          errorString: response != null ? response.body["message"] : "Login error"));
     client.configure(token: token);
     return UserAPIService(client)
         .getCurrentUser()
