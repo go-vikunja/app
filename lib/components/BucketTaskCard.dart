@@ -58,7 +58,7 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
       children: <Widget>[
         Text(
           widget.task.identifier.isNotEmpty
-              ? '#${widget.task.identifier.substring(1)}' : '${widget.task.id}',
+              ? '#${widget.task.identifier}' : '${widget.task.id}',
           style: (theme.textTheme.subtitle2 ?? TextStyle()).copyWith(
             color: Colors.grey,
           ),
