@@ -30,6 +30,7 @@ dependencies:
   package_info_plus: ^3.0.2
   url_launcher: ^6.1.7
   workmanager: ^0.5.1
+  permission_handler: ^10.2.0
 
 dev_dependencies:
   flutter_test:

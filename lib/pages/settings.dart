@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/models/list.dart';
 
@@ -125,7 +126,12 @@ class SettingsPageState extends State<SettingsPage> {
                   })
               : ListTile(title: Text("...")),
           TextButton(
-              onPressed: () {
+              onPressed: () async {
+                await Permission.notification.isDenied.then((value) {
+                  if (value) {
+                    Permission.notification.request();
+                  }
+                });
                 VikunjaGlobal.of(context).notifications.sendTestNotification();
               },
               child: Text("Send test notification")),

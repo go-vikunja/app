@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:vikunja_app/api/task_implementation.dart';
 import 'package:vikunja_app/api/client.dart';
 import 'package:vikunja_app/service/services.dart';
@@ -11,8 +12,6 @@ import 'package:vikunja_app/pages/home.dart';
 import 'package:vikunja_app/pages/user/login.dart';
 import 'package:vikunja_app/theme/theme.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
-
-import 'package:http/http.dart' as httpl;
 
 import 'managers/notifications.dart';
 
@@ -60,8 +59,13 @@ void callbackDispatcher() {
   });
 }
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Permission.notification.isDenied.then((value) {
+    if (value) {
+      Permission.notification.request();
+    }
+  });
   Workmanager().initialize(callbackDispatcher, isInDebugMode: false);
   runApp(VikunjaGlobal(
       child: new VikunjaApp(
