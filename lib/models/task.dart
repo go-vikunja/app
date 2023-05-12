@@ -10,7 +10,7 @@ import 'package:vikunja_app/utils/checkboxes_in_text.dart';
 class Task {
   final int id;
   final int? parentTaskId, priority, bucketId;
-  final int listId;
+  final int? listId;
   final DateTime created, updated;
   DateTime? dueDate, startDate, endDate;
   final List<DateTime> reminderDates;

@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:developer';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:vikunja_app/api/client.dart';
@@ -48,9 +47,10 @@ class ListAPIService extends APIService implements ListService {
   Future<List<TaskList>?> getAll() {
     return client.get('/lists').then(
         (list) {
-          if (list == null) return null;
+          if (list == null || list.statusCode != 200) return null;
           if (list.body.toString().isEmpty)
             return Future.value([]);
+          print(list.statusCode);
           return convertList(list.body, (result) => TaskList.fromJson(result));});
   }
 
@@ -66,7 +66,7 @@ class ListAPIService extends APIService implements ListService {
     }
     return client.get('/namespaces/$namespaceId/lists').then(
         (list) {
-          if (list == null) return null;
+          if (list == null || list.statusCode != 200) return null;
           return convertList(list.body, (result) => TaskList.fromJson(result));
         });
   }

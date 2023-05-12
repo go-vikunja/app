@@ -1,7 +1,6 @@
 import 'dart:developer' as dev;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:vikunja_app/api/bucket_implementation.dart';
 import 'package:vikunja_app/api/client.dart';
@@ -19,7 +18,6 @@ import 'package:vikunja_app/managers/user.dart';
 import 'package:vikunja_app/models/user.dart';
 import 'package:vikunja_app/service/services.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
-import 'package:flutter_local_notifications/flutter_local_notifications.dart'as notifs;
 import 'package:workmanager/workmanager.dart';
 
 
@@ -147,18 +145,21 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
   }
 
 
-  void logoutUser(BuildContext context) {
-    _storage.deleteAll().then((_) {
+  void logoutUser(BuildContext context) async {
+//    _storage.deleteAll().then((_) {
+      var userId = await _storage.read(key: "currentUser");
+      _storage.delete(key: userId!); //delete token
+      _storage.delete(key: "${userId}_base");
       Navigator.pop(context);
       setState(() {
         client.reset();
         _currentUser = null;
       });
-    }).catchError((err) {
+ /*   }).catchError((err) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('An error occured while logging out!'),
       ));
-    });
+    });*/
   }
 
   void _loadCurrentUser() async {

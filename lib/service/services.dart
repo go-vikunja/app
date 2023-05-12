@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:vikunja_app/api/response.dart';
@@ -232,15 +233,25 @@ class SettingsManager {
   Map<String, String> defaults = {
     "ignore-certificates": "0",
     "get-version-notifications": "1",
-    "workmanager-duration": "0"
+    "workmanager-duration": "0",
+    "recent-servers": "[\"https://try.vikunja.io\"]",
   };
 
-  SettingsManager(this._storage) {
+  void applydefaults() {
     defaults.forEach((key, value) {
-      _storage.containsKey(key: key).then((is_created) {
-        if (!is_created) _storage.write(key: key, value: value);
+      _storage.containsKey(key: key).then((is_created) async {
+        if (!is_created) {
+          print("iscreated $is_created");
+          print("default not set, writing $value to $key");
+          await _storage.write(key: key, value: value);
+        }
       });
     });
+  }
+
+
+  SettingsManager(this._storage) {
+    applydefaults();
   }
 
   Future<String?> getIgnoreCertificates() {
@@ -266,6 +277,14 @@ class SettingsManager {
     return _storage.write(key: "workmanager-duration", value: duration.inMinutes.toString());
   }
 
+  Future<List<String>?> getPastServers() {
+    return _storage.read(key: "recent-servers").then((value) => (jsonDecode(value!) as List<dynamic>).cast<String>());
+  }
 
+  Future<void> setPastServers(List<String>? server) {
+    var val = jsonEncode(server);
+    print("val: $val");
+    return _storage.write(key: "recent-servers", value: jsonEncode(server));
+  }
 
 }
