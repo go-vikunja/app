@@ -16,7 +16,7 @@ dependencies:
   flutter_local_notifications: ^9.8.0+1
   rxdart: ^0.27.5
   flutter_timezone: ^1.0.4
-  flutter_secure_storage: ^6.0.0
+  flutter_secure_storage: ^8.0.0
   datetime_picker_formfield: ^2.0.1
   flutter_typeahead: ^4.0.0
   build: ^2.3.0
