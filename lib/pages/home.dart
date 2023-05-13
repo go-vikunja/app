@@ -38,7 +38,7 @@ class HomePageState extends State<HomePage>  {
           VikunjaGlobal.of(context).logoutUser(context);
         },
       ),
-      ListTile(
+      /*ListTile(
         title: Text('Settings'),
         leading: Icon(Icons.settings),
         onTap: () {
@@ -50,7 +50,7 @@ class HomePageState extends State<HomePage>  {
                         forceReload: true);
                   }));
         },
-      )
+      )*/
     ]);
   }
 
@@ -96,15 +96,10 @@ class HomePageState extends State<HomePage>  {
         UserAccountsDrawerHeader(
           accountName: currentUser != null ? Text(currentUser.username) : null,
           accountEmail: currentUser != null ? Text(currentUser.name) : null,
-          onDetailsPressed: () {
-            setState(() {
-              _showUserDetails = !_showUserDetails;
-            });
-          },
           currentAccountPicture: currentUser == null
               ? null
               : CircleAvatar(
-                  //backgroundImage: NetworkImage(currentUser.avatarUrl(context)),
+                  backgroundImage: NetworkImage(currentUser.avatarUrl(context)),
                   ),
           decoration: BoxDecoration(
             image: DecorationImage(
@@ -114,10 +109,10 @@ class HomePageState extends State<HomePage>  {
                     Theme.of(context).primaryColor, BlendMode.multiply)),
           ),
         ),
-        /*Builder(
+        Builder(
             builder: (BuildContext context) => Expanded(
                 child: _userDetailsWidget(context))),
-        Align(
+        /*Align(
           alignment: FractionalOffset.bottomLeft,
           child: Builder(
             builder: (context) => ListTile(

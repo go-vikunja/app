@@ -32,7 +32,6 @@ class _NamespaceOverviewPageState extends State<NamespaceOverviewPage>
 
   @override
   Widget build(BuildContext context) {
-    // TODO: implement build
     List<Widget> namespacesList = <Widget>[];
     _namespaces
         .asMap()
