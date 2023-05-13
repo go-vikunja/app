@@ -55,9 +55,6 @@ class SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     if (!initialized) init();
     return new Scaffold(
-      appBar: AppBar(
-        title: Text("Settings"),
-      ),
       body: Column(
         children: [
           taskListList != null
