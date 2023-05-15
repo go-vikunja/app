@@ -126,6 +126,12 @@ class _ListPageState extends State<ListPage> {
                 Center(child: Text('This list is empty.'))
               ]);
         break;
+      case PageStatus.empty:
+        body = new Stack(children: [
+          ListView(),
+          Center(child: Text("This view is empty"))
+        ]);
+        break;
     }
 
     return new Scaffold(

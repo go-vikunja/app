@@ -90,6 +90,12 @@ class LandingPageState extends State<LandingPage>
           Center(child: Text("There was an error loading this view"))
         ]);
         break;
+      case PageStatus.empty:
+        body = new Stack(children: [
+          ListView(),
+          Center(child: Text("This view is empty"))
+        ]);
+        break;
       case PageStatus.success:
         body = ListView(
           scrollDirection: Axis.vertical,
@@ -179,7 +185,9 @@ class LandingPageState extends State<LandingPage>
         .getByOptions(VikunjaGlobal.of(context).taskServiceOptions)
         .then<Future<void>?>((taskList) {
       if (taskList != null && taskList.isEmpty) {
-        landingPageStatus = PageStatus.error;
+        setState(() {
+          landingPageStatus = PageStatus.empty;
+        });
         return null;
       }
       return VikunjaGlobal.of(context).listService.getAll().then((lists) {
