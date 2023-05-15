@@ -11,8 +11,21 @@ import '../components/TaskTile.dart';
 import '../components/pagestatus.dart';
 import '../models/task.dart';
 
-class LandingPage extends StatefulWidget {
-  const LandingPage({Key? key}) : super(key: key);
+class HomeScreenWidget extends StatefulWidget {
+  HomeScreenWidget({Key? key}) : super(key: key);
+
+  @override
+  State<StatefulWidget> createState() {
+    // TODO: implement createState
+    throw UnimplementedError();
+  }
+
+
+}
+
+
+class LandingPage extends HomeScreenWidget {
+  LandingPage({Key? key}) : super(key: key);
 
   @override
   State<StatefulWidget> createState() => LandingPageState();

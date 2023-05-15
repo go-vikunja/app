@@ -4,6 +4,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/models/list.dart';
 
+
 class SettingsPage extends StatefulWidget {
   @override
   State<StatefulWidget> createState() => SettingsPageState();
@@ -53,10 +54,28 @@ class SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final currentUser = VikunjaGlobal.of(context).currentUser;
+
     if (!initialized) init();
     return new Scaffold(
       body: Column(
         children: [
+          UserAccountsDrawerHeader(
+            accountName: currentUser != null ? Text(currentUser.username) : null,
+            accountEmail: currentUser != null ? Text(currentUser.name) : null,
+            currentAccountPicture: currentUser == null
+                ? null
+                : CircleAvatar(
+              backgroundImage: NetworkImage(currentUser.avatarUrl(context)),
+            ),
+            decoration: BoxDecoration(
+              image: DecorationImage(
+                  image: AssetImage("assets/graphics/hypnotize.png"),
+                  repeat: ImageRepeat.repeat,
+                  colorFilter: ColorFilter.mode(
+                      Theme.of(context).primaryColor, BlendMode.multiply)),
+            ),
+          ),
           taskListList != null
               ? ListTile(
                   title: Text("Default List"),
@@ -83,6 +102,7 @@ class SettingsPageState extends State<SettingsPage> {
               : ListTile(
                   title: Text("..."),
                 ),
+          Divider(),
           ignoreCertificates != null
               ? CheckboxListTile(
                   title: Text("Ignore Certificates"),
@@ -92,6 +112,7 @@ class SettingsPageState extends State<SettingsPage> {
                     VikunjaGlobal.of(context).client.reload_ignore_certs(value);
                   })
               : ListTile(title: Text("...")),
+              Divider(),
               Padding(padding: EdgeInsets.only(left: 15, right: 15),
               child: Row(children: [
                   Flexible(
@@ -108,8 +129,8 @@ class SettingsPageState extends State<SettingsPage> {
                           .setWorkmanagerDuration(Duration(
                               minutes: int.parse(durationTextController.text))).then((value) => VikunjaGlobal.of(context).updateWorkmanagerDuration()),
                       child: Text("Save")),
-                ]))
-               ,
+                ])),
+          Divider(),
           getVersionNotifications != null
               ? CheckboxListTile(
                   title: Text("Get Version Notifications"),
@@ -141,7 +162,11 @@ class SettingsPageState extends State<SettingsPage> {
           Text("Current version: ${versionTag ?? "loading"}"),
           Text(newestVersionTag != null
               ? "Latest version: $newestVersionTag"
-              : "")
+              : ""),
+          Divider(),
+          TextButton(
+              onPressed: () => VikunjaGlobal.of(context).logoutUser(context),
+              child: Text("Logout")),
         ],
       ),
     );

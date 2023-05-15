@@ -21,13 +21,9 @@ class HomePage extends StatefulWidget {
   State<StatefulWidget> createState() => HomePageState();
 }
 
-class HomePageState extends State<HomePage>  {
+class HomePageState extends State<HomePage> {
   int _selectedDrawerIndex = 0, _previousDrawerIndex = 0;
-  bool _loading = true;
-  bool _showUserDetails = false;
   Widget? drawerItem;
-
-
 
   Widget _userDetailsWidget(BuildContext context) {
     return ListView(padding: EdgeInsets.zero, children: <Widget>[
@@ -38,21 +34,17 @@ class HomePageState extends State<HomePage>  {
           VikunjaGlobal.of(context).logoutUser(context);
         },
       ),
-      /*ListTile(
-        title: Text('Settings'),
-        leading: Icon(Icons.settings),
-        onTap: () {
-          Navigator.push(context,
-                  MaterialPageRoute(builder: (context) => SettingsPage()))
-              .whenComplete(() => setState(() {
-                    //returning from settings, this needs to be force-refreshed
-                    drawerItem = _getDrawerItemWidget(_selectedDrawerIndex,
-                        forceReload: true);
-                  }));
-        },
-      )*/
     ]);
   }
+
+  List<Widget> widgets = [
+    ChangeNotifierProvider<ListProvider>(
+      create: (_) => new ListProvider(),
+      child: LandingPage(),
+    ),
+    NamespaceOverviewPage(),
+    SettingsPage()
+  ];
 
   List<BottomNavigationBarItem> navbarItems = [
     BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
@@ -77,96 +69,14 @@ class HomePageState extends State<HomePage>  {
         },
       ),
       appBar: AppBar(
-        title: new Text(navbarItems[_selectedDrawerIndex].label ?? "Vikunja"),
-        /*actions: _currentNamespace == null
-            ? null
-            : <Widget>[
-                IconButton(
-                    icon: Icon(Icons.edit),
-                    onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => NamespaceEditPage(
-                                  namespace: _currentNamespace!,
-                                ))).whenComplete(() => _loadNamespaces()))
-              ],*/
+        title: new Text("Vikunja"),
       ),
-      drawer: Drawer(
-          child: Column(children: <Widget>[
-        UserAccountsDrawerHeader(
-          accountName: currentUser != null ? Text(currentUser.username) : null,
-          accountEmail: currentUser != null ? Text(currentUser.name) : null,
-          currentAccountPicture: currentUser == null
-              ? null
-              : CircleAvatar(
-                  backgroundImage: NetworkImage(currentUser.avatarUrl(context)),
-                  ),
-          decoration: BoxDecoration(
-            image: DecorationImage(
-                image: AssetImage("assets/graphics/hypnotize.png"),
-                repeat: ImageRepeat.repeat,
-                colorFilter: ColorFilter.mode(
-                    Theme.of(context).primaryColor, BlendMode.multiply)),
-          ),
-        ),
-        Builder(
-            builder: (BuildContext context) => Expanded(
-                child: _userDetailsWidget(context))),
-        /*Align(
-          alignment: FractionalOffset.bottomLeft,
-          child: Builder(
-            builder: (context) => ListTile(
-              leading: Icon(Icons.house),
-              onTap: () {
-                Navigator.of(context).pop();
-                setState(() => _selectedDrawerIndex = -1);
-              },
-            ),
-          ),
-        ),
-        Align(
-          alignment: FractionalOffset.bottomCenter,
-          child: Builder(
-            builder: (context) => ListTile(
-              leading: const Icon(Icons.add),
-              title: const Text('Add namespace...'),
-              onTap: () => _addNamespaceDialog(context),
-            ),
-          ),
-        ),*/
-      ])),
       body: drawerItem,
     );
   }
 
   _getDrawerItemWidget(int pos, {bool forceReload = false}) {
     _previousDrawerIndex = pos;
-
-    switch (pos) {
-      case 0:
-        return ChangeNotifierProvider<ListProvider>(
-          create: (_) => new ListProvider(),
-          child: forceReload ? LandingPage(key: UniqueKey()) : LandingPage(),
-        );
-      case 1:
-        return NamespaceOverviewPage();
-      case 2:
-        return SettingsPage();
-    }
-    return null;
-    if (pos == -1) {
-      //return forceReload
-      //    ? new LandingPage(key: UniqueKey())
-      //    : new LandingPage();
-
-      return ChangeNotifierProvider<ListProvider>(
-        create: (_) => new ListProvider(),
-        child: forceReload ? LandingPage(key: UniqueKey()) : LandingPage(),
-      );
-    }
+    return widgets[pos];
   }
-
-
-
-
 }
