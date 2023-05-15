@@ -2,6 +2,7 @@ import 'package:after_layout/after_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:vikunja_app/global.dart';
+import 'package:vikunja_app/service/services.dart';
 
 import 'dart:developer';
 
@@ -90,6 +91,12 @@ class LandingPageState extends State<LandingPage>
           Center(child: Text("There was an error loading this view"))
         ]);
         break;
+      case PageStatus.empty:
+        body = new Stack(children: [
+          ListView(),
+          Center(child: Text("This view is empty"))
+        ]);
+        break;
       case PageStatus.success:
         body = ListView(
           scrollDirection: Axis.vertical,
@@ -176,10 +183,12 @@ class LandingPageState extends State<LandingPage>
     VikunjaGlobal.of(context).notifications.scheduleDueNotifications(VikunjaGlobal.of(context).taskService);
     return VikunjaGlobal.of(context)
         .taskService
-        .getByOptions(VikunjaGlobal.of(context).taskServiceOptions)
+        .getByOptions(TaskServiceOptions())
         .then<Future<void>?>((taskList) {
       if (taskList != null && taskList.isEmpty) {
-        landingPageStatus = PageStatus.error;
+        setState(() {
+          landingPageStatus = PageStatus.empty;
+        });
         return null;
       }
       return VikunjaGlobal.of(context).listService.getAll().then((lists) {

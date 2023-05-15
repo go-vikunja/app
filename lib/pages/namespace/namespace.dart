@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:after_layout/after_layout.dart';
 import 'package:provider/provider.dart';
 
 import 'package:vikunja_app/components/AddDialog.dart';
@@ -26,7 +25,6 @@ class NamespacePage extends StatefulWidget {
 class _NamespacePageState extends State<NamespacePage> {
   List<TaskList> _lists = [];
   PageStatus namespacestatus = PageStatus.loading;
-  bool _loading = true;
 
   /////
   // This essentially shows the lists.
@@ -84,6 +82,12 @@ class _NamespacePageState extends State<NamespacePage> {
                   ))).toList(),
         );
         break;
+      case PageStatus.empty:
+        body = new Stack(children: [
+          ListView(),
+          Center(child: Text("This view is empty"))
+        ]);
+        break;
     }
     return new Scaffold(
       body: RefreshIndicator(onRefresh: () => _loadLists(), child: body),
@@ -93,49 +97,6 @@ class _NamespacePageState extends State<NamespacePage> {
               child: const Icon(Icons.add))),
     );
 
-    return Scaffold(
-      body: !this._loading
-          ? RefreshIndicator(
-              child: _lists.length > 0
-                  ? new ListView(
-                      padding: EdgeInsets.symmetric(vertical: 8.0),
-                      children: ListTile.divideTiles(
-                          context: context,
-                          tiles: _lists.map((ls) => Dismissible(
-                                key: Key(ls.id.toString()),
-                                direction: DismissDirection.startToEnd,
-                                child: ListTile(
-                                  title: new Text(ls.title),
-                                  onTap: () => _openList(context, ls),
-                                  trailing: Icon(Icons.arrow_right),
-                                ),
-                                background: Container(
-                                  color: Colors.red,
-                                  child: const ListTile(
-                                      leading: Icon(Icons.delete,
-                                          color: Colors.white, size: 36.0)),
-                                ),
-                                onDismissed: (direction) {
-                                  _removeList(ls).then((_) =>
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(SnackBar(
-                                              content: Text(
-                                                  "${ls.title} removed"))));
-                                },
-                              ))).toList(),
-                    )
-                  : Stack(children: [
-                      ListView(),
-                      Center(child: Text('This namespace is empty.'))
-                    ]),
-              onRefresh: _loadLists,
-            )
-          : Center(child: CircularProgressIndicator()),
-      floatingActionButton: Builder(
-          builder: (context) => FloatingActionButton(
-              onPressed: () => _addListDialog(context),
-              child: const Icon(Icons.add))),
-    );
   }
 
   @override
