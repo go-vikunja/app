@@ -96,19 +96,17 @@ List<TaskServiceOption> defaultOptions = [
 class TaskServiceOptions {
   List<TaskServiceOption>? options;
 
-  TaskServiceOptions({List<TaskServiceOption>? new_options}) {
-    options = defaultOptions;
-    if (new_options != null) {
-      for (TaskServiceOption custom_option in new_options) {
-        options?.removeWhere((element) => element.name == custom_option.name);
-        options?.add(custom_option);
+  TaskServiceOptions({List<TaskServiceOption>? newOptions}) {
+    options = [...defaultOptions];
+    if (newOptions != null) {
+      for (TaskServiceOption custom_option in newOptions) {
+        int index = options!.indexWhere((element) => element.name == custom_option.name);
+        options!.removeAt(index);
+        options!.insert(index, custom_option);
       }
     }
   }
 
-  void setOption(TaskServiceOption option, dynamic value) {
-    options?.firstWhere((element) => element.name == option.name).value = value;
-  }
 
   String getOptions() {
     String result = '';
@@ -246,8 +244,8 @@ class SettingsManager {
 
   void applydefaults() {
     defaults.forEach((key, value) {
-      _storage.containsKey(key: key).then((is_created) async {
-        if (!is_created) {
+      _storage.containsKey(key: key).then((isCreated) async {
+        if (!isCreated) {
           await _storage.write(key: key, value: value);
         }
       });

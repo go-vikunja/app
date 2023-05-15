@@ -121,7 +121,7 @@ class NotificationClass {
 
 
   Future<void> scheduleDueNotifications(TaskService taskService) async {
-    final tasks = await taskService.getByOptions(TaskServiceOptions(new_options: [
+    final tasks = await taskService.getByOptions(new TaskServiceOptions(newOptions: [
       TaskServiceOption<TaskServiceOptionFilterBy>("filter_by", [
         TaskServiceOptionFilterBy.done,
         TaskServiceOptionFilterBy.due_date
