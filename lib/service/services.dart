@@ -71,32 +71,39 @@ class TaskServiceOption<T> {
   }
 }
 
+List<TaskServiceOption> defaultOptions = [
+  TaskServiceOption<TaskServiceOptionSortBy>("sort_by",
+      [TaskServiceOptionSortBy.due_date, TaskServiceOptionSortBy.id]),
+  TaskServiceOption<TaskServiceOptionOrderBy>(
+      "order_by", TaskServiceOptionOrderBy.asc),
+  TaskServiceOption<TaskServiceOptionFilterBy>("filter_by", [
+    TaskServiceOptionFilterBy.done,
+    TaskServiceOptionFilterBy.due_date
+  ]),
+  TaskServiceOption<TaskServiceOptionFilterValue>("filter_value", [
+    TaskServiceOptionFilterValue.enum_false,
+    '0001-01-02T00:00:00.000Z'
+  ]),
+  TaskServiceOption<TaskServiceOptionFilterComparator>(
+      "filter_comparator", [
+    TaskServiceOptionFilterComparator.equals,
+    TaskServiceOptionFilterComparator.greater
+  ]),
+  TaskServiceOption<TaskServiceOptionFilterConcat>(
+      "filter_concat", TaskServiceOptionFilterConcat.and),
+];
+
 class TaskServiceOptions {
   List<TaskServiceOption>? options;
 
-  TaskServiceOptions({this.options}) {
-    if (this.options == null)
-      options = [
-        TaskServiceOption<TaskServiceOptionSortBy>("sort_by",
-            [TaskServiceOptionSortBy.due_date, TaskServiceOptionSortBy.id]),
-        TaskServiceOption<TaskServiceOptionOrderBy>(
-            "order_by", TaskServiceOptionOrderBy.asc),
-        TaskServiceOption<TaskServiceOptionFilterBy>("filter_by", [
-          TaskServiceOptionFilterBy.done,
-          TaskServiceOptionFilterBy.due_date
-        ]),
-        TaskServiceOption<TaskServiceOptionFilterValue>("filter_value", [
-          TaskServiceOptionFilterValue.enum_false,
-          '0001-01-02T00:00:00.000Z'
-        ]),
-        TaskServiceOption<TaskServiceOptionFilterComparator>(
-            "filter_comparator", [
-          TaskServiceOptionFilterComparator.equals,
-          TaskServiceOptionFilterComparator.greater
-        ]),
-        TaskServiceOption<TaskServiceOptionFilterConcat>(
-            "filter_concat", TaskServiceOptionFilterConcat.and),
-      ];
+  TaskServiceOptions({List<TaskServiceOption>? new_options}) {
+    options = defaultOptions;
+    if (new_options != null) {
+      for (TaskServiceOption custom_option in new_options) {
+        options?.removeWhere((element) => element.name == custom_option.name);
+        options?.add(custom_option);
+      }
+    }
   }
 
   void setOption(TaskServiceOption option, dynamic value) {
@@ -241,8 +248,6 @@ class SettingsManager {
     defaults.forEach((key, value) {
       _storage.containsKey(key: key).then((is_created) async {
         if (!is_created) {
-          print("iscreated $is_created");
-          print("default not set, writing $value to $key");
           await _storage.write(key: key, value: value);
         }
       });

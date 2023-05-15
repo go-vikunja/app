@@ -121,7 +121,23 @@ class NotificationClass {
 
 
   Future<void> scheduleDueNotifications(TaskService taskService) async {
-    final tasks = await taskService.getAll();
+    final tasks = await taskService.getByOptions(TaskServiceOptions(new_options: [
+      TaskServiceOption<TaskServiceOptionFilterBy>("filter_by", [
+        TaskServiceOptionFilterBy.done,
+        TaskServiceOptionFilterBy.due_date
+      ]),
+      TaskServiceOption<TaskServiceOptionFilterComparator>(
+          "filter_comparator", [
+        TaskServiceOptionFilterComparator.equals,
+        TaskServiceOptionFilterComparator.greater
+      ]),
+      TaskServiceOption<TaskServiceOptionFilterConcat>(
+          "filter_concat", TaskServiceOptionFilterConcat.and),
+      TaskServiceOption<TaskServiceOptionFilterValue>("filter_value", [
+        TaskServiceOptionFilterValue.enum_false,
+        DateTime.now().toUtc().toIso8601String()
+      ]),
+    ]));
     if (tasks == null) {
       print("did not receive tasks on notification update");
       return;
