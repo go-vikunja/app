@@ -273,7 +273,8 @@ class _LoginPageState extends State<LoginPage> {
       var vGlobal = VikunjaGlobal.of(context);
       vGlobal.client.configure(base: _server);
       Server? info = await vGlobal.serverService.getInfo();
-      if (info == null) throw Exception("Getting server info failed");
+      if (info == null)
+        throw Exception("Getting server info failed");
 
       UserTokenPair newUser;
 
@@ -282,6 +283,7 @@ class _LoginPageState extends State<LoginPage> {
 
       if (newUser.error == 1017) {
         TextEditingController totpController = TextEditingController();
+        bool dismissed = true;
         await showDialog(
             context: context,
             builder: (context) => new AlertDialog(
@@ -295,13 +297,22 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   actions: [
                     TextButton(
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: () {
+                          dismissed = false;
+                          Navigator.pop(context);
+                          },
                         child: Text("Login"))
                   ],
-                ));
-        newUser = await vGlobal.newUserService!.login(_username, _password,
-            rememberMe: this._rememberMe, totp: totpController.text);
-      } else if (newUser.error > 0) {
+                ),
+        );
+        if(!dismissed) {
+          newUser = await vGlobal.newUserService!.login(_username, _password,
+              rememberMe: this._rememberMe, totp: totpController.text);
+        } else {
+          throw Exception();
+        }
+      }
+      if (newUser.error > 0) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(newUser.errorString)));
       }
@@ -309,6 +320,7 @@ class _LoginPageState extends State<LoginPage> {
       if (newUser.error == 0)
         vGlobal.changeUser(newUser.user!, token: newUser.token, base: _server);
     } catch (ex) {
+      print(ex);
       /*  log(stacktrace.toString());
       showDialog(
           context: context,
