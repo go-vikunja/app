@@ -13,7 +13,6 @@ import '../main.dart';
 
 class Client {
   GlobalKey<ScaffoldMessengerState>? global_scaffold_key;
-  GlobalKey<NavigatorState>? navigator_key;
   final JsonDecoder _decoder = new JsonDecoder();
   final JsonEncoder _encoder = new JsonEncoder();
   String _token = '';
@@ -32,7 +31,7 @@ class Client {
     return otherClient._token == _token;
   }
 
-  Client(this.global_scaffold_key, this.navigator_key,
+  Client(this.global_scaffold_key,
       {String? token, String? base, bool authenticated = false}) {
     configure(token: token, base: base, authenticated: authenticated);
   }
@@ -131,8 +130,6 @@ class Client {
 
 
   Error? _handleResponseErrors(http.Response response) {
-    if(response.statusCode == 412)
-      return Error("Login failed!");
     if (response.statusCode < 200 ||
         response.statusCode >= 400) {
       Map<String, dynamic> error;
@@ -146,7 +143,7 @@ class Client {
           label: ("Details"),
           onPressed: () {
             showDialog(
-              context: navigator_key!.currentContext!,
+              context: globalNavigatorKey.currentContext!,
                 builder: (BuildContext context) =>
                     AlertDialog(
                       title: Text("Error ${response.statusCode}"),

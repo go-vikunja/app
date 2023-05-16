@@ -25,17 +25,6 @@ class HomePageState extends State<HomePage> {
   int _selectedDrawerIndex = 0, _previousDrawerIndex = 0;
   Widget? drawerItem;
 
-  Widget _userDetailsWidget(BuildContext context) {
-    return ListView(padding: EdgeInsets.zero, children: <Widget>[
-      ListTile(
-        title: Text('Logout'),
-        leading: Icon(Icons.exit_to_app),
-        onTap: () {
-          VikunjaGlobal.of(context).logoutUser(context);
-        },
-      ),
-    ]);
-  }
 
   List<Widget> widgets = [
     ChangeNotifierProvider<ListProvider>(

@@ -177,7 +177,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
   _deleteTask(BuildContext context) async {
     await VikunjaGlobal.of(context).taskService.delete(widget.task.id).then(
             (value) {
-              Navigator.pop(context);
+              navigatorKey.currentState?.pop(context);
             });
   }
 
@@ -229,16 +229,16 @@ class _TaskEditPageState extends State<TaskEditPage> {
               child: Text('Dismiss'),
               onPressed: () {
                 log("Dismiss");
-                Navigator.pop(context);
+                navigatorKey.currentState?.pop(context);
                 // make sure the list is refreshed
-                Navigator.pop(context);
+                navigatorKey.currentState?.pop(context);
               },
             ),
             TextButton(
               child: Text('Cancel'),
               onPressed: () {
                 log("cancel");
-                Navigator.pop(context);
+                navigatorKey.currentState?.pop(context);
               },
             ),
           ],

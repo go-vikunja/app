@@ -20,6 +20,8 @@ import 'package:vikunja_app/service/services.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:workmanager/workmanager.dart';
 
+import 'main.dart';
+
 
 class VikunjaGlobal extends StatefulWidget {
   final Widget child;
@@ -32,7 +34,7 @@ class VikunjaGlobal extends StatefulWidget {
 
   static VikunjaGlobalState of(BuildContext context) {
     var widget =
-        context.dependOnInheritedWidgetOfExactType<_VikunjaGlobalInherited>();
+        context.dependOnInheritedWidgetOfExactType<VikunjaGlobalInherited>();
     return widget!.data;
   }
 }
@@ -52,9 +54,7 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
 
   Client get client => _client;
 
-  final snackbarKey = GlobalKey<ScaffoldMessengerState>();
-  final navigatorKey = GlobalKey<NavigatorState>();
-
+  GlobalKey<ScaffoldMessengerState> get snackbarKey => globalSnackbarKey;
 
   UserManager get userManager => new UserManager(_storage);
 
@@ -105,7 +105,7 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
   @override
   void initState() {
     super.initState();
-    _client = Client(snackbarKey, navigatorKey);
+    _client = Client(snackbarKey);
     settingsManager.getIgnoreCertificates().then((value) => client.reload_ignore_certs(value == "1"));
     _newUserService = UserAPIService(client);
     _loadCurrentUser();
@@ -151,7 +151,6 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
       var userId = await _storage.read(key: "currentUser");
       await _storage.delete(key: userId!); //delete token
       await _storage.delete(key: "${userId}_base");
-      Navigator.pop(context);
       setState(() {
         client.reset();
         _currentUser = null;
@@ -217,7 +216,7 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
     if(client.authenticated) {
       notifications.scheduleDueNotifications(taskService);
     }
-    return new _VikunjaGlobalInherited(
+    return new VikunjaGlobalInherited(
       data: this,
       key: UniqueKey(),
       child: !client.authenticated ? widget.login : widget.child,
@@ -225,14 +224,14 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
   }
 }
 
-class _VikunjaGlobalInherited extends InheritedWidget {
+class VikunjaGlobalInherited extends InheritedWidget {
   final VikunjaGlobalState data;
 
-  _VikunjaGlobalInherited({Key? key, required this.data, required Widget child})
+  VikunjaGlobalInherited({Key? key, required this.data, required Widget child})
       : super(key: key, child: child);
 
   @override
-  bool updateShouldNotify(_VikunjaGlobalInherited oldWidget) {
+  bool updateShouldNotify(VikunjaGlobalInherited oldWidget) {
     return (data.currentUser != null &&
             data.currentUser!.id != oldWidget.data.currentUser!.id) ||
         data.client != oldWidget.data.client;

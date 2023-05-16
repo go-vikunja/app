@@ -34,7 +34,7 @@ void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) {
     print("Native called background task: $task"); //simpleTask will be emitted here.
     if (task == "update-tasks" && inputData != null) {
-      Client client = Client(null, null,
+      Client client = Client(null,
           token: inputData["client_token"],
           base: inputData["client_base"],
           authenticated: true);
@@ -58,6 +58,8 @@ void callbackDispatcher() {
     }
   });
 }
+final globalSnackbarKey = GlobalKey<ScaffoldMessengerState>();
+final globalNavigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -71,6 +73,7 @@ void main() async {
       child: new VikunjaApp(
         home: HomePage(),
         key: UniqueKey(),
+        navkey: globalNavigatorKey,
       ),
       login: new VikunjaApp(
         home: LoginPage(),
@@ -80,8 +83,9 @@ void main() async {
 
 class VikunjaApp extends StatelessWidget {
   final Widget home;
+  final GlobalKey<NavigatorState>? navkey;
 
-  const VikunjaApp({Key? key, required this.home}) : super(key: key);
+  const VikunjaApp({Key? key, required this.home, this.navkey}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -89,7 +93,8 @@ class VikunjaApp extends StatelessWidget {
       title: 'Vikunja',
       theme: buildVikunjaTheme(),
       darkTheme: buildVikunjaDarkTheme(),
-      scaffoldMessengerKey: VikunjaGlobal.of(context).snackbarKey,
+      scaffoldMessengerKey: globalSnackbarKey,
+      navigatorKey: navkey,
       // <= this
       home: this.home,
     );
