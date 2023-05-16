@@ -90,6 +90,9 @@ class _NamespacePageState extends State<NamespacePage> {
         break;
     }
     return new Scaffold(
+      appBar: AppBar(
+        title: Text(widget.namespace.title),
+      ),
       body: RefreshIndicator(onRefresh: () => _loadLists(), child: body),
       floatingActionButton: Builder(
           builder: (context) => FloatingActionButton(

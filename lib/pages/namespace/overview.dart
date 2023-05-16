@@ -52,10 +52,12 @@ class _NamespaceOverviewPageState extends State<NamespaceOverviewPage>
 
     }
 
-    return this._loading
-        ? Center(child: CircularProgressIndicator())
-        : Scaffold(
-        body: RefreshIndicator(
+    return Scaffold(
+        body:
+        this._loading
+            ? Center(child: CircularProgressIndicator())
+            :
+        RefreshIndicator(
             child: ListView(
                 padding: EdgeInsets.zero,
                 children: ListTile.divideTiles(
@@ -66,7 +68,11 @@ class _NamespaceOverviewPageState extends State<NamespaceOverviewPage>
     floatingActionButton: Builder(
     builder: (context) => FloatingActionButton(
     onPressed: () => _addNamespaceDialog(context),
-    child: const Icon(Icons.add))));
+    child: const Icon(Icons.add))),
+    appBar: AppBar(
+        title: Text("Namespaces"),
+    ),
+    );
   }
 
   Future<void> _loadNamespaces() {
@@ -79,8 +85,12 @@ class _NamespaceOverviewPageState extends State<NamespaceOverviewPage>
   }
 
   _onSelectItem(int index) {
-    setState(() => _selectedDrawerIndex = index);
-
+    Navigator.push(context,
+        MaterialPageRoute(
+          builder: (buildContext) => NamespacePage(
+            namespace: _namespaces[index],
+          ),));
+    //setState(() => _selectedDrawerIndex = index);
   }
 
   _addNamespaceDialog(BuildContext context) {

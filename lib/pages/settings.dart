@@ -58,6 +58,8 @@ class SettingsPageState extends State<SettingsPage> {
 
     if (!initialized) init();
     return new Scaffold(
+      appBar: AppBar(title: Text("Settings"),),
+
       body: Column(
         children: [
           UserAccountsDrawerHeader(

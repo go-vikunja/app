@@ -68,9 +68,6 @@ class HomePageState extends State<HomePage> {
           });
         },
       ),
-      appBar: AppBar(
-        title: new Text("Vikunja"),
-      ),
       body: drawerItem,
     );
   }

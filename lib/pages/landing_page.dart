@@ -129,7 +129,12 @@ class LandingPageState extends State<LandingPage>
                     _addItemDialog(context);
                   },
                   child: const Icon(Icons.add),
-                )));
+                )),
+      appBar: AppBar(
+        title: Text("Vikunja"),
+      ),
+
+    );
   }
 
   _addItemDialog(BuildContext context) {
