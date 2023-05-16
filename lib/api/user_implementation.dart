@@ -20,7 +20,7 @@ class UserAPIService extends APIService implements UserService {
   }
     var response = await client.post('/login', body: body);
     var token = response?.body["token"];
-    if(token == null || response == null || response.error)
+    if(token == null || response == null || response.error != null)
       return Future.value(UserTokenPair(null, null,
           error: response != null ? response.body["code"] : 0,
           errorString: response != null ? response.body["message"] : "Login error"));

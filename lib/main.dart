@@ -34,7 +34,7 @@ void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) {
     print("Native called background task: $task"); //simpleTask will be emitted here.
     if (task == "update-tasks" && inputData != null) {
-      Client client = Client(null,
+      Client client = Client(null, null,
           token: inputData["client_token"],
           base: inputData["client_base"],
           authenticated: true);

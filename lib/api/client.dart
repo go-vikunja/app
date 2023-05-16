@@ -12,7 +12,8 @@ import '../main.dart';
 
 
 class Client {
-  GlobalKey<ScaffoldMessengerState>? global;
+  GlobalKey<ScaffoldMessengerState>? global_scaffold_key;
+  GlobalKey<NavigatorState>? navigator_key;
   final JsonDecoder _decoder = new JsonDecoder();
   final JsonEncoder _encoder = new JsonEncoder();
   String _token = '';
@@ -31,7 +32,7 @@ class Client {
     return otherClient._token == _token;
   }
 
-  Client(this.global,
+  Client(this.global_scaffold_key, this.navigator_key,
       {String? token, String? base, bool authenticated = false}) {
     configure(token: token, base: base, authenticated: authenticated);
   }
@@ -39,9 +40,9 @@ class Client {
   void reload_ignore_certs(bool? val) {
     ignoreCertificates = val ?? false;
     HttpOverrides.global = new IgnoreCertHttpOverrides(ignoreCertificates);
-    if(global == null || global!.currentContext == null) return;
+    if(global_scaffold_key == null || global_scaffold_key!.currentContext == null) return;
     VikunjaGlobal
-        .of(global!.currentContext!)
+        .of(global_scaffold_key!.currentContext!)
         .settingsManager
         .setIgnoreCertificates(ignoreCertificates);
   }
@@ -77,7 +78,8 @@ class Client {
   Future<Response?> get(String url,
       [Map<String, List<String>>? queryParameters]) {
     return http.get('${this.base}$url'.toUri()!, headers: _headers)
-        .then(_handleResponse).catchError((Object? obj) {print(obj);});
+        .then(_handleResponse).onError((error, stackTrace) =>
+        _handleError(error, stackTrace));
   }
 
   Future<Response?> delete(String url) {
@@ -111,11 +113,11 @@ class Client {
   }
 
   Response? _handleError(Object? e, StackTrace? st) {
-    if(global == null) return null;
+    if(global_scaffold_key == null) return null;
     SnackBar snackBar = SnackBar(
       content: Text("Error on request: " + e.toString()),
-      action: SnackBarAction(label: "Clear", onPressed: () => global!.currentState?.clearSnackBars()),);
-    global!.currentState?.showSnackBar(snackBar);
+      action: SnackBarAction(label: "Clear", onPressed: () => global_scaffold_key!.currentState?.clearSnackBars()),);
+    global_scaffold_key!.currentState?.showSnackBar(snackBar);
   }
 
   Map<String, String> headersToMap(HttpHeaders headers) {
@@ -126,69 +128,50 @@ class Client {
     return map;
   }
 
-  /*
-  Future<Response> _handleResponseF(HttpClientRequest request) {
-    _headers.forEach((k, v) => request.headers.set(k, v));
-    if(post_body != "") {
-      request.write(post_body);
-      post_body = "";
-    }
 
-    return request.close().then((response) {
-      final completer = Completer<String>();
-      final contents = StringBuffer();
-      response.transform(utf8.decoder).listen((data) {
-        contents.write(data);
-      }, onDone: () => completer.complete(contents.toString()));
-      return completer.future.then((body) {
-
-        Response res = Response(json.decode(body), response.statusCode, headersToMap(response.headers));
-        _handleResponseErrors(res);
-        return res;
-      });
-    });
-    //return Response(body, statusCode, headers)
-  }*/
-
-  void _handleResponseErrors(http.Response response) {
+  Error? _handleResponseErrors(http.Response response) {
     if(response.statusCode == 412)
-      return;
+      return Error("Login failed!");
     if (response.statusCode < 200 ||
         response.statusCode >= 400) {
       Map<String, dynamic> error;
       error = _decoder.convert(response.body);
-      if (response.statusCode ~/ 100 == 4) {
-        /*throw new InvalidRequestApiException(
-            response.statusCode,
-            "",
-            error["message"] ?? "Unknown Error");
 
-         */
-      }
+
       final SnackBar snackBar = SnackBar(
         content: Text(
             "Error code " + response.statusCode.toString() + " received."),
         action: SnackBarAction(
-          label: ("Show Details"),
+          label: ("Details"),
           onPressed: () {
-            Builder(
+            showDialog(
+              context: navigator_key!.currentContext!,
                 builder: (BuildContext context) =>
-                    Dialog(
-                      child: Text(error["message"]),
+                    AlertDialog(
+                      title: Text("Error ${response.statusCode}"),
+                      content: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text("Message: ${error["message"]}", textAlign: TextAlign.start,),
+                          Text("Url: ${response.request!.url.toString()}"),
+                        ],
+                      )
                     )
             );
           },
         ),
       );
-      if(global != null)
-        global!.currentState?.showSnackBar(snackBar);
+      if(global_scaffold_key != null)
+        global_scaffold_key!.currentState?.showSnackBar(snackBar);
       else
         print("error on request: ${error["message"]}");
     }
+    return null;
   }
 
   Response? _handleResponse(http.Response response) {
-    _handleResponseErrors(response);
+    Error? error = _handleResponseErrors(response);
     return Response(
         _decoder.convert(response.body), response.statusCode, response.headers);
   }

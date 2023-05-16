@@ -52,8 +52,9 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
 
   Client get client => _client;
 
-  final GlobalKey<ScaffoldMessengerState> snackbarKey =
-  GlobalKey<ScaffoldMessengerState>();
+  final snackbarKey = GlobalKey<ScaffoldMessengerState>();
+  final navigatorKey = GlobalKey<NavigatorState>();
+
 
   UserManager get userManager => new UserManager(_storage);
 
@@ -104,7 +105,7 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
   @override
   void initState() {
     super.initState();
-    _client = Client(snackbarKey);
+    _client = Client(snackbarKey, navigatorKey);
     settingsManager.getIgnoreCertificates().then((value) => client.reload_ignore_certs(value == "1"));
     _newUserService = UserAPIService(client);
     _loadCurrentUser();
@@ -148,8 +149,8 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
   void logoutUser(BuildContext context) async {
 //    _storage.deleteAll().then((_) {
       var userId = await _storage.read(key: "currentUser");
-      _storage.delete(key: userId!); //delete token
-      _storage.delete(key: "${userId}_base");
+      await _storage.delete(key: userId!); //delete token
+      await _storage.delete(key: "${userId}_base");
       Navigator.pop(context);
       setState(() {
         client.reset();
@@ -157,7 +158,7 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
       });
  /*   }).catchError((err) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('An error occured while logging out!'),
+        content: Text('An error occurred while logging out!'),
       ));
     });*/
   }
