@@ -165,7 +165,9 @@ class SettingsPageState extends State<SettingsPage> {
               : ""),
           Divider(),
           TextButton(
-              onPressed: () => VikunjaGlobal.of(context).logoutUser(context),
+              onPressed: () => setState(() {
+                VikunjaGlobal.of(context).logoutUser(context);
+              }),
               child: Text("Logout")),
         ],
       ),
