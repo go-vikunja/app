@@ -80,6 +80,12 @@ class _TaskEditPageState extends State<TaskEditPage> {
         child: Scaffold(
           appBar: AppBar(
             title: Text('Edit Task'),
+            actions: [
+              IconButton(
+                icon: Icon(Icons.delete),
+                onPressed: () {_delete(widget.task.id);}
+              ),
+            ],
           ),
           body: Builder(
             builder: (BuildContext context) => SafeArea(
@@ -468,6 +474,11 @@ class _TaskEditPageState extends State<TaskEditPage> {
     setState(() {
       _labels.removeWhere((l) => l.id == label.id);
     });
+  }
+
+  _delete(int taskId) {
+    VikunjaGlobal.of(context).taskService.delete(taskId);
+    Navigator.pop(context);
   }
 
   _searchLabel(String query) {
