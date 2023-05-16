@@ -113,7 +113,6 @@ class LandingPageState extends State<LandingPage>
       case PageStatus.success:
         body = ListView(
           scrollDirection: Axis.vertical,
-          shrinkWrap: true,
           padding: EdgeInsets.symmetric(vertical: 8.0),
           children:
               ListTile.divideTiles(context: context, tiles: _listTasks(context))
