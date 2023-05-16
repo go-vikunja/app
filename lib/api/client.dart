@@ -26,7 +26,7 @@ class Client {
 
   String? post_body;
 
-  //HttpClient client = new HttpClient();
+
 
   bool operator ==(dynamic otherClient) {
     return otherClient._token == _token;
@@ -50,7 +50,8 @@ class Client {
   get _headers =>
       {
         'Authorization': _token != '' ? 'Bearer $_token' : '',
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'User-Agent': 'Vikunja Mobile App'
       };
 
   @override
@@ -67,6 +68,7 @@ class Client {
     }
     if (authenticated != null)
       this.authenticated = authenticated;
+
   }
 
 
@@ -83,33 +85,31 @@ class Client {
   }
 
   Future<Response?> delete(String url) {
-    return http
-        .delete(
+    return http.delete(
       '${this.base}$url'.toUri()!,
       headers: _headers,
+    ).then(_handleResponse).onError((error, stackTrace) =>
+        _handleError(error, stackTrace));
+  }
+
+  Future<Response?> post(String url, {dynamic body}) {
+    return http.post(
+      '${this.base}$url'.toUri()!,
+      headers: _headers,
+      body: _encoder.convert(body),
     )
         .then(_handleResponse).onError((error, stackTrace) =>
         _handleError(error, stackTrace));
   }
 
-  Future<Response?> post(String url, {dynamic body}) {
-    return http
-        .post(
-      '${this.base}$url'.toUri()!,
-      headers: _headers,
-      body: _encoder.convert(body),
-    )
-        .then(_handleResponse);
-  }
-
   Future<Response?> put(String url, {dynamic body}) {
-    return http
-        .put(
+    return http.put(
       '${this.base}$url'.toUri()!,
       headers: _headers,
       body: _encoder.convert(body),
     )
-        .then(_handleResponse);
+        .then(_handleResponse).onError((error, stackTrace) =>
+        _handleError(error, stackTrace));
   }
 
   Response? _handleError(Object? e, StackTrace? st) {
@@ -118,6 +118,7 @@ class Client {
       content: Text("Error on request: " + e.toString()),
       action: SnackBarAction(label: "Clear", onPressed: () => global_scaffold_key!.currentState?.clearSnackBars()),);
     global_scaffold_key!.currentState?.showSnackBar(snackBar);
+    return null;
   }
 
   Map<String, String> headersToMap(HttpHeaders headers) {
