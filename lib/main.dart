@@ -80,6 +80,7 @@ void main() async {
         key: UniqueKey(),
       )));
 }
+final ValueNotifier<bool> updateTheme = ValueNotifier(false);
 
 class VikunjaApp extends StatelessWidget {
   final Widget home;
@@ -89,14 +90,34 @@ class VikunjaApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return new MaterialApp(
-      title: 'Vikunja',
-      theme: buildVikunjaTheme(),
-      darkTheme: buildVikunjaDarkTheme(),
-      scaffoldMessengerKey: globalSnackbarKey,
-      navigatorKey: navkey,
-      // <= this
-      home: this.home,
-    );
+
+    SettingsManager manager = SettingsManager(new FlutterSecureStorage());
+
+
+    return new ValueListenableBuilder(valueListenable: updateTheme, builder: (_,mode,__) {
+      updateTheme.value = false;
+      Future<ThemeData> theme = manager.getThemeMode().then((value) {
+        if (value == ThemeMode.dark) {
+          return buildVikunjaDarkTheme();
+        } else {
+          return buildVikunjaTheme();
+        }
+      });
+      return FutureBuilder<ThemeData>(
+      future: theme,
+        builder: (BuildContext context, AsyncSnapshot<ThemeData> data) {
+      if(data.hasData) {
+      return new MaterialApp(
+          title: 'Vikunja',
+          theme: data.data,
+          scaffoldMessengerKey: globalSnackbarKey,
+          navigatorKey: navkey,
+          // <= this
+          home: this.home,
+        );
+      } else {
+        return Center(child: CircularProgressIndicator());
+      }
+    });});
   }
 }

@@ -4,6 +4,8 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/models/list.dart';
 
+import '../main.dart';
+
 
 class SettingsPage extends StatefulWidget {
   @override
@@ -18,6 +20,8 @@ class SettingsPageState extends State<SettingsPage> {
   String? versionTag, newestVersionTag;
   late TextEditingController durationTextController;
   bool initialized = false;
+  ThemeMode? themeMode;
+
 
   void init() {
     durationTextController = TextEditingController();
@@ -48,6 +52,8 @@ class SettingsPageState extends State<SettingsPage> {
         .settingsManager
         .getWorkmanagerDuration()
         .then((value) => setState(() => durationTextController.text = (value.inMinutes.toString())));
+
+    VikunjaGlobal.of(context).settingsManager.getThemeMode().then((value) => setState(() => themeMode = value));
 
     initialized = true;
   }
@@ -104,6 +110,34 @@ class SettingsPageState extends State<SettingsPage> {
               : ListTile(
                   title: Text("..."),
                 ),
+          Divider(),
+          ListTile(
+            title: Text("Theme"),
+            trailing: DropdownButton<ThemeMode>(
+              items: [
+                DropdownMenuItem(
+                  child: Text("System"),
+                  value: ThemeMode.system,
+                ),
+                DropdownMenuItem(
+                  child: Text("Light"),
+                  value: ThemeMode.light,
+                ),
+                DropdownMenuItem(
+                  child: Text("Dark"),
+                  value: ThemeMode.dark,
+                ),
+              ],
+              value: themeMode,
+              onChanged: (ThemeMode? value) {
+                VikunjaGlobal.of(context)
+                    .settingsManager
+                    .setThemeMode(value!);
+                setState(() => themeMode = value);
+                updateTheme.value = true;
+              },
+            ),
+          ),
           Divider(),
           ignoreCertificates != null
               ? CheckboxListTile(

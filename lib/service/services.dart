@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:vikunja_app/api/response.dart';
 import 'package:vikunja_app/models/label.dart';
@@ -240,6 +241,7 @@ class SettingsManager {
     "get-version-notifications": "1",
     "workmanager-duration": "0",
     "recent-servers": "[\"https://try.vikunja.io\"]",
+    "theme_mode": "system",
   };
 
   void applydefaults() {
@@ -288,6 +290,26 @@ class SettingsManager {
     var val = jsonEncode(server);
     print("val: $val");
     return _storage.write(key: "recent-servers", value: jsonEncode(server));
+  }
+
+  Future<ThemeMode> getThemeMode() async {
+    String? theme_mode = await _storage.read(key: "theme_mode");
+    if(theme_mode == null)
+      setThemeMode(ThemeMode.system);
+    switch(theme_mode) {
+      case "system":
+        return ThemeMode.system;
+      case "light":
+        return ThemeMode.light;
+      case "dark":
+        return ThemeMode.dark;
+      default:
+        return ThemeMode.system;
+    }
+  }
+
+  Future<void> setThemeMode(ThemeMode newMode) async {
+    await _storage.write(key: "theme_mode", value: newMode.toString().split('.').last);
   }
 
 }
