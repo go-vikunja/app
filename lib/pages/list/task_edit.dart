@@ -83,7 +83,25 @@ class _TaskEditPageState extends State<TaskEditPage> {
             actions: [
               IconButton(
                 icon: Icon(Icons.delete),
-                onPressed: () {_delete(widget.task.id);}
+                onPressed: () {showDialog(context: context, builder: (BuildContext context) {
+                  return AlertDialog(
+                    title: Text('Delete Task'),
+                    content: Text('Are you sure you want to delete this task?'),
+                    actions: [
+                      TextButton(
+                        child: Text('Cancel'),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                      TextButton(
+                        child: Text('Delete'),
+                        onPressed: () {
+                          _delete(widget.task.id);
+                          Navigator.of(context).pop();
+                        },
+                      ),
+                    ],
+                  );
+                });},
               ),
             ],
           ),
