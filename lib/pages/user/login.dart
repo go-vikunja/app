@@ -271,6 +271,7 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _loading = true);
     try {
       var vGlobal = VikunjaGlobal.of(context);
+      vGlobal.client.showSnackBar = false;
       vGlobal.client.configure(base: _server);
       Server? info = await vGlobal.serverService.getInfo();
       if (info == null)
@@ -336,6 +337,7 @@ class _LoginPageState extends State<LoginPage> {
               ));
      */
     } finally {
+      VikunjaGlobal.of(context).client.showSnackBar = true;
       setState(() {
         _loading = false;
       });

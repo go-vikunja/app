@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:vikunja_app/theme/constants.dart';
 
 ThemeData buildVikunjaTheme() => _buildVikunjaTheme(ThemeData.light());
-ThemeData buildVikunjaDarkTheme() => _buildVikunjaTheme(ThemeData.dark());
+ThemeData buildVikunjaDarkTheme() => _buildVikunjaTheme(ThemeData.dark(), isDark: true);
 
-ThemeData _buildVikunjaTheme(ThemeData base) {
+ThemeData _buildVikunjaTheme(ThemeData base, {bool isDark = false}) {
   return base.copyWith(
     errorColor: vRed,
     primaryColor: vPrimaryDark,

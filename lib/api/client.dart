@@ -19,6 +19,7 @@ class Client {
   String _base = '';
   bool authenticated = false;
   bool ignoreCertificates = false;
+  bool showSnackBar = true;
 
   String get base => _base;
   String get token => _token;
@@ -139,7 +140,7 @@ class Client {
       final SnackBar snackBar = SnackBar(
         content: Text(
             "Error code " + response.statusCode.toString() + " received."),
-        action: SnackBarAction(
+        action: globalNavigatorKey.currentContext == null ? null : SnackBarAction(
           label: ("Details"),
           onPressed: () {
             showDialog(
@@ -160,7 +161,7 @@ class Client {
           },
         ),
       );
-      if(global_scaffold_key != null)
+      if(global_scaffold_key != null && showSnackBar)
         global_scaffold_key!.currentState?.showSnackBar(snackBar);
       else
         print("error on request: ${error["message"]}");

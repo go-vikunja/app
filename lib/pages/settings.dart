@@ -60,7 +60,7 @@ class SettingsPageState extends State<SettingsPage> {
     return new Scaffold(
       appBar: AppBar(title: Text("Settings"),),
 
-      body: Column(
+      body: ListView(
         children: [
           UserAccountsDrawerHeader(
             accountName: currentUser != null ? Text(currentUser.username) : null,
