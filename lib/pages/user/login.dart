@@ -111,9 +111,7 @@ class _LoginPageState extends State<LoginPage> {
                             },
                             itemBuilder: (BuildContext context, Object? itemData) {
                               return Card(
-
                                   child: Container(
-
                                     padding: EdgeInsets.all(10),
                                     child:
                                     Row(

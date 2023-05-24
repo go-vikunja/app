@@ -1,6 +1,7 @@
 import 'dart:ffi';
 import 'dart:developer';
 import 'package:flutter/material.dart';
+import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/models/list.dart';
 import 'package:vikunja_app/theme/button.dart';
@@ -44,6 +45,7 @@ class _ListEditPageState extends State<ListEditPage> {
           child: Form(
             key: _formKey,
             child: ListView(
+              reverse: true,
                 padding: const EdgeInsets.all(16.0),
                 children: <Widget>[
                   Padding(
@@ -114,7 +116,29 @@ class _ListEditPageState extends State<ListEditPage> {
                                 ? CircularProgressIndicator()
                                 : VikunjaButtonText('Save'),
                           ))),
-                ]),
+                  /*ExpansionTile(
+                    title: Text("Sharing"),
+                    children: [
+                      TypeAheadFormField(
+                          onSuggestionSelected: (suggestion) {},
+                          itemBuilder: (BuildContext context, Object? itemData) {
+                            return Card(
+                              child: Container(
+                                  padding: EdgeInsets.all(10),
+                                  child: Text(itemData.toString())),
+                            );},
+                          suggestionsCallback: (String pattern) {
+                            List<String> matches = <String>[];
+                            matches.addAll(["test", "test2", "test3"]);
+                            matches.retainWhere((s){
+                              return s.toLowerCase().contains(pattern.toLowerCase());
+                            });
+                            return matches;
+                          },)
+                    ],
+                  )*/
+                ]
+            ),
           ),
         ),
       ),
