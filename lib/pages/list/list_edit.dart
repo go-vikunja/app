@@ -45,7 +45,7 @@ class _ListEditPageState extends State<ListEditPage> {
           child: Form(
             key: _formKey,
             child: ListView(
-              reverse: true,
+              //reverse: true,
                 padding: const EdgeInsets.all(16.0),
                 children: <Widget>[
                   Padding(
