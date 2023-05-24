@@ -8,6 +8,7 @@ import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/models/list.dart';
 import 'package:vikunja_app/models/namespace.dart';
 import 'package:vikunja_app/pages/list/list.dart';
+import 'package:vikunja_app/pages/namespace/namespace_edit.dart';
 import 'package:vikunja_app/stores/list_store.dart';
 
 import '../../components/pagestatus.dart';
@@ -92,6 +93,18 @@ class _NamespacePageState extends State<NamespacePage> {
     return new Scaffold(
       appBar: AppBar(
         title: Text(widget.namespace.title),
+        actions: <Widget>[
+          IconButton(
+            icon: Icon(Icons.edit),
+            onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => NamespaceEditPage(
+                    namespace: widget.namespace,
+                  ),
+                )).whenComplete(() => _loadLists()),
+          ),
+        ],
       ),
       body: RefreshIndicator(onRefresh: () => _loadLists(), child: body),
       floatingActionButton: Builder(
