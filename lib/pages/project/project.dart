@@ -16,7 +16,49 @@ class ProjectPage extends StatefulWidget {
 class _ProjectPageState extends State<ProjectPage> {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(body: Text(widget.project.title),);
+    return Scaffold(
+      body: Column(
+        children: [
+          buildSubProjectSelector(),
+      ]
+      ),
+    appBar: AppBar(
+      title: Text(widget.project.title),
+    ),);
   }
+  Widget buildSubProjectSelector() {
+    return Container(
+      height: 80,
+      child:
+      ListView(
+        scrollDirection: Axis.horizontal,
+        //mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          ...?widget.project.subprojects?.map((elem) =>
+              InkWell(
+                  onTap: () {onSelectProject(context, elem);},
+                  child:
+                  Container(
+                      alignment: Alignment.center,
+                      height: 20,
+                      width: 100,
+                      child:
+                      Text(elem.title, overflow: TextOverflow.ellipsis,softWrap: false,)))
+          ),
+        ],
+      ),
+    );
+  }
+}
 
+
+onSelectProject(BuildContext context, Project project) {
+  Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (buildContext) => ProjectPage(
+          project: project,
+        ),
+      ));
+  //setState(() => _selectedDrawerIndex = index);
 }

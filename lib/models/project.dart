@@ -7,6 +7,7 @@ class Project {
   final String description;
   final String title;
   final DateTime created, updated;
+  Iterable<Project>? subprojects;
 
   Project(
       {this.id = 0,

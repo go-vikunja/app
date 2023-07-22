@@ -56,7 +56,7 @@ class _ProjectOverviewPageState extends State<ProjectOverviewPage>
         ListTile(
           onTap: () {
             setState(() {
-              _onSelectItem(project);
+              onSelectProject(context, project);
             });
           },
           contentPadding: insets,
@@ -83,6 +83,7 @@ class _ProjectOverviewPageState extends State<ProjectOverviewPage>
   List<Widget> addProjectChildren(Project project, level) {
     Iterable<Project> children =
         _projects.where((element) => element.parentProjectId == project.id);
+    project.subprojects = children;
     List<Widget> widgets = [];
     children.forEach((element) {
       widgets.add(createProjectTile(element, level + 1));
@@ -139,16 +140,7 @@ class _ProjectOverviewPageState extends State<ProjectOverviewPage>
     });
   }
 
-  _onSelectItem(Project project) {
-    Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (buildContext) => ProjectPage(
-            project: project,
-          ),
-        ));
-    //setState(() => _selectedDrawerIndex = index);
-  }
+
 
   _addProjectDialog(BuildContext context) {
     showDialog(
