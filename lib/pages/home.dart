@@ -7,12 +7,14 @@ import 'package:provider/provider.dart';
 
 import 'package:vikunja_app/components/AddDialog.dart';
 import 'package:vikunja_app/components/ErrorDialog.dart';
+import 'package:vikunja_app/models/project.dart';
 import 'package:vikunja_app/pages/namespace/namespace.dart';
 import 'package:vikunja_app/pages/namespace/namespace_edit.dart';
 import 'package:vikunja_app/pages/landing_page.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/models/namespace.dart';
 import 'package:vikunja_app/pages/namespace/overview.dart';
+import 'package:vikunja_app/pages/project/overview.dart';
 import 'package:vikunja_app/pages/settings.dart';
 import 'package:vikunja_app/stores/list_store.dart';
 
@@ -31,13 +33,13 @@ class HomePageState extends State<HomePage> {
       create: (_) => new ListProvider(),
       child: LandingPage(),
     ),
-    NamespaceOverviewPage(),
+    ProjectOverviewPage(),
     SettingsPage()
   ];
 
   List<BottomNavigationBarItem> navbarItems = [
     BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-    BottomNavigationBarItem(icon: Icon(Icons.list), label: "Namespaces"),
+    BottomNavigationBarItem(icon: Icon(Icons.list), label: "Projects"),
     BottomNavigationBarItem(icon: Icon(Icons.settings), label: "Settings"),
   ];
 

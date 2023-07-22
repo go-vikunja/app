@@ -314,7 +314,7 @@ class _ListPageState extends State<ListPage> {
       createdBy: currentUser,
       done: false,
       bucketId: bucket?.id,
-      listId: _list.id,
+      projectId: _list.id,
     );
     setState(() => _loadingTasks.add(newTask));
     return Provider.of<ListProvider>(context, listen: false)
