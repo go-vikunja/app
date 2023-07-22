@@ -46,7 +46,7 @@ var _tasks = {
     created: DateTime.now(),
     description: 'A descriptive task',
     done: false,
-    listId: 1,
+    projectId: 1,
   )
 };
 

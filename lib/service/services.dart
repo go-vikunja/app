@@ -12,6 +12,7 @@ import 'package:vikunja_app/models/task.dart';
 import 'package:vikunja_app/models/user.dart';
 import 'package:vikunja_app/models/bucket.dart';
 
+import '../models/project.dart';
 import '../models/server.dart';
 
 enum TaskServiceOptionSortBy {
@@ -127,6 +128,16 @@ class TaskServiceOptions {
     return result;
   }
 }
+
+abstract class ProjectService {
+  Future<List<Project>?> getAll();
+
+  Future<Project?> get(int projectId);
+  Future<Project?> create(Project p);
+  Future<Project?> update(int projectId);
+  Future delete(int projectId);
+}
+
 
 abstract class NamespaceService {
   Future<List<Namespace>?> getAll();
