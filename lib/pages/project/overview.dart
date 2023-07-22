@@ -1,3 +1,4 @@
+
 import 'package:after_layout/after_layout.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -10,8 +11,7 @@ import '../../models/project.dart';
 
 class ProjectOverviewPage extends StatefulWidget {
   @override
-  _ProjectOverviewPageState createState() =>
-      new _ProjectOverviewPageState();
+  _ProjectOverviewPageState createState() => new _ProjectOverviewPageState();
 }
 
 class _ProjectOverviewPageState extends State<ProjectOverviewPage>
@@ -30,67 +30,96 @@ class _ProjectOverviewPageState extends State<ProjectOverviewPage>
     _loadProjects();
   }
 
-  Widget createProjectTile(Project project, int level){
-    List<Widget> children = addProjectChildren(project, level);
-    EdgeInsets insets = EdgeInsets.fromLTRB(level * 20 + 10, 0, 0, 0);
-    if(children.length == 0) {
-      return new ListTile(
-        leading: const Icon(Icons.folder),
-        title: new Text(project.title),
-        contentPadding: insets,
-      );
+  List<int> expandedList = [];
+
+  Widget createProjectTile(Project project, int level) {
+    EdgeInsets insets = EdgeInsets.fromLTRB(level * 10 + 10, 0, 0, 0);
+
+    bool expanded = expandedList.contains(project.id);
+    Widget icon;
+
+    List<Widget>? children = addProjectChildren(project, level+1);
+    bool no_children = children.length == 0;
+    if(no_children) {
+      icon = Icon(Icons.list);
     } else {
-      return new ExpansionTile(
-        leading: const Icon(Icons.folder),
-        title: new Text(project.title),
-        children: children,
-        tilePadding: insets
-        //onTap: () => _onSelectItem(i),
-      );
+      if (expanded) {
+        icon = Icon(Icons.arrow_drop_down_sharp);
+      } else {
+        children = null;
+        icon = Icon(Icons.arrow_right_sharp);
+      }
     }
-  }
+
+
+      return Column(children: [
+        ListTile(
+          onTap: () {
+            setState(() {
+              _onSelectItem(project);
+            });
+          },
+          contentPadding: insets,
+        leading: IconButton(
+          disabledColor: Theme.of(context).unselectedWidgetColor,
+          icon: icon,
+          onPressed: !no_children ? () {
+            setState(() {
+              if (expanded)
+                expandedList.remove(project.id);
+              else
+                expandedList.add(project.id);
+            });
+          } : null,
+        ),
+        title: new Text(project.title),
+        //onTap: () => _onSelectItem(i),
+      ),
+        ...?children
+      ]);
+    }
+
 
   List<Widget> addProjectChildren(Project project, level) {
-    Iterable<Project> children = _projects.where((element) => element.parentProjectId == project.id);
+    Iterable<Project> children =
+        _projects.where((element) => element.parentProjectId == project.id);
     List<Widget> widgets = [];
-    children.forEach((element) {widgets.add(createProjectTile(element, level + 1));});
+    children.forEach((element) {
+      widgets.add(createProjectTile(element, level + 1));
+    });
     return widgets;
   }
 
   @override
   Widget build(BuildContext context) {
     List<Widget> projectList = <Widget>[];
-    _projects
-        .asMap()
-        .forEach((i, project) {
-          if(project.parentProjectId != 0)
-            return;
-          projectList.add(createProjectTile(project, 0));
-        });
+    _projects.asMap().forEach((i, project) {
+      if (project.parentProjectId != 0) return;
+      projectList.add(createProjectTile(project, 0));
+    });
 
-    if(_selectedDrawerIndex > -1) {
+    if (_selectedDrawerIndex > -1) {
       return new WillPopScope(
           child: ProjectPage(project: _projects[_selectedDrawerIndex]),
-          onWillPop: () async {setState(() {
-            _selectedDrawerIndex = -2;
+          onWillPop: () async {
+            setState(() {
+              _selectedDrawerIndex = -2;
+            });
+            return false;
           });
-          return false;});
-
     }
 
     return Scaffold(
-      body:
-      this._loading
+      body: this._loading
           ? Center(child: CircularProgressIndicator())
-          :
-      RefreshIndicator(
-        child: ListView(
-            padding: EdgeInsets.zero,
-            children: ListTile.divideTiles(
-                context: context, tiles: projectList)
-                .toList()),
-        onRefresh: _loadProjects,
-      ),
+          : RefreshIndicator(
+              child: ListView(
+                  padding: EdgeInsets.zero,
+                  children:
+                      ListTile.divideTiles(context: context, tiles: projectList)
+                          .toList()),
+              onRefresh: _loadProjects,
+            ),
       floatingActionButton: Builder(
           builder: (context) => FloatingActionButton(
               onPressed: () => _addProjectDialog(context),
@@ -110,12 +139,14 @@ class _ProjectOverviewPageState extends State<ProjectOverviewPage>
     });
   }
 
-  _onSelectItem(int index) {
-    Navigator.push(context,
+  _onSelectItem(Project project) {
+    Navigator.push(
+        context,
         MaterialPageRoute(
           builder: (buildContext) => ProjectPage(
-            project: _projects[index],
-          ),));
+            project: project,
+          ),
+        ));
     //setState(() => _selectedDrawerIndex = index);
   }
 
@@ -123,10 +154,10 @@ class _ProjectOverviewPageState extends State<ProjectOverviewPage>
     showDialog(
         context: context,
         builder: (_) => AddDialog(
-          onAdd: (name) => _addProject(name, context),
-          decoration: new InputDecoration(
-              labelText: 'Project', hintText: 'eg. Personal Project'),
-        ));
+              onAdd: (name) => _addProject(name, context),
+              decoration: new InputDecoration(
+                  labelText: 'Project', hintText: 'eg. Personal Project'),
+            ));
   }
 
   _addProject(String name, BuildContext context) {
@@ -144,6 +175,6 @@ class _ProjectOverviewPageState extends State<ProjectOverviewPage>
         content: Text('The project was created successfully!'),
       ));
     }).catchError((error) => showDialog(
-        context: context, builder: (context) => ErrorDialog(error: error)));
+            context: context, builder: (context) => ErrorDialog(error: error)));
   }
 }
