@@ -6,9 +6,10 @@ import 'package:dotted_border/dotted_border.dart';
 import 'package:provider/provider.dart';
 import 'package:vikunja_app/models/task.dart';
 import 'package:vikunja_app/pages/list/task_edit.dart';
-import 'package:vikunja_app/stores/list_store.dart';
 import 'package:vikunja_app/utils/misc.dart';
 import 'package:vikunja_app/theme/constants.dart';
+
+import '../stores/project_store.dart';
 
 enum DropLocation {above, below, none}
 
@@ -47,7 +48,7 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
     super.build(context);
     if (_cardSize == null) _updateCardSize(context);
 
-    final taskState = Provider.of<ListProvider>(context);
+    final taskState = Provider.of<ProjectProvider>(context);
     final bucket = taskState.buckets[taskState.buckets.indexWhere((b) => b.id == widget.task.bucketId)];
     // default chip height: 32
     const double chipHeight = 28;

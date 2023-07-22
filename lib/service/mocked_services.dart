@@ -171,12 +171,6 @@ class MockedTaskService implements TaskService {
   }
 
   @override
-  Future<Response> getAllByList(int listId,
-      [Map<String, List<String>>? queryParameters]) {
-    return Future.value(new Response(_tasks.values.toList(), 200, {}));
-  }
-
-  @override
   int get maxPages => 1;
   Future<Task> get(int taskId) {
     // TODO: implement get
@@ -193,6 +187,12 @@ class MockedTaskService implements TaskService {
   Future<List<Task>> getAll() {
     // TODO: implement getAll
     throw UnimplementedError();
+  }
+
+  @override
+  Future<Response?> getAllByProject(int projectId, [Map<String, List<String>>? queryParameters]) {
+    // TODO: implement getAllByProject
+    return Future.value(new Response(_tasks.values.toList(), 200, {}));
   }
 }
 

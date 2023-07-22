@@ -2,7 +2,7 @@
 import 'package:after_layout/after_layout.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:vikunja_app/pages/project/project.dart';
+import 'package:vikunja_app/pages/project/project_task_list.dart';
 
 import '../../components/AddDialog.dart';
 import '../../components/ErrorDialog.dart';
@@ -56,7 +56,7 @@ class _ProjectOverviewPageState extends State<ProjectOverviewPage>
         ListTile(
           onTap: () {
             setState(() {
-              onSelectProject(context, project);
+              openList(context, project);
             });
           },
           contentPadding: insets,
@@ -101,7 +101,7 @@ class _ProjectOverviewPageState extends State<ProjectOverviewPage>
 
     if (_selectedDrawerIndex > -1) {
       return new WillPopScope(
-          child: ProjectPage(project: _projects[_selectedDrawerIndex]),
+          child: ListPage(project: _projects[_selectedDrawerIndex]),
           onWillPop: () async {
             setState(() {
               _selectedDrawerIndex = -2;

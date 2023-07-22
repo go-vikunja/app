@@ -6,12 +6,13 @@ import 'package:vikunja_app/components/label.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/models/label.dart';
 import 'package:vikunja_app/models/task.dart';
-import 'package:vikunja_app/stores/list_store.dart';
 import 'package:vikunja_app/utils/repeat_after_parse.dart';
+
+import '../../stores/project_store.dart';
 
 class TaskEditPage extends StatefulWidget {
   final Task task;
-  final ListProvider taskState;
+  final ProjectProvider taskState;
 
   TaskEditPage({
     required this.task,

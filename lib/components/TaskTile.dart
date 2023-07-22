@@ -5,7 +5,8 @@ import 'package:provider/provider.dart';
 import 'package:vikunja_app/models/task.dart';
 import 'package:vikunja_app/utils/misc.dart';
 import 'package:vikunja_app/pages/list/task_edit.dart';
-import 'package:vikunja_app/stores/list_store.dart';
+
+import '../stores/project_store.dart';
 
 class TaskTile extends StatefulWidget {
   final Task task;
@@ -41,7 +42,7 @@ class TaskTileState extends State<TaskTile> with AutomaticKeepAliveClientMixin {
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    final taskState = Provider.of<ListProvider>(context);
+    final taskState = Provider.of<ProjectProvider>(context);
     Duration? durationUntilDue = _currentTask.dueDate?.difference(DateTime.now());
     if (_currentTask.loading) {
       return ListTile(
@@ -119,7 +120,7 @@ class TaskTileState extends State<TaskTile> with AutomaticKeepAliveClientMixin {
   }
 
   Future<Task?> _updateTask(Task task, bool checked) {
-    return Provider.of<ListProvider>(context, listen: false).updateTask(
+    return Provider.of<ProjectProvider>(context, listen: false).updateTask(
       context: context,
       task: task.copyWith(
         done: checked,

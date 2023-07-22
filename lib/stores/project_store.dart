@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/models/task.dart';
 import 'package:vikunja_app/models/bucket.dart';
@@ -7,7 +6,7 @@ import 'package:vikunja_app/global.dart';
 
 import '../components/pagestatus.dart';
 
-class ListProvider with ChangeNotifier {
+class ProjectProvider with ChangeNotifier {
   bool _taskDragging = false;
   int _maxPages = 0;
 
@@ -63,12 +62,11 @@ class ListProvider with ChangeNotifier {
     if(!displayDoneTasks) {
       queryParams.addAll({
         "filter_by": ["done"],
-        "filter_value": ["false"]
+        "filter_value": ["false"],
+        "sort_by": ["done"],
       });
     }
-    return Future.value();
-    /*
-    return VikunjaGlobal.of(context).taskService.getAllByList(listId, queryParams).then((response) {
+    return VikunjaGlobal.of(context).taskService.getAllByProject(listId, queryParams).then((response) {
       if(response == null) {
         pageStatus = PageStatus.error;
         return;
@@ -78,7 +76,7 @@ class ListProvider with ChangeNotifier {
       }
       _tasks.addAll(response.body);
       pageStatus = PageStatus.success;
-    });*/
+    });
   }
 
   Future<void> loadBuckets({required BuildContext context, required int listId, int page = 1}) {
@@ -105,7 +103,7 @@ class ListProvider with ChangeNotifier {
   }
 
   Future<void> addTaskByTitle(
-      {required BuildContext context, required String title, required int listId}) async{
+      {required BuildContext context, required String title, required int projectId}) async{
     final globalState = VikunjaGlobal.of(context);
     if (globalState.currentUser == null) {
       return;
@@ -115,11 +113,11 @@ class ListProvider with ChangeNotifier {
       title: title,
       createdBy: globalState.currentUser!,
       done: false,
-      projectId: listId,
+      projectId: projectId,
     );
     pageStatus = PageStatus.loading;
 
-    return globalState.taskService.add(listId, newTask).then((task) {
+    return globalState.taskService.add(projectId, newTask).then((task) {
       if(task != null)
         _tasks.insert(0, task);
       pageStatus = PageStatus.success;
@@ -171,30 +169,30 @@ class ListProvider with ChangeNotifier {
     notifyListeners();
     return VikunjaGlobal.of(context).bucketService.add(listId, newBucket)
         .then((bucket) {
-          if(bucket == null)
-            return null;
-          _buckets.add(bucket);
-          notifyListeners();
-        });
+      if(bucket == null)
+        return null;
+      _buckets.add(bucket);
+      notifyListeners();
+    });
   }
 
   Future<void> updateBucket({required BuildContext context, required Bucket bucket}) {
     return VikunjaGlobal.of(context).bucketService.update(bucket)
         .then((rBucket) {
-          if(rBucket == null)
-            return null;
-          _buckets[_buckets.indexWhere((b) => rBucket.id == b.id)] = rBucket;
-          _buckets.sort((a, b) => a.position!.compareTo(b.position!));
-          notifyListeners();
-        });
+      if(rBucket == null)
+        return null;
+      _buckets[_buckets.indexWhere((b) => rBucket.id == b.id)] = rBucket;
+      _buckets.sort((a, b) => a.position!.compareTo(b.position!));
+      notifyListeners();
+    });
   }
-  
+
   Future<void> deleteBucket({required BuildContext context, required int listId, required int bucketId}) {
     return VikunjaGlobal.of(context).bucketService.delete(listId, bucketId)
         .then((_) {
-          _buckets.removeWhere((bucket) => bucket.id == bucketId);
-          notifyListeners();
-        });
+      _buckets.removeWhere((bucket) => bucket.id == bucketId);
+      notifyListeners();
+    });
   }
 
   Future<void> moveTaskToBucket({required BuildContext context, required Task? task, int? newBucketId, required int index}) async {

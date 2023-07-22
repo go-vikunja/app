@@ -16,7 +16,8 @@ import 'package:vikunja_app/models/namespace.dart';
 import 'package:vikunja_app/pages/namespace/overview.dart';
 import 'package:vikunja_app/pages/project/overview.dart';
 import 'package:vikunja_app/pages/settings.dart';
-import 'package:vikunja_app/stores/list_store.dart';
+
+import '../stores/project_store.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -29,8 +30,8 @@ class HomePageState extends State<HomePage> {
 
 
   List<Widget> widgets = [
-    ChangeNotifierProvider<ListProvider>(
-      create: (_) => new ListProvider(),
+    ChangeNotifierProvider<ProjectProvider>(
+      create: (_) => new ProjectProvider(),
       child: LandingPage(),
     ),
     ProjectOverviewPage(),

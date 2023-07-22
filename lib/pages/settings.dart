@@ -5,6 +5,7 @@ import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/models/list.dart';
 
 import '../main.dart';
+import '../models/project.dart';
 
 
 class SettingsPage extends StatefulWidget {
@@ -13,8 +14,8 @@ class SettingsPage extends StatefulWidget {
 }
 
 class SettingsPageState extends State<SettingsPage> {
-  List<TaskList>? taskListList;
-  int? defaultList;
+  List<Project>? projectList;
+  int? defaultProject;
   bool? ignoreCertificates;
   bool? getVersionNotifications;
   String? versionTag, newestVersionTag;
@@ -27,13 +28,13 @@ class SettingsPageState extends State<SettingsPage> {
     durationTextController = TextEditingController();
 
     VikunjaGlobal.of(context)
-        .listService
+        .projectService
         .getAll()
-        .then((value) => setState(() => taskListList = value));
+        .then((value) => setState(() => projectList = value));
 
-    VikunjaGlobal.of(context).listService.getDefaultList().then((value) =>
+    VikunjaGlobal.of(context).projectService.getDefaultList().then((value) =>
         setState(
-            () => defaultList = value == null ? null : int.tryParse(value)));
+            () => defaultProject = value == null ? null : int.tryParse(value)));
 
     VikunjaGlobal.of(context).settingsManager.getIgnoreCertificates().then(
         (value) =>
@@ -84,7 +85,7 @@ class SettingsPageState extends State<SettingsPage> {
                       Theme.of(context).primaryColor, BlendMode.multiply)),
             ),
           ),
-          taskListList != null
+          projectList != null
               ? ListTile(
                   title: Text("Default List"),
                   trailing: DropdownButton<int>(
@@ -93,14 +94,14 @@ class SettingsPageState extends State<SettingsPage> {
                         child: Text("None"),
                         value: null,
                       ),
-                      ...taskListList!
+                      ...projectList!
                           .map((e) => DropdownMenuItem(
                               child: Text(e.title), value: e.id))
                           .toList()
                     ],
-                    value: defaultList,
+                    value: defaultProject,
                     onChanged: (int? value) {
-                      setState(() => defaultList = value);
+                      setState(() => defaultProject = value);
                       VikunjaGlobal.of(context)
                           .listService
                           .setDefaultList(value);

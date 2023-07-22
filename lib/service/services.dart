@@ -134,8 +134,14 @@ abstract class ProjectService {
 
   Future<Project?> get(int projectId);
   Future<Project?> create(Project p);
-  Future<Project?> update(int projectId);
+  Future<Project?> update(Project p);
   Future delete(int projectId);
+
+
+  Future<String?> getDisplayDoneTasks(int listId);
+  void setDisplayDoneTasks(int listId, String value);
+  Future<String?> getDefaultList();
+  void setDefaultList(int? listId);
 }
 
 
@@ -184,7 +190,7 @@ abstract class TaskService {
 
   Future<List<Task>?> getAll();
 
-  Future<Response?> getAllByList(int listId,
+  Future<Response?> getAllByProject(int projectId,
       [Map<String, List<String>> queryParameters]);
 
   Future<List<Task>?> getByOptions(TaskServiceOptions options);

@@ -69,7 +69,7 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
 
   NamespaceService get namespaceService => new NamespaceAPIService(client);
 
-  ProjectService get projectService => new ProjectAPIService(client);
+  ProjectService get projectService => new ProjectAPIService(client, _storage);
 
   TaskService get taskService => new TaskAPIService(client);
 
