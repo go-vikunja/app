@@ -35,7 +35,7 @@ class LandingPage extends HomeScreenWidget {
 class LandingPageState extends State<LandingPage>
     with AfterLayoutMixin<LandingPage> {
   int? defaultList;
-  List<Task> _list = [];
+  List<Task> _tasks = [];
   PageStatus landingPageStatus = PageStatus.built;
   static const platform = const MethodChannel('vikunja');
 
@@ -165,7 +165,7 @@ class LandingPageState extends State<LandingPage>
         title: title,
         dueDate: dueDate,
         createdBy: globalState.currentUser!,
-        listId: defaultList!,
+        projectId: defaultList!,
       ),
     );
 
@@ -176,7 +176,7 @@ class LandingPageState extends State<LandingPage>
   }
 
   List<Widget> _listTasks(BuildContext context) {
-    var tasks = (_list.map((task) => _buildTile(task, context))).toList();
+    var tasks = (_tasks.map((task) => _buildTile(task, context))).toList();
     //tasks.addAll(_loadingTasks.map(_buildLoadingTile));
     return tasks;
   }
@@ -193,8 +193,7 @@ class LandingPageState extends State<LandingPage>
   }
 
   Future<void> _loadList(BuildContext context) {
-    log("reloading list");
-    _list = [];
+    _tasks = [];
     landingPageStatus = PageStatus.loading;
     // FIXME: loads and reschedules tasks each time list is updated
     VikunjaGlobal.of(context).notifications.scheduleDueNotifications(VikunjaGlobal.of(context).taskService);
@@ -208,18 +207,16 @@ class LandingPageState extends State<LandingPage>
         });
         return null;
       }
-      return VikunjaGlobal.of(context).listService.getAll().then((lists) {
         //taskList.forEach((task) {task.list = lists.firstWhere((element) => element.id == task.list_id);});
         setState(() {
           if (taskList != null) {
-            _list = taskList;
+            _tasks = taskList;
             landingPageStatus = PageStatus.success;
           } else {
             landingPageStatus = PageStatus.error;
           }
         });
         return null;
-      });
     });
   }
 }

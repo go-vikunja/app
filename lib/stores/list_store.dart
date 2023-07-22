@@ -112,7 +112,7 @@ class ListProvider with ChangeNotifier {
       title: title,
       createdBy: globalState.currentUser!,
       done: false,
-      listId: listId,
+      projectId: listId,
     );
     pageStatus = PageStatus.loading;
 

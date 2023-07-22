@@ -20,6 +20,7 @@ import 'package:vikunja_app/service/services.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:workmanager/workmanager.dart';
 
+import 'api/project.dart';
 import 'main.dart';
 
 
@@ -67,6 +68,8 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
   VersionChecker get versionChecker => new VersionChecker(snackbarKey);
 
   NamespaceService get namespaceService => new NamespaceAPIService(client);
+
+  ProjectService get projectService => new ProjectAPIService(client);
 
   TaskService get taskService => new TaskAPIService(client);
 
