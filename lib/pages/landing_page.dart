@@ -224,19 +224,26 @@ class LandingPageState extends State<LandingPage>
         .settingsManager
         .getLandingPageOnlyDueDateTasks()
         .then((showOnlyDueDateTasks) {
-      if (!showOnlyDueDateTasks) {
-        return VikunjaGlobal.of(context).taskService.getAll().then((value) => _handleTaskList(value));
-      } else {
-        return VikunjaGlobal
-            .of(context)
-            .taskService
-            .getByOptions(TaskServiceOptions())
-            .then<Future<void>?>((taskList) => _handleTaskList(taskList));
-      }
-        });
+          return VikunjaGlobal
+              .of(context)
+              .taskService
+              .getByOptions(TaskServiceOptions(
+            newOptions: [
+              TaskServiceOption<TaskServiceOptionFilterBy>("filter_by", "done"),
+              TaskServiceOption<TaskServiceOptionFilterValue>("filter_value", "false"),
+            ],
+            clearOther: true
+          ))
+              .then<Future<void>?>((taskList) => _handleTaskList(taskList, showOnlyDueDateTasks));
+
+          }).onError((error, stackTrace) {print("error");});
   }
 
-  Future<void> _handleTaskList(List<Task>? taskList) {
+  Future<void> _handleTaskList(List<Task>? taskList, bool showOnlyDueDateTasks) {
+    if(showOnlyDueDateTasks)
+      taskList?.removeWhere((element) => element.dueDate == null || element.dueDate!.year == 0001);
+    taskList?.forEach((element) {print(element.dueDate);});
+
     if (taskList != null && taskList.isEmpty) {
       setState(() {
         landingPageStatus = PageStatus.empty;

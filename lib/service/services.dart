@@ -73,9 +73,10 @@ class TaskServiceOption<T> {
   }
 }
 
-List<TaskServiceOption> defaultOptions = [
+final List<TaskServiceOption> defaultOptions = [
   TaskServiceOption<TaskServiceOptionSortBy>("sort_by",
-      [TaskServiceOptionSortBy.due_date, TaskServiceOptionSortBy.id]),
+      [TaskServiceOptionSortBy.due_date,
+        TaskServiceOptionSortBy.id]),
   TaskServiceOption<TaskServiceOptionOrderBy>(
       "order_by", TaskServiceOptionOrderBy.asc),
   TaskServiceOption<TaskServiceOptionFilterBy>("filter_by", [
@@ -84,7 +85,7 @@ List<TaskServiceOption> defaultOptions = [
   ]),
   TaskServiceOption<TaskServiceOptionFilterValue>("filter_value", [
     TaskServiceOptionFilterValue.enum_false,
-    '0001-01-02T00:00:00.000Z'
+    '1970-01-01T00:00:00.000Z'
   ]),
   TaskServiceOption<TaskServiceOptionFilterComparator>(
       "filter_comparator", [
@@ -96,15 +97,20 @@ List<TaskServiceOption> defaultOptions = [
 ];
 
 class TaskServiceOptions {
-  List<TaskServiceOption>? options;
+  List<TaskServiceOption> options = [];
 
-  TaskServiceOptions({List<TaskServiceOption>? newOptions}) {
-    options = [...defaultOptions];
+  TaskServiceOptions({List<TaskServiceOption>? newOptions, bool clearOther = false}) {
+    if(!clearOther)
+      options = new List<TaskServiceOption>.from(defaultOptions);
     if (newOptions != null) {
       for (TaskServiceOption custom_option in newOptions) {
-        int index = options!.indexWhere((element) => element.name == custom_option.name);
-        options!.removeAt(index);
-        options!.insert(index, custom_option);
+        int index = options.indexWhere((element) => element.name == custom_option.name);
+        if(index > -1) {
+          options.removeAt(index);
+        } else {
+          index = options.length;
+        }
+        options.insert(index, custom_option);
       }
     }
   }
@@ -112,8 +118,8 @@ class TaskServiceOptions {
 
   String getOptions() {
     String result = '';
-    if (options == null) return '';
-    for (TaskServiceOption option in options!) {
+    if (options.length == 0) return '';
+    for (TaskServiceOption option in options) {
       dynamic value = option.getValue();
       if (value is List) {
         for (dynamic valueEntry in value) {
@@ -124,7 +130,8 @@ class TaskServiceOptions {
       }
     }
 
-    if (result.startsWith('&')) result.substring(1);
+    if (result.startsWith('&')) result = result.substring(1);
+    result = "?" + result;
     return result;
   }
 }

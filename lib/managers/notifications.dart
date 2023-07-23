@@ -9,6 +9,8 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart'as 
 import 'package:rxdart/subjects.dart' as rxSub;
 import 'package:vikunja_app/service/services.dart';
 
+import '../models/task.dart';
+
 class NotificationClass {
   final int? id;
   final String? title;
@@ -120,30 +122,18 @@ class NotificationClass {
   }
 
 
-  Future<void> scheduleDueNotifications(TaskService taskService) async {
-    final tasks = await taskService.getByOptions(new TaskServiceOptions(newOptions: [
-      TaskServiceOption<TaskServiceOptionFilterBy>("filter_by", [
-        TaskServiceOptionFilterBy.done,
-        TaskServiceOptionFilterBy.due_date
-      ]),
-      TaskServiceOption<TaskServiceOptionFilterComparator>(
-          "filter_comparator", [
-        TaskServiceOptionFilterComparator.equals,
-        TaskServiceOptionFilterComparator.greater
-      ]),
-      TaskServiceOption<TaskServiceOptionFilterConcat>(
-          "filter_concat", TaskServiceOptionFilterConcat.and),
-      TaskServiceOption<TaskServiceOptionFilterValue>("filter_value", [
-        TaskServiceOptionFilterValue.enum_false,
-        DateTime.now().toUtc().toIso8601String()
-      ]),
-    ]));
+  Future<void> scheduleDueNotifications(TaskService taskService,
+      {List<Task>? tasks}) async {
+    if (tasks == null)
+      tasks = await taskService.getAll();
     if (tasks == null) {
       print("did not receive tasks on notification update");
       return;
     }
     await notificationsPlugin.cancelAll();
     for (final task in tasks) {
+      if(task.done)
+        continue;
       for (final reminder in task.reminderDates) {
         scheduleNotification(
           "Reminder",

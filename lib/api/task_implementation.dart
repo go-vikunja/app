@@ -92,7 +92,7 @@ class TaskAPIService extends APIService implements TaskService {
   Future<List<Task>?> getByOptions(TaskServiceOptions options) {
     String optionString = options.getOptions();
     return client
-        .get('/tasks/all?$optionString')
+        .get('/tasks/all$optionString')
         .then((response) {
           if (response == null) return null;
         return convertList(response.body, (result) => Task.fromJson(result));
