@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -96,12 +97,16 @@ class VikunjaApp extends StatelessWidget {
 
     return new ValueListenableBuilder(valueListenable: updateTheme, builder: (_,mode,__) {
       updateTheme.value = false;
+      FlutterThemeMode themeMode = FlutterThemeMode.system;
       Future<ThemeData> theme = manager.getThemeMode().then((value) {
+        themeMode = value;
         switch(value) {
           case FlutterThemeMode.dark:
             return buildVikunjaDarkTheme();
-          case FlutterThemeMode.materialUi:
-            return buildVikunjaMaterialTheme();
+          case FlutterThemeMode.materialYouLight:
+            return buildVikunjaMaterialLightTheme();
+          case FlutterThemeMode.materialYouDark:
+            return buildVikunjaMaterialDarkTheme();
           default:
             return buildVikunjaTheme();
         }
@@ -111,14 +116,22 @@ class VikunjaApp extends StatelessWidget {
       future: theme,
         builder: (BuildContext context, AsyncSnapshot<ThemeData> data) {
       if(data.hasData) {
-      return new MaterialApp(
+      return new DynamicColorBuilder(builder: (lightTheme, darkTheme)
+      {
+        ThemeData? themeData = data.data;
+        if(themeMode == FlutterThemeMode.materialYouLight)
+          themeData = themeData?.copyWith(colorScheme: lightTheme);
+        else if(themeMode == FlutterThemeMode.materialYouDark)
+          themeData = themeData?.copyWith(colorScheme: darkTheme);
+        return MaterialApp(
           title: 'Vikunja',
-          theme: data.data,
+          theme: themeData,
           scaffoldMessengerKey: globalSnackbarKey,
           navigatorKey: navkey,
           // <= this
           home: this.home,
         );
+      });
       } else {
         return Center(child: CircularProgressIndicator());
       }

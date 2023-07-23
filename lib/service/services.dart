@@ -320,6 +320,10 @@ class SettingsManager {
         return FlutterThemeMode.light;
       case "dark":
         return FlutterThemeMode.dark;
+        case "materialYouLight":
+        return FlutterThemeMode.materialYouLight;
+        case "materialYouDark":
+        return FlutterThemeMode.materialYouDark;
       default:
         return FlutterThemeMode.system;
     }
@@ -335,5 +339,6 @@ enum FlutterThemeMode {
   system,
   light,
   dark,
-  materialUi
+  materialYouLight,
+  materialYouDark,
 }

@@ -6,8 +6,13 @@ import 'package:vikunja_app/theme/constants.dart';
 ThemeData buildVikunjaTheme() => _buildVikunjaTheme(ThemeData.light());
 ThemeData buildVikunjaDarkTheme() => _buildVikunjaTheme(ThemeData.dark(), isDark: true);
 
-ThemeData buildVikunjaMaterialTheme() {
-  return _buildVikunjaTheme(ThemeData.light()).copyWith(
+ThemeData buildVikunjaMaterialLightTheme() {
+  return ThemeData.light().copyWith(
+    useMaterial3: true,
+  );
+}
+ThemeData buildVikunjaMaterialDarkTheme() {
+  return ThemeData.dark().copyWith(
     useMaterial3: true,
   );
 }

@@ -130,8 +130,12 @@ class SettingsPageState extends State<SettingsPage> {
                   value: FlutterThemeMode.dark,
                 ),
                 DropdownMenuItem(
-                  child: Text("Material You"),
-                  value: FlutterThemeMode.materialUi,
+                  child: Text("Material You Light"),
+                  value: FlutterThemeMode.materialYouLight,
+                ),
+                DropdownMenuItem(
+                  child: Text("Material You Dark"),
+                  value: FlutterThemeMode.materialYouDark,
                 ),
               ],
               value: themeMode,

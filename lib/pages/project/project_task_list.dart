@@ -97,7 +97,7 @@ class _ListPageState extends State<ListPage> {
         ]);
         break;
       case PageStatus.success:
-        body = taskState.tasks.length > 0 || taskState.buckets.length > 0
+        body = taskState.tasks.length > 0 || taskState.buckets.length > 0 || _project.subprojects!.length > 0
             ? ListenableProvider.value(
           value: taskState,
           child: Theme(
@@ -182,6 +182,7 @@ class _ListPageState extends State<ListPage> {
   Widget buildSubProjectSelector() {
     return Container(
       height: 80,
+      padding: EdgeInsets.fromLTRB(10, 0, 10, 0),
       child:
       ListView(
         scrollDirection: Axis.horizontal,
@@ -213,42 +214,43 @@ class _ListPageState extends State<ListPage> {
   }
 
   Widget _listView(BuildContext context) {
-    List<Widget> subProjectView = [];
+    List<Widget> children = [];
     if(widget.project.subprojects?.length != 0) {
-      subProjectView.add(Padding(child: Text("Projects", style: TextStyle(fontWeight: FontWeight.bold),), padding: EdgeInsets.fromLTRB(0, 10, 0, 0),));
-      subProjectView.add(buildSubProjectSelector());
-      subProjectView.add(Padding(child: Text("Tasks", style: TextStyle(fontWeight: FontWeight.bold),), padding: EdgeInsets.fromLTRB(0, 10, 0, 0),));
-      subProjectView.add(Divider());
+      children.add(Padding(child: Text("Projects", style: TextStyle(fontWeight: FontWeight.bold),), padding: EdgeInsets.fromLTRB(0, 10, 0, 0),));
+      children.add(buildSubProjectSelector());
+
+    }
+    if(taskState.tasks.length != 0) {
+      children.add(Padding(child: Text("Tasks", style: TextStyle(fontWeight: FontWeight.bold),), padding: EdgeInsets.fromLTRB(0, 10, 0, 0),));
+      children.add(Divider());
+      children.add(Expanded(child:
+      ListView.builder(
+          padding: EdgeInsets.symmetric(vertical: 8.0),
+          itemCount: taskState.tasks.length * 2,
+          itemBuilder: (context, i) {
+            if (i.isOdd) return Divider();
+
+            if (_loadingTasks.isNotEmpty) {
+              final loadingTask = _loadingTasks.removeLast();
+              return _buildLoadingTile(loadingTask);
+            }
+
+            final index = i ~/ 2;
+
+            if (taskState.maxPages == _currentPage &&
+                index == taskState.tasks.length)
+              throw Exception("Check itemCount attribute");
+
+            if (index >= taskState.tasks.length &&
+                _currentPage < taskState.maxPages) {
+              _currentPage++;
+              _loadTasksForPage(_currentPage);
+            }
+            return _buildTile(taskState.tasks[index]);
+          })));
     }
 
-    return Column(
-        children: [
-          ...subProjectView,
-          Expanded(child:
-          ListView.builder(
-        padding: EdgeInsets.symmetric(vertical: 8.0),
-        itemCount: taskState.tasks.length * 2,
-        itemBuilder: (context, i) {
-          if (i.isOdd) return Divider();
-
-          if (_loadingTasks.isNotEmpty) {
-            final loadingTask = _loadingTasks.removeLast();
-            return _buildLoadingTile(loadingTask);
-          }
-
-          final index = i ~/ 2;
-
-          if (taskState.maxPages == _currentPage &&
-              index == taskState.tasks.length)
-            throw Exception("Check itemCount attribute");
-
-          if (index >= taskState.tasks.length &&
-              _currentPage < taskState.maxPages) {
-            _currentPage++;
-            _loadTasksForPage(_currentPage);
-          }
-          return _buildTile(taskState.tasks[index]);
-        }))]);
+    return Column(children: children);
   }
 
   Widget _buildTile(Task task) {
