@@ -17,7 +17,11 @@ class FancyButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ElevatedButton(onPressed: onPressed, child: child);
+    return ElevatedButton(onPressed: onPressed,
+      child: SizedBox(
+        width: width,
+        child: Center(child: child),
+    ),);
     return Padding(
         padding: vStandardVerticalPadding,
         child: Container(
