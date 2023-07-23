@@ -97,11 +97,15 @@ class VikunjaApp extends StatelessWidget {
     return new ValueListenableBuilder(valueListenable: updateTheme, builder: (_,mode,__) {
       updateTheme.value = false;
       Future<ThemeData> theme = manager.getThemeMode().then((value) {
-        if (value == ThemeMode.dark) {
-          return buildVikunjaDarkTheme();
-        } else {
-          return buildVikunjaTheme();
+        switch(value) {
+          case FlutterThemeMode.dark:
+            return buildVikunjaDarkTheme();
+          case FlutterThemeMode.materialUi:
+            return buildVikunjaMaterialTheme();
+          default:
+            return buildVikunjaTheme();
         }
+
       });
       return FutureBuilder<ThemeData>(
       future: theme,

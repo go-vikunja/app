@@ -369,6 +369,7 @@ class _ListPageState extends State<ListPage> {
       ));
       setState(() {
         _loadingTasks.remove(newTask);
+        _loadList();
       });
     });
   }

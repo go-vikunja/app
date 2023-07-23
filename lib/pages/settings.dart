@@ -6,6 +6,7 @@ import 'package:vikunja_app/models/list.dart';
 
 import '../main.dart';
 import '../models/project.dart';
+import '../service/services.dart';
 
 
 class SettingsPage extends StatefulWidget {
@@ -21,7 +22,7 @@ class SettingsPageState extends State<SettingsPage> {
   String? versionTag, newestVersionTag;
   late TextEditingController durationTextController;
   bool initialized = false;
-  ThemeMode? themeMode;
+  FlutterThemeMode? themeMode;
 
 
   void init() {
@@ -114,23 +115,27 @@ class SettingsPageState extends State<SettingsPage> {
           Divider(),
           ListTile(
             title: Text("Theme"),
-            trailing: DropdownButton<ThemeMode>(
+            trailing: DropdownButton<FlutterThemeMode>(
               items: [
                 DropdownMenuItem(
                   child: Text("System"),
-                  value: ThemeMode.system,
+                  value: FlutterThemeMode.system,
                 ),
                 DropdownMenuItem(
                   child: Text("Light"),
-                  value: ThemeMode.light,
+                  value: FlutterThemeMode.light,
                 ),
                 DropdownMenuItem(
                   child: Text("Dark"),
-                  value: ThemeMode.dark,
+                  value: FlutterThemeMode.dark,
+                ),
+                DropdownMenuItem(
+                  child: Text("Material You"),
+                  value: FlutterThemeMode.materialUi,
                 ),
               ],
               value: themeMode,
-              onChanged: (ThemeMode? value) {
+              onChanged: (FlutterThemeMode? value) {
                 VikunjaGlobal.of(context)
                     .settingsManager
                     .setThemeMode(value!);

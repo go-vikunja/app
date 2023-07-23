@@ -309,24 +309,31 @@ class SettingsManager {
     return _storage.write(key: "recent-servers", value: jsonEncode(server));
   }
 
-  Future<ThemeMode> getThemeMode() async {
+  Future<FlutterThemeMode> getThemeMode() async {
     String? theme_mode = await _storage.read(key: "theme_mode");
     if(theme_mode == null)
-      setThemeMode(ThemeMode.system);
+      setThemeMode(FlutterThemeMode.system);
     switch(theme_mode) {
       case "system":
-        return ThemeMode.system;
+        return FlutterThemeMode.system;
       case "light":
-        return ThemeMode.light;
+        return FlutterThemeMode.light;
       case "dark":
-        return ThemeMode.dark;
+        return FlutterThemeMode.dark;
       default:
-        return ThemeMode.system;
+        return FlutterThemeMode.system;
     }
   }
 
-  Future<void> setThemeMode(ThemeMode newMode) async {
+  Future<void> setThemeMode(FlutterThemeMode newMode) async {
     await _storage.write(key: "theme_mode", value: newMode.toString().split('.').last);
   }
 
+}
+
+enum FlutterThemeMode {
+  system,
+  light,
+  dark,
+  materialUi
 }

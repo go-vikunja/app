@@ -156,7 +156,7 @@ class _ProjectEditPageState extends State<ProjectEditPage> {
     VikunjaGlobal.of(context).projectService.update(newProject).then((_) {
       setState(() => _loading = false);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('The task was updated successfully!'),
+        content: Text('The project was updated successfully!'),
       ));
     }).catchError((err) {
       setState(() => _loading = false);

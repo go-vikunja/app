@@ -38,10 +38,10 @@ class HomePageState extends State<HomePage> {
     SettingsPage()
   ];
 
-  List<BottomNavigationBarItem> navbarItems = [
-    BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-    BottomNavigationBarItem(icon: Icon(Icons.list), label: "Projects"),
-    BottomNavigationBarItem(icon: Icon(Icons.settings), label: "Settings"),
+  List<NavigationDestination> navbarItems = [
+    NavigationDestination(icon: Icon(Icons.home), label: "Home"),
+    NavigationDestination(icon: Icon(Icons.list), label: "Projects"),
+    NavigationDestination(icon: Icon(Icons.settings), label: "Settings"),
   ];
 
   @override
@@ -51,10 +51,10 @@ class HomePageState extends State<HomePage> {
       drawerItem = _getDrawerItemWidget(_selectedDrawerIndex);
 
     return new Scaffold(
-      bottomNavigationBar: BottomNavigationBar(
-        items: navbarItems,
-        currentIndex: _selectedDrawerIndex,
-        onTap: (index) {
+      bottomNavigationBar: NavigationBar(
+        destinations: navbarItems,
+        selectedIndex: _selectedDrawerIndex,
+        onDestinationSelected: (index) {
           setState(() {
             _selectedDrawerIndex = index;
           });
