@@ -5,6 +5,8 @@ import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/models/list.dart';
 
 import '../main.dart';
+import '../models/project.dart';
+import '../service/services.dart';
 
 
 class SettingsPage extends StatefulWidget {
@@ -13,27 +15,27 @@ class SettingsPage extends StatefulWidget {
 }
 
 class SettingsPageState extends State<SettingsPage> {
-  List<TaskList>? taskListList;
-  int? defaultList;
+  List<Project>? projectList;
+  int? defaultProject;
   bool? ignoreCertificates;
   bool? getVersionNotifications;
   String? versionTag, newestVersionTag;
   late TextEditingController durationTextController;
   bool initialized = false;
-  ThemeMode? themeMode;
+  FlutterThemeMode? themeMode;
 
 
   void init() {
     durationTextController = TextEditingController();
 
     VikunjaGlobal.of(context)
-        .listService
+        .projectService
         .getAll()
-        .then((value) => setState(() => taskListList = value));
+        .then((value) => setState(() => projectList = value));
 
-    VikunjaGlobal.of(context).listService.getDefaultList().then((value) =>
+    VikunjaGlobal.of(context).projectService.getDefaultList().then((value) =>
         setState(
-            () => defaultList = value == null ? null : int.tryParse(value)));
+            () => defaultProject = value == null ? null : int.tryParse(value)));
 
     VikunjaGlobal.of(context).settingsManager.getIgnoreCertificates().then(
         (value) =>
@@ -84,7 +86,7 @@ class SettingsPageState extends State<SettingsPage> {
                       Theme.of(context).primaryColor, BlendMode.multiply)),
             ),
           ),
-          taskListList != null
+          projectList != null
               ? ListTile(
                   title: Text("Default List"),
                   trailing: DropdownButton<int>(
@@ -93,14 +95,14 @@ class SettingsPageState extends State<SettingsPage> {
                         child: Text("None"),
                         value: null,
                       ),
-                      ...taskListList!
+                      ...projectList!
                           .map((e) => DropdownMenuItem(
                               child: Text(e.title), value: e.id))
                           .toList()
                     ],
-                    value: defaultList,
+                    value: defaultProject,
                     onChanged: (int? value) {
-                      setState(() => defaultList = value);
+                      setState(() => defaultProject = value);
                       VikunjaGlobal.of(context)
                           .listService
                           .setDefaultList(value);
@@ -113,23 +115,31 @@ class SettingsPageState extends State<SettingsPage> {
           Divider(),
           ListTile(
             title: Text("Theme"),
-            trailing: DropdownButton<ThemeMode>(
+            trailing: DropdownButton<FlutterThemeMode>(
               items: [
                 DropdownMenuItem(
                   child: Text("System"),
-                  value: ThemeMode.system,
+                  value: FlutterThemeMode.system,
                 ),
                 DropdownMenuItem(
                   child: Text("Light"),
-                  value: ThemeMode.light,
+                  value: FlutterThemeMode.light,
                 ),
                 DropdownMenuItem(
                   child: Text("Dark"),
-                  value: ThemeMode.dark,
+                  value: FlutterThemeMode.dark,
+                ),
+                DropdownMenuItem(
+                  child: Text("Material You Light"),
+                  value: FlutterThemeMode.materialYouLight,
+                ),
+                DropdownMenuItem(
+                  child: Text("Material You Dark"),
+                  value: FlutterThemeMode.materialYouDark,
                 ),
               ],
               value: themeMode,
-              onChanged: (ThemeMode? value) {
+              onChanged: (FlutterThemeMode? value) {
                 VikunjaGlobal.of(context)
                     .settingsManager
                     .setThemeMode(value!);

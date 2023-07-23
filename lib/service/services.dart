@@ -12,6 +12,7 @@ import 'package:vikunja_app/models/task.dart';
 import 'package:vikunja_app/models/user.dart';
 import 'package:vikunja_app/models/bucket.dart';
 
+import '../models/project.dart';
 import '../models/server.dart';
 
 enum TaskServiceOptionSortBy {
@@ -72,9 +73,10 @@ class TaskServiceOption<T> {
   }
 }
 
-List<TaskServiceOption> defaultOptions = [
+final List<TaskServiceOption> defaultOptions = [
   TaskServiceOption<TaskServiceOptionSortBy>("sort_by",
-      [TaskServiceOptionSortBy.due_date, TaskServiceOptionSortBy.id]),
+      [TaskServiceOptionSortBy.due_date,
+        TaskServiceOptionSortBy.id]),
   TaskServiceOption<TaskServiceOptionOrderBy>(
       "order_by", TaskServiceOptionOrderBy.asc),
   TaskServiceOption<TaskServiceOptionFilterBy>("filter_by", [
@@ -83,7 +85,7 @@ List<TaskServiceOption> defaultOptions = [
   ]),
   TaskServiceOption<TaskServiceOptionFilterValue>("filter_value", [
     TaskServiceOptionFilterValue.enum_false,
-    '0001-01-02T00:00:00.000Z'
+    '1970-01-01T00:00:00.000Z'
   ]),
   TaskServiceOption<TaskServiceOptionFilterComparator>(
       "filter_comparator", [
@@ -95,15 +97,20 @@ List<TaskServiceOption> defaultOptions = [
 ];
 
 class TaskServiceOptions {
-  List<TaskServiceOption>? options;
+  List<TaskServiceOption> options = [];
 
-  TaskServiceOptions({List<TaskServiceOption>? newOptions}) {
-    options = [...defaultOptions];
+  TaskServiceOptions({List<TaskServiceOption>? newOptions, bool clearOther = false}) {
+    if(!clearOther)
+      options = new List<TaskServiceOption>.from(defaultOptions);
     if (newOptions != null) {
       for (TaskServiceOption custom_option in newOptions) {
-        int index = options!.indexWhere((element) => element.name == custom_option.name);
-        options!.removeAt(index);
-        options!.insert(index, custom_option);
+        int index = options.indexWhere((element) => element.name == custom_option.name);
+        if(index > -1) {
+          options.removeAt(index);
+        } else {
+          index = options.length;
+        }
+        options.insert(index, custom_option);
       }
     }
   }
@@ -111,8 +118,8 @@ class TaskServiceOptions {
 
   String getOptions() {
     String result = '';
-    if (options == null) return '';
-    for (TaskServiceOption option in options!) {
+    if (options.length == 0) return '';
+    for (TaskServiceOption option in options) {
       dynamic value = option.getValue();
       if (value is List) {
         for (dynamic valueEntry in value) {
@@ -123,10 +130,27 @@ class TaskServiceOptions {
       }
     }
 
-    if (result.startsWith('&')) result.substring(1);
+    if (result.startsWith('&')) result = result.substring(1);
+    result = "?" + result;
     return result;
   }
 }
+
+abstract class ProjectService {
+  Future<List<Project>?> getAll();
+
+  Future<Project?> get(int projectId);
+  Future<Project?> create(Project p);
+  Future<Project?> update(Project p);
+  Future delete(int projectId);
+
+
+  Future<String?> getDisplayDoneTasks(int listId);
+  void setDisplayDoneTasks(int listId, String value);
+  Future<String?> getDefaultList();
+  void setDefaultList(int? listId);
+}
+
 
 abstract class NamespaceService {
   Future<List<Namespace>?> getAll();
@@ -173,7 +197,7 @@ abstract class TaskService {
 
   Future<List<Task>?> getAll();
 
-  Future<Response?> getAllByList(int listId,
+  Future<Response?> getAllByProject(int projectId,
       [Map<String, List<String>> queryParameters]);
 
   Future<List<Task>?> getByOptions(TaskServiceOptions options);
@@ -242,6 +266,7 @@ class SettingsManager {
     "workmanager-duration": "0",
     "recent-servers": "[\"https://try.vikunja.io\"]",
     "theme_mode": "system",
+    "landing-page-due-date-tasks": "1"
   };
 
   void applydefaults() {
@@ -264,6 +289,13 @@ class SettingsManager {
   }
   void setIgnoreCertificates(bool value) {
     _storage.write(key: "ignore-certificates", value: value ? "1" : "0");
+  }
+
+  Future<bool> getLandingPageOnlyDueDateTasks() {
+    return _storage.read(key: "landing-page-due-date-tasks").then((value) => value == "1");
+  }
+  Future<void> setLandingPageOnlyDueDateTasks(bool value) {
+    return _storage.write(key: "landing-page-due-date-tasks", value: value ? "1" : "0");
   }
 
 
@@ -292,24 +324,36 @@ class SettingsManager {
     return _storage.write(key: "recent-servers", value: jsonEncode(server));
   }
 
-  Future<ThemeMode> getThemeMode() async {
+  Future<FlutterThemeMode> getThemeMode() async {
     String? theme_mode = await _storage.read(key: "theme_mode");
     if(theme_mode == null)
-      setThemeMode(ThemeMode.system);
+      setThemeMode(FlutterThemeMode.system);
     switch(theme_mode) {
       case "system":
-        return ThemeMode.system;
+        return FlutterThemeMode.system;
       case "light":
-        return ThemeMode.light;
+        return FlutterThemeMode.light;
       case "dark":
-        return ThemeMode.dark;
+        return FlutterThemeMode.dark;
+        case "materialYouLight":
+        return FlutterThemeMode.materialYouLight;
+        case "materialYouDark":
+        return FlutterThemeMode.materialYouDark;
       default:
-        return ThemeMode.system;
+        return FlutterThemeMode.system;
     }
   }
 
-  Future<void> setThemeMode(ThemeMode newMode) async {
+  Future<void> setThemeMode(FlutterThemeMode newMode) async {
     await _storage.write(key: "theme_mode", value: newMode.toString().split('.').last);
   }
 
+}
+
+enum FlutterThemeMode {
+  system,
+  light,
+  dark,
+  materialYouLight,
+  materialYouDark,
 }

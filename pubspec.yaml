@@ -1,7 +1,7 @@
 name: vikunja_app
 description: Vikunja as Flutter cross platform app
 
-version: 0.1.0-beta
+version: 0.1.1-beta
 
 environment:
   sdk: ">=2.18.0 <3.0.0"
@@ -31,6 +31,7 @@ dependencies:
   url_launcher: ^6.1.7
   workmanager: ^0.5.1
   permission_handler: ^10.2.0
+  dynamic_color: ^1.6.6
 
 dev_dependencies:
   flutter_test:

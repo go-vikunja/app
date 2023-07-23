@@ -17,6 +17,11 @@ class FancyButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return ElevatedButton(onPressed: onPressed,
+      child: SizedBox(
+        width: width,
+        child: Center(child: child),
+    ),);
     return Padding(
         padding: vStandardVerticalPadding,
         child: Container(
@@ -33,7 +38,7 @@ class FancyButton extends StatelessWidget {
           ]),
           child: Material(
             borderRadius: BorderRadius.circular(3),
-            color: vButtonColor,
+            color: Theme.of(context).colorScheme.primary,
             child: InkWell(
                 onTap: onPressed,
                 child: Center(

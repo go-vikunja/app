@@ -79,7 +79,19 @@ class Client {
 
   Future<Response?> get(String url,
       [Map<String, List<String>>? queryParameters]) {
-    return http.get('${this.base}$url'.toUri()!, headers: _headers)
+    Uri uri = Uri.tryParse('${this.base}$url')!;
+    // why are we doing it like this? because Uri doesnt have setters. wtf.
+    uri = Uri(
+      scheme: uri.scheme,
+        userInfo: uri.userInfo,
+        host: uri.host,
+        port: uri.port,
+        path: uri.path,
+        queryParameters: {...uri.queryParameters, ...?queryParameters},
+        fragment: uri.fragment
+    );
+
+    return http.get(uri, headers: _headers)
         .then(_handleResponse).onError((error, stackTrace) =>
         _handleError(error, stackTrace));
   }

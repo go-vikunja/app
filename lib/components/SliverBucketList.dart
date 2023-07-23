@@ -3,7 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:vikunja_app/components/BucketTaskCard.dart';
 import 'package:vikunja_app/models/bucket.dart';
 import 'package:vikunja_app/models/task.dart';
-import 'package:vikunja_app/stores/list_store.dart';
+
+import '../stores/project_store.dart';
 
 class SliverBucketList extends StatelessWidget {
   final Bucket bucket;
@@ -33,7 +34,7 @@ class SliverBucketList extends StatelessWidget {
   }
 
   Future<void> _moveTaskToBucket(BuildContext context, Task task, int index) async {
-    await Provider.of<ListProvider>(context, listen: false).moveTaskToBucket(
+    await Provider.of<ProjectProvider>(context, listen: false).moveTaskToBucket(
       context: context,
       task: task,
       newBucketId: bucket.id,

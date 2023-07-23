@@ -7,14 +7,17 @@ import 'package:provider/provider.dart';
 
 import 'package:vikunja_app/components/AddDialog.dart';
 import 'package:vikunja_app/components/ErrorDialog.dart';
+import 'package:vikunja_app/models/project.dart';
 import 'package:vikunja_app/pages/namespace/namespace.dart';
 import 'package:vikunja_app/pages/namespace/namespace_edit.dart';
 import 'package:vikunja_app/pages/landing_page.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/models/namespace.dart';
 import 'package:vikunja_app/pages/namespace/overview.dart';
+import 'package:vikunja_app/pages/project/overview.dart';
 import 'package:vikunja_app/pages/settings.dart';
-import 'package:vikunja_app/stores/list_store.dart';
+
+import '../stores/project_store.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -27,18 +30,18 @@ class HomePageState extends State<HomePage> {
 
 
   List<Widget> widgets = [
-    ChangeNotifierProvider<ListProvider>(
-      create: (_) => new ListProvider(),
+    ChangeNotifierProvider<ProjectProvider>(
+      create: (_) => new ProjectProvider(),
       child: LandingPage(),
     ),
-    NamespaceOverviewPage(),
+    ProjectOverviewPage(),
     SettingsPage()
   ];
 
-  List<BottomNavigationBarItem> navbarItems = [
-    BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-    BottomNavigationBarItem(icon: Icon(Icons.list), label: "Namespaces"),
-    BottomNavigationBarItem(icon: Icon(Icons.settings), label: "Settings"),
+  List<NavigationDestination> navbarItems = [
+    NavigationDestination(icon: Icon(Icons.home), label: "Home"),
+    NavigationDestination(icon: Icon(Icons.list), label: "Projects"),
+    NavigationDestination(icon: Icon(Icons.settings), label: "Settings"),
   ];
 
   @override
@@ -48,10 +51,10 @@ class HomePageState extends State<HomePage> {
       drawerItem = _getDrawerItemWidget(_selectedDrawerIndex);
 
     return new Scaffold(
-      bottomNavigationBar: BottomNavigationBar(
-        items: navbarItems,
-        currentIndex: _selectedDrawerIndex,
-        onTap: (index) {
+      bottomNavigationBar: NavigationBar(
+        destinations: navbarItems,
+        selectedIndex: _selectedDrawerIndex,
+        onDestinationSelected: (index) {
           setState(() {
             _selectedDrawerIndex = index;
           });

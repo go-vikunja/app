@@ -19,10 +19,7 @@ class HomeScreenWidget extends StatefulWidget {
     // TODO: implement createState
     throw UnimplementedError();
   }
-
-
 }
-
 
 class LandingPage extends HomeScreenWidget {
   LandingPage({Key? key}) : super(key: key);
@@ -31,11 +28,11 @@ class LandingPage extends HomeScreenWidget {
   State<StatefulWidget> createState() => LandingPageState();
 }
 
-
 class LandingPageState extends State<LandingPage>
     with AfterLayoutMixin<LandingPage> {
   int? defaultList;
-  List<Task> _list = [];
+  bool onlyDueDate = true;
+  List<Task> _tasks = [];
   PageStatus landingPageStatus = PageStatus.built;
   static const platform = const MethodChannel('vikunja');
 
@@ -56,6 +53,7 @@ class LandingPageState extends State<LandingPage>
               } catch (e) {
                 log(e.toString());
               }
+              VikunjaGlobal.of(context).settingsManager.getLandingPageOnlyDueDateTasks().then((value) => onlyDueDate = value);
             }));
     super.initState();
   }
@@ -105,10 +103,8 @@ class LandingPageState extends State<LandingPage>
         ]);
         break;
       case PageStatus.empty:
-        body = new Stack(children: [
-          ListView(),
-          Center(child: Text("This view is empty"))
-        ]);
+        body = new Stack(
+            children: [ListView(), Center(child: Text("This view is empty"))]);
         break;
       case PageStatus.success:
         body = ListView(
@@ -121,19 +117,44 @@ class LandingPageState extends State<LandingPage>
         break;
     }
     return new Scaffold(
-        body:
-            RefreshIndicator(onRefresh: () => _loadList(context), child: body),
-        floatingActionButton: Builder(
-            builder: (context) => FloatingActionButton(
-                  onPressed: () {
-                    _addItemDialog(context);
-                  },
-                  child: const Icon(Icons.add),
-                )),
+      body: RefreshIndicator(onRefresh: () => _loadList(context), child: body),
+      floatingActionButton: Builder(
+          builder: (context) => FloatingActionButton(
+                onPressed: () {
+                  _addItemDialog(context);
+                },
+                child: const Icon(Icons.add),
+              )),
       appBar: AppBar(
         title: Text("Vikunja"),
+        actions: [
+          PopupMenuButton(itemBuilder: (BuildContext context) {
+            return [
+              PopupMenuItem(
+                  child:
+                      InkWell(
+                        onTap: () {
+                          Navigator.pop(context);
+                          bool newval = !onlyDueDate;
+                            VikunjaGlobal.of(context).settingsManager.setLandingPageOnlyDueDateTasks(newval).then((value) {
+                              setState(() {
+                                onlyDueDate = newval;
+                                _loadList(context);
+                              });
+                            });
+                        },
+                        child:
+                      Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                Text("Only show tasks with due date"),
+                Checkbox(
+                    value: onlyDueDate,
+                    onChanged: (bool? value) {  },
+                )
+              ])))
+            ];
+          }),
+        ],
       ),
-
     );
   }
 
@@ -165,7 +186,7 @@ class LandingPageState extends State<LandingPage>
         title: title,
         dueDate: dueDate,
         createdBy: globalState.currentUser!,
-        listId: defaultList!,
+        projectId: defaultList!,
       ),
     );
 
@@ -176,7 +197,7 @@ class LandingPageState extends State<LandingPage>
   }
 
   List<Widget> _listTasks(BuildContext context) {
-    var tasks = (_list.map((task) => _buildTile(task, context))).toList();
+    var tasks = (_tasks.map((task) => _buildTile(task, context))).toList();
     //tasks.addAll(_loadingTasks.map(_buildLoadingTile));
     return tasks;
   }
@@ -193,33 +214,51 @@ class LandingPageState extends State<LandingPage>
   }
 
   Future<void> _loadList(BuildContext context) {
-    log("reloading list");
-    _list = [];
+    _tasks = [];
     landingPageStatus = PageStatus.loading;
     // FIXME: loads and reschedules tasks each time list is updated
-    VikunjaGlobal.of(context).notifications.scheduleDueNotifications(VikunjaGlobal.of(context).taskService);
+    VikunjaGlobal.of(context)
+        .notifications
+        .scheduleDueNotifications(VikunjaGlobal.of(context).taskService);
     return VikunjaGlobal.of(context)
-        .taskService
-        .getByOptions(TaskServiceOptions())
-        .then<Future<void>?>((taskList) {
-      if (taskList != null && taskList.isEmpty) {
-        setState(() {
-          landingPageStatus = PageStatus.empty;
-        });
-        return null;
-      }
-      return VikunjaGlobal.of(context).listService.getAll().then((lists) {
-        //taskList.forEach((task) {task.list = lists.firstWhere((element) => element.id == task.list_id);});
-        setState(() {
-          if (taskList != null) {
-            _list = taskList;
-            landingPageStatus = PageStatus.success;
-          } else {
-            landingPageStatus = PageStatus.error;
-          }
-        });
-        return null;
+        .settingsManager
+        .getLandingPageOnlyDueDateTasks()
+        .then((showOnlyDueDateTasks) {
+          return VikunjaGlobal
+              .of(context)
+              .taskService
+              .getByOptions(TaskServiceOptions(
+            newOptions: [
+              TaskServiceOption<TaskServiceOptionFilterBy>("filter_by", "done"),
+              TaskServiceOption<TaskServiceOptionFilterValue>("filter_value", "false"),
+            ],
+            clearOther: true
+          ))
+              .then<Future<void>?>((taskList) => _handleTaskList(taskList, showOnlyDueDateTasks));
+
+          }).onError((error, stackTrace) {print("error");});
+  }
+
+  Future<void> _handleTaskList(List<Task>? taskList, bool showOnlyDueDateTasks) {
+    if(showOnlyDueDateTasks)
+      taskList?.removeWhere((element) => element.dueDate == null || element.dueDate!.year == 0001);
+    taskList?.forEach((element) {print(element.dueDate);});
+
+    if (taskList != null && taskList.isEmpty) {
+      setState(() {
+        landingPageStatus = PageStatus.empty;
       });
+      return Future.value();
+    }
+    //taskList.forEach((task) {task.list = lists.firstWhere((element) => element.id == task.list_id);});
+    setState(() {
+      if (taskList != null) {
+        _tasks = taskList;
+        landingPageStatus = PageStatus.success;
+      } else {
+        landingPageStatus = PageStatus.error;
+      }
     });
+    return Future.value();
   }
 }

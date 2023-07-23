@@ -8,8 +8,9 @@ import 'package:provider/provider.dart';
 import '../global.dart';
 import '../models/bucket.dart';
 import '../models/list.dart';
+import '../models/project.dart';
 import '../pages/list/list.dart';
-import '../stores/list_store.dart';
+import '../stores/project_store.dart';
 import '../utils/calculate_item_position.dart';
 import 'AddDialog.dart';
 import 'BucketLimitDialog.dart';
@@ -19,19 +20,19 @@ import 'SliverBucketPersistentHeader.dart';
 
 class KanbanClass {
   PageController? _pageController;
-  ListProvider? taskState;
+  ProjectProvider? taskState;
   int? _draggedBucketIndex;
   BuildContext context;
   Function _onViewTapped, _addItemDialog, notify;
   Duration _lastTaskDragUpdateAction = Duration.zero;
 
 
-  TaskList _list;
+  Project _list;
   Map<int, BucketProps> _bucketProps = {};
 
 
   KanbanClass(this.context, this.notify, this._onViewTapped, this._addItemDialog, this._list) {
-    taskState = Provider.of<ListProvider>(context);
+    taskState = Provider.of<ProjectProvider>(context);
   }
 
 
@@ -177,12 +178,12 @@ class KanbanClass {
       return;
     }
 
-    await Provider.of<ListProvider>(context, listen: false).addBucket(
+    await Provider.of<ProjectProvider>(context, listen: false).addBucket(
       context: context,
       newBucket: Bucket(
         title: title,
         createdBy: currentUser,
-        listId: _list.id,
+        projectId: _list.id,
         limit: 0,
       ),
       listId: _list.id,
@@ -196,7 +197,7 @@ class KanbanClass {
   }
 
   Future<void> _updateBucket(BuildContext context, Bucket bucket) {
-    return Provider.of<ListProvider>(context, listen: false)
+    return Provider.of<ProjectProvider>(context, listen: false)
         .updateBucket(
       context: context,
       bucket: bucket,
@@ -211,9 +212,9 @@ class KanbanClass {
   }
 
   Future<void> _deleteBucket(BuildContext context, Bucket bucket) async {
-    await Provider.of<ListProvider>(context, listen: false).deleteBucket(
+    await Provider.of<ProjectProvider>(context, listen: false).deleteBucket(
       context: context,
-      listId: bucket.listId,
+      listId: bucket.projectId,
       bucketId: bucket.id,
     );
 
@@ -499,7 +500,7 @@ class KanbanClass {
                           return true;
                         },
                         onAccept: (data) {
-                          Provider.of<ListProvider>(context, listen: false)
+                          Provider.of<ProjectProvider>(context, listen: false)
                               .moveTaskToBucket(
                                 context: context,
                                 task: data.task,
@@ -539,7 +540,7 @@ class KanbanClass {
   }
 
   Future<void> loadBucketsForPage(int page) {
-    return Provider.of<ListProvider>(context, listen: false).loadBuckets(
+    return Provider.of<ProjectProvider>(context, listen: false).loadBuckets(
         context: context,
         listId: _list.id,
         page: page

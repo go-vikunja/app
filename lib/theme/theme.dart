@@ -6,8 +6,20 @@ import 'package:vikunja_app/theme/constants.dart';
 ThemeData buildVikunjaTheme() => _buildVikunjaTheme(ThemeData.light());
 ThemeData buildVikunjaDarkTheme() => _buildVikunjaTheme(ThemeData.dark(), isDark: true);
 
+ThemeData buildVikunjaMaterialLightTheme() {
+  return ThemeData.light().copyWith(
+    useMaterial3: true,
+  );
+}
+ThemeData buildVikunjaMaterialDarkTheme() {
+  return ThemeData.dark().copyWith(
+    useMaterial3: true,
+  );
+}
+
 ThemeData _buildVikunjaTheme(ThemeData base, {bool isDark = false}) {
   return base.copyWith(
+    useMaterial3: true,
     errorColor: vRed,
     primaryColor: vPrimaryDark,
     primaryColorLight: vPrimary,
@@ -31,7 +43,20 @@ ThemeData _buildVikunjaTheme(ThemeData base, {bool isDark = false}) {
             vWhite, // This does not work, looks like a bug in Flutter: https://github.com/flutter/flutter/issues/19623
       ),
     ),
-    bottomNavigationBarTheme: base.bottomNavigationBarTheme.copyWith(
+    inputDecorationTheme: InputDecorationTheme(
+      enabledBorder: UnderlineInputBorder(
+        borderSide: const BorderSide(color: Colors.grey, width: 1)
+      ),
+
+    ),
+
+    dividerTheme: DividerThemeData(
+      color: () {
+        return isDark ? Colors.white10 : Colors.black12;
+      }(),
+    ),
+    navigationBarTheme: base.navigationBarTheme.copyWith(
+      indicatorColor: vPrimary,
       // Make bottomNavigationBar backgroundColor darker to provide more separation
       backgroundColor: () {
         final _hslColor = HSLColor.fromColor(

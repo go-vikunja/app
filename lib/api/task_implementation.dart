@@ -11,9 +11,9 @@ class TaskAPIService extends APIService implements TaskService {
   TaskAPIService(Client client) : super(client);
 
   @override
-  Future<Task?> add(int listId, Task task) {
+  Future<Task?> add(int projectId, Task task) {
     return client
-        .put('/lists/$listId', body: task.toJSON())
+        .put('/projects/$projectId', body: task.toJSON())
         .then((response) {
           if (response == null) return null;
           return Task.fromJson(response.body);
@@ -23,7 +23,7 @@ class TaskAPIService extends APIService implements TaskService {
   @override
   Future<Task?> get(int listId) {
     return client
-        .get('/list/$listId/tasks')
+        .get('/project/$listId/tasks')
         .then((response) {
           if (response == null) return null;
           return Task.fromJson(response.body);
@@ -75,10 +75,10 @@ class TaskAPIService extends APIService implements TaskService {
   }
 
   @override
-  Future<Response?> getAllByList(int listId,
+  Future<Response?> getAllByProject(int projectId,
       [Map<String, List<String>>? queryParameters]) {
     return client
-        .get('/lists/$listId/tasks', queryParameters).then(
+        .get('/projects/$projectId/tasks', queryParameters).then(
             (response) {
               return response != null ?
               new Response(
@@ -92,7 +92,7 @@ class TaskAPIService extends APIService implements TaskService {
   Future<List<Task>?> getByOptions(TaskServiceOptions options) {
     String optionString = options.getOptions();
     return client
-        .get('/tasks/all?$optionString')
+        .get('/tasks/all$optionString')
         .then((response) {
           if (response == null) return null;
         return convertList(response.body, (result) => Task.fromJson(result));

@@ -10,7 +10,8 @@ import 'package:vikunja_app/utils/checkboxes_in_text.dart';
 class Task {
   final int id;
   final int? parentTaskId, priority, bucketId;
-  final int? listId;
+  //final int? listId;
+  final int? projectId;
   final DateTime created, updated;
   DateTime? dueDate, startDate, endDate;
   final List<DateTime> reminderDates;
@@ -50,7 +51,8 @@ class Task {
     DateTime? created,
     DateTime? updated,
     required this.createdBy,
-    required this.listId,
+    //required this.listId,
+    required this.projectId,
     this.bucketId,
   })  : this.created = created ?? DateTime.now(),
         this.updated = updated ?? DateTime.now();
@@ -105,7 +107,8 @@ class Task {
             : [],
         updated = DateTime.parse(json['updated']),
         created = DateTime.parse(json['created']),
-        listId = json['list_id'],
+        //listId = json['list_id'],
+        projectId = json['project_id'],
         bucketId = json['bucket_id'],
         createdBy = User.fromJson(json['created_by']);
 
@@ -163,7 +166,8 @@ class Task {
       id: id ?? this.id,
       parentTaskId: parentTaskId ?? this.parentTaskId,
       priority: priority ?? this.priority,
-      listId: listId ?? this.listId,
+      //listId: listId ?? this.listId,
+      projectId: projectId ?? this.projectId,
       bucketId: bucketId ?? this.bucketId,
       created: created ?? this.created,
       updated: updated ?? this.updated,
