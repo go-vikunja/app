@@ -1,4 +1,6 @@
 # Vikunja Cross-Platform App
+![GitHub release (latest by SemVer including pre-releases)](https://img.shields.io/github/downloads-pre/go-vikunja/app/latest/total)
+![Matrix](https://img.shields.io/matrix/vikunja%3Amatrix.org)
 
 Download from [Releases](https://github.com/go-vikunja/app/releases/latest)
 
