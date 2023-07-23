@@ -121,10 +121,7 @@ class _ProjectOverviewPageState extends State<ProjectOverviewPage>
                           .toList()),
               onRefresh: _loadProjects,
             ),
-      floatingActionButton: Builder(
-          builder: (context) => FloatingActionButton(
-              onPressed: () => _addProjectDialog(context),
-              child: const Icon(Icons.add))),
+
       appBar: AppBar(
         title: Text("Projects"),
       ),
