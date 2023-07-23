@@ -259,6 +259,7 @@ class SettingsManager {
     "workmanager-duration": "0",
     "recent-servers": "[\"https://try.vikunja.io\"]",
     "theme_mode": "system",
+    "landing-page-due-date-tasks": "1"
   };
 
   void applydefaults() {
@@ -281,6 +282,13 @@ class SettingsManager {
   }
   void setIgnoreCertificates(bool value) {
     _storage.write(key: "ignore-certificates", value: value ? "1" : "0");
+  }
+
+  Future<bool> getLandingPageOnlyDueDateTasks() {
+    return _storage.read(key: "landing-page-due-date-tasks").then((value) => value == "1");
+  }
+  Future<void> setLandingPageOnlyDueDateTasks(bool value) {
+    return _storage.write(key: "landing-page-due-date-tasks", value: value ? "1" : "0");
   }
 
 
