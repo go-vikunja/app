@@ -7,6 +7,7 @@ import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/models/label.dart';
 import 'package:vikunja_app/models/task.dart';
 import 'package:vikunja_app/utils/repeat_after_parse.dart';
+import 'package:vikunja_app/utils/priority.dart';
 
 import '../../stores/project_store.dart';
 
@@ -270,12 +271,12 @@ class _TaskEditPageState extends State<TaskEditPage> {
                         border: InputBorder.none,
                       ),
                       child: new DropdownButton<String>(
-                        value: _priorityToString(_priority),
+                        value: priorityToString(_priority),
                         isExpanded: true,
                         isDense: true,
                         onChanged: (String? newValue) {
                           setState(() {
-                            _priority = _priorityFromString(newValue);
+                            _priority = priorityFromString(newValue);
                           });
                         },
                         items: [
@@ -557,43 +558,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
     });
   }
 
-  // FIXME: Move the following two functions to an extra class or type.
-  _priorityFromString(String? priority) {
-    switch (priority) {
-      case 'Low':
-        return 1;
-      case 'Medium':
-        return 2;
-      case 'High':
-        return 3;
-      case 'Urgent':
-        return 4;
-      case 'DO NOW':
-        return 5;
-      default:
-        // unset
-        return 0;
-    }
-  }
 
-  _priorityToString(int? priority) {
-    switch (priority) {
-      case 0:
-        return 'Unset';
-      case 1:
-        return 'Low';
-      case 2:
-        return 'Medium';
-      case 3:
-        return 'High';
-      case 4:
-        return 'Urgent';
-      case 5:
-        return 'DO NOW';
-      default:
-        return null;
-    }
-  }
 
   _onColorEdit() {
     _pickerColor = _resetColor || (_color ?? widget.task.color) == null

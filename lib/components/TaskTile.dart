@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:vikunja_app/models/task.dart';
 import 'package:vikunja_app/utils/misc.dart';
 import 'package:vikunja_app/pages/list/task_edit.dart';
+import 'package:vikunja_app/utils/priority.dart';
 
 import '../stores/project_store.dart';
 
@@ -34,6 +35,31 @@ class TaskTile extends StatefulWidget {
   TaskTileState createState() => TaskTileState(this.task);
 }
 
+Widget? _buildTaskSubtitle(Task? task, bool showInfo) {
+  Duration? durationUntilDue = task?.dueDate?.difference(DateTime.now());
+
+  if(task == null)
+    return null;
+
+  List<TextSpan> texts = [];
+  
+  if(showInfo && task.hasDueDate) {
+    texts.add(TextSpan(text: "Due " + durationToHumanReadable(durationUntilDue!), style: durationUntilDue.isNegative ? TextStyle(color: Colors.red) : null));
+  }
+  if(task.priority != null && task.priority != 0) {
+    texts.add(TextSpan(text: " !" + priorityToString(task.projectId), style: TextStyle(color: Colors.orange)));
+  }
+
+  if(texts.isEmpty && task.description.isNotEmpty) {
+    return Text(task.description);
+  }
+
+  if(texts.isNotEmpty) {
+    return RichText(text: TextSpan(children: texts));
+  }
+  return null;
+}
+
 class TaskTileState extends State<TaskTile> with AutomaticKeepAliveClientMixin {
   Task _currentTask;
 
@@ -43,7 +69,6 @@ class TaskTileState extends State<TaskTile> with AutomaticKeepAliveClientMixin {
   Widget build(BuildContext context) {
     super.build(context);
     final taskState = Provider.of<ProjectProvider>(context);
-    Duration? durationUntilDue = _currentTask.dueDate?.difference(DateTime.now());
     if (_currentTask.loading) {
       return ListTile(
         leading: Padding(
@@ -65,7 +90,17 @@ class TaskTileState extends State<TaskTile> with AutomaticKeepAliveClientMixin {
             ),
       );
     }
-    return CheckboxListTile(
+    return
+    IntrinsicHeight(child:
+      Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            width: 4.0, // Adjust the width of the red line
+            color: widget.task.color,
+            //margin: EdgeInsets.only(left: 10.0),
+          ),
+          Flexible(child: CheckboxListTile(
       title: widget.showInfo ?
           RichText(
             text: TextSpan(
@@ -82,11 +117,7 @@ class TaskTileState extends State<TaskTile> with AutomaticKeepAliveClientMixin {
           ) : Text(_currentTask.title),
       controlAffinity: ListTileControlAffinity.leading,
       value: _currentTask.done,
-      subtitle: widget.showInfo && _currentTask.hasDueDate ?
-          Text("Due " + durationToHumanReadable(durationUntilDue!), style: durationUntilDue.isNegative ? TextStyle(color: Colors.red) : null,)
-          : _currentTask.description.isEmpty
-              ? null
-              : Text(_currentTask.description),
+      subtitle: _buildTaskSubtitle(widget.task, widget.showInfo),
       secondary:
           IconButton(icon: Icon(Icons.settings), onPressed: () {
             Navigator.push<Task>(
@@ -102,7 +133,7 @@ class TaskTileState extends State<TaskTile> with AutomaticKeepAliveClientMixin {
             })).whenComplete(() => widget.onEdit());
           }),
       onChanged: _change,
-    );
+    ))]));
   }
 
   void _change(bool? value) async {
