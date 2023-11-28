@@ -90,11 +90,23 @@ class TaskAPIService extends APIService implements TaskService {
 
   @override
   Future<List<Task>?> getByOptions(TaskServiceOptions options) {
-    String optionString = options.getOptions();
+    Map<String, List<String>> optionsMap = options.getOptions();
+    //optionString = "?sort_by[]=due_date&sort_by[]=id&order_by[]=asc&order_by[]=desc&filter_by[]=done&filter_value[]=false&filter_comparator[]=equals&filter_concat=and&filter_include_nulls=false&page=1";
+    //print(optionString);
+    Map<String, List<String>> queryparams = {
+      "sort_by[]":["due_date", "id"],
+      "order_by[]":["asc", "desc"],
+      "filter_by[]": ["done"],
+      "filter_value[]":["false"],
+      "filter_comparator[]":["equals"],
+      "filter_concat[]":["and"],
+    };
     return client
-        .get('/tasks/all$optionString')
+        .get('/tasks/all', optionsMap)
         .then((response) {
           if (response == null) return null;
+          print(response.body);
+          print(response.headers);
         return convertList(response.body, (result) => Task.fromJson(result));
     });
   }

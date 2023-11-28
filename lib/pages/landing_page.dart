@@ -229,20 +229,24 @@ class LandingPageState extends State<LandingPage>
               .taskService
               .getByOptions(TaskServiceOptions(
             newOptions: [
+              TaskServiceOption<TaskServiceOptionSortBy>("sort_by", ["due_date", "id"]),
+              TaskServiceOption<TaskServiceOptionSortBy>("order_by", ["asc", "desc"]),
               TaskServiceOption<TaskServiceOptionFilterBy>("filter_by", "done"),
               TaskServiceOption<TaskServiceOptionFilterValue>("filter_value", "false"),
+              TaskServiceOption<TaskServiceOptionFilterComparator>("filter_comparator", "equals"),
+              TaskServiceOption<TaskServiceOptionFilterConcat>("filter_concat", "and"),
             ],
             clearOther: true
           ))
               .then<Future<void>?>((taskList) => _handleTaskList(taskList, showOnlyDueDateTasks));
 
-          }).onError((error, stackTrace) {print("error");});
+          });//.onError((error, stackTrace) {print("error");});
   }
 
   Future<void> _handleTaskList(List<Task>? taskList, bool showOnlyDueDateTasks) {
     if(showOnlyDueDateTasks)
       taskList?.removeWhere((element) => element.dueDate == null || element.dueDate!.year == 0001);
-    taskList?.forEach((element) {print(element.dueDate);});
+    taskList?.forEach((element) {print(element.title);});
 
     if (taskList != null && taskList.isEmpty) {
       setState(() {

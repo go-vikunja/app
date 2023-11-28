@@ -55,10 +55,17 @@ enum TaskServiceOptionFilterConcat { and, or }
 
 class TaskServiceOption<T> {
   String name;
-  dynamic value;
+  String? value;
+  List<String>? valueList;
   dynamic defValue;
 
-  TaskServiceOption(this.name, this.value);
+  TaskServiceOption(this.name, dynamic input_values) {
+    if(input_values is List<String>) {
+      valueList = input_values;
+    } else if(input_values is String) {
+      value = input_values;
+    }
+  }
 
   String handleValue(dynamic input) {
     if (input is String) return input;
@@ -66,8 +73,8 @@ class TaskServiceOption<T> {
   }
 
   dynamic getValue() {
-    if (value is List)
-      return value.map((elem) => handleValue(elem)).toList();
+    if (valueList != null)
+      return valueList!.map((elem) => handleValue(elem)).toList();
     else
       return handleValue(value);
   }
@@ -116,23 +123,24 @@ class TaskServiceOptions {
   }
 
 
-  String getOptions() {
-    String result = '';
-    if (options.length == 0) return '';
+  Map<String, List<String>> getOptions() {
+    Map<String, List<String>> queryparams = {};
     for (TaskServiceOption option in options) {
       dynamic value = option.getValue();
       if (value is List) {
-        for (dynamic valueEntry in value) {
-          result += '&' + option.name + '[]=' + valueEntry;
-        }
+        queryparams[option.name+"[]"] = value as List<String>;
+        //for (dynamic valueEntry in value) {
+        //  result += '&' + option.name + '[]=' + valueEntry;
+        //}
       } else {
-        result += '&' + option.name + '=' + value;
+        queryparams[option.name] = [value as String];
+        //result += '&' + option.name + '[]=' + value;
       }
     }
 
-    if (result.startsWith('&')) result = result.substring(1);
-    result = "?" + result;
-    return result;
+    //if (result.startsWith('&')) result = result.substring(1);
+    //result = "?" + result;
+    return queryparams;
   }
 }
 
