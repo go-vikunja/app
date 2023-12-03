@@ -81,7 +81,6 @@ class Client {
       [Map<String, List<String>>? queryParameters]) {
     Uri uri = Uri.tryParse('${this.base}$url')!;
     // why are we doing it like this? because Uri doesnt have setters. wtf.
-    print(uri.toString());
 
     uri = Uri(
       scheme: uri.scheme,

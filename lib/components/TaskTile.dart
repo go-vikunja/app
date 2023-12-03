@@ -47,7 +47,7 @@ Widget? _buildTaskSubtitle(Task? task, bool showInfo) {
     texts.add(TextSpan(text: "Due " + durationToHumanReadable(durationUntilDue!), style: durationUntilDue.isNegative ? TextStyle(color: Colors.red) : null));
   }
   if(task.priority != null && task.priority != 0) {
-    texts.add(TextSpan(text: " !" + priorityToString(task.projectId), style: TextStyle(color: Colors.orange)));
+    texts.add(TextSpan(text: " !" + priorityToString(task.priority), style: TextStyle(color: Colors.orange)));
   }
 
   if(texts.isEmpty && task.description.isNotEmpty) {

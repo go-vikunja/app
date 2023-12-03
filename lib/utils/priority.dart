@@ -13,7 +13,7 @@ priorityToString(int? priority) {
     case 5:
       return 'DO NOW';
     default:
-      return null;
+      return "";
   }
 }
 
