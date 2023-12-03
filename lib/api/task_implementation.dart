@@ -13,7 +13,7 @@ class TaskAPIService extends APIService implements TaskService {
   @override
   Future<Task?> add(int projectId, Task task) {
     return client
-        .put('/projects/$projectId', body: task.toJSON())
+        .put('/projects/$projectId/tasks', body: task.toJSON())
         .then((response) {
           if (response == null) return null;
           return Task.fromJson(response.body);
