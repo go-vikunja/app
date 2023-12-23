@@ -31,7 +31,7 @@ class _LoginPageState extends State<LoginPage> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
 
-  final _serverSuggestionController = SuggestionsBoxController();
+  final _serverSuggestionController = SuggestionsController();
 
 
   @override
@@ -89,25 +89,38 @@ class _LoginPageState extends State<LoginPage> {
                       padding: vStandardVerticalPadding,
                       child: Row(children: [
                         Expanded(
-                          child: TypeAheadFormField(
-                            suggestionsBoxController: _serverSuggestionController,
-                            getImmediateSuggestions: true,
-                            enabled: !_loading,
-                            validator: (address) {
-                              return (isUrl(address) ||
+                          child: TypeAheadField(
+                            //suggestionsBoxController: _serverSuggestionController,
+                            //getImmediateSuggestions: true,
+                            //enabled: !_loading,
+                            controller: _serverController,
+                            builder: (context, controller, focusnode) {
+                              return TextFormField(
+                                controller: controller,
+                                focusNode: focusnode,
+                                enabled: !_loading,
+                                validator: (address) {
+                                  return (isUrl(address) ||
                                   address != null ||
                                   address!.isEmpty)
                                   ? null
-                                  : 'Invalid URL';
+                                    : 'Invalid URL';
+                                  },
+                                decoration: new InputDecoration(
+                                    border: OutlineInputBorder(),
+                                    labelText: 'Server Address'),
+                              );
                             },
+                            /*
                             textFieldConfiguration: TextFieldConfiguration(
                               controller: _serverController,
                               decoration: new InputDecoration(
                                   border: OutlineInputBorder(),
                                   labelText: 'Server Address'),
-                            ),
-                            onSuggestionSelected: (suggestion) {
+                            ),*/
+                            onSelected: (suggestion) {
                               _serverController.text = suggestion;
+                              setState(() => _serverController.text = suggestion);
                             },
                             itemBuilder: (BuildContext context, Object? itemData) {
                               return Card(
@@ -121,7 +134,7 @@ class _LoginPageState extends State<LoginPage> {
                                       IconButton(onPressed: () {
                                         setState(() {
                                           pastServers.remove(itemData.toString());
-                                          _serverSuggestionController.suggestionsBox?.close();
+                                          //_serverSuggestionController.suggestionsBox?.close();
                                           VikunjaGlobal.of(context).settingsManager.setPastServers(pastServers);
 
                                         });

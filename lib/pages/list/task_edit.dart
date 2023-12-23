@@ -323,22 +323,28 @@ class _TaskEditPageState extends State<TaskEditPage> {
                                 left: 2.0 + (IconTheme.of(context).size??0))),
                         Container(
                           width: MediaQuery.of(context).size.width - 80 - ((IconTheme.of(context).size ?? 0) * 2),
-                          child: TypeAheadFormField(
-                            textFieldConfiguration: TextFieldConfiguration(
+                          child: TypeAheadField(
+                            builder: (builder, controller, focusnode) {
+                              return TextFormField(
                                 controller: _labelTypeAheadController,
+                                focusNode: focusnode,
                                 decoration: InputDecoration(
-                                    labelText: 'Add a new label')),
+                                  labelText: 'Add a new label',
+                                  border: InputBorder.none,
+                                ),
+                              );
+                            },
                             suggestionsCallback: (pattern) =>
                                 _searchLabel(pattern),
                             itemBuilder: (context, suggestion) {
                               return new ListTile(
                                   title: Text(suggestion.toString()));
                             },
-                            transitionBuilder:
-                                (context, suggestionsBox, controller) {
-                              return suggestionsBox;
-                            },
-                            onSuggestionSelected: (suggestion) {
+                            //transitionBuilder:
+                            //    (context, suggestionsBox, controller) {
+                            //  return suggestionsBox;
+                            //},
+                            onSelected: (suggestion) {
                               _addLabel(suggestion.toString());
                             },
                           ),
