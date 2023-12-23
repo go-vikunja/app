@@ -128,6 +128,7 @@ class Task {
         'repeat_after': repeatAfter?.inSeconds,
         'hex_color': color?.value.toRadixString(16).padLeft(8, '0').substring(2),
         'kanban_position': kanbanPosition,
+        'project_id': projectId,
         'labels': labels.map((label) => label.toJSON()).toList(),
         'subtasks': subtasks.map((subtask) => subtask.toJSON()).toList(),
         'attachments':
