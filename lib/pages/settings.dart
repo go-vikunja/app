@@ -6,6 +6,7 @@ import 'package:vikunja_app/models/list.dart';
 
 import '../main.dart';
 import '../models/project.dart';
+import '../models/user.dart';
 import '../service/services.dart';
 
 
@@ -23,6 +24,7 @@ class SettingsPageState extends State<SettingsPage> {
   late TextEditingController durationTextController;
   bool initialized = false;
   FlutterThemeMode? themeMode;
+  User? currentUser;
 
 
   void init() {
@@ -33,9 +35,9 @@ class SettingsPageState extends State<SettingsPage> {
         .getAll()
         .then((value) => setState(() => projectList = value));
 
-    VikunjaGlobal.of(context).projectService.getDefaultList().then((value) =>
-        setState(
-            () => defaultProject = value == null ? null : int.tryParse(value)));
+    //VikunjaGlobal.of(context).projectService.getDefaultList().then((value) =>
+    //    setState(
+    //        () => defaultProject = value == null ? null : int.tryParse(value)));
 
     VikunjaGlobal.of(context).settingsManager.getIgnoreCertificates().then(
         (value) =>
@@ -57,12 +59,20 @@ class SettingsPageState extends State<SettingsPage> {
 
     VikunjaGlobal.of(context).settingsManager.getThemeMode().then((value) => setState(() => themeMode = value));
 
+    VikunjaGlobal.of(context).newUserService?.getCurrentUser().then((value) => {
+      setState(() {
+        currentUser = value!;
+        defaultProject = value.settings?.default_project_id;
+      } ),
+    });
+
+
     initialized = true;
   }
 
   @override
   Widget build(BuildContext context) {
-    final currentUser = VikunjaGlobal.of(context).currentUser;
+    final global = VikunjaGlobal.of(context);
 
     if (!initialized) init();
     return new Scaffold(
@@ -71,12 +81,12 @@ class SettingsPageState extends State<SettingsPage> {
       body: ListView(
         children: [
           UserAccountsDrawerHeader(
-            accountName: currentUser != null ? Text(currentUser.username) : null,
-            accountEmail: currentUser != null ? Text(currentUser.name) : null,
+            accountName: currentUser != null ? Text(currentUser!.username) : null,
+            accountEmail: currentUser != null ? Text(currentUser!.name) : null,
             currentAccountPicture: currentUser == null
                 ? null
                 : CircleAvatar(
-              backgroundImage: NetworkImage(currentUser.avatarUrl(context)),
+              backgroundImage: (currentUser?.username != "") ? NetworkImage(currentUser!.avatarUrl(context)) : null,
             ),
             decoration: BoxDecoration(
               image: DecorationImage(
@@ -103,9 +113,9 @@ class SettingsPageState extends State<SettingsPage> {
                     value: defaultProject,
                     onChanged: (int? value) {
                       setState(() => defaultProject = value);
-                      VikunjaGlobal.of(context)
-                          .listService
-                          .setDefaultList(value);
+                      global.newUserService?.setCurrentUserSettings(
+                          currentUser!.settings!.copyWith(default_project_id: value)).then((value) => currentUser!.settings = value);
+                      //VikunjaGlobal.of(context).userManager.setDefaultList(value);
                     },
                   ),
                 )

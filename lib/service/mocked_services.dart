@@ -212,5 +212,11 @@ class MockedUserService implements UserService {
     return Future.value(_users[1]);
   }
 
+  @override
+  Future<UserSettings> setCurrentUserSettings(UserSettings userSettings) {
+    // TODO: implement setCurrentUserSettings
+    throw UnimplementedError();
+  }
+
 
 }

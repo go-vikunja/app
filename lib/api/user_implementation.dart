@@ -44,4 +44,12 @@ class UserAPIService extends APIService implements UserService {
   Future<User> getCurrentUser() {
     return client.get('/user').then((map) => User.fromJson(map?.body));
   }
+
+  @override
+  Future<UserSettings?> setCurrentUserSettings(UserSettings userSettings) async {
+    return client.post('/user/settings/general', body: userSettings.toJson()).then((response) {
+      if(response == null) return null;
+      return userSettings;
+    });
+  }
 }

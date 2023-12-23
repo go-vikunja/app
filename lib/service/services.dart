@@ -191,7 +191,7 @@ abstract class ListService {
 
   Future<String?> getDefaultList();
 
-  void setDefaultList(int? listId);
+  //void setDefaultList(int? listId);
 }
 
 abstract class TaskService {
@@ -235,6 +235,7 @@ abstract class UserService {
   Future<UserTokenPair?> register(String username, email, password);
 
   Future<User?> getCurrentUser();
+  Future<UserSettings?> setCurrentUserSettings(UserSettings userSettings);
 }
 
 abstract class LabelService {
