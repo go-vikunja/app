@@ -37,9 +37,11 @@ class LandingPageState extends State<LandingPage>
   static const platform = const MethodChannel('vikunja');
 
   Future<void> _updateDefaultList() async {
-    return VikunjaGlobal.of(context).listService.getDefaultList().then(
-        (value) => setState(
-            () => defaultList = value == null ? null : int.tryParse(value)));
+
+    return VikunjaGlobal.of(context).newUserService?.getCurrentUser().then((value) =>
+        setState(() {
+          defaultList = value?.settings?.default_project_id;
+        } ),);
   }
 
   @override

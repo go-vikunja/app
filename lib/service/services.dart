@@ -155,8 +155,8 @@ abstract class ProjectService {
 
   Future<String?> getDisplayDoneTasks(int listId);
   void setDisplayDoneTasks(int listId, String value);
-  Future<String?> getDefaultList();
-  void setDefaultList(int? listId);
+  //Future<String?> getDefaultList();
+  //void setDefaultList(int? listId);
 }
 
 
