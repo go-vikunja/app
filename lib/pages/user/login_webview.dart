@@ -18,7 +18,8 @@ class LoginWithWebView extends StatefulWidget {
 class LoginWithWebViewState extends State<LoginWithWebView> {
 
   WebViewWidget? webView;
-  WebViewController? webViewController;
+  late WebViewController webViewController;
+  bool destroyed = false;
 
 
 
@@ -55,7 +56,7 @@ class LoginWithWebViewState extends State<LoginWithWebView> {
   Widget build(BuildContext context) {
     return WillPopScope(child: Scaffold(
       appBar: AppBar(),
-      body: webView
+      body: WebViewWidget(controller: webViewController,)
     ),
     onWillPop: () async {
       String? currentUrl = await webViewController?.currentUrl();
@@ -74,20 +75,25 @@ class LoginWithWebViewState extends State<LoginWithWebView> {
           .runJavaScriptReturningResult("JSON.stringify(localStorage);")).toString();
 
       String apiUrl = (await webViewController!.runJavaScriptReturningResult("API_URL")).toString();
+      String token = (await webViewController!.runJavaScriptReturningResult("localStorage['token']")).toString();
       if (localStorage.toString() != "{}") {
         apiUrl = apiUrl.replaceAll("\"", "");
+        token = token.replaceAll("\"", "");
         if(!apiUrl.startsWith("http")) {
           if(pageLocation.endsWith("/"))
             pageLocation = pageLocation.substring(0,pageLocation.length-1);
           apiUrl = pageLocation + apiUrl;
         }
-        localStorage = localStorage.replaceAll("\\", "");
-        localStorage = localStorage.substring(1, localStorage.length - 1);
-        var json = jsonDecode(localStorage);
-        if (apiUrl != "null" && json["token"] != null) {
+
+        if (apiUrl != "null" && token != "null") {
           BaseTokenPair baseTokenPair = BaseTokenPair(
-              apiUrl, json["token"]);
+              apiUrl, token);
+          if(destroyed)
+            return true;
+          destroyed = true;
+          print("pop now");
           Navigator.pop(context, baseTokenPair);
+
           return true;
         }
       }

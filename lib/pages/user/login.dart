@@ -369,6 +369,7 @@ class _LoginPageState extends State<LoginPage> {
         vGS.changeUser(newUser,
             token: baseTokenPair.token, base: baseTokenPair.base);
     } catch (e) {
+      log("failed to change to user by client token");
       log(e.toString());
     }
     setState(() => _loading = false);
