@@ -17,22 +17,38 @@ class LoginWithWebView extends StatefulWidget {
 
 class LoginWithWebViewState extends State<LoginWithWebView> {
 
-  WebView? webView;
+  WebViewWidget? webView;
   WebViewController? webViewController;
+
+
 
   @override
   void initState() {
     super.initState();
-    webView = WebView(
+    webViewController = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setUserAgent("Mozilla/5.0 (Linux; Android 8.0; Pixel 2 Build/OPD3.170816.012) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.82 Mobile Safari/537.36")
+      ..setNavigationDelegate(NavigationDelegate(
+        onPageFinished: (value) => _handlePageFinished(value),
+      ))
+
+      ..loadRequest(Uri.parse(widget.frontEndUrl)).then((value) => {
+        webViewController!.runJavaScript("localStorage.clear(); location.href=location.href;")
+      });
+
+    /*
+    webView = WebViewWidget(
       initialUrl: widget.frontEndUrl,
       javascriptMode: JavascriptMode.unrestricted,
       onPageFinished: (value) => _handlePageFinished(value),
       userAgent: "Mozilla/5.0 (Linux; Android 8.0; Pixel 2 Build/OPD3.170816.012) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.82 Mobile Safari/537.36",
       onWebViewCreated: (controller) {
         webViewController = controller;
-        webViewController!.runJavascript("localStorage.clear(); location.href=location.href;");
+        webViewController!.runJavaScript("localStorage.clear(); location.href=location.href;");
         },
     );
+    */
+
   }
 
   @override
@@ -54,11 +70,11 @@ class LoginWithWebViewState extends State<LoginWithWebView> {
   Future<bool> _handlePageFinished(String pageLocation) async {
     log("handlePageFinished");
     if(webViewController != null) {
-      String localStorage = await webViewController!
-          .runJavascriptReturningResult("JSON.stringify(localStorage);");
+      String localStorage = (await webViewController!
+          .runJavaScriptReturningResult("JSON.stringify(localStorage);")).toString();
 
-      String apiUrl = await webViewController!.runJavascriptReturningResult("API_URL");
-      if (localStorage != "{}") {
+      String apiUrl = (await webViewController!.runJavaScriptReturningResult("API_URL")).toString();
+      if (localStorage.toString() != "{}") {
         apiUrl = apiUrl.replaceAll("\"", "");
         if(!apiUrl.startsWith("http")) {
           if(pageLocation.endsWith("/"))

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:provider/provider.dart';
 import 'package:vikunja_app/models/task.dart';
 import 'package:vikunja_app/utils/misc.dart';
@@ -51,7 +52,7 @@ Widget? _buildTaskSubtitle(Task? task, bool showInfo) {
   }
 
   if(texts.isEmpty && task.description.isNotEmpty) {
-    return Text(task.description);
+    return HtmlWidget(task.description);
   }
 
   if(texts.isNotEmpty) {
@@ -84,7 +85,7 @@ class TaskTileState extends State<TaskTile> with AutomaticKeepAliveClientMixin {
         subtitle:
             _currentTask.description.isEmpty
                 ? null
-                : Text(_currentTask.description),
+                : HtmlWidget(_currentTask.description),
         trailing: IconButton(
             icon: Icon(Icons.settings), onPressed: () {  },
             ),
