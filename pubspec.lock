@@ -278,6 +278,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.3"
+  flutter_downloader:
+    dependency: "direct main"
+    description:
+      name: flutter_downloader
+      sha256: e130001cf85d8d7450b8318a4670c19e495dd8c102ad4b15a512e9405e7c451d
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.11.6"
   flutter_keyboard_visibility:
     dependency: "direct main"
     description:

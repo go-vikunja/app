@@ -54,6 +54,8 @@ class Client {
         'User-Agent': 'Vikunja Mobile App'
       };
 
+  get headers => _headers;
+
   @override
   int get hashCode => _token.hashCode;
 

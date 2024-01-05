@@ -13,6 +13,7 @@ import 'package:vikunja_app/pages/home.dart';
 import 'package:vikunja_app/pages/user/login.dart';
 import 'package:vikunja_app/theme/theme.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:flutter_downloader/flutter_downloader.dart';
 
 import 'managers/notifications.dart';
 
@@ -69,6 +70,7 @@ void main() async {
       Permission.notification.request();
     }
   });
+  await FlutterDownloader.initialize();
   Workmanager().initialize(callbackDispatcher, isInDebugMode: false);
   runApp(VikunjaGlobal(
       child: new VikunjaApp(

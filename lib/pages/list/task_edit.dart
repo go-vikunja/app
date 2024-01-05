@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:vikunja_app/components/datetimePicker.dart';
@@ -113,7 +114,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
                 key: _formKey,
                 child: ListView(
                   key: _listKey,
-                  padding: const EdgeInsets.all(16.0),
+                  padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).size.height / 2),
                   children: <Widget>[
                     Padding(
                       padding: EdgeInsets.symmetric(vertical: 10.0),
@@ -415,6 +416,33 @@ class _TaskEditPageState extends State<TaskEditPage> {
                         ],
                       ),
                     ),
+                    ListView.separated(
+                      separatorBuilder: (context, index) => Divider(),
+                      padding: const EdgeInsets.all(16.0),
+                      shrinkWrap: true,
+                      itemCount: widget.task.attachments.length,
+                      itemBuilder: (context, index) {
+                        return ListTile(
+                          title: Text(widget.task.attachments[index].file.name),
+                          trailing: IconButton(
+                            icon: Icon(Icons.download),
+                            onPressed: () {
+                              String url = VikunjaGlobal.of(context).client.base;
+                              url += '/tasks/${widget.task.id}/attachments/${widget.task.attachments[index].id}';
+                              print(url);
+                              final taskId = FlutterDownloader.enqueue(
+                                url: url,
+                                fileName: widget.task.attachments[index].file.name,
+                                headers: VikunjaGlobal.of(context).client.headers, // optional: header send with url (auth token etc)
+                                savedDir: '/storage/emulated/0/Download/',
+                                showNotification: true, // show download progress in status bar (for Android)
+                                openFileFromNotification: true, // click on notification to open downloaded file (for Android)
+                              );
+                            },
+                          ),
+                        );
+                      },
+                    )
                   ],
                 ),
               ),
