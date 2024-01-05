@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/models/list.dart';
+import 'package:collection/collection.dart';
 
 import '../main.dart';
 import '../models/project.dart';
@@ -110,7 +111,7 @@ class SettingsPageState extends State<SettingsPage> {
                               child: Text(e.title), value: e.id))
                           .toList()
                     ],
-                    value: defaultProject,
+                    value: projectList?.firstWhereOrNull((element) => element.id == defaultProject) != null ? defaultProject : null,
                     onChanged: (int? value) {
                       setState(() => defaultProject = value);
                       global.newUserService?.setCurrentUserSettings(
