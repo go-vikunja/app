@@ -10,7 +10,7 @@ class Bucket {
   double? position;
   final DateTime created, updated;
   User createdBy;
-  bool isDoneBucket;
+  bool? isDoneBucket;
   final List<Task> tasks;
 
   Bucket({

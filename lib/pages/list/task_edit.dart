@@ -426,11 +426,11 @@ class _TaskEditPageState extends State<TaskEditPage> {
                           title: Text(widget.task.attachments[index].file.name),
                           trailing: IconButton(
                             icon: Icon(Icons.download),
-                            onPressed: () {
+                            onPressed: () async {
                               String url = VikunjaGlobal.of(context).client.base;
                               url += '/tasks/${widget.task.id}/attachments/${widget.task.attachments[index].id}';
                               print(url);
-                              final taskId = FlutterDownloader.enqueue(
+                              final taskId = await FlutterDownloader.enqueue(
                                 url: url,
                                 fileName: widget.task.attachments[index].file.name,
                                 headers: VikunjaGlobal.of(context).client.headers, // optional: header send with url (auth token etc)
@@ -438,6 +438,8 @@ class _TaskEditPageState extends State<TaskEditPage> {
                                 showNotification: true, // show download progress in status bar (for Android)
                                 openFileFromNotification: true, // click on notification to open downloaded file (for Android)
                               );
+                              if(taskId == null) return;
+                              FlutterDownloader.open(taskId: taskId);
                             },
                           ),
                         );

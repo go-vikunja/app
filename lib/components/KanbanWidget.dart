@@ -45,6 +45,7 @@ class KanbanClass {
     if (_pageController == null || _pageController!.viewportFraction != bucketFraction)
       _pageController = PageController(viewportFraction: bucketFraction);
 
+    print(_list.doneBucketId);
 
     return ReorderableListView.builder(
       scrollDirection: Axis.horizontal,
@@ -170,6 +171,11 @@ class KanbanClass {
               ),
             ));
   }
+  Future<void> _setDoneBucket(BuildContext context, int bucketId) async {
+    //setState(() {});
+    _list = (await VikunjaGlobal.of(context).projectService.update(_list.copyWith(doneBucketId: bucketId)))!;
+    notify();
+  }
 
   Future<void> _addBucket(
       String title, BuildContext context) async {
@@ -277,7 +283,7 @@ class KanbanClass {
                   minLeadingWidth: 15,
                   horizontalTitleGap: 4,
                   contentPadding: const EdgeInsets.only(left: 16, right: 10),
-                  leading: bucket.isDoneBucket
+                  leading: bucket.id == _list.doneBucketId
                       ? Icon(
                           Icons.done_all,
                           color: Colors.green,
@@ -347,8 +353,11 @@ class KanbanClass {
                               });
                               break;
                             case BucketMenu.done:
-                              bucket.isDoneBucket = !bucket.isDoneBucket;
-                              _updateBucket(context, bucket);
+                              //bucket.isDoneBucket = !(bucket.id == _list.doneBucketId);
+                              _list = _list.copyWith(doneBucketId: bucket.id);
+                              _setDoneBucket(context, bucket.id);
+                              notify();
+                              //_updateBucket(context, bucket);
                               break;
                             case BucketMenu.delete:
                               _deleteBucket(context, bucket);
@@ -370,7 +379,7 @@ class KanbanClass {
                                     padding: const EdgeInsets.only(right: 4),
                                     child: Icon(
                                       Icons.done_all,
-                                      color: bucket.isDoneBucket
+                                      color: bucket.id == _list.doneBucketId
                                           ? Colors.green
                                           : null,
                                     ),

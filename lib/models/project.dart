@@ -12,6 +12,7 @@ class Project {
   final DateTime created, updated;
   final Color? color;
   final bool isArchived, isFavourite;
+  final int? doneBucketId;
 
   Iterable<Project>? subprojects;
 
@@ -22,6 +23,7 @@ class Project {
         this.parentProjectId = 0,
         this.description = '',
         this.position = 0,
+        this.doneBucketId,
         this.color,
         this.isArchived = false,
         this.isFavourite = false,
@@ -38,6 +40,7 @@ class Project {
         position = json['position'].toDouble(),
         isArchived = json['is_archived'],
         isFavourite = json['is_archived'],
+        doneBucketId = json['done_bucket_id'],
         parentProjectId = json['parent_project_id'],
         created = DateTime.parse(json['created']),
         updated = DateTime.parse(json['updated']),
@@ -57,6 +60,7 @@ class Project {
     'hex_color': color?.value.toRadixString(16).padLeft(8, '0').substring(2),
     'is_archived': isArchived,
     'is_favourite': isFavourite,
+    'done_bucket_id': doneBucketId,
     'position': position
   };
 
@@ -71,6 +75,7 @@ class Project {
     Color? color,
     bool? isArchived,
     bool? isFavourite,
+    int? doneBucketId,
     double? position,
 
   }) {
@@ -82,6 +87,7 @@ class Project {
         owner: owner ?? this.owner,
         description: description ?? this.description,
         parentProjectId: parentProjectId ?? this.parentProjectId,
+        doneBucketId: doneBucketId ?? this.doneBucketId,
         color: color ?? this.color,
         isArchived: isArchived ?? this.isArchived,
         isFavourite: isFavourite ?? this.isFavourite,
