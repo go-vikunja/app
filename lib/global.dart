@@ -94,13 +94,17 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
 
   void updateWorkmanagerDuration() {
     Workmanager().cancelAll().then((value) {
-      settingsManager.getWorkmanagerDuration().then((duration) =>
+      settingsManager.getWorkmanagerDuration().then((duration)
       {
         if(duration.inMinutes > 0) {
           Workmanager().registerPeriodicTask(
               "update-tasks", "update-tasks", frequency: duration, constraints: Constraints(networkType: NetworkType.connected),
-              initialDelay: Duration(seconds: 15), inputData: {"client_token": client.token, "client_base": client.base})
+              initialDelay: Duration(seconds: 15), inputData: {"client_token": client.token, "client_base": client.base});
         }
+
+        Workmanager().registerPeriodicTask(
+            "refresh-token", "refresh-token", frequency: Duration(hours: 12), constraints: Constraints(networkType: NetworkType.connected),
+            initialDelay: Duration(seconds: 15));
       });
     });
   }
@@ -185,6 +189,13 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
     User loadedCurrentUser;
     try {
       loadedCurrentUser = await UserAPIService(client).getCurrentUser();
+      // load new token from server to avoid expiration
+      String? newToken = await newUserService?.getToken();
+      if(newToken != null) {
+        _storage.write(key: currentUser, value: newToken);
+        client.configure(token: newToken);
+      }
+
     } on ApiException catch (e) {
       dev.log("Error code: " + e.errorCode.toString(),level: 1000);
       if (e.errorCode ~/ 100 == 4) {

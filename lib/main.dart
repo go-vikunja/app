@@ -15,6 +15,7 @@ import 'package:vikunja_app/theme/theme.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:flutter_downloader/flutter_downloader.dart';
 
+import 'api/user_implementation.dart';
 import 'managers/notifications.dart';
 
 class IgnoreCertHttpOverrides extends HttpOverrides {
@@ -33,7 +34,7 @@ class IgnoreCertHttpOverrides extends HttpOverrides {
 
 @pragma('vm:entry-point')
 void callbackDispatcher() {
-  Workmanager().executeTask((task, inputData) {
+  Workmanager().executeTask((task, inputData) async {
     print("Native called background task: $task"); //simpleTask will be emitted here.
     if (task == "update-tasks" && inputData != null) {
       Client client = Client(null,
@@ -55,6 +56,30 @@ void callbackDispatcher() {
             .scheduleDueNotifications(taskService)
             .then((value) => Future.value(true));
       });
+    } else if( task == "refresh-token") {
+      print("running refresh from workmanager");
+      final FlutterSecureStorage _storage = new FlutterSecureStorage();
+
+      var currentUser = await _storage.read(key: 'currentUser');
+      if (currentUser == null) {
+        return Future.value(true);
+      }
+      var token = await _storage.read(key: currentUser);
+
+
+      var base = await _storage.read(key: '${currentUser}_base');
+      if (token == null || base == null) {
+        return Future.value(true);
+      }
+      Client client = Client(null);
+      client.configure(token: token, base: base, authenticated: true);
+        // load new token from server to avoid expiration
+        String? newToken = await UserAPIService(client).getToken();
+        if(newToken != null) {
+          _storage.write(key: currentUser, value: newToken);
+        }
+      return Future.value(true);
+
     } else {
       return Future.value(true);
     }

@@ -52,4 +52,9 @@ class UserAPIService extends APIService implements UserService {
       return userSettings;
     });
   }
+
+  @override
+  Future<String?> getToken() {
+    return client.post('/user/token').then((value) => value?.body["token"]);
+  }
 }

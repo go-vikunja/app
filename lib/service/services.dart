@@ -236,6 +236,8 @@ abstract class UserService {
 
   Future<User?> getCurrentUser();
   Future<UserSettings?> setCurrentUserSettings(UserSettings userSettings);
+
+  Future<String?> getToken();
 }
 
 abstract class LabelService {
