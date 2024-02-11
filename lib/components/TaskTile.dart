@@ -51,9 +51,9 @@ Widget? _buildTaskSubtitle(Task? task, bool showInfo) {
     texts.add(TextSpan(text: " !" + priorityToString(task.priority), style: TextStyle(color: Colors.orange)));
   }
 
-  if(texts.isEmpty && task.description.isNotEmpty) {
-    return HtmlWidget(task.description);
-  }
+  //if(texts.isEmpty && task.description.isNotEmpty) {
+  //  return HtmlWidget(task.description);
+ // }
 
   if(texts.isNotEmpty) {
     return RichText(text: TextSpan(children: texts));
