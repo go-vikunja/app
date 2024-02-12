@@ -235,7 +235,10 @@ class LandingPageState extends State<LandingPage>
               filterId = frontend_settings["filter_id_used_on_overview"];
           }
           if(filterId != null && filterId != 0) {
-            return global.taskService.getAllByProject(filterId).then<Future<void>?>((response) => _handleTaskList(response?.body, showOnlyDueDateTasks));;
+            return global.taskService.getAllByProject(filterId, {
+              "sort_by": ["due_date", "id"],
+              "order_by": ["asc", "desc"],
+            }).then<Future<void>?>((response) => _handleTaskList(response?.body, showOnlyDueDateTasks));;
           }
 
           return global.taskService
