@@ -36,4 +36,5 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          path: build/app/outputs/flutter-apk/
+          path: build/app/outputs/flutter-apk/*
+          compression-level: 0
