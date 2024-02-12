@@ -33,3 +33,7 @@ jobs:
       - name: Build Debug Build
         run: flutter build apk --debug --flavor core
 
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          path: build/app/outputs/flutter-apk/
