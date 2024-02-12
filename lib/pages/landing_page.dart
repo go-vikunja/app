@@ -226,9 +226,19 @@ class LandingPageState extends State<LandingPage>
         .settingsManager
         .getLandingPageOnlyDueDateTasks()
         .then((showOnlyDueDateTasks) {
-          return VikunjaGlobal
-              .of(context)
-              .taskService
+
+          VikunjaGlobalState global = VikunjaGlobal.of(context);
+          Map<String, dynamic>? frontend_settings = global.currentUser?.settings?.frontend_settings;
+          int? filterId = 0;
+          if(frontend_settings != null) {
+            if(frontend_settings["filter_id_used_on_overview"] != null)
+              filterId = frontend_settings["filter_id_used_on_overview"];
+          }
+          if(filterId != null && filterId != 0) {
+            return global.taskService.getAllByProject(filterId).then<Future<void>?>((response) => _handleTaskList(response?.body, showOnlyDueDateTasks));;
+          }
+
+          return global.taskService
               .getByOptions(TaskServiceOptions(
             newOptions: [
               TaskServiceOption<TaskServiceOptionSortBy>("sort_by", ["due_date", "id"]),
