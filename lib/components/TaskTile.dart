@@ -36,7 +36,7 @@ class TaskTile extends StatefulWidget {
   TaskTileState createState() => TaskTileState(this.task);
 }
 
-Widget? _buildTaskSubtitle(Task? task, bool showInfo) {
+Widget? _buildTaskSubtitle(Task? task, bool showInfo, BuildContext context) {
   Duration? durationUntilDue = task?.dueDate?.difference(DateTime.now());
 
   if(task == null)
@@ -45,7 +45,8 @@ Widget? _buildTaskSubtitle(Task? task, bool showInfo) {
   List<TextSpan> texts = [];
   
   if(showInfo && task.hasDueDate) {
-    texts.add(TextSpan(text: "Due " + durationToHumanReadable(durationUntilDue!), style: durationUntilDue.isNegative ? TextStyle(color: Colors.red) : null));
+
+    texts.add(TextSpan(text: "Due " + durationToHumanReadable(durationUntilDue!), style: durationUntilDue.isNegative ? TextStyle(color: Colors.red) : Theme.of(context).textTheme.bodyMedium));
   }
   if(task.priority != null && task.priority != 0) {
     texts.add(TextSpan(text: " !" + priorityToString(task.priority), style: TextStyle(color: Colors.orange)));
@@ -118,7 +119,7 @@ class TaskTileState extends State<TaskTile> with AutomaticKeepAliveClientMixin {
           ) : Text(_currentTask.title),
       controlAffinity: ListTileControlAffinity.leading,
       value: _currentTask.done,
-      subtitle: _buildTaskSubtitle(widget.task, widget.showInfo),
+      subtitle: _buildTaskSubtitle(widget.task, widget.showInfo, context),
       secondary:
           IconButton(icon: Icon(Icons.settings), onPressed: () {
             Navigator.push<Task>(
