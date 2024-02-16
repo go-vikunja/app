@@ -92,7 +92,7 @@ class TaskTileState extends State<TaskTile> with AutomaticKeepAliveClientMixin {
             ? null
             : HtmlWidget(_currentTask.description),
         trailing: IconButton(
-          icon: Icon(Icons.settings),
+          icon: Icon(Icons.edit),
           onPressed: () {},
         ),
       );
@@ -110,7 +110,7 @@ class TaskTileState extends State<TaskTile> with AutomaticKeepAliveClientMixin {
           showModalBottomSheet<void>(
               context: context,
               builder: (BuildContext context) {
-                return TaskBottomSheet(task: widget.task);
+                return TaskBottomSheet(task: widget.task, onEdit: widget.onEdit, taskState: taskState);
               });
         },
         title: widget.showInfo
@@ -137,7 +137,7 @@ class TaskTileState extends State<TaskTile> with AutomaticKeepAliveClientMixin {
           },
         ),
         trailing: IconButton(
-            icon: Icon(Icons.settings),
+            icon: Icon(Icons.edit),
             onPressed: () {
               Navigator.push<Task>(
                 context,

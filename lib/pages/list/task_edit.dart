@@ -252,7 +252,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
                           _reminderDates.add(DateTime(0));
                           var currentIndex = _reminderDates.length - 1;
 
-                          // FIXME: Why does putting this into a row fails?
+                          // FIXME: Why does putting this into a row fail?
                           setState(() => _reminderInputs.add(
                                 VikunjaDateTimePicker(
                                   label: 'Reminder',

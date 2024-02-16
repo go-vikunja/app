@@ -20,6 +20,7 @@ class Task {
   final bool done;
   Color? color;
   final double? kanbanPosition;
+  final double? percent_done;
   final User createdBy;
   Duration? repeatAfter;
   final List<Task> subtasks;
@@ -45,6 +46,7 @@ class Task {
     this.repeatAfter,
     this.color,
     this.kanbanPosition,
+    this.percent_done,
     this.subtasks = const [],
     this.labels = const [],
     this.attachments = const [],
@@ -90,6 +92,9 @@ class Task {
         kanbanPosition = json['kanban_position'] is int
             ? json['kanban_position'].toDouble()
             : json['kanban_position'],
+        percent_done = json['percent_done'] is int
+            ? json['percent_done'].toDouble()
+            : json['percent_done'],
         labels = json['labels'] != null
             ? (json['labels'] as List<dynamic>)
                 .map((label) => Label.fromJson(label))
@@ -128,6 +133,7 @@ class Task {
         'repeat_after': repeatAfter?.inSeconds,
         'hex_color': color?.value.toRadixString(16).padLeft(8, '0').substring(2),
         'kanban_position': kanbanPosition,
+        'percent_done': percent_done,
         'project_id': projectId,
         'labels': labels.map((label) => label.toJSON()).toList(),
         'subtasks': subtasks.map((subtask) => subtask.toJSON()).toList(),
@@ -157,6 +163,7 @@ class Task {
     bool? done,
     Color? color,
     double? kanbanPosition,
+    double? percent_done,
     User? createdBy,
     Duration? repeatAfter,
     List<Task>? subtasks,
@@ -182,6 +189,7 @@ class Task {
       done: done ?? this.done,
       color: color ?? this.color,
       kanbanPosition: kanbanPosition ?? this.kanbanPosition,
+      percent_done: percent_done ?? this.percent_done,
       createdBy: createdBy ?? this.createdBy,
       repeatAfter: repeatAfter ?? this.repeatAfter,
       subtasks: subtasks ?? this.subtasks,

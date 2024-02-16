@@ -31,3 +31,4 @@ const vStandardHorizontalPadding = EdgeInsets.symmetric(horizontal: 5.0);
 const vStandardPadding = EdgeInsets.symmetric(horizontal: 5.0, vertical: 5.0);
 
 var vDateFormatLong = DateFormat("EEEE, MMMM d, yyyy 'at' H:mm");
+var vDateFormatShort = DateFormat("d MMM yyyy, H:mm");

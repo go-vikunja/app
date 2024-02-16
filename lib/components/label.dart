@@ -3,9 +3,9 @@ import 'package:vikunja_app/models/label.dart';
 
 class LabelComponent extends StatelessWidget {
   final Label label;
-  final VoidCallback onDelete;
+  final VoidCallback? onDelete;
 
-  const LabelComponent({Key? key, required this.label, required this.onDelete})
+  const LabelComponent({Key? key, required this.label, this.onDelete})
       : super(key: key);
 
   @override
