@@ -30,12 +30,12 @@ jobs:
       - name: Download pub dependencies
         run: flutter pub get
 
-      - name: Build Debug Build
+      - name: Build Release Build
         run: flutter build apk --release --flavor core
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-core-debug.apk
-          path: build/app/outputs/flutter-apk/app-core-debug.apk
+          path: build/app/outputs/flutter-apk/app-core-release.apk
           compression-level: 0
