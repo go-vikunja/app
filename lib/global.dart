@@ -197,13 +197,20 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
     }
     var token = await _storage.read(key: currentUser);
     var base = await _storage.read(key: '${currentUser}_base');
+    var xClientToken =
+        await _storage.read(key: '${currentUser}_x_client_token');
     if (token == null || base == null) {
       setState(() {
         _loading = false;
       });
       return;
     }
-    client.configure(token: token, base: base, authenticated: true);
+    client.configure(
+      token: token,
+      base: base,
+      authenticated: true,
+      xClientToken: xClientToken,
+    );
     User loadedCurrentUser;
     try {
       loadedCurrentUser = await UserAPIService(client).getCurrentUser();
