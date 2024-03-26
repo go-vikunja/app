@@ -98,7 +98,8 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
               initialDelay: Duration(seconds: 15),
               inputData: {
                 "client_token": client.token,
-                "client_base": client.base
+                "client_base": client.base,
+                "x_client_token": client.xClientToken,
               });
         }
 

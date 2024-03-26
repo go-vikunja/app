@@ -18,22 +18,37 @@ class Client {
   final JsonEncoder _encoder = new JsonEncoder();
   String _token = '';
   String _base = '';
+  String _xClientToken = '';
   bool authenticated = false;
   bool ignoreCertificates = false;
   bool showSnackBar = true;
 
   String get base => _base;
   String get token => _token;
+  String get xClientToken => _xClientToken;
 
   String? post_body;
 
-  bool operator ==(dynamic otherClient) {
-    return otherClient._token == _token;
+  @override
+  bool operator ==(Object otherClient) {
+    if (otherClient is! Client) return false;
+    return otherClient._token == _token &&
+        otherClient._xClientToken == _xClientToken;
   }
 
-  Client(this.global_scaffold_key,
-      {String? token, String? base, bool authenticated = false}) {
-    configure(token: token, base: base, authenticated: authenticated);
+  Client(
+    this.global_scaffold_key, {
+    String? token,
+    String? xClientToken,
+    String? base,
+    bool authenticated = false,
+  }) {
+    configure(
+      token: token,
+      xClientToken: xClientToken,
+      base: base,
+      authenticated: authenticated,
+    );
   }
 
   http.Client get httpClient {
@@ -65,7 +80,8 @@ class Client {
   get _headers => {
         'Authorization': _token != '' ? 'Bearer $_token' : '',
         'Content-Type': 'application/json',
-        'User-Agent': 'Vikunja Mobile App'
+        'User-Agent': 'Vikunja Mobile App',
+        'X-Client-Token': _xClientToken
       };
 
   get headers => _headers;
@@ -73,8 +89,14 @@ class Client {
   @override
   int get hashCode => _token.hashCode;
 
-  void configure({String? token, String? base, bool? authenticated}) {
+  void configure({
+    String? token,
+    String? base,
+    bool? authenticated,
+    String? xClientToken,
+  }) {
     if (token != null) _token = token;
+    if (xClientToken != null) _xClientToken = xClientToken;
     if (base != null) {
       base = base.replaceAll(" ", "");
       if (base.endsWith("/")) base = base.substring(0, base.length - 1);
@@ -84,7 +106,7 @@ class Client {
   }
 
   void reset() {
-    _token = _base = '';
+    _token = _base = _xClientToken = '';
     authenticated = false;
   }
 
@@ -201,7 +223,7 @@ class Client {
   }
 
   Response? _handleResponse(http.Response response) {
-    Error? error = _handleResponseErrors(response);
+    _handleResponseErrors(response);
     return Response(
         _decoder.convert(response.body), response.statusCode, response.headers);
   }

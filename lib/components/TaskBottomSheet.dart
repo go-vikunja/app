@@ -46,95 +46,109 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
   Widget build(BuildContext context) {
     ThemeData theme = Theme.of(context);
     return Container(
-      height: MediaQuery.of(context).size.height * 0.9,
-      child:  Padding(
+        height: MediaQuery.of(context).size.height * 0.9,
+        child: Padding(
           padding: EdgeInsets.fromLTRB(20, 10, 10, 20),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          mainAxisSize: MainAxisSize.max,
-          crossAxisAlignment: CrossAxisAlignment.start,
-
-          children: <Widget>[
-            Row(
-              // Title and edit button
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(_currentTask.title, style: theme.textTheme.headlineLarge),
-                IconButton(onPressed: () {
-                  Navigator.push<Task>(
-                    context,
-                    MaterialPageRoute(
-                      builder: (buildContext) => TaskEditPage(
-                        task: _currentTask,
-                        taskState: widget.taskState,
-                      ),
-                    ),
-                  )
-                      .then((task) => setState(() {
-                    if (task != null) _currentTask = task;
-                  }))
-                      .whenComplete(() => widget.onEdit());
-                }, icon: Icon(Icons.edit)),
-              ],
-            ),
-            Wrap(
-                spacing: 10,
-                children: _currentTask.labels.map((Label label) {
-                  return LabelComponent(
-                    label: label,
-                  );
-                }).toList()),
-
-            // description with html rendering
-            Text("Description", style: theme.textTheme.headlineSmall),
-            Padding(padding: EdgeInsets.fromLTRB(10, 0, 0, 0),
-              child: HtmlWidget(_currentTask.description.isNotEmpty ? _currentTask.description : "No description"),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            mainAxisSize: MainAxisSize.max,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Row(
+                // Title and edit button
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(_currentTask.title,
+                      style: theme.textTheme.headlineLarge),
+                  IconButton(
+                      onPressed: () {
+                        Navigator.push<Task>(
+                          context,
+                          MaterialPageRoute(
+                            builder: (buildContext) => TaskEditPage(
+                              task: _currentTask,
+                              taskState: widget.taskState,
+                            ),
+                          ),
+                        )
+                            .then((task) => setState(() {
+                                  if (task != null) _currentTask = task;
+                                }))
+                            .whenComplete(() => widget.onEdit());
+                      },
+                      icon: Icon(Icons.edit)),
+                ],
               ),
-            // Due date
-            Row(
-              children: [
-                Icon(Icons.access_time),
-                Padding(padding: EdgeInsets.fromLTRB(10, 0, 0, 0)),
-                Text(_currentTask.dueDate != null ? vDateFormatShort.format(_currentTask.dueDate!.toLocal()) : "No due date"),
-              ],
-            ),
-            // start date
-            Row(
-              children: [
-                Icon(Icons.play_arrow_rounded),
-                Padding(padding: EdgeInsets.fromLTRB(10, 0, 0, 0)),
-                Text(_currentTask.startDate != null ? vDateFormatShort.format(_currentTask.startDate!.toLocal()) : "No start date"),
-              ],
-            ),
-            // end date
-            Row(
-              children: [
-                Icon(Icons.stop_rounded),
-                Padding(padding: EdgeInsets.fromLTRB(10, 0, 0, 0)),
-                Text(_currentTask.endDate != null ? vDateFormatShort.format(_currentTask.endDate!.toLocal()) : "No end date"),
-              ],
-            ),
-            // priority
-            Row(
-              children: [
-                Icon(Icons.priority_high),
-                Padding(padding: EdgeInsets.fromLTRB(10, 0, 0, 0)),
-                Text(_currentTask.priority != null ? priorityToString(_currentTask.priority) : "No priority"),
-              ],
-            ),
-            // progress
-            Row(
-              children: [
-                Icon(Icons.percent),
-                Padding(padding: EdgeInsets.fromLTRB(10, 0, 0, 0)),
-                Text(_currentTask.percent_done != null ? (_currentTask.percent_done! * 100).toInt().toString() + "%" : "Unset"),
-              ],
-            ),
-          ],
-        ),
-        )
+              Wrap(
+                  spacing: 10,
+                  children: _currentTask.labels.map((Label label) {
+                    return LabelComponent(
+                      label: label,
+                    );
+                  }).toList()),
 
-    );
+              // description with html rendering
+              Text("Description", style: theme.textTheme.headlineSmall),
+              Padding(
+                padding: EdgeInsets.fromLTRB(10, 0, 0, 0),
+                child: HtmlWidget(_currentTask.description.isNotEmpty
+                    ? _currentTask.description
+                    : "No description"),
+              ),
+              // Due date
+              Row(
+                children: [
+                  Icon(Icons.access_time),
+                  Padding(padding: EdgeInsets.fromLTRB(10, 0, 0, 0)),
+                  Text(_currentTask.dueDate != null
+                      ? vDateFormatShort.format(_currentTask.dueDate!.toLocal())
+                      : "No due date"),
+                ],
+              ),
+              // start date
+              Row(
+                children: [
+                  Icon(Icons.play_arrow_rounded),
+                  Padding(padding: EdgeInsets.fromLTRB(10, 0, 0, 0)),
+                  Text(_currentTask.startDate != null
+                      ? vDateFormatShort
+                          .format(_currentTask.startDate!.toLocal())
+                      : "No start date"),
+                ],
+              ),
+              // end date
+              Row(
+                children: [
+                  Icon(Icons.stop_rounded),
+                  Padding(padding: EdgeInsets.fromLTRB(10, 0, 0, 0)),
+                  Text(_currentTask.endDate != null
+                      ? vDateFormatShort.format(_currentTask.endDate!.toLocal())
+                      : "No end date"),
+                ],
+              ),
+              // priority
+              Row(
+                children: [
+                  Icon(Icons.priority_high),
+                  Padding(padding: EdgeInsets.fromLTRB(10, 0, 0, 0)),
+                  Text(_currentTask.priority != null
+                      ? priorityToString(_currentTask.priority)
+                      : "No priority"),
+                ],
+              ),
+              // progress
+              Row(
+                children: [
+                  Icon(Icons.percent),
+                  Padding(padding: EdgeInsets.fromLTRB(10, 0, 0, 0)),
+                  Text(_currentTask.percent_done != null
+                      ? (_currentTask.percent_done! * 100).toInt().toString() +
+                          "%"
+                      : "Unset"),
+                ],
+              ),
+            ],
+          ),
+        ));
   }
-
 }

@@ -41,6 +41,7 @@ void callbackDispatcher() {
       Client client = Client(null,
           token: inputData["client_token"],
           base: inputData["client_base"],
+          xClientToken: inputData["x_client_token"],
           authenticated: true);
       tz.initializeTimeZones();
 
@@ -66,13 +67,19 @@ void callbackDispatcher() {
         return Future.value(true);
       }
       var token = await _storage.read(key: currentUser);
-
       var base = await _storage.read(key: '${currentUser}_base');
+      var xClientToken =
+          await _storage.read(key: '${currentUser}_x_client_token');
       if (token == null || base == null) {
         return Future.value(true);
       }
       Client client = Client(null);
-      client.configure(token: token, base: base, authenticated: true);
+      client.configure(
+        token: token,
+        base: base,
+        xClientToken: xClientToken,
+        authenticated: true,
+      );
       // load new token from server to avoid expiration
       String? newToken = await UserAPIService(client).getToken();
       if (newToken != null) {

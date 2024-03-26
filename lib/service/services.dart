@@ -59,9 +59,9 @@ class TaskServiceOption<T> {
   dynamic defValue;
 
   TaskServiceOption(this.name, dynamic input_values) {
-    if(input_values is List<String>) {
+    if (input_values is List<String>) {
       valueList = input_values;
-    } else if(input_values is String) {
+    } else if (input_values is String) {
       value = input_values;
     }
   }
@@ -81,20 +81,14 @@ class TaskServiceOption<T> {
 
 final List<TaskServiceOption> defaultOptions = [
   TaskServiceOption<TaskServiceOptionSortBy>("sort_by",
-      [TaskServiceOptionSortBy.due_date,
-        TaskServiceOptionSortBy.id]),
+      [TaskServiceOptionSortBy.due_date, TaskServiceOptionSortBy.id]),
   TaskServiceOption<TaskServiceOptionOrderBy>(
       "order_by", TaskServiceOptionOrderBy.asc),
-  TaskServiceOption<TaskServiceOptionFilterBy>("filter_by", [
-    TaskServiceOptionFilterBy.done,
-    TaskServiceOptionFilterBy.due_date
-  ]),
-  TaskServiceOption<TaskServiceOptionFilterValue>("filter_value", [
-    TaskServiceOptionFilterValue.enum_false,
-    '1970-01-01T00:00:00.000Z'
-  ]),
-  TaskServiceOption<TaskServiceOptionFilterComparator>(
-      "filter_comparator", [
+  TaskServiceOption<TaskServiceOptionFilterBy>("filter_by",
+      [TaskServiceOptionFilterBy.done, TaskServiceOptionFilterBy.due_date]),
+  TaskServiceOption<TaskServiceOptionFilterValue>("filter_value",
+      [TaskServiceOptionFilterValue.enum_false, '1970-01-01T00:00:00.000Z']),
+  TaskServiceOption<TaskServiceOptionFilterComparator>("filter_comparator", [
     TaskServiceOptionFilterComparator.equals,
     TaskServiceOptionFilterComparator.greater
   ]),
@@ -105,13 +99,14 @@ final List<TaskServiceOption> defaultOptions = [
 class TaskServiceOptions {
   List<TaskServiceOption> options = [];
 
-  TaskServiceOptions({List<TaskServiceOption>? newOptions, bool clearOther = false}) {
-    if(!clearOther)
-      options = new List<TaskServiceOption>.from(defaultOptions);
+  TaskServiceOptions(
+      {List<TaskServiceOption>? newOptions, bool clearOther = false}) {
+    if (!clearOther) options = new List<TaskServiceOption>.from(defaultOptions);
     if (newOptions != null) {
       for (TaskServiceOption custom_option in newOptions) {
-        int index = options.indexWhere((element) => element.name == custom_option.name);
-        if(index > -1) {
+        int index =
+            options.indexWhere((element) => element.name == custom_option.name);
+        if (index > -1) {
           options.removeAt(index);
         } else {
           index = options.length;
@@ -121,13 +116,12 @@ class TaskServiceOptions {
     }
   }
 
-
   Map<String, List<String>> getOptions() {
     Map<String, List<String>> queryparams = {};
     for (TaskServiceOption option in options) {
       dynamic value = option.getValue();
       if (value is List) {
-        queryparams[option.name+"[]"] = value as List<String>;
+        queryparams[option.name + "[]"] = value as List<String>;
         //for (dynamic valueEntry in value) {
         //  result += '&' + option.name + '[]=' + valueEntry;
         //}
@@ -151,13 +145,11 @@ abstract class ProjectService {
   Future<Project?> update(Project p);
   Future delete(int projectId);
 
-
   Future<String?> getDisplayDoneTasks(int listId);
   void setDisplayDoneTasks(int listId, String value);
   //Future<String?> getDefaultList();
   //void setDefaultList(int? listId);
 }
-
 
 abstract class NamespaceService {
   Future<List<Namespace>?> getAll();
@@ -228,8 +220,13 @@ abstract class BucketService {
 }
 
 abstract class UserService {
-  Future<UserTokenPair> login(String username, String password,
-      {bool rememberMe = false, String totp});
+  Future<UserTokenPair> login(
+    String username,
+    String password, {
+    bool rememberMe = false,
+    String totp,
+    String? xClientToken,
+  });
 
   Future<UserTokenPair?> register(String username, email, password);
 
@@ -289,7 +286,6 @@ class SettingsManager {
     });
   }
 
-
   SettingsManager(this._storage) {
     applydefaults();
   }
@@ -297,35 +293,45 @@ class SettingsManager {
   Future<String?> getIgnoreCertificates() {
     return _storage.read(key: "ignore-certificates");
   }
+
   void setIgnoreCertificates(bool value) {
     _storage.write(key: "ignore-certificates", value: value ? "1" : "0");
   }
 
   Future<bool> getLandingPageOnlyDueDateTasks() {
-    return _storage.read(key: "landing-page-due-date-tasks").then((value) => value == "1");
-  }
-  Future<void> setLandingPageOnlyDueDateTasks(bool value) {
-    return _storage.write(key: "landing-page-due-date-tasks", value: value ? "1" : "0");
+    return _storage
+        .read(key: "landing-page-due-date-tasks")
+        .then((value) => value == "1");
   }
 
+  Future<void> setLandingPageOnlyDueDateTasks(bool value) {
+    return _storage.write(
+        key: "landing-page-due-date-tasks", value: value ? "1" : "0");
+  }
 
   Future<String?> getVersionNotifications() {
     return _storage.read(key: "get-version-notifications");
   }
+
   void setVersionNotifications(bool value) {
     _storage.write(key: "get-version-notifications", value: value ? "1" : "0");
   }
 
-
   Future<Duration> getWorkmanagerDuration() {
-    return _storage.read(key: "workmanager-duration").then((value) => Duration(minutes: int.parse(value ?? "0")));
+    return _storage
+        .read(key: "workmanager-duration")
+        .then((value) => Duration(minutes: int.parse(value ?? "0")));
   }
+
   Future<void> setWorkmanagerDuration(Duration duration) {
-    return _storage.write(key: "workmanager-duration", value: duration.inMinutes.toString());
+    return _storage.write(
+        key: "workmanager-duration", value: duration.inMinutes.toString());
   }
 
   Future<List<String>?> getPastServers() {
-    return _storage.read(key: "recent-servers").then((value) => (jsonDecode(value!) as List<dynamic>).cast<String>());
+    return _storage
+        .read(key: "recent-servers")
+        .then((value) => (jsonDecode(value!) as List<dynamic>).cast<String>());
   }
 
   Future<void> setPastServers(List<String>? server) {
@@ -336,18 +342,17 @@ class SettingsManager {
 
   Future<FlutterThemeMode> getThemeMode() async {
     String? theme_mode = await _storage.read(key: "theme_mode");
-    if(theme_mode == null)
-      setThemeMode(FlutterThemeMode.system);
-    switch(theme_mode) {
+    if (theme_mode == null) setThemeMode(FlutterThemeMode.system);
+    switch (theme_mode) {
       case "system":
         return FlutterThemeMode.system;
       case "light":
         return FlutterThemeMode.light;
       case "dark":
         return FlutterThemeMode.dark;
-        case "materialYouLight":
+      case "materialYouLight":
         return FlutterThemeMode.materialYouLight;
-        case "materialYouDark":
+      case "materialYouDark":
         return FlutterThemeMode.materialYouDark;
       default:
         return FlutterThemeMode.system;
@@ -355,9 +360,9 @@ class SettingsManager {
   }
 
   Future<void> setThemeMode(FlutterThemeMode newMode) async {
-    await _storage.write(key: "theme_mode", value: newMode.toString().split('.').last);
+    await _storage.write(
+        key: "theme_mode", value: newMode.toString().split('.').last);
   }
-
 }
 
 enum FlutterThemeMode {

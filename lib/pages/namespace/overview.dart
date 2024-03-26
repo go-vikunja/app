@@ -41,36 +41,35 @@ class _NamespaceOverviewPageState extends State<NamespaceOverviewPage>
               onTap: () => _onSelectItem(i),
             )));
 
-    if(_selectedDrawerIndex > -1) {
+    if (_selectedDrawerIndex > -1) {
       return new WillPopScope(
           child: NamespacePage(namespace: _namespaces[_selectedDrawerIndex]),
-          onWillPop: () async {setState(() {
-            _selectedDrawerIndex = -2;
+          onWillPop: () async {
+            setState(() {
+              _selectedDrawerIndex = -2;
+            });
+            return false;
           });
-            return false;});
-
     }
 
     return Scaffold(
-        body:
-        this._loading
-            ? Center(child: CircularProgressIndicator())
-            :
-        RefreshIndicator(
-            child: ListView(
-                padding: EdgeInsets.zero,
-                children: ListTile.divideTiles(
-                        context: context, tiles: namespacesList)
-                    .toList()),
-            onRefresh: _loadNamespaces,
-          ),
-    floatingActionButton: Builder(
-    builder: (context) => FloatingActionButton(
-    onPressed: () => _addNamespaceDialog(context),
-    child: const Icon(Icons.add))),
-    appBar: AppBar(
+      body: this._loading
+          ? Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              child: ListView(
+                  padding: EdgeInsets.zero,
+                  children: ListTile.divideTiles(
+                          context: context, tiles: namespacesList)
+                      .toList()),
+              onRefresh: _loadNamespaces,
+            ),
+      floatingActionButton: Builder(
+          builder: (context) => FloatingActionButton(
+              onPressed: () => _addNamespaceDialog(context),
+              child: const Icon(Icons.add))),
+      appBar: AppBar(
         title: Text("Namespaces"),
-    ),
+      ),
     );
   }
 
@@ -84,11 +83,13 @@ class _NamespaceOverviewPageState extends State<NamespaceOverviewPage>
   }
 
   _onSelectItem(int index) {
-    Navigator.push(context,
+    Navigator.push(
+        context,
         MaterialPageRoute(
           builder: (buildContext) => NamespacePage(
             namespace: _namespaces[index],
-          ),));
+          ),
+        ));
     //setState(() => _selectedDrawerIndex = index);
   }
 

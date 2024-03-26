@@ -136,7 +136,6 @@ class MockedListService implements ListService {
     throw UnimplementedError();
   }
 
-  @override
   void setDefaultList(int? listId) {
     // TODO: implement setDefaultList
   }
@@ -190,7 +189,8 @@ class MockedTaskService implements TaskService {
   }
 
   @override
-  Future<Response?> getAllByProject(int projectId, [Map<String, List<String>>? queryParameters]) {
+  Future<Response?> getAllByProject(int projectId,
+      [Map<String, List<String>>? queryParameters]) {
     // TODO: implement getAllByProject
     return Future.value(new Response(_tasks.values.toList(), 200, {}));
   }
@@ -198,7 +198,8 @@ class MockedTaskService implements TaskService {
 
 class MockedUserService implements UserService {
   @override
-  Future<UserTokenPair> login(String username, password, {bool rememberMe = false, String? totp}) {
+  Future<UserTokenPair> login(String username, password,
+      {bool rememberMe = false, String? totp, String? xClientToken}) {
     return Future.value(UserTokenPair(_users[1]!, 'abcdefg'));
   }
 
@@ -223,6 +224,4 @@ class MockedUserService implements UserService {
     // TODO: implement getToken
     throw UnimplementedError();
   }
-
-
 }

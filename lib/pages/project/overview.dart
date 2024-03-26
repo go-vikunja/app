@@ -153,7 +153,11 @@ class _ProjectOverviewPageState extends State<ProjectOverviewPage>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('The project was created successfully!'),
       ));
-    }).catchError((error) => showDialog(
-            context: context, builder: (context) => ErrorDialog(error: error)));
+    }).catchError(
+      (error) => showDialog(
+        context: context,
+        builder: (context) => ErrorDialog(error: error),
+      ),
+    );
   }
 }
