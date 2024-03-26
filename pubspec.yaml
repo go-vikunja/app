@@ -38,6 +38,8 @@ dependencies:
   timezone: ^0.9.2
   json_annotation: ^4.8.1
   collection: ^1.18.0
+  cupertino_http: ^1.4.0
+  cronet_http: ^1.2.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

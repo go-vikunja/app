@@ -1,8 +1,11 @@
 import 'dart:convert';
 import 'dart:core';
 import 'dart:io';
+import 'package:cronet_http/cronet_http.dart' as cronet_http;
+import 'package:cupertino_http/cupertino_http.dart' as cupertino_http;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:http/io_client.dart' as io_client;
 import 'package:vikunja_app/api/response.dart';
 import 'package:vikunja_app/components/string_extension.dart';
 import 'package:vikunja_app/global.dart';
@@ -31,6 +34,22 @@ class Client {
   Client(this.global_scaffold_key,
       {String? token, String? base, bool authenticated = false}) {
     configure(token: token, base: base, authenticated: authenticated);
+  }
+
+  http.Client get httpClient {
+    if (Platform.isAndroid) {
+      final engine = cronet_http.CronetEngine.build(
+          cacheMode: cronet_http.CacheMode.memory, cacheMaxSize: 1000000);
+      return cronet_http.CronetClient.fromCronetEngine(engine);
+    }
+    if (Platform.isIOS || Platform.isMacOS) {
+      final config =
+          cupertino_http.URLSessionConfiguration.ephemeralSessionConfiguration()
+            ..cache =
+                cupertino_http.URLCache.withCapacity(memoryCapacity: 1000000);
+      return cupertino_http.CupertinoClient.fromSessionConfiguration(config);
+    }
+    return io_client.IOClient();
   }
 
   void reloadIgnoreCerts(bool? val) {
@@ -84,14 +103,14 @@ class Client {
         queryParameters: queryParameters,
         fragment: uri.fragment);
 
-    return http
+    return httpClient
         .get(uri, headers: _headers)
         .then(_handleResponse)
         .onError((error, stackTrace) => _handleError(error, stackTrace));
   }
 
   Future<Response?> delete(String url) {
-    return http
+    return httpClient
         .delete(
           '${this.base}$url'.toUri()!,
           headers: _headers,
@@ -101,7 +120,7 @@ class Client {
   }
 
   Future<Response?> post(String url, {dynamic body}) {
-    return http
+    return httpClient
         .post(
           '${this.base}$url'.toUri()!,
           headers: _headers,
@@ -112,7 +131,7 @@ class Client {
   }
 
   Future<Response?> put(String url, {dynamic body}) {
-    return http
+    return httpClient
         .put(
           '${this.base}$url'.toUri()!,
           headers: _headers,
