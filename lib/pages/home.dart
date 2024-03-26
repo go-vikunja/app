@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:vikunja_app/pages/landing_page.dart';
-import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/pages/project/overview.dart';
 import 'package:vikunja_app/pages/settings.dart';
 

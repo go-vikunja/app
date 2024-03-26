@@ -40,6 +40,7 @@ dependencies:
   collection: ^1.18.0
   cupertino_http: ^1.4.0
   cronet_http: ^1.2.0
+  package_info_plus: any
 dev_dependencies:
   flutter_test:
     sdk: flutter
