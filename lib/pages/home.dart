@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -18,7 +17,6 @@ class HomePageState extends State<HomePage> {
   int _selectedDrawerIndex = 0, _previousDrawerIndex = 0;
   Widget? drawerItem;
 
-
   List<Widget> widgets = [
     ChangeNotifierProvider<ProjectProvider>(
       create: (_) => new ProjectProvider(),
@@ -36,7 +34,6 @@ class HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final currentUser = VikunjaGlobal.of(context).currentUser;
     if (_selectedDrawerIndex != _previousDrawerIndex || drawerItem == null)
       drawerItem = _getDrawerItemWidget(_selectedDrawerIndex);
 
