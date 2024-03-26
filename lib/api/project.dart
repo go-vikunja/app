@@ -6,7 +6,9 @@ import 'package:vikunja_app/service/services.dart';
 class ProjectAPIService extends APIService implements ProjectService {
   FlutterSecureStorage _storage;
 
-  ProjectAPIService(client, storage) : _storage = storage, super(client);
+  ProjectAPIService(client, storage)
+      : _storage = storage,
+        super(client);
 
   @override
   Future<Project?> create(Project p) {
@@ -47,9 +49,7 @@ class ProjectAPIService extends APIService implements ProjectService {
 
   @override
   Future<Project?> update(Project p) {
-    return client
-        .post('/projects/${p.id}', body: p.toJSON())
-        .then((response) {
+    return client.post('/projects/${p.id}', body: p.toJSON()).then((response) {
       if (response == null) return null;
       return Project.fromJson(response.body);
     });
@@ -57,9 +57,8 @@ class ProjectAPIService extends APIService implements ProjectService {
 
   @override
   Future<String> getDisplayDoneTasks(int listId) {
-    return _storage.read(key: "display_done_tasks_list_$listId").then((value)
-    {
-      if(value == null) {
+    return _storage.read(key: "display_done_tasks_list_$listId").then((value) {
+      if (value == null) {
         // TODO: implement default value
         setDisplayDoneTasks(listId, "1");
         return Future.value("1");
@@ -68,19 +67,15 @@ class ProjectAPIService extends APIService implements ProjectService {
     });
   }
 
-  @override
   void setDisplayDoneTasks(int listId, String value) {
     _storage.write(key: "display_done_tasks_list_$listId", value: value);
   }
 
-  @override
   Future<String?> getDefaultList() {
     return _storage.read(key: "default_list_id");
   }
 
-  @override
   void setDefaultList(int? listId) {
     _storage.write(key: "default_list_id", value: listId.toString());
   }
-
 }

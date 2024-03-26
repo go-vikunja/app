@@ -23,7 +23,6 @@ import 'package:workmanager/workmanager.dart';
 import 'api/project.dart';
 import 'main.dart';
 
-
 class VikunjaGlobal extends StatefulWidget {
   final Widget child;
   final Widget login;
@@ -49,7 +48,6 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
   late Client _client;
   UserService? _newUserService;
   NotificationClass _notificationClass = NotificationClass();
-
 
   User? get currentUser => _currentUser;
 
@@ -81,7 +79,6 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
 
   NotificationClass get notifications => _notificationClass;
 
-
   LabelService get labelService => new LabelAPIService(client);
 
   LabelTaskService get labelTaskService => new LabelTaskAPIService(client);
@@ -89,21 +86,25 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
   LabelTaskBulkAPIService get labelTaskBulkService =>
       new LabelTaskBulkAPIService(client);
 
-
   late String currentTimeZone;
 
   void updateWorkmanagerDuration() {
     Workmanager().cancelAll().then((value) {
-      settingsManager.getWorkmanagerDuration().then((duration)
-      {
-        if(duration.inMinutes > 0) {
-          Workmanager().registerPeriodicTask(
-              "update-tasks", "update-tasks", frequency: duration, constraints: Constraints(networkType: NetworkType.connected),
-              initialDelay: Duration(seconds: 15), inputData: {"client_token": client.token, "client_base": client.base});
+      settingsManager.getWorkmanagerDuration().then((duration) {
+        if (duration.inMinutes > 0) {
+          Workmanager().registerPeriodicTask("update-tasks", "update-tasks",
+              frequency: duration,
+              constraints: Constraints(networkType: NetworkType.connected),
+              initialDelay: Duration(seconds: 15),
+              inputData: {
+                "client_token": client.token,
+                "client_base": client.base
+              });
         }
 
-        Workmanager().registerPeriodicTask(
-            "refresh-token", "refresh-token", frequency: Duration(hours: 12), constraints: Constraints(networkType: NetworkType.connected),
+        Workmanager().registerPeriodicTask("refresh-token", "refresh-token",
+            frequency: Duration(hours: 12),
+            constraints: Constraints(networkType: NetworkType.connected),
             initialDelay: Duration(seconds: 15));
       });
     });
@@ -113,13 +114,15 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
   void initState() {
     super.initState();
     _client = Client(snackbarKey);
-    settingsManager.getIgnoreCertificates().then((value) => client.reload_ignore_certs(value == "1"));
+    settingsManager
+        .getIgnoreCertificates()
+        .then((value) => client.reloadIgnoreCerts(value == "1"));
     _newUserService = UserAPIService(client);
     _loadCurrentUser();
     tz.initializeTimeZones();
     notifications.notificationInitializer();
     settingsManager.getVersionNotifications().then((value) {
-      if(value == "1") {
+      if (value == "1") {
         versionChecker.postVersionCheckSnackbar();
       }
     });
@@ -152,17 +155,16 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
     });
   }
 
-
   void logoutUser(BuildContext context) async {
 //    _storage.deleteAll().then((_) {
-      var userId = await _storage.read(key: "currentUser");
-      await _storage.delete(key: userId!); //delete token
-      await _storage.delete(key: "${userId}_base");
-      setState(() {
-        client.reset();
-        _currentUser = null;
-      });
- /*   }).catchError((err) {
+    var userId = await _storage.read(key: "currentUser");
+    await _storage.delete(key: userId!); //delete token
+    await _storage.delete(key: "${userId}_base");
+    setState(() {
+      client.reset();
+      _currentUser = null;
+    });
+    /*   }).catchError((err) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('An error occurred while logging out!'),
       ));
@@ -191,13 +193,12 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
       loadedCurrentUser = await UserAPIService(client).getCurrentUser();
       // load new token from server to avoid expiration
       String? newToken = await newUserService?.getToken();
-      if(newToken != null) {
+      if (newToken != null) {
         _storage.write(key: currentUser, value: newToken);
         client.configure(token: newToken);
       }
-
     } on ApiException catch (e) {
-      dev.log("Error code: " + e.errorCode.toString(),level: 1000);
+      dev.log("Error code: " + e.errorCode.toString(), level: 1000);
       if (e.errorCode ~/ 100 == 4) {
         client.authenticated = false;
         if (e.errorCode == 401) {
@@ -227,7 +228,7 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
     if (_loading) {
       return new Center(child: new CircularProgressIndicator());
     }
-    if(client.authenticated) {
+    if (client.authenticated) {
       notifications.scheduleDueNotifications(taskService);
     }
     return new VikunjaGlobalInherited(

@@ -48,8 +48,8 @@ class _TaskEditPageState extends State<TaskEditPage> {
   @override
   void initState() {
     _repeatAfter = widget.task.repeatAfter;
-    if(_repeatAfterType == null)
-        _repeatAfterType = getRepeatAfterTypeFromDuration(_repeatAfter);
+    if (_repeatAfterType == null)
+      _repeatAfterType = getRepeatAfterTypeFromDuration(_repeatAfter);
 
     _reminderDates = widget.task.reminderDates;
     for (var i = 0; i < _reminderDates.length; i++) {
@@ -86,25 +86,30 @@ class _TaskEditPageState extends State<TaskEditPage> {
             actions: [
               IconButton(
                 icon: Icon(Icons.delete),
-                onPressed: () {showDialog(context: context, builder: (BuildContext context) {
-                  return AlertDialog(
-                    title: Text('Delete Task'),
-                    content: Text('Are you sure you want to delete this task?'),
-                    actions: [
-                      TextButton(
-                        child: Text('Cancel'),
-                        onPressed: () => Navigator.of(context).pop(),
-                      ),
-                      TextButton(
-                        child: Text('Delete'),
-                        onPressed: () {
-                          _delete(widget.task.id);
-                          Navigator.of(context).pop();
-                        },
-                      ),
-                    ],
-                  );
-                });},
+                onPressed: () {
+                  showDialog(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return AlertDialog(
+                          title: Text('Delete Task'),
+                          content: Text(
+                              'Are you sure you want to delete this task?'),
+                          actions: [
+                            TextButton(
+                              child: Text('Cancel'),
+                              onPressed: () => Navigator.of(context).pop(),
+                            ),
+                            TextButton(
+                              child: Text('Delete'),
+                              onPressed: () {
+                                _delete(widget.task.id);
+                                Navigator.of(context).pop();
+                              },
+                            ),
+                          ],
+                        );
+                      });
+                },
               ),
             ],
           ),
@@ -114,7 +119,8 @@ class _TaskEditPageState extends State<TaskEditPage> {
                 key: _formKey,
                 child: ListView(
                   key: _listKey,
-                  padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).size.height / 2),
+                  padding: EdgeInsets.fromLTRB(
+                      16, 16, 16, MediaQuery.of(context).size.height / 2),
                   children: <Widget>[
                     Padding(
                       padding: EdgeInsets.symmetric(vertical: 10.0),
@@ -182,8 +188,9 @@ class _TaskEditPageState extends State<TaskEditPage> {
                           flex: 2,
                           child: TextFormField(
                             keyboardType: TextInputType.number,
-                            initialValue: getRepeatAfterValueFromDuration(
-                                    _repeatAfter)?.toString(),
+                            initialValue:
+                                getRepeatAfterValueFromDuration(_repeatAfter)
+                                    ?.toString(),
                             onSaved: (repeatAfter) => _repeatAfter =
                                 getDurationFromType(
                                     repeatAfter, _repeatAfterType),
@@ -200,8 +207,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
                             isExpanded: true,
                             isDense: true,
                             value: _repeatAfterType ??
-                                getRepeatAfterTypeFromDuration(
-                                    _repeatAfter),
+                                getRepeatAfterTypeFromDuration(_repeatAfter),
                             onChanged: (String? newValue) {
                               setState(() {
                                 _repeatAfterType = newValue;
@@ -321,9 +327,11 @@ class _TaskEditPageState extends State<TaskEditPage> {
                         Padding(
                             padding: EdgeInsets.only(
                                 right: 15,
-                                left: 2.0 + (IconTheme.of(context).size??0))),
+                                left: 2.0 + (IconTheme.of(context).size ?? 0))),
                         Container(
-                          width: MediaQuery.of(context).size.width - 80 - ((IconTheme.of(context).size ?? 0) * 2),
+                          width: MediaQuery.of(context).size.width -
+                              80 -
+                              ((IconTheme.of(context).size ?? 0) * 2),
                           child: TypeAheadField(
                             builder: (builder, controller, focusnode) {
                               return TextFormField(
@@ -427,18 +435,25 @@ class _TaskEditPageState extends State<TaskEditPage> {
                           trailing: IconButton(
                             icon: Icon(Icons.download),
                             onPressed: () async {
-                              String url = VikunjaGlobal.of(context).client.base;
-                              url += '/tasks/${widget.task.id}/attachments/${widget.task.attachments[index].id}';
+                              String url =
+                                  VikunjaGlobal.of(context).client.base;
+                              url +=
+                                  '/tasks/${widget.task.id}/attachments/${widget.task.attachments[index].id}';
                               print(url);
                               final taskId = await FlutterDownloader.enqueue(
                                 url: url,
-                                fileName: widget.task.attachments[index].file.name,
-                                headers: VikunjaGlobal.of(context).client.headers, // optional: header send with url (auth token etc)
+                                fileName:
+                                    widget.task.attachments[index].file.name,
+                                headers: VikunjaGlobal.of(context)
+                                    .client
+                                    .headers, // optional: header send with url (auth token etc)
                                 savedDir: '/storage/emulated/0/Download/',
-                                showNotification: true, // show download progress in status bar (for Android)
-                                openFileFromNotification: true, // click on notification to open downloaded file (for Android)
+                                showNotification:
+                                    true, // show download progress in status bar (for Android)
+                                openFileFromNotification:
+                                    true, // click on notification to open downloaded file (for Android)
                               );
-                              if(taskId == null) return;
+                              if (taskId == null) return;
                               FlutterDownloader.open(taskId: taskId);
                             },
                           ),
@@ -593,8 +608,6 @@ class _TaskEditPageState extends State<TaskEditPage> {
       });
     });
   }
-
-
 
   _onColorEdit() {
     _pickerColor = _resetColor || (_color ?? widget.task.color) == null

@@ -25,15 +25,13 @@ class KanbanClass {
   Function _onViewTapped, _addItemDialog, notify;
   Duration _lastTaskDragUpdateAction = Duration.zero;
 
-
   Project _list;
   Map<int, BucketProps> _bucketProps = {};
 
-
-  KanbanClass(this.context, this.notify, this._onViewTapped, this._addItemDialog, this._list) {
+  KanbanClass(this.context, this.notify, this._onViewTapped,
+      this._addItemDialog, this._list) {
     taskState = Provider.of<ProjectProvider>(context);
   }
-
 
   Widget kanbanView() {
     final deviceData = MediaQuery.of(context);
@@ -41,7 +39,8 @@ class KanbanClass {
     final bucketFraction = portrait ? 0.8 : 0.4;
     final bucketWidth = deviceData.size.width * bucketFraction;
 
-    if (_pageController == null || _pageController!.viewportFraction != bucketFraction)
+    if (_pageController == null ||
+        _pageController!.viewportFraction != bucketFraction)
       _pageController = PageController(viewportFraction: bucketFraction);
 
     print(_list.doneBucketId);
@@ -170,14 +169,16 @@ class KanbanClass {
               ),
             ));
   }
+
   Future<void> _setDoneBucket(BuildContext context, int bucketId) async {
     //setState(() {});
-    _list = (await VikunjaGlobal.of(context).projectService.update(_list.copyWith(doneBucketId: bucketId)))!;
+    _list = (await VikunjaGlobal.of(context)
+        .projectService
+        .update(_list.copyWith(doneBucketId: bucketId)))!;
     notify();
   }
 
-  Future<void> _addBucket(
-      String title, BuildContext context) async {
+  Future<void> _addBucket(String title, BuildContext context) async {
     final currentUser = VikunjaGlobal.of(context).currentUser;
     if (currentUser == null) {
       return;
@@ -256,14 +257,12 @@ class KanbanClass {
       SchedulerBinding.instance.addPostFrameCallback((_) {
         if (_bucketProps[bucket.id]!.controller.hasClients)
           //setState(() {
-            _bucketProps[bucket.id]!.bucketLength = bucket.tasks.length;
-            _bucketProps[bucket.id]!.scrollable =
-                _bucketProps[bucket.id]!.controller.position.maxScrollExtent >
-                    0;
-            _bucketProps[bucket.id]!.portrait = portrait;
-          //});
+          _bucketProps[bucket.id]!.bucketLength = bucket.tasks.length;
+        _bucketProps[bucket.id]!.scrollable =
+            _bucketProps[bucket.id]!.controller.position.maxScrollExtent > 0;
+        _bucketProps[bucket.id]!.portrait = portrait;
+        //});
         notify();
-
       });
     if (_bucketProps[bucket.id]!.titleController.text.isEmpty)
       _bucketProps[bucket.id]!.titleController.text = bucket.title;
@@ -427,10 +426,11 @@ class KanbanClass {
                       final screenSize = MediaQuery.of(context).size;
                       const scrollDuration = Duration(milliseconds: 250);
                       const scrollCurve = Curves.easeInOut;
-                      final updateAction = () { //setState(() =>
+                      final updateAction = () {
+                        //setState(() =>
                         _lastTaskDragUpdateAction = details.sourceTimeStamp!;
                         notify();
-                      };//);
+                      }; //);
 
                       if (details.globalPosition.dx < screenSize.width * 0.1) {
                         // scroll left
@@ -502,8 +502,8 @@ class KanbanClass {
                     if (bucket.tasks.length == 0)
                       DragTarget<TaskData>(
                         onWillAcceptWithDetails: (data) {
-                          /*setState(() =>*/ _bucketProps[bucket.id]!.taskDropSize =
-                              data.size;//);
+                          /*setState(() =>*/ _bucketProps[bucket.id]!
+                              .taskDropSize = data.data.size; //);
                           notify();
                           return true;
                         },
@@ -511,23 +511,23 @@ class KanbanClass {
                           Provider.of<ProjectProvider>(context, listen: false)
                               .moveTaskToBucket(
                                 context: context,
-                                task: data.task,
+                                task: data.data.task,
                                 newBucketId: bucket.id,
                                 index: 0,
                               )
                               .then((_) => ScaffoldMessenger.of(context)
                                       .showSnackBar(SnackBar(
                                     content: Text(
-                                        '\'${data.task.title}\' was moved to \'${bucket.title}\' successfully!'),
+                                        '\'${data.data.task.title}\' was moved to \'${bucket.title}\' successfully!'),
                                   )));
 
                           //setState(() =>
-                              _bucketProps[bucket.id]!.taskDropSize = null;//);
+                          _bucketProps[bucket.id]!.taskDropSize = null; //);
                           notify();
                         },
                         onLeave: (_) {
                           //setState(() =>
-                              _bucketProps[bucket.id]!.taskDropSize = null;//)
+                          _bucketProps[bucket.id]!.taskDropSize = null; //)
                           notify();
                         },
                         builder: (_, __, ___) => SizedBox.expand(),
@@ -548,12 +548,7 @@ class KanbanClass {
   }
 
   Future<void> loadBucketsForPage(int page) {
-    return Provider.of<ProjectProvider>(context, listen: false).loadBuckets(
-        context: context,
-        listId: _list.id,
-        page: page
-    );
+    return Provider.of<ProjectProvider>(context, listen: false)
+        .loadBuckets(context: context, listId: _list.id, page: page);
   }
-
-
 }

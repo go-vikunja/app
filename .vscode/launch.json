@@ -7,7 +7,7 @@
             "flutterMode": "debug",
             "args": [
                 "--flavor",
-                "main"
+                "core"
             ],
         }
     ]

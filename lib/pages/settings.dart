@@ -8,7 +8,6 @@ import '../models/project.dart';
 import '../models/user.dart';
 import '../service/services.dart';
 
-
 class SettingsPage extends StatefulWidget {
   @override
   State<StatefulWidget> createState() => SettingsPageState();
@@ -24,7 +23,6 @@ class SettingsPageState extends State<SettingsPage> {
   bool initialized = false;
   FlutterThemeMode? themeMode;
   User? currentUser;
-
 
   void init() {
     durationTextController = TextEditingController();
@@ -51,20 +49,21 @@ class SettingsPageState extends State<SettingsPage> {
         .getCurrentVersionTag()
         .then((value) => setState(() => versionTag = value));
 
+    VikunjaGlobal.of(context).settingsManager.getWorkmanagerDuration().then(
+        (value) => setState(
+            () => durationTextController.text = (value.inMinutes.toString())));
+
     VikunjaGlobal.of(context)
         .settingsManager
-        .getWorkmanagerDuration()
-        .then((value) => setState(() => durationTextController.text = (value.inMinutes.toString())));
-
-    VikunjaGlobal.of(context).settingsManager.getThemeMode().then((value) => setState(() => themeMode = value));
+        .getThemeMode()
+        .then((value) => setState(() => themeMode = value));
 
     VikunjaGlobal.of(context).newUserService?.getCurrentUser().then((value) => {
-      setState(() {
-        currentUser = value!;
-        defaultProject = value.settings?.default_project_id;
-      } ),
-    });
-
+          setState(() {
+            currentUser = value!;
+            defaultProject = value.settings?.default_project_id;
+          }),
+        });
 
     initialized = true;
   }
@@ -75,18 +74,22 @@ class SettingsPageState extends State<SettingsPage> {
 
     if (!initialized) init();
     return new Scaffold(
-      appBar: AppBar(title: Text("Settings"),),
-
+      appBar: AppBar(
+        title: Text("Settings"),
+      ),
       body: ListView(
         children: [
           UserAccountsDrawerHeader(
-            accountName: currentUser != null ? Text(currentUser!.username) : null,
+            accountName:
+                currentUser != null ? Text(currentUser!.username) : null,
             accountEmail: currentUser != null ? Text(currentUser!.name) : null,
             currentAccountPicture: currentUser == null
                 ? null
                 : CircleAvatar(
-              backgroundImage: (currentUser?.username != "") ? NetworkImage(currentUser!.avatarUrl(context)) : null,
-            ),
+                    backgroundImage: (currentUser?.username != "")
+                        ? NetworkImage(currentUser!.avatarUrl(context))
+                        : null,
+                  ),
             decoration: BoxDecoration(
               image: DecorationImage(
                   image: AssetImage("assets/graphics/hypnotize.png"),
@@ -109,11 +112,17 @@ class SettingsPageState extends State<SettingsPage> {
                               child: Text(e.title), value: e.id))
                           .toList()
                     ],
-                    value: projectList?.firstWhereOrNull((element) => element.id == defaultProject) != null ? defaultProject : null,
+                    value: projectList?.firstWhereOrNull(
+                                (element) => element.id == defaultProject) !=
+                            null
+                        ? defaultProject
+                        : null,
                     onChanged: (int? value) {
                       setState(() => defaultProject = value);
-                      global.newUserService?.setCurrentUserSettings(
-                          currentUser!.settings!.copyWith(default_project_id: value)).then((value) => currentUser!.settings = value);
+                      global.newUserService
+                          ?.setCurrentUserSettings(currentUser!.settings!
+                              .copyWith(default_project_id: value))
+                          .then((value) => currentUser!.settings = value);
                       //VikunjaGlobal.of(context).userManager.setDefaultList(value);
                     },
                   ),
@@ -149,9 +158,7 @@ class SettingsPageState extends State<SettingsPage> {
               ],
               value: themeMode,
               onChanged: (FlutterThemeMode? value) {
-                VikunjaGlobal.of(context)
-                    .settingsManager
-                    .setThemeMode(value!);
+                VikunjaGlobal.of(context).settingsManager.setThemeMode(value!);
                 setState(() => themeMode = value);
                 updateTheme.value = true;
               },
@@ -164,27 +171,30 @@ class SettingsPageState extends State<SettingsPage> {
                   value: ignoreCertificates,
                   onChanged: (value) {
                     setState(() => ignoreCertificates = value);
-                    VikunjaGlobal.of(context).client.reload_ignore_certs(value);
+                    VikunjaGlobal.of(context).client.reloadIgnoreCerts(value);
                   })
               : ListTile(title: Text("...")),
-              Divider(),
-              Padding(padding: EdgeInsets.only(left: 15, right: 15),
+          Divider(),
+          Padding(
+              padding: EdgeInsets.only(left: 15, right: 15),
               child: Row(children: [
-                  Flexible(
-                      child: TextField(
-                    controller: durationTextController,
-                    decoration: InputDecoration(
-                      labelText: 'Background Refresh Interval (minutes): ',
-                      helperText: 'Minimum: 15, Set limit of 0 for no refresh',
-                    ),
-                  )),
-                  TextButton(
-                      onPressed: () => VikunjaGlobal.of(context)
-                          .settingsManager
-                          .setWorkmanagerDuration(Duration(
-                              minutes: int.parse(durationTextController.text))).then((value) => VikunjaGlobal.of(context).updateWorkmanagerDuration()),
-                      child: Text("Save")),
-                ])),
+                Flexible(
+                    child: TextField(
+                  controller: durationTextController,
+                  decoration: InputDecoration(
+                    labelText: 'Background Refresh Interval (minutes): ',
+                    helperText: 'Minimum: 15, Set limit of 0 for no refresh',
+                  ),
+                )),
+                TextButton(
+                    onPressed: () => VikunjaGlobal.of(context)
+                        .settingsManager
+                        .setWorkmanagerDuration(Duration(
+                            minutes: int.parse(durationTextController.text)))
+                        .then((value) => VikunjaGlobal.of(context)
+                            .updateWorkmanagerDuration()),
+                    child: Text("Save")),
+              ])),
           Divider(),
           getVersionNotifications != null
               ? CheckboxListTile(

@@ -37,11 +37,11 @@ class LandingPageState extends State<LandingPage>
   static const platform = const MethodChannel('vikunja');
 
   Future<void> _updateDefaultList() async {
-
-    return VikunjaGlobal.of(context).newUserService?.getCurrentUser().then((value) =>
-        setState(() {
-          defaultList = value?.settings?.default_project_id;
-        } ),);
+    return VikunjaGlobal.of(context).newUserService?.getCurrentUser().then(
+          (value) => setState(() {
+            defaultList = value?.settings?.default_project_id;
+          }),
+        );
   }
 
   @override
@@ -55,7 +55,10 @@ class LandingPageState extends State<LandingPage>
               } catch (e) {
                 log(e.toString());
               }
-              VikunjaGlobal.of(context).settingsManager.getLandingPageOnlyDueDateTasks().then((value) => onlyDueDate = value);
+              VikunjaGlobal.of(context)
+                  .settingsManager
+                  .getLandingPageOnlyDueDateTasks()
+                  .then((value) => onlyDueDate = value);
             }));
     super.initState();
   }
@@ -133,26 +136,29 @@ class LandingPageState extends State<LandingPage>
           PopupMenuButton(itemBuilder: (BuildContext context) {
             return [
               PopupMenuItem(
-                  child:
-                      InkWell(
-                        onTap: () {
-                          Navigator.pop(context);
-                          bool newval = !onlyDueDate;
-                            VikunjaGlobal.of(context).settingsManager.setLandingPageOnlyDueDateTasks(newval).then((value) {
-                              setState(() {
-                                onlyDueDate = newval;
-                                _loadList(context);
-                              });
-                            });
-                        },
-                        child:
-                      Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                Text("Only show tasks with due date"),
-                Checkbox(
-                    value: onlyDueDate,
-                    onChanged: (bool? value) {  },
-                )
-              ])))
+                  child: InkWell(
+                      onTap: () {
+                        Navigator.pop(context);
+                        bool newval = !onlyDueDate;
+                        VikunjaGlobal.of(context)
+                            .settingsManager
+                            .setLandingPageOnlyDueDateTasks(newval)
+                            .then((value) {
+                          setState(() {
+                            onlyDueDate = newval;
+                            _loadList(context);
+                          });
+                        });
+                      },
+                      child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Text("Only show tasks with due date"),
+                            Checkbox(
+                              value: onlyDueDate,
+                              onChanged: (bool? value) {},
+                            )
+                          ])))
             ];
           }),
         ],
@@ -226,41 +232,46 @@ class LandingPageState extends State<LandingPage>
         .settingsManager
         .getLandingPageOnlyDueDateTasks()
         .then((showOnlyDueDateTasks) {
+      VikunjaGlobalState global = VikunjaGlobal.of(context);
+      Map<String, dynamic>? frontend_settings =
+          global.currentUser?.settings?.frontend_settings;
+      int? filterId = 0;
+      if (frontend_settings != null) {
+        if (frontend_settings["filter_id_used_on_overview"] != null)
+          filterId = frontend_settings["filter_id_used_on_overview"];
+      }
+      if (filterId != null && filterId != 0) {
+        return global.taskService.getAllByProject(filterId, {
+          "sort_by": ["due_date", "id"],
+          "order_by": ["asc", "desc"],
+        }).then<Future<void>?>((response) =>
+            _handleTaskList(response?.body, showOnlyDueDateTasks));
+      }
 
-          VikunjaGlobalState global = VikunjaGlobal.of(context);
-          Map<String, dynamic>? frontend_settings = global.currentUser?.settings?.frontend_settings;
-          int? filterId = 0;
-          if(frontend_settings != null) {
-            if(frontend_settings["filter_id_used_on_overview"] != null)
-              filterId = frontend_settings["filter_id_used_on_overview"];
-          }
-          if(filterId != null && filterId != 0) {
-            return global.taskService.getAllByProject(filterId, {
-              "sort_by": ["due_date", "id"],
-              "order_by": ["asc", "desc"],
-            }).then<Future<void>?>((response) => _handleTaskList(response?.body, showOnlyDueDateTasks));;
-          }
-
-          return global.taskService
-              .getByOptions(TaskServiceOptions(
-            newOptions: [
-              TaskServiceOption<TaskServiceOptionSortBy>("sort_by", ["due_date", "id"]),
-              TaskServiceOption<TaskServiceOptionSortBy>("order_by", ["asc", "desc"]),
-              TaskServiceOption<TaskServiceOptionFilterBy>("filter_by", "done"),
-              TaskServiceOption<TaskServiceOptionFilterValue>("filter_value", "false"),
-              TaskServiceOption<TaskServiceOptionFilterComparator>("filter_comparator", "equals"),
-              TaskServiceOption<TaskServiceOptionFilterConcat>("filter_concat", "and"),
-            ],
-            clearOther: true
-          ))
-              .then<Future<void>?>((taskList) => _handleTaskList(taskList, showOnlyDueDateTasks));
-
-          });//.onError((error, stackTrace) {print("error");});
+      return global.taskService
+          .getByOptions(TaskServiceOptions(newOptions: [
+            TaskServiceOption<TaskServiceOptionSortBy>(
+                "sort_by", ["due_date", "id"]),
+            TaskServiceOption<TaskServiceOptionSortBy>(
+                "order_by", ["asc", "desc"]),
+            TaskServiceOption<TaskServiceOptionFilterBy>("filter_by", "done"),
+            TaskServiceOption<TaskServiceOptionFilterValue>(
+                "filter_value", "false"),
+            TaskServiceOption<TaskServiceOptionFilterComparator>(
+                "filter_comparator", "equals"),
+            TaskServiceOption<TaskServiceOptionFilterConcat>(
+                "filter_concat", "and"),
+          ], clearOther: true))
+          .then<Future<void>?>(
+              (taskList) => _handleTaskList(taskList, showOnlyDueDateTasks));
+    }); //.onError((error, stackTrace) {print("error");});
   }
 
-  Future<void> _handleTaskList(List<Task>? taskList, bool showOnlyDueDateTasks) {
-    if(showOnlyDueDateTasks)
-      taskList?.removeWhere((element) => element.dueDate == null || element.dueDate!.year == 0001);
+  Future<void> _handleTaskList(
+      List<Task>? taskList, bool showOnlyDueDateTasks) {
+    if (showOnlyDueDateTasks)
+      taskList?.removeWhere((element) =>
+          element.dueDate == null || element.dueDate!.year == 0001);
 
     if (taskList != null && taskList.isEmpty) {
       setState(() {

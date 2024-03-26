@@ -1,4 +1,3 @@
-
 import 'package:after_layout/after_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/pages/project/project_task_list.dart';
@@ -16,13 +15,8 @@ class ProjectOverviewPage extends StatefulWidget {
 class _ProjectOverviewPageState extends State<ProjectOverviewPage>
     with AfterLayoutMixin<ProjectOverviewPage> {
   List<Project> _projects = [];
-  int _selectedDrawerIndex = -2, _previousDrawerIndex = -2;
+  int _selectedDrawerIndex = -2;
   bool _loading = true;
-
-  Project? get _currentProject =>
-      _selectedDrawerIndex >= -1 && _selectedDrawerIndex < _projects.length
-          ? _projects[_selectedDrawerIndex]
-          : null;
 
   @override
   void afterFirstLayout(BuildContext context) {
@@ -37,9 +31,9 @@ class _ProjectOverviewPageState extends State<ProjectOverviewPage>
     bool expanded = expandedList.contains(project.id);
     Widget icon;
 
-    List<Widget>? children = addProjectChildren(project, level+1);
+    List<Widget>? children = addProjectChildren(project, level + 1);
     bool no_children = children.length == 0;
-    if(no_children) {
+    if (no_children) {
       icon = Icon(Icons.list);
     } else {
       if (expanded) {
@@ -50,34 +44,34 @@ class _ProjectOverviewPageState extends State<ProjectOverviewPage>
       }
     }
 
-
-      return Column(children: [
-        ListTile(
-          onTap: () {
-            setState(() {
-              openList(context, project);
-            });
-          },
-          contentPadding: insets,
+    return Column(children: [
+      ListTile(
+        onTap: () {
+          setState(() {
+            openList(context, project);
+          });
+        },
+        contentPadding: insets,
         leading: IconButton(
           disabledColor: Theme.of(context).unselectedWidgetColor,
           icon: icon,
-          onPressed: !no_children ? () {
-            setState(() {
-              if (expanded)
-                expandedList.remove(project.id);
-              else
-                expandedList.add(project.id);
-            });
-          } : null,
+          onPressed: !no_children
+              ? () {
+                  setState(() {
+                    if (expanded)
+                      expandedList.remove(project.id);
+                    else
+                      expandedList.add(project.id);
+                  });
+                }
+              : null,
         ),
         title: new Text(project.title),
         //onTap: () => _onSelectItem(i),
       ),
-        ...?children
-      ]);
-    }
-
+      ...?children
+    ]);
+  }
 
   List<Widget> addProjectChildren(Project project, level) {
     Iterable<Project> children =
@@ -120,7 +114,6 @@ class _ProjectOverviewPageState extends State<ProjectOverviewPage>
                           .toList()),
               onRefresh: _loadProjects,
             ),
-
       appBar: AppBar(
         title: Text("Projects"),
       ),
@@ -135,8 +128,6 @@ class _ProjectOverviewPageState extends State<ProjectOverviewPage>
       });
     });
   }
-
-
 
   _addProjectDialog(BuildContext context) {
     showDialog(

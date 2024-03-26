@@ -9,7 +9,6 @@ import 'package:vikunja_app/global.dart';
 
 import '../main.dart';
 
-
 class Client {
   GlobalKey<ScaffoldMessengerState>? global_scaffold_key;
   final JsonDecoder _decoder = new JsonDecoder();
@@ -25,8 +24,6 @@ class Client {
 
   String? post_body;
 
-
-
   bool operator ==(dynamic otherClient) {
     return otherClient._token == _token;
   }
@@ -36,18 +33,17 @@ class Client {
     configure(token: token, base: base, authenticated: authenticated);
   }
 
-  void reload_ignore_certs(bool? val) {
+  void reloadIgnoreCerts(bool? val) {
     ignoreCertificates = val ?? false;
     HttpOverrides.global = new IgnoreCertHttpOverrides(ignoreCertificates);
-    if(global_scaffold_key == null || global_scaffold_key!.currentContext == null) return;
-    VikunjaGlobal
-        .of(global_scaffold_key!.currentContext!)
+    if (global_scaffold_key == null ||
+        global_scaffold_key!.currentContext == null) return;
+    VikunjaGlobal.of(global_scaffold_key!.currentContext!)
         .settingsManager
         .setIgnoreCertificates(ignoreCertificates);
   }
 
-  get _headers =>
-      {
+  get _headers => {
         'Authorization': _token != '' ? 'Bearer $_token' : '',
         'Content-Type': 'application/json',
         'User-Agent': 'Vikunja Mobile App'
@@ -59,19 +55,14 @@ class Client {
   int get hashCode => _token.hashCode;
 
   void configure({String? token, String? base, bool? authenticated}) {
-    if (token != null)
-      _token = token;
+    if (token != null) _token = token;
     if (base != null) {
       base = base.replaceAll(" ", "");
-      if(base.endsWith("/"))
-        base = base.substring(0,base.length-1);
+      if (base.endsWith("/")) base = base.substring(0, base.length - 1);
       _base = base.endsWith('/api/v1') ? base : '$base/api/v1';
     }
-    if (authenticated != null)
-      this.authenticated = authenticated;
-
+    if (authenticated != null) this.authenticated = authenticated;
   }
-
 
   void reset() {
     _token = _base = '';
@@ -84,54 +75,61 @@ class Client {
     // why are we doing it like this? because Uri doesnt have setters. wtf.
 
     uri = Uri(
-      scheme: uri.scheme,
+        scheme: uri.scheme,
         userInfo: uri.userInfo,
         host: uri.host,
         port: uri.port,
         path: uri.path,
         //queryParameters: {...uri.queryParameters, ...?queryParameters},
         queryParameters: queryParameters,
-        fragment: uri.fragment
-    );
+        fragment: uri.fragment);
 
-    return http.get(uri, headers: _headers)
-        .then(_handleResponse).onError((error, stackTrace) =>
-        _handleError(error, stackTrace));
+    return http
+        .get(uri, headers: _headers)
+        .then(_handleResponse)
+        .onError((error, stackTrace) => _handleError(error, stackTrace));
   }
 
   Future<Response?> delete(String url) {
-    return http.delete(
-      '${this.base}$url'.toUri()!,
-      headers: _headers,
-    ).then(_handleResponse).onError((error, stackTrace) =>
-        _handleError(error, stackTrace));
+    return http
+        .delete(
+          '${this.base}$url'.toUri()!,
+          headers: _headers,
+        )
+        .then(_handleResponse)
+        .onError((error, stackTrace) => _handleError(error, stackTrace));
   }
 
   Future<Response?> post(String url, {dynamic body}) {
-    return http.post(
-      '${this.base}$url'.toUri()!,
-      headers: _headers,
-      body: _encoder.convert(body),
-    )
-        .then(_handleResponse).onError((error, stackTrace) =>
-        _handleError(error, stackTrace));
+    return http
+        .post(
+          '${this.base}$url'.toUri()!,
+          headers: _headers,
+          body: _encoder.convert(body),
+        )
+        .then(_handleResponse)
+        .onError((error, stackTrace) => _handleError(error, stackTrace));
   }
 
   Future<Response?> put(String url, {dynamic body}) {
-    return http.put(
-      '${this.base}$url'.toUri()!,
-      headers: _headers,
-      body: _encoder.convert(body),
-    )
-        .then(_handleResponse).onError((error, stackTrace) =>
-        _handleError(error, stackTrace));
+    return http
+        .put(
+          '${this.base}$url'.toUri()!,
+          headers: _headers,
+          body: _encoder.convert(body),
+        )
+        .then(_handleResponse)
+        .onError((error, stackTrace) => _handleError(error, stackTrace));
   }
 
   Response? _handleError(Object? e, StackTrace? st) {
-    if(global_scaffold_key == null) return null;
+    if (global_scaffold_key == null) return null;
     SnackBar snackBar = SnackBar(
       content: Text("Error on request: " + e.toString()),
-      action: SnackBarAction(label: "Clear", onPressed: () => global_scaffold_key!.currentState?.clearSnackBars()),);
+      action: SnackBarAction(
+          label: "Clear",
+          onPressed: () => global_scaffold_key!.currentState?.clearSnackBars()),
+    );
     global_scaffold_key!.currentState?.showSnackBar(snackBar);
     return null;
   }
@@ -144,39 +142,38 @@ class Client {
     return map;
   }
 
-
   Error? _handleResponseErrors(http.Response response) {
-    if (response.statusCode < 200 ||
-        response.statusCode >= 400) {
+    if (response.statusCode < 200 || response.statusCode >= 400) {
       Map<String, dynamic> error;
       error = _decoder.convert(response.body);
 
-
       final SnackBar snackBar = SnackBar(
-        content: Text(
-            "Error code " + response.statusCode.toString() + " received."),
-        action: globalNavigatorKey.currentContext == null ? null : SnackBarAction(
-          label: ("Details"),
-          onPressed: () {
-            showDialog(
-              context: globalNavigatorKey.currentContext!,
-                builder: (BuildContext context) =>
-                    AlertDialog(
-                      title: Text("Error ${response.statusCode}"),
-                      content: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text("Message: ${error["message"]}", textAlign: TextAlign.start,),
-                          Text("Url: ${response.request!.url.toString()}"),
-                        ],
-                      )
-                    )
-            );
-          },
-        ),
+        content:
+            Text("Error code " + response.statusCode.toString() + " received."),
+        action: globalNavigatorKey.currentContext == null
+            ? null
+            : SnackBarAction(
+                label: ("Details"),
+                onPressed: () {
+                  showDialog(
+                      context: globalNavigatorKey.currentContext!,
+                      builder: (BuildContext context) => AlertDialog(
+                          title: Text("Error ${response.statusCode}"),
+                          content: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                "Message: ${error["message"]}",
+                                textAlign: TextAlign.start,
+                              ),
+                              Text("Url: ${response.request!.url.toString()}"),
+                            ],
+                          )));
+                },
+              ),
       );
-      if(global_scaffold_key != null && showSnackBar)
+      if (global_scaffold_key != null && showSnackBar)
         global_scaffold_key!.currentState?.showSnackBar(snackBar);
       else
         print("error on request: ${error["message"]}");
