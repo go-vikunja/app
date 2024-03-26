@@ -1,4 +1,3 @@
-import 'dart:ffi';
 import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/global.dart';
@@ -107,7 +106,7 @@ class _ProjectEditPageState extends State<ProjectEditPage> {
                             onPressed: !_loading
                                 ? () {
                               if (_formKey.currentState!.validate()) {
-                                Form.of(context)?.save();
+                                Form.of(context).save();
                                 _saveList(context);
                               }
                             }

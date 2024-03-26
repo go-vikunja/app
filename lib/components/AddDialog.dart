@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/components/datetimePicker.dart';
-import 'package:vikunja_app/global.dart';
-import 'dart:developer';
-import '../models/task.dart';
 
 enum NewTaskDue {day,week, month, custom}
 // TODO: add to enum above

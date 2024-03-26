@@ -1,9 +1,7 @@
-import 'dart:convert';
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/models/user.dart';
-import 'package:vikunja_app/api/client.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 class LoginWithWebView extends StatefulWidget {
@@ -35,7 +33,7 @@ class LoginWithWebViewState extends State<LoginWithWebView> {
       ))
 
       ..loadRequest(Uri.parse(widget.frontEndUrl)).then((value) => {
-        webViewController!.runJavaScript("localStorage.clear(); location.href=location.href;")
+        webViewController.runJavaScript("localStorage.clear(); location.href=location.href;")
       });
 
     /*
@@ -60,7 +58,7 @@ class LoginWithWebViewState extends State<LoginWithWebView> {
       body: WebViewWidget(controller: webViewController,)
     ),
     onWillPop: () async {
-      String? currentUrl = await webViewController?.currentUrl();
+      String? currentUrl = await webViewController.currentUrl();
       if (currentUrl != null) {
         bool hasPopped = await _handlePageFinished(currentUrl);
         return Future.value(!hasPopped);
@@ -71,35 +69,33 @@ class LoginWithWebViewState extends State<LoginWithWebView> {
 
   Future<bool> _handlePageFinished(String pageLocation) async {
     log("handlePageFinished");
-    if(webViewController != null) {
-      String localStorage = (await webViewController!
-          .runJavaScriptReturningResult("JSON.stringify(localStorage);")).toString();
+    String localStorage = (await webViewController
+        .runJavaScriptReturningResult("JSON.stringify(localStorage);")).toString();
 
-      String apiUrl = (await webViewController!.runJavaScriptReturningResult("API_URL")).toString();
-      String token = (await webViewController!.runJavaScriptReturningResult("localStorage['token']")).toString();
-      if (localStorage.toString() != "{}") {
-        apiUrl = apiUrl.replaceAll("\"", "");
-        token = token.replaceAll("\"", "");
-        if(!apiUrl.startsWith("http")) {
-          if(pageLocation.endsWith("/"))
-            pageLocation = pageLocation.substring(0,pageLocation.length-1);
-          apiUrl = pageLocation + apiUrl;
-        }
+    String apiUrl = (await webViewController.runJavaScriptReturningResult("API_URL")).toString();
+    String token = (await webViewController.runJavaScriptReturningResult("localStorage['token']")).toString();
+    if (localStorage.toString() != "{}") {
+      apiUrl = apiUrl.replaceAll("\"", "");
+      token = token.replaceAll("\"", "");
+      if(!apiUrl.startsWith("http")) {
+        if(pageLocation.endsWith("/"))
+          pageLocation = pageLocation.substring(0,pageLocation.length-1);
+        apiUrl = pageLocation + apiUrl;
+      }
 
-        if (apiUrl != "null" && token != "null") {
-          BaseTokenPair baseTokenPair = BaseTokenPair(
-              apiUrl, token);
-          if(destroyed)
-            return true;
-          destroyed = true;
-          print("pop now");
-          Navigator.pop(context, baseTokenPair);
-
+      if (apiUrl != "null" && token != "null") {
+        BaseTokenPair baseTokenPair = BaseTokenPair(
+            apiUrl, token);
+        if(destroyed)
           return true;
-        }
+        destroyed = true;
+        print("pop now");
+        Navigator.pop(context, baseTokenPair);
+
+        return true;
       }
     }
-    return false;
+      return false;
   }
 
 }

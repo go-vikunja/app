@@ -60,7 +60,7 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
         Text(
           widget.task.identifier.isNotEmpty
               ? '#${widget.task.identifier}' : '${widget.task.id}',
-          style: (theme.textTheme.subtitle2 ?? TextStyle()).copyWith(
+          style: (theme.textTheme.titleSmall ?? TextStyle()).copyWith(
             color: Colors.grey,
           ),
         ),
@@ -283,8 +283,8 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
                   SizedBox(
                     height: (cardSize.height / 2) + (dropAbove ? dropBoxSize.height : 0),
                     child: DragTarget<TaskData>(
-                      onWillAccept: (data) => dragTargetOnWillAccept(data!, DropLocation.above),
-                      onAccept: dragTargetOnAccept,
+                      onWillAcceptWithDetails: (data) => dragTargetOnWillAccept(data, DropLocation.above),
+                      onAcceptWithDetails: dragTargetOnAccept,
                       onLeave: dragTargetOnLeave,
                       builder: (_, __, ___) => SizedBox.expand(),
                     ),
@@ -292,8 +292,8 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
                   SizedBox(
                     height: (cardSize.height / 2) + (dropBelow ? dropBoxSize.height : 0),
                     child: DragTarget<TaskData>(
-                      onWillAccept: (data) => dragTargetOnWillAccept(data!, DropLocation.below),
-                      onAccept: dragTargetOnAccept,
+                      onWillAcceptWithDetails: (data) => dragTargetOnWillAccept(data, DropLocation.below),
+                      onAcceptWithDetails: dragTargetOnAccept,
                       onLeave: dragTargetOnLeave,
                       builder: (_, __, ___) => SizedBox.expand(),
                     ),

@@ -12,7 +12,6 @@ import 'package:vikunja_app/models/list.dart';
 import 'package:vikunja_app/models/task.dart';
 import 'package:vikunja_app/models/bucket.dart';
 import 'package:vikunja_app/pages/list/list_edit.dart';
-import 'package:vikunja_app/pages/list/task_edit.dart';
 import 'package:vikunja_app/stores/list_store.dart';
 
 import '../../components/pagestatus.dart';

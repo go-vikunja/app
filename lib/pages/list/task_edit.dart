@@ -454,7 +454,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
             onPressed: !_loading
                 ? () {
                     if (_formKey.currentState!.validate()) {
-                      Form.of(_listKey.currentContext!)!.save();
+                      Form.of(_listKey.currentContext!).save();
                       _saveTask(_listKey.currentContext!);
                     }
                   }

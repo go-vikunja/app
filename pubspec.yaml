@@ -37,6 +37,10 @@ dependencies:
   flutter_downloader: ^1.11.6
 
 
+  meta: any
+  timezone: any
+  json_annotation: any
+  collection: any
 dev_dependencies:
   flutter_test:
     sdk: flutter

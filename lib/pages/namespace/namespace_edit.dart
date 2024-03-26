@@ -83,7 +83,7 @@ class _NamespaceEditPageState extends State<NamespaceEditPage> {
                             onPressed: !_loading
                                 ? () {
                                     if (_formKey.currentState!.validate()) {
-                                      Form.of(context)?.save();
+                                      Form.of(context).save();
                                       _saveNamespace(context);
                                     }
                                   }
