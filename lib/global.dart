@@ -129,7 +129,12 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
     });
   }
 
-  void changeUser(User newUser, {String? token, String? base}) async {
+  void changeUser(
+    User newUser, {
+    String? token,
+    String? base,
+    String? xClientToken,
+  }) async {
     setState(() {
       _loading = true;
     });
@@ -145,6 +150,16 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
       // Write new base to secure storage
       await _storage.write(key: "${newUser.id.toString()}_base", value: base);
     }
+
+    if (xClientToken == null) {
+      xClientToken =
+          await _storage.read(key: "${newUser.id.toString()}_x_client_token");
+    } else {
+      // Write new xClientToken to secure storage
+      await _storage.write(
+          key: "${newUser.id.toString()}_x_client_token", value: xClientToken);
+    }
+
     // Set current user in storage
     await _storage.write(key: 'currentUser', value: newUser.id.toString());
     client.configure(token: token, base: base, authenticated: true);

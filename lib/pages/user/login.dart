@@ -357,7 +357,12 @@ class _LoginPageState extends State<LoginPage> {
       }
 
       if (newUser.error == 0)
-        vGlobal.changeUser(newUser.user!, token: newUser.token, base: _server);
+        vGlobal.changeUser(
+          newUser.user!,
+          token: newUser.token,
+          base: _server,
+          xClientToken: _xClientToken,
+        );
     } catch (ex) {
       print(ex);
     } finally {
