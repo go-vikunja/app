@@ -52,7 +52,7 @@ void callbackDispatcher() {
           .getIgnoreCertificates()
           .then((value) async {
         print("ignoring: $value");
-        client.reload_ignore_certs(value == "1");
+        client.reloadIgnoreCerts(value == "1");
 
         TaskAPIService taskService = TaskAPIService(client);
         NotificationClass nc = NotificationClass();
