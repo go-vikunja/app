@@ -35,9 +35,6 @@ class IgnoreCertHttpOverrides extends HttpOverrides {
 
 @pragma('vm:entry-point')
 void callbackDispatcher() {
-  if (kIsWeb) {
-    return;
-  }
   Workmanager().executeTask((task, inputData) async {
     print(
         "Native called background task: $task"); //simpleTask will be emitted here.
@@ -45,6 +42,7 @@ void callbackDispatcher() {
       Client client = Client(null,
           token: inputData["client_token"],
           base: inputData["client_base"],
+          xClientToken: inputData["x_client_token"],
           authenticated: true);
       tz.initializeTimeZones();
 
@@ -70,13 +68,19 @@ void callbackDispatcher() {
         return Future.value(true);
       }
       var token = await _storage.read(key: currentUser);
-
       var base = await _storage.read(key: '${currentUser}_base');
+      var xClientToken =
+          await _storage.read(key: '${currentUser}_x_client_token');
       if (token == null || base == null) {
         return Future.value(true);
       }
       Client client = Client(null);
-      client.configure(token: token, base: base, authenticated: true);
+      client.configure(
+        token: token,
+        base: base,
+        xClientToken: xClientToken,
+        authenticated: true,
+      );
       // load new token from server to avoid expiration
       String? newToken = await UserAPIService(client).getToken();
       if (newToken != null) {
@@ -114,16 +118,15 @@ void main() async {
     print("Failed to initialize workmanager: $e");
   }
   runApp(VikunjaGlobal(
-    child: new VikunjaApp(
-      home: HomePage(),
-      key: UniqueKey(),
-      navkey: globalNavigatorKey,
-    ),
-    login: new VikunjaApp(
-      home: LoginPage(),
-      key: UniqueKey(),
-    ),
-  ));
+      child: new VikunjaApp(
+        home: HomePage(),
+        key: UniqueKey(),
+        navkey: globalNavigatorKey,
+      ),
+      login: new VikunjaApp(
+        home: LoginPage(),
+        key: UniqueKey(),
+      )));
 }
 
 final ValueNotifier<bool> updateTheme = ValueNotifier(false);

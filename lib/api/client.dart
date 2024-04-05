@@ -18,29 +18,34 @@ class Client {
   final JsonEncoder _encoder = new JsonEncoder();
   String _token = '';
   String _base = '';
+  String _xClientToken = '';
   bool authenticated = false;
   bool ignoreCertificates = false;
   bool showSnackBar = true;
 
   String get base => _base;
   String get token => _token;
+  String get xClientToken => _xClientToken;
 
   String? post_body;
 
   @override
   bool operator ==(Object otherClient) {
     if (otherClient is! Client) return false;
-    return otherClient._token == _token;
+    return otherClient._token == _token &&
+        otherClient._xClientToken == _xClientToken;
   }
 
   Client(
     this.global_scaffold_key, {
     String? token,
+    String? xClientToken,
     String? base,
     bool authenticated = false,
   }) {
     configure(
       token: token,
+      xClientToken: xClientToken,
       base: base,
       authenticated: authenticated,
     );
@@ -76,6 +81,7 @@ class Client {
         'Authorization': _token != '' ? 'Bearer $_token' : '',
         'Content-Type': 'application/json',
         'User-Agent': 'Vikunja Mobile App',
+        'X-Client-Token': _xClientToken
       };
 
   get headers => _headers;
@@ -87,8 +93,10 @@ class Client {
     String? token,
     String? base,
     bool? authenticated,
+    String? xClientToken,
   }) {
     if (token != null) _token = token;
+    if (xClientToken != null) _xClientToken = xClientToken;
     if (base != null) {
       base = base.replaceAll(" ", "");
       if (base.endsWith("/")) base = base.substring(0, base.length - 1);
@@ -98,6 +106,7 @@ class Client {
   }
 
   void reset() {
+    _token = _base = _xClientToken = '';
     authenticated = false;
   }
 

@@ -9,8 +9,13 @@ class UserAPIService extends APIService implements UserService {
   UserAPIService(Client client) : super(client);
 
   @override
-  Future<UserTokenPair> login(String username, password,
-      {bool rememberMe = false, String? totp}) async {
+  Future<UserTokenPair> login(
+    String username,
+    password, {
+    bool rememberMe = false,
+    String? totp,
+    String? xClientToken,
+  }) async {
     var body = {
       'long_token': rememberMe,
       'password': password,
@@ -26,7 +31,7 @@ class UserAPIService extends APIService implements UserService {
           error: response != null ? response.body["code"] : 0,
           errorString:
               response != null ? response.body["message"] : "Login error"));
-    client.configure(token: token);
+    client.configure(token: token, xClientToken: xClientToken);
     return UserAPIService(client)
         .getCurrentUser()
         .then((user) => UserTokenPair(user, token));

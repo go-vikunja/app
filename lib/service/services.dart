@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:vikunja_app/api/response.dart';
 import 'package:vikunja_app/models/label.dart';
@@ -221,8 +220,13 @@ abstract class BucketService {
 }
 
 abstract class UserService {
-  Future<UserTokenPair> login(String username, String password,
-      {bool rememberMe = false, String totp});
+  Future<UserTokenPair> login(
+    String username,
+    String password, {
+    bool rememberMe = false,
+    String totp,
+    String? xClientToken,
+  });
 
   Future<UserTokenPair?> register(String username, email, password);
 
