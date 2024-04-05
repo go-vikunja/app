@@ -11,7 +11,7 @@ import 'package:vikunja_app/theme/constants.dart';
 
 import '../stores/project_store.dart';
 
-enum DropLocation {above, below, none}
+enum DropLocation { above, below, none }
 
 class TaskData {
   final Task task;
@@ -37,7 +37,8 @@ class BucketTaskCard extends StatefulWidget {
   State<BucketTaskCard> createState() => _BucketTaskCardState();
 }
 
-class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAliveClientMixin {
+class _BucketTaskCardState extends State<BucketTaskCard>
+    with AutomaticKeepAliveClientMixin {
   Size? _cardSize;
   bool _dragging = false;
   DropLocation _dropLocation = DropLocation.none;
@@ -49,7 +50,8 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
     if (_cardSize == null) _updateCardSize(context);
 
     final taskState = Provider.of<ProjectProvider>(context);
-    final bucket = taskState.buckets[taskState.buckets.indexWhere((b) => b.id == widget.task.bucketId)];
+    final bucket = taskState.buckets[
+        taskState.buckets.indexWhere((b) => b.id == widget.task.bucketId)];
     // default chip height: 32
     const double chipHeight = 28;
     const chipConstraints = BoxConstraints(maxHeight: chipHeight);
@@ -59,7 +61,8 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
       children: <Widget>[
         Text(
           widget.task.identifier.isNotEmpty
-              ? '#${widget.task.identifier}' : '${widget.task.id}',
+              ? '#${widget.task.identifier}'
+              : '${widget.task.id}',
           style: (theme.textTheme.subtitle2 ?? TextStyle()).copyWith(
             color: Colors.grey,
           ),
@@ -67,21 +70,25 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
       ],
     );
     if (widget.task.done) {
-      identifierRow.children.insert(0, Container(
-        constraints: chipConstraints,
-        padding: EdgeInsets.only(right: 4),
-        child: FittedBox(
-          child: Chip(
-            label: Text('Done'),
-            labelStyle: (theme.textTheme.labelLarge ?? TextStyle()).copyWith(
-              fontWeight: FontWeight.bold,
-              color: theme.brightness == Brightness.dark
-                  ? Colors.black : Colors.white,
+      identifierRow.children.insert(
+          0,
+          Container(
+            constraints: chipConstraints,
+            padding: EdgeInsets.only(right: 4),
+            child: FittedBox(
+              child: Chip(
+                label: Text('Done'),
+                labelStyle:
+                    (theme.textTheme.labelLarge ?? TextStyle()).copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: theme.brightness == Brightness.dark
+                      ? Colors.black
+                      : Colors.white,
+                ),
+                backgroundColor: vGreen,
+              ),
             ),
-            backgroundColor: vGreen,
-          ),
-        ),
-      ));
+          ));
     }
 
     final titleRow = Row(
@@ -89,9 +96,11 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
         Expanded(
           child: Text(
             widget.task.title,
-            style: (theme.textTheme.titleMedium ?? TextStyle(fontSize: 16)).copyWith(
+            style: (theme.textTheme.titleMedium ?? TextStyle(fontSize: 16))
+                .copyWith(
               color: theme.brightness == Brightness.dark
-                  ? Colors.white : Colors.black,
+                  ? Colors.white
+                  : Colors.black,
             ),
           ),
         ),
@@ -145,10 +154,10 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
             backgroundColor: Colors.grey,
           ),
         ),
-        label: Text(
-            (checkboxStatistics.checked == checkboxStatistics.total ? '' : '${checkboxStatistics.checked} of ')
-                + '${checkboxStatistics.total} tasks'
-        ),
+        label: Text((checkboxStatistics.checked == checkboxStatistics.total
+                ? ''
+                : '${checkboxStatistics.checked} of ') +
+            '${checkboxStatistics.total} tasks'),
       ));
     }
     if (widget.task.attachments.isNotEmpty) {
@@ -185,7 +194,8 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
                   child: identifierRow,
                 ),
                 Padding(
-                  padding: EdgeInsets.only(top: 4, bottom: labelRow.children.isNotEmpty ? 8 : 0),
+                  padding: EdgeInsets.only(
+                      top: 4, bottom: labelRow.children.isNotEmpty ? 8 : 0),
                   child: Container(
                     constraints: rowConstraints,
                     child: titleRow,
@@ -213,7 +223,9 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
 
     return LongPressDraggable<TaskData>(
       data: TaskData(widget.task, _cardSize),
-      maxSimultaneousDrags: taskState.taskDragging ? 0 : 1, // only one task can be dragged at a time
+      maxSimultaneousDrags: taskState.taskDragging
+          ? 0
+          : 1, // only one task can be dragged at a time
       onDragStarted: () {
         taskState.taskDragging = true;
         setState(() => _dragging = true);
@@ -223,14 +235,16 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
         taskState.taskDragging = false;
         setState(() => _dragging = false);
       },
-      feedback: (_cardSize == null) ? SizedBox.shrink() : SizedBox.fromSize(
-        size: _cardSize,
-        child: Card(
-          color: card.color,
-          child: (card.child as InkWell).child,
-          elevation: (card.elevation ?? 0) + 5,
-        ),
-      ),
+      feedback: (_cardSize == null)
+          ? SizedBox.shrink()
+          : SizedBox.fromSize(
+              size: _cardSize,
+              child: Card(
+                color: card.color,
+                child: (card.child as InkWell).child,
+                elevation: (card.elevation ?? 0) + 5,
+              ),
+            ),
       childWhenDragging: SizedBox.shrink(),
       child: () {
         if (_dragging || _cardSize == null) return card;
@@ -241,16 +255,19 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
           color: Colors.grey,
           child: SizedBox.fromSize(size: dropBoxSize),
         );
-        final dropAbove = taskState.taskDragging && _dropLocation == DropLocation.above;
-        final dropBelow = taskState.taskDragging && _dropLocation == DropLocation.below;
-        final DragTargetLeave<TaskData> dragTargetOnLeave = (data) => setState(() {
-          _dropLocation = DropLocation.none;
-          _dropData = null;
-        });
-        final dragTargetOnWillAccept = (TaskData data, DropLocation dropLocation) {
-          if (data.task.bucketId != bucket.id)
-            if (bucket.limit != 0 && bucket.tasks.length >= bucket.limit)
-              return false;
+        final dropAbove =
+            taskState.taskDragging && _dropLocation == DropLocation.above;
+        final dropBelow =
+            taskState.taskDragging && _dropLocation == DropLocation.below;
+        final DragTargetLeave<TaskData> dragTargetOnLeave =
+            (data) => setState(() {
+                  _dropLocation = DropLocation.none;
+                  _dropData = null;
+                });
+        final dragTargetOnWillAccept =
+            (TaskData data, DropLocation dropLocation) {
+          if (data.task.bucketId != bucket.id) if (bucket.limit != 0 &&
+              bucket.tasks.length >= bucket.limit) return false;
           setState(() {
             _dropLocation = dropLocation;
             _dropData = data;
@@ -259,7 +276,8 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
         };
         final DragTargetAccept<TaskData> dragTargetOnAccept = (data) {
           final index = bucket.tasks.indexOf(widget.task);
-          widget.onAccept(data.task, _dropLocation == DropLocation.above ? index : index + 1);
+          widget.onAccept(data.task,
+              _dropLocation == DropLocation.above ? index : index + 1);
           setState(() {
             _dropLocation = DropLocation.none;
             _dropData = null;
@@ -268,7 +286,8 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
 
         return SizedBox(
           width: cardSize.width,
-          height: cardSize.height + (dropAbove || dropBelow ? dropBoxSize.height + 4 : 0),
+          height: cardSize.height +
+              (dropAbove || dropBelow ? dropBoxSize.height + 4 : 0),
           child: Stack(
             children: <Widget>[
               Column(
@@ -281,18 +300,22 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
               Column(
                 children: <SizedBox>[
                   SizedBox(
-                    height: (cardSize.height / 2) + (dropAbove ? dropBoxSize.height : 0),
+                    height: (cardSize.height / 2) +
+                        (dropAbove ? dropBoxSize.height : 0),
                     child: DragTarget<TaskData>(
-                      onWillAccept: (data) => dragTargetOnWillAccept(data!, DropLocation.above),
+                      onWillAccept: (data) =>
+                          dragTargetOnWillAccept(data!, DropLocation.above),
                       onAccept: dragTargetOnAccept,
                       onLeave: dragTargetOnLeave,
                       builder: (_, __, ___) => SizedBox.expand(),
                     ),
                   ),
                   SizedBox(
-                    height: (cardSize.height / 2) + (dropBelow ? dropBoxSize.height : 0),
+                    height: (cardSize.height / 2) +
+                        (dropBelow ? dropBoxSize.height : 0),
                     child: DragTarget<TaskData>(
-                      onWillAccept: (data) => dragTargetOnWillAccept(data!, DropLocation.below),
+                      onWillAccept: (data) =>
+                          dragTargetOnWillAccept(data!, DropLocation.below),
                       onAccept: dragTargetOnAccept,
                       onLeave: dragTargetOnLeave,
                       builder: (_, __, ___) => SizedBox.expand(),
@@ -309,9 +332,10 @@ class _BucketTaskCardState extends State<BucketTaskCard> with AutomaticKeepAlive
 
   void _updateCardSize(BuildContext context) {
     SchedulerBinding.instance.addPostFrameCallback((_) {
-      if (mounted) setState(() {
-        _cardSize = context.size;
-      });
+      if (mounted)
+        setState(() {
+          _cardSize = context.size;
+        });
     });
   }
 

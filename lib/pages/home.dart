@@ -28,7 +28,6 @@ class HomePageState extends State<HomePage> {
   int _selectedDrawerIndex = 0, _previousDrawerIndex = 0;
   Widget? drawerItem;
 
-
   List<Widget> widgets = [
     ChangeNotifierProvider<ProjectProvider>(
       create: (_) => new ProjectProvider(),

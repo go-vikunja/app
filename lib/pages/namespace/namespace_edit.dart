@@ -7,7 +7,8 @@ import 'package:vikunja_app/theme/buttonText.dart';
 class NamespaceEditPage extends StatefulWidget {
   final Namespace namespace;
 
-  NamespaceEditPage({required this.namespace}) : super(key: Key(namespace.toString()));
+  NamespaceEditPage({required this.namespace})
+      : super(key: Key(namespace.toString()));
 
   @override
   State<StatefulWidget> createState() => _NamespaceEditPageState();
@@ -63,7 +64,8 @@ class _NamespaceEditPageState extends State<NamespaceEditPage> {
                       maxLines: null,
                       keyboardType: TextInputType.multiline,
                       initialValue: widget.namespace.description,
-                      onSaved: (description) => _description = description ?? '',
+                      onSaved: (description) =>
+                          _description = description ?? '',
                       validator: (description) {
                         //if (description.length > 1000) {
                         //  return 'The description can have a maximum of 1000 characters.';

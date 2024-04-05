@@ -8,7 +8,9 @@ import 'package:vikunja_app/service/services.dart';
 
 class ListAPIService extends APIService implements ListService {
   FlutterSecureStorage _storage;
-  ListAPIService(Client client, FlutterSecureStorage storage) : _storage = storage, super(client);
+  ListAPIService(Client client, FlutterSecureStorage storage)
+      : _storage = storage,
+        super(client);
 
   @override
   Future<TaskList?> create(namespaceId, TaskList tl) {
@@ -16,9 +18,9 @@ class ListAPIService extends APIService implements ListService {
     return client
         .put('/namespaces/$namespaceId/lists', body: tl.toJSON())
         .then((response) {
-          if (response == null) return null;
-          return TaskList.fromJson(response.body);
-        });
+      if (response == null) return null;
+      return TaskList.fromJson(response.body);
+    });
   }
 
   @override
@@ -32,12 +34,10 @@ class ListAPIService extends APIService implements ListService {
       if (response == null) return null;
       final map = response.body;
       if (map.containsKey('id')) {
-        return client
-            .get("/lists/$listId/tasks")
-            .then((tasks) {
-              map['tasks'] = tasks?.body;
-              return TaskList.fromJson(map);
-            });
+        return client.get("/lists/$listId/tasks").then((tasks) {
+          map['tasks'] = tasks?.body;
+          return TaskList.fromJson(map);
+        });
       }
       return TaskList.fromJson(map);
     });
@@ -45,47 +45,44 @@ class ListAPIService extends APIService implements ListService {
 
   @override
   Future<List<TaskList>?> getAll() {
-    return client.get('/lists').then(
-        (list) {
-          if (list == null || list.statusCode != 200) return null;
-          if (list.body.toString().isEmpty)
-            return Future.value([]);
-          print(list.statusCode);
-          return convertList(list.body, (result) => TaskList.fromJson(result));});
+    return client.get('/lists').then((list) {
+      if (list == null || list.statusCode != 200) return null;
+      if (list.body.toString().isEmpty) return Future.value([]);
+      print(list.statusCode);
+      return convertList(list.body, (result) => TaskList.fromJson(result));
+    });
   }
 
   @override
   Future<List<TaskList>?> getByNamespace(int namespaceId) {
     // TODO there needs to be a better way for this. /namespaces/-2/lists should
     // return favorite lists
-    if(namespaceId == -2) {
+    if (namespaceId == -2) {
       // Favourites.
       return getAll().then((value) {
         if (value == null) return null;
-        value.removeWhere((element) => !element.isFavorite); return value;});
+        value.removeWhere((element) => !element.isFavorite);
+        return value;
+      });
     }
-    return client.get('/namespaces/$namespaceId/lists').then(
-        (list) {
-          if (list == null || list.statusCode != 200) return null;
-          return convertList(list.body, (result) => TaskList.fromJson(result));
-        });
+    return client.get('/namespaces/$namespaceId/lists').then((list) {
+      if (list == null || list.statusCode != 200) return null;
+      return convertList(list.body, (result) => TaskList.fromJson(result));
+    });
   }
 
   @override
   Future<TaskList?> update(TaskList tl) {
-    return client
-        .post('/lists/${tl.id}', body: tl.toJSON())
-        .then((response) {
-          if (response == null) return null;
-          return TaskList.fromJson(response.body);
-        });
+    return client.post('/lists/${tl.id}', body: tl.toJSON()).then((response) {
+      if (response == null) return null;
+      return TaskList.fromJson(response.body);
+    });
   }
 
   @override
   Future<String> getDisplayDoneTasks(int listId) {
-    return _storage.read(key: "display_done_tasks_list_$listId").then((value)
-    {
-      if(value == null) {
+    return _storage.read(key: "display_done_tasks_list_$listId").then((value) {
+      if (value == null) {
         // TODO: implement default value
         setDisplayDoneTasks(listId, "1");
         return Future.value("1");

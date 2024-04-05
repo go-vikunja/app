@@ -66,6 +66,6 @@ Duration? getDurationFromType(String? value, String? type) {
     case 'Years':
       return Duration(days: val * 365);
   }
-  
+
   return null;
 }
