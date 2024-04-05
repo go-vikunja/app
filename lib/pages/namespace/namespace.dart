@@ -84,10 +84,8 @@ class _NamespacePageState extends State<NamespacePage> {
         );
         break;
       case PageStatus.empty:
-        body = new Stack(children: [
-          ListView(),
-          Center(child: Text("This view is empty"))
-        ]);
+        body = new Stack(
+            children: [ListView(), Center(child: Text("This view is empty"))]);
         break;
     }
     return new Scaffold(
@@ -112,7 +110,6 @@ class _NamespacePageState extends State<NamespacePage> {
               onPressed: () => _addListDialog(context),
               child: const Icon(Icons.add))),
     );
-
   }
 
   @override

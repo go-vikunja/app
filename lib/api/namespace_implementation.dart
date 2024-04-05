@@ -42,8 +42,8 @@ class NamespaceAPIService extends APIService implements NamespaceService {
     return client
         .post('/namespaces/${ns.id}', body: ns.toJSON())
         .then((response) {
-          if (response == null) return null;
-          return Namespace.fromJson(response.body);
+      if (response == null) return null;
+      return Namespace.fromJson(response.body);
     });
   }
 }
