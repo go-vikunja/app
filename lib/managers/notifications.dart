@@ -33,7 +33,7 @@ class NotificationClass {
       channelDescription: "description",
       icon: 'vikunja_notification_logo',
       importance: notifs.Importance.high);
-  late notifs.IOSNotificationDetails iOSSpecifics;
+  late notifs.DarwinNotificationDetails iOSSpecifics;
   late notifs.NotificationDetails platformChannelSpecificsDueDate;
   late notifs.NotificationDetails platformChannelSpecificsReminders;
 
@@ -48,7 +48,7 @@ class NotificationClass {
   Future<void> _initNotifications() async {
     var initializationSettingsAndroid =
         notifs.AndroidInitializationSettings('vikunja_logo');
-    var initializationSettingsIOS = notifs.IOSInitializationSettings(
+    var initializationSettingsIOS = notifs.DarwinInitializationSettings(
         requestAlertPermission: false,
         requestBadgePermission: false,
         requestSoundPermission: false,
@@ -60,17 +60,18 @@ class NotificationClass {
     var initializationSettings = notifs.InitializationSettings(
         android: initializationSettingsAndroid, iOS: initializationSettingsIOS);
     await notificationsPlugin.initialize(initializationSettings,
-        onSelectNotification: (String? payload) async {
+        onDidReceiveNotificationResponse:
+            (notifs.NotificationResponse resp) async {
       if (payload != null) {
-        print('notification payload: ' + payload);
-        selectNotificationSubject.add(payload);
+        print('notification payload: ' + resp.payload!);
+        selectNotificationSubject.add(resp.payload!);
       }
     });
     print("Notifications initialised successfully");
   }
 
   Future<void> notificationInitializer() async {
-    iOSSpecifics = notifs.IOSNotificationDetails();
+    iOSSpecifics = notifs.DarwinNotificationDetails();
     platformChannelSpecificsDueDate = notifs.NotificationDetails(
         android: androidSpecificsDueDate, iOS: iOSSpecifics);
     platformChannelSpecificsReminders = notifs.NotificationDetails(
