@@ -10,8 +10,7 @@ class ServerAPIService extends APIService implements ServerService {
   @override
   Future<Server?> getInfo() {
     return client.get('/info').then((value) {
-      if(value == null)
-        return null;
+      if (value == null) return null;
       return Server.fromJson(value.body);
     });
   }

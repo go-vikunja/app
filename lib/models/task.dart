@@ -67,6 +67,7 @@ class Task {
     }
     return Colors.white;
   }
+
   bool get hasDueDate => dueDate?.year != 1;
 
   Task.fromJson(Map<String, dynamic> json)
@@ -131,7 +132,8 @@ class Task {
         'end_date': endDate?.toUtc().toIso8601String(),
         'priority': priority,
         'repeat_after': repeatAfter?.inSeconds,
-        'hex_color': color?.value.toRadixString(16).padLeft(8, '0').substring(2),
+        'hex_color':
+            color?.value.toRadixString(16).padLeft(8, '0').substring(2),
         'kanban_position': kanbanPosition,
         'percent_done': percent_done,
         'project_id': projectId,

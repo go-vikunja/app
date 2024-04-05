@@ -12,15 +12,14 @@ class BucketAPIService extends APIService implements BucketService {
     return client
         .put('/projects/$projectId/buckets', body: bucket.toJSON())
         .then((response) {
-          if (response == null) return null;
-          return Bucket.fromJSON(response.body);
-        });
+      if (response == null) return null;
+      return Bucket.fromJSON(response.body);
+    });
   }
 
   @override
   Future delete(int projectId, int bucketId) {
-    return client
-        .delete('/projects/$projectId/buckets/$bucketId');
+    return client.delete('/projects/$projectId/buckets/$bucketId');
   }
 
   /* Not implemented in the Vikunja API
@@ -35,13 +34,13 @@ class BucketAPIService extends APIService implements BucketService {
   @override
   Future<Response?> getAllByList(int projectId,
       [Map<String, List<String>>? queryParameters]) {
-    return client
-        .get('/projects/$projectId/buckets', queryParameters)
-        .then((response) => response != null ? new Response(
-            convertList(response.body, (result) => Bucket.fromJSON(result)),
-            response.statusCode,
-            response.headers
-        ) : null);
+    return client.get('/projects/$projectId/buckets', queryParameters).then(
+        (response) => response != null
+            ? new Response(
+                convertList(response.body, (result) => Bucket.fromJSON(result)),
+                response.statusCode,
+                response.headers)
+            : null);
   }
 
   @override
@@ -51,10 +50,11 @@ class BucketAPIService extends APIService implements BucketService {
   @override
   Future<Bucket?> update(Bucket bucket) {
     return client
-        .post('/projects/${bucket.projectId}/buckets/${bucket.id}', body: bucket.toJSON())
+        .post('/projects/${bucket.projectId}/buckets/${bucket.id}',
+            body: bucket.toJSON())
         .then((response) {
-          if (response == null) return null;
-          return Bucket.fromJSON(response.body);
-        });
+      if (response == null) return null;
+      return Bucket.fromJSON(response.body);
+    });
   }
 }

@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'package:http/http.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-
 class VersionChecker {
   GlobalKey<ScaffoldMessengerState> snackbarKey;
   VersionChecker(this.snackbarKey);
@@ -46,7 +45,8 @@ class VersionChecker {
           content: Text("New version available: $latest"),
           action: SnackBarAction(
               label: "View on Github",
-              onPressed: () => launchUrl(Uri.parse(repo), mode: LaunchMode.externalApplication)),
+              onPressed: () => launchUrl(Uri.parse(repo),
+                  mode: LaunchMode.externalApplication)),
         );
         snackbarKey.currentState?.showSnackBar(snackBar);
       }

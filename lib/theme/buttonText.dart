@@ -13,7 +13,9 @@ class VikunjaButtonText extends StatelessWidget {
     return Text(text);
     return Text(
       text,
-      style: TextStyle(color: Theme.of(context).primaryTextTheme.labelMedium?.color, fontWeight: FontWeight.w600),
+      style: TextStyle(
+          color: Theme.of(context).primaryTextTheme.labelMedium?.color,
+          fontWeight: FontWeight.w600),
     );
   }
 }
