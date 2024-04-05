@@ -9,6 +9,9 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v1
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v1
         with:
