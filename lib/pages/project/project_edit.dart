@@ -1,4 +1,3 @@
-import 'dart:ffi';
 import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/global.dart';

@@ -1,7 +1,5 @@
-import 'dart:ffi';
 import 'dart:developer';
 import 'package:flutter/material.dart';
-import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/models/list.dart';
 import 'package:vikunja_app/theme/button.dart';
