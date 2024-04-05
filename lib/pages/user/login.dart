@@ -264,7 +264,7 @@ class _LoginPageState extends State<LoginPage> {
                         value: client.ignoreCertificates,
                         onChanged: (value) {
                           setState(
-                              () => client.reload_ignore_certs(value ?? false));
+                              () => client.reloadIgnoreCerts(value ?? false));
                           VikunjaGlobal.of(context)
                               .settingsManager
                               .setIgnoreCertificates(value ?? false);

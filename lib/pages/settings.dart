@@ -173,7 +173,7 @@ class SettingsPageState extends State<SettingsPage> {
                   value: ignoreCertificates,
                   onChanged: (value) {
                     setState(() => ignoreCertificates = value);
-                    VikunjaGlobal.of(context).client.reload_ignore_certs(value);
+                    VikunjaGlobal.of(context).client.reloadIgnoreCerts(value);
                   })
               : ListTile(title: Text("...")),
           Divider(),
