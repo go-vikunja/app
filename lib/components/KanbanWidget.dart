@@ -7,7 +7,6 @@ import 'package:provider/provider.dart';
 
 import '../global.dart';
 import '../models/bucket.dart';
-import '../models/list.dart';
 import '../models/project.dart';
 import '../pages/list/list.dart';
 import '../stores/project_store.dart';

@@ -324,10 +324,10 @@ class SettingsManager {
         key: "workmanager-duration", value: duration.inMinutes.toString());
   }
 
-  Future<List<String>?> getPastServers() {
-    return _storage
-        .read(key: "recent-servers")
-        .then((value) => (jsonDecode(value!) as List<dynamic>).cast<String>());
+  Future<List<String>?> getPastServers() async {
+    String jsonString = await _storage.read(key: "recent-servers") ?? "[]";
+    List<dynamic> server = jsonDecode(jsonString);
+    return server.map((e) => e as String).toList();
   }
 
   Future<void> setPastServers(List<String>? server) {
