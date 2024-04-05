@@ -1,4 +1,3 @@
-import 'package:meta/meta.dart';
 import 'package:vikunja_app/models/label.dart';
 
 class LabelTaskBulk {

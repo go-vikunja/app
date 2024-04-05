@@ -16,12 +16,14 @@ class SliverBucketPersistentHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return SliverPersistentHeader(
       pinned: true,
-      delegate: _SliverBucketPersistentHeaderDelegate(child, minExtent, maxExtent),
+      delegate:
+          _SliverBucketPersistentHeaderDelegate(child, minExtent, maxExtent),
     );
   }
 }
 
-class _SliverBucketPersistentHeaderDelegate extends SliverPersistentHeaderDelegate {
+class _SliverBucketPersistentHeaderDelegate
+    extends SliverPersistentHeaderDelegate {
   final Widget child;
   final double min;
   final double max;
@@ -29,7 +31,8 @@ class _SliverBucketPersistentHeaderDelegate extends SliverPersistentHeaderDelega
   _SliverBucketPersistentHeaderDelegate(this.child, this.min, this.max);
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
     return child;
   }
 
@@ -40,8 +43,10 @@ class _SliverBucketPersistentHeaderDelegate extends SliverPersistentHeaderDelega
   double get minExtent => min;
 
   @override
-  bool shouldRebuild(covariant _SliverBucketPersistentHeaderDelegate oldDelegate) {
-    return oldDelegate.child != child || oldDelegate.min != min || oldDelegate.max != max;
+  bool shouldRebuild(
+      covariant _SliverBucketPersistentHeaderDelegate oldDelegate) {
+    return oldDelegate.child != child ||
+        oldDelegate.min != min ||
+        oldDelegate.max != max;
   }
-
 }

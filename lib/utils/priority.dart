@@ -31,8 +31,7 @@ priorityFromString(String? priority) {
     case 'DO NOW':
       return 5;
     default:
-    // unset
+      // unset
       return 0;
   }
 }
-

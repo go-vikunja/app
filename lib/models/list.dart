@@ -33,9 +33,11 @@ class TaskList {
         created = DateTime.parse(json['created']),
         isFavorite = json['is_favorite'],
         namespaceId = json['namespace_id'],
-        tasks = json['tasks'] == null ? [] : (json['tasks'] as List<dynamic>)
-            .map((taskJson) => Task.fromJson(taskJson))
-            .toList();
+        tasks = json['tasks'] == null
+            ? []
+            : (json['tasks'] as List<dynamic>)
+                .map((taskJson) => Task.fromJson(taskJson))
+                .toList();
 
   toJSON() {
     return {

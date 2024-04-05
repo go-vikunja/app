@@ -46,4 +46,3 @@ CheckboxStatistics getCheckboxStatistics(String text) {
     checked: checkboxes.checked.length,
   );
 }
-

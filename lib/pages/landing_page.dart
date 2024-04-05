@@ -2,6 +2,7 @@ import 'package:after_layout/after_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:vikunja_app/global.dart';
+import 'package:vikunja_app/models/project.dart';
 import 'package:vikunja_app/service/services.dart';
 
 import 'dart:developer';
@@ -33,15 +34,16 @@ class LandingPageState extends State<LandingPage>
   int? defaultList;
   bool onlyDueDate = true;
   List<Task> _tasks = [];
+  Map<int, Project> _projectsMap = {};
   PageStatus landingPageStatus = PageStatus.built;
   static const platform = const MethodChannel('vikunja');
 
   Future<void> _updateDefaultList() async {
-
-    return VikunjaGlobal.of(context).newUserService?.getCurrentUser().then((value) =>
-        setState(() {
-          defaultList = value?.settings?.default_project_id;
-        } ),);
+    return VikunjaGlobal.of(context).newUserService?.getCurrentUser().then(
+          (value) => setState(() {
+            defaultList = value?.settings?.default_project_id;
+          }),
+        );
   }
 
   @override
@@ -55,7 +57,10 @@ class LandingPageState extends State<LandingPage>
               } catch (e) {
                 log(e.toString());
               }
-              VikunjaGlobal.of(context).settingsManager.getLandingPageOnlyDueDateTasks().then((value) => onlyDueDate = value);
+              VikunjaGlobal.of(context)
+                  .settingsManager
+                  .getLandingPageOnlyDueDateTasks()
+                  .then((value) => onlyDueDate = value);
             }));
     super.initState();
   }
@@ -112,9 +117,10 @@ class LandingPageState extends State<LandingPage>
         body = ListView(
           scrollDirection: Axis.vertical,
           padding: EdgeInsets.symmetric(vertical: 8.0),
-          children:
-              ListTile.divideTiles(context: context, tiles: _listTasks(context))
-                  .toList(),
+          children: ListTile.divideTiles(
+            context: context,
+            tiles: _listTasks(context),
+          ).toList(),
         );
         break;
     }
@@ -133,26 +139,29 @@ class LandingPageState extends State<LandingPage>
           PopupMenuButton(itemBuilder: (BuildContext context) {
             return [
               PopupMenuItem(
-                  child:
-                      InkWell(
-                        onTap: () {
-                          Navigator.pop(context);
-                          bool newval = !onlyDueDate;
-                            VikunjaGlobal.of(context).settingsManager.setLandingPageOnlyDueDateTasks(newval).then((value) {
-                              setState(() {
-                                onlyDueDate = newval;
-                                _loadList(context);
-                              });
-                            });
-                        },
-                        child:
-                      Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                Text("Only show tasks with due date"),
-                Checkbox(
-                    value: onlyDueDate,
-                    onChanged: (bool? value) {  },
-                )
-              ])))
+                  child: InkWell(
+                      onTap: () {
+                        Navigator.pop(context);
+                        bool newval = !onlyDueDate;
+                        VikunjaGlobal.of(context)
+                            .settingsManager
+                            .setLandingPageOnlyDueDateTasks(newval)
+                            .then((value) {
+                          setState(() {
+                            onlyDueDate = newval;
+                            _loadList(context);
+                          });
+                        });
+                      },
+                      child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Text("Only show tasks with due date"),
+                            Checkbox(
+                              value: onlyDueDate,
+                              onChanged: (bool? value) {},
+                            )
+                          ])))
             ];
           }),
         ],
@@ -199,68 +208,73 @@ class LandingPageState extends State<LandingPage>
   }
 
   List<Widget> _listTasks(BuildContext context) {
-    var tasks = (_tasks.map((task) => _buildTile(task, context))).toList();
-    //tasks.addAll(_loadingTasks.map(_buildLoadingTile));
-    return tasks;
+    return (_tasks.map((task) => _buildTile(task, context))).toList();
   }
 
   TaskTile _buildTile(Task task, BuildContext context) {
-    // key: UniqueKey() seems like a weird workaround to fix the loading issue
-    // is there a better way?
     return TaskTile(
-      key: UniqueKey(),
+      key: Key("task_${task.id}"),
+      projectsMap: _projectsMap,
       task: task,
       onEdit: () => _loadList(context),
       showInfo: true,
     );
   }
 
-  Future<void> _loadList(BuildContext context) {
+  Future<void> _loadList(BuildContext context) async {
     _tasks = [];
+    _projectsMap = {};
     landingPageStatus = PageStatus.loading;
     // FIXME: loads and reschedules tasks each time list is updated
     VikunjaGlobal.of(context)
         .notifications
         .scheduleDueNotifications(VikunjaGlobal.of(context).taskService);
-    return VikunjaGlobal.of(context)
+    bool showOnlyDueDateTasks = await VikunjaGlobal.of(context)
         .settingsManager
-        .getLandingPageOnlyDueDateTasks()
-        .then((showOnlyDueDateTasks) {
+        .getLandingPageOnlyDueDateTasks();
 
-          VikunjaGlobalState global = VikunjaGlobal.of(context);
-          Map<String, dynamic>? frontend_settings = global.currentUser?.settings?.frontend_settings;
-          int? filterId = 0;
-          if(frontend_settings != null) {
-            if(frontend_settings["filter_id_used_on_overview"] != null)
-              filterId = frontend_settings["filter_id_used_on_overview"];
-          }
-          if(filterId != null && filterId != 0) {
-            return global.taskService.getAllByProject(filterId, {
-              "sort_by": ["due_date", "id"],
-              "order_by": ["asc", "desc"],
-            }).then<Future<void>?>((response) => _handleTaskList(response?.body, showOnlyDueDateTasks));;
-          }
+    VikunjaGlobalState global = VikunjaGlobal.of(context);
+    List<Project>? projects = await global.projectService.getAll();
+    if (projects != null) {
+      projects.forEach((project) {
+        _projectsMap[project.id] = project;
+      });
+    }
 
-          return global.taskService
-              .getByOptions(TaskServiceOptions(
-            newOptions: [
-              TaskServiceOption<TaskServiceOptionSortBy>("sort_by", ["due_date", "id"]),
-              TaskServiceOption<TaskServiceOptionSortBy>("order_by", ["asc", "desc"]),
-              TaskServiceOption<TaskServiceOptionFilterBy>("filter_by", "done"),
-              TaskServiceOption<TaskServiceOptionFilterValue>("filter_value", "false"),
-              TaskServiceOption<TaskServiceOptionFilterComparator>("filter_comparator", "equals"),
-              TaskServiceOption<TaskServiceOptionFilterConcat>("filter_concat", "and"),
-            ],
-            clearOther: true
-          ))
-              .then<Future<void>?>((taskList) => _handleTaskList(taskList, showOnlyDueDateTasks));
+    Map<String, dynamic>? frontend_settings =
+        global.currentUser?.settings?.frontend_settings;
+    int? filterId = 0;
+    if (frontend_settings != null) {
+      if (frontend_settings["filter_id_used_on_overview"] != null)
+        filterId = frontend_settings["filter_id_used_on_overview"];
+    }
+    if (filterId != null && filterId != 0) {
+      var response = await global.taskService.getAllByProject(filterId, {
+        "sort_by": ["due_date", "id"],
+        "order_by": ["asc", "desc"],
+      });
+      await _handleTaskList(response?.body, showOnlyDueDateTasks);
+      return;
+    }
 
-          });//.onError((error, stackTrace) {print("error");});
+    var taskList =
+        await global.taskService.getByOptions(TaskServiceOptions(newOptions: [
+      TaskServiceOption<TaskServiceOptionSortBy>("sort_by", ["due_date", "id"]),
+      TaskServiceOption<TaskServiceOptionSortBy>("order_by", ["asc", "desc"]),
+      TaskServiceOption<TaskServiceOptionFilterBy>("filter_by", "done"),
+      TaskServiceOption<TaskServiceOptionFilterValue>("filter_value", "false"),
+      TaskServiceOption<TaskServiceOptionFilterComparator>(
+          "filter_comparator", "equals"),
+      TaskServiceOption<TaskServiceOptionFilterConcat>("filter_concat", "and"),
+    ], clearOther: true));
+    await _handleTaskList(taskList, showOnlyDueDateTasks);
   }
 
-  Future<void> _handleTaskList(List<Task>? taskList, bool showOnlyDueDateTasks) {
-    if(showOnlyDueDateTasks)
-      taskList?.removeWhere((element) => element.dueDate == null || element.dueDate!.year == 0001);
+  Future<void> _handleTaskList(
+      List<Task>? taskList, bool showOnlyDueDateTasks) {
+    if (showOnlyDueDateTasks)
+      taskList?.removeWhere((element) =>
+          element.dueDate == null || element.dueDate!.year == 0001);
 
     if (taskList != null && taskList.isEmpty) {
       setState(() {

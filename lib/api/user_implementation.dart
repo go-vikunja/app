@@ -9,22 +9,29 @@ class UserAPIService extends APIService implements UserService {
   UserAPIService(Client client) : super(client);
 
   @override
-  Future<UserTokenPair> login(String username, password, {bool rememberMe = false, String? totp}) async {
+  Future<UserTokenPair> login(
+    String username,
+    password, {
+    bool rememberMe = false,
+    String? totp,
+    String? xClientToken,
+  }) async {
     var body = {
       'long_token': rememberMe,
       'password': password,
       'username': username,
     };
-    if(totp != null) {
+    if (totp != null) {
       body['totp_passcode'] = totp;
-  }
+    }
     var response = await client.post('/login', body: body);
     var token = response?.body["token"];
-    if(token == null || response == null || response.error != null)
+    if (token == null || response == null || response.error != null)
       return Future.value(UserTokenPair(null, null,
           error: response != null ? response.body["code"] : 0,
-          errorString: response != null ? response.body["message"] : "Login error"));
-    client.configure(token: token);
+          errorString:
+              response != null ? response.body["message"] : "Login error"));
+    client.configure(token: token, xClientToken: xClientToken);
     return UserAPIService(client)
         .getCurrentUser()
         .then((user) => UserTokenPair(user, token));
@@ -46,9 +53,12 @@ class UserAPIService extends APIService implements UserService {
   }
 
   @override
-  Future<UserSettings?> setCurrentUserSettings(UserSettings userSettings) async {
-    return client.post('/user/settings/general', body: userSettings.toJson()).then((response) {
-      if(response == null) return null;
+  Future<UserSettings?> setCurrentUserSettings(
+      UserSettings userSettings) async {
+    return client
+        .post('/user/settings/general', body: userSettings.toJson())
+        .then((response) {
+      if (response == null) return null;
       return userSettings;
     });
   }

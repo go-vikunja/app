@@ -47,15 +47,15 @@ class Bucket {
                 .toList();
 
   toJSON() => {
-    'id': id,
-    'list_id': projectId,
-    'title': title,
-    'position': position,
-    'limit': limit,
-    'is_done_bucket': isDoneBucket,
-    'created': created.toUtc().toIso8601String(),
-    'updated': updated.toUtc().toIso8601String(),
-    'created_by': createdBy.toJSON(),
-    'tasks': tasks.map((task) => task.toJSON()).toList(),
-  };
+        'id': id,
+        'list_id': projectId,
+        'title': title,
+        'position': position,
+        'limit': limit,
+        'is_done_bucket': isDoneBucket,
+        'created': created.toUtc().toIso8601String(),
+        'updated': updated.toUtc().toIso8601String(),
+        'created_by': createdBy.toJSON(),
+        'tasks': tasks.map((task) => task.toJSON()).toList(),
+      };
 }

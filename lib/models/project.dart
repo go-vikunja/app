@@ -17,20 +17,19 @@ class Project {
   Iterable<Project>? subprojects;
 
   Project(
-      {
-        this.id = 0,
-        this.owner,
-        this.parentProjectId = 0,
-        this.description = '',
-        this.position = 0,
-        this.doneBucketId,
-        this.color,
-        this.isArchived = false,
-        this.isFavourite = false,
-        required this.title,
+      {this.id = 0,
+      this.owner,
+      this.parentProjectId = 0,
+      this.description = '',
+      this.position = 0,
+      this.doneBucketId,
+      this.color,
+      this.isArchived = false,
+      this.isFavourite = false,
+      required this.title,
       created,
-      updated}) :
-        this.created = created ?? DateTime.now(),
+      updated})
+      : this.created = created ?? DateTime.now(),
         this.updated = updated ?? DateTime.now();
 
   Project.fromJson(Map<String, dynamic> json)
@@ -50,19 +49,20 @@ class Project {
         owner = json['owner'] != null ? User.fromJson(json['owner']) : null;
 
   Map<String, dynamic> toJSON() => {
-    'id': id,
-    'created': created.toUtc().toIso8601String(),
-    'updated': updated.toUtc().toIso8601String(),
-    'title': title,
-    'owner': owner?.toJSON(),
-    'description': description,
-    'parent_project_id': parentProjectId,
-    'hex_color': color?.value.toRadixString(16).padLeft(8, '0').substring(2),
-    'is_archived': isArchived,
-    'is_favourite': isFavourite,
-    'done_bucket_id': doneBucketId,
-    'position': position
-  };
+        'id': id,
+        'created': created.toUtc().toIso8601String(),
+        'updated': updated.toUtc().toIso8601String(),
+        'title': title,
+        'owner': owner?.toJSON(),
+        'description': description,
+        'parent_project_id': parentProjectId,
+        'hex_color':
+            color?.value.toRadixString(16).padLeft(8, '0').substring(2),
+        'is_archived': isArchived,
+        'is_favourite': isFavourite,
+        'done_bucket_id': doneBucketId,
+        'position': position
+      };
 
   Project copyWith({
     int? id,
@@ -77,21 +77,20 @@ class Project {
     bool? isFavourite,
     int? doneBucketId,
     double? position,
-
   }) {
     return Project(
-        id: id ?? this.id,
-        created: created ?? this.created,
-        updated: updated ?? this.updated,
-        title: title ?? this.title,
-        owner: owner ?? this.owner,
-        description: description ?? this.description,
-        parentProjectId: parentProjectId ?? this.parentProjectId,
-        doneBucketId: doneBucketId ?? this.doneBucketId,
-        color: color ?? this.color,
-        isArchived: isArchived ?? this.isArchived,
-        isFavourite: isFavourite ?? this.isFavourite,
-        position: position ?? this.position,
+      id: id ?? this.id,
+      created: created ?? this.created,
+      updated: updated ?? this.updated,
+      title: title ?? this.title,
+      owner: owner ?? this.owner,
+      description: description ?? this.description,
+      parentProjectId: parentProjectId ?? this.parentProjectId,
+      doneBucketId: doneBucketId ?? this.doneBucketId,
+      color: color ?? this.color,
+      isArchived: isArchived ?? this.isArchived,
+      isFavourite: isFavourite ?? this.isFavourite,
+      position: position ?? this.position,
     );
   }
 }

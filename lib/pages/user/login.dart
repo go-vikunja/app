@@ -4,10 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:vikunja_app/api/client.dart';
+import 'package:vikunja_app/api/user_implementation.dart';
+import 'package:vikunja_app/constants.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/models/user.dart';
 import 'package:vikunja_app/pages/user/login_webview.dart';
 import 'package:vikunja_app/pages/user/register.dart';
+import 'package:vikunja_app/service/services.dart';
 import 'package:vikunja_app/theme/button.dart';
 import 'package:vikunja_app/theme/buttonText.dart';
 import 'package:vikunja_app/theme/constants.dart';
@@ -26,18 +29,19 @@ class _LoginPageState extends State<LoginPage> {
   bool _rememberMe = false;
   bool init = false;
   List<String> pastServers = [];
+  int amountTaps = 0;
+  DateTime? lastTap;
+  bool _showXClientTokent = false;
 
   final _serverController = TextEditingController();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
-
-  final _serverSuggestionController = SuggestionsController();
-
+  final _xClientTokenController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    Future.delayed(Duration.zero, () async{
+    Future.delayed(Duration.zero, () async {
       if (VikunjaGlobal.of(context).expired) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text("Login has expired. Please reenter your details!")));
@@ -48,10 +52,16 @@ class _LoginPageState extends State<LoginPage> {
         });
       }
       final client = VikunjaGlobal.of(context).client;
-      await VikunjaGlobal.of(context).settingsManager.getIgnoreCertificates().then(
-          (value) => setState(() => client.ignoreCertificates = value == "1"));
+      await VikunjaGlobal.of(context)
+          .settingsManager
+          .getIgnoreCertificates()
+          .then((value) =>
+              setState(() => client.ignoreCertificates = value == "1"));
 
-      await VikunjaGlobal.of(context).settingsManager.getPastServers().then((value) {
+      await VikunjaGlobal.of(context)
+          .settingsManager
+          .getPastServers()
+          .then((value) {
         print(value);
         if (value != null) setState(() => pastServers = value);
       });
@@ -77,12 +87,15 @@ class _LoginPageState extends State<LoginPage> {
                   children: <Widget>[
                     Padding(
                       padding: EdgeInsets.symmetric(vertical: 30),
-                      child: Image(
-                        image: Theme.of(context).brightness == Brightness.dark
-                            ? AssetImage('assets/vikunja_logo_full_white.png')
-                            : AssetImage('assets/vikunja_logo_full.png'),
-                        height: 85.0,
-                        semanticLabel: 'Vikunja Logo',
+                      child: GestureDetector(
+                        onTap: _handleLogoTap,
+                        child: Image(
+                          image: Theme.of(context).brightness == Brightness.dark
+                              ? AssetImage('assets/vikunja_logo_full_white.png')
+                              : AssetImage('assets/vikunja_logo_full.png'),
+                          height: 80.0,
+                          semanticLabel: 'Vikunja Logo',
+                        ),
                       ),
                     ),
                     Padding(
@@ -90,9 +103,6 @@ class _LoginPageState extends State<LoginPage> {
                       child: Row(children: [
                         Expanded(
                           child: TypeAheadField(
-                            //suggestionsBoxController: _serverSuggestionController,
-                            //getImmediateSuggestions: true,
-                            //enabled: !_loading,
                             controller: _serverController,
                             builder: (context, controller, focusnode) {
                               return TextFormField(
@@ -101,74 +111,59 @@ class _LoginPageState extends State<LoginPage> {
                                 enabled: !_loading,
                                 validator: (address) {
                                   return (isUrl(address) ||
-                                  address != null ||
-                                  address!.isEmpty)
-                                  ? null
-                                    : 'Invalid URL';
-                                  },
+                                          address != null ||
+                                          address!.isEmpty)
+                                      ? null
+                                      : 'Invalid URL';
+                                },
                                 decoration: new InputDecoration(
                                     border: OutlineInputBorder(),
                                     labelText: 'Server Address'),
                               );
                             },
-                            /*
-                            textFieldConfiguration: TextFieldConfiguration(
-                              controller: _serverController,
-                              decoration: new InputDecoration(
-                                  border: OutlineInputBorder(),
-                                  labelText: 'Server Address'),
-                            ),*/
                             onSelected: (suggestion) {
                               _serverController.text = suggestion;
-                              setState(() => _serverController.text = suggestion);
+                              setState(
+                                  () => _serverController.text = suggestion);
                             },
-                            itemBuilder: (BuildContext context, Object? itemData) {
+                            itemBuilder:
+                                (BuildContext context, Object? itemData) {
                               return Card(
                                   child: Container(
-                                    padding: EdgeInsets.all(10),
-                                    child:
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                      Text(itemData.toString()),
-                                      IconButton(onPressed: () {
-                                        setState(() {
-                                          pastServers.remove(itemData.toString());
-                                          //_serverSuggestionController.suggestionsBox?.close();
-                                          VikunjaGlobal.of(context).settingsManager.setPastServers(pastServers);
-
-                                        });
-                                      }, icon: Icon(Icons.clear))
-                                    ],
-                                  ))
-                              );
+                                      padding: EdgeInsets.all(10),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(itemData.toString()),
+                                          IconButton(
+                                              onPressed: () {
+                                                setState(() {
+                                                  pastServers.remove(
+                                                      itemData.toString());
+                                                  //_serverSuggestionController.suggestionsBox?.close();
+                                                  VikunjaGlobal.of(context)
+                                                      .settingsManager
+                                                      .setPastServers(
+                                                          pastServers);
+                                                });
+                                              },
+                                              icon: Icon(Icons.clear))
+                                        ],
+                                      )));
                             },
                             suggestionsCallback: (String pattern) {
                               List<String> matches = <String>[];
                               matches.addAll(pastServers);
-                              matches.retainWhere((s){
-                                return s.toLowerCase().contains(pattern.toLowerCase());
+                              matches.retainWhere((s) {
+                                return s
+                                    .toLowerCase()
+                                    .contains(pattern.toLowerCase());
                               });
                               return matches;
                             },
                           ),
                         ),
-                        /*
-                        DropdownButton<String>(
-                          onChanged: (String? value) {
-                            // This is called when the user selects an item.
-                            setState(() {
-                              if (value != null) _serverController.text = value;
-                            });
-                          },
-                          items: pastServers
-                              .map<DropdownMenuItem<String>>((dynamic value) {
-                            return DropdownMenuItem<String>(
-                              value: value,
-                              child: Text(value),
-                            );
-                          }).toList(),
-                        ),*/
                       ]),
                     ),
                     Padding(
@@ -194,6 +189,17 @@ class _LoginPageState extends State<LoginPage> {
                         obscureText: true,
                       ),
                     ),
+                    if (_showXClientTokent)
+                      Padding(
+                        padding: vStandardVerticalPadding,
+                        child: TextFormField(
+                          enabled: !_loading,
+                          controller: _xClientTokenController,
+                          decoration: new InputDecoration(
+                              border: OutlineInputBorder(),
+                              labelText: 'X-Client-Token'),
+                        ),
+                      ),
                     Padding(
                       padding: vStandardVerticalPadding,
                       child: CheckboxListTile(
@@ -205,14 +211,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     Builder(
                         builder: (context) => FancyButton(
-                              onPressed: !_loading
-                                  ? () {
-                                      if (_formKey.currentState!.validate()) {
-                                        Form.of(context).save();
-                                        _loginUser(context);
-                                      }
-                                    }
-                                  : null,
+                              onPressed: !_loading ? _doLogin(context) : null,
                               child: _loading
                                   ? CircularProgressIndicator()
                                   : VikunjaButtonText('Login'),
@@ -226,40 +225,23 @@ class _LoginPageState extends State<LoginPage> {
                               child: VikunjaButtonText('Register'),
                             )),
                     Builder(
-                        builder: (context) => FancyButton(
-                            onPressed: () {
-                              if (_formKey.currentState!.validate() &&
-                                  _serverController.text.isNotEmpty) {
-                                Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                        builder: (context) => LoginWithWebView(
-                                            _serverController.text))).then(
-                                    (btp) {
-                                  if (btp != null) _loginUserByClientToken(btp);
-                                });
-                              } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                        content: Text(
-                                            "Please enter your frontend url")));
-                              }
-                            },
-                            child: VikunjaButtonText("Login with Frontend"))),
-                            CheckboxListTile(
-                            title: Text("Ignore Certificates"),
-                            value: client.ignoreCertificates,
-                            onChanged: (value) {
-                              setState(() =>
-                                  client.reload_ignore_certs(value ?? false));
-                              VikunjaGlobal.of(context)
-                                  .settingsManager
-                                  .setIgnoreCertificates(value ?? false);
-                              VikunjaGlobal.of(context)
-                                  .client
-                                  .ignoreCertificates = value ?? false;
-                            })
-
+                      builder: (context) => FancyButton(
+                        onPressed: _loginWithFrontend,
+                        child: VikunjaButtonText("Login with Frontend"),
+                      ),
+                    ),
+                    CheckboxListTile(
+                        title: Text("Ignore Certificates"),
+                        value: client.ignoreCertificates,
+                        onChanged: (value) {
+                          setState(
+                              () => client.reloadIgnoreCerts(value ?? false));
+                          VikunjaGlobal.of(context)
+                              .settingsManager
+                              .setIgnoreCertificates(value ?? false);
+                          VikunjaGlobal.of(context).client.ignoreCertificates =
+                              value ?? false;
+                        })
                   ],
                 ),
               ),
@@ -270,83 +252,119 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
+  _doLogin(BuildContext context) {
+    return () {
+      if (_formKey.currentState!.validate()) {
+        Form.of(context).save();
+        _loginUser(context);
+      }
+    };
+  }
+
+  _loginWithFrontend() {
+    if (_formKey.currentState!.validate() &&
+        _serverController.text.isNotEmpty) {
+      Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (context) =>
+                  LoginWithWebView(_serverController.text))).then((btp) {
+        if (btp != null) _loginUserByClientToken(btp);
+      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Please enter your frontend url"),
+        ),
+      );
+    }
+  }
+
   _loginUser(BuildContext context) async {
     String _server = _serverController.text;
     String _username = _usernameController.text;
     String _password = _passwordController.text;
-    if (_server.isEmpty) return;
+    String _xClientToken = _xClientTokenController.text;
 
-    if(!pastServers.contains(_server)) pastServers.add(_server);
+    if (_server.isEmpty) return;
+    if (!pastServers.contains(_server)) pastServers.add(_server);
     await VikunjaGlobal.of(context).settingsManager.setPastServers(pastServers);
 
     setState(() => _loading = true);
     try {
       var vGlobal = VikunjaGlobal.of(context);
       vGlobal.client.showSnackBar = false;
-      vGlobal.client.configure(base: _server);
+      vGlobal.client.configure(base: _server, xClientToken: _xClientToken);
       Server? info = await vGlobal.serverService.getInfo();
-      if (info == null)
-        throw Exception("Getting server info failed");
+      if (info == null) throw Exception("Getting server info failed");
 
       UserTokenPair newUser;
 
-      newUser = await vGlobal.newUserService!
-          .login(_username, _password, rememberMe: this._rememberMe);
+      Client client = Client(
+        vGlobal.snackbarKey,
+        base: _server,
+        xClientToken: _xClientToken,
+      );
+      UserService userService = UserAPIService(client);
+      newUser = await userService.login(
+        _username,
+        _password,
+        rememberMe: this._rememberMe,
+        xClientToken: _xClientToken,
+      );
 
-      if (newUser.error == 1017) {
+      if (newUser.error == ErrorCodeOtpRequired) {
         TextEditingController totpController = TextEditingController();
         bool dismissed = true;
         await showDialog(
-            context: context,
-            builder: (context) => new AlertDialog(
-                  title: Text("Enter One Time Passcode"),
-                  content: TextField(
-                    controller: totpController,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: <TextInputFormatter>[
-                      FilteringTextInputFormatter.digitsOnly
-                    ],
-                  ),
-                  actions: [
-                    TextButton(
-                        onPressed: () {
-                          dismissed = false;
-                          Navigator.pop(context);
-                          },
-                        child: Text("Login"))
-                  ],
-                ),
+          context: context,
+          builder: (context) => new AlertDialog(
+            title: Text("Enter One Time Passcode"),
+            content: TextField(
+              controller: totpController,
+              keyboardType: TextInputType.number,
+              inputFormatters: <TextInputFormatter>[
+                FilteringTextInputFormatter.digitsOnly
+              ],
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () {
+                    dismissed = false;
+                    Navigator.pop(context);
+                  },
+                  child: Text("Login"))
+            ],
+          ),
         );
-        if(!dismissed) {
-          newUser = await vGlobal.newUserService!.login(_username, _password,
-              rememberMe: this._rememberMe, totp: totpController.text);
+        if (!dismissed) {
+          newUser = await userService.login(
+            _username,
+            _password,
+            rememberMe: this._rememberMe,
+            totp: totpController.text,
+          );
         } else {
           throw Exception();
         }
       }
       if (newUser.error > 0) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(newUser.errorString)));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(newUser.errorString),
+          ),
+        );
       }
 
       if (newUser.error == 0)
-        vGlobal.changeUser(newUser.user!, token: newUser.token, base: _server);
+        vGlobal.changeUser(
+          newUser.user!,
+          token: newUser.token,
+          base: _server,
+          xClientToken: _xClientToken,
+        );
     } catch (ex) {
       print(ex);
-      /*  log(stacktrace.toString());
-      showDialog(
-          context: context,
-          builder: (context) => new AlertDialog(
-                title: Text(
-                    'Login failed! Please check your server url and credentials. ' +
-                        ex.toString()),
-                actions: <Widget>[
-                  TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Close'))
-                ],
-              ));
-     */
     } finally {
       VikunjaGlobal.of(context).client.showSnackBar = true;
       setState(() {
@@ -373,5 +391,31 @@ class _LoginPageState extends State<LoginPage> {
       log(e.toString());
     }
     setState(() => _loading = false);
+  }
+
+  void _handleLogoTap() {
+    if (lastTap != null &&
+        DateTime.now().difference(lastTap!) < Duration(seconds: 2)) {
+      amountTaps++;
+    } else {
+      amountTaps = 1;
+    }
+    lastTap = DateTime.now();
+    if (amountTaps == 5) {
+      // Show X-Client-Token field
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            "X-Client-Token " + (_showXClientTokent ? "hidden" : "shown"),
+          ),
+        ),
+      );
+      setState(() {
+        _showXClientTokent = !_showXClientTokent;
+      });
+      amountTaps = 0;
+      lastTap = null;
+    }
   }
 }

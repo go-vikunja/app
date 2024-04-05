@@ -12,13 +12,11 @@ class UserManager {
       userMap.keys
           .where((id) => _isNumeric(id))
           .map((idString) => int.tryParse(idString));
+      return null;
     });
   }
 
   bool _isNumeric(String str) {
-    if (str == null) {
-      return false;
-    }
     return double.tryParse(str) != null;
   }
 }

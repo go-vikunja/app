@@ -13,8 +13,7 @@ class Server {
   String? version;
 
   Server.fromJson(Map<String, dynamic> json)
-      :
-        caldavEnabled = json['caldav_enabled'],
+      : caldavEnabled = json['caldav_enabled'],
         emailRemindersEnabled = json['email_reminders_enabled'],
         frontendUrl = json['frontend_url'],
         linkSharingEnabled = json['link_sharing_enabled'],

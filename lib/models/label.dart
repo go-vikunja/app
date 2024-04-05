@@ -10,7 +10,9 @@ class Label {
   final User createdBy;
   final Color? color;
 
-  late final Color textColor = color != null && color!.computeLuminance() <= 0.5 ? vLabelLight : vLabelDark;
+  late final Color textColor = color != null && color!.computeLuminance() <= 0.5
+      ? vLabelLight
+      : vLabelDark;
 
   Label({
     this.id = 0,

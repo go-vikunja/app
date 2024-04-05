@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:developer';
 import 'package:vikunja_app/api/client.dart';
 import 'package:vikunja_app/api/service.dart';
 import 'package:vikunja_app/models/namespace.dart';
@@ -42,8 +41,8 @@ class NamespaceAPIService extends APIService implements NamespaceService {
     return client
         .post('/namespaces/${ns.id}', body: ns.toJSON())
         .then((response) {
-          if (response == null) return null;
-          return Namespace.fromJson(response.body);
+      if (response == null) return null;
+      return Namespace.fromJson(response.body);
     });
   }
 }

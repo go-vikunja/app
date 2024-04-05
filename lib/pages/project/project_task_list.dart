@@ -8,10 +8,8 @@ import 'package:vikunja_app/components/AddDialog.dart';
 import 'package:vikunja_app/components/KanbanWidget.dart';
 import 'package:vikunja_app/components/TaskTile.dart';
 import 'package:vikunja_app/global.dart';
-import 'package:vikunja_app/models/list.dart';
 import 'package:vikunja_app/models/task.dart';
 import 'package:vikunja_app/models/bucket.dart';
-import 'package:vikunja_app/pages/list/list_edit.dart';
 import 'package:vikunja_app/pages/list/task_edit.dart';
 import 'package:vikunja_app/pages/project/project_edit.dart';
 
@@ -97,42 +95,42 @@ class _ListPageState extends State<ListPage> {
         ]);
         break;
       case PageStatus.success:
-        body = taskState.tasks.length > 0 || taskState.buckets.length > 0 || _project.subprojects!.length > 0
+        body = taskState.tasks.length > 0 ||
+                taskState.buckets.length > 0 ||
+                _project.subprojects!.length > 0
             ? ListenableProvider.value(
-          value: taskState,
-          child: Theme(
-            data: (ThemeData base) {
-              return base.copyWith(
-                chipTheme: base.chipTheme.copyWith(
-                  labelPadding: EdgeInsets.symmetric(horizontal: 2),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(5)),
-                  ),
+                value: taskState,
+                child: Theme(
+                  data: (ThemeData base) {
+                    return base.copyWith(
+                      chipTheme: base.chipTheme.copyWith(
+                        labelPadding: EdgeInsets.symmetric(horizontal: 2),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(5)),
+                        ),
+                      ),
+                    );
+                  }(Theme.of(context)),
+                  child: () {
+                    switch (_viewIndex) {
+                      case 0:
+                        return _listView(context);
+                      case 1:
+                        return _kanban.kanbanView();
+                      default:
+                        return _listView(context);
+                    }
+                  }(),
                 ),
-              );
-            }(Theme.of(context)),
-            child: () {
-              switch (_viewIndex) {
-                case 0:
-                  return _listView(context);
-                case 1:
-                  return _kanban.kanbanView();
-                default:
-                  return _listView(context);
-              }
-            }(),
-          ),
-        )
+              )
             : Stack(children: [
-          ListView(),
-          Center(child: Text('This list is empty.'))
-        ]);
+                ListView(),
+                Center(child: Text('This list is empty.'))
+              ]);
         break;
       case PageStatus.empty:
-        body = new Stack(children: [
-          ListView(),
-          Center(child: Text("This view is empty"))
-        ]);
+        body = new Stack(
+            children: [ListView(), Center(child: Text("This view is empty"))]);
         break;
     }
 
@@ -156,10 +154,10 @@ class _ListPageState extends State<ListPage> {
       floatingActionButton: _viewIndex == 1
           ? null
           : Builder(
-        builder: (context) => FloatingActionButton(
-            onPressed: () => _addItemDialog(context),
-            child: Icon(Icons.add)),
-      ),
+              builder: (context) => FloatingActionButton(
+                  onPressed: () => _addItemDialog(context),
+                  child: Icon(Icons.add)),
+            ),
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
@@ -183,22 +181,23 @@ class _ListPageState extends State<ListPage> {
     return Container(
       height: 80,
       padding: EdgeInsets.fromLTRB(10, 0, 10, 0),
-      child:
-      ListView(
+      child: ListView(
         scrollDirection: Axis.horizontal,
         //mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          ...?widget.project.subprojects?.map((elem) =>
-              InkWell(
-                  onTap: () {openList(context, elem);},
-                  child:
-                  Container(
-                      alignment: Alignment.center,
-                      height: 20,
-                      width: 100,
-                      child:
-                      Text(elem.title, overflow: TextOverflow.ellipsis,softWrap: false,)))
-          ),
+          ...?widget.project.subprojects?.map((elem) => InkWell(
+              onTap: () {
+                openList(context, elem);
+              },
+              child: Container(
+                  alignment: Alignment.center,
+                  height: 20,
+                  width: 100,
+                  child: Text(
+                    elem.title,
+                    overflow: TextOverflow.ellipsis,
+                    softWrap: false,
+                  )))),
         ],
       ),
     );
@@ -215,39 +214,50 @@ class _ListPageState extends State<ListPage> {
 
   Widget _listView(BuildContext context) {
     List<Widget> children = [];
-    if(widget.project.subprojects?.length != 0) {
-      children.add(Padding(child: Text("Projects", style: TextStyle(fontWeight: FontWeight.bold),), padding: EdgeInsets.fromLTRB(0, 10, 0, 0),));
+    if (widget.project.subprojects?.length != 0) {
+      children.add(Padding(
+        child: Text(
+          "Projects",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        padding: EdgeInsets.fromLTRB(0, 10, 0, 0),
+      ));
       children.add(buildSubProjectSelector());
-
     }
-    if(taskState.tasks.length != 0) {
-      children.add(Padding(child: Text("Tasks", style: TextStyle(fontWeight: FontWeight.bold),), padding: EdgeInsets.fromLTRB(0, 10, 0, 0),));
+    if (taskState.tasks.length != 0) {
+      children.add(Padding(
+        child: Text(
+          "Tasks",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        padding: EdgeInsets.fromLTRB(0, 10, 0, 0),
+      ));
       children.add(Divider());
-      children.add(Expanded(child:
-      ListView.builder(
-          padding: EdgeInsets.symmetric(vertical: 8.0),
-          itemCount: taskState.tasks.length * 2,
-          itemBuilder: (context, i) {
-            if (i.isOdd) return Divider();
+      children.add(Expanded(
+          child: ListView.builder(
+              padding: EdgeInsets.symmetric(vertical: 8.0),
+              itemCount: taskState.tasks.length * 2,
+              itemBuilder: (context, i) {
+                if (i.isOdd) return Divider();
 
-            if (_loadingTasks.isNotEmpty) {
-              final loadingTask = _loadingTasks.removeLast();
-              return _buildLoadingTile(loadingTask);
-            }
+                if (_loadingTasks.isNotEmpty) {
+                  final loadingTask = _loadingTasks.removeLast();
+                  return _buildLoadingTile(loadingTask);
+                }
 
-            final index = i ~/ 2;
+                final index = i ~/ 2;
 
-            if (taskState.maxPages == _currentPage &&
-                index == taskState.tasks.length)
-              throw Exception("Check itemCount attribute");
+                if (taskState.maxPages == _currentPage &&
+                    index == taskState.tasks.length)
+                  throw Exception("Check itemCount attribute");
 
-            if (index >= taskState.tasks.length &&
-                _currentPage < taskState.maxPages) {
-              _currentPage++;
-              _loadTasksForPage(_currentPage);
-            }
-            return _buildTile(taskState.tasks[index]);
-          })));
+                if (index >= taskState.tasks.length &&
+                    _currentPage < taskState.maxPages) {
+                  _currentPage++;
+                  _loadTasksForPage(_currentPage);
+                }
+                return _buildTile(taskState.tasks[index]);
+              })));
     }
 
     return Column(children: children);
@@ -304,13 +314,11 @@ class _ListPageState extends State<ListPage> {
           _loadTasksForPage(1);
           break;
         case 1:
-          await _kanban
-              .loadBucketsForPage(1);
+          await _kanban.loadBucketsForPage(1);
           // load all buckets to get length for RecordableListView
           while (_currentPage < taskState.maxPages) {
             _currentPage++;
-            await _kanban
-                .loadBucketsForPage(_currentPage);
+            await _kanban.loadBucketsForPage(_currentPage);
           }
           break;
         default:
@@ -320,8 +328,7 @@ class _ListPageState extends State<ListPage> {
   }
 
   Future<void> _loadTasksForPage(int page) {
-    return Provider.of<ProjectProvider>(context, listen: false)
-        .loadTasks(
+    return Provider.of<ProjectProvider>(context, listen: false).loadTasks(
         context: context,
         listId: _project.id,
         page: page,
@@ -335,7 +342,7 @@ class _ListPageState extends State<ListPage> {
         onAdd: (title) => _addItem(title, context, bucket),
         decoration: InputDecoration(
           labelText:
-          (bucket != null ? '\'${bucket.title}\': ' : '') + 'New Task Name',
+              (bucket != null ? '\'${bucket.title}\': ' : '') + 'New Task Name',
           hintText: 'eg. Milk',
         ),
       ),
@@ -376,7 +383,6 @@ class _ListPageState extends State<ListPage> {
     });
   }
 }
-
 
 openList(BuildContext context, Project project) {
   Navigator.of(context).push(MaterialPageRoute(

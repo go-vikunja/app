@@ -12,7 +12,6 @@ import 'package:vikunja_app/models/list.dart';
 import 'package:vikunja_app/models/task.dart';
 import 'package:vikunja_app/models/bucket.dart';
 import 'package:vikunja_app/pages/list/list_edit.dart';
-import 'package:vikunja_app/pages/list/task_edit.dart';
 import 'package:vikunja_app/stores/list_store.dart';
 
 import '../../components/pagestatus.dart';
@@ -66,7 +65,7 @@ class _ListPageState extends State<ListPage> {
   Widget build(BuildContext context) {
     taskState = Provider.of<ListProvider>(context);
     //_kanban = KanbanClass(
-     //   context, nullSetState, _onViewTapped, _addItemDialog, _list);
+    //   context, nullSetState, _onViewTapped, _addItemDialog, _list);
 
     Widget body;
 
@@ -127,10 +126,8 @@ class _ListPageState extends State<ListPage> {
               ]);
         break;
       case PageStatus.empty:
-        body = new Stack(children: [
-          ListView(),
-          Center(child: Text("This view is empty"))
-        ]);
+        body = new Stack(
+            children: [ListView(), Center(child: Text("This view is empty"))]);
         break;
     }
 
@@ -242,8 +239,8 @@ class _ListPageState extends State<ListPage> {
   TaskTile _buildLoadingTile(Task task) {
     return TaskTile(
       task: task,
-      loading: true, onEdit: () {},
-
+      loading: true,
+      onEdit: () {},
     );
   }
 
@@ -256,13 +253,11 @@ class _ListPageState extends State<ListPage> {
           _loadTasksForPage(1);
           break;
         case 1:
-          await _kanban
-              .loadBucketsForPage(1);
+          await _kanban.loadBucketsForPage(1);
           // load all buckets to get length for RecordableListView
           while (_currentPage < taskState.maxPages) {
             _currentPage++;
-            await _kanban
-                .loadBucketsForPage(_currentPage);
+            await _kanban.loadBucketsForPage(_currentPage);
           }
           break;
         default:
@@ -272,12 +267,11 @@ class _ListPageState extends State<ListPage> {
   }
 
   Future<void> _loadTasksForPage(int page) {
-    return Provider.of<ListProvider>(context, listen: false)
-        .loadTasks(
-            context: context,
-            listId: _list.id,
-            page: page,
-            displayDoneTasks: displayDoneTasks);
+    return Provider.of<ListProvider>(context, listen: false).loadTasks(
+        context: context,
+        listId: _list.id,
+        page: page,
+        displayDoneTasks: displayDoneTasks);
   }
 
   Future<void> _addItemDialog(BuildContext context, [Bucket? bucket]) {
