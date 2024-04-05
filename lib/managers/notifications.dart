@@ -5,7 +5,8 @@ import 'dart:math';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/timezone.dart' as tz;
 
-import 'package:flutter_local_notifications/flutter_local_notifications.dart'as notifs;
+import 'package:flutter_local_notifications/flutter_local_notifications.dart'
+    as notifs;
 import 'package:rxdart/subjects.dart' as rxSub;
 import 'package:vikunja_app/service/services.dart';
 
@@ -19,57 +20,52 @@ class NotificationClass {
   late String currentTimeZone;
   notifs.NotificationAppLaunchDetails? notifLaunch;
 
-  notifs.FlutterLocalNotificationsPlugin get notificationsPlugin => new notifs.FlutterLocalNotificationsPlugin();
-
+  notifs.FlutterLocalNotificationsPlugin get notificationsPlugin =>
+      new notifs.FlutterLocalNotificationsPlugin();
 
   var androidSpecificsDueDate = notifs.AndroidNotificationDetails(
-      "Vikunja1",
-      "Due Date Notifications",
+      "Vikunja1", "Due Date Notifications",
       channelDescription: "description",
       icon: 'vikunja_notification_logo',
-      importance: notifs.Importance.high
-  );
+      importance: notifs.Importance.high);
   var androidSpecificsReminders = notifs.AndroidNotificationDetails(
-      "Vikunja2",
-      "Reminder Notifications",
+      "Vikunja2", "Reminder Notifications",
       channelDescription: "description",
       icon: 'vikunja_notification_logo',
-      importance: notifs.Importance.high
-  );
+      importance: notifs.Importance.high);
   late notifs.IOSNotificationDetails iOSSpecifics;
   late notifs.NotificationDetails platformChannelSpecificsDueDate;
   late notifs.NotificationDetails platformChannelSpecificsReminders;
 
   NotificationClass({this.id, this.body, this.payload, this.title});
 
-  final rxSub.BehaviorSubject<
-      NotificationClass> didReceiveLocalNotificationSubject =
-  rxSub.BehaviorSubject<NotificationClass>();
+  final rxSub.BehaviorSubject<NotificationClass>
+      didReceiveLocalNotificationSubject =
+      rxSub.BehaviorSubject<NotificationClass>();
   final rxSub.BehaviorSubject<String> selectNotificationSubject =
-  rxSub.BehaviorSubject<String>();
+      rxSub.BehaviorSubject<String>();
 
   Future<void> _initNotifications() async {
     var initializationSettingsAndroid =
-    notifs.AndroidInitializationSettings('vikunja_logo');
+        notifs.AndroidInitializationSettings('vikunja_logo');
     var initializationSettingsIOS = notifs.IOSInitializationSettings(
         requestAlertPermission: false,
         requestBadgePermission: false,
         requestSoundPermission: false,
         onDidReceiveLocalNotification:
             (int? id, String? title, String? body, String? payload) async {
-          didReceiveLocalNotificationSubject
-              .add(NotificationClass(
+          didReceiveLocalNotificationSubject.add(NotificationClass(
               id: id, title: title, body: body, payload: payload));
         });
     var initializationSettings = notifs.InitializationSettings(
         android: initializationSettingsAndroid, iOS: initializationSettingsIOS);
     await notificationsPlugin.initialize(initializationSettings,
         onSelectNotification: (String? payload) async {
-          if (payload != null) {
-            print('notification payload: ' + payload);
-            selectNotificationSubject.add(payload);
-          }
-        });
+      if (payload != null) {
+        print('notification payload: ' + payload);
+        selectNotificationSubject.add(payload);
+      }
+    });
     print("Notifications initialised successfully");
   }
 
@@ -86,20 +82,23 @@ class NotificationClass {
     return Future.value();
   }
 
-  Future<void> scheduleNotification(String title, String description,
+  Future<void> scheduleNotification(
+      String title,
+      String description,
       notifs.FlutterLocalNotificationsPlugin notifsPlugin,
-      DateTime scheduledTime, String currentTimeZone,
-      notifs.NotificationDetails platformChannelSpecifics, {int? id}) async {
-    if (id == null)
-      id = Random().nextInt(1000000);
+      DateTime scheduledTime,
+      String currentTimeZone,
+      notifs.NotificationDetails platformChannelSpecifics,
+      {int? id}) async {
+    if (id == null) id = Random().nextInt(1000000);
     // TODO: move to setup
-    tz.TZDateTime time = tz.TZDateTime.from(
-        scheduledTime, tz.getLocation(currentTimeZone));
+    tz.TZDateTime time =
+        tz.TZDateTime.from(scheduledTime, tz.getLocation(currentTimeZone));
     if (time.difference(tz.TZDateTime.now(tz.getLocation(currentTimeZone))) <
-        Duration.zero)
-      return;
-    await notifsPlugin.zonedSchedule(id, title, description,
-        time, platformChannelSpecifics, androidAllowWhileIdle: true,
+        Duration.zero) return;
+    await notifsPlugin.zonedSchedule(
+        id, title, description, time, platformChannelSpecifics,
+        androidAllowWhileIdle: true,
         uiLocalNotificationDateInterpretation: notifs
             .UILocalNotificationDateInterpretation
             .wallClockTime); // This literally schedules the notification
@@ -110,30 +109,27 @@ class NotificationClass {
         "This is a test notification", platformChannelSpecificsReminders);
   }
 
-
   void requestIOSPermissions() {
-    notificationsPlugin.resolvePlatformSpecificImplementation<
-        notifs.IOSFlutterLocalNotificationsPlugin>()
+    notificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            notifs.IOSFlutterLocalNotificationsPlugin>()
         ?.requestPermissions(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+          alert: true,
+          badge: true,
+          sound: true,
+        );
   }
-
 
   Future<void> scheduleDueNotifications(TaskService taskService,
       {List<Task>? tasks}) async {
-    if (tasks == null)
-      tasks = await taskService.getAll();
+    if (tasks == null) tasks = await taskService.getAll();
     if (tasks == null) {
       print("did not receive tasks on notification update");
       return;
     }
     await notificationsPlugin.cancelAll();
     for (final task in tasks) {
-      if(task.done)
-        continue;
+      if (task.done) continue;
       for (final reminder in task.reminderDates) {
         scheduleNotification(
           "Reminder",
@@ -159,5 +155,4 @@ class NotificationClass {
     }
     print("notifications scheduled successfully");
   }
-
 }

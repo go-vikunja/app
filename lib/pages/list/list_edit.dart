@@ -24,16 +24,18 @@ class _ListEditPageState extends State<ListEditPage> {
   late int listId;
 
   @override
-  void initState(){
+  void initState() {
     listId = widget.list.id;
     super.initState();
   }
 
   @override
   Widget build(BuildContext ctx) {
-    if(displayDoneTasks == null)
-      VikunjaGlobal.of(context).listService.getDisplayDoneTasks(listId).then(
-              (value) => setState(() => displayDoneTasks = value == "1"));
+    if (displayDoneTasks == null)
+      VikunjaGlobal.of(context)
+          .listService
+          .getDisplayDoneTasks(listId)
+          .then((value) => setState(() => displayDoneTasks = value == "1"));
     else
       log("Display done tasks: " + displayDoneTasks.toString());
     return Scaffold(
@@ -45,7 +47,7 @@ class _ListEditPageState extends State<ListEditPage> {
           child: Form(
             key: _formKey,
             child: ListView(
-              //reverse: true,
+                //reverse: true,
                 padding: const EdgeInsets.all(16.0),
                 children: <Widget>[
                   Padding(
@@ -73,10 +75,10 @@ class _ListEditPageState extends State<ListEditPage> {
                       maxLines: null,
                       keyboardType: TextInputType.multiline,
                       initialValue: widget.list.description,
-                      onSaved: (description) => _description = description ?? '',
+                      onSaved: (description) =>
+                          _description = description ?? '',
                       validator: (description) {
-                        if(description == null)
-                          return null;
+                        if (description == null) return null;
                         if (description.length > 1000) {
                           return 'The description can have a maximum of 1000 characters.';
                         }
@@ -95,7 +97,9 @@ class _ListEditPageState extends State<ListEditPage> {
                       title: Text("Show done tasks"),
                       onChanged: (value) {
                         value ??= false;
-                        VikunjaGlobal.of(context).listService.setDisplayDoneTasks(listId, value ? "1" : "0");
+                        VikunjaGlobal.of(context)
+                            .listService
+                            .setDisplayDoneTasks(listId, value ? "1" : "0");
                         setState(() => displayDoneTasks = value);
                       },
                     ),
@@ -137,8 +141,7 @@ class _ListEditPageState extends State<ListEditPage> {
                           },)
                     ],
                   )*/
-                ]
-            ),
+                ]),
           ),
         ),
       ),

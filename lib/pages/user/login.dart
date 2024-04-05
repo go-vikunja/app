@@ -33,11 +33,10 @@ class _LoginPageState extends State<LoginPage> {
 
   final _serverSuggestionController = SuggestionsController();
 
-
   @override
   void initState() {
     super.initState();
-    Future.delayed(Duration.zero, () async{
+    Future.delayed(Duration.zero, () async {
       if (VikunjaGlobal.of(context).expired) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text("Login has expired. Please reenter your details!")));
@@ -48,10 +47,16 @@ class _LoginPageState extends State<LoginPage> {
         });
       }
       final client = VikunjaGlobal.of(context).client;
-      await VikunjaGlobal.of(context).settingsManager.getIgnoreCertificates().then(
-          (value) => setState(() => client.ignoreCertificates = value == "1"));
+      await VikunjaGlobal.of(context)
+          .settingsManager
+          .getIgnoreCertificates()
+          .then((value) =>
+              setState(() => client.ignoreCertificates = value == "1"));
 
-      await VikunjaGlobal.of(context).settingsManager.getPastServers().then((value) {
+      await VikunjaGlobal.of(context)
+          .settingsManager
+          .getPastServers()
+          .then((value) {
         print(value);
         if (value != null) setState(() => pastServers = value);
       });
@@ -101,11 +106,11 @@ class _LoginPageState extends State<LoginPage> {
                                 enabled: !_loading,
                                 validator: (address) {
                                   return (isUrl(address) ||
-                                  address != null ||
-                                  address!.isEmpty)
-                                  ? null
-                                    : 'Invalid URL';
-                                  },
+                                          address != null ||
+                                          address!.isEmpty)
+                                      ? null
+                                      : 'Invalid URL';
+                                },
                                 decoration: new InputDecoration(
                                     border: OutlineInputBorder(),
                                     labelText: 'Server Address'),
@@ -120,34 +125,42 @@ class _LoginPageState extends State<LoginPage> {
                             ),*/
                             onSelected: (suggestion) {
                               _serverController.text = suggestion;
-                              setState(() => _serverController.text = suggestion);
+                              setState(
+                                  () => _serverController.text = suggestion);
                             },
-                            itemBuilder: (BuildContext context, Object? itemData) {
+                            itemBuilder:
+                                (BuildContext context, Object? itemData) {
                               return Card(
                                   child: Container(
-                                    padding: EdgeInsets.all(10),
-                                    child:
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                      Text(itemData.toString()),
-                                      IconButton(onPressed: () {
-                                        setState(() {
-                                          pastServers.remove(itemData.toString());
-                                          //_serverSuggestionController.suggestionsBox?.close();
-                                          VikunjaGlobal.of(context).settingsManager.setPastServers(pastServers);
-
-                                        });
-                                      }, icon: Icon(Icons.clear))
-                                    ],
-                                  ))
-                              );
+                                      padding: EdgeInsets.all(10),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(itemData.toString()),
+                                          IconButton(
+                                              onPressed: () {
+                                                setState(() {
+                                                  pastServers.remove(
+                                                      itemData.toString());
+                                                  //_serverSuggestionController.suggestionsBox?.close();
+                                                  VikunjaGlobal.of(context)
+                                                      .settingsManager
+                                                      .setPastServers(
+                                                          pastServers);
+                                                });
+                                              },
+                                              icon: Icon(Icons.clear))
+                                        ],
+                                      )));
                             },
                             suggestionsCallback: (String pattern) {
                               List<String> matches = <String>[];
                               matches.addAll(pastServers);
-                              matches.retainWhere((s){
-                                return s.toLowerCase().contains(pattern.toLowerCase());
+                              matches.retainWhere((s) {
+                                return s
+                                    .toLowerCase()
+                                    .contains(pattern.toLowerCase());
                               });
                               return matches;
                             },
@@ -246,20 +259,18 @@ class _LoginPageState extends State<LoginPage> {
                               }
                             },
                             child: VikunjaButtonText("Login with Frontend"))),
-                            CheckboxListTile(
-                            title: Text("Ignore Certificates"),
-                            value: client.ignoreCertificates,
-                            onChanged: (value) {
-                              setState(() =>
-                                  client.reload_ignore_certs(value ?? false));
-                              VikunjaGlobal.of(context)
-                                  .settingsManager
-                                  .setIgnoreCertificates(value ?? false);
-                              VikunjaGlobal.of(context)
-                                  .client
-                                  .ignoreCertificates = value ?? false;
-                            })
-
+                    CheckboxListTile(
+                        title: Text("Ignore Certificates"),
+                        value: client.ignoreCertificates,
+                        onChanged: (value) {
+                          setState(
+                              () => client.reload_ignore_certs(value ?? false));
+                          VikunjaGlobal.of(context)
+                              .settingsManager
+                              .setIgnoreCertificates(value ?? false);
+                          VikunjaGlobal.of(context).client.ignoreCertificates =
+                              value ?? false;
+                        })
                   ],
                 ),
               ),
@@ -276,7 +287,7 @@ class _LoginPageState extends State<LoginPage> {
     String _password = _passwordController.text;
     if (_server.isEmpty) return;
 
-    if(!pastServers.contains(_server)) pastServers.add(_server);
+    if (!pastServers.contains(_server)) pastServers.add(_server);
     await VikunjaGlobal.of(context).settingsManager.setPastServers(pastServers);
 
     setState(() => _loading = true);
@@ -285,8 +296,7 @@ class _LoginPageState extends State<LoginPage> {
       vGlobal.client.showSnackBar = false;
       vGlobal.client.configure(base: _server);
       Server? info = await vGlobal.serverService.getInfo();
-      if (info == null)
-        throw Exception("Getting server info failed");
+      if (info == null) throw Exception("Getting server info failed");
 
       UserTokenPair newUser;
 
@@ -297,27 +307,27 @@ class _LoginPageState extends State<LoginPage> {
         TextEditingController totpController = TextEditingController();
         bool dismissed = true;
         await showDialog(
-            context: context,
-            builder: (context) => new AlertDialog(
-                  title: Text("Enter One Time Passcode"),
-                  content: TextField(
-                    controller: totpController,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: <TextInputFormatter>[
-                      FilteringTextInputFormatter.digitsOnly
-                    ],
-                  ),
-                  actions: [
-                    TextButton(
-                        onPressed: () {
-                          dismissed = false;
-                          Navigator.pop(context);
-                          },
-                        child: Text("Login"))
-                  ],
-                ),
+          context: context,
+          builder: (context) => new AlertDialog(
+            title: Text("Enter One Time Passcode"),
+            content: TextField(
+              controller: totpController,
+              keyboardType: TextInputType.number,
+              inputFormatters: <TextInputFormatter>[
+                FilteringTextInputFormatter.digitsOnly
+              ],
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () {
+                    dismissed = false;
+                    Navigator.pop(context);
+                  },
+                  child: Text("Login"))
+            ],
+          ),
         );
-        if(!dismissed) {
+        if (!dismissed) {
           newUser = await vGlobal.newUserService!.login(_username, _password,
               rememberMe: this._rememberMe, totp: totpController.text);
         } else {

@@ -10,7 +10,8 @@ import '../../models/project.dart';
 class ProjectEditPage extends StatefulWidget {
   final Project project;
 
-  ProjectEditPage({required this.project}) : super(key: Key(project.toString()));
+  ProjectEditPage({required this.project})
+      : super(key: Key(project.toString()));
 
   @override
   State<StatefulWidget> createState() => _ProjectEditPageState();
@@ -24,16 +25,18 @@ class _ProjectEditPageState extends State<ProjectEditPage> {
   late int listId;
 
   @override
-  void initState(){
+  void initState() {
     listId = widget.project.id;
     super.initState();
   }
 
   @override
   Widget build(BuildContext ctx) {
-    if(displayDoneTasks == null)
-      VikunjaGlobal.of(context).projectService.getDisplayDoneTasks(listId).then(
-              (value) => setState(() => displayDoneTasks = value == "1"));
+    if (displayDoneTasks == null)
+      VikunjaGlobal.of(context)
+          .projectService
+          .getDisplayDoneTasks(listId)
+          .then((value) => setState(() => displayDoneTasks = value == "1"));
     else
       log("Display done tasks: " + displayDoneTasks.toString());
     return Scaffold(
@@ -45,7 +48,7 @@ class _ProjectEditPageState extends State<ProjectEditPage> {
           child: Form(
             key: _formKey,
             child: ListView(
-              //reverse: true,
+                //reverse: true,
                 padding: const EdgeInsets.all(16.0),
                 children: <Widget>[
                   Padding(
@@ -73,10 +76,10 @@ class _ProjectEditPageState extends State<ProjectEditPage> {
                       maxLines: null,
                       keyboardType: TextInputType.multiline,
                       initialValue: widget.project.description,
-                      onSaved: (description) => _description = description ?? '',
+                      onSaved: (description) =>
+                          _description = description ?? '',
                       validator: (description) {
-                        if(description == null)
-                          return null;
+                        if (description == null) return null;
                         if (description.length > 1000) {
                           return 'The description can have a maximum of 1000 characters.';
                         }
@@ -95,7 +98,9 @@ class _ProjectEditPageState extends State<ProjectEditPage> {
                       title: Text("Show done tasks"),
                       onChanged: (value) {
                         value ??= false;
-                        VikunjaGlobal.of(context).listService.setDisplayDoneTasks(listId, value ? "1" : "0");
+                        VikunjaGlobal.of(context)
+                            .listService
+                            .setDisplayDoneTasks(listId, value ? "1" : "0");
                         setState(() => displayDoneTasks = value);
                       },
                     ),
@@ -106,11 +111,11 @@ class _ProjectEditPageState extends State<ProjectEditPage> {
                           child: FancyButton(
                             onPressed: !_loading
                                 ? () {
-                              if (_formKey.currentState!.validate()) {
-                                Form.of(context)?.save();
-                                _saveList(context);
-                              }
-                            }
+                                    if (_formKey.currentState!.validate()) {
+                                      Form.of(context)?.save();
+                                      _saveList(context);
+                                    }
+                                  }
                                 : () {},
                             child: _loading
                                 ? CircularProgressIndicator()
@@ -137,8 +142,7 @@ class _ProjectEditPageState extends State<ProjectEditPage> {
                           },)
                     ],
                   )*/
-                ]
-            ),
+                ]),
           ),
         ),
       ),
@@ -149,10 +153,8 @@ class _ProjectEditPageState extends State<ProjectEditPage> {
     setState(() => _loading = true);
     // FIXME: is there a way we can update the list without creating a new list object?
     //  aka updating the existing list we got from context (setters?)
-    Project newProject = widget.project.copyWith(
-      title: _title,
-      description: _description
-    );
+    Project newProject =
+        widget.project.copyWith(title: _title, description: _description);
     VikunjaGlobal.of(context).projectService.update(newProject).then((_) {
       setState(() => _loading = false);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(

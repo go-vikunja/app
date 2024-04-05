@@ -14,7 +14,7 @@ class LabelTaskAPIService extends APIService implements LabelTaskService {
         .then((response) {
       if (response == null) return null;
       return Label.fromJson(response.body);
-        });
+    });
   }
 
   @override
@@ -22,9 +22,9 @@ class LabelTaskAPIService extends APIService implements LabelTaskService {
     return client
         .delete('/tasks/${lt.task!.id}/labels/${lt.label.id}')
         .then((response) {
-          if (response == null) return null;
-          return Label.fromJson(response.body);
-        });
+      if (response == null) return null;
+      return Label.fromJson(response.body);
+    });
   }
 
   @override
@@ -32,10 +32,9 @@ class LabelTaskAPIService extends APIService implements LabelTaskService {
     String? params =
         query == null ? null : '?s=' + Uri.encodeQueryComponent(query);
 
-    return client.get('/tasks/${lt.task!.id}/labels$params').then(
-        (label) {
-          if (label == null) return null;
-          return convertList(label, (result) => Label.fromJson(result));
-        });
+    return client.get('/tasks/${lt.task!.id}/labels$params').then((label) {
+      if (label == null) return null;
+      return convertList(label, (result) => Label.fromJson(result));
+    });
   }
 }
