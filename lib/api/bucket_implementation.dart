@@ -8,9 +8,9 @@ class BucketAPIService extends APIService implements BucketService {
   BucketAPIService(Client client) : super(client);
 
   @override
-  Future<Bucket?> add(int projectId, Bucket bucket) {
+  Future<Bucket?> add(int projectId, int viewId, Bucket bucket) {
     return client
-        .put('/projects/$projectId/buckets', body: bucket.toJSON())
+        .put('/projects/$projectId/views/$viewId/buckets', body: bucket.toJSON())
         .then((response) {
       if (response == null) return null;
       return Bucket.fromJSON(response.body);
@@ -18,8 +18,8 @@ class BucketAPIService extends APIService implements BucketService {
   }
 
   @override
-  Future delete(int projectId, int bucketId) {
-    return client.delete('/projects/$projectId/buckets/$bucketId');
+  Future delete(int projectId,int viewId,  int bucketId) {
+    return client.delete('/projects/$projectId/views/$viewId/buckets/$bucketId');
   }
 
   /* Not implemented in the Vikunja API
@@ -32,9 +32,9 @@ class BucketAPIService extends APIService implements BucketService {
   */
 
   @override
-  Future<Response?> getAllByList(int projectId,
+  Future<Response?> getAllByList(int projectId, int viewId,
       [Map<String, List<String>>? queryParameters]) {
-    return client.get('/projects/$projectId/buckets', queryParameters).then(
+    return client.get('/projects/$projectId/views/$viewId/tasks', queryParameters).then(
         (response) => response != null
             ? new Response(
                 convertList(response.body, (result) => Bucket.fromJSON(result)),
@@ -48,9 +48,9 @@ class BucketAPIService extends APIService implements BucketService {
   int get maxPages => maxPages;
 
   @override
-  Future<Bucket?> update(Bucket bucket) {
+  Future<Bucket?> update(Bucket bucket, int projectId, int viewId) {
     return client
-        .post('/projects/${bucket.projectId}/buckets/${bucket.id}',
+        .post('/projects/$projectId/views/$viewId/buckets/${bucket.id}',
             body: bucket.toJSON())
         .then((response) {
       if (response == null) return null;

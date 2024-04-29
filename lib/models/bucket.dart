@@ -5,7 +5,7 @@ import 'package:vikunja_app/models/user.dart';
 
 @JsonSerializable()
 class Bucket {
-  int id, projectId, limit;
+  int id, projectViewId, limit;
   String title;
   double? position;
   final DateTime created, updated;
@@ -15,7 +15,7 @@ class Bucket {
 
   Bucket({
     this.id = 0,
-    required this.projectId,
+    required this.projectViewId,
     required this.title,
     this.position,
     required this.limit,
@@ -30,7 +30,7 @@ class Bucket {
 
   Bucket.fromJSON(Map<String, dynamic> json)
       : id = json['id'],
-        projectId = json['project_id'],
+        projectViewId = json['project_view_id'],
         title = json['title'],
         position = json['position'] is int
             ? json['position'].toDouble()
@@ -48,7 +48,7 @@ class Bucket {
 
   toJSON() => {
         'id': id,
-        'list_id': projectId,
+        'project_view_id': projectViewId,
         'title': title,
         'position': position,
         'limit': limit,

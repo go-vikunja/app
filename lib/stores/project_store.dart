@@ -43,7 +43,6 @@ class ProjectProvider with ChangeNotifier {
 
   set pageStatus(PageStatus ps) {
     _pageStatus = ps;
-    print("new PageStatus: ${ps.toString()}");
     notifyListeners();
   }
 
@@ -85,7 +84,7 @@ class ProjectProvider with ChangeNotifier {
   }
 
   Future<void> loadBuckets(
-      {required BuildContext context, required int listId, int page = 1}) {
+      {required BuildContext context, required int listId, required int viewId, int page = 1}) {
     _buckets = [];
     pageStatus = PageStatus.loading;
     notifyListeners();
@@ -94,9 +93,12 @@ class ProjectProvider with ChangeNotifier {
       "page": [page.toString()]
     };
 
+    print(listId);
+    print(viewId);
+
     return VikunjaGlobal.of(context)
         .bucketService
-        .getAllByList(listId, queryParams)
+        .getAllByList(listId, viewId, queryParams)
         .then((response) {
       if (response == null) {
         pageStatus = PageStatus.error;
@@ -106,6 +108,7 @@ class ProjectProvider with ChangeNotifier {
         _maxPages = int.parse(response.headers["x-pagination-total-pages"]!);
       }
       _buckets.addAll(response.body);
+      print(_buckets[0].toJSON());
 
       pageStatus = PageStatus.success;
     });
@@ -181,11 +184,12 @@ class ProjectProvider with ChangeNotifier {
   Future<void> addBucket(
       {required BuildContext context,
       required Bucket newBucket,
-      required int listId}) {
+      required int listId,
+        required int viewId}) {
     notifyListeners();
     return VikunjaGlobal.of(context)
         .bucketService
-        .add(listId, newBucket)
+        .add(listId, viewId, newBucket)
         .then((bucket) {
       if (bucket == null) return null;
       _buckets.add(bucket);
@@ -194,10 +198,11 @@ class ProjectProvider with ChangeNotifier {
   }
 
   Future<void> updateBucket(
-      {required BuildContext context, required Bucket bucket}) {
+      {required BuildContext context, required Bucket bucket, required int listId,
+        required int viewId}) {
     return VikunjaGlobal.of(context)
         .bucketService
-        .update(bucket)
+        .update(bucket, listId, viewId)
         .then((rBucket) {
       if (rBucket == null) return null;
       _buckets[_buckets.indexWhere((b) => rBucket.id == b.id)] = rBucket;
@@ -209,10 +214,11 @@ class ProjectProvider with ChangeNotifier {
   Future<void> deleteBucket(
       {required BuildContext context,
       required int listId,
-      required int bucketId}) {
+      required int bucketId,
+        required int viewId}) {
     return VikunjaGlobal.of(context)
         .bucketService
-        .delete(listId, bucketId)
+        .delete(listId, viewId, bucketId)
         .then((_) {
       _buckets.removeWhere((bucket) => bucket.id == bucketId);
       notifyListeners();

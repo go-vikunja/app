@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:vikunja_app/models/user.dart';
+import 'package:vikunja_app/models/view.dart';
 
 class Project {
   final int id;
@@ -15,6 +16,7 @@ class Project {
   final int? doneBucketId;
 
   Iterable<Project>? subprojects;
+  final List<ProjectView> views;
 
   Project(
       {this.id = 0,
@@ -26,6 +28,7 @@ class Project {
       this.color,
       this.isArchived = false,
       this.isFavourite = false,
+      this.views = const [],
       required this.title,
       created,
       updated})
@@ -41,6 +44,7 @@ class Project {
         isFavourite = json['is_archived'],
         doneBucketId = json['done_bucket_id'],
         parentProjectId = json['parent_project_id'],
+        views = json['views'].map<ProjectView>((view) => ProjectView.fromJson(view)).toList(),
         created = DateTime.parse(json['created']),
         updated = DateTime.parse(json['updated']),
         color = json['hex_color'] != ''

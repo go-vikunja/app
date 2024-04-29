@@ -68,7 +68,7 @@ class _ListPageState extends State<ListPage> {
   Widget build(BuildContext context) {
     taskState = Provider.of<ProjectProvider>(context);
     _kanban = KanbanClass(
-        context, nullSetState, _onViewTapped, _addItemDialog, _project);
+        context, nullSetState, _onViewTapped, _addItemDialog, _project, _project.views[_viewIndex]);
 
     Widget body;
 
@@ -114,13 +114,13 @@ class _ListPageState extends State<ListPage> {
                     );
                   }(Theme.of(context)),
                   child: () {
-                    switch (_viewIndex) {
-                      case 0:
+                    switch (_project.views[_viewIndex].viewKind) {
+                      case "list":
                         return _listView(context);
-                      case 1:
+                      case "kanban":
                         return _kanban.kanbanView();
                       default:
-                        return _listView(context);
+                        return Text("Not implemented");
                     }
                   }(),
                 ),
@@ -153,15 +153,23 @@ class _ListPageState extends State<ListPage> {
         ],
       ),
       body: RefreshIndicator(onRefresh: () => _loadList(), child: body),
-      floatingActionButton: _viewIndex == 1
+      floatingActionButton: _project.views[_viewIndex].viewKind == "kanban"
           ? null
           : Builder(
               builder: (context) => FloatingActionButton(
                   onPressed: () => _addItemDialog(context),
                   child: Icon(Icons.add)),
             ),
-      bottomNavigationBar: BottomNavigationBar(
-        items: const <BottomNavigationBarItem>[
+      bottomNavigationBar: _project.views.length >= 2 ? BottomNavigationBar(
+        type:BottomNavigationBarType.fixed,
+        items: _project.views.map((view) =>
+            BottomNavigationBarItem(
+              icon: view.icon,
+              label: view.title,
+              tooltip: view.title,
+        )).toList(),
+/*
+          ;const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
             icon: Icon(Icons.view_list),
             label: 'List',
@@ -172,10 +180,10 @@ class _ListPageState extends State<ListPage> {
             label: 'Kanban',
             tooltip: 'Kanban',
           ),
-        ],
+        ], */
         currentIndex: _viewIndex,
         onTap: _onViewTapped,
-      ),
+      ) : null,
     );
   }
 
@@ -311,11 +319,11 @@ class _ListPageState extends State<ListPage> {
     taskState.pageStatus = (PageStatus.loading);
 
     updateDisplayDoneTasks().then((value) async {
-      switch (_viewIndex) {
-        case 0:
+      switch (_project.views[_viewIndex].viewKind) {
+        case "list":
           _loadTasksForPage(1);
           break;
-        case 1:
+        case "kanban":
           await _kanban.loadBucketsForPage(1);
           // load all buckets to get length for RecordableListView
           while (_currentPage < taskState.maxPages) {

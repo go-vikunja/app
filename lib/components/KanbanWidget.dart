@@ -9,6 +9,7 @@ import '../global.dart';
 import '../models/bucket.dart';
 import '../models/list.dart';
 import '../models/project.dart';
+import '../models/view.dart';
 import '../pages/list/list.dart';
 import '../stores/project_store.dart';
 import '../utils/calculate_item_position.dart';
@@ -26,11 +27,12 @@ class KanbanClass {
   Function _onViewTapped, _addItemDialog, notify;
   Duration _lastTaskDragUpdateAction = Duration.zero;
 
-  Project _list;
+  Project _project;
+  ProjectView _view;
   Map<int, BucketProps> _bucketProps = {};
 
   KanbanClass(this.context, this.notify, this._onViewTapped,
-      this._addItemDialog, this._list) {
+      this._addItemDialog, this._project, this._view) {
     taskState = Provider.of<ProjectProvider>(context);
   }
 
@@ -44,7 +46,7 @@ class KanbanClass {
         _pageController!.viewportFraction != bucketFraction)
       _pageController = PageController(viewportFraction: bucketFraction);
 
-    print(_list.doneBucketId);
+    print(_project.doneBucketId);
 
     return ReorderableListView.builder(
       scrollDirection: Axis.horizontal,
@@ -173,9 +175,9 @@ class KanbanClass {
 
   Future<void> _setDoneBucket(BuildContext context, int bucketId) async {
     //setState(() {});
-    _list = (await VikunjaGlobal.of(context)
+    _project = (await VikunjaGlobal.of(context)
         .projectService
-        .update(_list.copyWith(doneBucketId: bucketId)))!;
+        .update(_project.copyWith(doneBucketId: bucketId)))!;
     notify();
   }
 
@@ -187,13 +189,15 @@ class KanbanClass {
 
     await Provider.of<ProjectProvider>(context, listen: false).addBucket(
       context: context,
+
       newBucket: Bucket(
         title: title,
         createdBy: currentUser,
-        projectId: _list.id,
+        projectViewId: _view.id,
         limit: 0,
       ),
-      listId: _list.id,
+      listId: _project.id,
+      viewId: _view.id,
     );
 
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -208,6 +212,8 @@ class KanbanClass {
         .updateBucket(
       context: context,
       bucket: bucket,
+      listId: _project.id,
+      viewId: _view.id
     )
         .then((_) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -221,7 +227,8 @@ class KanbanClass {
   Future<void> _deleteBucket(BuildContext context, Bucket bucket) async {
     await Provider.of<ProjectProvider>(context, listen: false).deleteBucket(
       context: context,
-      listId: bucket.projectId,
+      listId: _project.id,
+      viewId: _view.id,
       bucketId: bucket.id,
     );
 
@@ -282,7 +289,7 @@ class KanbanClass {
                   minLeadingWidth: 15,
                   horizontalTitleGap: 4,
                   contentPadding: const EdgeInsets.only(left: 16, right: 10),
-                  leading: bucket.id == _list.doneBucketId
+                  leading: bucket.id == _project.doneBucketId
                       ? Icon(
                           Icons.done_all,
                           color: Colors.green,
@@ -353,7 +360,7 @@ class KanbanClass {
                               break;
                             case BucketMenu.done:
                               //bucket.isDoneBucket = !(bucket.id == _list.doneBucketId);
-                              _list = _list.copyWith(doneBucketId: bucket.id);
+                              _project = _project.copyWith(doneBucketId: bucket.id);
                               _setDoneBucket(context, bucket.id);
                               notify();
                               //_updateBucket(context, bucket);
@@ -378,7 +385,7 @@ class KanbanClass {
                                     padding: const EdgeInsets.only(right: 4),
                                     child: Icon(
                                       Icons.done_all,
-                                      color: bucket.id == _list.doneBucketId
+                                      color: bucket.id == _project.doneBucketId
                                           ? Colors.green
                                           : null,
                                     ),
@@ -549,7 +556,8 @@ class KanbanClass {
   }
 
   Future<void> loadBucketsForPage(int page) {
+    print(_view.id);
     return Provider.of<ProjectProvider>(context, listen: false)
-        .loadBuckets(context: context, listId: _list.id, page: page);
+        .loadBuckets(context: context, listId: _project.id, viewId: _view.id, page: page);
   }
 }
