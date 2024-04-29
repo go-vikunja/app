@@ -10,7 +10,6 @@ class Bucket {
   double? position;
   final DateTime created, updated;
   User createdBy;
-  bool? isDoneBucket;
   final List<Task> tasks;
 
   Bucket({
@@ -19,7 +18,6 @@ class Bucket {
     required this.title,
     this.position,
     required this.limit,
-    this.isDoneBucket = false,
     DateTime? created,
     DateTime? updated,
     required this.createdBy,
@@ -36,7 +34,6 @@ class Bucket {
             ? json['position'].toDouble()
             : json['position'],
         limit = json['limit'],
-        isDoneBucket = json['is_done_bucket'],
         created = DateTime.parse(json['created']),
         updated = DateTime.parse(json['updated']),
         createdBy = User.fromJson(json['created_by']),
@@ -52,7 +49,6 @@ class Bucket {
         'title': title,
         'position': position,
         'limit': limit,
-        'is_done_bucket': isDoneBucket,
         'created': created.toUtc().toIso8601String(),
         'updated': updated.toUtc().toIso8601String(),
         'created_by': createdBy.toJSON(),

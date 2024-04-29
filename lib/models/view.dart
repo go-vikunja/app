@@ -53,4 +53,27 @@ class ProjectView {
         "updated": updated.toUtc().toIso8601String(),
         "view_kind": viewKind
       };
+
+  ProjectView copyWith({
+    DateTime? created, // "created": "string",
+    int? defaultBucketId, //": 0,
+    int? doneBucketId,
+    int? id, //": 0,
+    int? position,
+    int? projectId,
+    String? title,
+    DateTime? updated,
+    String? viewKind,
+  }) {
+    return ProjectView(
+        created ?? this.created,
+        defaultBucketId ?? this.defaultBucketId,
+        doneBucketId ?? this.doneBucketId,
+        id ?? this.id,
+        position ?? this.position,
+        projectId ?? this.projectId,
+        title ?? this.title,
+        updated ?? this.updated,
+        viewKind ?? this.viewKind);
+  }
 }

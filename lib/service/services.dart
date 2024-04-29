@@ -14,6 +14,7 @@ import 'package:vikunja_app/models/bucket.dart';
 
 import '../models/project.dart';
 import '../models/server.dart';
+import '../models/view.dart';
 
 enum TaskServiceOptionSortBy {
   id,
@@ -150,6 +151,13 @@ abstract class ProjectService {
   void setDisplayDoneTasks(int listId, String value);
   //Future<String?> getDefaultList();
   //void setDefaultList(int? listId);
+}
+
+abstract class ProjectViewService {
+  Future<ProjectView?> get(int projectId, int viewId);
+  Future<ProjectView?> create(ProjectView view);
+  Future<ProjectView?> update(ProjectView view);
+  Future delete(int projectId, int viewId);
 }
 
 abstract class NamespaceService {

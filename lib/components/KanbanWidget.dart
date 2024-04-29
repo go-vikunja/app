@@ -46,8 +46,6 @@ class KanbanClass {
         _pageController!.viewportFraction != bucketFraction)
       _pageController = PageController(viewportFraction: bucketFraction);
 
-    print(_project.doneBucketId);
-
     return ReorderableListView.builder(
       scrollDirection: Axis.horizontal,
       scrollController: _pageController,
@@ -175,9 +173,9 @@ class KanbanClass {
 
   Future<void> _setDoneBucket(BuildContext context, int bucketId) async {
     //setState(() {});
-    _project = (await VikunjaGlobal.of(context)
-        .projectService
-        .update(_project.copyWith(doneBucketId: bucketId)))!;
+    _view = (await VikunjaGlobal.of(context)
+        .projectViewService
+        .update(_view.copyWith(doneBucketId: bucketId)))!;
     notify();
   }
 
@@ -287,7 +285,7 @@ class KanbanClass {
                   minLeadingWidth: 15,
                   horizontalTitleGap: 4,
                   contentPadding: const EdgeInsets.only(left: 16, right: 10),
-                  leading: bucket.id == _project.doneBucketId
+                  leading: bucket.id == _view.doneBucketId
                       ? Icon(
                           Icons.done_all,
                           color: Colors.green,
@@ -357,7 +355,6 @@ class KanbanClass {
                               });
                               break;
                             case BucketMenu.done:
-                              //bucket.isDoneBucket = !(bucket.id == _list.doneBucketId);
                               _project =
                                   _project.copyWith(doneBucketId: bucket.id);
                               _setDoneBucket(context, bucket.id);
@@ -384,7 +381,7 @@ class KanbanClass {
                                     padding: const EdgeInsets.only(right: 4),
                                     child: Icon(
                                       Icons.done_all,
-                                      color: bucket.id == _project.doneBucketId
+                                      color: bucket.id == _view.doneBucketId
                                           ? Colors.green
                                           : null,
                                     ),
