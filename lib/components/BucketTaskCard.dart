@@ -5,7 +5,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:provider/provider.dart';
 import 'package:vikunja_app/models/task.dart';
-import 'package:vikunja_app/pages/list/task_edit.dart';
+import 'package:vikunja_app/pages/project/task_edit.dart';
 import 'package:vikunja_app/utils/misc.dart';
 import 'package:vikunja_app/theme/constants.dart';
 

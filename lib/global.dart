@@ -7,8 +7,6 @@ import 'package:vikunja_app/api/client.dart';
 import 'package:vikunja_app/api/label_task.dart';
 import 'package:vikunja_app/api/label_task_bulk.dart';
 import 'package:vikunja_app/api/labels.dart';
-import 'package:vikunja_app/api/list_implementation.dart';
-import 'package:vikunja_app/api/namespace_implementation.dart';
 import 'package:vikunja_app/api/server_implementation.dart';
 import 'package:vikunja_app/api/task_implementation.dart';
 import 'package:vikunja_app/api/user_implementation.dart';
@@ -65,15 +63,11 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
 
   VersionChecker get versionChecker => new VersionChecker(snackbarKey);
 
-  NamespaceService get namespaceService => new NamespaceAPIService(client);
-
   ProjectService get projectService => new ProjectAPIService(client, _storage);
 
   TaskService get taskService => new TaskAPIService(client);
 
   BucketService get bucketService => new BucketAPIService(client);
-
-  ListService get listService => new ListAPIService(client, _storage);
 
   TaskServiceOptions get taskServiceOptions => new TaskServiceOptions();
 

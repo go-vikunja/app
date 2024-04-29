@@ -6,7 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:vikunja_app/components/TaskBottomSheet.dart';
 import 'package:vikunja_app/models/task.dart';
 import 'package:vikunja_app/utils/misc.dart';
-import 'package:vikunja_app/pages/list/task_edit.dart';
+import 'package:vikunja_app/pages/project/task_edit.dart';
 import 'package:vikunja_app/utils/priority.dart';
 
 import '../stores/project_store.dart';

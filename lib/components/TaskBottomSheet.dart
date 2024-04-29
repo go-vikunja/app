@@ -7,7 +7,7 @@ import 'package:vikunja_app/utils/priority.dart';
 
 import '../models/label.dart';
 import '../models/task.dart';
-import '../pages/list/task_edit.dart';
+import '../pages/project/task_edit.dart';
 import '../stores/project_store.dart';
 import '../theme/constants.dart';
 import 'label.dart';

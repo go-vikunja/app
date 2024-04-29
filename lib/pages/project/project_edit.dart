@@ -99,7 +99,7 @@ class _ProjectEditPageState extends State<ProjectEditPage> {
                       onChanged: (value) {
                         value ??= false;
                         VikunjaGlobal.of(context)
-                            .listService
+                            .projectService
                             .setDisplayDoneTasks(listId, value ? "1" : "0");
                         setState(() => displayDoneTasks = value);
                       },
