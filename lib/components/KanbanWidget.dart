@@ -7,9 +7,9 @@ import 'package:provider/provider.dart';
 
 import '../global.dart';
 import '../models/bucket.dart';
-import '../models/list.dart';
 import '../models/project.dart';
-import '../pages/list/list.dart';
+import '../models/view.dart';
+import '../pages/project/project_task_list.dart';
 import '../stores/project_store.dart';
 import '../utils/calculate_item_position.dart';
 import 'AddDialog.dart';

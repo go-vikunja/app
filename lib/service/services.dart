@@ -150,6 +150,13 @@ abstract class ProjectService {
   //void setDefaultList(int? listId);
 }
 
+abstract class ProjectViewService {
+  Future<ProjectView?> get(int projectId, int viewId);
+  Future<ProjectView?> create(ProjectView view);
+  Future<ProjectView?> update(ProjectView view);
+  Future delete(int projectId, int viewId);
+}
+
 abstract class TaskService {
   Future<Task?> get(int taskId);
 
