@@ -6,7 +6,6 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:vikunja_app/api/response.dart';
 import 'package:vikunja_app/models/label.dart';
 import 'package:vikunja_app/models/labelTask.dart';
-import 'package:vikunja_app/models/list.dart';
 import 'package:vikunja_app/models/namespace.dart';
 import 'package:vikunja_app/models/task.dart';
 import 'package:vikunja_app/models/user.dart';
@@ -171,7 +170,7 @@ abstract class NamespaceService {
 
   Future delete(int namespaceId);
 }
-
+/*
 abstract class ListService {
   Future<List<TaskList>?> getAll();
 
@@ -193,7 +192,7 @@ abstract class ListService {
 
   //void setDefaultList(int? listId);
 }
-
+*/
 abstract class TaskService {
   Future<Task?> get(int taskId);
 

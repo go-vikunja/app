@@ -8,11 +8,9 @@ import 'package:vikunja_app/components/AddDialog.dart';
 import 'package:vikunja_app/components/KanbanWidget.dart';
 import 'package:vikunja_app/components/TaskTile.dart';
 import 'package:vikunja_app/global.dart';
-import 'package:vikunja_app/models/list.dart';
 import 'package:vikunja_app/models/task.dart';
 import 'package:vikunja_app/models/bucket.dart';
-import 'package:vikunja_app/pages/list/list_edit.dart';
-import 'package:vikunja_app/pages/list/task_edit.dart';
+import 'package:vikunja_app/pages/project/task_edit.dart';
 import 'package:vikunja_app/pages/project/project_edit.dart';
 
 import '../../components/pagestatus.dart';

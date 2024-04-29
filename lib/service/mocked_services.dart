@@ -82,7 +82,7 @@ class MockedNamespaceService implements NamespaceService {
     return create(ns);
   }
 }
-
+/*
 class MockedListService implements ListService {
   @override
   Future<TaskList> create(namespaceId, TaskList tl) {
@@ -140,7 +140,7 @@ class MockedListService implements ListService {
   void setDefaultList(int? listId) {
     // TODO: implement setDefaultList
   }
-}
+}*/
 
 class MockedTaskService implements TaskService {
   @override

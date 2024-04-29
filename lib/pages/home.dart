@@ -2,18 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:after_layout/after_layout.dart';
 import 'package:provider/provider.dart';
 
-import 'package:vikunja_app/components/AddDialog.dart';
-import 'package:vikunja_app/components/ErrorDialog.dart';
-import 'package:vikunja_app/models/project.dart';
-import 'package:vikunja_app/pages/namespace/namespace.dart';
-import 'package:vikunja_app/pages/namespace/namespace_edit.dart';
 import 'package:vikunja_app/pages/landing_page.dart';
 import 'package:vikunja_app/global.dart';
-import 'package:vikunja_app/models/namespace.dart';
-import 'package:vikunja_app/pages/namespace/overview.dart';
 import 'package:vikunja_app/pages/project/overview.dart';
 import 'package:vikunja_app/pages/settings.dart';
 

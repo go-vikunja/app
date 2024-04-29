@@ -9,7 +9,6 @@ import '../global.dart';
 import '../models/bucket.dart';
 import '../models/list.dart';
 import '../models/project.dart';
-import '../models/view.dart';
 import '../pages/list/list.dart';
 import '../stores/project_store.dart';
 import '../utils/calculate_item_position.dart';
