@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:dynamic_color/dynamic_color.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -34,6 +35,9 @@ class IgnoreCertHttpOverrides extends HttpOverrides {
 
 @pragma('vm:entry-point')
 void callbackDispatcher() {
+  if (kIsWeb) {
+    return;
+  }
   Workmanager().executeTask((task, inputData) async {
     print(
         "Native called background task: $task"); //simpleTask will be emitted here.
@@ -95,18 +99,31 @@ void main() async {
       Permission.notification.request();
     }
   });
-  await FlutterDownloader.initialize();
-  Workmanager().initialize(callbackDispatcher, isInDebugMode: false);
+  try {
+    if (!kIsWeb) {
+      await FlutterDownloader.initialize();
+    }
+  } catch (e) {
+    print("Failed to initialize downloader: $e");
+  }
+  try {
+    if (!kIsWeb) {
+      Workmanager().initialize(callbackDispatcher, isInDebugMode: false);
+    }
+  } catch (e) {
+    print("Failed to initialize workmanager: $e");
+  }
   runApp(VikunjaGlobal(
-      child: new VikunjaApp(
-        home: HomePage(),
-        key: UniqueKey(),
-        navkey: globalNavigatorKey,
-      ),
-      login: new VikunjaApp(
-        home: LoginPage(),
-        key: UniqueKey(),
-      )));
+    child: new VikunjaApp(
+      home: HomePage(),
+      key: UniqueKey(),
+      navkey: globalNavigatorKey,
+    ),
+    login: new VikunjaApp(
+      home: LoginPage(),
+      key: UniqueKey(),
+    ),
+  ));
 }
 
 final ValueNotifier<bool> updateTheme = ValueNotifier(false);
@@ -118,38 +135,41 @@ class VikunjaApp extends StatelessWidget {
   const VikunjaApp({Key? key, required this.home, this.navkey})
       : super(key: key);
 
+  Future<ThemeData> getThemedata() async {
+    FlutterThemeMode themeMode = FlutterThemeMode.light;
+    try {
+      SettingsManager manager = SettingsManager(new FlutterSecureStorage());
+      themeMode = await manager.getThemeMode();
+    } catch (e) {
+      print("Failed to get theme mode: $e");
+    }
+    switch (themeMode) {
+      case FlutterThemeMode.dark:
+        return buildVikunjaDarkTheme();
+      case FlutterThemeMode.materialYouLight:
+        return buildVikunjaMaterialLightTheme();
+      case FlutterThemeMode.materialYouDark:
+        return buildVikunjaMaterialDarkTheme();
+      default:
+        return buildVikunjaTheme();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    SettingsManager manager = SettingsManager(new FlutterSecureStorage());
-
     return new ValueListenableBuilder(
         valueListenable: updateTheme,
         builder: (_, mode, __) {
-          updateTheme.value = false;
-          FlutterThemeMode themeMode = FlutterThemeMode.system;
-          Future<ThemeData> theme = manager.getThemeMode().then((value) {
-            themeMode = value;
-            switch (value) {
-              case FlutterThemeMode.dark:
-                return buildVikunjaDarkTheme();
-              case FlutterThemeMode.materialYouLight:
-                return buildVikunjaMaterialLightTheme();
-              case FlutterThemeMode.materialYouDark:
-                return buildVikunjaMaterialDarkTheme();
-              default:
-                return buildVikunjaTheme();
-            }
-          });
           return FutureBuilder<ThemeData>(
-              future: theme,
+              future: getThemedata(),
               builder: (BuildContext context, AsyncSnapshot<ThemeData> data) {
                 if (data.hasData) {
                   return new DynamicColorBuilder(
                       builder: (lightTheme, darkTheme) {
                     ThemeData? themeData = data.data;
-                    if (themeMode == FlutterThemeMode.materialYouLight)
+                    if (data.data == FlutterThemeMode.materialYouLight)
                       themeData = themeData?.copyWith(colorScheme: lightTheme);
-                    else if (themeMode == FlutterThemeMode.materialYouDark)
+                    else if (data.data == FlutterThemeMode.materialYouDark)
                       themeData = themeData?.copyWith(colorScheme: darkTheme);
                     return MaterialApp(
                       title: 'Vikunja',

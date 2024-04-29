@@ -1,14 +1,19 @@
 {
-    "configurations": [
-        {
-            "name": "Flutter",
-            "request": "launch",
-            "type": "dart",
-            "flutterMode": "debug",
-            "args": [
-                "--flavor",
-                "main"
-            ],
-        }
-    ]
+  "configurations": [
+    {
+      "name": "Flutter (Chromium)",
+      "type": "dart",
+      "request": "launch",
+      "program": "lib/main.dart",
+      "args": ["-d", "chrome", "--flavor", "main"],
+      "deviceId": "chrome",
+    },
+    {
+      "name": "Flutter",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "debug",
+      "args": ["--flavor", "main"]
+    }
+  ]
 }
