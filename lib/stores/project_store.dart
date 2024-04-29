@@ -84,7 +84,10 @@ class ProjectProvider with ChangeNotifier {
   }
 
   Future<void> loadBuckets(
-      {required BuildContext context, required int listId, required int viewId, int page = 1}) {
+      {required BuildContext context,
+      required int listId,
+      required int viewId,
+      int page = 1}) {
     _buckets = [];
     pageStatus = PageStatus.loading;
     notifyListeners();
@@ -185,7 +188,7 @@ class ProjectProvider with ChangeNotifier {
       {required BuildContext context,
       required Bucket newBucket,
       required int listId,
-        required int viewId}) {
+      required int viewId}) {
     notifyListeners();
     return VikunjaGlobal.of(context)
         .bucketService
@@ -198,8 +201,10 @@ class ProjectProvider with ChangeNotifier {
   }
 
   Future<void> updateBucket(
-      {required BuildContext context, required Bucket bucket, required int listId,
-        required int viewId}) {
+      {required BuildContext context,
+      required Bucket bucket,
+      required int listId,
+      required int viewId}) {
     return VikunjaGlobal.of(context)
         .bucketService
         .update(bucket, listId, viewId)
@@ -215,7 +220,7 @@ class ProjectProvider with ChangeNotifier {
       {required BuildContext context,
       required int listId,
       required int bucketId,
-        required int viewId}) {
+      required int viewId}) {
     return VikunjaGlobal.of(context)
         .bucketService
         .delete(listId, viewId, bucketId)

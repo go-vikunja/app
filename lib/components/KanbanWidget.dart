@@ -189,7 +189,6 @@ class KanbanClass {
 
     await Provider.of<ProjectProvider>(context, listen: false).addBucket(
       context: context,
-
       newBucket: Bucket(
         title: title,
         createdBy: currentUser,
@@ -210,11 +209,10 @@ class KanbanClass {
   Future<void> _updateBucket(BuildContext context, Bucket bucket) {
     return Provider.of<ProjectProvider>(context, listen: false)
         .updateBucket(
-      context: context,
-      bucket: bucket,
-      listId: _project.id,
-      viewId: _view.id
-    )
+            context: context,
+            bucket: bucket,
+            listId: _project.id,
+            viewId: _view.id)
         .then((_) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('\'${bucket.title}\' bucket updated successfully!'),
@@ -360,7 +358,8 @@ class KanbanClass {
                               break;
                             case BucketMenu.done:
                               //bucket.isDoneBucket = !(bucket.id == _list.doneBucketId);
-                              _project = _project.copyWith(doneBucketId: bucket.id);
+                              _project =
+                                  _project.copyWith(doneBucketId: bucket.id);
                               _setDoneBucket(context, bucket.id);
                               notify();
                               //_updateBucket(context, bucket);
@@ -557,7 +556,7 @@ class KanbanClass {
 
   Future<void> loadBucketsForPage(int page) {
     print(_view.id);
-    return Provider.of<ProjectProvider>(context, listen: false)
-        .loadBuckets(context: context, listId: _project.id, viewId: _view.id, page: page);
+    return Provider.of<ProjectProvider>(context, listen: false).loadBuckets(
+        context: context, listId: _project.id, viewId: _view.id, page: page);
   }
 }

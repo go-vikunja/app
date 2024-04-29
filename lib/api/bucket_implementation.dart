@@ -10,7 +10,8 @@ class BucketAPIService extends APIService implements BucketService {
   @override
   Future<Bucket?> add(int projectId, int viewId, Bucket bucket) {
     return client
-        .put('/projects/$projectId/views/$viewId/buckets', body: bucket.toJSON())
+        .put('/projects/$projectId/views/$viewId/buckets',
+            body: bucket.toJSON())
         .then((response) {
       if (response == null) return null;
       return Bucket.fromJSON(response.body);
@@ -18,8 +19,9 @@ class BucketAPIService extends APIService implements BucketService {
   }
 
   @override
-  Future delete(int projectId,int viewId,  int bucketId) {
-    return client.delete('/projects/$projectId/views/$viewId/buckets/$bucketId');
+  Future delete(int projectId, int viewId, int bucketId) {
+    return client
+        .delete('/projects/$projectId/views/$viewId/buckets/$bucketId');
   }
 
   /* Not implemented in the Vikunja API
@@ -34,8 +36,9 @@ class BucketAPIService extends APIService implements BucketService {
   @override
   Future<Response?> getAllByList(int projectId, int viewId,
       [Map<String, List<String>>? queryParameters]) {
-    return client.get('/projects/$projectId/views/$viewId/tasks', queryParameters).then(
-        (response) => response != null
+    return client
+        .get('/projects/$projectId/views/$viewId/tasks', queryParameters)
+        .then((response) => response != null
             ? new Response(
                 convertList(response.body, (result) => Bucket.fromJSON(result)),
                 response.statusCode,

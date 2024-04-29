@@ -67,8 +67,8 @@ class _ListPageState extends State<ListPage> {
   @override
   Widget build(BuildContext context) {
     taskState = Provider.of<ProjectProvider>(context);
-    _kanban = KanbanClass(
-        context, nullSetState, _onViewTapped, _addItemDialog, _project, _project.views[_viewIndex]);
+    _kanban = KanbanClass(context, nullSetState, _onViewTapped, _addItemDialog,
+        _project, _project.views[_viewIndex]);
 
     Widget body;
 
@@ -160,14 +160,16 @@ class _ListPageState extends State<ListPage> {
                   onPressed: () => _addItemDialog(context),
                   child: Icon(Icons.add)),
             ),
-      bottomNavigationBar: _project.views.length >= 2 ? BottomNavigationBar(
-        type:BottomNavigationBarType.fixed,
-        items: _project.views.map((view) =>
-            BottomNavigationBarItem(
-              icon: view.icon,
-              label: view.title,
-              tooltip: view.title,
-        )).toList(),
+      bottomNavigationBar: _project.views.length >= 2
+          ? BottomNavigationBar(
+              type: BottomNavigationBarType.fixed,
+              items: _project.views
+                  .map((view) => BottomNavigationBarItem(
+                        icon: view.icon,
+                        label: view.title,
+                        tooltip: view.title,
+                      ))
+                  .toList(),
 /*
           ;const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
@@ -181,9 +183,10 @@ class _ListPageState extends State<ListPage> {
             tooltip: 'Kanban',
           ),
         ], */
-        currentIndex: _viewIndex,
-        onTap: _onViewTapped,
-      ) : null,
+              currentIndex: _viewIndex,
+              onTap: _onViewTapped,
+            )
+          : null,
     );
   }
 

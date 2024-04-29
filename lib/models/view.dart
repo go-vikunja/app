@@ -1,21 +1,16 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
-enum ViewKind {
-  LIST,
-  GANTT,
-  TABLE,
-  KANBAN
-}
+enum ViewKind { LIST, GANTT, TABLE, KANBAN }
 
 class ProjectView {
   //"bucket_configuration": [],
   //"bucket_configuration_mode": 0,
   final DateTime created; // "created": "string",
-  final int defaultBucketId;//": 0,
+  final int defaultBucketId; //": 0,
   final int doneBucketId;
   //"filter": "string",
-  final int id;//": 0,
+  final int id; //": 0,
   final int position;
   final int projectId;
   final String title;
@@ -23,9 +18,9 @@ class ProjectView {
   final String viewKind;
 
   get icon {
-    switch(viewKind) {
+    switch (viewKind) {
       case "list":
-        return  Icon(Icons.view_list);
+        return Icon(Icons.view_list);
       case "kanban":
         return Icon(Icons.view_kanban);
       default:
@@ -33,21 +28,21 @@ class ProjectView {
     }
   }
 
-  ProjectView(this.created, this.defaultBucketId, this.doneBucketId, this.id, this.position, this.projectId, this.title, this.updated, this.viewKind);
+  ProjectView(this.created, this.defaultBucketId, this.doneBucketId, this.id,
+      this.position, this.projectId, this.title, this.updated, this.viewKind);
 
   ProjectView.fromJson(Map<String, dynamic> json)
       : created = DateTime.parse(json['created']),
-      defaultBucketId = json['default_bucket_id'],
-      doneBucketId = json['done_bucket_id'],
-      id = json['id'],
-      position = json['position'],
-      projectId = json['project_id'],
-      title = json['title'],
-  viewKind = json['view_kind'],
-      updated = DateTime.parse(json['updated']);
+        defaultBucketId = json['default_bucket_id'],
+        doneBucketId = json['done_bucket_id'],
+        id = json['id'],
+        position = json['position'],
+        projectId = json['project_id'],
+        title = json['title'],
+        viewKind = json['view_kind'],
+        updated = DateTime.parse(json['updated']);
 
-  toJSON() =>
-      {
+  toJSON() => {
         "created": created.toUtc().toIso8601String(),
         "default_bucket_id": defaultBucketId,
         "done_bucket_id": doneBucketId,

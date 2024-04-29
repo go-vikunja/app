@@ -82,7 +82,10 @@ class ListProvider with ChangeNotifier {
   }
 
   Future<void> loadBuckets(
-      {required BuildContext context, required int listId, required int viewId, int page = 1}) {
+      {required BuildContext context,
+      required int listId,
+      required int viewId,
+      int page = 1}) {
     _buckets = [];
     pageStatus = PageStatus.loading;
     notifyListeners();
@@ -192,8 +195,10 @@ class ListProvider with ChangeNotifier {
   }
 
   Future<void> updateBucket(
-      {required BuildContext context, required Bucket bucket, required int listId,
-        required int viewId}) {
+      {required BuildContext context,
+      required Bucket bucket,
+      required int listId,
+      required int viewId}) {
     return VikunjaGlobal.of(context)
         .bucketService
         .update(bucket, listId, viewId)

@@ -44,7 +44,9 @@ class Project {
         isFavourite = json['is_archived'],
         doneBucketId = json['done_bucket_id'],
         parentProjectId = json['parent_project_id'],
-        views = json['views'].map<ProjectView>((view) => ProjectView.fromJson(view)).toList(),
+        views = json['views']
+            .map<ProjectView>((view) => ProjectView.fromJson(view))
+            .toList(),
         created = DateTime.parse(json['created']),
         updated = DateTime.parse(json['updated']),
         color = json['hex_color'] != ''
