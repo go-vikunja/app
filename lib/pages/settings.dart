@@ -2,7 +2,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:vikunja_app/global.dart';
-import 'package:vikunja_app/models/list.dart';
 import 'package:collection/collection.dart';
 
 import '../main.dart';

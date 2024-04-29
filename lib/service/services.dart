@@ -1,12 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:vikunja_app/api/response.dart';
 import 'package:vikunja_app/models/label.dart';
 import 'package:vikunja_app/models/labelTask.dart';
-import 'package:vikunja_app/models/namespace.dart';
 import 'package:vikunja_app/models/task.dart';
 import 'package:vikunja_app/models/user.dart';
 import 'package:vikunja_app/models/bucket.dart';
@@ -152,47 +150,6 @@ abstract class ProjectService {
   //void setDefaultList(int? listId);
 }
 
-abstract class ProjectViewService {
-  Future<ProjectView?> get(int projectId, int viewId);
-  Future<ProjectView?> create(ProjectView view);
-  Future<ProjectView?> update(ProjectView view);
-  Future delete(int projectId, int viewId);
-}
-
-abstract class NamespaceService {
-  Future<List<Namespace>?> getAll();
-
-  Future<Namespace?> get(int namespaceId);
-
-  Future<Namespace?> create(Namespace ns);
-
-  Future<Namespace?> update(Namespace ns);
-
-  Future delete(int namespaceId);
-}
-/*
-abstract class ListService {
-  Future<List<TaskList>?> getAll();
-
-  Future<TaskList?> get(int listId);
-
-  Future<List<TaskList>?> getByNamespace(int namespaceId);
-
-  Future<TaskList?> create(int namespaceId, TaskList tl);
-
-  Future<TaskList?> update(TaskList tl);
-
-  Future delete(int listId);
-
-  Future<String?> getDisplayDoneTasks(int listId);
-
-  void setDisplayDoneTasks(int listId, String value);
-
-  Future<String?> getDefaultList();
-
-  //void setDefaultList(int? listId);
-}
-*/
 abstract class TaskService {
   Future<Task?> get(int taskId);
 
