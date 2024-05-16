@@ -1,7 +1,7 @@
 name: vikunja_app
 description: Vikunja as Flutter cross platform app
 
-version: 0.1.5-beta
+version: 0.1.6
 
 environment:
   sdk: ">=2.18.0 <3.0.0"
@@ -24,7 +24,6 @@ dependencies:
   petitparser: ^6.0.2
   provider: ^6.1.2
   webview_flutter: ^4.7.0
-  flutter_colorpicker: ^1.0.3
   flutter_keyboard_visibility: ^6.0.0
   dotted_border: ^2.1.0
   url_launcher: ^6.2.5
@@ -33,7 +32,10 @@ dependencies:
   dynamic_color: ^1.7.0
   flutter_widget_from_html: ^0.14.11
   flutter_downloader: ^1.11.6
-
+  flutter_colorpicker:
+    git:
+      url: https://github.com/mchome/flutter_colorpicker
+      ref: master  # or 786d04363f587b818ce585d25b9c2bb62de95aba
   meta: ^1.11.0
   timezone: ^0.9.2
   json_annotation: ^4.8.1
