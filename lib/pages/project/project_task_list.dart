@@ -10,8 +10,8 @@ import 'package:vikunja_app/components/TaskTile.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/models/task.dart';
 import 'package:vikunja_app/models/bucket.dart';
-import 'package:vikunja_app/pages/project/task_edit.dart';
 import 'package:vikunja_app/pages/project/project_edit.dart';
+import 'package:vikunja_app/pages/project/task_edit.dart';
 
 import '../../components/pagestatus.dart';
 import '../../models/project.dart';

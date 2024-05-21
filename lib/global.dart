@@ -1,5 +1,6 @@
 import 'dart:developer' as dev;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:vikunja_app/api/bucket_implementation.dart';
@@ -87,6 +88,9 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
   late String currentTimeZone;
 
   void updateWorkmanagerDuration() {
+    if (kIsWeb) {
+      return;
+    }
     Workmanager().cancelAll().then((value) {
       settingsManager.getWorkmanagerDuration().then((duration) {
         if (duration.inMinutes > 0) {
