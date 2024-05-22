@@ -60,9 +60,12 @@ ThemeData _buildVikunjaTheme(ThemeData base, {bool isDark = false}) {
             .withLightness(max(_hslColor.lightness - 0.03, 0))
             .toColor();
       }(),
-    ), colorScheme: base.colorScheme.copyWith(
-      primary: vPrimaryDark,
-      secondary: vPrimary,
-    ).copyWith(error: vRed),
+    ),
+    colorScheme: base.colorScheme
+        .copyWith(
+          primary: vPrimaryDark,
+          secondary: vPrimary,
+        )
+        .copyWith(error: vRed),
   );
 }
