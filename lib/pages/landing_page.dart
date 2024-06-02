@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:after_layout/after_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -28,8 +30,7 @@ class LandingPage extends HomeScreenWidget {
   State<StatefulWidget> createState() => LandingPageState();
 }
 
-class LandingPageState extends State<LandingPage>
-    with AfterLayoutMixin<LandingPage> {
+class LandingPageState extends State<LandingPage> {
   int? defaultList;
   bool onlyDueDate = true;
   List<Task> _tasks = [];
@@ -44,40 +45,47 @@ class LandingPageState extends State<LandingPage>
         );
   }
 
-  @override
-  void initState() {
-    Future.delayed(
-        Duration.zero,
-        () => _updateDefaultList().then((value) {
-              try {
-                platform.invokeMethod("isQuickTile", "").then((value) =>
-                    {if (value is bool && value) _addItemDialog(context)});
-              } catch (e) {
-                log(e.toString());
-              }
-              VikunjaGlobal.of(context)
-                  .settingsManager
-                  .getLandingPageOnlyDueDateTasks()
-                  .then((value) => onlyDueDate = value);
-            }));
-    super.initState();
+
+  void handleMethod(List<String> method) {
+    switch (method[0]) {
+      case "open_add_task":
+        _addItemDialog(context);
+        break;
+      case "open_add_task_with_text":
+        print("open_add_task_with_text: ${method[1]}");
+        _addItemDialog(context, prefilledTitle: method[1]);
+        break;
+    }
   }
 
-  @override
-  void afterFirstLayout(BuildContext context) {
+  void scheduleIntent() async {
     try {
       // This is needed when app is already open and quicktile is clicked
-      platform.setMethodCallHandler((call) {
-        switch (call.method) {
-          case "open_add_task":
-            _addItemDialog(context);
-            break;
-        }
-        return Future.value();
-      });
+      List<String>? method = (await platform.invokeMethod("isQuickTile", "")).map<String>((val) => val.toString()).toList();
+
+      if(method != null) {
+        handleMethod(method);
+      }
+
     } catch (e) {
       log(e.toString());
     }
+    platform.setMethodCallHandler((call) async {
+      handleMethod([call.method.toString(), call.arguments.toString()]);
+      return Future.value();
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    Future.delayed(Duration.zero,() {
+      _updateDefaultList().then((_) {
+        scheduleIntent();
+      }
+      );
+    });
   }
 
   @override
@@ -166,7 +174,7 @@ class LandingPageState extends State<LandingPage>
     );
   }
 
-  _addItemDialog(BuildContext context) {
+  _addItemDialog(BuildContext context, {String? prefilledTitle}) {
     if (defaultList == null) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('Please select a default list in the settings'),
@@ -175,6 +183,7 @@ class LandingPageState extends State<LandingPage>
       showDialog(
           context: context,
           builder: (_) => AddDialog(
+            prefilledTitle: prefilledTitle,
               onAddTask: (title, dueDate) => _addTask(title, dueDate, context),
               decoration: new InputDecoration(
                   labelText: 'Task Name', hintText: 'eg. Milk')));

@@ -1,3 +1,4 @@
+import 'package:after_layout/after_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/components/datetimePicker.dart';
 import 'package:vikunja_app/global.dart';
@@ -17,17 +18,26 @@ class AddDialog extends StatefulWidget {
   final ValueChanged<String>? onAdd;
   final void Function(String title, DateTime? dueDate)? onAddTask;
   final InputDecoration? decoration;
-  const AddDialog({Key? key, this.onAdd, this.decoration, this.onAddTask})
+  final String? prefilledTitle;
+  const AddDialog({Key? key, this.onAdd, this.decoration, this.onAddTask, this.prefilledTitle})
       : super(key: key);
 
   @override
   State<StatefulWidget> createState() => AddDialogState();
 }
 
-class AddDialogState extends State<AddDialog> {
+class AddDialogState extends State<AddDialog> with AfterLayoutMixin<AddDialog> {
   NewTaskDue newTaskDue = NewTaskDue.day;
   DateTime? customDueDate;
   var textController = TextEditingController();
+
+  @override
+  void afterFirstLayout(BuildContext context) {
+    setState(() {
+      textController.text = widget.prefilledTitle ?? "";
+    });
+    super.activate();
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -2,6 +2,7 @@ package io.vikunja.flutteringvikunja
 
 
 import android.content.Intent
+import android.app.PendingIntent
 import android.os.Build
 import android.service.quicksettings.TileService
 import android.util.Log
@@ -17,7 +18,19 @@ class VikunjaTileService : TileService(){
         addIntent.action = "ACTION_INSERT"
         addIntent.type = "ADD_NEW_TASK"
         addIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        startActivityAndCollapse(addIntent)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startActivityAndCollapse(
+                PendingIntent.getActivity(
+                    this,
+                    0,
+                    addIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+            )
+        } else {
+            startActivityAndCollapse(addIntent)
+        }
 
         // Called when the user click the tile
     }
