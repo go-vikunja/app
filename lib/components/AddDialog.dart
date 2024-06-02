@@ -19,7 +19,12 @@ class AddDialog extends StatefulWidget {
   final void Function(String title, DateTime? dueDate)? onAddTask;
   final InputDecoration? decoration;
   final String? prefilledTitle;
-  const AddDialog({Key? key, this.onAdd, this.decoration, this.onAddTask, this.prefilledTitle})
+  const AddDialog(
+      {Key? key,
+      this.onAdd,
+      this.decoration,
+      this.onAddTask,
+      this.prefilledTitle})
       : super(key: key);
 
   @override

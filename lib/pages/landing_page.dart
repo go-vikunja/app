@@ -45,7 +45,6 @@ class LandingPageState extends State<LandingPage> {
         );
   }
 
-
   void handleMethod(List<String> method) {
     switch (method[0]) {
       case "open_add_task":
@@ -61,12 +60,13 @@ class LandingPageState extends State<LandingPage> {
   void scheduleIntent() async {
     try {
       // This is needed when app is already open and quicktile is clicked
-      List<String>? method = (await platform.invokeMethod("isQuickTile", "")).map<String>((val) => val.toString()).toList();
+      List<String>? method = (await platform.invokeMethod("isQuickTile", ""))
+          .map<String>((val) => val.toString())
+          .toList();
 
-      if(method != null) {
+      if (method != null) {
         handleMethod(method);
       }
-
     } catch (e) {
       log(e.toString());
     }
@@ -80,11 +80,10 @@ class LandingPageState extends State<LandingPage> {
   void initState() {
     super.initState();
 
-    Future.delayed(Duration.zero,() {
+    Future.delayed(Duration.zero, () {
       _updateDefaultList().then((_) {
         scheduleIntent();
-      }
-      );
+      });
     });
   }
 
@@ -183,7 +182,7 @@ class LandingPageState extends State<LandingPage> {
       showDialog(
           context: context,
           builder: (_) => AddDialog(
-            prefilledTitle: prefilledTitle,
+              prefilledTitle: prefilledTitle,
               onAddTask: (title, dueDate) => _addTask(title, dueDate, context),
               decoration: new InputDecoration(
                   labelText: 'Task Name', hintText: 'eg. Milk')));

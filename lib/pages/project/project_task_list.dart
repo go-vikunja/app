@@ -346,7 +346,8 @@ class _ListPageState extends State<ListPage> {
         displayDoneTasks: displayDoneTasks);
   }
 
-  Future<void> _addItemDialog(BuildContext context, [Bucket? bucket, String? taskName]) {
+  Future<void> _addItemDialog(BuildContext context,
+      [Bucket? bucket, String? taskName]) {
     return showDialog(
       context: context,
       builder: (_) => AddDialog(
