@@ -506,7 +506,7 @@ class KanbanClass {
                       DragTarget<TaskData>(
                         onWillAcceptWithDetails: (data) {
                           /*setState(() =>*/ _bucketProps[bucket.id]!
-                              .taskDropSize = data.size; //);
+                              .taskDropSize = data.data.size; //);
                           notify();
                           return true;
                         },
@@ -514,14 +514,14 @@ class KanbanClass {
                           Provider.of<ProjectProvider>(context, listen: false)
                               .moveTaskToBucket(
                                 context: context,
-                                task: data.task,
+                                task: data.data.task,
                                 newBucketId: bucket.id,
                                 index: 0,
                               )
                               .then((_) => ScaffoldMessenger.of(context)
                                       .showSnackBar(SnackBar(
                                     content: Text(
-                                        '\'${data.task.title}\' was moved to \'${bucket.title}\' successfully!'),
+                                        '\'${data.data.task.title}\' was moved to \'${bucket.title}\' successfully!'),
                                   )));
 
                           //setState(() =>
