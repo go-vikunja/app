@@ -179,6 +179,10 @@ class Client {
       Map<String, dynamic> error;
       error = _decoder.convert(response.body);
 
+      if(response.statusCode == 401 && globalNavigatorKey.currentContext != null) {
+        VikunjaGlobal.of(globalNavigatorKey.currentContext!).logoutUser(globalNavigatorKey.currentContext!);
+      }
+
       final SnackBar snackBar = SnackBar(
         content:
             Text("Error code " + response.statusCode.toString() + " received."),
