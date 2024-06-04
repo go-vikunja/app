@@ -274,9 +274,9 @@ class _BucketTaskCardState extends State<BucketTaskCard>
           });
           return true;
         };
-        final DragTargetAccept<TaskData> dragTargetOnAccept = (data) {
+        final DragTargetAccept<DragTargetDetails<TaskData>> dragTargetOnAccept = (data) {
           final index = bucket.tasks.indexOf(widget.task);
-          widget.onAccept(data.task,
+          widget.onAccept(data.data.task,
               _dropLocation == DropLocation.above ? index : index + 1);
           setState(() {
             _dropLocation = DropLocation.none;
@@ -304,7 +304,7 @@ class _BucketTaskCardState extends State<BucketTaskCard>
                         (dropAbove ? dropBoxSize.height : 0),
                     child: DragTarget<TaskData>(
                       onWillAcceptWithDetails: (data) =>
-                          dragTargetOnWillAccept(data, DropLocation.above),
+                          dragTargetOnWillAccept(data.data, DropLocation.above),
                       onAcceptWithDetails: dragTargetOnAccept,
                       onLeave: dragTargetOnLeave,
                       builder: (_, __, ___) => SizedBox.expand(),
@@ -315,7 +315,7 @@ class _BucketTaskCardState extends State<BucketTaskCard>
                         (dropBelow ? dropBoxSize.height : 0),
                     child: DragTarget<TaskData>(
                       onWillAcceptWithDetails: (data) =>
-                          dragTargetOnWillAccept(data, DropLocation.below),
+                          dragTargetOnWillAccept(data.data, DropLocation.below),
                       onAcceptWithDetails: dragTargetOnAccept,
                       onLeave: dragTargetOnLeave,
                       builder: (_, __, ___) => SizedBox.expand(),
