@@ -504,13 +504,13 @@ class KanbanClass {
                     // DragTarget to drop tasks in empty buckets
                     if (bucket.tasks.length == 0)
                       DragTarget<TaskData>(
-                        onWillAccept: (data) {
+                        onWillAcceptWithDetails: (data) {
                           /*setState(() =>*/ _bucketProps[bucket.id]!
-                              .taskDropSize = data?.size; //);
+                              .taskDropSize = data.size; //);
                           notify();
                           return true;
                         },
-                        onAccept: (data) {
+                        onAcceptWithDetails: (data) {
                           Provider.of<ProjectProvider>(context, listen: false)
                               .moveTaskToBucket(
                                 context: context,

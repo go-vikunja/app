@@ -1,5 +1,4 @@
 import 'package:after_layout/after_layout.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/pages/project/project_task_list.dart';
 

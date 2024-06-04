@@ -394,7 +394,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
                                 ? null
                                 : ButtonStyle(
                                     backgroundColor:
-                                        MaterialStateProperty.resolveWith(
+                                        WidgetStateProperty.resolveWith(
                                             (_) => _color ?? widget.task.color),
                                   ),
                             onPressed: _onColorEdit,
@@ -469,7 +469,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
             onPressed: !_loading
                 ? () {
                     if (_formKey.currentState!.validate()) {
-                      Form.of(_listKey.currentContext!)!.save();
+                      Form.of(_listKey.currentContext!).save();
                       _saveTask(_listKey.currentContext!);
                     }
                   }

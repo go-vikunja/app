@@ -1,6 +1,4 @@
-import 'dart:async';
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -55,7 +53,7 @@ class HomePageState extends State<HomePage> {
     );
   }
 
-  _getDrawerItemWidget(int pos, {bool forceReload = false}) {
+  _getDrawerItemWidget(int pos) {
     _previousDrawerIndex = pos;
     return widgets[pos];
   }

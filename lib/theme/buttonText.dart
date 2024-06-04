@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:vikunja_app/theme/constants.dart';
 
 class VikunjaButtonText extends StatelessWidget {
   final String text;

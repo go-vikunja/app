@@ -1,4 +1,3 @@
-import 'package:meta/meta.dart';
 import 'package:vikunja_app/models/label.dart';
 import 'package:vikunja_app/models/task.dart';
 import 'package:vikunja_app/models/user.dart';

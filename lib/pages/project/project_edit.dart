@@ -111,7 +111,7 @@ class _ProjectEditPageState extends State<ProjectEditPage> {
                             onPressed: !_loading
                                 ? () {
                                     if (_formKey.currentState!.validate()) {
-                                      Form.of(context)?.save();
+                                      Form.of(context).save();
                                       _saveList(context);
                                     }
                                   }

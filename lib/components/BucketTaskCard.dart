@@ -303,9 +303,9 @@ class _BucketTaskCardState extends State<BucketTaskCard>
                     height: (cardSize.height / 2) +
                         (dropAbove ? dropBoxSize.height : 0),
                     child: DragTarget<TaskData>(
-                      onWillAccept: (data) =>
-                          dragTargetOnWillAccept(data!, DropLocation.above),
-                      onAccept: dragTargetOnAccept,
+                      onWillAcceptWithDetails: (data) =>
+                          dragTargetOnWillAccept(data, DropLocation.above),
+                      onAcceptWithDetails: dragTargetOnAccept,
                       onLeave: dragTargetOnLeave,
                       builder: (_, __, ___) => SizedBox.expand(),
                     ),
@@ -314,9 +314,9 @@ class _BucketTaskCardState extends State<BucketTaskCard>
                     height: (cardSize.height / 2) +
                         (dropBelow ? dropBoxSize.height : 0),
                     child: DragTarget<TaskData>(
-                      onWillAccept: (data) =>
-                          dragTargetOnWillAccept(data!, DropLocation.below),
-                      onAccept: dragTargetOnAccept,
+                      onWillAcceptWithDetails: (data) =>
+                          dragTargetOnWillAccept(data, DropLocation.below),
+                      onAcceptWithDetails: dragTargetOnAccept,
                       onLeave: dragTargetOnLeave,
                       builder: (_, __, ___) => SizedBox.expand(),
                     ),

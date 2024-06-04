@@ -9,19 +9,18 @@ ThemeData buildVikunjaDarkTheme() =>
 
 ThemeData buildVikunjaMaterialLightTheme() {
   return ThemeData.light().copyWith(
-    useMaterial3: true,
+    
   );
 }
 
 ThemeData buildVikunjaMaterialDarkTheme() {
   return ThemeData.dark().copyWith(
-    useMaterial3: true,
+    
   );
 }
 
 ThemeData _buildVikunjaTheme(ThemeData base, {bool isDark = false}) {
   return base.copyWith(
-    useMaterial3: true,
     primaryColor: vPrimaryDark,
     primaryColorLight: vPrimary,
     primaryColorDark: vBlueDark,
