@@ -118,20 +118,25 @@ class TaskTileState extends State<TaskTile> with AutomaticKeepAliveClientMixin {
         },
         title: widget.showInfo
             ? RichText(
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
                 text: TextSpan(
-                text: null,
-                children: <TextSpan>[
-                  // TODO: get list name of task
-                  //TextSpan(text: widget.task.list.title+" - ", style: TextStyle(color: Colors.grey)),
-                  TextSpan(text: widget.task.title),
-                ],
-                style: TextStyle(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white
-                      : Colors.black,
-                ),
-              ))
-            : Text(_currentTask.title),
+                  text: null,
+                  children: <TextSpan>[
+                    // TODO: get list name of task
+                    //TextSpan(text: widget.task.list.title+" - ", style: TextStyle(color: Colors.grey)),
+                    TextSpan(text: widget.task.title),
+                  ],
+                  style: TextStyle(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white
+                        : Colors.black,
+                  ),
+                ))
+            : Text(
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                _currentTask.title),
         subtitle: _buildTaskSubtitle(widget.task, widget.showInfo, context),
         leading: Checkbox(
           value: _currentTask.done,
