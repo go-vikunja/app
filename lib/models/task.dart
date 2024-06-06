@@ -11,7 +11,9 @@ class TaskReminder {
   final String relative_to;
   DateTime reminder;
 
-  TaskReminder(this.reminder) : relative_period = 0, relative_to = "";
+  TaskReminder(this.reminder)
+      : relative_period = 0,
+        relative_to = "";
 
   TaskReminder.fromJson(Map<String, dynamic> json)
       : reminder = DateTime.parse(json['reminder']),
@@ -19,10 +21,10 @@ class TaskReminder {
         relative_to = json['relative_to'];
 
   toJSON() => {
-    'relative_period': relative_period,
-    'relative_to': relative_to,
-    'reminder': reminder.toUtc().toIso8601String(),
-  };
+        'relative_period': relative_period,
+        'relative_to': relative_to,
+        'reminder': reminder.toUtc().toIso8601String(),
+      };
 }
 
 @JsonSerializable()
@@ -143,9 +145,7 @@ class Task {
         'description': description,
         'identifier': identifier.isNotEmpty ? identifier : null,
         'done': done,
-        'reminders': reminderDates
-            .map((date) => date.toJSON())
-            .toList(),
+        'reminders': reminderDates.map((date) => date.toJSON()).toList(),
         'due_date': dueDate?.toUtc().toIso8601String(),
         'start_date': startDate?.toUtc().toIso8601String(),
         'end_date': endDate?.toUtc().toIso8601String(),

@@ -96,7 +96,8 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
         if (duration.inMinutes > 0) {
           Workmanager().registerPeriodicTask("update-tasks", "update-tasks",
               frequency: duration,
-              constraints: Constraints(networkType: NetworkType.connected, requiresDeviceIdle: true),
+              constraints: Constraints(
+                  networkType: NetworkType.connected, requiresDeviceIdle: true),
               initialDelay: Duration(seconds: 15),
               inputData: {
                 "client_token": client.token,
@@ -106,7 +107,8 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
 
         Workmanager().registerPeriodicTask("refresh-token", "refresh-token",
             frequency: Duration(hours: 12),
-            constraints: Constraints(networkType: NetworkType.connected, requiresDeviceIdle: true),
+            constraints: Constraints(
+                networkType: NetworkType.connected, requiresDeviceIdle: true),
             initialDelay: Duration(seconds: 15));
       });
     });

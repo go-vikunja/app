@@ -8,15 +8,11 @@ ThemeData buildVikunjaDarkTheme() =>
     _buildVikunjaTheme(ThemeData.dark(), isDark: true);
 
 ThemeData buildVikunjaMaterialLightTheme() {
-  return ThemeData.light().copyWith(
-    
-  );
+  return ThemeData.light().copyWith();
 }
 
 ThemeData buildVikunjaMaterialDarkTheme() {
-  return ThemeData.dark().copyWith(
-    
-  );
+  return ThemeData.dark().copyWith();
 }
 
 ThemeData _buildVikunjaTheme(ThemeData base, {bool isDark = false}) {

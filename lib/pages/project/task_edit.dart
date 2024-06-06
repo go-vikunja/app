@@ -149,38 +149,39 @@ class _TaskEditPageState extends State<TaskEditPage> {
                       ),
                     ),
                     Padding(
-                      padding: EdgeInsets.symmetric(vertical: 10.0),
-                      child: Row(
-                        children: [
-                          Padding(
-                              padding:
-                              EdgeInsets.only(right: 15, left: 2),
-                              child: Icon(
-                                Icons.description,
-                                color: Colors.grey,
-                              )),
-                          Flexible(
-                            child: GestureDetector(
-                              onTap: () {
-                                // open editdescription
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (buildContext) => EditDescription(initialText: _description,)
-                                  ),
-                                ).then((description) => setState(() {
-                                  if (description != null) _description = description;
-                                  _changed = true;
-                                }));
-                              },
-                              child: HtmlWidget(_description != null
-                                  ? _description!
-                                  : "No description"),
+                        padding: EdgeInsets.symmetric(vertical: 10.0),
+                        child: Row(
+                          children: [
+                            Padding(
+                                padding: EdgeInsets.only(right: 15, left: 2),
+                                child: Icon(
+                                  Icons.description,
+                                  color: Colors.grey,
+                                )),
+                            Flexible(
+                              child: GestureDetector(
+                                onTap: () {
+                                  // open editdescription
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (buildContext) =>
+                                            EditDescription(
+                                              initialText: _description,
+                                            )),
+                                  ).then((description) => setState(() {
+                                        if (description != null)
+                                          _description = description;
+                                        _changed = true;
+                                      }));
+                                },
+                                child: HtmlWidget(_description != null
+                                    ? _description!
+                                    : "No description"),
+                              ),
                             ),
-                          ),
-                        ],
-                      )
-                    ),
+                          ],
+                        )),
                     Padding(
                       padding: EdgeInsets.symmetric(vertical: 10.0),
                       child: VikunjaDateTimePicker(

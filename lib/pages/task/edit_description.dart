@@ -2,9 +2,6 @@ import 'package:html_editor_enhanced/html_editor.dart';
 
 import 'package:flutter/material.dart';
 
-
-
-
 class EditDescription extends StatefulWidget {
   final String? initialText;
   EditDescription({required this.initialText});
@@ -31,7 +28,6 @@ class EditDescriptionState extends State<EditDescription> {
         ],
       ),
       body: HtmlEditor(
-
         controller: controller,
         htmlEditorOptions: HtmlEditorOptions(
           hint: "Your text here...",

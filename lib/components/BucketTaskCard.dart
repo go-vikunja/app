@@ -274,7 +274,8 @@ class _BucketTaskCardState extends State<BucketTaskCard>
           });
           return true;
         };
-        final DragTargetAccept<DragTargetDetails<TaskData>> dragTargetOnAccept = (data) {
+        final DragTargetAccept<DragTargetDetails<TaskData>> dragTargetOnAccept =
+            (data) {
           final index = bucket.tasks.indexOf(widget.task);
           widget.onAccept(data.data.task,
               _dropLocation == DropLocation.above ? index : index + 1);
