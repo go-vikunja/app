@@ -14,7 +14,6 @@ jobs:
         with:
           channel: stable
           cache: true
-          flutter-version-file: pubspec.yaml
           # optional parameters follow
           cache-key: "flutter-:os:-:channel:-:version:-:arch:-:hash:" # optional, change this to force refresh cache
           cache-path: "${{ runner.tool_cache }}/flutter/:channel:-:version:-:arch:" # optional, change this to specify the cache path
