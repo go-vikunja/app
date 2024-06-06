@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:vikunja_app/components/datetimePicker.dart';
 import 'package:vikunja_app/components/label.dart';
 import 'package:vikunja_app/global.dart';
@@ -11,6 +12,7 @@ import 'package:vikunja_app/utils/repeat_after_parse.dart';
 import 'package:vikunja_app/utils/priority.dart';
 
 import '../../stores/project_store.dart';
+import '../task/edit_description.dart';
 
 class TaskEditPage extends StatefulWidget {
   final Task task;
@@ -68,6 +70,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
 
     _labels = widget.task.labels;
     _priority = widget.task.priority;
+    _description = widget.task.description;
 
     super.initState();
   }
@@ -147,24 +150,36 @@ class _TaskEditPageState extends State<TaskEditPage> {
                     ),
                     Padding(
                       padding: EdgeInsets.symmetric(vertical: 10.0),
-                      child: TextFormField(
-                        maxLines: null,
-                        keyboardType: TextInputType.multiline,
-                        initialValue: widget.task.description,
-                        onSaved: (description) => _description = description,
-                        onChanged: (_) => _changed = true,
-                        validator: (description) {
-                          if (description == null) return null;
-                          if (description.length > 1000) {
-                            return 'The description can have a maximum of 1000 characters.';
-                          }
-                          return null;
-                        },
-                        decoration: new InputDecoration(
-                          labelText: 'Description',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
+                      child: Row(
+                        children: [
+                          Padding(
+                              padding:
+                              EdgeInsets.only(right: 15, left: 2),
+                              child: Icon(
+                                Icons.description,
+                                color: Colors.grey,
+                              )),
+                          Flexible(
+                            child: GestureDetector(
+                              onTap: () {
+                                // open editdescription
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (buildContext) => EditDescription(initialText: _description,)
+                                  ),
+                                ).then((description) => setState(() {
+                                  if (description != null) _description = description;
+                                  _changed = true;
+                                }));
+                              },
+                              child: HtmlWidget(_description != null
+                                  ? _description!
+                                  : "No description"),
+                            ),
+                          ),
+                        ],
+                      )
                     ),
                     Padding(
                       padding: EdgeInsets.symmetric(vertical: 10.0),
