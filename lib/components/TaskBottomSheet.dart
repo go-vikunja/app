@@ -47,6 +47,7 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
     ThemeData theme = Theme.of(context);
     return Container(
         height: MediaQuery.of(context).size.height * 0.9,
+        child: SingleChildScrollView(
         child: Padding(
           padding: EdgeInsets.fromLTRB(20, 10, 10, 20),
           child: Column(
@@ -57,9 +58,13 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
               Row(
                 // Title and edit button
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(_currentTask.title,
-                      style: theme.textTheme.headlineLarge),
+                  Container(
+                    width: MediaQuery.of(context).size.width * 0.7,
+                    child: Text(_currentTask.title,
+                        style: theme.textTheme.headlineLarge),
+                  ),
                   IconButton(
                       onPressed: () {
                         Navigator.push<Task>(
@@ -149,6 +154,6 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
               ),
             ],
           ),
-        ));
+        )));
   }
 }
