@@ -1,6 +1,7 @@
 # Miscellaneous
 *.class
 *.lock
+!flake.lock
 *.log
 *.pyc
 *.swp
@@ -96,3 +97,5 @@ app.*.map.json
 
 # VS Code
 .vscode/settings.json
+
+.direnv
