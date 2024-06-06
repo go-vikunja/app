@@ -22,13 +22,13 @@ ThemeData buildVikunjaMaterialDarkTheme() {
 ThemeData _buildVikunjaTheme(ThemeData base, {bool isDark = false}) {
   return base.copyWith(
     useMaterial3: true,
-    errorColor: vRed,
     primaryColor: vPrimaryDark,
     primaryColorLight: vPrimary,
     primaryColorDark: vBlueDark,
     colorScheme: base.colorScheme.copyWith(
       primary: vPrimaryDark,
       secondary: vPrimary,
+      error: vRed,
     ),
     floatingActionButtonTheme: base.floatingActionButtonTheme.copyWith(
       foregroundColor: vWhite,
@@ -40,7 +40,7 @@ ThemeData _buildVikunjaTheme(ThemeData base, {bool isDark = false}) {
 //      title: base.textTheme.title.copyWith(
 //        fontFamily: 'Quicksand',
 //      ),
-      button: base.textTheme.button?.copyWith(
+      labelLarge: base.textTheme.labelLarge?.copyWith(
         color:
             vWhite, // This does not work, looks like a bug in Flutter: https://github.com/flutter/flutter/issues/19623
       ),

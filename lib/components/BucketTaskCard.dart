@@ -63,7 +63,7 @@ class _BucketTaskCardState extends State<BucketTaskCard>
           widget.task.identifier.isNotEmpty
               ? '#${widget.task.identifier}'
               : '${widget.task.id}',
-          style: (theme.textTheme.subtitle2 ?? TextStyle()).copyWith(
+          style: (theme.textTheme.titleSmall ?? TextStyle()).copyWith(
             color: Colors.grey,
           ),
         ),
