@@ -48,7 +48,7 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
     return Container(
         height: MediaQuery.of(context).size.height * 0.9,
         child: SingleChildScrollView(
-        child: Padding(
+            child: Padding(
           padding: EdgeInsets.fromLTRB(20, 10, 10, 20),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.start,
