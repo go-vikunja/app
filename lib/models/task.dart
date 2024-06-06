@@ -6,6 +6,25 @@ import 'package:vikunja_app/models/user.dart';
 import 'package:vikunja_app/models/taskAttachment.dart';
 import 'package:vikunja_app/utils/checkboxes_in_text.dart';
 
+class TaskReminder {
+  final int relative_period;
+  final String relative_to;
+  DateTime reminder;
+
+  TaskReminder(this.reminder) : relative_period = 0, relative_to = "";
+
+  TaskReminder.fromJson(Map<String, dynamic> json)
+      : reminder = DateTime.parse(json['reminder']),
+        relative_period = json['relative_period'],
+        relative_to = json['relative_to'];
+
+  toJSON() => {
+    'relative_period': relative_period,
+    'relative_to': relative_to,
+    'reminder': reminder.toUtc().toIso8601String(),
+  };
+}
+
 @JsonSerializable()
 class Task {
   final int id;
@@ -14,7 +33,7 @@ class Task {
   final int? projectId;
   final DateTime created, updated;
   DateTime? dueDate, startDate, endDate;
-  final List<DateTime> reminderDates;
+  final List<TaskReminder> reminderDates;
   final String identifier;
   final String title, description;
   final bool done;
@@ -76,9 +95,9 @@ class Task {
         description = json['description'],
         identifier = json['identifier'],
         done = json['done'],
-        reminderDates = json['reminder_dates'] != null
-            ? (json['reminder_dates'] as List<dynamic>)
-                .map((ts) => DateTime.parse(ts))
+        reminderDates = json['reminders'] != null
+            ? (json['reminders'] as List<dynamic>)
+                .map((ts) => TaskReminder.fromJson(ts))
                 .toList()
             : [],
         dueDate = DateTime.parse(json['due_date']),
@@ -124,8 +143,8 @@ class Task {
         'description': description,
         'identifier': identifier.isNotEmpty ? identifier : null,
         'done': done,
-        'reminder_dates': reminderDates
-            .map((date) => date.toUtc().toIso8601String())
+        'reminders': reminderDates
+            .map((date) => date.toJSON())
             .toList(),
         'due_date': dueDate?.toUtc().toIso8601String(),
         'start_date': startDate?.toUtc().toIso8601String(),
@@ -158,7 +177,7 @@ class Task {
     DateTime? dueDate,
     DateTime? startDate,
     DateTime? endDate,
-    List<DateTime>? reminderDates,
+    List<TaskReminder>? reminderDates,
     String? title,
     String? description,
     String? identifier,

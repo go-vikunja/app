@@ -33,7 +33,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
 
   int? _priority;
   DateTime? _dueDate, _startDate, _endDate;
-  late final List<DateTime> _reminderDates;
+  late final List<TaskReminder> _reminderDates;
   String? _title, _description, _repeatAfterType;
   Duration? _repeatAfter;
   late final List<Label> _labels;
@@ -53,13 +53,16 @@ class _TaskEditPageState extends State<TaskEditPage> {
 
     _reminderDates = widget.task.reminderDates;
     for (var i = 0; i < _reminderDates.length; i++) {
-      _reminderInputs.add(VikunjaDateTimePicker(
-        initialValue: _reminderDates[i],
-        label: 'Reminder',
-        onSaved: (reminder) {
-          _reminderDates[i] = reminder ?? DateTime(0);
-          return null;
-        },
+      _reminderInputs.add(Padding(
+        padding: EdgeInsets.symmetric(vertical: 10.0),
+        child: VikunjaDateTimePicker(
+          initialValue: _reminderDates[i].reminder,
+          label: 'Reminder',
+          onSaved: (reminder) {
+            _reminderDates[i].reminder = reminder ?? DateTime(0);
+            return null;
+          },
+        ),
       ));
     }
 
@@ -163,153 +166,218 @@ class _TaskEditPageState extends State<TaskEditPage> {
                         ),
                       ),
                     ),
-                    VikunjaDateTimePicker(
-                      icon: Icon(Icons.access_time),
-                      label: 'Due Date',
-                      initialValue: widget.task.dueDate,
-                      onSaved: (duedate) => _dueDate = duedate,
-                      onChanged: (_) => _changed = true,
+                    Padding(
+                      padding: EdgeInsets.symmetric(vertical: 10.0),
+                      child: VikunjaDateTimePicker(
+                        icon: Icon(Icons.access_time),
+                        label: 'Due Date',
+                        initialValue: widget.task.dueDate,
+                        onSaved: (duedate) => _dueDate = duedate,
+                        onChanged: (_) => _changed = true,
+                      ),
                     ),
-                    VikunjaDateTimePicker(
-                      label: 'Start Date',
-                      initialValue: widget.task.startDate,
-                      onSaved: (startDate) => _startDate = startDate,
-                      onChanged: (_) => _changed = true,
+                    Padding(
+                      padding: EdgeInsets.symmetric(vertical: 10.0),
+                      child: VikunjaDateTimePicker(
+                        label: 'Start Date',
+                        initialValue: widget.task.startDate,
+                        onSaved: (startDate) => _startDate = startDate,
+                        onChanged: (_) => _changed = true,
+                      ),
                     ),
-                    VikunjaDateTimePicker(
-                      label: 'End Date',
-                      initialValue: widget.task.endDate,
-                      onSaved: (endDate) => _endDate = endDate,
-                      onChanged: (_) => _changed = true,
+                    Padding(
+                      padding: EdgeInsets.symmetric(vertical: 10.0),
+                      child: VikunjaDateTimePicker(
+                        label: 'End Date',
+                        initialValue: widget.task.endDate,
+                        onSaved: (endDate) => _endDate = endDate,
+                        onChanged: (_) => _changed = true,
+                      ),
                     ),
-                    Row(
-                      children: [
-                        Expanded(
-                          flex: 2,
-                          child: TextFormField(
-                            keyboardType: TextInputType.number,
-                            initialValue:
-                                getRepeatAfterValueFromDuration(_repeatAfter)
-                                    ?.toString(),
-                            onSaved: (repeatAfter) => _repeatAfter =
-                                getDurationFromType(
-                                    repeatAfter, _repeatAfterType),
-                            onChanged: (_) => _changed = true,
-                            decoration: new InputDecoration(
-                              labelText: 'Repeat after',
-                              border: InputBorder.none,
-                              icon: Icon(Icons.repeat),
+                    Padding(
+                      padding: EdgeInsets.symmetric(vertical: 10.0),
+                      child: Row(
+                        children: [
+                          Flexible(
+                            flex: 65,
+                            child: TextFormField(
+                              keyboardType: TextInputType.number,
+                              initialValue:
+                                  getRepeatAfterValueFromDuration(_repeatAfter)
+                                      ?.toString(),
+                              onSaved: (repeatAfter) => _repeatAfter =
+                                  getDurationFromType(
+                                      repeatAfter, _repeatAfterType),
+                              onChanged: (_) => _changed = true,
+                              decoration: new InputDecoration(
+                                  labelText: 'Repeat after',
+                                  border: InputBorder.none,
+                                  icon: Icon(Icons.repeat),
+                                  contentPadding:
+                                      EdgeInsets.fromLTRB(0, 0, 0, 0)),
                             ),
                           ),
-                        ),
-                        Expanded(
-                          child: DropdownButton<String>(
-                            isExpanded: true,
-                            isDense: true,
-                            value: _repeatAfterType ??
-                                getRepeatAfterTypeFromDuration(_repeatAfter),
-                            onChanged: (String? newValue) {
-                              setState(() {
-                                _repeatAfterType = newValue;
-                              });
-                            },
-                            items: <String>[
-                              'Hours',
-                              'Days',
-                              'Weeks',
-                              'Months',
-                              'Years'
-                            ].map<DropdownMenuItem<String>>((String value) {
-                              return DropdownMenuItem<String>(
-                                value: value,
-                                child: Text(value),
-                              );
-                            }).toList(),
+                          Spacer(),
+                          Flexible(
+                            flex: 30,
+                            child: DropdownButtonFormField<String>(
+                              decoration: InputDecoration(
+                                  border: InputBorder.none,
+                                  contentPadding:
+                                      EdgeInsets.fromLTRB(0, 0, 0, 0)),
+                              isExpanded: true,
+                              value: _repeatAfterType ??
+                                  getRepeatAfterTypeFromDuration(_repeatAfter),
+                              onChanged: (String? newValue) {
+                                setState(() {
+                                  _repeatAfterType = newValue;
+                                });
+                              },
+                              items: <String>[
+                                'Hours',
+                                'Days',
+                                'Weeks',
+                                'Months',
+                                'Years'
+                              ].map<DropdownMenuItem<String>>((String value) {
+                                return DropdownMenuItem<String>(
+                                  value: value,
+                                  child: Text(value),
+                                );
+                              }).toList(),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                    Column(
-                      children: _reminderInputs,
+                    Padding(
+                      padding: EdgeInsets.only(top: 15.0),
+                      child: Column(
+                        children: _reminderInputs,
+                      ),
                     ),
-                    GestureDetector(
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(vertical: 10),
-                          child: Row(
-                            children: <Widget>[
-                              Padding(
-                                  padding: EdgeInsets.only(right: 15, left: 2),
-                                  child: Icon(
-                                    Icons.alarm_add,
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 15),
+                      child: GestureDetector(
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(vertical: 10),
+                            child: Row(
+                              children: <Widget>[
+                                Padding(
+                                    padding:
+                                        EdgeInsets.only(right: 15, left: 2),
+                                    child: Icon(
+                                      Icons.alarm_add,
+                                      color: Colors.grey,
+                                    )),
+                                Text(
+                                  'Add a reminder',
+                                  style: TextStyle(
                                     color: Colors.grey,
-                                  )),
-                              Text(
-                                'Add a reminder',
-                                style: TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 16,
+                                    fontSize: 16,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                        onTap: () {
-                          // We add a new entry every time we add a new input, to make sure all inputs have a place where they can put their value.
-                          _reminderDates.add(DateTime(0));
-                          var currentIndex = _reminderDates.length - 1;
+                          onTap: () {
+                            _changed = true;
+                            // We add a new entry every time we add a new input, to make sure all inputs have a place where they can put their value.
+                            _reminderDates.add(TaskReminder(DateTime(0)));
+                            var currentIndex = _reminderDates.length - 1;
 
-                          // FIXME: Why does putting this into a row fail?
-                          setState(() => _reminderInputs.add(
-                                VikunjaDateTimePicker(
-                                  label: 'Reminder',
-                                  onSaved: (reminder) =>
-                                      _reminderDates[currentIndex] =
-                                          reminder ?? DateTime(0),
-                                  onChanged: (_) => _changed = true,
-                                  initialValue: DateTime.now(),
-                                ),
-                              ));
-                        }),
-                    InputDecorator(
-                      isEmpty: _priority == null,
+                            // FIXME: Why does putting this into a row fail?
+                            setState(() => _reminderInputs.add(
+                                  VikunjaDateTimePicker(
+                                    label: 'Reminder',
+                                    onSaved: (reminder) =>
+                                        _reminderDates[currentIndex].reminder =
+                                            reminder ?? DateTime(0),
+                                    onChanged: (_) => _changed = true,
+                                    initialValue: DateTime.now(),
+                                  ),
+                                ));
+                          }),
+                    ),
+                    new DropdownButtonFormField<String>(
                       decoration: InputDecoration(
                         icon: const Icon(Icons.flag),
                         labelText: 'Priority',
                         border: InputBorder.none,
                       ),
-                      child: new DropdownButton<String>(
-                        value: priorityToString(_priority),
-                        isExpanded: true,
-                        isDense: true,
-                        onChanged: (String? newValue) {
-                          setState(() {
-                            _priority = priorityFromString(newValue);
-                          });
-                        },
-                        items: [
-                          'Unset',
-                          'Low',
-                          'Medium',
-                          'High',
-                          'Urgent',
-                          'DO NOW'
-                        ].map((String value) {
-                          return new DropdownMenuItem(
-                            value: value,
-                            child: new Text(value),
-                          );
-                        }).toList(),
+                      value: priorityToString(_priority),
+                      isExpanded: true,
+                      isDense: true,
+                      onChanged: (String? newValue) {
+                        setState(() {
+                          _priority = priorityFromString(newValue);
+                        });
+                      },
+                      items: [
+                        'Unset',
+                        'Low',
+                        'Medium',
+                        'High',
+                        'Urgent',
+                        'DO NOW'
+                      ].map((String value) {
+                        return new DropdownMenuItem(
+                          value: value,
+                          child: new Text(value),
+                        );
+                      }).toList(),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 10.0, bottom: 10),
+                      child: Row(
+                        children: <Widget>[
+                          Padding(
+                            padding: const EdgeInsets.only(right: 15, left: 2),
+                            child: Icon(
+                              Icons.label,
+                              color: Colors.grey,
+                            ),
+                          ),
+                          Container(
+                            width: MediaQuery.of(context).size.width -
+                                80 -
+                                ((IconTheme.of(context).size ?? 0) * 2),
+                            child: TypeAheadField(
+                              builder: (builder, controller, focusnode) {
+                                return TextFormField(
+                                  controller: _labelTypeAheadController,
+                                  focusNode: focusnode,
+                                  decoration: InputDecoration(
+                                    labelText: 'Add a new label',
+                                    border: InputBorder.none,
+                                  ),
+                                );
+                              },
+                              suggestionsCallback: (pattern) =>
+                                  _searchLabel(pattern),
+                              itemBuilder: (context, suggestion) {
+                                return new ListTile(
+                                    title: Text(suggestion.toString()));
+                              },
+                              //transitionBuilder:
+                              //    (context, suggestionsBox, controller) {
+                              //  return suggestionsBox;
+                              //},
+                              onSelected: (suggestion) {
+                                _addLabel(suggestion.toString());
+                              },
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => _createAndAddLabel(
+                                _labelTypeAheadController.text),
+                            icon: Icon(Icons.add),
+                          )
+                        ],
                       ),
                     ),
                     Row(
                       children: [
-                        Padding(
-                          padding: const EdgeInsets.only(right: 15, left: 2),
-                          child: Icon(
-                            Icons.label,
-                            color: Colors.grey,
-                          ),
-                        ),
                         Wrap(
                             spacing: 10,
                             children: _labels.map((Label label) {
@@ -320,49 +388,6 @@ class _TaskEditPageState extends State<TaskEditPage> {
                                 },
                               );
                             }).toList()),
-                      ],
-                    ),
-                    Row(
-                      children: <Widget>[
-                        Padding(
-                            padding: EdgeInsets.only(
-                                right: 15,
-                                left: 2.0 + (IconTheme.of(context).size ?? 0))),
-                        Container(
-                          width: MediaQuery.of(context).size.width -
-                              80 -
-                              ((IconTheme.of(context).size ?? 0) * 2),
-                          child: TypeAheadField(
-                            builder: (builder, controller, focusnode) {
-                              return TextFormField(
-                                controller: _labelTypeAheadController,
-                                focusNode: focusnode,
-                                decoration: InputDecoration(
-                                  labelText: 'Add a new label',
-                                  border: InputBorder.none,
-                                ),
-                              );
-                            },
-                            suggestionsCallback: (pattern) =>
-                                _searchLabel(pattern),
-                            itemBuilder: (context, suggestion) {
-                              return new ListTile(
-                                  title: Text(suggestion.toString()));
-                            },
-                            //transitionBuilder:
-                            //    (context, suggestionsBox, controller) {
-                            //  return suggestionsBox;
-                            //},
-                            onSelected: (suggestion) {
-                              _addLabel(suggestion.toString());
-                            },
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () => _createAndAddLabel(
-                              _labelTypeAheadController.text),
-                          icon: Icon(Icons.add),
-                        )
                       ],
                     ),
                     Padding(
@@ -485,7 +510,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
     setState(() => _loading = true);
 
     // Removes all reminders with no value set.
-    _reminderDates.removeWhere((d) => d == DateTime(0));
+    _reminderDates.removeWhere((d) => d.reminder == DateTime(0));
 
     final updatedTask = widget.task.copyWith(
       title: _title,

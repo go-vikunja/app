@@ -35,7 +35,7 @@ enum TaskServiceOptionSortBy {
 
 enum TaskServiceOptionOrderBy { asc, desc }
 
-enum TaskServiceOptionFilterBy { done, due_date, reminder_dates }
+enum TaskServiceOptionFilterBy { done, due_date, reminders }
 
 enum TaskServiceOptionFilterValue { enum_true, enum_false, enum_null }
 

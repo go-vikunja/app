@@ -136,10 +136,10 @@ class NotificationClass {
           "Reminder",
           "This is your reminder for '" + task.title + "'",
           notificationsPlugin,
-          reminder,
+          reminder.reminder,
           await FlutterTimezone.getLocalTimezone(),
           platformChannelSpecificsReminders,
-          id: (reminder.millisecondsSinceEpoch / 1000).floor(),
+          id: (reminder.reminder.millisecondsSinceEpoch / 1000).floor(),
         );
       }
       if (task.hasDueDate) {
