@@ -121,6 +121,12 @@ class _ProjectOverviewPageState extends State<ProjectOverviewPage>
             ),
       appBar: AppBar(
         title: Text("Projects"),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.add),
+            onPressed: () => _addProjectDialog(context),
+          )
+        ],
       ),
     );
   }
@@ -158,7 +164,6 @@ class _ProjectOverviewPageState extends State<ProjectOverviewPage>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('The project was created successfully!'),
       ));
-    }).catchError((error) => showDialog(
-            context: context, builder: (context) => ErrorDialog(error: error)));
+    });
   }
 }

@@ -12,8 +12,10 @@ class ProjectAPIService extends APIService implements ProjectService {
 
   @override
   Future<Project?> create(Project p) {
-    // TODO: implement create
-    throw UnimplementedError();
+    return client.put('/projects', body: p.toJSON()).then((response) {
+      if (response == null) return null;
+      return Project.fromJson(response.body);
+    });
   }
 
   @override
