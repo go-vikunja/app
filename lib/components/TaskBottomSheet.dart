@@ -105,7 +105,7 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
                 children: [
                   Icon(Icons.access_time),
                   Padding(padding: EdgeInsets.fromLTRB(10, 0, 0, 0)),
-                  Text(_currentTask.dueDate != null
+                  Text(_currentTask.hasDueDate
                       ? vDateFormatShort.format(_currentTask.dueDate!.toLocal())
                       : "No due date"),
                 ],
@@ -115,7 +115,7 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
                 children: [
                   Icon(Icons.play_arrow_rounded),
                   Padding(padding: EdgeInsets.fromLTRB(10, 0, 0, 0)),
-                  Text(_currentTask.startDate != null
+                  Text(_currentTask.hasStartDate
                       ? vDateFormatShort
                           .format(_currentTask.startDate!.toLocal())
                       : "No start date"),
@@ -126,7 +126,7 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
                 children: [
                   Icon(Icons.stop_rounded),
                   Padding(padding: EdgeInsets.fromLTRB(10, 0, 0, 0)),
-                  Text(_currentTask.endDate != null
+                  Text(_currentTask.hasEndDate
                       ? vDateFormatShort.format(_currentTask.endDate!.toLocal())
                       : "No end date"),
                 ],

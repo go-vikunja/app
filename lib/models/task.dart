@@ -90,6 +90,8 @@ class Task {
   }
 
   bool get hasDueDate => dueDate?.year != 1;
+  bool get hasStartDate => startDate?.year != 1;
+  bool get hasEndDate => endDate?.year != 1;
 
   Task.fromJson(Map<String, dynamic> json)
       : id = json['id'],
