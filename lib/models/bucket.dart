@@ -5,7 +5,8 @@ import 'package:vikunja_app/models/user.dart';
 
 @JsonSerializable()
 class Bucket {
-  int id, projectViewId, limit;
+  int id, limit;
+  int? projectViewId;
   String title;
   double? position;
   final DateTime created, updated;

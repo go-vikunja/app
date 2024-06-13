@@ -40,7 +40,7 @@ class Task {
   final String title, description;
   final bool done;
   Color? color;
-  final double? kanbanPosition;
+  final double? position;
   final double? percent_done;
   final User createdBy;
   Duration? repeatAfter;
@@ -66,7 +66,7 @@ class Task {
     this.priority,
     this.repeatAfter,
     this.color,
-    this.kanbanPosition,
+    this.position,
     this.percent_done,
     this.subtasks = const [],
     this.labels = const [],
@@ -113,9 +113,9 @@ class Task {
         color = json['hex_color'] != ''
             ? Color(int.parse(json['hex_color'], radix: 16) + 0xFF000000)
             : null,
-        kanbanPosition = json['kanban_position'] is int
-            ? json['kanban_position'].toDouble()
-            : json['kanban_position'],
+        position = json['position'] is int
+            ? json['position'].toDouble()
+            : json['position'],
         percent_done = json['percent_done'] is int
             ? json['percent_done'].toDouble()
             : json['percent_done'],
@@ -155,7 +155,7 @@ class Task {
         'repeat_after': repeatAfter?.inSeconds,
         'hex_color':
             color?.value.toRadixString(16).padLeft(8, '0').substring(2),
-        'kanban_position': kanbanPosition,
+        'position': position,
         'percent_done': percent_done,
         'project_id': projectId,
         'labels': labels.map((label) => label.toJSON()).toList(),
@@ -185,7 +185,7 @@ class Task {
     String? identifier,
     bool? done,
     Color? color,
-    double? kanbanPosition,
+    double? position,
     double? percent_done,
     User? createdBy,
     Duration? repeatAfter,
@@ -211,7 +211,7 @@ class Task {
       identifier: identifier ?? this.identifier,
       done: done ?? this.done,
       color: color ?? this.color,
-      kanbanPosition: kanbanPosition ?? this.kanbanPosition,
+      position: position ?? this.position,
       percent_done: percent_done ?? this.percent_done,
       createdBy: createdBy ?? this.createdBy,
       repeatAfter: repeatAfter ?? this.repeatAfter,

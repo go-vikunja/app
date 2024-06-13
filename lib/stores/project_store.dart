@@ -96,9 +96,6 @@ class ProjectProvider with ChangeNotifier {
       "page": [page.toString()]
     };
 
-    print(listId);
-    print(viewId);
-
     return VikunjaGlobal.of(context)
         .bucketService
         .getAllByList(listId, viewId, queryParams)
@@ -253,12 +250,12 @@ class ProjectProvider with ChangeNotifier {
 
     task = await VikunjaGlobal.of(context).taskService.update(task.copyWith(
           bucketId: newBucketId,
-          kanbanPosition: calculateItemPosition(
+          position: calculateItemPosition(
             positionBefore: index != 0
-                ? _buckets[newBucketIndex].tasks[index - 1].kanbanPosition
+                ? _buckets[newBucketIndex].tasks[index - 1].position
                 : null,
             positionAfter: index < _buckets[newBucketIndex].tasks.length - 1
-                ? _buckets[newBucketIndex].tasks[index + 1].kanbanPosition
+                ? _buckets[newBucketIndex].tasks[index + 1].position
                 : null,
           ),
         ));
@@ -269,14 +266,14 @@ class ProjectProvider with ChangeNotifier {
     Task? secondTask;
     if (index == 0 &&
         _buckets[newBucketIndex].tasks.length > 1 &&
-        _buckets[newBucketIndex].tasks[1].kanbanPosition == 0) {
+        _buckets[newBucketIndex].tasks[1].position == 0) {
       secondTask = await VikunjaGlobal.of(context)
           .taskService
           .update(_buckets[newBucketIndex].tasks[1].copyWith(
-                kanbanPosition: calculateItemPosition(
-                  positionBefore: task.kanbanPosition,
+                position: calculateItemPosition(
+                  positionBefore: task.position,
                   positionAfter: 1 < _buckets[newBucketIndex].tasks.length - 1
-                      ? _buckets[newBucketIndex].tasks[2].kanbanPosition
+                      ? _buckets[newBucketIndex].tasks[2].position
                       : null,
                 ),
               ));
@@ -294,7 +291,7 @@ class ProjectProvider with ChangeNotifier {
         .indexWhere((t) => t.id == task?.id)] = task;
     _buckets[newBucketIndex]
         .tasks
-        .sort((a, b) => a.kanbanPosition!.compareTo(b.kanbanPosition!));
+        .sort((a, b) => a.position!.compareTo(b.position!));
 
     notifyListeners();
   }

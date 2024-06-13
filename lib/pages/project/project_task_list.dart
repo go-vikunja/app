@@ -215,6 +215,7 @@ class _ListPageState extends State<ListPage> {
   }
 
   void _onViewTapped(int index) {
+    _kanban.view = _project.views[index];
     _loadList().then((_) {
       _currentPage = 1;
       setState(() {

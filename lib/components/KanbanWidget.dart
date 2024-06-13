@@ -28,6 +28,11 @@ class KanbanClass {
 
   Project _project;
   ProjectView _view;
+
+  set view(ProjectView view) {
+    _view = view;
+  }
+
   Map<int, BucketProps> _bucketProps = {};
 
   KanbanClass(this.context, this.notify, this._onViewTapped,
