@@ -17,9 +17,15 @@ ThemeData buildVikunjaMaterialDarkTheme() {
 
 ThemeData _buildVikunjaTheme(ThemeData base, {bool isDark = false}) {
   return base.copyWith(
+    useMaterial3: true,
     primaryColor: vPrimaryDark,
     primaryColorLight: vPrimary,
     primaryColorDark: vBlueDark,
+    colorScheme: base.colorScheme.copyWith(
+      primary: vPrimaryDark,
+      secondary: vPrimary,
+      error: vRed,
+    ),
     floatingActionButtonTheme: base.floatingActionButtonTheme.copyWith(
       foregroundColor: vWhite,
     ),
@@ -56,11 +62,5 @@ ThemeData _buildVikunjaTheme(ThemeData base, {bool isDark = false}) {
             .toColor();
       }(),
     ),
-    colorScheme: base.colorScheme
-        .copyWith(
-          primary: vPrimaryDark,
-          secondary: vPrimary,
-        )
-        .copyWith(error: vRed),
   );
 }

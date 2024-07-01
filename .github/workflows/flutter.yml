@@ -1,17 +1,14 @@
-# Based on https://medium.com/flutter-community/automating-publishing-your-flutter-apps-to-google-play-using-github-actions-2f67ac582032
+name: 'Flutter Build'
 
-name: Flutter release
-
-on:  
+on:
+  pull_request: {}
   push:
     branches:
       - main
-  release:
-    types: [published]
 
 jobs:
-  release:
-    name: Build and Release
+  build-app:
+    name: Build
     runs-on: ubuntu-latest
     steps:
       - name: Clone repository
@@ -29,11 +26,15 @@ jobs:
       - run: flutter --version
       - run: flutter pub get
       - run: flutter build apk --debug --flavor core
-      - run: flutter build appbundle --flavor core
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v2
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
         with:
-          name: app-release-bundle
-          path: |
-            build/app/outputs/bundle/coreRelease/app-core-release.aab
-            build/app/outputs/flutter-apk/app-core-release.apk
+          channel: stable
+      - name: Check Dart Format
+        run: dart format --set-exit-if-changed .
