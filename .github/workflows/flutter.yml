@@ -29,7 +29,8 @@ jobs:
           pub-cache-path: "${{ runner.tool_cache }}/flutter/:channel:-:version:-:arch:" # optional, change this to specify the cache path
       - run: flutter --version
       - run: flutter pub get
-      - run: flutter build apk --debug --flavor core
+      - run: flutter build apk --debug --flavor unsigned
+      - run: flutter build apk --flavor unsigned
   lint:
     name: Lint
     runs-on: ubuntu-latest
