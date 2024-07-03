@@ -41,6 +41,7 @@ dependencies:
   cronet_http: ^1.2.0
   package_info_plus: ^6.0.0
   html_editor_enhanced: ^2.6.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

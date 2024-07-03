@@ -31,13 +31,13 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace 'io.vikunja.flutteringvikunja'
-    compileSdkVersion flutter.compileSdkVersion
+    //compileSdkVersion flutter.compileSdkVersion
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
-    sourceSets {
-        main.java.srcDirs += 'src/main/kotlin'
-    }
+    //sourceSets {
+    //    main.java.srcDirs += 'src/main/kotlin'
+   // }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
@@ -47,8 +47,8 @@ android {
 
     defaultConfig {
         applicationId "io.vikunja.app"
-        minSdkVersion flutter.minSdkVersion
-        targetSdkVersion flutter.targetSdkVersion
+        minSdk flutter.minSdkVersion
+        targetSdk flutter.targetSdkVersion
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
@@ -111,8 +111,8 @@ flutter {
     source '../..'
 }
 
-dependencies {
-    testImplementation 'junit:junit:4.13.2'
-    androidTestImplementation 'com.android.support.test:runner:1.0.2'
-    androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
-}
+//dependencies {
+//    testImplementation 'junit:junit:4.13.2'
+//    androidTestImplementation 'com.android.support.test:runner:1.0.2'
+//    androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
+//}
