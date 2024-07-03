@@ -55,33 +55,22 @@ android {
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
 
-    /*
-        signingConfigs {
+    signingConfigs {
         release {
             keyAlias keystoreProperties['keyAlias']
             keyPassword keystoreProperties['keyPassword']
-            storeFile file(keystoreProperties['storeFile'])
+            storeFile keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
             storePassword keystoreProperties['storePassword']
         }
     }
-     */
-
-    flavorDimensions "deploy"
 
     productFlavors {
-        fdroid {
-            dimension "deploy"
-            //signingConfig null
-        }
         unsigned {
-            dimension "deploy"
-            //signingConfig null
-        }
-	    core {
-            dimension "deploy"
-            signingConfig signingConfigs.debug // TODO add signing key
+            signingConfig signingConfigs.debug
         }
     }
+
+    flavorDimensions "deploy"
 
     android.applicationVariants.all { variant ->
         if (variant.flavorName == "fdroid") {
@@ -93,9 +82,7 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            //signingConfig signingConfigs.release
+            signingConfig signingConfigs.release
         }
         debug {
             //signingConfig signingConfigs.debug
