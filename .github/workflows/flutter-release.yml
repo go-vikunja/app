@@ -1,6 +1,6 @@
 # Based on https://medium.com/flutter-community/automating-publishing-your-flutter-apps-to-google-play-using-github-actions-2f67ac582032
 
-name: Flutter release
+name: Flutter Release
 
 on:  
   push:
@@ -16,6 +16,47 @@ jobs:
     steps:
       - name: Clone repository
         uses: actions/checkout@v4
+      - name: Setup Java
+        uses: actions/setup-java@v1
+        with:
+          java-version: '17.x'
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 2.7
+
+      - name: Install Fastlane dependencies
+        run: |
+          pwd
+          cd android
+          bundle install
+          cd ..
+
+      - name: Decrypting Keystore file
+        run: |
+          cd android/app
+          keyFile=key.jks
+          gpg -d --passphrase "${{ secrets.GPG_PASS }}" --batch $keyFile.asc > $keyFile
+      - name: Decrypting key.properties file
+        run: |
+          cd ../
+          keyPropFile=key.properties
+          gpg -d --passphrase "${{ secrets.GPG_PASS }}" --batch $keyPropFile.asc > $keyPropFile
+          
+      - name: Decrypting Fastlane Secret file
+        run: |
+          pwd
+          cd android
+          file=fastlane-secret.json
+          gpg -d --passphrase "${{ secrets.GPG_PASS }}" --batch $file.asc > $file
+
+      - name: Testing Fastlane installation
+        run: |
+          pwd
+          cd android
+          bundle update fastlane
+          bundle exec fastlane run validate_play_store_json_key
+
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -28,12 +69,18 @@ jobs:
           pub-cache-path: "${{ runner.tool_cache }}/flutter/:channel:-:version:-:arch:" # optional, change this to specify the cache path
       - run: flutter --version
       - run: flutter pub get
-      - run: flutter build apk --debug --flavor core
-      - run: flutter build appbundle --flavor core
+      - run: flutter build appbundle
+      - run: flutter build apk
       - name: Upload build artifacts
         uses: actions/upload-artifact@v2
         with:
           name: app-release-bundle
           path: |
-            build/app/outputs/bundle/coreRelease/app-core-release.aab
-            build/app/outputs/flutter-apk/app-core-release.apk
+            build/app/outputs/bundle/release/app-release.aab
+            build/app/outputs/flutter-apk/app-release.apk
+
+      #- name: Deploy Google Play
+      #  run: |
+      #    pwd
+      #    cd android
+      #    bundle exec fastlane production_appbundle
