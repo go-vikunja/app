@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - main
+      - gp_build
   release:
     types: [published]
 
@@ -71,13 +72,13 @@ jobs:
       - run: flutter pub get
       - run: flutter build appbundle
       - run: flutter build apk
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v2
-        with:
-          name: app-release-bundle
-          path: |
-            build/app/outputs/bundle/release/app-release.aab
-            build/app/outputs/flutter-apk/app-release.apk
+      #- name: Upload build artifacts
+      #  uses: actions/upload-artifact@v2
+      #  with:
+      #    name: app-release-bundle
+      #    path: |
+      #      build/app/outputs/bundle/release/app-release.aab
+      #      build/app/outputs/flutter-apk/app-release.apk
 
       #- name: Deploy Google Play
       #  run: |
