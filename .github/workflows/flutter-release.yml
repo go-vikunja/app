@@ -32,6 +32,8 @@ jobs:
           cd android
           bundle install
           cd ..
+      - name: Check gpg version
+        run: gpg --version
 
       - name: Decrypting Keystore file
         run: |
