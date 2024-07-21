@@ -30,7 +30,6 @@ jobs:
       - run: flutter --version
       - run: flutter pub get
       - run: flutter build apk --debug --flavor unsigned
-      - run: flutter build apk --flavor unsigned
   lint:
     name: Lint
     runs-on: ubuntu-latest
