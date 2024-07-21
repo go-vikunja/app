@@ -80,8 +80,8 @@ jobs:
           pub-cache-path: "${{ runner.tool_cache }}/flutter/:channel:-:version:-:arch:" # optional, change this to specify the cache path
       - run: flutter --version
       - run: flutter pub get
-      - run: flutter build appbundle
-      - run: flutter build apk
+      - run: flutter build appbundle --flavor production
+      - run: flutter build apk --flavor production
       - name: Upload build artifacts
         uses: actions/upload-artifact@v2
         with:

@@ -68,6 +68,9 @@ android {
         unsigned {
             signingConfig signingConfigs.debug
         }
+        production {
+            signingConfig signingConfigs.release
+        }
     }
 
     flavorDimensions "deploy"
