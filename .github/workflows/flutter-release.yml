@@ -90,8 +90,8 @@ jobs:
             build/app/outputs/bundle/productionRelease/app-production-release.aab
             build/app/outputs/flutter-apk/app-production-release.apk
 
-      - name: Deploy Google Play
-        run: |
-          pwd
-          cd android
-          bundle exec fastlane production_appbundle
+      #- name: Deploy Google Play
+      #  run: |
+      #    pwd
+      #    cd android
+      #    bundle exec fastlane production_appbundle
