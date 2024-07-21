@@ -24,12 +24,15 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: 2.7
+          ruby-version: 3.3
+          bundler-cache: false
 
       - name: Install Fastlane dependencies
         run: |
           pwd
           cd android
+          gem install bundler -v 2.4.22
+          bundle config path vendor/bundle
           bundle install
           cd ..
       - name: Check gpg version
