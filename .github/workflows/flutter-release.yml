@@ -43,7 +43,7 @@ jobs:
           GPG_PASS: ${{ secrets.GPG_PASS }}
         run: |
           cd android/app
-          keyFile=key.jks
+          keyFile=keystore.jks
           gpg -d --passphrase "$GPG_PASS" --batch $keyFile.asc > $keyFile
       - name: Decrypting key.properties file
         env:
