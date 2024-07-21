@@ -34,7 +34,7 @@ platform :android do
     lane :production_appbundle do
       upload_to_play_store(
         track: 'production',
-        aab: '../build/app/outputs/bundle/release/app-release.aab',
+        aab: '../build/app/outputs/bundle/productionRelease/app-production-release.aab',
       )
 end
 end
