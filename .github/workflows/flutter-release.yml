@@ -46,7 +46,7 @@ jobs:
         env:
           GPG_PASS: ${{ secrets.GPG_PASS }}
         run: |
-          cd ../
+          cd android/
           keyPropFile=key.properties
           gpg -d --passphrase "$GPG_PASS" --batch $keyPropFile.asc > $keyPropFile
           
@@ -54,8 +54,7 @@ jobs:
         env:
           GPG_PASS: ${{ secrets.GPG_PASS }}
         run: |
-          pwd
-          cd android
+          cd android/
           file=fastlane-secret.json
           gpg -d --passphrase "$GPG_PASS" --batch $file.asc > $file
 
@@ -80,13 +79,13 @@ jobs:
       - run: flutter pub get
       - run: flutter build appbundle
       - run: flutter build apk
-      #- name: Upload build artifacts
-      #  uses: actions/upload-artifact@v2
-      #  with:
-      #    name: app-release-bundle
-      #    path: |
-      #      build/app/outputs/bundle/release/app-release.aab
-      #      build/app/outputs/flutter-apk/app-release.apk
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: app-release-bundle
+          path: |
+            build/app/outputs/bundle/release/app-release.aab
+            build/app/outputs/flutter-apk/app-release.apk
 
       #- name: Deploy Google Play
       #  run: |
