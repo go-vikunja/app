@@ -156,15 +156,14 @@ class _TaskEditPageState extends State<TaskEditPage> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                  builder: (buildContext) =>
-                                      EditDescription(
+                                  builder: (buildContext) => EditDescription(
                                         initialText: _description,
                                       )),
                             ).then((description) => setState(() {
-                              if (description != null)
-                                _description = description;
-                              _changed = true;
-                            }));
+                                  if (description != null)
+                                    _description = description;
+                                  _changed = true;
+                                }));
                           },
                           child: Row(
                             children: [
@@ -175,10 +174,9 @@ class _TaskEditPageState extends State<TaskEditPage> {
                                     color: Colors.grey,
                                   )),
                               Flexible(
-                                  child: HtmlWidget(_description != null
-                                      ? _description!
-                                      : "No description"),
-
+                                child: HtmlWidget(_description != null
+                                    ? _description!
+                                    : "No description"),
                               ),
                             ],
                           ),
