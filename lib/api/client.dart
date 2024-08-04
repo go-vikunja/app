@@ -222,7 +222,7 @@ class Client {
   Response? _handleResponse(http.Response response) {
     _handleResponseErrors(response);
     return Response(
-        _decoder.convert(response.body), response.statusCode, response.headers);
+        _decoder.convert(utf8.decode(response.bodyBytes)), response.statusCode, response.headers);
   }
 }
 
