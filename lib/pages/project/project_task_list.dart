@@ -151,7 +151,7 @@ class _ListPageState extends State<ListPage> {
         ],
       ),
       body: RefreshIndicator(onRefresh: () => _loadList(), child: body),
-      floatingActionButton: _project.views[_viewIndex].viewKind == "kanban"
+      floatingActionButton: _project.views[_viewIndex].viewKind == "kanban" || _project.id < 0
           ? null
           : Builder(
               builder: (context) => FloatingActionButton(
