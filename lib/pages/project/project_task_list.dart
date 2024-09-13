@@ -151,13 +151,14 @@ class _ListPageState extends State<ListPage> {
         ],
       ),
       body: RefreshIndicator(onRefresh: () => _loadList(), child: body),
-      floatingActionButton: _project.views[_viewIndex].viewKind == "kanban" || _project.id < 0
-          ? null
-          : Builder(
-              builder: (context) => FloatingActionButton(
-                  onPressed: () => _addItemDialog(context),
-                  child: Icon(Icons.add)),
-            ),
+      floatingActionButton:
+          _project.views[_viewIndex].viewKind == "kanban" || _project.id < 0
+              ? null
+              : Builder(
+                  builder: (context) => FloatingActionButton(
+                      onPressed: () => _addItemDialog(context),
+                      child: Icon(Icons.add)),
+                ),
       bottomNavigationBar: _project.views.length >= 2
           ? BottomNavigationBar(
               type: BottomNavigationBarType.fixed,

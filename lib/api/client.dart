@@ -221,8 +221,8 @@ class Client {
 
   Response? _handleResponse(http.Response response) {
     _handleResponseErrors(response);
-    return Response(
-        _decoder.convert(utf8.decode(response.bodyBytes)), response.statusCode, response.headers);
+    return Response(_decoder.convert(utf8.decode(response.bodyBytes)),
+        response.statusCode, response.headers);
   }
 }
 
