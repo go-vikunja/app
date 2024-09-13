@@ -83,7 +83,7 @@ jobs:
       - run: flutter build appbundle --flavor production
       - run: flutter build apk --flavor production
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: app-release-bundle
           path: |
