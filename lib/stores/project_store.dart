@@ -152,9 +152,8 @@ class ProjectProvider with ChangeNotifier {
       }
       if (_tasks.isNotEmpty) _tasks.insert(0, task);
       if (_buckets.isNotEmpty) {
-        final bucket =
-            _buckets[_buckets.indexWhere((b) => task.bucketId == b.id)];
-        bucket.tasks.add(task);
+        final Bucket? bucket = _buckets.where((b) => task.bucketId == b.id).firstOrNull;
+        if (bucket != null) bucket.tasks.add(task);
       }
       pageStatus = PageStatus.success;
     });
