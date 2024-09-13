@@ -97,6 +97,7 @@ class NotificationClass {
         tz.TZDateTime.from(scheduledTime, tz.getLocation(currentTimeZone));
     if (time.difference(tz.TZDateTime.now(tz.getLocation(currentTimeZone))) <
         Duration.zero) return;
+    print("scheduled notification for time " + time.toString());
     await notifsPlugin.zonedSchedule(
         id, title, description, time, platformChannelSpecifics,
         androidAllowWhileIdle: true,
@@ -148,10 +149,11 @@ class NotificationClass {
           "The task '" + task.title + "' is due.",
           notificationsPlugin,
           task.dueDate!,
-          currentTimeZone,
+          await FlutterTimezone.getLocalTimezone(),
           platformChannelSpecificsDueDate,
           id: task.id,
         );
+        print("scheduled notification for time " + task.dueDate!.toString());
       }
     }
     print("notifications scheduled successfully");
