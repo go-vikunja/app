@@ -173,7 +173,8 @@ abstract class TaskService {
 
   @deprecated
   Future<List<Task>?> getByOptions(TaskServiceOptions options);
-  Future<List<Task>?> getByFilterString(String filterString,  [Map<String, List<String>> queryParameters]);
+  Future<List<Task>?> getByFilterString(String filterString,
+      [Map<String, List<String>> queryParameters]);
 
   int get maxPages;
 }

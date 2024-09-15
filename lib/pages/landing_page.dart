@@ -252,27 +252,22 @@ class LandingPageState extends State<LandingPage> {
         return global.taskService.getAllByProject(filterId, {
           "sort_by": ["due_date", "id"],
           "order_by": ["asc", "desc"],
-        }).then<Future<void>?>((response) =>
-            _handleTaskList(response?.body));
+        }).then<Future<void>?>((response) => _handleTaskList(response?.body));
         ;
       }
       List<String> filterStrings = ["done = false"];
-      if(showOnlyDueDateTasks) {
+      if (showOnlyDueDateTasks) {
         filterStrings.add("due_date > 0001-01-01 00:00");
       }
       return global.taskService.getByFilterString(filterStrings.join(" && "), {
         "sort_by": ["due_date", "id"],
         "order_by": ["asc", "desc"],
         "filter_include_nulls": ["false"],
-      })
-          .then<Future<void>?>(
-              (taskList) => _handleTaskList(taskList));
+      }).then<Future<void>?>((taskList) => _handleTaskList(taskList));
     }); //.onError((error, stackTrace) {print("error");});
   }
 
-  Future<void> _handleTaskList(
-      List<Task>? taskList ) {
-
+  Future<void> _handleTaskList(List<Task>? taskList) {
     if (taskList != null && taskList.isEmpty) {
       setState(() {
         landingPageStatus = PageStatus.empty;

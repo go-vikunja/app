@@ -101,8 +101,12 @@ class TaskAPIService extends APIService implements TaskService {
   }
 
   @override
-  Future<List<Task>?> getByFilterString(String filterString, [Map<String, List<String>>? queryParameters]) {
-    Map<String, List<String>> parameters = {"filter": [filterString], ...?queryParameters};
+  Future<List<Task>?> getByFilterString(String filterString,
+      [Map<String, List<String>>? queryParameters]) {
+    Map<String, List<String>> parameters = {
+      "filter": [filterString],
+      ...?queryParameters
+    };
     print(parameters);
     return client.get('/tasks/all', parameters).then((response) {
       if (response == null) return null;
