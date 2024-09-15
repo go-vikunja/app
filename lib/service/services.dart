@@ -171,7 +171,9 @@ abstract class TaskService {
   Future<Response?> getAllByProject(int projectId,
       [Map<String, List<String>> queryParameters]);
 
+  @deprecated
   Future<List<Task>?> getByOptions(TaskServiceOptions options);
+  Future<List<Task>?> getByFilterString(String filterString,  [Map<String, List<String>> queryParameters]);
 
   int get maxPages;
 }

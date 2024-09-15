@@ -247,39 +247,31 @@ class LandingPageState extends State<LandingPage> {
         if (frontend_settings["filter_id_used_on_overview"] != null)
           filterId = frontend_settings["filter_id_used_on_overview"];
       }
+      // in case user set a filter id for the landing page in the settings
       if (filterId != null && filterId != 0) {
         return global.taskService.getAllByProject(filterId, {
           "sort_by": ["due_date", "id"],
           "order_by": ["asc", "desc"],
         }).then<Future<void>?>((response) =>
-            _handleTaskList(response?.body, showOnlyDueDateTasks));
+            _handleTaskList(response?.body));
         ;
       }
-
-      return global.taskService
-          .getByOptions(TaskServiceOptions(newOptions: [
-            TaskServiceOption<TaskServiceOptionSortBy>(
-                "sort_by", ["due_date", "id"]),
-            TaskServiceOption<TaskServiceOptionSortBy>(
-                "order_by", ["asc", "desc"]),
-            TaskServiceOption<TaskServiceOptionFilterBy>("filter_by", "done"),
-            TaskServiceOption<TaskServiceOptionFilterValue>(
-                "filter_value", "false"),
-            TaskServiceOption<TaskServiceOptionFilterComparator>(
-                "filter_comparator", "equals"),
-            TaskServiceOption<TaskServiceOptionFilterConcat>(
-                "filter_concat", "and"),
-          ], clearOther: true))
+      List<String> filterStrings = ["done = false"];
+      if(showOnlyDueDateTasks) {
+        filterStrings.add("due_date > 0001-01-01 00:00");
+      }
+      return global.taskService.getByFilterString(filterStrings.join(" && "), {
+        "sort_by": ["due_date", "id"],
+        "order_by": ["asc", "desc"],
+        "filter_include_nulls": ["false"],
+      })
           .then<Future<void>?>(
-              (taskList) => _handleTaskList(taskList, showOnlyDueDateTasks));
+              (taskList) => _handleTaskList(taskList));
     }); //.onError((error, stackTrace) {print("error");});
   }
 
   Future<void> _handleTaskList(
-      List<Task>? taskList, bool showOnlyDueDateTasks) {
-    if (showOnlyDueDateTasks)
-      taskList?.removeWhere((element) =>
-          element.dueDate == null || element.dueDate!.year == 0001);
+      List<Task>? taskList ) {
 
     if (taskList != null && taskList.isEmpty) {
       setState(() {
