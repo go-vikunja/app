@@ -9,6 +9,8 @@
     create-emulator.exec = "avdmanager create avd --force --name android-32 --package 'system-images;android-32;google_apis_playstore;x86_64'";
     run-app.exec = "flutter run --flavor unsigned";
     build-apk-unsigned.exec = "flutter build apk --flavor unsigned";
+    lint.exec = "dart format --set-exit-if-changed .";
+    lint-fix.exec = "dart format .";
   };  
 
   android = {
