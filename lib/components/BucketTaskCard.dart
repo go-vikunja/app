@@ -80,12 +80,15 @@ class _BucketTaskCardState extends State<BucketTaskCard>
                 label: Text('Done'),
                 labelStyle:
                     (theme.textTheme.labelLarge ?? TextStyle()).copyWith(
-                  fontWeight: FontWeight.bold,
                   color: theme.brightness == Brightness.dark
                       ? Colors.black
                       : Colors.white,
                 ),
                 backgroundColor: vGreen,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(4.0),
+                  side: BorderSide(style: BorderStyle.none),
+                ),
               ),
             ),
           ));
@@ -98,6 +101,7 @@ class _BucketTaskCardState extends State<BucketTaskCard>
             widget.task.title,
             style: (theme.textTheme.titleMedium ?? TextStyle(fontSize: 16))
                 .copyWith(
+              fontWeight: FontWeight.normal,
               color: theme.brightness == Brightness.dark
                   ? Colors.white
                   : Colors.black,
@@ -134,7 +138,7 @@ class _BucketTaskCardState extends State<BucketTaskCard>
                 ? Colors.grey[800]
                 : Colors.grey[200],
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8.0),
+              borderRadius: BorderRadius.circular(4.0),
               side: BorderSide(style: BorderStyle.none),
             ),
           ),
@@ -155,6 +159,10 @@ class _BucketTaskCardState extends State<BucketTaskCard>
           color: label.textColor,
         ),
         backgroundColor: label.color,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(4.0),
+          side: BorderSide(style: BorderStyle.none),
+        ),
       ));
     });
     if (widget.task.hasCheckboxes) {
@@ -172,6 +180,13 @@ class _BucketTaskCardState extends State<BucketTaskCard>
                 ? ''
                 : '${checkboxStatistics.checked} of ') +
             '${checkboxStatistics.total} tasks'),
+        backgroundColor: theme.brightness == Brightness.dark
+            ? Colors.grey[800]
+            : Colors.grey[200],
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(4.0),
+          side: BorderSide(style: BorderStyle.none),
+        ),
       ));
     }
     if (widget.task.attachments.isNotEmpty) {
@@ -180,17 +195,34 @@ class _BucketTaskCardState extends State<BucketTaskCard>
           angle: -pi / 4.0,
           child: Icon(Icons.attachment),
         ),
+        backgroundColor: theme.brightness == Brightness.dark
+            ? Colors.grey[800]
+            : Colors.grey[200],
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(4.0),
+          side: BorderSide(style: BorderStyle.none),
+        ),
       ));
     }
     if (widget.task.description.isNotEmpty) {
       labelRow.children.add(Chip(
-        label: Icon(Icons.notes),
+        label: Icon(Icons.notes, size: 20.0),
+        backgroundColor: theme.brightness == Brightness.dark
+            ? Colors.grey[800]
+            : Colors.grey[200],
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(4.0),
+          side: BorderSide(style: BorderStyle.none),
+        ),
       ));
     }
 
     final rowConstraints = BoxConstraints(minHeight: chipHeight);
     final card = Card(
       color: widget.task.color,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(5.0),
+      ),
       child: InkWell(
         child: Theme(
           data: Theme.of(context).copyWith(
@@ -198,7 +230,7 @@ class _BucketTaskCardState extends State<BucketTaskCard>
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
           child: Padding(
-            padding: const EdgeInsets.all(4),
+            padding: const EdgeInsets.all(6),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
