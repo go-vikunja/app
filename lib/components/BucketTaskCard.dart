@@ -116,13 +116,27 @@ class _BucketTaskCardState extends State<BucketTaskCard>
           child: Chip(
             avatar: Icon(
               Icons.calendar_month,
-              color: pastDue ? Colors.red : null,
+              color: pastDue
+                  ? Colors.red
+                  : (theme.brightness == Brightness.dark
+                      ? Colors.grey[400]
+                      : Colors.grey[600]),
             ),
             label: Text(durationToHumanReadable(duration)),
             labelStyle: (theme.textTheme.labelLarge ?? TextStyle()).copyWith(
-              color: pastDue ? Colors.red : null,
+              color: pastDue
+                  ? Colors.red
+                  : (theme.brightness == Brightness.dark
+                      ? Colors.grey[400]
+                      : Colors.grey[600]),
             ),
-            backgroundColor: pastDue ? Colors.red.withAlpha(20) : null,
+            backgroundColor: theme.brightness == Brightness.dark
+                ? Colors.grey[800]
+                : Colors.grey[200],
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8.0),
+              side: BorderSide(style: BorderStyle.none),
+            ),
           ),
         ),
       ));
