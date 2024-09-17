@@ -80,6 +80,7 @@ class _BucketTaskCardState extends State<BucketTaskCard>
                 label: Text('Done'),
                 labelStyle:
                     (theme.textTheme.labelLarge ?? TextStyle()).copyWith(
+                  fontWeight: FontWeight.bold,
                   color: theme.brightness == Brightness.dark
                       ? Colors.black
                       : Colors.white,
