@@ -90,7 +90,6 @@ class ProjectProvider with ChangeNotifier {
       int page = 1}) {
     _buckets = [];
     pageStatus = PageStatus.loading;
-    notifyListeners();
 
     Map<String, List<String>> queryParams = {
       "page": [page.toString()]
@@ -143,7 +142,6 @@ class ProjectProvider with ChangeNotifier {
       required int listId}) {
     var globalState = VikunjaGlobal.of(context);
     if (newTask.bucketId == null) pageStatus = PageStatus.loading;
-    notifyListeners();
 
     return globalState.taskService.add(listId, newTask).then((task) {
       if (task == null) {

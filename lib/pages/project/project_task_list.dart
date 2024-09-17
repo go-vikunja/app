@@ -31,9 +31,9 @@ class BucketProps {
 class ListPage extends StatefulWidget {
   final Project project;
 
-  //ListPage({this.taskList}) : super(key: Key(taskList.id.toString()));
-  ListPage({required this.project})
-      : super(key: Key(Random().nextInt(100000).toString()));
+  ListPage({required this.project}) : super(key: Key(project.id.toString()));
+  //ListPage({required this.project})
+  //    : super(key: Key(Random().nextInt(100000).toString()));
 
   @override
   _ListPageState createState() => _ListPageState();
@@ -64,7 +64,8 @@ class _ListPageState extends State<ListPage> {
 
   @override
   Widget build(BuildContext context) {
-    taskState = Provider.of<ProjectProvider>(context);
+    //return Text("test");
+    taskState = Provider.of<ProjectProvider>(context, listen: false);
     _kanban = KanbanClass(context, nullSetState, _onViewTapped, _addItemDialog,
         _project, _project.views[_viewIndex]);
 
@@ -169,19 +170,6 @@ class _ListPageState extends State<ListPage> {
                         tooltip: view.title,
                       ))
                   .toList(),
-/*
-          ;const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.view_list),
-            label: 'List',
-            tooltip: 'List',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.view_kanban),
-            label: 'Kanban',
-            tooltip: 'Kanban',
-          ),
-        ], */
               currentIndex: _viewIndex,
               onTap: _onViewTapped,
             )
@@ -388,13 +376,12 @@ class _ListPageState extends State<ListPage> {
 }
 
 openList(BuildContext context, Project project) {
-  Navigator.of(context).push(MaterialPageRoute(
-    builder: (context) => ChangeNotifierProvider<ProjectProvider>(
-      create: (_) => new ProjectProvider(),
-      child: ListPage(
-        project: project,
-      ),
-    ),
-    // ListPage(taskList: list)
-  ));
+  Provider.of<ProjectProvider>(context, listen: false);
+  Navigator.push(context, MaterialPageRoute(builder: (context) {
+    Provider.of<ProjectProvider>(context, listen: false);
+    return ListPage(
+      project: project,
+    );
+  }));
+  // ListPage(taskList: list)
 }

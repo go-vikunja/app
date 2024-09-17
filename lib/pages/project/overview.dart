@@ -1,11 +1,13 @@
 import 'package:after_layout/after_layout.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:vikunja_app/pages/project/project_task_list.dart';
 
 import '../../components/AddDialog.dart';
 import '../../components/ErrorDialog.dart';
 import '../../global.dart';
 import '../../models/project.dart';
+import '../../stores/project_store.dart';
 
 class ProjectOverviewPage extends StatefulWidget {
   @override
@@ -52,9 +54,8 @@ class _ProjectOverviewPageState extends State<ProjectOverviewPage>
     return Column(children: [
       ListTile(
         onTap: () {
-          setState(() {
-            openList(context, project);
-          });
+          Provider.of<ProjectProvider>(context, listen: false);
+          openList(context, project);
         },
         contentPadding: insets,
         leading: IconButton(

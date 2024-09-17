@@ -119,9 +119,7 @@ class LandingPageState extends State<LandingPage> {
             children: [ListView(), Center(child: Text("This view is empty"))]);
         break;
       case PageStatus.success:
-        Future.delayed(Duration(seconds: 2), () {
-          showSentryModal(context);
-        });
+        showSentryModal(context, VikunjaGlobal.of(context));
         body = ListView(
           scrollDirection: Axis.vertical,
           padding: EdgeInsets.symmetric(vertical: 8.0),

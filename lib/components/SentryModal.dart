@@ -4,11 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/main.dart';
 
-Future<void> showSentryModal(BuildContext context) {
-  return VikunjaGlobal.of(context)
-      .settingsManager
-      .getSentryModalShown()
-      .then((sentryModalShown) {
+void showSentryModal(BuildContext context, VikunjaGlobalState global) {
+  global.settingsManager.getSentryModalShown().then((sentryModalShown) {
     VikunjaGlobal.of(context).settingsManager.setSentryModalShown(true);
     if (!sentryModalShown) {
       return showDialog<void>(

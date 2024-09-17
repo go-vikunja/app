@@ -61,16 +61,13 @@ class _LoginPageState extends State<LoginPage> {
         print(value);
         if (value != null) setState(() => pastServers = value);
       });
+      showSentryModal(context, VikunjaGlobal.of(context));
     });
   }
 
   @override
   Widget build(BuildContext ctx) {
     Client client = VikunjaGlobal.of(context).client;
-
-    Future.delayed(Duration(seconds: 2), () {
-      showSentryModal(context);
-    });
 
     return Scaffold(
       body: Center(

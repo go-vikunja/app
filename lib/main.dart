@@ -5,10 +5,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:provider/provider.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:vikunja_app/api/task_implementation.dart';
 import 'package:vikunja_app/api/client.dart';
 import 'package:vikunja_app/service/services.dart';
+import 'package:vikunja_app/stores/project_store.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/pages/home.dart';
@@ -114,17 +116,19 @@ void main() async {
   } catch (e) {
     print("Failed to initialize workmanager: $e");
   }
-  runApp(VikunjaGlobal(
-    child: new VikunjaApp(
-      home: HomePage(),
-      key: UniqueKey(),
-      navkey: globalNavigatorKey,
-    ),
-    login: new VikunjaApp(
-      home: LoginPage(),
-      key: UniqueKey(),
-    ),
-  ));
+  runApp(ChangeNotifierProvider<ProjectProvider>(
+      create: (_) => new ProjectProvider(),
+      child: VikunjaGlobal(
+        child: new VikunjaApp(
+          home: HomePage(),
+          key: UniqueKey(),
+          navkey: globalNavigatorKey,
+        ),
+        login: new VikunjaApp(
+          home: LoginPage(),
+          key: UniqueKey(),
+        ),
+      )));
 }
 
 class ThemeModel with ChangeNotifier {
