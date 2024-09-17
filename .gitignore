@@ -98,4 +98,14 @@ app.*.map.json
 # VS Code
 .vscode/settings.json
 
+# Devenv
+.devenv*
+devenv.local.nix
+.android/
+local.properties
+
+# direnv
 .direnv
+
+# pre-commit
+.pre-commit-config.yaml
