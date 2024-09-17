@@ -125,7 +125,7 @@ class _ListPageState extends State<ListPage> {
               )
             : Stack(children: [
                 ListView(),
-                Center(child: Text('This list is empty.'))
+                Center(child: Text('This project is empty.'))
               ]);
         break;
       case PageStatus.empty:
