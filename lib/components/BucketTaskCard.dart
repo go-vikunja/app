@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:provider/provider.dart';
+import 'package:vikunja_app/components/label.dart';
 import 'package:vikunja_app/models/task.dart';
 import 'package:vikunja_app/pages/project/task_edit.dart';
 import 'package:vikunja_app/utils/misc.dart';
@@ -154,17 +155,7 @@ class _BucketTaskCardState extends State<BucketTaskCard>
     );
     widget.task.labels.sort((a, b) => a.title.compareTo(b.title));
     widget.task.labels.asMap().forEach((i, label) {
-      labelRow.children.add(Chip(
-        label: Text(label.title),
-        labelStyle: theme.textTheme.labelLarge?.copyWith(
-          color: label.textColor,
-        ),
-        backgroundColor: label.color,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(4.0),
-          side: BorderSide(style: BorderStyle.none),
-        ),
-      ));
+      labelRow.children.add(LabelComponent(label: label));
     });
     if (widget.task.hasCheckboxes) {
       final checkboxStatistics = widget.task.checkboxStatistics;
