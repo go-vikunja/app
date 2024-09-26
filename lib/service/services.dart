@@ -243,7 +243,8 @@ class SettingsManager {
     "workmanager-duration": "0",
     "recent-servers": "[\"https://try.vikunja.io\"]",
     "theme_mode": "system",
-    "landing-page-due-date-tasks": "1"
+    "landing-page-due-date-tasks": "1",
+    "sentry-enabled": "0",
   };
 
   void applydefaults() {
@@ -266,6 +267,14 @@ class SettingsManager {
 
   void setIgnoreCertificates(bool value) {
     _storage.write(key: "ignore-certificates", value: value ? "1" : "0");
+  }
+
+  Future<bool> getSentryEnabled() {
+    return _storage.read(key: "sentry-enabled").then((value) => value == "1");
+  }
+
+  Future<void> setSentryEnabled(bool value) {
+    return _storage.write(key: "sentry-enabled", value: value ? "1" : "0");
   }
 
   Future<bool> getLandingPageOnlyDueDateTasks() {

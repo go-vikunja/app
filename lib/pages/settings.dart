@@ -17,6 +17,7 @@ class SettingsPageState extends State<SettingsPage> {
   List<Project>? projectList;
   int? defaultProject;
   bool? ignoreCertificates;
+  bool? sentryEnabled;
   bool? getVersionNotifications;
   String? versionTag, newestVersionTag;
   late TextEditingController durationTextController;
@@ -32,13 +33,14 @@ class SettingsPageState extends State<SettingsPage> {
         .getAll()
         .then((value) => setState(() => projectList = value));
 
-    //VikunjaGlobal.of(context).projectService.getDefaultList().then((value) =>
-    //    setState(
-    //        () => defaultProject = value == null ? null : int.tryParse(value)));
-
     VikunjaGlobal.of(context).settingsManager.getIgnoreCertificates().then(
         (value) =>
             setState(() => ignoreCertificates = value == "1" ? true : false));
+
+    VikunjaGlobal.of(context)
+        .settingsManager
+        .getSentryEnabled()
+        .then((value) => setState(() => sentryEnabled = value));
 
     VikunjaGlobal.of(context).settingsManager.getVersionNotifications().then(
         (value) => setState(
@@ -71,7 +73,6 @@ class SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     final global = VikunjaGlobal.of(context);
-
     if (!initialized) init();
     return new Scaffold(
       appBar: AppBar(
@@ -160,7 +161,7 @@ class SettingsPageState extends State<SettingsPage> {
               onChanged: (FlutterThemeMode? value) {
                 VikunjaGlobal.of(context).settingsManager.setThemeMode(value!);
                 setState(() => themeMode = value);
-                updateTheme.value = true;
+                if (themeMode != null) themeModel.themeMode = themeMode!;
               },
             ),
           ),
@@ -172,6 +173,22 @@ class SettingsPageState extends State<SettingsPage> {
                   onChanged: (value) {
                     setState(() => ignoreCertificates = value);
                     VikunjaGlobal.of(context).client.reloadIgnoreCerts(value);
+                  })
+              : ListTile(title: Text("...")),
+          Divider(),
+          sentryEnabled != null
+              ? CheckboxListTile(
+                  title: Text("Enable Sentry"),
+                  subtitle: Text(
+                      "Help us debug errors better and faster by sending bug reports to us directly. This is completely anonymous."),
+                  value: sentryEnabled,
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() => sentryEnabled = value);
+                    VikunjaGlobal.of(context)
+                        .settingsManager
+                        .setSentryEnabled(value)
+                        .then((_) => themeModel.notify());
                   })
               : ListTile(title: Text("...")),
           Divider(),

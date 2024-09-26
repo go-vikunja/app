@@ -42,6 +42,7 @@ dependencies:
   cronet_http: ^1.2.0
   package_info_plus: ^4.2.0
   html_editor_enhanced: ^2.6.0
+  sentry_flutter: ^8.9.0
 
 dev_dependencies:
   flutter_test:
