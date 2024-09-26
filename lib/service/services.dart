@@ -245,6 +245,7 @@ class SettingsManager {
     "theme_mode": "system",
     "landing-page-due-date-tasks": "1",
     "sentry-enabled": "0",
+    "sentry-modal-shown": "0",
   };
 
   void applydefaults() {
@@ -275,6 +276,16 @@ class SettingsManager {
 
   Future<void> setSentryEnabled(bool value) {
     return _storage.write(key: "sentry-enabled", value: value ? "1" : "0");
+  }
+
+  Future<bool> getSentryModalShown() {
+    return _storage
+        .read(key: "sentry-modal-shown")
+        .then((value) => value == "1");
+  }
+
+  Future<void> setSentryModalShown(bool value) {
+    return _storage.write(key: "sentry-modal-shown", value: value ? "1" : "0");
   }
 
   Future<bool> getLandingPageOnlyDueDateTasks() {

@@ -13,6 +13,7 @@ import 'package:vikunja_app/theme/buttonText.dart';
 import 'package:vikunja_app/theme/constants.dart';
 import 'package:vikunja_app/utils/validator.dart';
 
+import '../../components/SentryModal.dart';
 import '../../models/server.dart';
 
 class LoginPage extends StatefulWidget {
@@ -66,6 +67,10 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext ctx) {
     Client client = VikunjaGlobal.of(context).client;
+
+    Future.delayed(Duration(seconds: 2), () {
+      showSentryModal(context);
+    });
 
     return Scaffold(
       body: Center(

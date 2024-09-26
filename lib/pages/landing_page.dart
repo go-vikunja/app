@@ -8,6 +8,7 @@ import 'package:vikunja_app/service/services.dart';
 import 'dart:developer';
 
 import '../components/AddDialog.dart';
+import '../components/SentryModal.dart';
 import '../components/TaskTile.dart';
 import '../components/pagestatus.dart';
 import '../models/task.dart';
@@ -118,6 +119,9 @@ class LandingPageState extends State<LandingPage> {
             children: [ListView(), Center(child: Text("This view is empty"))]);
         break;
       case PageStatus.success:
+        Future.delayed(Duration(seconds: 2), () {
+          showSentryModal(context);
+        });
         body = ListView(
           scrollDirection: Axis.vertical,
           padding: EdgeInsets.symmetric(vertical: 8.0),
