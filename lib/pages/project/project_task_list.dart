@@ -55,6 +55,7 @@ class _ListPageState extends State<ListPage> {
     _keyboardController.onChange.listen((visible) {
       if (!visible && mounted) FocusScope.of(context).unfocus();
     });
+    Future.delayed(Duration.zero, _loadList);
     super.initState();
   }
 
@@ -73,7 +74,6 @@ class _ListPageState extends State<ListPage> {
 
     switch (taskState.pageStatus) {
       case PageStatus.built:
-        Future.delayed(Duration.zero, _loadList);
         body = new Stack(children: [
           ListView(),
           Center(
