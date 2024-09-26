@@ -109,6 +109,9 @@ class TaskTileState extends State<TaskTile> with AutomaticKeepAliveClientMixin {
         onTap: () {
           showModalBottomSheet<void>(
               context: context,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.vertical(top: Radius.circular(10.0)),
+              ),
               builder: (BuildContext context) {
                 return TaskBottomSheet(
                     task: widget.task,

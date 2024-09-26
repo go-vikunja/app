@@ -39,6 +39,7 @@ class TaskBottomSheet extends StatefulWidget {
 
 class TaskBottomSheetState extends State<TaskBottomSheet> {
   Task _currentTask;
+  final double propertyPadding = 10.0;
 
   TaskBottomSheetState(this._currentTask);
 
@@ -84,6 +85,7 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
                       icon: Icon(Icons.edit)),
                 ],
               ),
+              SizedBox(height: propertyPadding),
               Wrap(
                   spacing: 10,
                   children: _currentTask.labels.map((Label label) {
@@ -94,12 +96,14 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
 
               // description with html rendering
               Text("Description", style: theme.textTheme.headlineSmall),
+              SizedBox(height: propertyPadding),
               Padding(
                 padding: EdgeInsets.fromLTRB(10, 0, 0, 0),
                 child: HtmlWidget(_currentTask.description.isNotEmpty
                     ? _currentTask.description
                     : "No description"),
               ),
+              SizedBox(height: propertyPadding),
               // Due date
               Row(
                 children: [
@@ -110,6 +114,7 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
                       : "No due date"),
                 ],
               ),
+              SizedBox(height: propertyPadding),
               // start date
               Row(
                 children: [
@@ -121,6 +126,7 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
                       : "No start date"),
                 ],
               ),
+              SizedBox(height: propertyPadding),
               // end date
               Row(
                 children: [
@@ -131,6 +137,7 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
                       : "No end date"),
                 ],
               ),
+              SizedBox(height: propertyPadding),
               // priority
               Row(
                 children: [
@@ -141,6 +148,7 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
                       : "No priority"),
                 ],
               ),
+              SizedBox(height: propertyPadding),
               // progress
               Row(
                 children: [

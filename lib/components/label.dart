@@ -19,7 +19,8 @@ class LabelComponent extends StatelessWidget {
       ),
       backgroundColor: label.color,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.all(Radius.circular(3)),
+        borderRadius: BorderRadius.all(Radius.circular(4)),
+        side: BorderSide(style: BorderStyle.none),
       ),
       onDeleted: onDelete,
       deleteIconColor: label.textColor,

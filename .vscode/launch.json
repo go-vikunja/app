@@ -13,7 +13,7 @@
       "request": "launch",
       "type": "dart",
       "flutterMode": "debug",
-      "args": ["--flavor", "main"]
+      "args": ["--flavor", "unsigend"]
     }
   ]
 }
