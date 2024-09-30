@@ -124,7 +124,7 @@ class NotificationClass {
 
   Future<void> scheduleDueNotifications(TaskService taskService,
       {List<Task>? tasks}) async {
-    if (tasks == null) tasks = await taskService.getAll();
+    if (tasks == null) tasks = await taskService.getByFilterString("done=false && (due_date > now || reminders > now)", {"filter_include_nulls": ["false"]});
     if (tasks == null) {
       print("did not receive tasks on notification update");
       return;
@@ -153,7 +153,7 @@ class NotificationClass {
           platformChannelSpecificsDueDate,
           id: task.id,
         );
-        print("scheduled notification for time " + task.dueDate!.toString());
+        //print("scheduled notification for time " + task.dueDate!.toString());
       }
     }
     print("notifications scheduled successfully");
