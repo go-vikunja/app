@@ -13,12 +13,12 @@ void showSentryModal(BuildContext context, VikunjaGlobalState global) {
           barrierDismissible: false,
           builder: (BuildContext context) {
             return AlertDialog(
-                title: Text('Error Reporting'),
+                title: Text('Enable automatic error reporting'),
                 content: SingleChildScrollView(
                   child: ListBody(
                     children: <Widget>[
                       Text(
-                          'Would you like to help us improve Vikunja by sending error reports?'),
+                          'Would you like to help us improve Vikunja by sending error reports? Enabling this will send automatic error reports to the developers using Sentry.'),
                     ],
                   ),
                 ),
