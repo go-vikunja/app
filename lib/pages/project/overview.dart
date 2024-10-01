@@ -25,12 +25,33 @@ class _ProjectOverviewPageState extends State<ProjectOverviewPage>
           ? _projects[_selectedDrawerIndex]
           : null;
 
+  List<int> expandedList = [];
+
   @override
   void afterFirstLayout(BuildContext context) {
     _loadProjects();
+    VikunjaGlobal.of(context)
+        .settingsManager
+        .getExpandedProjects()
+        .then((val) => setState(() {
+              expandedList = val ?? [];
+              print("Setting expanded list in setup to $expandedList");
+            }));
   }
 
-  List<int> expandedList = [];
+  void updateExpandedList() {
+    VikunjaGlobal.of(context).settingsManager.setExpandedProjects(expandedList);
+  }
+
+  void addToExpandedList(int id) {
+    expandedList.add(id);
+    updateExpandedList();
+  }
+
+  void removeFromExpandedList(int id) {
+    expandedList.remove(id);
+    updateExpandedList();
+  }
 
   Widget createProjectTile(Project project, int level) {
     EdgeInsets insets = EdgeInsets.fromLTRB(level * 10 + 10, 0, 0, 0);
@@ -65,9 +86,9 @@ class _ProjectOverviewPageState extends State<ProjectOverviewPage>
               ? () {
                   setState(() {
                     if (expanded)
-                      expandedList.remove(project.id);
+                      removeFromExpandedList(project.id);
                     else
-                      expandedList.add(project.id);
+                      addToExpandedList(project.id);
                   });
                 }
               : null,
