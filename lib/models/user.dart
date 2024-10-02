@@ -106,7 +106,7 @@ class User {
         this.updated = updated ?? DateTime.now();
 
   User.fromJson(Map<String, dynamic> json)
-      : id = json['id'],
+      : id = json.containsKey('id') ? json['id'] : 0,
         name = json.containsKey('name') ? json['name'] : '',
         username = json['username'],
         created = DateTime.parse(json['created']),
