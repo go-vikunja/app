@@ -1,4 +1,6 @@
 import 'dart:developer';
+import 'dart:core';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -272,7 +274,8 @@ class _LoginPageState extends State<LoginPage> {
                               .setIgnoreCertificates(value ?? false);
                           VikunjaGlobal.of(context).client.ignoreCertificates =
                               value ?? false;
-                        })
+                        }),
+                    Text("Platform OS:"+Platform.operatingSystem)
                   ],
                 ),
               ),
