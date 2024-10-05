@@ -275,7 +275,6 @@ class _LoginPageState extends State<LoginPage> {
                           VikunjaGlobal.of(context).client.ignoreCertificates =
                               value ?? false;
                         }),
-                    Text("Platform OS:"+Platform.operatingSystem)
                   ],
                 ),
               ),
