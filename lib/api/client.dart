@@ -54,14 +54,13 @@ class Client {
         return cronet_http.CronetClient.fromCronetEngine(engine);
       }
       if (Platform.isIOS || Platform.isMacOS) {
-        final config =
-        cupertino_http.URLSessionConfiguration.ephemeralSessionConfiguration()
+        final config = cupertino_http.URLSessionConfiguration
+            .ephemeralSessionConfiguration()
           ..cache =
-          cupertino_http.URLCache.withCapacity(memoryCapacity: 1000000);
+              cupertino_http.URLCache.withCapacity(memoryCapacity: 1000000);
         return cupertino_http.CupertinoClient.fromSessionConfiguration(config);
       }
-    }
-    catch(e) {
+    } catch (e) {
       print("Error creating http client: $e. Falling back to default client.");
     }
     return io_client.IOClient();
