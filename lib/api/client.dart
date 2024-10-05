@@ -47,17 +47,22 @@ class Client {
   }
 
   http.Client get httpClient {
-    if (Platform.isAndroid) {
-      final engine = cronet_http.CronetEngine.build(
-          cacheMode: cronet_http.CacheMode.memory, cacheMaxSize: 1000000);
-      return cronet_http.CronetClient.fromCronetEngine(engine);
+    try {
+      if (Platform.isAndroid) {
+        final engine = cronet_http.CronetEngine.build(
+            cacheMode: cronet_http.CacheMode.memory, cacheMaxSize: 1000000);
+        return cronet_http.CronetClient.fromCronetEngine(engine);
+      }
+      if (Platform.isIOS || Platform.isMacOS) {
+        final config =
+        cupertino_http.URLSessionConfiguration.ephemeralSessionConfiguration()
+          ..cache =
+          cupertino_http.URLCache.withCapacity(memoryCapacity: 1000000);
+        return cupertino_http.CupertinoClient.fromSessionConfiguration(config);
+      }
     }
-    if (Platform.isIOS || Platform.isMacOS) {
-      final config =
-          cupertino_http.URLSessionConfiguration.ephemeralSessionConfiguration()
-            ..cache =
-                cupertino_http.URLCache.withCapacity(memoryCapacity: 1000000);
-      return cupertino_http.CupertinoClient.fromSessionConfiguration(config);
+    catch(e) {
+      print("Error creating http client: $e. Falling back to default client.");
     }
     return io_client.IOClient();
   }
