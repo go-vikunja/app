@@ -30,6 +30,8 @@ class ProjectProvider with ChangeNotifier {
 
   List<Task> get tasks => _tasks;
 
+  List<Task> get ganttTasks => _tasks.where((task) => task.startDate != null && task.endDate != null && task.startDate!.year > 1 && task.endDate!.year > 1).toList();
+
   set buckets(List<Bucket> buckets) {
     _buckets = buckets;
     notifyListeners();

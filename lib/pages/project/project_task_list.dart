@@ -13,6 +13,7 @@ import 'package:vikunja_app/models/bucket.dart';
 import 'package:vikunja_app/pages/project/project_edit.dart';
 import 'package:vikunja_app/pages/project/task_edit.dart';
 
+import '../../components/GanttWidget.dart';
 import '../../components/pagestatus.dart';
 import '../../models/project.dart';
 import '../../stores/project_store.dart';
@@ -65,7 +66,6 @@ class _ListPageState extends State<ListPage> {
 
   @override
   Widget build(BuildContext context) {
-    //return Text("test");
     taskState = Provider.of<ProjectProvider>(context, listen: false);
     _kanban = KanbanClass(context, nullSetState, _onViewTapped, _addItemDialog,
         _project, _project.views[_viewIndex]);
@@ -116,6 +116,8 @@ class _ListPageState extends State<ListPage> {
                     switch (_project.views[_viewIndex].viewKind) {
                       case "list":
                         return _listView(context);
+                      case "gantt":
+                        return GanttWidget();
                       case "kanban":
                         return _kanban.kanbanView();
                       default:

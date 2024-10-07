@@ -22,6 +22,8 @@ class ProjectView {
         return Icon(Icons.view_list);
       case "kanban":
         return Icon(Icons.view_kanban);
+      case "gantt":
+        return Icon(Icons.sort);
       default:
         return Icon(Icons.disabled_by_default_outlined);
     }
