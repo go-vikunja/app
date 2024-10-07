@@ -28,6 +28,12 @@ jobs:
       - run: flutter --version
       - run: flutter pub get
       - run: flutter build apk --debug --flavor unsigned
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-bundle
+          path: |
+            build/app/outputs/flutter-apk/app-unsigned-debug.apk
   lint:
     name: Lint
     runs-on: ubuntu-latest
