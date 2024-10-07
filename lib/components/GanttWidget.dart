@@ -7,6 +7,27 @@ import 'package:vikunja_app/stores/project_store.dart';
 import '../models/task.dart';
 import 'TaskBottomSheet.dart';
 
+class ContainerPatternPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    for (int i = 0; i < size.width / width; i++) {
+      canvas.drawLine(
+          Offset(i * (width * 1.001), 0),
+          Offset(i * (width * 1.001), size.height),
+          Paint()
+            ..color = Theme.of(context).colorScheme.onSurface
+            ..strokeWidth = 1);
+    }
+  }
+
+  final BuildContext context;
+  final double width;
+  ContainerPatternPainter(this.context, this.width);
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => true;
+}
+
 class GanttWidget extends StatefulWidget {
   @override
   State<GanttWidget> createState() => _GanttWidgetState();
@@ -36,10 +57,13 @@ class MockTask {
 }
 
 int MONTH_OFFSET = 2;
+int TOTAL_MONTHS = 6;
 
 class _GanttWidgetState extends State<GanttWidget> {
   DateTime startDateTime =
       DateTime(DateTime.now().year, DateTime.now().month - MONTH_OFFSET, 1);
+
+  late DateTime endDateTime;
 
   late double dayWidth;
 
@@ -61,12 +85,11 @@ class _GanttWidgetState extends State<GanttWidget> {
     dayWidth = MediaQuery.of(context).size.width / 15;
 
     if (!inited) {
+      endDateTime =
+          DateTime(startDateTime.year, startDateTime.month + TOTAL_MONTHS, 30);
       projectState = Provider.of<ProjectProvider>(context, listen: false);
       for (Task task in projectState.ganttTasks) {
         print(task.toJSON());
-
-        double taskStart =
-            dayWidth * task.startDate!.difference(startDateTime).inDays;
       }
 
       double initialOffset =
@@ -103,9 +126,16 @@ class _GanttWidgetState extends State<GanttWidget> {
                       shrinkWrap: true,
                       controller: _dateScrollController,
                       scrollDirection: Axis.horizontal,
+                      itemCount: TOTAL_MONTHS,
                       itemBuilder: (context, index) {
                         return Container(
-                            color: index % 2 == 0 ? Colors.blue : Colors.green,
+                            decoration: BoxDecoration(
+                                border: Border(
+                                    right: BorderSide(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface,
+                                        width: 1))),
                             child: Container(
                               child: Column(
                                 children: [
@@ -130,10 +160,9 @@ class _GanttWidgetState extends State<GanttWidget> {
                                           return Container(
                                             height: _taskHeight,
                                             width: dayWidth,
-                                            child: Text((index + 1).toString()),
-                                            color: index % 2 == 0
-                                                ? Colors.red
-                                                : Colors.yellow,
+                                            child: Center(
+                                                child: Text(
+                                                    (index + 1).toString())),
                                           );
                                         }),
                                   ),
@@ -146,71 +175,82 @@ class _GanttWidgetState extends State<GanttWidget> {
                   child: SingleChildScrollView(
                     controller: _taskScrollController,
                     scrollDirection: Axis.horizontal,
-                    child: Container(
-                      width: MediaQuery.of(context).size.width * 10,
-                      height: _taskHeight * projectState.ganttTasks.length,
-                      child: ListView.builder(
-                        itemCount: projectState.ganttTasks.length,
-                        itemBuilder: (context, index) {
-                          Task task = projectState.ganttTasks[index];
-                          double taskStartOffset =
-                              taskStartOffsets.containsKey(task.id)
-                                  ? taskStartOffsets[task.id]!
-                                  : 0;
-                          double taskEndOffset =
-                              taskEndOffsets.containsKey(task.id)
-                                  ? taskEndOffsets[task.id]!
-                                  : 0;
-                          double taskStart = dayWidth *
-                                  task.startDate!
-                                      .difference(startDateTime)
-                                      .inDays +
-                              taskStartOffset;
-                          double taskEnd =
-                              task.endDate!.difference(task.startDate!).inDays *
-                                      dayWidth -
-                                  taskStartOffset;
+                    child: CustomPaint(
+                      painter: ContainerPatternPainter(context, dayWidth),
+                      child: Container(
+                        decoration: BoxDecoration(
+                            border: Border(
+                                bottom: BorderSide(
+                                    color:
+                                        Theme.of(context).colorScheme.onSurface,
+                                    width: 1))),
+                        width: MediaQuery.of(context).size.width * 10,
+                        height: _taskHeight * projectState.ganttTasks.length,
+                        child: ListView.builder(
+                          itemCount: projectState.ganttTasks.length,
+                          itemBuilder: (context, index) {
+                            Task task = projectState.ganttTasks[index];
+                            double taskStartOffset =
+                                taskStartOffsets.containsKey(task.id)
+                                    ? taskStartOffsets[task.id]!
+                                    : 0;
+                            double taskEndOffset =
+                                taskEndOffsets.containsKey(task.id)
+                                    ? taskEndOffsets[task.id]!
+                                    : 0;
+                            double taskStart = dayWidth *
+                                    task.startDate!
+                                        .difference(startDateTime)
+                                        .inDays +
+                                taskStartOffset;
+                            double taskEnd = task.endDate!
+                                        .difference(task.startDate!)
+                                        .inDays *
+                                    dayWidth -
+                                taskStartOffset;
 
-                          return Padding(
-                            padding: EdgeInsets.only(left: taskStart),
-                            child: Stack(
-                              children: [
-                                Container(
-                                    height: _taskHeight,
-                                    width: taskEnd + taskEndOffset,
-                                    child: LongPressDraggable(
-                                        onDragEnd: (details) {
-                                          taskDragging = -1;
-                                          DateTime newStartDate =
-                                              startDateTime.add(Duration(
-                                                  days: ((details.offset.dx +
-                                                              _taskScrollController
-                                                                  .offset) /
-                                                          dayWidth)
-                                                      .round()));
-                                          task.endDate = task.endDate!.add(
-                                              newStartDate
-                                                  .difference(task.startDate!));
-                                          task.startDate = newStartDate;
-                                        },
-                                        onDragStarted: () {
-                                          taskDragging = task.id;
-                                        },
-                                        axis: Axis.horizontal,
-                                        feedback: SizedBox(
-                                            width: task.endDate!
-                                                    .difference(task.startDate!)
-                                                    .inDays *
-                                                dayWidth,
-                                            height: _taskHeight,
-                                            child: buildCard(task)),
-                                        child: taskDragging != task.id
-                                            ? buildCard(task)
-                                            : Container()))
-                              ],
-                            ),
-                          );
-                        },
+                            return Padding(
+                              padding: EdgeInsets.only(left: taskStart),
+                              child: Stack(
+                                children: [
+                                  Container(
+                                      height: _taskHeight,
+                                      width: taskEnd + taskEndOffset,
+                                      child: LongPressDraggable(
+                                          onDragEnd: (details) {
+                                            taskDragging = -1;
+                                            DateTime newStartDate =
+                                                startDateTime.add(Duration(
+                                                    days: ((details.offset.dx +
+                                                                _taskScrollController
+                                                                    .offset) /
+                                                            dayWidth)
+                                                        .round()));
+                                            task.endDate = task.endDate!.add(
+                                                newStartDate.difference(
+                                                    task.startDate!));
+                                            task.startDate = newStartDate;
+                                          },
+                                          onDragStarted: () {
+                                            taskDragging = task.id;
+                                          },
+                                          axis: Axis.horizontal,
+                                          feedback: SizedBox(
+                                              width: task.endDate!
+                                                      .difference(
+                                                          task.startDate!)
+                                                      .inDays *
+                                                  dayWidth,
+                                              height: _taskHeight,
+                                              child: buildCard(task)),
+                                          child: taskDragging != task.id
+                                              ? buildCard(task)
+                                              : Container()))
+                                ],
+                              ),
+                            );
+                          },
+                        ),
                       ),
                     ),
                   ),
