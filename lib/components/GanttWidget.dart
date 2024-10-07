@@ -55,15 +55,6 @@ class _GanttWidgetState extends State<GanttWidget> {
   Map<int, double> taskStartOffsets = {};
   Map<int, double> taskEndOffsets = {};
 
-  List<MockTask> tasks = [
-    MockTask(
-        "fisttask", DateTime.now(), DateTime.now().add(Duration(days: 10)), 1),
-    MockTask("fisttask", DateTime.now().add(Duration(days: 15)),
-        DateTime.now().add(Duration(days: 20)), 2),
-    MockTask("fisttask", DateTime.now().subtract(Duration(days: 10)),
-        DateTime.now().add(Duration(days: 27)), 3),
-  ];
-
   @override
   Widget build(BuildContext context) {
     _taskHeight = MediaQuery.of(context).size.height / 20;
