@@ -48,6 +48,13 @@ dependencies:
   html_editor_enhanced: ^2.6.0
   sentry_flutter: ^8.9.0
 
+dependency_overrides:
+  flutter_inappwebview:
+    git:
+      url: https://github.com/pichillilorenzo/flutter_inappwebview
+      path: flutter_inappwebview
+      ref: master
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
