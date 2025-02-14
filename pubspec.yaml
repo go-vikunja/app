@@ -16,7 +16,7 @@ dependencies:
   intl: ^0.19.0
   flutter_local_notifications: ^17.0.0
   rxdart: ^0.27.7
-  flutter_timezone: ^1.0.8
+  flutter_timezone: ^4.1.0
   flutter_secure_storage: ^9.0.0
   datetime_picker_formfield: ^2.0.1
   flutter_typeahead: ^5.2.0
@@ -29,10 +29,14 @@ dependencies:
   flutter_keyboard_visibility: ^6.0.0
   dotted_border: ^2.1.0
   url_launcher: ^6.2.5
-  workmanager: ^0.5.2
+  workmanager:
+    git:
+      url: https://github.com/fluttercommunity/flutter_workmanager.git
+      path: workmanager
+      ref: main
   permission_handler: ^11.3.0
   dynamic_color: ^1.7.0
-  flutter_widget_from_html: ^0.14.11
+  flutter_widget_from_html: ^0.15.2
   flutter_downloader: ^1.11.6
   meta: ^1.11.0
   timezone: ^0.9.2
