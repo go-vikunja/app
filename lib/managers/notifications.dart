@@ -52,11 +52,7 @@ class NotificationClass {
         requestAlertPermission: false,
         requestBadgePermission: false,
         requestSoundPermission: false,
-        onDidReceiveLocalNotification:
-            (int? id, String? title, String? body, String? payload) async {
-          didReceiveLocalNotificationSubject.add(NotificationClass(
-              id: id, title: title, body: body, payload: payload));
-        });
+        );
     var initializationSettings = notifs.InitializationSettings(
         android: initializationSettingsAndroid, iOS: initializationSettingsIOS);
     await notificationsPlugin.initialize(initializationSettings,
@@ -100,7 +96,7 @@ class NotificationClass {
     print("scheduled notification for time " + time.toString());
     await notifsPlugin.zonedSchedule(
         id, title, description, time, platformChannelSpecifics,
-        androidAllowWhileIdle: true,
+        androidScheduleMode: notifs.AndroidScheduleMode.exact,
         uiLocalNotificationDateInterpretation: notifs
             .UILocalNotificationDateInterpretation
             .wallClockTime); // This literally schedules the notification
