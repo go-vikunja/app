@@ -96,7 +96,7 @@ class NotificationClass {
     print("scheduled notification for time " + time.toString());
     await notifsPlugin.zonedSchedule(
         id, title, description, time, platformChannelSpecifics,
-        androidScheduleMode: notifs.AndroidScheduleMode.exact,
+        androidScheduleMode: notifs.AndroidScheduleMode.exactAllowWhileIdle,
         uiLocalNotificationDateInterpretation: notifs
             .UILocalNotificationDateInterpretation
             .wallClockTime); // This literally schedules the notification
