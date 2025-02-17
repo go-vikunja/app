@@ -41,4 +41,6 @@ jobs:
         with:
           channel: stable
       - name: Check Dart Format
-        run: dart format --set-exit-if-changed .
+        run: |
+          flutter pub get
+          dart format --set-exit-if-changed .
