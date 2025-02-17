@@ -49,10 +49,10 @@ class NotificationClass {
     var initializationSettingsAndroid =
         notifs.AndroidInitializationSettings('vikunja_logo');
     var initializationSettingsIOS = notifs.DarwinInitializationSettings(
-        requestAlertPermission: false,
-        requestBadgePermission: false,
-        requestSoundPermission: false,
-        );
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
+    );
     var initializationSettings = notifs.InitializationSettings(
         android: initializationSettingsAndroid, iOS: initializationSettingsIOS);
     await notificationsPlugin.initialize(initializationSettings,
