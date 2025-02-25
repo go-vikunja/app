@@ -244,6 +244,7 @@ class SettingsManager {
     "recent-servers": "[\"https://try.vikunja.io\"]",
     "theme_mode": "system",
     "landing-page-due-date-tasks": "1",
+    "landing-page-today-tasks": "1",
     "sentry-enabled": "0",
     "sentry-modal-shown": "0",
     "expanded-projects": "[]",
@@ -295,9 +296,28 @@ class SettingsManager {
         .then((value) => value == "1");
   }
 
+  Future<Map<String, bool>> getLandingPageTasks() {
+    // Map<String, bool> filters = {};
+    // await filters['landing-page-due-date-tasks'] = _storage.read(key: "landing-page-due-date-tasks");
+    // await filters['landing-page-today-tasks'] = _storage.read(key: "landing-page-today-tasks");
+    return _storage.read(key: "landing-page-due-date-tasks").then((dueDate) {
+      return _storage.read(key: "landing-page-today-tasks").then((today) {
+        return {
+          'landing-page-due-date-tasks': dueDate == "1",
+          'landing-page-today-tasks': today == "1",
+        };
+      });
+    });
+  }
+
   Future<void> setLandingPageOnlyDueDateTasks(bool value) {
     return _storage.write(
         key: "landing-page-due-date-tasks", value: value ? "1" : "0");
+  }
+
+  Future<void> setLandingPageTodayTasks(bool value) {
+    return _storage.write(
+        key: "landing-page-today-tasks", value: value ? "1" : "0");
   }
 
   Future<String?> getVersionNotifications() {

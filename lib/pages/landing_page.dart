@@ -33,6 +33,7 @@ class LandingPage extends HomeScreenWidget {
 class LandingPageState extends State<LandingPage> {
   int? defaultList;
   bool onlyDueDate = true;
+  bool showToday = true;
   List<Task> _tasks = [];
   PageStatus landingPageStatus = PageStatus.built;
   static const platform = const MethodChannel('vikunja');
@@ -166,6 +167,30 @@ class LandingPageState extends State<LandingPage> {
                               value: onlyDueDate,
                               onChanged: (bool? value) {},
                             )
+                          ]))),
+              PopupMenuItem(
+                  child: InkWell(
+                      onTap: () {
+                        Navigator.pop(context);
+                        bool newvaltoday = !showToday;
+                        VikunjaGlobal.of(context)
+                            .settingsManager
+                            .setLandingPageTodayTasks(newvaltoday)
+                            .then((value) {
+                          setState(() {
+                            showToday = newvaltoday;
+                            _loadList(context);
+                          });
+                        });
+                      },
+                      child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Text("Only show tasks for today"),
+                            Checkbox(
+                              value: showToday,
+                              onChanged: (bool? value) {},
+                            )
                           ])))
             ];
           }),
@@ -239,7 +264,7 @@ class LandingPageState extends State<LandingPage> {
         .scheduleDueNotifications(VikunjaGlobal.of(context).taskService);
     return VikunjaGlobal.of(context)
         .settingsManager
-        .getLandingPageOnlyDueDateTasks()
+        .getLandingPageTasks()
         .then((showOnlyDueDateTasks) {
       VikunjaGlobalState global = VikunjaGlobal.of(context);
       Map<String, dynamic>? frontend_settings =
@@ -258,8 +283,11 @@ class LandingPageState extends State<LandingPage> {
         ;
       }
       List<String> filterStrings = ["done = false"];
-      if (showOnlyDueDateTasks) {
+      if (showOnlyDueDateTasks['landing-page-due-date-tasks'] == true) {
         filterStrings.add("due_date > 0001-01-01 00:00");
+      }
+      if (showOnlyDueDateTasks['landing-page-today-tasks'] == true) {
+        filterStrings.add("due_date < now/d+1d");
       }
       return global.taskService.getByFilterString(filterStrings.join(" && "), {
         "sort_by": ["due_date", "id"],

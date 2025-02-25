@@ -94,6 +94,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+/android/app/.cxx
 
 # VS Code
 .vscode/settings.json
