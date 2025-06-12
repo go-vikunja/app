@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:padding="8dp">
+
+    <!-- Widget Header -->
+    <LinearLayout
+        android:id="@+id/widget_header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="8dp">
+
+        <TextView
+            android:id="@+id/widget_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Vikunja Tasks"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="@color/widget_text_color" />
+
+        <ImageButton
+            android:id="@+id/add_task_button"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:src="@drawable/ic_add"
+            android:background="@drawable/button_background"
+            android:contentDescription="Add Task"
+            android:scaleType="centerInside" />
+
+    </LinearLayout>
+
+    <!-- Tasks List -->
+    <ListView
+        android:id="@+id/task_list"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/widget_header"
+        android:layout_marginTop="8dp"
+        android:divider="@null"
+        android:dividerHeight="4dp" />
+
+    <!-- Empty State -->
+    <TextView
+        android:id="@+id/empty_state"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:text="No tasks found"
+        android:textSize="14sp"
+        android:textColor="@color/widget_text_color_secondary"
+        android:gravity="center"
+        android:visibility="gone" />
+
+</RelativeLayout>

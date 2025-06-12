@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">Vikunja Tasks Widget - View and add tasks directly from your home screen</string>
+    <string name="app_name">Vikunja</string>
+</resources>

@@ -21,6 +21,7 @@ import 'package:flutter_downloader/flutter_downloader.dart';
 
 import 'api/user_implementation.dart';
 import 'managers/notifications.dart';
+import 'service/widget_service.dart';
 
 class IgnoreCertHttpOverrides extends HttpOverrides {
   bool ignoreCerts = false;
@@ -115,6 +116,12 @@ void main() async {
     }
   } catch (e) {
     print("Failed to initialize workmanager: $e");
+  }
+  try {
+    await WidgetService.initialize();
+    await WidgetService.handleWidgetInteraction();
+  } catch (e) {
+    print("Failed to initialize widget service: $e");
   }
   runApp(ChangeNotifierProvider<ProjectProvider>(
       create: (_) => new ProjectProvider(),

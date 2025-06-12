@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Widget Colors -->
+    <color name="widget_background">#FFFFFF</color>
+    <color name="widget_border">#E0E0E0</color>
+    <color name="widget_text_color">#212121</color>
+    <color name="widget_text_color_secondary">#757575</color>
+    <color name="widget_icon_color">#1976D2</color>
+    
+    <!-- Task Item Colors -->
+    <color name="task_item_background">#FAFAFA</color>
+    
+    <!-- Button Colors -->
+    <color name="button_normal">#1976D2</color>
+    <color name="button_pressed">#1565C0</color>
+    
+    <!-- Priority Colors -->
+    <color name="priority_background">#FFC107</color>
+</resources>

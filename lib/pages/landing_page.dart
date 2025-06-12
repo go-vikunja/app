@@ -8,10 +8,12 @@ import 'package:vikunja_app/service/services.dart';
 import 'dart:developer';
 
 import '../components/AddDialog.dart';
+import '../components/QuickAddTaskDialog.dart';
 import '../components/SentryModal.dart';
 import '../components/TaskTile.dart';
 import '../components/pagestatus.dart';
 import '../models/task.dart';
+import '../service/widget_service.dart';
 
 class HomeScreenWidget extends StatefulWidget {
   HomeScreenWidget({Key? key}) : super(key: key);
@@ -181,12 +183,13 @@ class LandingPageState extends State<LandingPage> {
       ));
     } else {
       showDialog(
-          context: context,
-          builder: (_) => AddDialog(
-              prefilledTitle: prefilledTitle,
-              onAddTask: (title, dueDate) => _addTask(title, dueDate, context),
-              decoration: new InputDecoration(
-                  labelText: 'Task Name', hintText: 'eg. Milk')));
+        context: context,
+        builder: (_) => QuickAddTaskDialog(
+          prefilledTitle: prefilledTitle,
+          defaultProjectId: defaultList,
+          onAddTask: (task) => _addFullTask(task, context),
+        ),
+      );
     }
   }
 
@@ -211,6 +214,29 @@ class LandingPageState extends State<LandingPage> {
       content: Text('The task was added successfully!'),
     ));
     _loadList(context).then((value) => setState(() {}));
+  }
+  
+  Future<void> _addFullTask(Task task, BuildContext context) async {
+    final globalState = VikunjaGlobal.of(context);
+    if (globalState.currentUser == null) {
+      return;
+    }
+
+    try {
+      await globalState.taskService.add(defaultList!, task);
+      
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('The task was added successfully!'),
+        backgroundColor: Colors.green,
+      ));
+      
+      _loadList(context).then((value) => setState(() {}));
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Failed to add task: $e'),
+        backgroundColor: Colors.red,
+      ));
+    }
   }
 
   List<Widget> _listTasks(BuildContext context) {
@@ -274,6 +300,8 @@ class LandingPageState extends State<LandingPage> {
       setState(() {
         landingPageStatus = PageStatus.empty;
       });
+      // Update widget with empty list
+      WidgetService.updateWidget([]);
       return Future.value();
     }
     //taskList.forEach((task) {task.list = lists.firstWhere((element) => element.id == task.list_id);});
@@ -281,8 +309,12 @@ class LandingPageState extends State<LandingPage> {
       if (taskList != null) {
         _tasks = taskList;
         landingPageStatus = PageStatus.success;
+        // Update widget with current tasks
+        WidgetService.updateWidget(taskList);
       } else {
         landingPageStatus = PageStatus.error;
+        // Clear widget on error
+        WidgetService.clearWidget();
       }
     });
     return Future.value();
