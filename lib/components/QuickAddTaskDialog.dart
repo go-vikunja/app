@@ -61,7 +61,7 @@ class QuickAddTaskDialogState extends State<QuickAddTaskDialog>
     try {
       final labels = await VikunjaGlobal.of(context).labelService.getAll();
       setState(() {
-        availableLabels = labels.body ?? [];
+        availableLabels = labels ?? [];
         isLoadingLabels = false;
       });
     } catch (e) {
@@ -165,7 +165,7 @@ class QuickAddTaskDialogState extends State<QuickAddTaskDialog>
                       ),
             
             // Selected labels preview
-            if (selectedLabels.isNotEmpty) ..[
+            if (selectedLabels.isNotEmpty) ...[
               SizedBox(height: 8),
               Wrap(
                 spacing: 4,
