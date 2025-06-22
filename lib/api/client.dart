@@ -14,8 +14,8 @@ import '../main.dart';
 
 class Client {
   GlobalKey<ScaffoldMessengerState>? global_scaffold_key;
-  final JsonDecoder _decoder = new JsonDecoder();
-  final JsonEncoder _encoder = new JsonEncoder();
+  final JsonDecoder _decoder = JsonDecoder();
+  final JsonEncoder _encoder = JsonEncoder();
   String _token = '';
   String _base = '';
   bool authenticated = false;
@@ -68,7 +68,7 @@ class Client {
 
   void reloadIgnoreCerts(bool? val) {
     ignoreCertificates = val ?? false;
-    HttpOverrides.global = new IgnoreCertHttpOverrides(ignoreCertificates);
+    HttpOverrides.global = IgnoreCertHttpOverrides(ignoreCertificates);
     if (global_scaffold_key == null ||
         global_scaffold_key!.currentContext == null) return;
     VikunjaGlobal.of(global_scaffold_key!.currentContext!)

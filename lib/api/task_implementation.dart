@@ -79,7 +79,7 @@ class TaskAPIService extends APIService implements TaskService {
         .get('/projects/$projectId/tasks', queryParameters)
         .then((response) {
       return response != null
-          ? new Response(
+          ? Response(
               convertList(response.body, (result) => Task.fromJson(result)),
               response.statusCode,
               response.headers)

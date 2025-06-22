@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 class PlaceholderPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return new Container(
-      padding: EdgeInsets.all(16),
+    return Container(
+      padding: const EdgeInsets.all(16),
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.start,

@@ -40,11 +40,11 @@ class _TaskEditPageState extends State<TaskEditPage> {
 
   @override
   Widget build(BuildContext ctx) {
-    return new WillPopScope(onWillPop: () {
+    return WillPopScope(onWillPop: () {
       if(changed) {
         return _showConfirmationDialog();
       }
-      return new Future(() => true);
+      return Future(() => true);
     },
     child: Scaffold(
       appBar: AppBar(
@@ -70,7 +70,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
                         }
                         return null;
                       },
-                      decoration: new InputDecoration(
+                      decoration: const InputDecoration(
                         labelText: 'Title',
                         border: OutlineInputBorder(),
                       ),
@@ -89,7 +89,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
                         }
                         return null;
                       },
-                      decoration: new InputDecoration(
+                      decoration: const InputDecoration(
                         labelText: 'Description',
                         border: OutlineInputBorder(),
                       ),
@@ -170,7 +170,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
         );
     if(date != null && time != null)
       setState(() {
-        _due = new DateTime(date.year,date.month, date.day,time.hour,time.minute);
+        _due = DateTime(date.year, date.month, date.day, time.hour, time.minute);
       });
   }
 

@@ -115,7 +115,7 @@ class _LoginPageState extends State<LoginPage> {
                                       ? null
                                       : 'Invalid URL';
                                 },
-                                decoration: new InputDecoration(
+                                decoration: const InputDecoration(
                                     border: OutlineInputBorder(),
                                     labelText: 'Server Address'),
                               );
@@ -123,7 +123,7 @@ class _LoginPageState extends State<LoginPage> {
                             /*
                             textFieldConfiguration: TextFieldConfiguration(
                               controller: _serverController,
-                              decoration: new InputDecoration(
+                              decoration: const InputDecoration(
                                   border: OutlineInputBorder(),
                                   labelText: 'Server Address'),
                             ),*/
@@ -194,7 +194,7 @@ class _LoginPageState extends State<LoginPage> {
                         enabled: !_loading,
                         controller: _usernameController,
                         autofillHints: [AutofillHints.username],
-                        decoration: new InputDecoration(
+                        decoration: const InputDecoration(
                             border: OutlineInputBorder(),
                             labelText: 'Username'),
                       ),
@@ -205,7 +205,7 @@ class _LoginPageState extends State<LoginPage> {
                         enabled: !_loading,
                         controller: _passwordController,
                         autofillHints: [AutofillHints.password],
-                        decoration: new InputDecoration(
+                        decoration: const InputDecoration(
                             border: OutlineInputBorder(),
                             labelText: 'Password'),
                         obscureText: true,
@@ -312,7 +312,7 @@ class _LoginPageState extends State<LoginPage> {
         bool dismissed = true;
         await showDialog(
           context: context,
-          builder: (context) => new AlertDialog(
+          builder: (context) => AlertDialog(
             title: Text("Enter One Time Passcode"),
             content: TextField(
               controller: totpController,
@@ -350,7 +350,7 @@ class _LoginPageState extends State<LoginPage> {
       /*  log(stacktrace.toString());
       showDialog(
           context: context,
-          builder: (context) => new AlertDialog(
+          builder: (context) => AlertDialog(
                 title: Text(
                     'Login failed! Please check your server url and credentials. ' +
                         ex.toString()),

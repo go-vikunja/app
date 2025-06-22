@@ -11,7 +11,7 @@ import '../../stores/project_store.dart';
 
 class ProjectOverviewPage extends StatefulWidget {
   @override
-  _ProjectOverviewPageState createState() => new _ProjectOverviewPageState();
+  _ProjectOverviewPageState createState() => _ProjectOverviewPageState();
 }
 
 class _ProjectOverviewPageState extends State<ProjectOverviewPage>
@@ -93,7 +93,7 @@ class _ProjectOverviewPageState extends State<ProjectOverviewPage>
                 }
               : null,
         ),
-        title: new Text(project.title),
+        title: Text(project.title),
         //onTap: () => _onSelectItem(i),
       ),
       ...?children
@@ -120,7 +120,7 @@ class _ProjectOverviewPageState extends State<ProjectOverviewPage>
     });
 
     if (_selectedDrawerIndex > -1) {
-      return new WillPopScope(
+      return WillPopScope(
           child: ListPage(project: _projects[_selectedDrawerIndex]),
           onWillPop: () async {
             setState(() {
@@ -167,7 +167,7 @@ class _ProjectOverviewPageState extends State<ProjectOverviewPage>
         context: context,
         builder: (_) => AddDialog(
               onAdd: (name) => _addProject(name, context),
-              decoration: new InputDecoration(
+              decoration: const InputDecoration(
                   labelText: 'Project', hintText: 'eg. Personal Project'),
             ));
   }
