@@ -8,13 +8,13 @@ class FancyAppBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return new Container(
+    return Container(
       height: barHeight,
       width: double.infinity,
-      decoration: new BoxDecoration(color: Colors.blue),
-      child: new Padding(
-        padding: EdgeInsets.symmetric(vertical: 38, horizontal: 10),
-        child: new Text(title,
+      decoration: const BoxDecoration(color: Colors.blue),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 38, horizontal: 10),
+        child: Text(title,
             style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w600,
@@ -27,10 +27,10 @@ class FancyAppBar extends StatelessWidget {
 
 /*
 Usage:
-return new Scaffold(
-      body: new Column(
+return Scaffold(
+      body: Column(
         children: <Widget>[
-          new FancyAppBar('Login to Vikunja'),
+          FancyAppBar('Login to Vikunja'),
         ],
       ),
     );

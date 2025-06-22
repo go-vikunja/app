@@ -93,7 +93,7 @@ class LandingPageState extends State<LandingPage> {
     switch (landingPageStatus) {
       case PageStatus.built:
         _loadList(context);
-        body = new Stack(children: [
+        body = Stack(children: [
           ListView(),
           Center(
             child: CircularProgressIndicator(),
@@ -101,7 +101,7 @@ class LandingPageState extends State<LandingPage> {
         ]);
         break;
       case PageStatus.loading:
-        body = new Stack(children: [
+        body = Stack(children: [
           ListView(),
           Center(
             child: CircularProgressIndicator(),
@@ -109,13 +109,13 @@ class LandingPageState extends State<LandingPage> {
         ]);
         break;
       case PageStatus.error:
-        body = new Stack(children: [
+        body = Stack(children: [
           ListView(),
           Center(child: Text("There was an error loading this view"))
         ]);
         break;
       case PageStatus.empty:
-        body = new Stack(
+        body = Stack(
             children: [ListView(), Center(child: Text("This view is empty"))]);
         break;
       case PageStatus.success:
@@ -129,7 +129,7 @@ class LandingPageState extends State<LandingPage> {
         );
         break;
     }
-    return new Scaffold(
+    return Scaffold(
       body: RefreshIndicator(onRefresh: () => _loadList(context), child: body),
       floatingActionButton: Builder(
           builder: (context) => FloatingActionButton(
@@ -185,7 +185,7 @@ class LandingPageState extends State<LandingPage> {
           builder: (_) => AddDialog(
               prefilledTitle: prefilledTitle,
               onAddTask: (title, dueDate) => _addTask(title, dueDate, context),
-              decoration: new InputDecoration(
+              decoration: const InputDecoration(
                   labelText: 'Task Name', hintText: 'eg. Milk')));
     }
   }

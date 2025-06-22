@@ -63,7 +63,7 @@ class _ProjectEditPageState extends State<ProjectEditPage> {
                         //}
                         return null;
                       },
-                      decoration: new InputDecoration(
+                      decoration: const InputDecoration(
                         labelText: 'Title',
                         border: OutlineInputBorder(),
                       ),
@@ -84,7 +84,7 @@ class _ProjectEditPageState extends State<ProjectEditPage> {
                         }
                         return null;
                       },
-                      decoration: new InputDecoration(
+                      decoration: const InputDecoration(
                         labelText: 'Description',
                         border: OutlineInputBorder(),
                       ),

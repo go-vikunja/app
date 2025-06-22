@@ -74,7 +74,7 @@ class _ListPageState extends State<ListPage> {
 
     switch (taskState.pageStatus) {
       case PageStatus.built:
-        body = new Stack(children: [
+        body = Stack(children: [
           ListView(),
           Center(
             child: CircularProgressIndicator(),
@@ -82,7 +82,7 @@ class _ListPageState extends State<ListPage> {
         ]);
         break;
       case PageStatus.loading:
-        body = new Stack(children: [
+        body = Stack(children: [
           ListView(),
           Center(
             child: CircularProgressIndicator(),
@@ -90,7 +90,7 @@ class _ListPageState extends State<ListPage> {
         ]);
         break;
       case PageStatus.error:
-        body = new Stack(children: [
+        body = Stack(children: [
           ListView(),
           Center(child: Text("There was an error loading this view"))
         ]);
@@ -130,12 +130,12 @@ class _ListPageState extends State<ListPage> {
               ]);
         break;
       case PageStatus.empty:
-        body = new Stack(
+        body = Stack(
             children: [ListView(), Center(child: Text("This view is empty"))]);
         break;
     }
 
-    return new Scaffold(
+    return Scaffold(
       appBar: AppBar(
         title: Text(_project.title),
         actions: <Widget>[

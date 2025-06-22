@@ -82,7 +82,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
         if (_changed) {
           return (_showConfirmationDialog());
         }
-        return new Future(() => true);
+        return Future(() => true);
       },
       child: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
@@ -142,7 +142,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
                           //}
                           return null;
                         },
-                        decoration: new InputDecoration(
+                        decoration: const InputDecoration(
                           labelText: 'Title',
                           border: OutlineInputBorder(),
                         ),
@@ -224,7 +224,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
                                   getDurationFromType(
                                       repeatAfter, _repeatAfterType),
                               onChanged: (_) => _changed = true,
-                              decoration: new InputDecoration(
+                              decoration: const InputDecoration(
                                   labelText: 'Repeat after',
                                   border: InputBorder.none,
                                   icon: Icon(Icons.repeat),
@@ -314,7 +314,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
                                 ));
                           }),
                     ),
-                    new DropdownButtonFormField<String>(
+                    DropdownButtonFormField<String>(
                       decoration: InputDecoration(
                         icon: const Icon(Icons.flag),
                         labelText: 'Priority',
@@ -336,9 +336,9 @@ class _TaskEditPageState extends State<TaskEditPage> {
                         'Urgent',
                         'DO NOW'
                       ].map((String value) {
-                        return new DropdownMenuItem(
+                        return DropdownMenuItem(
                           value: value,
-                          child: new Text(value),
+                          child: Text(value),
                         );
                       }).toList(),
                     ),
@@ -371,7 +371,7 @@ class _TaskEditPageState extends State<TaskEditPage> {
                               suggestionsCallback: (pattern) =>
                                   _searchLabel(pattern),
                               itemBuilder: (context, suggestion) {
-                                return new ListTile(
+                                return ListTile(
                                     title: Text(suggestion.toString()));
                               },
                               //transitionBuilder:

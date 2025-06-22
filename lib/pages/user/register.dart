@@ -38,7 +38,7 @@ class _RegisterPageState extends State<RegisterPage> {
                         validator: (address) {
                           return isUrl(address) ? null : 'Invalid URL';
                         },
-                        decoration: new InputDecoration(
+                        decoration: const InputDecoration(
                             border: OutlineInputBorder(),
                             labelText: 'Server Address'),
                       ),
@@ -52,7 +52,7 @@ class _RegisterPageState extends State<RegisterPage> {
                               ? null
                               : 'Please specify a username';
                         },
-                        decoration: new InputDecoration(
+                        decoration: const InputDecoration(
                             border: OutlineInputBorder(),
                             labelText: 'Username'),
                       ),
@@ -66,7 +66,7 @@ class _RegisterPageState extends State<RegisterPage> {
                               ? null
                               : 'Email adress is invalid';
                         },
-                        decoration: new InputDecoration(
+                        decoration: const InputDecoration(
                             border: OutlineInputBorder(),
                             labelText: 'Email Address'),
                       ),
@@ -81,7 +81,7 @@ class _RegisterPageState extends State<RegisterPage> {
                               ? null
                               : 'Please use at least 8 characters';
                         },
-                        decoration: new InputDecoration(
+                        decoration: const InputDecoration(
                             border: OutlineInputBorder(),
                             labelText: 'Password'),
                         obscureText: true,
@@ -95,7 +95,7 @@ class _RegisterPageState extends State<RegisterPage> {
                               ? null
                               : 'Passwords don\'t match.';
                         },
-                        decoration: new InputDecoration(
+                        decoration: const InputDecoration(
                             border: OutlineInputBorder(),
                             labelText: 'Repeat Password'),
                         obscureText: true,
@@ -135,7 +135,7 @@ class _RegisterPageState extends State<RegisterPage> {
     } catch (ex) {
       showDialog(
           context: context,
-          builder: (context) => new AlertDialog(
+          builder: (context) => AlertDialog(
                 title: Text(
                     'Registration failed! Please check your server url and credentials. ' +
                         ex.toString()),

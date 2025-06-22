@@ -40,7 +40,7 @@ class VikunjaGlobal extends StatefulWidget {
 }
 
 class VikunjaGlobalState extends State<VikunjaGlobal> {
-  final FlutterSecureStorage _storage = new FlutterSecureStorage();
+  final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
   User? _currentUser;
   bool _loading = true;
@@ -55,35 +55,35 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
 
   GlobalKey<ScaffoldMessengerState> get snackbarKey => globalSnackbarKey;
 
-  UserManager get userManager => new UserManager(_storage);
+  UserManager get userManager => UserManager(_storage);
 
   UserService? get newUserService => _newUserService;
 
-  ServerService get serverService => new ServerAPIService(client);
+  ServerService get serverService => ServerAPIService(client);
 
-  SettingsManager get settingsManager => new SettingsManager(_storage);
+  SettingsManager get settingsManager => SettingsManager(_storage);
 
-  VersionChecker get versionChecker => new VersionChecker(snackbarKey);
+  VersionChecker get versionChecker => VersionChecker(snackbarKey);
 
-  ProjectService get projectService => new ProjectAPIService(client, _storage);
+  ProjectService get projectService => ProjectAPIService(client, _storage);
 
   ProjectViewService get projectViewService =>
-      new ProjectViewAPIService(client);
+      ProjectViewAPIService(client);
 
-  TaskService get taskService => new TaskAPIService(client);
+  TaskService get taskService => TaskAPIService(client);
 
-  BucketService get bucketService => new BucketAPIService(client);
+  BucketService get bucketService => BucketAPIService(client);
 
-  TaskServiceOptions get taskServiceOptions => new TaskServiceOptions();
+  TaskServiceOptions get taskServiceOptions => TaskServiceOptions();
 
   NotificationClass get notifications => _notificationClass;
 
-  LabelService get labelService => new LabelAPIService(client);
+  LabelService get labelService => LabelAPIService(client);
 
-  LabelTaskService get labelTaskService => new LabelTaskAPIService(client);
+  LabelTaskService get labelTaskService => LabelTaskAPIService(client);
 
   LabelTaskBulkAPIService get labelTaskBulkService =>
-      new LabelTaskBulkAPIService(client);
+      LabelTaskBulkAPIService(client);
 
   late String currentTimeZone;
 
@@ -230,12 +230,12 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return new Center(child: new CircularProgressIndicator());
+      return const Center(child: CircularProgressIndicator());
     }
     if (client.authenticated) {
       notifications.scheduleDueNotifications(taskService);
     }
-    return new VikunjaGlobalInherited(
+    return VikunjaGlobalInherited(
       data: this,
       key: UniqueKey(),
       child: !client.authenticated ? widget.login : widget.child,

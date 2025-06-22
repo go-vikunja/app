@@ -45,12 +45,12 @@ class AddDialogState extends State<AddDialog> with AfterLayoutMixin<AddDialog> {
   Widget build(BuildContext context) {
     if (newTaskDue != NewTaskDue.custom)
       customDueDate = DateTime.now().add(newTaskDueToDuration[newTaskDue]!);
-    return new AlertDialog(
+    return AlertDialog(
       contentPadding: const EdgeInsets.all(16.0),
-      content: new Column(mainAxisSize: MainAxisSize.min, children: [
+      content: Column(mainAxisSize: MainAxisSize.min, children: [
         Row(children: <Widget>[
           Expanded(
-            child: new TextField(
+            child: TextField(
               autofocus: true,
               decoration: widget.decoration,
               controller: textController,
@@ -59,13 +59,13 @@ class AddDialogState extends State<AddDialog> with AfterLayoutMixin<AddDialog> {
         ]),
         widget.onAddTask != null
             ? taskDueList("1 Day", NewTaskDue.day)
-            : new Container(),
+            : Container(),
         widget.onAddTask != null
             ? taskDueList("1 Week", NewTaskDue.week)
-            : new Container(),
+            : Container(),
         widget.onAddTask != null
             ? taskDueList("1 Month", NewTaskDue.month)
-            : new Container(),
+            : Container(),
         widget.onAddTask != null
             ? VikunjaDateTimePicker(
                 label: "Enter exact time",
@@ -74,15 +74,15 @@ class AddDialogState extends State<AddDialog> with AfterLayoutMixin<AddDialog> {
                   customDueDate = value;
                 },
               )
-            : new Container(),
+            : Container(),
         //],)
       ]),
       actions: <Widget>[
-        new TextButton(
+        TextButton(
           child: const Text('CANCEL'),
           onPressed: () => Navigator.pop(context),
         ),
-        new TextButton(
+        TextButton(
           child: const Text('ADD'),
           onPressed: () {
             if (widget.onAdd != null && textController.text.isNotEmpty)

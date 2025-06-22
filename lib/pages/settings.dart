@@ -74,7 +74,7 @@ class SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     final global = VikunjaGlobal.of(context);
     if (!initialized) init();
-    return new Scaffold(
+    return Scaffold(
       appBar: AppBar(
         title: Text("Settings"),
       ),
