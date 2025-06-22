@@ -1,3 +1,4 @@
+// ignore_for_file: avoid_print
 // https://medium.com/@fuzzymemory/adding-scheduled-notifications-in-your-flutter-application-19be1f82ade8
 
 import 'dart:math';

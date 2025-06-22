@@ -11,3 +11,8 @@ This app is in alpha pre-release. You must absolutely expect things to not work,
 If you have anything to contribute, please open a PR. It is encouraged to let us know before you start developing, so we can discuss possible overlap with features other people might already be working on. This avoids unnecessary waste of time for either party.
 
 It will be a while until this app is released to the Google Play Store. Until then, please download from the [Releases](https://github.com/go-vikunja/app/releases/latest) page. If you want to try this app on an iPhone, I cannot provide support, as I do not have an iPhone to develop on. However, contributors have confirmed that it works™. If you do decide to try it out, please share with the community any bugs you experience.
+
+## Linting
+
+This project uses `flutter_lints` for static analysis. The rules are configured in `analysis_options.yaml` and include `avoid_print`.
+Run `flutter analyze` to verify code style.

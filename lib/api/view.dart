@@ -1,3 +1,4 @@
+// ignore_for_file: avoid_print
 import 'package:vikunja_app/api/service.dart';
 import 'package:vikunja_app/models/view.dart';
 import 'package:vikunja_app/service/services.dart';
