@@ -1,3 +1,4 @@
+// ignore_for_file: avoid_print
 import 'package:flutter/material.dart';
 import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';

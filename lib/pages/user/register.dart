@@ -1,3 +1,4 @@
+// ignore_for_file: avoid_print
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/theme/button.dart';

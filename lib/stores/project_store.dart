@@ -1,3 +1,4 @@
+// ignore_for_file: avoid_print
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/models/task.dart';
 import 'package:vikunja_app/models/bucket.dart';
