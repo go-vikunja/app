@@ -10,6 +10,8 @@ jobs:
   build-app:
     name: Build
     runs-on: ubuntu-latest
+    env:
+      GRADLE_OPTS: -Xmx4g
     steps:
       - name: Clone repository
         uses: actions/checkout@v4
