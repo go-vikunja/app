@@ -5,7 +5,7 @@ version: 0.1.8-beta
 
 environment:
   sdk: ">=2.18.0 <3.0.0"
-  flutter: 3.22.2
+  flutter: ">=3.22.2"
 
 dependencies:
   flutter:
@@ -43,7 +43,6 @@ dependencies:
   json_annotation: ^4.8.1
   collection: ^1.18.0
   cupertino_http: ^2.0.2
-  cronet_http: ^1.2.0
   package_info_plus: ^8.2.1
   html_editor_enhanced: ^2.6.0
   sentry_flutter: ^8.9.0
