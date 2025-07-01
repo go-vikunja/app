@@ -51,7 +51,7 @@ void callbackDispatcher() {
           authenticated: true);
       tz.initializeTimeZones();
 
-      return SettingsManager(new FlutterSecureStorage())
+      return SettingsManager(const FlutterSecureStorage())
           .getIgnoreCertificates()
           .then((value) async {
         print("ignoring: $value");
@@ -66,7 +66,7 @@ void callbackDispatcher() {
       });
     } else if (task == "refresh-token") {
       print("running refresh from workmanager");
-      final FlutterSecureStorage _storage = new FlutterSecureStorage();
+      final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
       var currentUser = await _storage.read(key: 'currentUser');
       if (currentUser == null) {
@@ -117,14 +117,14 @@ void main() async {
     print("Failed to initialize workmanager: $e");
   }
   runApp(ChangeNotifierProvider<ProjectProvider>(
-      create: (_) => new ProjectProvider(),
+      create: (_) => ProjectProvider(),
       child: VikunjaGlobal(
-        child: new VikunjaApp(
+        child: VikunjaApp(
           home: HomePage(),
           key: UniqueKey(),
           navkey: globalNavigatorKey,
         ),
-        login: new VikunjaApp(
+        login: VikunjaApp(
           home: LoginPage(),
           key: UniqueKey(),
         ),
@@ -185,7 +185,7 @@ class VikunjaApp extends StatelessWidget {
 
   Future<void> getLaunchData() async {
     try {
-      SettingsManager manager = SettingsManager(new FlutterSecureStorage());
+      SettingsManager manager = SettingsManager(const FlutterSecureStorage());
       await manager.getThemeMode().then((themeMode) {
         themeModel.themeMode = themeMode;
       });
@@ -199,14 +199,14 @@ class VikunjaApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return new ListenableBuilder(
+    return ListenableBuilder(
         listenable: themeModel,
         builder: (_, mode) {
           return FutureBuilder<void>(
               future: getLaunchData(),
               builder: (BuildContext context, data) {
                 if (data.hasData) {
-                  return new DynamicColorBuilder(
+                  return DynamicColorBuilder(
                       builder: (lightTheme, darkTheme) {
                     if (sentryEnabled) {
                       if (!sentyInitialized) {

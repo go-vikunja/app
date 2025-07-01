@@ -19,7 +19,7 @@ class HomePageState extends State<HomePage> {
 
   List<Widget> widgets = [
     ChangeNotifierProvider<ProjectProvider>(
-      create: (_) => new ProjectProvider(),
+      create: (_) => ProjectProvider(),
       child: LandingPage(),
     ),
     ProjectOverviewPage(),
@@ -38,7 +38,7 @@ class HomePageState extends State<HomePage> {
     if (_selectedDrawerIndex != _previousDrawerIndex || drawerItem == null)
       drawerItem = _getDrawerItemWidget(_selectedDrawerIndex);
 
-    return new Scaffold(
+    return Scaffold(
       bottomNavigationBar: NavigationBar(
         destinations: navbarItems,
         selectedIndex: _selectedDrawerIndex,

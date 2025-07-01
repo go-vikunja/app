@@ -100,7 +100,7 @@ class TaskServiceOptions {
 
   TaskServiceOptions(
       {List<TaskServiceOption>? newOptions, bool clearOther = false}) {
-    if (!clearOther) options = new List<TaskServiceOption>.from(defaultOptions);
+    if (!clearOther) options = List<TaskServiceOption>.from(defaultOptions);
     if (newOptions != null) {
       for (TaskServiceOption custom_option in newOptions) {
         int index =

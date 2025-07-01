@@ -31,7 +31,7 @@ class Label {
         description = json['description'],
         color = json['hex_color'] == ''
             ? null
-            : new Color(int.parse(json['hex_color'], radix: 16) + 0xFF000000),
+            : Color(int.parse(json['hex_color'], radix: 16) + 0xFF000000),
         updated = DateTime.parse(json['updated']),
         created = DateTime.parse(json['created']),
         createdBy = User.fromJson(json['created_by']);

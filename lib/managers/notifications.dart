@@ -21,7 +21,7 @@ class NotificationClass {
   notifs.NotificationAppLaunchDetails? notifLaunch;
 
   notifs.FlutterLocalNotificationsPlugin get notificationsPlugin =>
-      new notifs.FlutterLocalNotificationsPlugin();
+      notifs.FlutterLocalNotificationsPlugin();
 
   var androidSpecificsDueDate = notifs.AndroidNotificationDetails(
       "Vikunja1", "Due Date Notifications",

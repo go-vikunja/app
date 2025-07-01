@@ -39,7 +39,7 @@ class BucketAPIService extends APIService implements BucketService {
     return client
         .get('/projects/$projectId/views/$viewId/tasks', queryParameters)
         .then((response) => response != null
-            ? new Response(
+            ? Response(
                 convertList(response.body, (result) => Bucket.fromJSON(result)),
                 response.statusCode,
                 response.headers)
