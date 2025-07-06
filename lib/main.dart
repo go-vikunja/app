@@ -50,7 +50,6 @@ void callbackDispatcher() {
           base: inputData["client_base"],
           authenticated: true);
       tz.initializeTimeZones();
-
       return SettingsManager(new FlutterSecureStorage())
           .getIgnoreCertificates()
           .then((value) async {
@@ -65,7 +64,6 @@ void callbackDispatcher() {
             .then((value) => Future.value(true));
       });
     } else if (task == "refresh-token") {
-      print("running refresh from workmanager");
       final FlutterSecureStorage _storage = new FlutterSecureStorage();
 
       var currentUser = await _storage.read(key: 'currentUser');

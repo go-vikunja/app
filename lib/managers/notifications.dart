@@ -11,6 +11,7 @@ import 'package:rxdart/subjects.dart' as rxSub;
 import 'package:vikunja_app/service/services.dart';
 
 import '../models/task.dart';
+import '../service/updateWidget.dart';
 
 class NotificationClass {
   final int? id;
@@ -153,9 +154,17 @@ class NotificationClass {
           platformChannelSpecificsDueDate,
           id: task.id,
         );
-        //print("scheduled notification for time " + task.dueDate!.toString());
+        // print("scheduled  DUE notification for time " + task.dueDate!.toString());
       }
     }
     print("notifications scheduled successfully");
+    try {
+
+      // I need to provide all tasks for today for the widget, not just tasks that are due > now
+      var widget_tasks = await taskService.getByFilterString("due_date > 0001-01-01 00:00 && done = false");
+      updateWidgetTasks(widget_tasks);
+    } catch (e) {
+      print(e);      
+    }
   }
 }
