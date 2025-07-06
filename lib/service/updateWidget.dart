@@ -22,29 +22,26 @@ List<Task> filterForTodayTasks(List<Task> tasks) {
     }
   }
   return todayTasks;
-
 }
-
 
 void updateWidgetTasks(List<Task>? tasklist) async {
   var todayTasks = filterForTodayTasks(tasklist!);
-  
+
   // Set the number of tasks
   HomeWidget.saveWidgetData('numTasks', todayTasks.length);
   DateFormat timeFormat = DateFormat("HH:mm");
-  var  num = 0;
+  var num = 0;
   for (var task in todayTasks) {
-    num ++;
+    num++;
     var widgetTask = [timeFormat.format(task.dueDate!), task.title];
     final jsonString = jsonEncode(widgetTask);
     HomeWidget.saveWidgetData(num.toString(), jsonString);
   }
 
   // Update the widget
-    HomeWidget.updateWidget(
-      name: 'AppWidget',
-      // androidName: '.widget.MyAppWidgetReceiver',
-      qualifiedAndroidName: 'io.vikunja.flutteringvikunja.AppWidgetReciever',
-    );
-  
+  HomeWidget.updateWidget(
+    name: 'AppWidget',
+    // androidName: '.widget.MyAppWidgetReceiver',
+    qualifiedAndroidName: 'io.vikunja.flutteringvikunja.AppWidgetReciever',
+  );
 }
