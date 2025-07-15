@@ -154,7 +154,6 @@ class NotificationClass {
           platformChannelSpecificsDueDate,
           id: task.id,
         );
-        // print("scheduled  DUE notification for time " + task.dueDate!.toString());
       }
     }
     print("notifications scheduled successfully");

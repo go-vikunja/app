@@ -54,7 +54,7 @@ class AppWidget : GlanceAppWidget() {
 
 
         Column {
-            MyTopBar()
+            WidgetTitleBar()
             LazyColumn(modifier = GlanceModifier.background(Color.White)) {
                 items(tasks) { task ->
                     RenderRow(task)
@@ -64,9 +64,9 @@ class AppWidget : GlanceAppWidget() {
     }
 
     @Composable
-    private fun MyTopBar() {
+    private fun WidgetTitleBar() {
         Box(
-            modifier = GlanceModifier.fillMaxWidth().height(50.dp).background(Color.Blue),
+            modifier = GlanceModifier.fillMaxWidth().height(50.dp).background(Color(0xFF0c86ff)),
             contentAlignment = Alignment.Center,
         ) {
             Text(
