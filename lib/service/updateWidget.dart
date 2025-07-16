@@ -1,5 +1,4 @@
 import 'package:vikunja_app/models/task.dart';
-// import 'package:vikunja_app/service/services.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
@@ -41,7 +40,6 @@ void updateWidgetTasks(List<Task>? tasklist) async {
   // Update the widget
   HomeWidget.updateWidget(
     name: 'AppWidget',
-    // androidName: '.widget.MyAppWidgetReceiver',
     qualifiedAndroidName: 'io.vikunja.flutteringvikunja.AppWidgetReciever',
   );
 }
