@@ -47,6 +47,7 @@ dependencies:
   package_info_plus: ^8.2.1
   html_editor_enhanced: ^2.6.0
   sentry_flutter: ^8.9.0
+  home_widget: ^0.8.0
 
 dependency_overrides:
   flutter_inappwebview:

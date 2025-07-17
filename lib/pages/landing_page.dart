@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:vikunja_app/global.dart';
-import 'package:vikunja_app/service/services.dart';
 
 import 'dart:developer';
 
@@ -12,6 +11,7 @@ import '../components/SentryModal.dart';
 import '../components/TaskTile.dart';
 import '../components/pagestatus.dart';
 import '../models/task.dart';
+import '../service/updateWidget.dart';
 
 class HomeScreenWidget extends StatefulWidget {
   HomeScreenWidget({Key? key}) : super(key: key);
@@ -51,7 +51,6 @@ class LandingPageState extends State<LandingPage> {
         _addItemDialog(context);
         break;
       case "open_add_task_with_text":
-        print("open_add_task_with_text: ${method[1]}");
         _addItemDialog(context, prefilledTitle: method[1]);
         break;
     }
@@ -255,7 +254,6 @@ class LandingPageState extends State<LandingPage> {
           "sort_by": ["due_date", "id"],
           "order_by": ["asc", "desc"],
         }).then<Future<void>?>((response) => _handleTaskList(response?.body));
-        ;
       }
       List<String> filterStrings = ["done = false"];
       if (showOnlyDueDateTasks) {
@@ -276,6 +274,7 @@ class LandingPageState extends State<LandingPage> {
       });
       return Future.value();
     }
+    updateWidgetTasks(taskList);
     //taskList.forEach((task) {task.list = lists.firstWhere((element) => element.id == task.list_id);});
     setState(() {
       if (taskList != null) {

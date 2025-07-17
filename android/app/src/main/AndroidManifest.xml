@@ -22,7 +22,16 @@
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:networkSecurityConfig="@xml/network_security_config"
-    >
+        >
+    <receiver android:name=".AppWidgetReciever"
+          android:exported="true">
+            <intent-filter>
+            <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget" />
+        </receiver>
         <meta-data android:name="io.flutter.network-policy" android:resource="@xml/network_security_config"/>
         <activity
             android:name=".MainActivity"
