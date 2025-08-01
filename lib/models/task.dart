@@ -154,7 +154,7 @@ class Task {
         'priority': priority,
         'repeat_after': repeatAfter?.inSeconds,
         'hex_color':
-            color?.value.toRadixString(16).padLeft(8, '0').substring(2),
+            color?.toARGB32().toRadixString(16).padLeft(8, '0').substring(2),
         'position': position,
         'percent_done': percent_done,
         'project_id': projectId,

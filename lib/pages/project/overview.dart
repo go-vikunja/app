@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import 'package:vikunja_app/pages/project/project_task_list.dart';
 
 import '../../components/AddDialog.dart';
-import '../../components/ErrorDialog.dart';
 import '../../global.dart';
 import '../../models/project.dart';
 import '../../stores/project_store.dart';
