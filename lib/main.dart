@@ -183,7 +183,7 @@ class VikunjaApp extends StatelessWidget {
 
   Future<void> getLaunchData() async {
     try {
-      SettingsManager manager = SettingsManager(new FlutterSecureStorage());
+      SettingsManager manager = SettingsManager(FlutterSecureStorage());
       await manager.getThemeMode().then((themeMode) {
         themeModel.themeMode = themeMode;
       });
@@ -197,15 +197,14 @@ class VikunjaApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return new ListenableBuilder(
-        listenable: themeModel,
-        builder: (_, mode) {
-          return FutureBuilder<void>(
-              future: getLaunchData(),
-              builder: (BuildContext context, data) {
+    return FutureBuilder<void>(
+        future: getLaunchData(),
+        builder: (BuildContext _, data) {
+          return ListenableBuilder(
+              listenable: themeModel,
+              builder: (context, mode) {
                 if (data.hasData) {
-                  return new DynamicColorBuilder(
-                      builder: (lightTheme, darkTheme) {
+                  return DynamicColorBuilder(builder: (lightTheme, darkTheme) {
                     if (sentryEnabled) {
                       if (!sentyInitialized) {
                         sentyInitialized = true;

@@ -60,7 +60,7 @@ class Project {
         'description': description,
         'parent_project_id': parentProjectId,
         'hex_color':
-            color?.value.toRadixString(16).padLeft(8, '0').substring(2),
+            color?.toARGB32().toRadixString(16).padLeft(8, '0').substring(2),
         'is_archived': isArchived,
         'is_favourite': isFavourite,
         'position': position
