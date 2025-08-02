@@ -5,7 +5,7 @@ import 'package:vikunja_app/models/user.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 class LoginWithWebView extends StatefulWidget {
-  String frontEndUrl;
+  final String frontEndUrl;
 
   LoginWithWebView(this.frontEndUrl);
 
