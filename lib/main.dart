@@ -204,8 +204,7 @@ class VikunjaApp extends StatelessWidget {
               listenable: themeModel,
               builder: (context, mode) {
                 if (data.hasData) {
-                  return DynamicColorBuilder(
-                      builder: (lightTheme, darkTheme) {
+                  return DynamicColorBuilder(builder: (lightTheme, darkTheme) {
                     if (sentryEnabled) {
                       if (!sentyInitialized) {
                         sentyInitialized = true;
