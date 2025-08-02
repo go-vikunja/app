@@ -1,5 +1,4 @@
 // show user modal that asks for consent to collect errors
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/main.dart';
