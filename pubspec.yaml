@@ -29,11 +29,7 @@ dependencies:
   flutter_keyboard_visibility: ^6.0.0
   dotted_border: ^2.1.0
   url_launcher: ^6.2.5
-  workmanager:
-    git:
-      url: https://github.com/fluttercommunity/flutter_workmanager.git
-      path: workmanager
-      ref: main
+  workmanager: ^0.9.0
   permission_handler: ^11.3.0
   dynamic_color: ^1.7.0
   flutter_widget_from_html: ^0.15.2
