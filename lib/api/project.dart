@@ -73,14 +73,4 @@ class ProjectAPIService extends APIService implements ProjectService {
   void setDisplayDoneTasks(int listId, String value) {
     _storage.write(key: "display_done_tasks_list_$listId", value: value);
   }
-
-  @override
-  Future<String?> getDefaultList() {
-    return _storage.read(key: "default_list_id");
-  }
-
-  @override
-  void setDefaultList(int? listId) {
-    _storage.write(key: "default_list_id", value: listId.toString());
-  }
 }
