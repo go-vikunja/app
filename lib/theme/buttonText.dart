@@ -11,11 +11,5 @@ class VikunjaButtonText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text(text);
-    return Text(
-      text,
-      style: TextStyle(
-          color: Theme.of(context).primaryTextTheme.labelMedium?.color,
-          fontWeight: FontWeight.w600),
-    );
   }
 }
