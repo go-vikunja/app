@@ -18,7 +18,7 @@ dependencies:
   rxdart: ^0.28.0
   flutter_timezone: ^4.1.0
   flutter_secure_storage: ^9.0.0
-  datetime_picker_formfield: ^2.0.1
+  datetime_picker_formfield_new: ^2.1.0
   flutter_typeahead: ^5.2.0
   build: ^2.4.1
   json_serializable: ^6.7.1
