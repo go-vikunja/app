@@ -50,20 +50,22 @@ class LoginWithWebViewState extends State<LoginWithWebView> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
+    return  PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, dynamic result) async {
+        String? currentUrl = await webViewController.currentUrl();
+        if (currentUrl != null) {
+          _handlePageFinished(currentUrl);
+        } else {
+          Navigator.pop(context);
+        }
+      },
       child: Scaffold(
           appBar: AppBar(),
           body: WebViewWidget(
             controller: webViewController,
           )),
-      onWillPop: () async {
-        String? currentUrl = await webViewController.currentUrl();
-        if (currentUrl != null) {
-          bool hasPopped = await _handlePageFinished(currentUrl);
-          return Future.value(!hasPopped);
-        }
-        return Future.value(false);
-      },
+
     );
   }
 

@@ -16,13 +16,7 @@ class ProjectOverviewPage extends StatefulWidget {
 class _ProjectOverviewPageState extends State<ProjectOverviewPage>
     with AfterLayoutMixin<ProjectOverviewPage> {
   List<Project> _projects = [];
-  int _selectedDrawerIndex = -2, _previousDrawerIndex = -2;
   bool _loading = true;
-
-  Project? get _currentProject =>
-      _selectedDrawerIndex >= -1 && _selectedDrawerIndex < _projects.length
-          ? _projects[_selectedDrawerIndex]
-          : null;
 
   List<int> expandedList = [];
 
@@ -117,17 +111,6 @@ class _ProjectOverviewPageState extends State<ProjectOverviewPage>
       if (project.parentProjectId != 0) return;
       projectList.add(createProjectTile(project, 0));
     });
-
-    if (_selectedDrawerIndex > -1) {
-      return new WillPopScope(
-          child: ListPage(project: _projects[_selectedDrawerIndex]),
-          onWillPop: () async {
-            setState(() {
-              _selectedDrawerIndex = -2;
-            });
-            return false;
-          });
-    }
 
     return Scaffold(
       body: this._loading
