@@ -24,7 +24,7 @@ jobs:
         with:
           channel: stable
           cache: true
-      - run: flutter --versiog
+      - run: flutter --version
       - run: flutter pub get
       - run: flutter build apk --debug --flavor unsigned
   lint:
