@@ -50,7 +50,7 @@ class LoginWithWebViewState extends State<LoginWithWebView> {
 
   @override
   Widget build(BuildContext context) {
-    return  PopScope(
+    return PopScope(
       canPop: false,
       onPopInvokedWithResult: (bool didPop, dynamic result) async {
         String? currentUrl = await webViewController.currentUrl();
@@ -65,7 +65,6 @@ class LoginWithWebViewState extends State<LoginWithWebView> {
           body: WebViewWidget(
             controller: webViewController,
           )),
-
     );
   }
 
