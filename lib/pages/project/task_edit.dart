@@ -442,13 +442,13 @@ class _TaskEditPageState extends State<TaskEditPage> {
                           Padding(
                             padding: const EdgeInsets.only(left: 15),
                             child: () {
-                              Color? colorString = (_resetColor
+                              Color? color = (_resetColor
                                   ? null
                                   : (_color ?? widget.task.color));
 
                               return Text(
-                                colorString != null
-                                    ? "#${colorString.toHexString()}"
+                                color != null
+                                    ? "#${color.toHexString()}"
                                     : "None",
                                 style: TextStyle(
                                   color: Colors.grey,
