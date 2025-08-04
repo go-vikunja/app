@@ -77,12 +77,12 @@ class _TaskEditPageState extends State<TaskEditPage> {
 
   @override
   Widget build(BuildContext ctx) {
-    return WillPopScope(
-      onWillPop: () {
-        if (_changed) {
-          return (_showConfirmationDialog());
+    return PopScope(
+      canPop: !_changed,
+      onPopInvokedWithResult: (bool didPop, dynamic result) {
+        if (!didPop) {
+          _showConfirmationDialog();
         }
-        return new Future(() => true);
       },
       child: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
