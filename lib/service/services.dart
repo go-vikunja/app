@@ -348,10 +348,6 @@ class SettingsManager {
         return FlutterThemeMode.light;
       case "dark":
         return FlutterThemeMode.dark;
-      case "materialYouLight":
-        return FlutterThemeMode.materialYouLight;
-      case "materialYouDark":
-        return FlutterThemeMode.materialYouDark;
       default:
         return FlutterThemeMode.system;
     }
@@ -361,12 +357,20 @@ class SettingsManager {
     await _storage.write(
         key: "theme_mode", value: newMode.toString().split('.').last);
   }
+
+  Future<void> setDynamicColors(bool dynamicColors) async {
+    await _storage.write(
+        key: "dynamic_colors", value: dynamicColors.toString());
+  }
+
+  Future<bool> getDynamicColors() async {
+    String? dynamicColors = await _storage.read(key: "dynamic_colors");
+    return dynamicColors == "true";
+  }
 }
 
 enum FlutterThemeMode {
   system,
   light,
   dark,
-  materialYouLight,
-  materialYouDark,
 }
