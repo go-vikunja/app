@@ -23,6 +23,7 @@ class SettingsPageState extends State<SettingsPage> {
   late TextEditingController durationTextController;
   bool initialized = false;
   FlutterThemeMode? themeMode;
+  bool? dynamicColorsEnabled;
   User? currentUser;
 
   void init() {
@@ -59,6 +60,11 @@ class SettingsPageState extends State<SettingsPage> {
         .settingsManager
         .getThemeMode()
         .then((value) => setState(() => themeMode = value));
+
+    VikunjaGlobal.of(context)
+        .settingsManager
+        .getDynamicColors()
+        .then((value) => setState(() => dynamicColorsEnabled = value));
 
     VikunjaGlobal.of(context).newUserService?.getCurrentUser().then((value) => {
           setState(() {
@@ -148,14 +154,6 @@ class SettingsPageState extends State<SettingsPage> {
                   child: Text("Dark"),
                   value: FlutterThemeMode.dark,
                 ),
-                DropdownMenuItem(
-                  child: Text("Material You Light"),
-                  value: FlutterThemeMode.materialYouLight,
-                ),
-                DropdownMenuItem(
-                  child: Text("Material You Dark"),
-                  value: FlutterThemeMode.materialYouDark,
-                ),
               ],
               value: themeMode,
               onChanged: (FlutterThemeMode? value) {
@@ -165,6 +163,16 @@ class SettingsPageState extends State<SettingsPage> {
               },
             ),
           ),
+          SwitchListTile(
+              title: Text("Dynamic Colors"),
+              value: dynamicColorsEnabled ?? false,
+              onChanged: (bool? value) {
+                VikunjaGlobal.of(context)
+                    .settingsManager
+                    .setDynamicColors(value ?? false);
+                setState(() => dynamicColorsEnabled = value);
+                themeModel.dynamicColors = value!;
+              }),
           Divider(),
           ignoreCertificates != null
               ? CheckboxListTile(

@@ -3,21 +3,21 @@ import 'dart:io';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
-import 'package:vikunja_app/api/task_implementation.dart';
+import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:vikunja_app/api/client.dart';
+import 'package:vikunja_app/api/task_implementation.dart';
+import 'package:vikunja_app/global.dart';
+import 'package:vikunja_app/models/theme_model.dart';
+import 'package:vikunja_app/pages/home.dart';
+import 'package:vikunja_app/pages/user/login.dart';
 import 'package:vikunja_app/service/services.dart';
 import 'package:vikunja_app/stores/project_store.dart';
 import 'package:workmanager/workmanager.dart';
-import 'package:vikunja_app/global.dart';
-import 'package:vikunja_app/pages/home.dart';
-import 'package:vikunja_app/pages/user/login.dart';
-import 'package:vikunja_app/theme/theme.dart';
-import 'package:timezone/data/latest_all.dart' as tz;
-import 'package:flutter_downloader/flutter_downloader.dart';
 
 import 'api/user_implementation.dart';
 import 'managers/notifications.dart';
@@ -129,48 +129,6 @@ void main() async {
       )));
 }
 
-class ThemeModel with ChangeNotifier {
-  FlutterThemeMode _themeMode = FlutterThemeMode.light;
-  FlutterThemeMode get themeMode => _themeMode;
-
-  void set themeMode(FlutterThemeMode mode) {
-    _themeMode = mode;
-    notifyListeners();
-  }
-
-  void notify() {
-    notifyListeners();
-  }
-
-  ThemeData get themeData {
-    switch (_themeMode) {
-      case FlutterThemeMode.dark:
-        return buildVikunjaDarkTheme();
-      case FlutterThemeMode.materialYouLight:
-        return buildVikunjaMaterialLightTheme();
-      case FlutterThemeMode.materialYouDark:
-        return buildVikunjaMaterialDarkTheme();
-      default:
-        return buildVikunjaTheme();
-    }
-  }
-
-  ThemeData getWithColorScheme(
-      ColorScheme? lightTheme, ColorScheme? darkTheme) {
-    switch (_themeMode) {
-      case FlutterThemeMode.dark:
-        return buildVikunjaDarkTheme().copyWith(colorScheme: darkTheme);
-      case FlutterThemeMode.materialYouLight:
-        return buildVikunjaMaterialLightTheme()
-            .copyWith(colorScheme: lightTheme);
-      case FlutterThemeMode.materialYouDark:
-        return buildVikunjaMaterialDarkTheme().copyWith(colorScheme: darkTheme);
-      default:
-        return buildVikunjaTheme().copyWith(colorScheme: lightTheme);
-    }
-  }
-}
-
 ThemeModel themeModel = ThemeModel();
 
 class VikunjaApp extends StatelessWidget {
@@ -234,14 +192,12 @@ class VikunjaApp extends StatelessWidget {
                       }
 
                       return SentryWidget(
-                          child: buildMaterialApp(themeModel.getWithColorScheme(
-                              lightTheme, darkTheme)));
+                          child: buildMaterialApp(lightTheme, darkTheme));
                     } else {
                       sentyInitialized = false;
                     }
 
-                    return buildMaterialApp(
-                        themeModel.getWithColorScheme(lightTheme, darkTheme));
+                    return buildMaterialApp(lightTheme, darkTheme);
                   });
                 } else {
                   return Center(child: CircularProgressIndicator());
@@ -250,10 +206,11 @@ class VikunjaApp extends StatelessWidget {
         });
   }
 
-  Widget buildMaterialApp(ThemeData? themeData) {
+  Widget buildMaterialApp(ColorScheme? lightTheme, ColorScheme? darkTheme) {
     return MaterialApp(
       title: 'Vikunja',
-      theme: themeData,
+      theme: themeModel.getLightTheme(lightTheme),
+      darkTheme: themeModel.getDarkTheme(darkTheme),
       scaffoldMessengerKey: globalSnackbarKey,
       navigatorKey: navkey,
       // <= this
