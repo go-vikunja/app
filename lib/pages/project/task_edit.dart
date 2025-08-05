@@ -77,12 +77,12 @@ class _TaskEditPageState extends State<TaskEditPage> {
 
   @override
   Widget build(BuildContext ctx) {
-    return WillPopScope(
-      onWillPop: () {
-        if (_changed) {
-          return (_showConfirmationDialog());
+    return PopScope(
+      canPop: !_changed,
+      onPopInvokedWithResult: (bool didPop, dynamic result) {
+        if (!didPop) {
+          _showConfirmationDialog();
         }
-        return new Future(() => true);
       },
       child: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
@@ -442,18 +442,14 @@ class _TaskEditPageState extends State<TaskEditPage> {
                           Padding(
                             padding: const EdgeInsets.only(left: 15),
                             child: () {
-                              String? colorString = (_resetColor
-                                      ? null
-                                      : (_color ?? widget.task.color))
-                                  ?.toString();
-                              colorString = colorString
-                                  ?.substring(10, colorString.length - 1)
-                                  .toUpperCase();
-                              colorString = colorString != null
-                                  ? '#$colorString'
-                                  : 'None';
+                              Color? color = (_resetColor
+                                  ? null
+                                  : (_color ?? widget.task.color));
+
                               return Text(
-                                '$colorString',
+                                color != null
+                                    ? "#${color.toHexString()}"
+                                    : "None",
                                 style: TextStyle(
                                   color: Colors.grey,
                                   fontStyle: FontStyle.italic,
