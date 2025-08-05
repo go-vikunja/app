@@ -30,6 +30,7 @@
 build/
 !pubspec.lock
 .flutter-plugins-dependencies
+/ios/Flutter/ephemeral
 
 # Android related
 **/android/**/gradle-wrapper.jar
