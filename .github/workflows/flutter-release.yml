@@ -51,7 +51,11 @@ jobs:
       - name: Create Google Play service account file
         run: |
           cd android/
-          echo "${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}" > fastlane-secret.json
+          cat > fastlane-secret.json << 'EOF'
+          ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          EOF
+          echo "Created fastlane-secret.json with $(wc -c < fastlane-secret.json) bytes"
+          file fastlane-secret.json
 
       - name: Testing Fastlane installation
         run: |
