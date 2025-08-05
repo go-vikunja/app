@@ -58,7 +58,7 @@ jobs:
           pwd
           cd android
           bundle update fastlane
-          bundle exec fastlane run validate_play_store_json_key
+          bundle exec fastlane run validate_play_store_json_key json_key:fastlane-secret.json
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
