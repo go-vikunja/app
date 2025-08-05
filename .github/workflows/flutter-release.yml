@@ -38,28 +38,20 @@ jobs:
       - name: Check gpg version
         run: gpg --version
 
-      - name: Decrypting Keystore file
-        env:
-          GPG_PASS: ${{ secrets.GPG_PASS }}
+      - name: Create keystore file from secret
         run: |
           cd android/app
-          keyFile=keystore.jks
-          gpg -d --passphrase "$GPG_PASS" --batch $keyFile.asc > $keyFile
-      - name: Decrypting key.properties file
-        env:
-          GPG_PASS: ${{ secrets.GPG_PASS }}
-        run: |
-          cd android/
-          keyPropFile=key.properties
-          gpg -d --passphrase "$GPG_PASS" --batch $keyPropFile.asc > $keyPropFile
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > keystore.jks
           
-      - name: Decrypting Fastlane Secret file
-        env:
-          GPG_PASS: ${{ secrets.GPG_PASS }}
+      - name: Create key.properties file from secret
         run: |
           cd android/
-          file=fastlane-secret.json
-          gpg -d --passphrase "$GPG_PASS" --batch $file.asc > $file
+          echo "${{ secrets.KEY_PROPERTIES }}" > key.properties
+          
+      - name: Create Google Play service account file
+        run: |
+          cd android/
+          echo "${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}" > fastlane-secret.json
 
       - name: Testing Fastlane installation
         run: |
