@@ -28,35 +28,32 @@ jobs:
           bundler-cache: false
 
       - name: Install Fastlane dependencies
+        working-directory: android
         run: |
-          pwd
-          cd android
           gem install bundler -v 2.4.22
           bundle config path vendor/bundle
           bundle install
-          cd ..
 
       - name: Create keystore file from secret
+        working-directory: android/app
         run: |
-          cd android/app
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > keystore.jks
 
       - name: Create key.properties file from secret
+        working-directory: android
         run: |
-          cd android/
           echo "${{ secrets.KEY_PROPERTIES }}" > key.properties
 
       - name: Create Google Play service account file
+        working-directory: android
         run: |
-          cd android/
           cat > fastlane-secret.json << 'EOF'
           ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           EOF
 
       - name: Testing Fastlane installation
+        working-directory: android
         run: |
-          pwd
-          cd android
           bundle update fastlane
           bundle exec fastlane run validate_play_store_json_key json_key:fastlane-secret.json
 
