@@ -2,7 +2,7 @@
 
 name: Flutter Release
 
-on:  
+on:
   push:
     branches:
       - main
@@ -20,7 +20,7 @@ jobs:
       - name: Setup Java
         uses: actions/setup-java@v1
         with:
-          java-version: '17.x'
+          java-version: "17.x"
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
@@ -35,19 +35,17 @@ jobs:
           bundle config path vendor/bundle
           bundle install
           cd ..
-      - name: Check gpg version
-        run: gpg --version
 
       - name: Create keystore file from secret
         run: |
           cd android/app
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > keystore.jks
-          
+
       - name: Create key.properties file from secret
         run: |
           cd android/
           echo "${{ secrets.KEY_PROPERTIES }}" > key.properties
-          
+
       - name: Create Google Play service account file
         run: |
           cd android/
@@ -71,7 +69,7 @@ jobs:
       - run: flutter pub get
       - run: flutter build appbundle --flavor production
       - run: flutter build apk --flavor production
-      
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
