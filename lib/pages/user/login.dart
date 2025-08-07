@@ -33,8 +33,6 @@ class _LoginPageState extends State<LoginPage> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
 
-  final _serverSuggestionController = SuggestionsController();
-
   @override
   void initState() {
     super.initState();
