@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/data/models/task.dart';
-import 'package:vikunja_app/data/models/bucket.dart';
 import 'package:vikunja_app/core/utils/calculate_item_position.dart';
+import 'package:vikunja_app/domain/entities/bucket.dart';
 import 'package:vikunja_app/global.dart';
 
 import '../widgets/pagestatus.dart';
@@ -107,7 +107,6 @@ class ProjectProvider with ChangeNotifier {
         _maxPages = int.parse(response.headers["x-pagination-total-pages"]!);
       }
       _buckets.addAll(response.body);
-      print(_buckets[0].toJSON());
 
       pageStatus = PageStatus.success;
     });
@@ -202,7 +201,7 @@ class ProjectProvider with ChangeNotifier {
       required int viewId}) {
     return VikunjaGlobal.of(context)
         .bucketService
-        .update(bucket, listId, viewId)
+        .update(listId, viewId, bucket)
         .then((rBucket) {
       if (rBucket == null) return null;
       _buckets[_buckets.indexWhere((b) => rBucket.id == b.id)] = rBucket;

@@ -1,10 +1,10 @@
 import 'package:json_annotation/json_annotation.dart';
-
 import 'package:vikunja_app/data/models/task.dart';
 import 'package:vikunja_app/data/models/user.dart';
+import 'package:vikunja_app/domain/entities/bucket.dart';
 
 @JsonSerializable()
-class Bucket {
+class BucketDto {
   int id, limit;
   int? projectViewId;
   String title;
@@ -13,7 +13,7 @@ class Bucket {
   User createdBy;
   final List<Task> tasks;
 
-  Bucket({
+  BucketDto({
     this.id = 0,
     required this.projectViewId,
     required this.title,
@@ -27,7 +27,7 @@ class Bucket {
         this.updated = created ?? DateTime.now(),
         this.tasks = tasks ?? [];
 
-  Bucket.fromJSON(Map<String, dynamic> json)
+  BucketDto.fromJSON(Map<String, dynamic> json)
       : id = json['id'],
         projectViewId = json['project_view_id'],
         title = json['title'],
@@ -55,4 +55,26 @@ class Bucket {
         'created_by': createdBy.toJSON(),
         'tasks': tasks.map((task) => task.toJSON()).toList(),
       };
+
+  Bucket toDomain() => Bucket(
+      id: id,
+      projectViewId: projectViewId,
+      title: title,
+      position: position,
+      limit: limit,
+      created: created,
+      updated: updated,
+      createdBy: createdBy,
+      tasks: tasks);
+
+  static BucketDto fromDomain(Bucket b) => BucketDto(
+      id: b.id,
+      projectViewId: b.projectViewId,
+      title: b.title,
+      position: b.position,
+      limit: b.limit,
+      created: b.created,
+      updated: b.updated,
+      createdBy: b.createdBy,
+      tasks: b.tasks);
 }
