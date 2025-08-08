@@ -3,7 +3,6 @@ import 'dart:convert';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:vikunja_app/core/network/response.dart';
-import 'package:vikunja_app/data/models/bucket.dart';
 import 'package:vikunja_app/data/models/label.dart';
 import 'package:vikunja_app/data/models/labelTask.dart';
 import 'package:vikunja_app/data/models/project.dart';
@@ -171,21 +170,6 @@ abstract class TaskService {
   @deprecated
   Future<List<Task>?> getByOptions(TaskServiceOptions options);
   Future<List<Task>?> getByFilterString(String filterString,
-      [Map<String, List<String>> queryParameters]);
-
-  int get maxPages;
-}
-
-abstract class BucketService {
-  // Not implemented in the Vikunja API
-  // Future<Bucket> get(int listId, int bucketId);
-  Future<Bucket?> update(Bucket bucket, int projectId, int viewId);
-
-  Future delete(int listId, int viewId, int bucketId);
-
-  Future<Bucket?> add(int listId, int viewId, Bucket bucket);
-
-  Future<Response?> getAllByList(int listId, int viewId,
       [Map<String, List<String>> queryParameters]);
 
   int get maxPages;

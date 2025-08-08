@@ -14,6 +14,8 @@ import 'package:vikunja_app/data/data_sources/server_data_source.dart';
 import 'package:vikunja_app/data/data_sources/task_data_source.dart';
 import 'package:vikunja_app/data/data_sources/user_data_source.dart';
 import 'package:vikunja_app/data/data_sources/version_data_source.dart';
+import 'package:vikunja_app/data/repositories/bucket_repository_impl.dart';
+import 'package:vikunja_app/domain/repositories/bucket_repository.dart';
 import 'package:vikunja_app/presentation/manager/notifications.dart';
 import 'package:vikunja_app/data/models/user.dart';
 import 'package:vikunja_app/core/services.dart';
@@ -69,7 +71,8 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
 
   TaskService get taskService => new TaskDataSource(client);
 
-  BucketService get bucketService => new BucketDataSource(client);
+  BucketRepository get bucketService =>
+      new BucketRepositoryImpl(BucketDataSource(client));
 
   TaskServiceOptions get taskServiceOptions => new TaskServiceOptions();
 

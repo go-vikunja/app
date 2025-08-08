@@ -1,63 +1,49 @@
 import 'package:vikunja_app/core/network/client.dart';
 import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/core/network/service.dart';
-import 'package:vikunja_app/core/services.dart';
-import 'package:vikunja_app/data/models/bucket.dart';
+import 'package:vikunja_app/data/models/bucket_dto.dart';
 
-class BucketDataSource extends RemoteDataSource implements BucketService {
+class BucketDataSource extends RemoteDataSource {
   BucketDataSource(Client client) : super(client);
 
-  @override
-  Future<Bucket?> add(int projectId, int viewId, Bucket bucket) {
+  Future<BucketDto?> add(int projectId, int viewId, BucketDto bucket) {
     return client
         .put('/projects/$projectId/views/$viewId/buckets',
             body: bucket.toJSON())
         .then((response) {
       if (response == null) return null;
-      return Bucket.fromJSON(response.body);
+      return BucketDto.fromJSON(response.body);
     });
   }
 
-  @override
   Future delete(int projectId, int viewId, int bucketId) {
     return client
         .delete('/projects/$projectId/views/$viewId/buckets/$bucketId');
   }
 
-  /* Not implemented in the Vikunja API
-  @override
-  Future<Bucket> get(int listId, int bucketId) {
-    return client
-        .get('/lists/$listId/buckets/$bucketId')
-        .then((response) => Bucket.fromJSON(response.body));
-  }
-  */
-
-  @override
   Future<Response?> getAllByList(int projectId, int viewId,
       [Map<String, List<String>>? queryParameters]) {
     return client
         .get('/projects/$projectId/views/$viewId/tasks', queryParameters)
         .then((response) => response != null
             ? new Response(
-                convertList(response.body, (result) => Bucket.fromJSON(result)),
+                convertList(
+                    response.body, (result) => BucketDto.fromJSON(result)),
                 response.statusCode,
                 response.headers)
             : null);
   }
 
-  @override
   // TODO: implement maxPages
   int get maxPages => maxPages;
 
-  @override
-  Future<Bucket?> update(Bucket bucket, int projectId, int viewId) {
+  Future<BucketDto?> update(int projectId, int viewId, BucketDto bucket) {
     return client
         .post('/projects/$projectId/views/$viewId/buckets/${bucket.id}',
             body: bucket.toJSON())
         .then((response) {
       if (response == null) return null;
-      return Bucket.fromJSON(response.body);
+      return BucketDto.fromJSON(response.body);
     });
   }
 }

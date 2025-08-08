@@ -4,9 +4,9 @@ import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:provider/provider.dart';
-import 'package:vikunja_app/data/models/bucket.dart';
 import 'package:vikunja_app/data/models/project.dart';
 import 'package:vikunja_app/data/models/view.dart';
+import 'package:vikunja_app/domain/entities/bucket.dart';
 
 import '../../../global.dart';
 import '../pages/project/project_task_list.dart';
