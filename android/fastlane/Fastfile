@@ -16,25 +16,48 @@
 default_platform(:android)
 
 platform :android do
-  #desc "Runs all the tests"
-  #lane :test do
-  #  gradle(task: "test")
-  #end
+  desc "Build release APK and AAB"
+  lane :build do
+    gradle(
+      task: 'clean assemble bundle',
+      build_type: 'Release',
+      flavor: 'production'
+    )
+  end
 
-  #desc "Submit a new Beta Build to Crashlytics Beta"
-  #lane :beta do
-  #  gradle(task: "clean assembleRelease")
-  #  crashlytics
-  #
-  #  # sh "your_script.sh"
-  #  # You can also use other beta testing services here
-  #end
+  desc "Deploy a new beta version to Google Play"
+  lane :beta do
+    upload_to_play_store(
+      track: 'beta',
+      aab: '../build/app/outputs/bundle/productionRelease/app-production-release.aab',
+      skip_upload_apk: true,
+      skip_upload_metadata: true,
+      skip_upload_screenshots: true,
+      skip_upload_images: true
+    )
+  end
 
   desc "Deploy a new version to the Google Play"
-    lane :production_appbundle do
-      upload_to_play_store(
-        track: 'production',
-        aab: '../build/app/outputs/bundle/productionRelease/app-production-release.aab',
-      )
-end
+  lane :production_appbundle do
+    upload_to_play_store(
+      track: 'production',
+      aab: '../build/app/outputs/bundle/productionRelease/app-production-release.aab',
+      skip_upload_apk: true,
+      skip_upload_metadata: true,
+      skip_upload_screenshots: true,
+      skip_upload_images: true
+    )
+  end
+
+  desc "Build and deploy to beta"
+  lane :deploy_beta do
+    build
+    beta
+  end
+
+  desc "Build and deploy to production"
+  lane :deploy_production do
+    build
+    production_appbundle
+  end
 end
