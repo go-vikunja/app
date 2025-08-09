@@ -1,5 +1,5 @@
 import 'package:vikunja_app/core/network/response.dart';
-import 'package:vikunja_app/data/data_sources/bucket_datasource.dart';
+import 'package:vikunja_app/data/data_sources/bucket_data_source.dart';
 import 'package:vikunja_app/data/models/bucket_dto.dart';
 import 'package:vikunja_app/domain/entities/bucket.dart';
 import 'package:vikunja_app/domain/repositories/bucket_repository.dart';

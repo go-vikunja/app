@@ -1,5 +1,5 @@
 import 'package:vikunja_app/core/network/service.dart';
-import 'package:vikunja_app/data/models/project_view.dart';
+import 'package:vikunja_app/data/models/project_view_dto.dart';
 
 class ProjectViewDataSource extends RemoteDataSource {
   ProjectViewDataSource(client) : super(client);

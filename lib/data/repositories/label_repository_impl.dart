@@ -1,4 +1,4 @@
-import 'package:vikunja_app/data/data_sources/label_datasource.dart';
+import 'package:vikunja_app/data/data_sources/label_data_source.dart';
 import 'package:vikunja_app/data/models/label_dto.dart';
 import 'package:vikunja_app/domain/entities/label.dart';
 import 'package:vikunja_app/domain/repositories/label_repository.dart';
