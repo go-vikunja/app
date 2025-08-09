@@ -1,7 +1,7 @@
 import 'dart:convert';
 
-import 'package:vikunja_app/models/task.dart';
 import 'package:test/test.dart';
+import 'package:vikunja_app/data/models/task.dart';
 
 void main() {
   test('Check encoding with all values set', () {

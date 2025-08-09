@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'dart:ui';
 
 import 'package:test/test.dart';
-import 'package:vikunja_app/models/label.dart';
-import 'package:vikunja_app/models/user.dart';
+import 'package:vikunja_app/data/models/label.dart';
+import 'package:vikunja_app/data/models/user.dart';
 
 void main() {
   test('label color from json', () {

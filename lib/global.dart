@@ -3,24 +3,23 @@ import 'dart:developer' as dev;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:vikunja_app/api/bucket_implementation.dart';
-import 'package:vikunja_app/api/client.dart';
-import 'package:vikunja_app/api/label_task.dart';
-import 'package:vikunja_app/api/label_task_bulk.dart';
-import 'package:vikunja_app/api/labels.dart';
-import 'package:vikunja_app/api/server_implementation.dart';
-import 'package:vikunja_app/api/task_implementation.dart';
-import 'package:vikunja_app/api/user_implementation.dart';
-import 'package:vikunja_app/api/version_check.dart';
-import 'package:vikunja_app/managers/notifications.dart';
-import 'package:vikunja_app/managers/user.dart';
-import 'package:vikunja_app/models/user.dart';
-import 'package:vikunja_app/service/services.dart';
+import 'package:vikunja_app/data/data_sources/bucket_datasource.dart';
+import 'package:vikunja_app/core/network/client.dart';
+import 'package:vikunja_app/data/data_sources/task_label_datasource.dart';
+import 'package:vikunja_app/data/data_sources/project_data_source.dart';
+import 'package:vikunja_app/data/data_sources/project_view_data_source.dart';
+import 'package:vikunja_app/data/data_sources/task_label_bulk_data_source.dart';
+import 'package:vikunja_app/data/data_sources/label_datasource.dart';
+import 'package:vikunja_app/data/data_sources/server_data_source.dart';
+import 'package:vikunja_app/data/data_sources/task_data_source.dart';
+import 'package:vikunja_app/data/data_sources/user_data_source.dart';
+import 'package:vikunja_app/data/data_sources/version_data_source.dart';
+import 'package:vikunja_app/presentation/manager/notifications.dart';
+import 'package:vikunja_app/data/models/user.dart';
+import 'package:vikunja_app/core/services.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:workmanager/workmanager.dart';
 
-import 'api/project.dart';
-import 'api/view.dart';
 import 'main.dart';
 
 class VikunjaGlobal extends StatefulWidget {
@@ -55,35 +54,33 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
 
   GlobalKey<ScaffoldMessengerState> get snackbarKey => globalSnackbarKey;
 
-  UserManager get userManager => new UserManager(_storage);
-
   UserService? get newUserService => _newUserService;
 
-  ServerService get serverService => new ServerAPIService(client);
+  ServerService get serverService => new ServerDataSource(client);
 
   SettingsManager get settingsManager => new SettingsManager(_storage);
 
-  VersionChecker get versionChecker => new VersionChecker(snackbarKey);
+  VersionDataSource get versionChecker => new VersionDataSource(snackbarKey);
 
-  ProjectService get projectService => new ProjectAPIService(client, _storage);
+  ProjectService get projectService => new ProjectDataSource(client, _storage);
 
   ProjectViewService get projectViewService =>
       new ProjectViewAPIService(client);
 
-  TaskService get taskService => new TaskAPIService(client);
+  TaskService get taskService => new TaskDataSource(client);
 
-  BucketService get bucketService => new BucketAPIService(client);
+  BucketService get bucketService => new BucketDataSource(client);
 
   TaskServiceOptions get taskServiceOptions => new TaskServiceOptions();
 
   NotificationClass get notifications => _notificationClass;
 
-  LabelService get labelService => new LabelAPIService(client);
+  LabelService get labelService => new LabelDataSource(client);
 
-  LabelTaskService get labelTaskService => new LabelTaskAPIService(client);
+  LabelTaskService get labelTaskService => new TaskLabelDataSource(client);
 
-  LabelTaskBulkAPIService get labelTaskBulkService =>
-      new LabelTaskBulkAPIService(client);
+  TaskLabelBulkDataSource get labelTaskBulkService =>
+      new TaskLabelBulkDataSource(client);
 
   late String currentTimeZone;
 
@@ -120,7 +117,7 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
     settingsManager
         .getIgnoreCertificates()
         .then((value) => client.reloadIgnoreCerts(value == "1"));
-    _newUserService = UserAPIService(client);
+    _newUserService = UserDataSource(client);
     _loadCurrentUser();
     tz.initializeTimeZones();
     notifications.notificationInitializer();
@@ -193,7 +190,7 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
     client.configure(token: token, base: base, authenticated: true);
     User loadedCurrentUser;
     try {
-      loadedCurrentUser = await UserAPIService(client).getCurrentUser();
+      loadedCurrentUser = await UserDataSource(client).getCurrentUser();
       // load new token from server to avoid expiration
       String? newToken = await newUserService?.getToken();
       if (newToken != null) {

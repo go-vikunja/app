@@ -9,18 +9,17 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
-import 'package:vikunja_app/api/client.dart';
-import 'package:vikunja_app/api/task_implementation.dart';
+import 'package:vikunja_app/core/network/client.dart';
+import 'package:vikunja_app/data/data_sources/task_data_source.dart';
+import 'package:vikunja_app/data/data_sources/user_data_source.dart';
 import 'package:vikunja_app/global.dart';
-import 'package:vikunja_app/models/theme_model.dart';
-import 'package:vikunja_app/pages/home.dart';
-import 'package:vikunja_app/pages/user/login.dart';
-import 'package:vikunja_app/service/services.dart';
-import 'package:vikunja_app/stores/project_store.dart';
+import 'package:vikunja_app/presentation/manager/theme_model.dart';
+import 'package:vikunja_app/presentation/manager/notifications.dart';
+import 'package:vikunja_app/presentation/pages/home.dart';
+import 'package:vikunja_app/presentation/pages/login/login.dart';
+import 'package:vikunja_app/core/services.dart';
+import 'package:vikunja_app/presentation/manager/project_store.dart';
 import 'package:workmanager/workmanager.dart';
-
-import 'api/user_implementation.dart';
-import 'managers/notifications.dart';
 
 class IgnoreCertHttpOverrides extends HttpOverrides {
   bool ignoreCerts = false;
@@ -56,7 +55,7 @@ void callbackDispatcher() {
         print("ignoring: $value");
         client.reloadIgnoreCerts(value == "1");
 
-        TaskAPIService taskService = TaskAPIService(client);
+        TaskDataSource taskService = TaskDataSource(client);
         NotificationClass nc = NotificationClass();
         await nc.notificationInitializer();
         return nc
@@ -79,7 +78,7 @@ void callbackDispatcher() {
       Client client = Client(null);
       client.configure(token: token, base: base, authenticated: true);
       // load new token from server to avoid expiration
-      String? newToken = await UserAPIService(client).getToken();
+      String? newToken = await UserDataSource(client).getToken();
       if (newToken != null) {
         _storage.write(key: currentUser, value: newToken);
       }

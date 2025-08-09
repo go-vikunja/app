@@ -1,5 +1,5 @@
 import 'package:test/test.dart';
-import 'package:vikunja_app/utils/repeat_after_parse.dart';
+import 'package:vikunja_app/core/utils/repeat_after_parse.dart';
 
 void main() {
   test('Repeat after hours', () {
