@@ -8,7 +8,7 @@ import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/repositories/task_repository.dart';
 
 class TaskRepositoryImpl extends TaskRepository {
-  TaskDataSource _dataSource;
+  final TaskDataSource _dataSource;
 
   TaskRepositoryImpl(this._dataSource);
 
