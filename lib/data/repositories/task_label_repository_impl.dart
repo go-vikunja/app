@@ -1,4 +1,4 @@
-import 'package:vikunja_app/data/data_sources/task_label_datasource.dart';
+import 'package:vikunja_app/data/data_sources/task_label_data_source.dart';
 import 'package:vikunja_app/data/models/task_label_dto.dart';
 import 'package:vikunja_app/domain/entities/label.dart';
 import 'package:vikunja_app/domain/entities/task_label.dart';

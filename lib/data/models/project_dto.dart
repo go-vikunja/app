@@ -1,7 +1,7 @@
 import 'dart:ui';
 
 import 'package:vikunja_app/data/models/user.dart';
-import 'package:vikunja_app/data/models/project_view.dart';
+import 'package:vikunja_app/data/models/project_view_dto.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 
 class ProjectDto {
