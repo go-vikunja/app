@@ -21,7 +21,7 @@ class BucketDataSource extends RemoteDataSource {
         .delete('/projects/$projectId/views/$viewId/buckets/$bucketId');
   }
 
-  Future<Response?> getAllByList(int projectId, int viewId,
+  Future<Response<List<BucketDto>>?> getAllByList(int projectId, int viewId,
       [Map<String, List<String>>? queryParameters]) {
     return client
         .get('/projects/$projectId/views/$viewId/tasks', queryParameters)

@@ -21,9 +21,10 @@ class BucketRepositoryImpl implements BucketRepository {
     return _dataSource.delete(projectId, viewId, bucketId);
   }
 
-  Future<Response?> getAllByList(int projectId, int viewId,
+  Future<Response<List<Bucket>>?> getAllByList(int projectId, int viewId,
       [Map<String, List<String>>? queryParameters]) async {
-    return _dataSource.getAllByList(projectId, viewId, queryParameters);
+    var response = await _dataSource.getAllByList(projectId, viewId, queryParameters);
+    return response != null ? Response(response.body.map((e) => e.toDomain()).toList(), response.statusCode, response.headers) : null;
   }
 
   @override
