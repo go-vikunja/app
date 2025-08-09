@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:vikunja_app/data/models/label.dart';
+import 'package:vikunja_app/domain/entities/label.dart';
 
 class LabelComponent extends StatelessWidget {
   final Label label;

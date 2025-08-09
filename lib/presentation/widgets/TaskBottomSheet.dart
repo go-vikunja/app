@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:vikunja_app/core/utils/priority.dart';
-import 'package:vikunja_app/data/models/label.dart';
-import 'package:vikunja_app/data/models/task.dart';
+import 'package:vikunja_app/domain/entities/label.dart';
+import 'package:vikunja_app/domain/entities/task.dart';
 
 import '../pages/task/task_edit.dart';
 import '../manager/project_store.dart';

@@ -1,5 +1,5 @@
-import 'package:vikunja_app/data/models/task.dart';
 import 'package:vikunja_app/data/models/user.dart';
+import 'package:vikunja_app/domain/entities/task.dart';
 
 class Bucket {
   int id, limit;

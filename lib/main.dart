@@ -12,6 +12,8 @@ import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:vikunja_app/core/network/client.dart';
 import 'package:vikunja_app/data/data_sources/task_data_source.dart';
 import 'package:vikunja_app/data/data_sources/user_data_source.dart';
+import 'package:vikunja_app/data/repositories/task_repository_impl.dart';
+import 'package:vikunja_app/domain/repositories/task_repository.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/presentation/manager/theme_model.dart';
 import 'package:vikunja_app/presentation/manager/notifications.dart';
@@ -55,7 +57,7 @@ void callbackDispatcher() {
         print("ignoring: $value");
         client.reloadIgnoreCerts(value == "1");
 
-        TaskDataSource taskService = TaskDataSource(client);
+        TaskRepository taskService = TaskRepositoryImpl(TaskDataSource(client));
         NotificationClass nc = NotificationClass();
         await nc.notificationInitializer();
         return nc

@@ -15,7 +15,15 @@ import 'package:vikunja_app/data/data_sources/task_data_source.dart';
 import 'package:vikunja_app/data/data_sources/user_data_source.dart';
 import 'package:vikunja_app/data/data_sources/version_data_source.dart';
 import 'package:vikunja_app/data/repositories/bucket_repository_impl.dart';
+import 'package:vikunja_app/data/repositories/label_repository_impl.dart';
+import 'package:vikunja_app/data/repositories/task_label_bulk_repository_impl.dart';
+import 'package:vikunja_app/data/repositories/task_label_repository_impl.dart';
+import 'package:vikunja_app/data/repositories/task_repository_impl.dart';
 import 'package:vikunja_app/domain/repositories/bucket_repository.dart';
+import 'package:vikunja_app/domain/repositories/label_repository.dart';
+import 'package:vikunja_app/domain/repositories/task_label_bulk_repository.dart';
+import 'package:vikunja_app/domain/repositories/task_label_repository.dart';
+import 'package:vikunja_app/domain/repositories/task_repository.dart';
 import 'package:vikunja_app/presentation/manager/notifications.dart';
 import 'package:vikunja_app/data/models/user.dart';
 import 'package:vikunja_app/core/services.dart';
@@ -69,7 +77,7 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
   ProjectViewService get projectViewService =>
       new ProjectViewAPIService(client);
 
-  TaskService get taskService => new TaskDataSource(client);
+  TaskRepository get taskService => TaskRepositoryImpl(TaskDataSource(client));
 
   BucketRepository get bucketService =>
       new BucketRepositoryImpl(BucketDataSource(client));
@@ -78,12 +86,14 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
 
   NotificationClass get notifications => _notificationClass;
 
-  LabelService get labelService => new LabelDataSource(client);
+  LabelRepository get labelService =>
+      LabelRepositoryImpl(LabelDataSource(client));
 
-  LabelTaskService get labelTaskService => new TaskLabelDataSource(client);
+  TaskLabelRepository get labelTaskService =>
+      TaskLabelRepositoryImpl(TaskLabelDataSource(client));
 
-  TaskLabelBulkDataSource get labelTaskBulkService =>
-      new TaskLabelBulkDataSource(client);
+  TaskLabelBulkRepository get labelTaskBulkService =>
+      TaskLabelBulkRepositoryImpl(TaskLabelBulkDataSource(client));
 
   late String currentTimeZone;
 

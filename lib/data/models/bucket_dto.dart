@@ -1,5 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
-import 'package:vikunja_app/data/models/task.dart';
+import 'package:vikunja_app/data/models/task_dto.dart';
 import 'package:vikunja_app/data/models/user.dart';
 import 'package:vikunja_app/domain/entities/bucket.dart';
 
@@ -11,7 +11,7 @@ class BucketDto {
   double? position;
   final DateTime created, updated;
   User createdBy;
-  final List<Task> tasks;
+  final List<TaskDto> tasks;
 
   BucketDto({
     this.id = 0,
@@ -22,7 +22,7 @@ class BucketDto {
     DateTime? created,
     DateTime? updated,
     required this.createdBy,
-    List<Task>? tasks,
+    List<TaskDto>? tasks,
   })  : this.created = created ?? DateTime.now(),
         this.updated = created ?? DateTime.now(),
         this.tasks = tasks ?? [];
@@ -41,7 +41,7 @@ class BucketDto {
         tasks = json['tasks'] == null
             ? []
             : (json['tasks'] as List<dynamic>)
-                .map((task) => Task.fromJson(task))
+                .map((task) => TaskDto.fromJson(task))
                 .toList();
 
   toJSON() => {
@@ -65,7 +65,7 @@ class BucketDto {
       created: created,
       updated: updated,
       createdBy: createdBy,
-      tasks: tasks);
+      tasks: tasks.map((e) => e.toDomain()).toList());
 
   static BucketDto fromDomain(Bucket b) => BucketDto(
       id: b.id,
@@ -76,5 +76,5 @@ class BucketDto {
       created: b.created,
       updated: b.updated,
       createdBy: b.createdBy,
-      tasks: b.tasks);
+      tasks: b.tasks.map((e) => TaskDto.fromDomain(e)).toList());
 }
