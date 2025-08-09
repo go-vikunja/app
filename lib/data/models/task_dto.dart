@@ -3,7 +3,7 @@ import 'package:json_annotation/json_annotation.dart';
 
 import 'package:vikunja_app/data/models/label_dto.dart';
 import 'package:vikunja_app/data/models/user.dart';
-import 'package:vikunja_app/data/models/taskAttachment.dart';
+import 'package:vikunja_app/data/models/task_attachment_dto.dart';
 import 'package:vikunja_app/core/utils/checkboxes_in_text.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 
@@ -53,7 +53,7 @@ class TaskDto {
   Duration? repeatAfter;
   final List<TaskDto> subtasks;
   final List<LabelDto> labels;
-  final List<TaskAttachment> attachments;
+  final List<TaskAttachmentDto> attachments;
   // TODO: add position(?)
 
   late final checkboxStatistics = getCheckboxStatistics(description);
@@ -138,7 +138,7 @@ class TaskDto {
             : [],
         attachments = json['attachments'] != null
             ? (json['attachments'] as List<dynamic>)
-                .map((attachment) => TaskAttachment.fromJSON(attachment))
+                .map((attachment) => TaskAttachmentDto.fromJSON(attachment))
                 .toList()
             : [],
         updated = DateTime.parse(json['updated']),
@@ -193,7 +193,7 @@ class TaskDto {
         percent_done: percent_done,
         labels: labels.map((e) => e.toDomain()).toList(),
         subtasks: subtasks.map((e) => e.toDomain()).toList(),
-        attachments: attachments,
+        attachments: attachments.map((e) => e.toDomain()).toList(),
         updated: updated,
         created: created,
         projectId: projectId,
@@ -220,7 +220,8 @@ class TaskDto {
         percent_done: b.percent_done,
         labels: b.labels.map((e) => LabelDto.fromDomain(e)).toList(),
         subtasks: b.subtasks.map((e) => TaskDto.fromDomain(e)).toList(),
-        attachments: b.attachments,
+        attachments:
+            b.attachments.map((e) => TaskAttachmentDto.fromDomain(e)).toList(),
         updated: b.updated,
         created: b.created,
         projectId: b.projectId,
@@ -251,7 +252,7 @@ class TaskDto {
     Duration? repeatAfter,
     List<TaskDto>? subtasks,
     List<LabelDto>? labels,
-    List<TaskAttachment>? attachments,
+    List<TaskAttachmentDto>? attachments,
   }) {
     return TaskDto(
       id: id ?? this.id,
