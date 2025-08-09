@@ -23,8 +23,12 @@ class BucketRepositoryImpl implements BucketRepository {
 
   Future<Response<List<Bucket>>?> getAllByList(int projectId, int viewId,
       [Map<String, List<String>>? queryParameters]) async {
-    var response = await _dataSource.getAllByList(projectId, viewId, queryParameters);
-    return response != null ? Response(response.body.map((e) => e.toDomain()).toList(), response.statusCode, response.headers) : null;
+    var response =
+        await _dataSource.getAllByList(projectId, viewId, queryParameters);
+    return response != null
+        ? Response(response.body.map((e) => e.toDomain()).toList(),
+            response.statusCode, response.headers)
+        : null;
   }
 
   @override
