@@ -6,10 +6,10 @@ class Error {
   final String message;
 }
 
-class Response {
+class Response<T> {
   Response(this.body, this.statusCode, this.headers, {this.error});
 
-  final dynamic body;
+  final T body;
   final int statusCode;
   final Map<String, String> headers;
   final Error? error;

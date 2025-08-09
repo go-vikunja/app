@@ -3,19 +3,39 @@ import 'dart:developer' as dev;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:vikunja_app/data/data_sources/bucket_datasource.dart';
+import 'package:vikunja_app/data/data_sources/bucket_data_source.dart';
 import 'package:vikunja_app/core/network/client.dart';
-import 'package:vikunja_app/data/data_sources/task_label_datasource.dart';
+import 'package:vikunja_app/data/data_sources/task_label_data_source.dart';
 import 'package:vikunja_app/data/data_sources/project_data_source.dart';
 import 'package:vikunja_app/data/data_sources/project_view_data_source.dart';
 import 'package:vikunja_app/data/data_sources/task_label_bulk_data_source.dart';
-import 'package:vikunja_app/data/data_sources/label_datasource.dart';
+import 'package:vikunja_app/data/data_sources/label_data_source.dart';
 import 'package:vikunja_app/data/data_sources/server_data_source.dart';
 import 'package:vikunja_app/data/data_sources/task_data_source.dart';
 import 'package:vikunja_app/data/data_sources/user_data_source.dart';
 import 'package:vikunja_app/data/data_sources/version_data_source.dart';
+import 'package:vikunja_app/data/repositories/bucket_repository_impl.dart';
+import 'package:vikunja_app/data/repositories/label_repository_impl.dart';
+import 'package:vikunja_app/data/repositories/project_repository_impl.dart';
+import 'package:vikunja_app/data/repositories/project_view_repository_impl.dart';
+import 'package:vikunja_app/data/repositories/server_repository_impl.dart';
+import 'package:vikunja_app/data/repositories/task_label_bulk_repository_impl.dart';
+import 'package:vikunja_app/data/repositories/task_label_repository_impl.dart';
+import 'package:vikunja_app/data/repositories/task_repository_impl.dart';
+import 'package:vikunja_app/data/repositories/user_repository_impl.dart';
+import 'package:vikunja_app/data/repositories/version_repository_impl.dart';
+import 'package:vikunja_app/domain/entities/user.dart';
+import 'package:vikunja_app/domain/repositories/bucket_repository.dart';
+import 'package:vikunja_app/domain/repositories/label_repository.dart';
+import 'package:vikunja_app/domain/repositories/project_repository.dart';
+import 'package:vikunja_app/domain/repositories/project_view_repository.dart';
+import 'package:vikunja_app/domain/repositories/server_repository.dart';
+import 'package:vikunja_app/domain/repositories/task_label_bulk_repository.dart';
+import 'package:vikunja_app/domain/repositories/task_label_repository.dart';
+import 'package:vikunja_app/domain/repositories/task_repository.dart';
+import 'package:vikunja_app/domain/repositories/user_repository.dart';
+import 'package:vikunja_app/domain/repositories/version_repository.dart';
 import 'package:vikunja_app/presentation/manager/notifications.dart';
-import 'package:vikunja_app/data/models/user.dart';
 import 'package:vikunja_app/core/services.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:workmanager/workmanager.dart';
@@ -45,7 +65,7 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
   bool _loading = true;
   bool expired = false;
   late Client _client;
-  UserService? _newUserService;
+  UserRepository? _newUserService;
   NotificationClass _notificationClass = NotificationClass();
 
   User? get currentUser => _currentUser;
@@ -54,33 +74,39 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
 
   GlobalKey<ScaffoldMessengerState> get snackbarKey => globalSnackbarKey;
 
-  UserService? get newUserService => _newUserService;
+  UserRepository? get newUserService => _newUserService;
 
-  ServerService get serverService => new ServerDataSource(client);
+  ServerRepository get serverService =>
+      ServerRepositoryImpl(ServerDataSource(client));
 
   SettingsManager get settingsManager => new SettingsManager(_storage);
 
-  VersionDataSource get versionChecker => new VersionDataSource(snackbarKey);
+  VersionRepository get versionChecker =>
+      VersionRepositoryImpl(VersionDataSource(snackbarKey));
 
-  ProjectService get projectService => new ProjectDataSource(client, _storage);
+  ProjectRepository get projectService =>
+      ProjectRepositoryImpl(ProjectDataSource(client, _storage));
 
-  ProjectViewService get projectViewService =>
-      new ProjectViewAPIService(client);
+  ProjectViewRepository get projectViewService =>
+      ProjectViewRepositoryImpl(ProjectViewDataSource(client));
 
-  TaskService get taskService => new TaskDataSource(client);
+  TaskRepository get taskService => TaskRepositoryImpl(TaskDataSource(client));
 
-  BucketService get bucketService => new BucketDataSource(client);
+  BucketRepository get bucketService =>
+      new BucketRepositoryImpl(BucketDataSource(client));
 
   TaskServiceOptions get taskServiceOptions => new TaskServiceOptions();
 
   NotificationClass get notifications => _notificationClass;
 
-  LabelService get labelService => new LabelDataSource(client);
+  LabelRepository get labelService =>
+      LabelRepositoryImpl(LabelDataSource(client));
 
-  LabelTaskService get labelTaskService => new TaskLabelDataSource(client);
+  TaskLabelRepository get labelTaskService =>
+      TaskLabelRepositoryImpl(TaskLabelDataSource(client));
 
-  TaskLabelBulkDataSource get labelTaskBulkService =>
-      new TaskLabelBulkDataSource(client);
+  TaskLabelBulkRepository get labelTaskBulkService =>
+      TaskLabelBulkRepositoryImpl(TaskLabelBulkDataSource(client));
 
   late String currentTimeZone;
 
@@ -117,7 +143,7 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
     settingsManager
         .getIgnoreCertificates()
         .then((value) => client.reloadIgnoreCerts(value == "1"));
-    _newUserService = UserDataSource(client);
+    _newUserService = UserRepositoryImpl(UserDataSource(client));
     _loadCurrentUser();
     tz.initializeTimeZones();
     notifications.notificationInitializer();
@@ -190,7 +216,8 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
     client.configure(token: token, base: base, authenticated: true);
     User loadedCurrentUser;
     try {
-      loadedCurrentUser = await UserDataSource(client).getCurrentUser();
+      loadedCurrentUser =
+          await UserRepositoryImpl(UserDataSource(client)).getCurrentUser();
       // load new token from server to avoid expiration
       String? newToken = await newUserService?.getToken();
       if (newToken != null) {

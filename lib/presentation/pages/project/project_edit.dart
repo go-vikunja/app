@@ -1,6 +1,6 @@
 import 'dart:developer';
 import 'package:flutter/material.dart';
-import 'package:vikunja_app/data/models/project.dart';
+import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/presentation/widgets/button.dart';
 import 'package:vikunja_app/presentation/widgets/buttonText.dart';

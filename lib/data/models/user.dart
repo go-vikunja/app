@@ -1,7 +1,8 @@
 import 'package:flutter/cupertino.dart';
+import 'package:vikunja_app/domain/entities/user.dart';
 import 'package:vikunja_app/global.dart';
 
-class UserSettings {
+class UserSettingsDto {
   final int default_project_id;
   final bool discoverable_by_email,
       discoverable_by_name,
@@ -14,7 +15,7 @@ class UserSettings {
   final String timezone;
   final int week_start;
 
-  UserSettings({
+  UserSettingsDto({
     this.default_project_id = 0,
     this.discoverable_by_email = false,
     this.discoverable_by_name = false,
@@ -28,7 +29,7 @@ class UserSettings {
     this.week_start = 0,
   });
 
-  UserSettings.fromJson(Map<String, dynamic> json)
+  UserSettingsDto.fromJson(Map<String, dynamic> json)
       : default_project_id = json['default_project_id'],
         discoverable_by_email = json['discoverable_by_email'],
         discoverable_by_name = json['discoverable_by_name'],
@@ -56,7 +57,35 @@ class UserSettings {
         'week_start': week_start,
       };
 
-  UserSettings copyWith({
+  UserSettings toDomain() => UserSettings(
+        default_project_id: default_project_id,
+        discoverable_by_email: discoverable_by_email,
+        discoverable_by_name: discoverable_by_name,
+        email_reminders_enabled: email_reminders_enabled,
+        frontend_settings: frontend_settings,
+        language: language,
+        name: name,
+        overdue_tasks_reminders_enabled: overdue_tasks_reminders_enabled,
+        overdue_tasks_reminders_time: overdue_tasks_reminders_time,
+        timezone: timezone,
+        week_start: week_start,
+      );
+
+  static UserSettingsDto fromDomain(UserSettings u) => UserSettingsDto(
+        default_project_id: u.default_project_id,
+        discoverable_by_email: u.discoverable_by_email,
+        discoverable_by_name: u.discoverable_by_name,
+        email_reminders_enabled: u.email_reminders_enabled,
+        frontend_settings: u.frontend_settings,
+        language: u.language,
+        name: u.name,
+        overdue_tasks_reminders_enabled: u.overdue_tasks_reminders_enabled,
+        overdue_tasks_reminders_time: u.overdue_tasks_reminders_time,
+        timezone: u.timezone,
+        week_start: u.week_start,
+      );
+
+  UserSettingsDto copyWith({
     int? default_project_id,
     bool? discoverable_by_email,
     bool? discoverable_by_name,
@@ -69,7 +98,7 @@ class UserSettings {
     String? timezone,
     int? week_start,
   }) {
-    return UserSettings(
+    return UserSettingsDto(
       default_project_id: default_project_id ?? this.default_project_id,
       discoverable_by_email:
           discoverable_by_email ?? this.discoverable_by_email,
@@ -89,13 +118,13 @@ class UserSettings {
   }
 }
 
-class User {
+class UserDto {
   final int id;
   final String name, username;
   final DateTime created, updated;
-  UserSettings? settings;
+  UserSettingsDto? settings;
 
-  User({
+  UserDto({
     this.id = 0,
     this.name = '',
     required this.username,
@@ -105,14 +134,14 @@ class User {
   })  : this.created = created ?? DateTime.now(),
         this.updated = updated ?? DateTime.now();
 
-  User.fromJson(Map<String, dynamic> json)
+  UserDto.fromJson(Map<String, dynamic> json)
       : id = json.containsKey('id') ? json['id'] : 0,
         name = json.containsKey('name') ? json['name'] : '',
         username = json['username'],
         created = DateTime.parse(json['created']),
         updated = DateTime.parse(json['updated']) {
     if (json.containsKey('settings')) {
-      this.settings = UserSettings.fromJson(json['settings']);
+      this.settings = UserSettingsDto.fromJson(json['settings']);
     }
     ;
   }
@@ -126,21 +155,51 @@ class User {
         'user_settings': settings?.toJson(),
       };
 
+  User toDomain() => User(
+      id: id,
+      name: name,
+      username: username,
+      created: created,
+      updated: updated,
+      settings: settings?.toDomain());
+
+  static UserDto fromDomain(User u) => UserDto(
+      id: u.id,
+      name: u.name,
+      username: u.username,
+      created: u.created,
+      updated: u.updated,
+      settings:
+          u.settings != null ? UserSettingsDto.fromDomain(u.settings!) : null);
+
   String avatarUrl(BuildContext context) {
     return VikunjaGlobal.of(context).client.base + "/avatar/${this.username}";
   }
 }
 
-class UserTokenPair {
-  final User? user;
+class UserTokenPairDto {
+  final UserDto? user;
   final String? token;
   final int error;
   final String errorString;
-  UserTokenPair(this.user, this.token, {this.error = 0, this.errorString = ""});
+  UserTokenPairDto(this.user, this.token,
+      {this.error = 0, this.errorString = ""});
+
+  UserTokenPair toDomain() => UserTokenPair(user?.toDomain(), token,
+      error: error, errorString: errorString);
+
+  static UserTokenPairDto fromDomain(UserTokenPair u) => UserTokenPairDto(
+      u.user != null ? UserDto.fromDomain(u.user!) : null, u.token,
+      error: u.error, errorString: u.errorString);
 }
 
-class BaseTokenPair {
+class BaseTokenPairDto {
   final String base;
   final String token;
-  BaseTokenPair(this.base, this.token);
+  BaseTokenPairDto(this.base, this.token);
+
+  BaseTokenPair toDomain() => BaseTokenPair(base, token);
+
+  static BaseTokenPairDto fromDomain(BaseTokenPair b) =>
+      BaseTokenPairDto(b.base, b.token);
 }

@@ -2,15 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:vikunja_app/core/network/response.dart';
-import 'package:vikunja_app/data/models/bucket.dart';
-import 'package:vikunja_app/data/models/label.dart';
-import 'package:vikunja_app/data/models/labelTask.dart';
-import 'package:vikunja_app/data/models/project.dart';
-import 'package:vikunja_app/data/models/server.dart';
-import 'package:vikunja_app/data/models/task.dart';
-import 'package:vikunja_app/data/models/user.dart';
-import 'package:vikunja_app/data/models/view.dart';
 
 enum TaskServiceOptionSortBy {
   id,
@@ -133,102 +124,6 @@ class TaskServiceOptions {
     //result = "?" + result;
     return queryparams;
   }
-}
-
-abstract class ProjectService {
-  Future<List<Project>?> getAll();
-
-  Future<Project?> get(int projectId);
-  Future<Project?> create(Project p);
-  Future<Project?> update(Project p);
-  Future delete(int projectId);
-
-  Future<String?> getDisplayDoneTasks(int listId);
-  void setDisplayDoneTasks(int listId, String value);
-}
-
-abstract class ProjectViewService {
-  Future<ProjectView?> get(int projectId, int viewId);
-  Future<ProjectView?> create(ProjectView view);
-  Future<ProjectView?> update(ProjectView view);
-  Future delete(int projectId, int viewId);
-}
-
-abstract class TaskService {
-  Future<Task?> get(int taskId);
-
-  Future<Task?> update(Task task);
-
-  Future delete(int taskId);
-
-  Future<Task?> add(int listId, Task task);
-
-  Future<List<Task>?> getAll();
-
-  Future<Response?> getAllByProject(int projectId,
-      [Map<String, List<String>> queryParameters]);
-
-  @deprecated
-  Future<List<Task>?> getByOptions(TaskServiceOptions options);
-  Future<List<Task>?> getByFilterString(String filterString,
-      [Map<String, List<String>> queryParameters]);
-
-  int get maxPages;
-}
-
-abstract class BucketService {
-  // Not implemented in the Vikunja API
-  // Future<Bucket> get(int listId, int bucketId);
-  Future<Bucket?> update(Bucket bucket, int projectId, int viewId);
-
-  Future delete(int listId, int viewId, int bucketId);
-
-  Future<Bucket?> add(int listId, int viewId, Bucket bucket);
-
-  Future<Response?> getAllByList(int listId, int viewId,
-      [Map<String, List<String>> queryParameters]);
-
-  int get maxPages;
-}
-
-abstract class UserService {
-  Future<UserTokenPair> login(String username, String password,
-      {bool rememberMe = false, String totp});
-
-  Future<UserTokenPair?> register(String username, email, password);
-
-  Future<User?> getCurrentUser();
-  Future<UserSettings?> setCurrentUserSettings(UserSettings userSettings);
-
-  Future<String?> getToken();
-}
-
-abstract class LabelService {
-  Future<List<Label>?> getAll({String query});
-
-  Future<Label?> get(int labelID);
-
-  Future<Label?> create(Label label);
-
-  Future<Label?> delete(Label label);
-
-  Future<Label?> update(Label label);
-}
-
-abstract class LabelTaskService {
-  Future<List<Label>?> getAll(LabelTask lt, {String query});
-
-  Future<Label?> create(LabelTask lt);
-
-  Future<Label?> delete(LabelTask lt);
-}
-
-abstract class LabelTaskBulkService {
-  Future<List<Label>?> update(Task task, List<Label> labels);
-}
-
-abstract class ServerService {
-  Future<Server?> getInfo();
 }
 
 class SettingsManager {

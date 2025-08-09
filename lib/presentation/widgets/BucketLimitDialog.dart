@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:vikunja_app/data/models/bucket.dart';
+import 'package:vikunja_app/domain/entities/bucket.dart';
 
 class BucketLimitDialog extends StatefulWidget {
   final Bucket bucket;

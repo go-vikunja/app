@@ -8,8 +8,8 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart'
     as notifs;
 import 'package:rxdart/subjects.dart' as rxSub;
-import 'package:vikunja_app/core/services.dart';
-import 'package:vikunja_app/data/models/task.dart';
+import 'package:vikunja_app/domain/entities/task.dart';
+import 'package:vikunja_app/domain/repositories/task_repository.dart';
 
 import 'updateWidget.dart';
 
@@ -119,7 +119,7 @@ class NotificationClass {
         );
   }
 
-  Future<void> scheduleDueNotifications(TaskService taskService,
+  Future<void> scheduleDueNotifications(TaskRepository taskService,
       {List<Task>? tasks}) async {
     if (tasks == null)
       tasks = await taskService.getByFilterString(

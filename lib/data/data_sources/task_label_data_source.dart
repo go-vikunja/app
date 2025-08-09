@@ -1,40 +1,36 @@
 import 'package:vikunja_app/core/network/service.dart';
-import 'package:vikunja_app/core/services.dart';
 import 'package:vikunja_app/core/network/client.dart';
-import 'package:vikunja_app/data/models/label.dart';
-import 'package:vikunja_app/data/models/labelTask.dart';
+import 'package:vikunja_app/data/models/label_dto.dart';
+import 'package:vikunja_app/data/models/task_label_dto.dart';
 
-class TaskLabelDataSource extends RemoteDataSource implements LabelTaskService {
+class TaskLabelDataSource extends RemoteDataSource {
   TaskLabelDataSource(Client client) : super(client);
 
-  @override
-  Future<Label?> create(LabelTask lt) async {
+  Future<LabelDto?> create(LabelTaskDto lt) async {
     return client
         .put('/tasks/${lt.task!.id}/labels', body: lt.toJSON())
         .then((response) {
       if (response == null) return null;
-      return Label.fromJson(response.body);
+      return LabelDto.fromJson(response.body);
     });
   }
 
-  @override
-  Future<Label?> delete(LabelTask lt) async {
+  Future<LabelDto?> delete(LabelTaskDto lt) async {
     return client
         .delete('/tasks/${lt.task!.id}/labels/${lt.label.id}')
         .then((response) {
       if (response == null) return null;
-      return Label.fromJson(response.body);
+      return LabelDto.fromJson(response.body);
     });
   }
 
-  @override
-  Future<List<Label>?> getAll(LabelTask lt, {String? query}) async {
+  Future<List<LabelDto>?> getAll(LabelTaskDto lt, {String? query}) async {
     String? params =
         query == null ? null : '?s=' + Uri.encodeQueryComponent(query);
 
     return client.get('/tasks/${lt.task!.id}/labels$params').then((label) {
       if (label == null) return null;
-      return convertList(label, (result) => Label.fromJson(result));
+      return convertList(label, (result) => LabelDto.fromJson(result));
     });
   }
 }

@@ -1,19 +1,19 @@
 import 'package:json_annotation/json_annotation.dart';
-
-import 'package:vikunja_app/data/models/task.dart';
+import 'package:vikunja_app/data/models/task_dto.dart';
 import 'package:vikunja_app/data/models/user.dart';
+import 'package:vikunja_app/domain/entities/bucket.dart';
 
 @JsonSerializable()
-class Bucket {
+class BucketDto {
   int id, limit;
   int? projectViewId;
   String title;
   double? position;
   final DateTime created, updated;
-  User createdBy;
-  final List<Task> tasks;
+  UserDto createdBy;
+  final List<TaskDto> tasks;
 
-  Bucket({
+  BucketDto({
     this.id = 0,
     required this.projectViewId,
     required this.title,
@@ -22,12 +22,12 @@ class Bucket {
     DateTime? created,
     DateTime? updated,
     required this.createdBy,
-    List<Task>? tasks,
+    List<TaskDto>? tasks,
   })  : this.created = created ?? DateTime.now(),
         this.updated = created ?? DateTime.now(),
         this.tasks = tasks ?? [];
 
-  Bucket.fromJSON(Map<String, dynamic> json)
+  BucketDto.fromJSON(Map<String, dynamic> json)
       : id = json['id'],
         projectViewId = json['project_view_id'],
         title = json['title'],
@@ -37,11 +37,11 @@ class Bucket {
         limit = json['limit'],
         created = DateTime.parse(json['created']),
         updated = DateTime.parse(json['updated']),
-        createdBy = User.fromJson(json['created_by']),
+        createdBy = UserDto.fromJson(json['created_by']),
         tasks = json['tasks'] == null
             ? []
             : (json['tasks'] as List<dynamic>)
-                .map((task) => Task.fromJson(task))
+                .map((task) => TaskDto.fromJson(task))
                 .toList();
 
   toJSON() => {
@@ -55,4 +55,26 @@ class Bucket {
         'created_by': createdBy.toJSON(),
         'tasks': tasks.map((task) => task.toJSON()).toList(),
       };
+
+  Bucket toDomain() => Bucket(
+      id: id,
+      projectViewId: projectViewId,
+      title: title,
+      position: position,
+      limit: limit,
+      created: created,
+      updated: updated,
+      createdBy: createdBy.toDomain(),
+      tasks: tasks.map((e) => e.toDomain()).toList());
+
+  static BucketDto fromDomain(Bucket b) => BucketDto(
+      id: b.id,
+      projectViewId: b.projectViewId,
+      title: b.title,
+      position: b.position,
+      limit: b.limit,
+      created: b.created,
+      updated: b.updated,
+      createdBy: UserDto.fromDomain(b.createdBy),
+      tasks: b.tasks.map((e) => TaskDto.fromDomain(e)).toList());
 }

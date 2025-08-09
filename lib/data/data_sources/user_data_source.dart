@@ -3,13 +3,11 @@ import 'dart:async';
 import 'package:vikunja_app/core/network/client.dart';
 import 'package:vikunja_app/core/network/service.dart';
 import 'package:vikunja_app/data/models/user.dart';
-import 'package:vikunja_app/core/services.dart';
 
-class UserDataSource extends RemoteDataSource implements UserService {
+class UserDataSource extends RemoteDataSource {
   UserDataSource(Client client) : super(client);
 
-  @override
-  Future<UserTokenPair> login(String username, password,
+  Future<UserTokenPairDto> login(String username, password,
       {bool rememberMe = false, String? totp}) async {
     var body = {
       'long_token': rememberMe,
@@ -22,18 +20,17 @@ class UserDataSource extends RemoteDataSource implements UserService {
     var response = await client.post('/login', body: body);
     var token = response?.body["token"];
     if (token == null || response == null || response.error != null)
-      return Future.value(UserTokenPair(null, null,
+      return Future.value(UserTokenPairDto(null, null,
           error: response != null ? response.body["code"] : 0,
           errorString:
               response != null ? response.body["message"] : "Login error"));
     client.configure(token: token);
     return UserDataSource(client)
         .getCurrentUser()
-        .then((user) => UserTokenPair(user, token));
+        .then((user) => UserTokenPairDto(user, token));
   }
 
-  @override
-  Future<UserTokenPair?> register(String username, email, password) async {
+  Future<UserTokenPairDto?> register(String username, email, password) async {
     var newUser = await client.post('/register', body: {
       'username': username,
       'email': email,
@@ -42,14 +39,12 @@ class UserDataSource extends RemoteDataSource implements UserService {
     return login(newUser, password);
   }
 
-  @override
-  Future<User> getCurrentUser() {
-    return client.get('/user').then((map) => User.fromJson(map?.body));
+  Future<UserDto> getCurrentUser() {
+    return client.get('/user').then((map) => UserDto.fromJson(map?.body));
   }
 
-  @override
-  Future<UserSettings?> setCurrentUserSettings(
-      UserSettings userSettings) async {
+  Future<UserSettingsDto?> setCurrentUserSettings(
+      UserSettingsDto userSettings) async {
     return client
         .post('/user/settings/general', body: userSettings.toJson())
         .then((response) {
@@ -58,7 +53,6 @@ class UserDataSource extends RemoteDataSource implements UserService {
     });
   }
 
-  @override
   Future<String?> getToken() {
     return client.post('/user/token').then((value) => value?.body["token"]);
   }

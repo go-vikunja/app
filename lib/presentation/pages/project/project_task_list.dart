@@ -3,13 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
-import 'package:vikunja_app/data/models/project.dart';
+import 'package:vikunja_app/domain/entities/bucket.dart';
+import 'package:vikunja_app/domain/entities/project.dart';
+import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/presentation/widgets/AddDialog.dart';
 import 'package:vikunja_app/presentation/widgets/KanbanWidget.dart';
 import 'package:vikunja_app/presentation/widgets/TaskTile.dart';
 import 'package:vikunja_app/global.dart';
-import 'package:vikunja_app/data/models/task.dart';
-import 'package:vikunja_app/data/models/bucket.dart';
 import 'package:vikunja_app/presentation/pages/project/project_edit.dart';
 import 'package:vikunja_app/presentation/pages/task/task_edit.dart';
 

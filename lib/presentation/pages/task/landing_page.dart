@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:vikunja_app/data/models/task.dart';
+import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/global.dart';
 
 import 'dart:developer';
@@ -40,7 +40,7 @@ class LandingPageState extends State<LandingPage> {
   Future<void> _updateDefaultList() async {
     return VikunjaGlobal.of(context).newUserService?.getCurrentUser().then(
           (value) => setState(() {
-            defaultList = value?.settings?.default_project_id;
+            defaultList = value.settings?.default_project_id;
           }),
         );
   }

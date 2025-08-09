@@ -1,7 +1,8 @@
-import 'package:vikunja_app/data/models/task.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
+
+import 'package:vikunja_app/domain/entities/task.dart';
 
 // I expect a list of tasks here, when I get it I get:
 // Filter tasks and get only the ones due today

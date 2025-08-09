@@ -1,14 +1,14 @@
 import 'dart:convert';
 
 import 'package:test/test.dart';
-import 'package:vikunja_app/data/models/task.dart';
+import 'package:vikunja_app/data/models/task_dto.dart';
 
 void main() {
   test('Check encoding with all values set', () {
     final String json =
         '{"id": 1,"text": "test","description": "Lorem Ipsum","done": true,"dueDate": 1543834800,"reminderDates": [1543834800,1544612400],"repeatAfter": 3600,"parentTaskID": 0,"priority": 100,"startDate": 1543834800,"endDate": 1543835000,"assignees": null,"labels": null,"subtasks": null,"created": 1542465818,"updated": 1552771527,"createdBy": {"id": 1,"username": "user","email": "test@example.com","created": 1537855131,"updated": 1545233325}}';
     final JsonDecoder _decoder = new JsonDecoder();
-    final task = Task.fromJson(_decoder.convert(json));
+    final task = TaskDto.fromJson(_decoder.convert(json));
 
     expect(task.id, 1);
     expect(task.title, 'test');
@@ -38,7 +38,7 @@ void main() {
     final String json =
         '{"id": 1,"text": "test","description": "Lorem Ipsum","done": true,"dueDate": 1543834800,"reminderDates": null,"repeatAfter": 3600,"parentTaskID": 0,"priority": 100,"startDate": 1543834800,"endDate": 1543835000,"assignees": null,"labels": null,"subtasks": null,"created": 1542465818,"updated": 1552771527,"createdBy": {"id": 1,"username": "user","email": "test@example.com","created": 1537855131,"updated": 1545233325}}';
     final JsonDecoder _decoder = new JsonDecoder();
-    final task = Task.fromJson(_decoder.convert(json));
+    final task = TaskDto.fromJson(_decoder.convert(json));
 
     expect(task.id, 1);
     expect(task.title, 'test');

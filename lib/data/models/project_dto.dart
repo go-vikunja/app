@@ -1,12 +1,13 @@
 import 'dart:ui';
 
 import 'package:vikunja_app/data/models/user.dart';
-import 'package:vikunja_app/data/models/view.dart';
+import 'package:vikunja_app/data/models/project_view_dto.dart';
+import 'package:vikunja_app/domain/entities/project.dart';
 
-class Project {
+class ProjectDto {
   final int id;
   final double position;
-  final User? owner;
+  final UserDto? owner;
   final int parentProjectId;
   final String description;
   final String title;
@@ -14,10 +15,9 @@ class Project {
   final Color? color;
   final bool isArchived, isFavourite;
 
-  Iterable<Project>? subprojects;
-  final List<ProjectView> views;
+  final List<ProjectViewDto> views;
 
-  Project(
+  ProjectDto(
       {this.id = 0,
       this.owner,
       this.parentProjectId = 0,
@@ -33,7 +33,7 @@ class Project {
       : this.created = created ?? DateTime.now(),
         this.updated = updated ?? DateTime.now();
 
-  Project.fromJson(Map<String, dynamic> json)
+  ProjectDto.fromJson(Map<String, dynamic> json)
       : title = json['title'],
         description = json['description'],
         id = json['id'],
@@ -42,14 +42,14 @@ class Project {
         isFavourite = json['is_archived'],
         parentProjectId = json['parent_project_id'],
         views = json['views']
-            .map<ProjectView>((view) => ProjectView.fromJson(view))
+            .map<ProjectViewDto>((view) => ProjectViewDto.fromJson(view))
             .toList(),
         created = DateTime.parse(json['created']),
         updated = DateTime.parse(json['updated']),
         color = json['hex_color'] != ''
             ? Color(int.parse(json['hex_color'], radix: 16) + 0xFF000000)
             : null,
-        owner = json['owner'] != null ? User.fromJson(json['owner']) : null;
+        owner = json['owner'] != null ? UserDto.fromJson(json['owner']) : null;
 
   Map<String, dynamic> toJSON() => {
         'id': id,
@@ -66,12 +66,42 @@ class Project {
         'position': position
       };
 
-  Project copyWith({
+  Project toDomain() => Project(
+        id: id,
+        position: position,
+        owner: owner?.toDomain(),
+        parentProjectId: parentProjectId,
+        description: description,
+        title: title,
+        created: created,
+        updated: updated,
+        color: color,
+        isArchived: isArchived,
+        isFavourite: isFavourite,
+        views: views.map((e) => e.toDomain()).toList(),
+      );
+
+  static ProjectDto fromDomain(Project p) => ProjectDto(
+        id: p.id,
+        position: p.position,
+        owner: p.owner != null ? UserDto.fromDomain(p.owner!) : null,
+        parentProjectId: p.parentProjectId,
+        description: p.description,
+        title: p.title,
+        created: p.created,
+        updated: p.updated,
+        color: p.color,
+        isArchived: p.isArchived,
+        isFavourite: p.isFavourite,
+        views: p.views.map((e) => ProjectViewDto.fromDomain(e)).toList(),
+      );
+
+  ProjectDto copyWith({
     int? id,
     DateTime? created,
     DateTime? updated,
     String? title,
-    User? owner,
+    UserDto? owner,
     String? description,
     int? parentProjectId,
     Color? color,
@@ -80,7 +110,7 @@ class Project {
     int? doneBucketId,
     double? position,
   }) {
-    return Project(
+    return ProjectDto(
       id: id ?? this.id,
       created: created ?? this.created,
       updated: updated ?? this.updated,
