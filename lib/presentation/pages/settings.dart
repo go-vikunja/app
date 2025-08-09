@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:vikunja_app/data/models/project.dart';
 import 'package:vikunja_app/data/models/user.dart';
+import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:collection/collection.dart';
 
