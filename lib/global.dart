@@ -23,6 +23,7 @@ import 'package:vikunja_app/data/repositories/task_label_bulk_repository_impl.da
 import 'package:vikunja_app/data/repositories/task_label_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/task_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/user_repository_impl.dart';
+import 'package:vikunja_app/data/repositories/version_repository_impl.dart';
 import 'package:vikunja_app/domain/entities/user.dart';
 import 'package:vikunja_app/domain/repositories/bucket_repository.dart';
 import 'package:vikunja_app/domain/repositories/label_repository.dart';
@@ -33,6 +34,7 @@ import 'package:vikunja_app/domain/repositories/task_label_bulk_repository.dart'
 import 'package:vikunja_app/domain/repositories/task_label_repository.dart';
 import 'package:vikunja_app/domain/repositories/task_repository.dart';
 import 'package:vikunja_app/domain/repositories/user_repository.dart';
+import 'package:vikunja_app/domain/repositories/version_repository.dart';
 import 'package:vikunja_app/presentation/manager/notifications.dart';
 import 'package:vikunja_app/core/services.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
@@ -79,7 +81,7 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
 
   SettingsManager get settingsManager => new SettingsManager(_storage);
 
-  VersionDataSource get versionChecker => new VersionDataSource(snackbarKey);
+  VersionRepository get versionChecker => VersionRepositoryImpl(VersionDataSource(snackbarKey));
 
   ProjectRepository get projectService =>
       ProjectRepositoryImpl(ProjectDataSource(client, _storage));
