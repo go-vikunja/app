@@ -14,6 +14,8 @@ jobs:
   release:
     name: Build and Release
     runs-on: ubuntu-latest
+    env:
+      GRADLE_OPTS: -Xmx8g
     steps:
       - name: Clone repository
         uses: actions/checkout@v4
