@@ -1,7 +1,7 @@
 import 'dart:ui';
 
-import 'package:vikunja_app/data/models/user.dart';
 import 'package:vikunja_app/core/utils/constants.dart';
+import 'package:vikunja_app/domain/entities/user.dart';
 
 class Label {
   final int id;

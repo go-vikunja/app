@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:vikunja_app/data/models/user.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
+import 'package:vikunja_app/domain/entities/user.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:collection/collection.dart';
 
@@ -68,7 +68,7 @@ class SettingsPageState extends State<SettingsPage> {
 
     VikunjaGlobal.of(context).newUserService?.getCurrentUser().then((value) => {
           setState(() {
-            currentUser = value!;
+            currentUser = value;
             defaultProject = value.settings?.default_project_id;
           }),
         });

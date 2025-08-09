@@ -37,7 +37,7 @@ class TaskAttachmentFile {
 class TaskAttachment {
   final int id, taskId;
   final DateTime created;
-  final User createdBy;
+  final UserDto createdBy;
   final TaskAttachmentFile file;
   // TODO: add file
 
@@ -54,7 +54,7 @@ class TaskAttachment {
         taskId = json['task_id'],
         created = DateTime.parse(json['created']),
         file = TaskAttachmentFile.fromJSON(json['file']),
-        createdBy = User.fromJson(json['created_by']);
+        createdBy = UserDto.fromJson(json['created_by']);
 
   toJSON() => {
         'id': id,

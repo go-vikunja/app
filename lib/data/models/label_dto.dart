@@ -8,7 +8,7 @@ class LabelDto {
   final int id;
   final String title, description;
   final DateTime created, updated;
-  final User createdBy;
+  final UserDto createdBy;
   final Color? color;
 
   late final Color textColor = color != null && color!.computeLuminance() <= 0.5
@@ -35,7 +35,7 @@ class LabelDto {
             : new Color(int.parse(json['hex_color'], radix: 16) + 0xFF000000),
         updated = DateTime.parse(json['updated']),
         created = DateTime.parse(json['created']),
-        createdBy = User.fromJson(json['created_by']);
+        createdBy = UserDto.fromJson(json['created_by']);
 
   toJSON() => {
         'id': id,
@@ -54,7 +54,7 @@ class LabelDto {
       description: description,
       created: created,
       updated: updated,
-      createdBy: createdBy,
+      createdBy: createdBy.toDomain(),
       color: color);
 
   static LabelDto fromDomain(Label b) => LabelDto(
@@ -63,6 +63,6 @@ class LabelDto {
       description: b.description,
       created: b.created,
       updated: b.updated,
-      createdBy: b.createdBy,
+      createdBy: UserDto.fromDomain(b.createdBy),
       color: b.color);
 }

@@ -10,7 +10,7 @@ class BucketDto {
   String title;
   double? position;
   final DateTime created, updated;
-  User createdBy;
+  UserDto createdBy;
   final List<TaskDto> tasks;
 
   BucketDto({
@@ -37,7 +37,7 @@ class BucketDto {
         limit = json['limit'],
         created = DateTime.parse(json['created']),
         updated = DateTime.parse(json['updated']),
-        createdBy = User.fromJson(json['created_by']),
+        createdBy = UserDto.fromJson(json['created_by']),
         tasks = json['tasks'] == null
             ? []
             : (json['tasks'] as List<dynamic>)
@@ -64,7 +64,7 @@ class BucketDto {
       limit: limit,
       created: created,
       updated: updated,
-      createdBy: createdBy,
+      createdBy: createdBy.toDomain(),
       tasks: tasks.map((e) => e.toDomain()).toList());
 
   static BucketDto fromDomain(Bucket b) => BucketDto(
@@ -75,6 +75,6 @@ class BucketDto {
       limit: b.limit,
       created: b.created,
       updated: b.updated,
-      createdBy: b.createdBy,
+      createdBy: UserDto.fromDomain(b.createdBy),
       tasks: b.tasks.map((e) => TaskDto.fromDomain(e)).toList());
 }

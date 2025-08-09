@@ -7,7 +7,7 @@ import 'package:vikunja_app/domain/entities/project.dart';
 class ProjectDto {
   final int id;
   final double position;
-  final User? owner;
+  final UserDto? owner;
   final int parentProjectId;
   final String description;
   final String title;
@@ -49,7 +49,7 @@ class ProjectDto {
         color = json['hex_color'] != ''
             ? Color(int.parse(json['hex_color'], radix: 16) + 0xFF000000)
             : null,
-        owner = json['owner'] != null ? User.fromJson(json['owner']) : null;
+        owner = json['owner'] != null ? UserDto.fromJson(json['owner']) : null;
 
   Map<String, dynamic> toJSON() => {
         'id': id,
@@ -69,7 +69,7 @@ class ProjectDto {
   Project toDomain() => Project(
         id: id,
         position: position,
-        owner: owner,
+        owner: owner?.toDomain(),
         parentProjectId: parentProjectId,
         description: description,
         title: title,
@@ -84,7 +84,7 @@ class ProjectDto {
   static ProjectDto fromDomain(Project p) => ProjectDto(
         id: p.id,
         position: p.position,
-        owner: p.owner,
+        owner: p.owner != null ? UserDto.fromDomain(p.owner!) : null,
         parentProjectId: p.parentProjectId,
         description: p.description,
         title: p.title,
@@ -101,7 +101,7 @@ class ProjectDto {
     DateTime? created,
     DateTime? updated,
     String? title,
-    User? owner,
+    UserDto? owner,
     String? description,
     int? parentProjectId,
     Color? color,

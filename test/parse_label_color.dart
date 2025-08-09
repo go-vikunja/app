@@ -20,7 +20,7 @@ void main() {
         id: 1,
         title: '',
         color: Color(0xFFe8e8e8),
-        createdBy: User(id: 0, username: ''));
+        createdBy: UserDto(id: 0, username: ''));
     var json = label.toJSON();
 
     expect(json.toString(),

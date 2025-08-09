@@ -14,7 +14,6 @@ class ServerDto {
   bool? userDeletion;
   String? version;
 
-
   ServerDto(
       this.caldavEnabled,
       this.emailRemindersEnabled,
@@ -55,8 +54,7 @@ class ServerDto {
       taskCommentsEnabled,
       totpEnabled,
       userDeletion,
-      version
-  );
+      version);
 
   static ServerDto fromDomain(Server b) => ServerDto(
       b.caldavEnabled,
@@ -69,6 +67,6 @@ class ServerDto {
       b.taskAttachmentsEnabled,
       b.taskCommentsEnabled,
       b.totpEnabled,
-      b. userDeletion,
+      b.userDeletion,
       b.version);
 }
