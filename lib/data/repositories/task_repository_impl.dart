@@ -35,12 +35,12 @@ class TaskRepositoryImpl extends TaskRepository {
 
   Future<Response<List<Task>>?> getAllByProject(int projectId,
       [Map<String, List<String>>? queryParameters]) async {
-
     var response = await _dataSource.getAllByProject(projectId);
 
-    return
-      response != null ?
-      Response(response.body.map((e) => e.toDomain()).toList(), response.statusCode, response.headers) : null;
+    return response != null
+        ? Response(response.body.map((e) => e.toDomain()).toList(),
+            response.statusCode, response.headers)
+        : null;
   }
 
   @deprecated

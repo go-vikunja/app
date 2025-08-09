@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:vikunja_app/data/models/server.dart';
 import 'package:vikunja_app/data/models/user.dart';
-import 'package:vikunja_app/data/models/view.dart';
 
 enum TaskServiceOptionSortBy {
   id,
@@ -127,13 +126,6 @@ class TaskServiceOptions {
     //result = "?" + result;
     return queryparams;
   }
-}
-
-abstract class ProjectViewService {
-  Future<ProjectView?> get(int projectId, int viewId);
-  Future<ProjectView?> create(ProjectView view);
-  Future<ProjectView?> update(ProjectView view);
-  Future delete(int projectId, int viewId);
 }
 
 abstract class UserService {

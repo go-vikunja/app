@@ -1,7 +1,7 @@
 import 'dart:ui';
 
 import 'package:vikunja_app/data/models/user.dart';
-import 'package:vikunja_app/data/models/view.dart';
+import 'package:vikunja_app/data/models/project_view.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 
 class ProjectDto {
@@ -15,7 +15,7 @@ class ProjectDto {
   final Color? color;
   final bool isArchived, isFavourite;
 
-  final List<ProjectView> views;
+  final List<ProjectViewDto> views;
 
   ProjectDto(
       {this.id = 0,
@@ -42,7 +42,7 @@ class ProjectDto {
         isFavourite = json['is_archived'],
         parentProjectId = json['parent_project_id'],
         views = json['views']
-            .map<ProjectView>((view) => ProjectView.fromJson(view))
+            .map<ProjectViewDto>((view) => ProjectViewDto.fromJson(view))
             .toList(),
         created = DateTime.parse(json['created']),
         updated = DateTime.parse(json['updated']),
@@ -78,7 +78,7 @@ class ProjectDto {
         color: color,
         isArchived: isArchived,
         isFavourite: isFavourite,
-        views: views,
+        views: views.map((e) => e.toDomain()).toList(),
       );
 
   static ProjectDto fromDomain(Project p) => ProjectDto(
@@ -93,7 +93,7 @@ class ProjectDto {
         color: p.color,
         isArchived: p.isArchived,
         isFavourite: p.isFavourite,
-        views: p.views,
+        views: p.views.map((e) => ProjectViewDto.fromDomain(e)).toList(),
       );
 
   ProjectDto copyWith({
