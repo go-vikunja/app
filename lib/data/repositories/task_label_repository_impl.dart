@@ -9,14 +9,17 @@ class TaskLabelRepositoryImpl extends TaskLabelRepository {
 
   TaskLabelRepositoryImpl(this._dataSource);
 
+  @override
   Future<Label?> create(LabelTask lt) async {
     return (await _dataSource.create(LabelTaskDto.fromDomain(lt)))?.toDomain();
   }
 
+  @override
   Future<Label?> delete(LabelTask lt) async {
     return (await _dataSource.delete(LabelTaskDto.fromDomain(lt)))?.toDomain();
   }
 
+  @override
   Future<List<Label>?> getAll(LabelTask lt, {String? query}) async {
     return (await _dataSource.getAll(LabelTaskDto.fromDomain(lt), query: query))
         ?.map((e) => e.toDomain())
