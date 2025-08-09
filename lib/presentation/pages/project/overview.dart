@@ -1,7 +1,7 @@
 import 'package:after_layout/after_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:vikunja_app/data/models/project.dart';
+import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/presentation/pages/project/project_task_list.dart';
 
 import '../../widgets/AddDialog.dart';

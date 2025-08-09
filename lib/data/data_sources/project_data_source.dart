@@ -1,63 +1,48 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:vikunja_app/core/network/service.dart';
-import 'package:vikunja_app/data/models/project.dart';
-import 'package:vikunja_app/core/services.dart';
+import 'package:vikunja_app/data/models/project_dto.dart';
 
-class ProjectDataSource extends RemoteDataSource implements ProjectService {
+class ProjectDataSource extends RemoteDataSource {
   FlutterSecureStorage _storage;
 
   ProjectDataSource(client, storage)
       : _storage = storage,
         super(client);
 
-  @override
-  Future<Project?> create(Project p) {
+  Future<ProjectDto?> create(ProjectDto p) {
     return client.put('/projects', body: p.toJSON()).then((response) {
       if (response == null) return null;
-      return Project.fromJson(response.body);
+      return ProjectDto.fromJson(response.body);
     });
   }
 
-  @override
   Future delete(int projectId) {
     return client.delete('/projects/$projectId').then((_) {});
   }
 
-  @override
-  Future<Project?> get(int projectId) {
+  Future<ProjectDto?> get(int projectId) {
     return client.get('/projects/$projectId').then((response) {
       if (response == null) return null;
       final map = response.body;
-      /*if (map.containsKey('id')) {
-        return client
-            .get("/lists/$projectId/tasks")
-            .then((tasks) {
-          map['tasks'] = tasks?.body;
-          return Project.fromJson(map);
-        });
-      }*/
-      return Project.fromJson(map);
+      return ProjectDto.fromJson(map);
     });
   }
 
-  @override
-  Future<List<Project>?> getAll() {
-    // TODO: implement getAll
+  Future<List<ProjectDto>?> getAll() {
     return client.get('/projects').then((response) {
       if (response == null) return null;
-      return convertList(response.body, (result) => Project.fromJson(result));
+      return convertList(
+          response.body, (result) => ProjectDto.fromJson(result));
     });
   }
 
-  @override
-  Future<Project?> update(Project p) {
+  Future<ProjectDto?> update(ProjectDto p) {
     return client.post('/projects/${p.id}', body: p.toJSON()).then((response) {
       if (response == null) return null;
-      return Project.fromJson(response.body);
+      return ProjectDto.fromJson(response.body);
     });
   }
 
-  @override
   Future<String> getDisplayDoneTasks(int listId) {
     return _storage.read(key: "display_done_tasks_list_$listId").then((value) {
       if (value == null) {
@@ -69,7 +54,6 @@ class ProjectDataSource extends RemoteDataSource implements ProjectService {
     });
   }
 
-  @override
   void setDisplayDoneTasks(int listId, String value) {
     _storage.write(key: "display_done_tasks_list_$listId", value: value);
   }

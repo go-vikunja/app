@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:vikunja_app/data/models/project.dart';
 import 'package:vikunja_app/data/models/server.dart';
 import 'package:vikunja_app/data/models/user.dart';
 import 'package:vikunja_app/data/models/view.dart';
@@ -128,18 +127,6 @@ class TaskServiceOptions {
     //result = "?" + result;
     return queryparams;
   }
-}
-
-abstract class ProjectService {
-  Future<List<Project>?> getAll();
-
-  Future<Project?> get(int projectId);
-  Future<Project?> create(Project p);
-  Future<Project?> update(Project p);
-  Future delete(int projectId);
-
-  Future<String?> getDisplayDoneTasks(int listId);
-  void setDisplayDoneTasks(int listId, String value);
 }
 
 abstract class ProjectViewService {

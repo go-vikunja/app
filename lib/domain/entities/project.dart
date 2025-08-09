@@ -33,39 +33,6 @@ class Project {
       : this.created = created ?? DateTime.now(),
         this.updated = updated ?? DateTime.now();
 
-  Project.fromJson(Map<String, dynamic> json)
-      : title = json['title'],
-        description = json['description'],
-        id = json['id'],
-        position = json['position'].toDouble(),
-        isArchived = json['is_archived'],
-        isFavourite = json['is_archived'],
-        parentProjectId = json['parent_project_id'],
-        views = json['views']
-            .map<ProjectView>((view) => ProjectView.fromJson(view))
-            .toList(),
-        created = DateTime.parse(json['created']),
-        updated = DateTime.parse(json['updated']),
-        color = json['hex_color'] != ''
-            ? Color(int.parse(json['hex_color'], radix: 16) + 0xFF000000)
-            : null,
-        owner = json['owner'] != null ? User.fromJson(json['owner']) : null;
-
-  Map<String, dynamic> toJSON() => {
-        'id': id,
-        'created': created.toUtc().toIso8601String(),
-        'updated': updated.toUtc().toIso8601String(),
-        'title': title,
-        'owner': owner?.toJSON(),
-        'description': description,
-        'parent_project_id': parentProjectId,
-        'hex_color':
-            color?.toARGB32().toRadixString(16).padLeft(8, '0').substring(2),
-        'is_archived': isArchived,
-        'is_favourite': isFavourite,
-        'position': position
-      };
-
   Project copyWith({
     int? id,
     DateTime? created,

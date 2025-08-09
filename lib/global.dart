@@ -16,11 +16,13 @@ import 'package:vikunja_app/data/data_sources/user_data_source.dart';
 import 'package:vikunja_app/data/data_sources/version_data_source.dart';
 import 'package:vikunja_app/data/repositories/bucket_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/label_repository_impl.dart';
+import 'package:vikunja_app/data/repositories/project_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/task_label_bulk_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/task_label_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/task_repository_impl.dart';
 import 'package:vikunja_app/domain/repositories/bucket_repository.dart';
 import 'package:vikunja_app/domain/repositories/label_repository.dart';
+import 'package:vikunja_app/domain/repositories/project_repository.dart';
 import 'package:vikunja_app/domain/repositories/task_label_bulk_repository.dart';
 import 'package:vikunja_app/domain/repositories/task_label_repository.dart';
 import 'package:vikunja_app/domain/repositories/task_repository.dart';
@@ -72,7 +74,8 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
 
   VersionDataSource get versionChecker => new VersionDataSource(snackbarKey);
 
-  ProjectService get projectService => new ProjectDataSource(client, _storage);
+  ProjectRepository get projectService =>
+      ProjectRepositoryImpl(ProjectDataSource(client, _storage));
 
   ProjectViewService get projectViewService =>
       new ProjectViewAPIService(client);
