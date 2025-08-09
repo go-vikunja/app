@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:json_annotation/json_annotation.dart';
 
-import 'package:vikunja_app/data/models/user.dart';
 import 'package:vikunja_app/data/models/taskAttachment.dart';
 import 'package:vikunja_app/core/utils/checkboxes_in_text.dart';
 import 'package:vikunja_app/domain/entities/label.dart';
+import 'package:vikunja_app/domain/entities/user.dart';
 
 class TaskReminder {
   final int relative_period;

@@ -49,7 +49,7 @@ class TaskDto {
   Color? color;
   final double? position;
   final double? percent_done;
-  final User createdBy;
+  final UserDto createdBy;
   Duration? repeatAfter;
   final List<TaskDto> subtasks;
   final List<LabelDto> labels;
@@ -146,7 +146,7 @@ class TaskDto {
         //listId = json['list_id'],
         projectId = json['project_id'],
         bucketId = json['bucket_id'],
-        createdBy = User.fromJson(json['created_by']);
+        createdBy = UserDto.fromJson(json['created_by']);
 
   toJSON() => {
         'id': id,
@@ -198,7 +198,7 @@ class TaskDto {
         created: created,
         projectId: projectId,
         bucketId: bucketId,
-        createdBy: createdBy,
+        createdBy: createdBy.toDomain(),
       );
 
   static TaskDto fromDomain(Task b) => TaskDto(
@@ -225,7 +225,7 @@ class TaskDto {
         created: b.created,
         projectId: b.projectId,
         bucketId: b.bucketId,
-        createdBy: b.createdBy,
+        createdBy: UserDto.fromDomain(b.createdBy),
       );
 
   TaskDto copyWith({
@@ -247,7 +247,7 @@ class TaskDto {
     Color? color,
     double? position,
     double? percent_done,
-    User? createdBy,
+    UserDto? createdBy,
     Duration? repeatAfter,
     List<TaskDto>? subtasks,
     List<LabelDto>? labels,

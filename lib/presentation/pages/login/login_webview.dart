@@ -1,7 +1,7 @@
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
-import 'package:vikunja_app/data/models/user.dart';
+import 'package:vikunja_app/domain/entities/user.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 class LoginWithWebView extends StatefulWidget {

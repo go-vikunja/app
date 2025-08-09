@@ -40,7 +40,7 @@ class LandingPageState extends State<LandingPage> {
   Future<void> _updateDefaultList() async {
     return VikunjaGlobal.of(context).newUserService?.getCurrentUser().then(
           (value) => setState(() {
-            defaultList = value?.settings?.default_project_id;
+            defaultList = value.settings?.default_project_id;
           }),
         );
   }

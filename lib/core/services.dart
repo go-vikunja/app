@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:vikunja_app/data/models/user.dart';
 
 enum TaskServiceOptionSortBy {
   id,
@@ -125,18 +124,6 @@ class TaskServiceOptions {
     //result = "?" + result;
     return queryparams;
   }
-}
-
-abstract class UserService {
-  Future<UserTokenPair> login(String username, String password,
-      {bool rememberMe = false, String totp});
-
-  Future<UserTokenPair?> register(String username, email, password);
-
-  Future<User?> getCurrentUser();
-  Future<UserSettings?> setCurrentUserSettings(UserSettings userSettings);
-
-  Future<String?> getToken();
 }
 
 class SettingsManager {

@@ -9,7 +9,7 @@ class LabelTaskDto {
 
   LabelTaskDto({required this.label, required this.task});
 
-  LabelTaskDto.fromJson(Map<String, dynamic> json, User createdBy)
+  LabelTaskDto.fromJson(Map<String, dynamic> json, UserDto createdBy)
       : label =
             new LabelDto(id: json['label_id'], title: '', createdBy: createdBy),
         task = null;
