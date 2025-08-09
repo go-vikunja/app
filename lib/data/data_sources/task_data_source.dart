@@ -67,7 +67,7 @@ class TaskDataSource extends RemoteDataSource {
     });
   }
 
-  Future<Response?> getAllByProject(int projectId,
+  Future<Response<List<TaskDto>>?> getAllByProject(int projectId,
       [Map<String, List<String>>? queryParameters]) {
     return client
         .get('/projects/$projectId/tasks', queryParameters)

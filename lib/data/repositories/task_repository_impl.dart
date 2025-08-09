@@ -33,9 +33,14 @@ class TaskRepositoryImpl extends TaskRepository {
     return (await _dataSource.getAll())?.map((e) => e.toDomain()).toList();
   }
 
-  Future<Response?> getAllByProject(int projectId,
+  Future<Response<List<Task>>?> getAllByProject(int projectId,
       [Map<String, List<String>>? queryParameters]) async {
-    return _dataSource.getAllByProject(projectId);
+
+    var response = await _dataSource.getAllByProject(projectId);
+
+    return
+      response != null ?
+      Response(response.body.map((e) => e.toDomain()).toList(), response.statusCode, response.headers) : null;
   }
 
   @deprecated
