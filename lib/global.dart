@@ -81,7 +81,8 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
 
   SettingsManager get settingsManager => new SettingsManager(_storage);
 
-  VersionRepository get versionChecker => VersionRepositoryImpl(VersionDataSource(snackbarKey));
+  VersionRepository get versionChecker =>
+      VersionRepositoryImpl(VersionDataSource(snackbarKey));
 
   ProjectRepository get projectService =>
       ProjectRepositoryImpl(ProjectDataSource(client, _storage));

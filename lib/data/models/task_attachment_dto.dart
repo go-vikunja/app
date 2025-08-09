@@ -1,15 +1,16 @@
 import 'package:json_annotation/json_annotation.dart';
 
 import 'package:vikunja_app/data/models/user.dart';
+import 'package:vikunja_app/domain/entities/task_attachment.dart';
 
-class TaskAttachmentFile {
+class TaskAttachmentFileDto {
   final int id;
   final DateTime created;
   final String mime;
   final String name;
   final int size;
 
-  TaskAttachmentFile({
+  TaskAttachmentFileDto({
     required this.id,
     required this.created,
     required this.mime,
@@ -17,7 +18,7 @@ class TaskAttachmentFile {
     required this.size,
   });
 
-  TaskAttachmentFile.fromJSON(Map<String, dynamic> json)
+  TaskAttachmentFileDto.fromJSON(Map<String, dynamic> json)
       : id = json['id'],
         created = DateTime.parse(json['created']),
         mime = json['mime'],
@@ -31,17 +32,34 @@ class TaskAttachmentFile {
         'name': name,
         'size': size,
       };
+
+  TaskAttachmentFile toDomain() => TaskAttachmentFile(
+        id: id,
+        created: created,
+        mime: mime,
+        name: name,
+        size: size,
+      );
+
+  static TaskAttachmentFileDto fromDomain(TaskAttachmentFile b) =>
+      TaskAttachmentFileDto(
+        id: b.id,
+        created: b.created,
+        mime: b.mime,
+        name: b.name,
+        size: b.size,
+      );
 }
 
 @JsonSerializable()
-class TaskAttachment {
+class TaskAttachmentDto {
   final int id, taskId;
   final DateTime created;
   final UserDto createdBy;
-  final TaskAttachmentFile file;
+  final TaskAttachmentFileDto file;
   // TODO: add file
 
-  TaskAttachment({
+  TaskAttachmentDto({
     this.id = 0,
     required this.taskId,
     DateTime? created,
@@ -49,11 +67,11 @@ class TaskAttachment {
     required this.file,
   }) : this.created = created ?? DateTime.now();
 
-  TaskAttachment.fromJSON(Map<String, dynamic> json)
+  TaskAttachmentDto.fromJSON(Map<String, dynamic> json)
       : id = json['id'],
         taskId = json['task_id'],
         created = DateTime.parse(json['created']),
-        file = TaskAttachmentFile.fromJSON(json['file']),
+        file = TaskAttachmentFileDto.fromJSON(json['file']),
         createdBy = UserDto.fromJson(json['created_by']);
 
   toJSON() => {
@@ -63,4 +81,18 @@ class TaskAttachment {
         'created_by': createdBy.toJSON(),
         'file': file.toJSON(),
       };
+
+  TaskAttachment toDomain() => TaskAttachment(
+      id: id,
+      taskId: taskId,
+      created: created,
+      createdBy: createdBy.toDomain(),
+      file: file.toDomain());
+
+  static TaskAttachmentDto fromDomain(TaskAttachment b) => TaskAttachmentDto(
+      id: b.id,
+      taskId: b.taskId,
+      created: b.created,
+      createdBy: UserDto.fromDomain(b.createdBy),
+      file: TaskAttachmentFileDto.fromDomain(b.file));
 }
