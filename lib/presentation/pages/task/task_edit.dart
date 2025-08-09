@@ -3,11 +3,11 @@ import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
+import 'package:vikunja_app/domain/entities/label.dart';
+import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/presentation/widgets/datetimePicker.dart';
 import 'package:vikunja_app/presentation/widgets/label.dart';
 import 'package:vikunja_app/global.dart';
-import 'package:vikunja_app/data/models/label.dart';
-import 'package:vikunja_app/data/models/task.dart';
 import 'package:vikunja_app/core/utils/repeat_after_parse.dart';
 import 'package:vikunja_app/core/utils/priority.dart';
 

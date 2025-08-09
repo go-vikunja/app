@@ -1,24 +1,21 @@
 import 'package:vikunja_app/core/network/client.dart';
 import 'package:vikunja_app/core/network/service.dart';
-import 'package:vikunja_app/data/models/label.dart';
-import 'package:vikunja_app/data/models/labelTaskBulk.dart';
-import 'package:vikunja_app/data/models/task.dart';
-import 'package:vikunja_app/core/services.dart';
+import 'package:vikunja_app/data/models/task_label_bulk_dto.dart';
+import 'package:vikunja_app/data/models/label_dto.dart';
+import 'package:vikunja_app/data/models/task_dto.dart';
 
-class TaskLabelBulkDataSource extends RemoteDataSource
-    implements LabelTaskBulkService {
+class TaskLabelBulkDataSource extends RemoteDataSource {
   TaskLabelBulkDataSource(Client client) : super(client);
 
-  @override
-  Future<List<Label>?> update(Task task, List<Label>? labels) {
+  Future<List<LabelDto>?> update(TaskDto task, List<LabelDto>? labels) {
     if (labels == null) labels = [];
     return client
         .post('/tasks/${task.id}/labels/bulk',
-            body: LabelTaskBulk(labels: labels).toJSON())
+            body: LabelTaskBulkDto(labels: labels).toJSON())
         .then((response) {
       if (response == null) return null;
       return convertList(
-          response.body['labels'], (result) => Label.fromJson(result));
+          response.body['labels'], (result) => LabelDto.fromJson(result));
     });
   }
 }

@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:vikunja_app/data/models/task.dart';
+import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/global.dart';
 
 import 'dart:developer';

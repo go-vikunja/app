@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:vikunja_app/data/models/task.dart';
 import 'package:vikunja_app/core/utils/calculate_item_position.dart';
 import 'package:vikunja_app/domain/entities/bucket.dart';
+import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/global.dart';
 
 import '../widgets/pagestatus.dart';

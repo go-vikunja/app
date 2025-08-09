@@ -1,21 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:json_annotation/json_annotation.dart';
 
-import 'package:vikunja_app/data/models/label.dart';
+import 'package:vikunja_app/data/models/label_dto.dart';
 import 'package:vikunja_app/data/models/user.dart';
 import 'package:vikunja_app/data/models/taskAttachment.dart';
 import 'package:vikunja_app/core/utils/checkboxes_in_text.dart';
+import 'package:vikunja_app/domain/entities/task.dart';
 
-class TaskReminder {
+class TaskReminderDto {
   final int relative_period;
   final String relative_to;
   DateTime reminder;
 
-  TaskReminder(this.reminder)
-      : relative_period = 0,
-        relative_to = "";
+  TaskReminderDto(this.reminder, [relative_period = 0, relative_to = ""])
+      : relative_period = relative_period,
+        relative_to = relative_to;
 
-  TaskReminder.fromJson(Map<String, dynamic> json)
+  TaskReminderDto.fromJson(Map<String, dynamic> json)
       : reminder = DateTime.parse(json['reminder']),
         relative_period = json['relative_period'],
         relative_to = json['relative_to'];
@@ -25,17 +26,23 @@ class TaskReminder {
         'relative_to': relative_to,
         'reminder': reminder.toUtc().toIso8601String(),
       };
+
+  TaskReminder toDomain() =>
+      TaskReminder(reminder, relative_period, relative_to);
+
+  static TaskReminderDto fromDomain(TaskReminder b) =>
+      TaskReminderDto(b.reminder, b.relative_period, b.relative_to);
 }
 
 @JsonSerializable()
-class Task {
+class TaskDto {
   final int id;
   final int? parentTaskId, priority, bucketId;
   //final int? listId;
   final int? projectId;
   final DateTime created, updated;
   DateTime? dueDate, startDate, endDate;
-  final List<TaskReminder> reminderDates;
+  final List<TaskReminderDto> reminderDates;
   final String identifier;
   final String title, description;
   final bool done;
@@ -44,15 +51,15 @@ class Task {
   final double? percent_done;
   final User createdBy;
   Duration? repeatAfter;
-  final List<Task> subtasks;
-  final List<Label> labels;
+  final List<TaskDto> subtasks;
+  final List<LabelDto> labels;
   final List<TaskAttachment> attachments;
   // TODO: add position(?)
 
   late final checkboxStatistics = getCheckboxStatistics(description);
   late final hasCheckboxes = checkboxStatistics.total != 0;
 
-  Task({
+  TaskDto({
     this.id = 0,
     this.identifier = '',
     this.title = '',
@@ -93,7 +100,7 @@ class Task {
   bool get hasStartDate => startDate?.year != 1;
   bool get hasEndDate => endDate?.year != 1;
 
-  Task.fromJson(Map<String, dynamic> json)
+  TaskDto.fromJson(Map<String, dynamic> json)
       : id = json['id'],
         title = json['title'],
         description = json['description'],
@@ -101,7 +108,7 @@ class Task {
         done = json['done'],
         reminderDates = json['reminders'] != null
             ? (json['reminders'] as List<dynamic>)
-                .map((ts) => TaskReminder.fromJson(ts))
+                .map((ts) => TaskReminderDto.fromJson(ts))
                 .toList()
             : [],
         dueDate = DateTime.parse(json['due_date']),
@@ -121,12 +128,12 @@ class Task {
             : json['percent_done'],
         labels = json['labels'] != null
             ? (json['labels'] as List<dynamic>)
-                .map((label) => Label.fromJson(label))
+                .map((label) => LabelDto.fromJson(label))
                 .toList()
             : [],
         subtasks = json['subtasks'] != null
             ? (json['subtasks'] as List<dynamic>)
-                .map((subtask) => Task.fromJson(subtask))
+                .map((subtask) => TaskDto.fromJson(subtask))
                 .toList()
             : [],
         attachments = json['attachments'] != null
@@ -168,7 +175,60 @@ class Task {
         'created': created.toUtc().toIso8601String(),
       };
 
-  Task copyWith({
+  Task toDomain() => Task(
+        id: id,
+        title: title,
+        description: description,
+        identifier: identifier,
+        done: done,
+        reminderDates: reminderDates.map((e) => e.toDomain()).toList(),
+        dueDate: dueDate,
+        startDate: startDate,
+        endDate: endDate,
+        parentTaskId: parentTaskId,
+        priority: priority,
+        repeatAfter: repeatAfter,
+        color: color,
+        position: position,
+        percent_done: percent_done,
+        labels: labels.map((e) => e.toDomain()).toList(),
+        subtasks: subtasks.map((e) => e.toDomain()).toList(),
+        attachments: attachments,
+        updated: updated,
+        created: created,
+        projectId: projectId,
+        bucketId: bucketId,
+        createdBy: createdBy,
+      );
+
+  static TaskDto fromDomain(Task b) => TaskDto(
+        id: b.id,
+        title: b.title,
+        description: b.description,
+        identifier: b.identifier,
+        done: b.done,
+        reminderDates:
+            b.reminderDates.map((e) => TaskReminderDto.fromDomain(e)).toList(),
+        dueDate: b.dueDate,
+        startDate: b.startDate,
+        endDate: b.endDate,
+        parentTaskId: b.parentTaskId,
+        priority: b.priority,
+        repeatAfter: b.repeatAfter,
+        color: b.color,
+        position: b.position,
+        percent_done: b.percent_done,
+        labels: b.labels.map((e) => LabelDto.fromDomain(e)).toList(),
+        subtasks: b.subtasks.map((e) => TaskDto.fromDomain(e)).toList(),
+        attachments: b.attachments,
+        updated: b.updated,
+        created: b.created,
+        projectId: b.projectId,
+        bucketId: b.bucketId,
+        createdBy: b.createdBy,
+      );
+
+  TaskDto copyWith({
     int? id,
     int? parentTaskId,
     int? priority,
@@ -179,7 +239,7 @@ class Task {
     DateTime? dueDate,
     DateTime? startDate,
     DateTime? endDate,
-    List<TaskReminder>? reminderDates,
+    List<TaskReminderDto>? reminderDates,
     String? title,
     String? description,
     String? identifier,
@@ -189,11 +249,11 @@ class Task {
     double? percent_done,
     User? createdBy,
     Duration? repeatAfter,
-    List<Task>? subtasks,
-    List<Label>? labels,
+    List<TaskDto>? subtasks,
+    List<LabelDto>? labels,
     List<TaskAttachment>? attachments,
   }) {
-    return Task(
+    return TaskDto(
       id: id ?? this.id,
       parentTaskId: parentTaskId ?? this.parentTaskId,
       priority: priority ?? this.priority,

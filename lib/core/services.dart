@@ -2,12 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:vikunja_app/core/network/response.dart';
-import 'package:vikunja_app/data/models/label.dart';
-import 'package:vikunja_app/data/models/labelTask.dart';
 import 'package:vikunja_app/data/models/project.dart';
 import 'package:vikunja_app/data/models/server.dart';
-import 'package:vikunja_app/data/models/task.dart';
 import 'package:vikunja_app/data/models/user.dart';
 import 'package:vikunja_app/data/models/view.dart';
 
@@ -153,28 +149,6 @@ abstract class ProjectViewService {
   Future delete(int projectId, int viewId);
 }
 
-abstract class TaskService {
-  Future<Task?> get(int taskId);
-
-  Future<Task?> update(Task task);
-
-  Future delete(int taskId);
-
-  Future<Task?> add(int listId, Task task);
-
-  Future<List<Task>?> getAll();
-
-  Future<Response?> getAllByProject(int projectId,
-      [Map<String, List<String>> queryParameters]);
-
-  @deprecated
-  Future<List<Task>?> getByOptions(TaskServiceOptions options);
-  Future<List<Task>?> getByFilterString(String filterString,
-      [Map<String, List<String>> queryParameters]);
-
-  int get maxPages;
-}
-
 abstract class UserService {
   Future<UserTokenPair> login(String username, String password,
       {bool rememberMe = false, String totp});
@@ -185,30 +159,6 @@ abstract class UserService {
   Future<UserSettings?> setCurrentUserSettings(UserSettings userSettings);
 
   Future<String?> getToken();
-}
-
-abstract class LabelService {
-  Future<List<Label>?> getAll({String query});
-
-  Future<Label?> get(int labelID);
-
-  Future<Label?> create(Label label);
-
-  Future<Label?> delete(Label label);
-
-  Future<Label?> update(Label label);
-}
-
-abstract class LabelTaskService {
-  Future<List<Label>?> getAll(LabelTask lt, {String query});
-
-  Future<Label?> create(LabelTask lt);
-
-  Future<Label?> delete(LabelTask lt);
-}
-
-abstract class LabelTaskBulkService {
-  Future<List<Label>?> update(Task task, List<Label> labels);
 }
 
 abstract class ServerService {

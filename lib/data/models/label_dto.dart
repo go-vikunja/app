@@ -2,8 +2,9 @@ import 'dart:ui';
 
 import 'package:vikunja_app/data/models/user.dart';
 import 'package:vikunja_app/core/utils/constants.dart';
+import 'package:vikunja_app/domain/entities/label.dart';
 
-class Label {
+class LabelDto {
   final int id;
   final String title, description;
   final DateTime created, updated;
@@ -14,7 +15,7 @@ class Label {
       ? vLabelLight
       : vLabelDark;
 
-  Label({
+  LabelDto({
     this.id = 0,
     required this.title,
     this.description = '',
@@ -25,7 +26,7 @@ class Label {
   })  : this.created = created ?? DateTime.now(),
         this.updated = updated ?? DateTime.now();
 
-  Label.fromJson(Map<String, dynamic> json)
+  LabelDto.fromJson(Map<String, dynamic> json)
       : id = json['id'],
         title = json['title'],
         description = json['description'],
@@ -46,4 +47,22 @@ class Label {
         'updated': updated.toUtc().toIso8601String(),
         'created': created.toUtc().toIso8601String(),
       };
+
+  Label toDomain() => Label(
+      id: id,
+      title: title,
+      description: description,
+      created: created,
+      updated: updated,
+      createdBy: createdBy,
+      color: color);
+
+  static LabelDto fromDomain(Label b) => LabelDto(
+      id: b.id,
+      title: b.title,
+      description: b.description,
+      created: b.created,
+      updated: b.updated,
+      createdBy: b.createdBy,
+      color: b.color);
 }
