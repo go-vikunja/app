@@ -12,27 +12,33 @@ class TaskRepositoryImpl extends TaskRepository {
 
   TaskRepositoryImpl(this._dataSource);
 
+  @override
   Future<Task?> add(int projectId, Task task) async {
     return (await _dataSource.add(projectId, TaskDto.fromDomain(task)))
         ?.toDomain();
   }
 
+  @override
   Future<Task?> get(int listId) async {
     return (await _dataSource.get(listId))?.toDomain();
   }
 
+  @override
   Future delete(int taskId) async {
     return (await _dataSource.delete(taskId))?.toDomain();
   }
 
+  @override
   Future<Task?> update(Task task) async {
     return (await _dataSource.update(TaskDto.fromDomain(task)))?.toDomain();
   }
 
+  @override
   Future<List<Task>?> getAll() async {
     return (await _dataSource.getAll())?.map((e) => e.toDomain()).toList();
   }
 
+  @override
   Future<Response<List<Task>>?> getAllByProject(int projectId,
       [Map<String, List<String>>? queryParameters]) async {
     var response = await _dataSource.getAllByProject(projectId);
@@ -43,6 +49,7 @@ class TaskRepositoryImpl extends TaskRepository {
         : null;
   }
 
+  @override
   @deprecated
   Future<List<Task>?> getByOptions(TaskServiceOptions options) async {
     return (await _dataSource.getByOptions(options))
@@ -50,6 +57,7 @@ class TaskRepositoryImpl extends TaskRepository {
         .toList();
   }
 
+  @override
   Future<List<Task>?> getByFilterString(String filterString,
       [Map<String, List<String>>? queryParameters]) async {
     return (await _dataSource.getByFilterString(filterString))
@@ -58,5 +66,6 @@ class TaskRepositoryImpl extends TaskRepository {
   }
 
   // TODO: implement maxPages
+  @override
   int get maxPages => maxPages;
 }
