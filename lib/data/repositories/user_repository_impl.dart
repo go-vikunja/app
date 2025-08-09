@@ -6,7 +6,7 @@ import 'package:vikunja_app/domain/entities/user.dart';
 import 'package:vikunja_app/domain/repositories/user_repository.dart';
 
 class UserRepositoryImpl extends UserRepository {
-  UserDataSource _dataSource;
+  final UserDataSource _dataSource;
 
   UserRepositoryImpl(this._dataSource);
 

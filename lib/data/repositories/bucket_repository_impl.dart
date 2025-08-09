@@ -5,7 +5,7 @@ import 'package:vikunja_app/domain/entities/bucket.dart';
 import 'package:vikunja_app/domain/repositories/bucket_repository.dart';
 
 class BucketRepositoryImpl implements BucketRepository {
-  BucketDataSource _dataSource;
+  final BucketDataSource _dataSource;
 
   BucketRepositoryImpl(this._dataSource);
 

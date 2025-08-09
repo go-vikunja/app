@@ -4,7 +4,7 @@ import 'package:vikunja_app/domain/entities/label.dart';
 import 'package:vikunja_app/domain/repositories/label_repository.dart';
 
 class LabelRepositoryImpl extends LabelRepository {
-  LabelDataSource _dataSource;
+  final LabelDataSource _dataSource;
 
   LabelRepositoryImpl(this._dataSource);
 

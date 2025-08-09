@@ -3,7 +3,7 @@ import 'package:vikunja_app/domain/entities/server.dart';
 import 'package:vikunja_app/domain/repositories/server_repository.dart';
 
 class ServerRepositoryImpl extends ServerRepository {
-  ServerDataSource _dataSource;
+  final ServerDataSource _dataSource;
 
   ServerRepositoryImpl(this._dataSource);
 

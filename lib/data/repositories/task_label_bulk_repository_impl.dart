@@ -6,7 +6,7 @@ import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/repositories/task_label_bulk_repository.dart';
 
 class TaskLabelBulkRepositoryImpl extends TaskLabelBulkRepository {
-  TaskLabelBulkDataSource _dataSource;
+  final TaskLabelBulkDataSource _dataSource;
 
   TaskLabelBulkRepositoryImpl(this._dataSource);
 

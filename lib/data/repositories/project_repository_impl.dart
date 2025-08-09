@@ -4,7 +4,7 @@ import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/repositories/project_repository.dart';
 
 class ProjectRepositoryImpl extends ProjectRepository {
-  ProjectDataSource _dataSource;
+  final ProjectDataSource _dataSource;
 
   ProjectRepositoryImpl(this._dataSource);
 
