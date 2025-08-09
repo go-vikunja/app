@@ -18,6 +18,7 @@ import 'package:vikunja_app/data/repositories/bucket_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/label_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/project_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/project_view_repository_impl.dart';
+import 'package:vikunja_app/data/repositories/server_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/task_label_bulk_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/task_label_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/task_repository_impl.dart';
@@ -25,6 +26,7 @@ import 'package:vikunja_app/domain/repositories/bucket_repository.dart';
 import 'package:vikunja_app/domain/repositories/label_repository.dart';
 import 'package:vikunja_app/domain/repositories/project_repository.dart';
 import 'package:vikunja_app/domain/repositories/project_view_repository.dart';
+import 'package:vikunja_app/domain/repositories/server_repository.dart';
 import 'package:vikunja_app/domain/repositories/task_label_bulk_repository.dart';
 import 'package:vikunja_app/domain/repositories/task_label_repository.dart';
 import 'package:vikunja_app/domain/repositories/task_repository.dart';
@@ -70,7 +72,7 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
 
   UserService? get newUserService => _newUserService;
 
-  ServerService get serverService => new ServerDataSource(client);
+  ServerRepository get serverService => ServerRepositoryImpl(ServerDataSource(client));
 
   SettingsManager get settingsManager => new SettingsManager(_storage);
 

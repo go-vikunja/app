@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:vikunja_app/data/models/server.dart';
 import 'package:vikunja_app/data/models/user.dart';
 
 enum TaskServiceOptionSortBy {
@@ -138,10 +137,6 @@ abstract class UserService {
   Future<UserSettings?> setCurrentUserSettings(UserSettings userSettings);
 
   Future<String?> getToken();
-}
-
-abstract class ServerService {
-  Future<Server?> getInfo();
 }
 
 class SettingsManager {
