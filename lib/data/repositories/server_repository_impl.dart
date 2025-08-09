@@ -7,6 +7,7 @@ class ServerRepositoryImpl extends ServerRepository {
 
   ServerRepositoryImpl(this._dataSource);
 
+  @override
   Future<Server?> getInfo() async {
     return (await _dataSource.getInfo())?.toDomain();
   }
