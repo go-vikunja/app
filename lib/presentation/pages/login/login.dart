@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:vikunja_app/core/network/client.dart';
-import 'package:vikunja_app/data/models/server.dart';
+import 'package:vikunja_app/domain/entities/server.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/data/models/user.dart';
 import 'package:vikunja_app/presentation/pages/login/login_webview.dart';

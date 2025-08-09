@@ -1,4 +1,6 @@
-class Server {
+import 'package:vikunja_app/domain/entities/server.dart';
+
+class ServerDto {
   bool? caldavEnabled;
   bool? emailRemindersEnabled;
   String? frontendUrl;
@@ -12,7 +14,22 @@ class Server {
   bool? userDeletion;
   String? version;
 
-  Server.fromJson(Map<String, dynamic> json)
+
+  ServerDto(
+      this.caldavEnabled,
+      this.emailRemindersEnabled,
+      this.frontendUrl,
+      this.linkSharingEnabled,
+      this.maxFileSize,
+      this.motd,
+      this.registrationEnabled,
+      this.taskAttachmentsEnabled,
+      this.taskCommentsEnabled,
+      this.totpEnabled,
+      this.userDeletion,
+      this.version);
+
+  ServerDto.fromJson(Map<String, dynamic> json)
       : caldavEnabled = json['caldav_enabled'],
         emailRemindersEnabled = json['email_reminders_enabled'],
         frontendUrl = json['frontend_url'],
@@ -25,4 +42,33 @@ class Server {
         totpEnabled = json['totp_enabled'],
         userDeletion = json['user_deletion'],
         version = json['version'];
+
+  Server toDomain() => Server(
+      caldavEnabled,
+      emailRemindersEnabled,
+      frontendUrl,
+      linkSharingEnabled,
+      maxFileSize,
+      motd,
+      registrationEnabled,
+      taskAttachmentsEnabled,
+      taskCommentsEnabled,
+      totpEnabled,
+      userDeletion,
+      version
+  );
+
+  static ServerDto fromDomain(Server b) => ServerDto(
+      b.caldavEnabled,
+      b.emailRemindersEnabled,
+      b.frontendUrl,
+      b.linkSharingEnabled,
+      b.maxFileSize,
+      b.motd,
+      b.registrationEnabled,
+      b.taskAttachmentsEnabled,
+      b.taskCommentsEnabled,
+      b.totpEnabled,
+      b. userDeletion,
+      b.version);
 }
