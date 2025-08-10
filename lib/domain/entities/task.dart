@@ -31,7 +31,6 @@ class TaskReminder {
 class Task {
   final int id;
   final int? parentTaskId, priority, bucketId;
-  //final int? listId;
   final int? projectId;
   final DateTime created, updated;
   DateTime? dueDate, startDate, endDate;
