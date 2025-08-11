@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:vikunja_app/core/network/client.dart';
 import 'package:vikunja_app/core/network/service.dart';
-import 'package:vikunja_app/data/models/user.dart';
+import 'package:vikunja_app/data/models/user_dto.dart';
 
 class UserDataSource extends RemoteDataSource {
   UserDataSource(Client client) : super(client);

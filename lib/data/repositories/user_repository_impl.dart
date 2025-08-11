@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:vikunja_app/data/data_sources/user_data_source.dart';
-import 'package:vikunja_app/data/models/user.dart';
+import 'package:vikunja_app/data/models/user_dto.dart';
 import 'package:vikunja_app/domain/entities/user.dart';
 import 'package:vikunja_app/domain/repositories/user_repository.dart';
 

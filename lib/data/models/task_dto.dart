@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 import 'package:vikunja_app/data/models/label_dto.dart';
-import 'package:vikunja_app/data/models/user.dart';
+import 'package:vikunja_app/data/models/user_dto.dart';
 import 'package:vikunja_app/data/models/task_attachment_dto.dart';
 import 'package:vikunja_app/core/utils/checkboxes_in_text.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
