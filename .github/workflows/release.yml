@@ -1,13 +1,7 @@
 # Based on https://medium.com/flutter-community/automating-publishing-your-flutter-apps-to-google-play-using-github-actions-2f67ac582032
 
-name: Flutter Release
-
 on:
-  push:
-    branches:
-      - main
-  release:
-    types: [published]
+  workflow_call:
 
 jobs:
   release:
