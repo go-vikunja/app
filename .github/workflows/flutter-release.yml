@@ -2,11 +2,10 @@
 
 name: Flutter Release
 
-on:  
+on:
   push:
     branches:
       - main
-      - gp_build
   release:
     types: [published]
 
@@ -22,7 +21,7 @@ jobs:
       - name: Setup Java
         uses: actions/setup-java@v1
         with:
-          java-version: '17.x'
+          java-version: "17.x"
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
@@ -30,45 +29,52 @@ jobs:
           bundler-cache: false
 
       - name: Install Fastlane dependencies
+        working-directory: android
         run: |
-          pwd
-          cd android
           gem install bundler -v 2.4.22
           bundle config path vendor/bundle
           bundle install
-          cd ..
-      - name: Check gpg version
-        run: gpg --version
 
-      - name: Decrypting Keystore file
-        env:
-          GPG_PASS: ${{ secrets.GPG_PASS }}
+      - name: Create keystore file from secret
+        working-directory: android/app
         run: |
-          cd android/app
-          keyFile=keystore.jks
-          gpg -d --passphrase "$GPG_PASS" --batch $keyFile.asc > $keyFile
-      - name: Decrypting key.properties file
-        env:
-          GPG_PASS: ${{ secrets.GPG_PASS }}
+          echo "${{ secrets.KEYSTORE_BASE64 }}" > keystore.b64
+          base64 -d keystore.b64 > keystore.jks
+          rm keystore.b64
+
+      - name: Create key.properties file from secret
+        working-directory: android
         run: |
-          cd android/
-          keyPropFile=key.properties
-          gpg -d --passphrase "$GPG_PASS" --batch $keyPropFile.asc > $keyPropFile
+          echo "${{ secrets.KEY_PROPERTIES }}" > key.properties
+
+      - name: Verify keystore access
+        working-directory: android
+        run: |
+          # Extract values from key.properties
+          STORE_FILE=app/$(grep storeFile key.properties | cut -d'=' -f2)
+          STORE_PASSWORD=$(grep storePassword key.properties | cut -d'=' -f2)
+          KEY_ALIAS=$(grep keyAlias key.properties | cut -d'=' -f2)
+          KEY_PASSWORD=$(grep keyPassword key.properties | cut -d'=' -f2)
           
-      - name: Decrypting Fastlane Secret file
-        env:
-          GPG_PASS: ${{ secrets.GPG_PASS }}
+          echo "Testing keystore access..."
+          echo "Store file: $STORE_FILE"
+          echo "Key alias: $KEY_ALIAS"
+          
+          # Verify keystore can be opened and key accessed
+          keytool -list -alias "$KEY_ALIAS" -keystore "$STORE_FILE" -storepass "$STORE_PASSWORD" -keypass "$KEY_PASSWORD" -v
+
+      - name: Create Google Play service account file
+        working-directory: android
         run: |
-          cd android/
-          file=fastlane-secret.json
-          gpg -d --passphrase "$GPG_PASS" --batch $file.asc > $file
+          cat > fastlane-secret.json << 'EOF'
+          ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          EOF
 
       - name: Testing Fastlane installation
+        working-directory: android
         run: |
-          pwd
-          cd android
           bundle update fastlane
-          bundle exec fastlane run validate_play_store_json_key
+          bundle exec fastlane run validate_play_store_json_key json_key:fastlane-secret.json
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -79,6 +85,7 @@ jobs:
       - run: flutter pub get
       - run: flutter build appbundle --flavor production
       - run: flutter build apk --flavor production
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -87,8 +94,14 @@ jobs:
             build/app/outputs/bundle/productionRelease/app-production-release.aab
             build/app/outputs/flutter-apk/app-production-release.apk
 
-      #- name: Deploy Google Play
-      #  run: |
-      #    pwd
-      #    cd android
-      #    bundle exec fastlane production_appbundle
+      - name: Deploy to Google Play Beta
+        if: github.event_name == 'push'
+        run: |
+          cd android
+          bundle exec fastlane beta
+
+      - name: Deploy to Google Play Production
+        if: github.event_name == 'release' && github.event.action == 'published'
+        run: |
+          cd android
+          bundle exec fastlane production_appbundle

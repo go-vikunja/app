@@ -40,6 +40,7 @@ build/
 **/android/gradlew.bat
 **/android/local.properties
 **/android/**/GeneratedPluginRegistrant.java
+/android/fastlane-secret.json
 
 # iOS/XCode related
 **/ios/**/*.mode1v3
