@@ -41,6 +41,7 @@ jobs:
           base64 -d keystore.b64 > keystore.jks
           rm keystore.b64
           ls -hal keystore.jks
+          sha256sum keystore.jks
 
       - name: Create key.properties file from secret
         working-directory: android
