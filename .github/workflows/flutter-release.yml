@@ -35,18 +35,33 @@ jobs:
           bundle install
 
       - name: Create keystore file from secret
-        working-directory: android/app
+        working-directory: android
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" > keystore.b64
           base64 -d keystore.b64 > keystore.jks
           rm keystore.b64
           ls -hal keystore.jks
-          sha256sum keystore.jks
 
       - name: Create key.properties file from secret
         working-directory: android
         run: |
           echo "${{ secrets.KEY_PROPERTIES }}" > key.properties
+
+      - name: Verify keystore access
+        working-directory: android
+        run: |
+          # Extract values from key.properties
+          STORE_FILE=$(grep storeFile key.properties | cut -d'=' -f2)
+          STORE_PASSWORD=$(grep storePassword key.properties | cut -d'=' -f2)
+          KEY_ALIAS=$(grep keyAlias key.properties | cut -d'=' -f2)
+          KEY_PASSWORD=$(grep keyPassword key.properties | cut -d'=' -f2)
+          
+          echo "Testing keystore access..."
+          echo "Store file: $STORE_FILE"
+          echo "Key alias: $KEY_ALIAS"
+          
+          # Verify keystore can be opened and key accessed
+          keytool -list -alias "$KEY_ALIAS" -keystore "$STORE_FILE" -storepass "$STORE_PASSWORD" -keypass "$KEY_PASSWORD" -v
 
       - name: Create Google Play service account file
         working-directory: android
