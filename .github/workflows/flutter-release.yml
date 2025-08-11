@@ -6,7 +6,6 @@ on:
   push:
     branches:
       - main
-      - feat/fastlane-release
   release:
     types: [published]
 
@@ -40,7 +39,6 @@ jobs:
           echo "${{ secrets.KEYSTORE_BASE64 }}" > keystore.b64
           base64 -d keystore.b64 > keystore.jks
           rm keystore.b64
-          ls -hal keystore.jks
 
       - name: Create key.properties file from secret
         working-directory: android
