@@ -38,11 +38,15 @@ jobs:
         working-directory: android/app
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > keystore.jks
+          ls -hal
+          pwd
 
       - name: Create key.properties file from secret
         working-directory: android
         run: |
           echo "${{ secrets.KEY_PROPERTIES }}" > key.properties
+          ls -hal
+          pwd
 
       - name: Create Google Play service account file
         working-directory: android
