@@ -1,6 +1,6 @@
 import 'package:json_annotation/json_annotation.dart';
 
-import 'package:vikunja_app/data/models/user.dart';
+import 'package:vikunja_app/data/models/user_dto.dart';
 import 'package:vikunja_app/domain/entities/task_attachment.dart';
 
 class TaskAttachmentFileDto {

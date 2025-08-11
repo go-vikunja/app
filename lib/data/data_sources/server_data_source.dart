@@ -1,6 +1,6 @@
 import 'package:vikunja_app/core/network/client.dart';
 import 'package:vikunja_app/core/network/service.dart';
-import 'package:vikunja_app/data/models/server.dart';
+import 'package:vikunja_app/data/models/server_dto.dart';
 
 class ServerDataSource extends RemoteDataSource {
   ServerDataSource(Client client) : super(client);
