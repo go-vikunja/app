@@ -1,14 +1,8 @@
-name: 'Flutter Build'
-
 on:
-  pull_request: {}
-  push:
-    branches:
-      - main
+  workflow_call:
 
 jobs:
-  build-app:
-    name: Build
+  build:
     runs-on: ubuntu-latest
     env:
       GRADLE_OPTS: -Xmx8g
@@ -27,8 +21,8 @@ jobs:
       - run: flutter --version
       - run: flutter pub get
       - run: flutter build apk --debug --flavor unsigned
+
   lint:
-    name: Lint
     runs-on: ubuntu-latest
     steps:
       - name: Clone repository

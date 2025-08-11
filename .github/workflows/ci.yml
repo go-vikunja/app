@@ -1,0 +1,33 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    tags:
+      - v*
+    branches:
+      - main
+  release:
+    types: [published]
+
+concurrency:
+  # main merges use a unique run_id so they don't cancel each other
+  # other branches or PRs share a group to auto-cancel old runs
+  group: ${{ github.ref == 'refs/heads/main' &&
+    format('{0}-{1}', github.workflow, github.run_id) ||
+    format('{0}-{1}', github.workflow, github.event.pull_request.number || github.ref) }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test
+    uses: ./.github/workflows/test.yml
+    secrets: inherit
+
+  release:
+    name: Release
+    if: ${{ github.ref_type == 'tag' || github.ref_name == 'main' || (github.event_name == 'release' && github.event.action == 'published') }}
+    uses: ./.github/workflows/release.yml
+    needs:
+      - test
+    secrets: inherit
