@@ -70,10 +70,11 @@ jobs:
           bundle update fastlane
           bundle exec fastlane run validate_play_store_json_key json_key:fastlane-secret.json
 
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
+      - name: Setup Flutter
+        uses: flutter-actions/setup-flutter@v4
         with:
           channel: stable
+          version: latest
           cache: true
       - run: flutter --version
       - run: flutter pub get
