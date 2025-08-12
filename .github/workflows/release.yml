@@ -98,7 +98,6 @@ jobs:
             build/app/outputs/flutter-apk/app-production-release.apk
 
       - name: Deploy to Google Play Beta
-        if: github.event_name == 'push'
         run: |
           cd android
           bundle exec fastlane beta
