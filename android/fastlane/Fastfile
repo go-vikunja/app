@@ -27,9 +27,6 @@ platform :android do
 
   desc "Deploy a new beta version to Google Play"
   lane :beta do
-    increment_version_code(
-      gradle_file_path: "./app/build.gradle"
-    )
     upload_to_play_store(
       track: 'beta',
       aab: '../build/app/outputs/bundle/productionRelease/app-production-release.aab',
@@ -42,9 +39,6 @@ platform :android do
 
   desc "Deploy a new version to the Google Play"
   lane :production_appbundle do
-    increment_version_code(
-      gradle_file_path: "./app/build.gradle"
-    )
     upload_to_play_store(
       track: 'production',
       aab: '../build/app/outputs/bundle/productionRelease/app-production-release.aab',
