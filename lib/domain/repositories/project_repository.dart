@@ -7,7 +7,7 @@ abstract class ProjectRepository {
 
   Future<Project?> get(int projectId);
 
-  Future<List<Project>?> getAll();
+  Future<List<Project>> getAll();
 
   Future<Project?> update(Project p);
 

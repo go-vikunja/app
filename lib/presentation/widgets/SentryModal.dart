@@ -1,9 +1,10 @@
-// show user modal that asks for consent to collect errors
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vikunja_app/global.dart';
-import 'package:vikunja_app/main.dart';
+import 'package:vikunja_app/presentation/manager/settings_controller.dart';
 
-void showSentryModal(BuildContext context, VikunjaGlobalState global) {
+void showSentryModal(
+    BuildContext context, WidgetRef ref, VikunjaGlobalState global) {
   global.settingsManager.getSentryModalShown().then((sentryModalShown) {
     VikunjaGlobal.of(context).settingsManager.setSentryModalShown(true);
     if (!sentryModalShown) {
@@ -25,20 +26,18 @@ void showSentryModal(BuildContext context, VikunjaGlobalState global) {
                   TextButton(
                     child: Text('Yes'),
                     onPressed: () {
-                      VikunjaGlobal.of(context)
-                          .settingsManager
-                          .setSentryEnabled(true)
-                          .then((_) => themeModel.notify());
+                      ref
+                          .read(settingsControllerProvider.notifier)
+                          .setSentryEnabled(true);
                       Navigator.pop(context);
                     },
                   ),
                   TextButton(
                     child: Text('No'),
                     onPressed: () {
-                      VikunjaGlobal.of(context)
-                          .settingsManager
-                          .setSentryEnabled(false)
-                          .then((_) => themeModel.notify());
+                      ref
+                          .read(settingsControllerProvider.notifier)
+                          .setSentryEnabled(false);
                       Navigator.pop(context);
                     },
                   ),

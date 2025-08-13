@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/global.dart';
 
@@ -13,24 +14,14 @@ import '../../widgets/TaskTile.dart';
 import '../../widgets/pagestatus.dart';
 import '../../manager/updateWidget.dart';
 
-class HomeScreenWidget extends StatefulWidget {
-  HomeScreenWidget({Key? key}) : super(key: key);
-
-  @override
-  State<StatefulWidget> createState() {
-    // TODO: implement createState
-    throw UnimplementedError();
-  }
-}
-
-class LandingPage extends HomeScreenWidget {
+class LandingPage extends ConsumerStatefulWidget {
   LandingPage({Key? key}) : super(key: key);
 
   @override
-  State<StatefulWidget> createState() => LandingPageState();
+  LandingPageState createState() => LandingPageState();
 }
 
-class LandingPageState extends State<LandingPage> {
+class LandingPageState extends ConsumerState<LandingPage> {
   int? defaultList;
   bool onlyDueDate = true;
   List<Task> _tasks = [];
@@ -118,7 +109,7 @@ class LandingPageState extends State<LandingPage> {
             children: [ListView(), Center(child: Text("This view is empty"))]);
         break;
       case PageStatus.success:
-        showSentryModal(context, VikunjaGlobal.of(context));
+        showSentryModal(context, ref, VikunjaGlobal.of(context));
         body = ListView(
           scrollDirection: Axis.vertical,
           padding: EdgeInsets.symmetric(vertical: 8.0),
@@ -275,7 +266,6 @@ class LandingPageState extends State<LandingPage> {
       return Future.value();
     }
     updateWidgetTasks(taskList);
-    //taskList.forEach((task) {task.list = lists.firstWhere((element) => element.id == task.list_id);});
     setState(() {
       if (taskList != null) {
         _tasks = taskList;

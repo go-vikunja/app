@@ -28,9 +28,9 @@ class ProjectDataSource extends RemoteDataSource {
     });
   }
 
-  Future<List<ProjectDto>?> getAll() {
+  Future<List<ProjectDto>> getAll() {
     return client.get('/projects').then((response) {
-      if (response == null) return null;
+      if (response == null) return [];
       return convertList(
           response.body, (result) => ProjectDto.fromJson(result));
     });

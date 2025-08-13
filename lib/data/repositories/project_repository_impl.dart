@@ -24,8 +24,8 @@ class ProjectRepositoryImpl extends ProjectRepository {
   }
 
   @override
-  Future<List<Project>?> getAll() async {
-    return (await _dataSource.getAll())?.map((e) => e.toDomain()).toList();
+  Future<List<Project>> getAll() async {
+    return (await _dataSource.getAll()).map((e) => e.toDomain()).toList();
   }
 
   @override

@@ -185,8 +185,10 @@ class UserTokenPairDto {
   UserTokenPairDto(this.user, this.token,
       {this.error = 0, this.errorString = ""});
 
-  UserTokenPair toDomain() => UserTokenPair(user?.toDomain(), token,
-      error: error, errorString: errorString);
+  UserTokenPair toDomain() {
+    return UserTokenPair(user?.toDomain(), token,
+        error: error, errorString: errorString);
+  }
 
   static UserTokenPairDto fromDomain(UserTokenPair u) => UserTokenPairDto(
       u.user != null ? UserDto.fromDomain(u.user!) : null, u.token,

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:vikunja_app/core/services.dart';
 import 'package:vikunja_app/core/utils/constants.dart';
 
-class ThemeModel with ChangeNotifier {
+class ThemeModel {
   FlutterThemeMode _themeMode = FlutterThemeMode.light;
   bool _dynamicColors = false;
 
@@ -10,26 +10,22 @@ class ThemeModel with ChangeNotifier {
 
   void set themeMode(FlutterThemeMode mode) {
     _themeMode = mode;
-    notifyListeners();
   }
 
   void set dynamicColors(bool dynamicTheme) {
     _dynamicColors = dynamicTheme;
-    notifyListeners();
   }
 
-  void notify() {
-    notifyListeners();
-  }
-
-  ThemeData? getLightTheme(ColorScheme? lightTheme) {
+  ThemeData? getTheme(ColorScheme? lightTheme, ColorScheme? darkTheme) {
     switch (_themeMode) {
       case FlutterThemeMode.system:
         return lightTheme != null && _dynamicColors
             ? ThemeData(colorScheme: lightTheme)
             : _buildVikunjaLight();
       case FlutterThemeMode.dark:
-        return null;
+        return _dynamicColors
+            ? ThemeData(colorScheme: darkTheme, brightness: Brightness.dark)
+            : _buildVikunjaDark();
       case FlutterThemeMode.light:
         return _dynamicColors
             ? ThemeData(colorScheme: lightTheme)
@@ -41,12 +37,10 @@ class ThemeModel with ChangeNotifier {
     switch (_themeMode) {
       case FlutterThemeMode.system:
         return darkTheme != null && _dynamicColors
-            ? ThemeData(colorScheme: darkTheme)
+            ? ThemeData(colorScheme: darkTheme, brightness: Brightness.dark)
             : _buildVikunjaDark();
       case FlutterThemeMode.dark:
-        return _dynamicColors
-            ? ThemeData(colorScheme: darkTheme)
-            : _buildVikunjaDark();
+        return null;
       case FlutterThemeMode.light:
         return null;
     }

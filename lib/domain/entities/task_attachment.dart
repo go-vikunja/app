@@ -1,5 +1,3 @@
-import 'package:json_annotation/json_annotation.dart';
-
 import 'package:vikunja_app/domain/entities/user.dart';
 
 class TaskAttachmentFile {
@@ -18,7 +16,6 @@ class TaskAttachmentFile {
   });
 }
 
-@JsonSerializable()
 class TaskAttachment {
   final int id, taskId;
   final DateTime created;
