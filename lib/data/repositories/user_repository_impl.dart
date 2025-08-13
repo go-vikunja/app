@@ -5,6 +5,7 @@ import 'package:vikunja_app/data/models/user_dto.dart';
 import 'package:vikunja_app/domain/entities/user.dart';
 import 'package:vikunja_app/domain/repositories/user_repository.dart';
 
+
 class UserRepositoryImpl extends UserRepository {
   final UserDataSource _dataSource;
 
@@ -13,7 +14,7 @@ class UserRepositoryImpl extends UserRepository {
   @override
   Future<UserTokenPair> login(String username, password,
       {bool rememberMe = false, String? totp}) async {
-    return (await _dataSource.login(username, password)).toDomain();
+    return (await _dataSource.login(username, password, rememberMe: rememberMe, totp: totp)).toDomain();
   }
 
   @override
