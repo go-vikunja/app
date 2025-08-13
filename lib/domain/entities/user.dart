@@ -2,7 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:vikunja_app/global.dart';
 
 class UserSettings {
-  final int default_project_id;
+  int default_project_id;
   final bool discoverable_by_email,
       discoverable_by_name,
       email_reminders_enabled;

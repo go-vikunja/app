@@ -155,22 +155,6 @@ class SettingsManager {
     applydefaults();
   }
 
-  Future<String?> getIgnoreCertificates() {
-    return _storage.read(key: "ignore-certificates");
-  }
-
-  void setIgnoreCertificates(bool value) {
-    _storage.write(key: "ignore-certificates", value: value ? "1" : "0");
-  }
-
-  Future<bool> getSentryEnabled() {
-    return _storage.read(key: "sentry-enabled").then((value) => value == "1");
-  }
-
-  Future<void> setSentryEnabled(bool value) {
-    return _storage.write(key: "sentry-enabled", value: value ? "1" : "0");
-  }
-
   Future<bool> getSentryModalShown() {
     return _storage
         .read(key: "sentry-modal-shown")
@@ -192,25 +176,6 @@ class SettingsManager {
         key: "landing-page-due-date-tasks", value: value ? "1" : "0");
   }
 
-  Future<String?> getVersionNotifications() {
-    return _storage.read(key: "get-version-notifications");
-  }
-
-  void setVersionNotifications(bool value) {
-    _storage.write(key: "get-version-notifications", value: value ? "1" : "0");
-  }
-
-  Future<Duration> getWorkmanagerDuration() {
-    return _storage
-        .read(key: "workmanager-duration")
-        .then((value) => Duration(minutes: int.parse(value ?? "0")));
-  }
-
-  Future<void> setWorkmanagerDuration(Duration duration) {
-    return _storage.write(
-        key: "workmanager-duration", value: duration.inMinutes.toString());
-  }
-
   Future<List<String>?> getPastServers() async {
     String jsonString = await _storage.read(key: "recent-servers") ?? "[]";
     List<dynamic> server = jsonDecode(jsonString);
@@ -230,36 +195,6 @@ class SettingsManager {
   Future<void> setExpandedProjects(List<int>? expandedProjects) {
     return _storage.write(
         key: "expanded-projects", value: jsonEncode(expandedProjects));
-  }
-
-  Future<FlutterThemeMode> getThemeMode() async {
-    String? theme_mode = await _storage.read(key: "theme_mode");
-    if (theme_mode == null) setThemeMode(FlutterThemeMode.system);
-    switch (theme_mode) {
-      case "system":
-        return FlutterThemeMode.system;
-      case "light":
-        return FlutterThemeMode.light;
-      case "dark":
-        return FlutterThemeMode.dark;
-      default:
-        return FlutterThemeMode.system;
-    }
-  }
-
-  Future<void> setThemeMode(FlutterThemeMode newMode) async {
-    await _storage.write(
-        key: "theme_mode", value: newMode.toString().split('.').last);
-  }
-
-  Future<void> setDynamicColors(bool dynamicColors) async {
-    await _storage.write(
-        key: "dynamic_colors", value: dynamicColors.toString());
-  }
-
-  Future<bool> getDynamicColors() async {
-    String? dynamicColors = await _storage.read(key: "dynamic_colors");
-    return dynamicColors == "true";
   }
 }
 

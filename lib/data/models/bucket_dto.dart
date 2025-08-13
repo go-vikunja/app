@@ -1,9 +1,7 @@
-import 'package:json_annotation/json_annotation.dart';
 import 'package:vikunja_app/data/models/task_dto.dart';
 import 'package:vikunja_app/data/models/user_dto.dart';
 import 'package:vikunja_app/domain/entities/bucket.dart';
 
-@JsonSerializable()
 class BucketDto {
   int id, limit;
   int? projectViewId;

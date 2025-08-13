@@ -2,7 +2,9 @@ import 'dart:developer' as dev;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/data/data_sources/bucket_data_source.dart';
 import 'package:vikunja_app/core/network/client.dart';
 import 'package:vikunja_app/data/data_sources/task_label_data_source.dart';
@@ -38,11 +40,12 @@ import 'package:vikunja_app/domain/repositories/version_repository.dart';
 import 'package:vikunja_app/presentation/manager/notifications.dart';
 import 'package:vikunja_app/core/services.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:vikunja_app/presentation/manager/settings_controller.dart';
 import 'package:workmanager/workmanager.dart';
 
 import 'main.dart';
 
-class VikunjaGlobal extends StatefulWidget {
+class VikunjaGlobal extends ConsumerStatefulWidget {
   final Widget child;
   final Widget login;
 
@@ -58,7 +61,7 @@ class VikunjaGlobal extends StatefulWidget {
   }
 }
 
-class VikunjaGlobalState extends State<VikunjaGlobal> {
+class VikunjaGlobalState extends ConsumerState<VikunjaGlobal> {
   final FlutterSecureStorage _storage = new FlutterSecureStorage();
 
   User? _currentUser;
@@ -114,8 +117,11 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
     if (kIsWeb) {
       return;
     }
-    Workmanager().cancelAll().then((value) {
-      settingsManager.getWorkmanagerDuration().then((duration) {
+
+    var settings = ref.read(settingsControllerProvider);
+    settings.whenData((settings) {
+      Workmanager().cancelAll().then((value) {
+        var duration = Duration(minutes: settings.refreshInterval);
         if (duration.inMinutes > 0) {
           Workmanager().registerPeriodicTask("update-tasks", "update-tasks",
               frequency: duration,
@@ -140,18 +146,19 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
   void initState() {
     super.initState();
     _client = Client(snackbarKey);
-    settingsManager
-        .getIgnoreCertificates()
-        .then((value) => client.reloadIgnoreCerts(value == "1"));
+
+    var settings = ref.read(settingsControllerProvider);
+    settings.whenData((settings) {
+      client.reloadIgnoreCerts(settings.ignoreCertificates);
+      if (settings.versionNotifications) {
+        versionChecker.postVersionCheckSnackbar();
+      }
+    });
+
     _newUserService = UserRepositoryImpl(UserDataSource(client));
     _loadCurrentUser();
     tz.initializeTimeZones();
     notifications.notificationInitializer();
-    settingsManager.getVersionNotifications().then((value) {
-      if (value == "1") {
-        versionChecker.postVersionCheckSnackbar();
-      }
-    });
   }
 
   void changeUser(User newUser, {String? token, String? base}) async {
@@ -172,7 +179,12 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
     }
     // Set current user in storage
     await _storage.write(key: 'currentUser', value: newUser.id.toString());
-    client.configure(token: token, base: base, authenticated: true);
+
+    //TODO for now we need to configure the old global client and the new DI client -> global client will be deleted once riverpod migration is done
+    client.configure(token: token, baseUrl: base);
+    ref.read(authTokenProvider.notifier).set(token);
+    ref.read(serverAddressProvider.notifier).set(base);
+
     updateWorkmanagerDuration();
 
     setState(() {
@@ -182,7 +194,6 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
   }
 
   void logoutUser(BuildContext context) async {
-//    _storage.deleteAll().then((_) {
     var userId = await _storage.read(key: "currentUser");
     await _storage.delete(key: userId!); //delete token
     await _storage.delete(key: "${userId}_base");
@@ -190,11 +201,6 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
       client.reset();
       _currentUser = null;
     });
-    /*   }).catchError((err) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('An error occurred while logging out!'),
-      ));
-    });*/
   }
 
   void _loadCurrentUser() async {
@@ -213,7 +219,11 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
       });
       return;
     }
-    client.configure(token: token, base: base, authenticated: true);
+//TODO for now we need to configure the old global client and the new DI client -> global client will be deleted once riverpod migration is done
+    client.configure(token: token, baseUrl: base);
+    ref.read(authTokenProvider.notifier).set(token);
+    ref.read(serverAddressProvider.notifier).set(base);
+
     User loadedCurrentUser;
     try {
       loadedCurrentUser =
@@ -222,18 +232,21 @@ class VikunjaGlobalState extends State<VikunjaGlobal> {
       String? newToken = await newUserService?.getToken();
       if (newToken != null) {
         _storage.write(key: currentUser, value: newToken);
+
+//TODO for now we need to configure the old global client and the new DI client -> global client will be deleted once riverpod migration is done
         client.configure(token: newToken);
+        ref.read(authTokenProvider.notifier).set(newToken);
       }
     } on ApiException catch (e) {
       dev.log("Error code: " + e.errorCode.toString(), level: 1000);
       if (e.errorCode ~/ 100 == 4) {
-        client.authenticated = false;
+        client.reset();
         if (e.errorCode == 401) {
           // token has expired, but we can reuse username and base. user just has to enter password again
           expired = true;
         }
         setState(() {
-          client.authenticated = false;
+          client.reset();
           _currentUser = null;
           _loading = false;
         });

@@ -4,9 +4,11 @@ import 'dart:io';
 import 'package:cronet_http/cronet_http.dart' as cronet_http;
 import 'package:cupertino_http/cupertino_http.dart' as cupertino_http;
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart' as io_client;
 import 'package:vikunja_app/core/network/response.dart';
+import 'package:vikunja_app/data/data_sources/settings_data_source.dart';
 import 'package:vikunja_app/presentation/widgets/string_extension.dart';
 import 'package:vikunja_app/global.dart';
 
@@ -18,7 +20,6 @@ class Client {
   final JsonEncoder _encoder = new JsonEncoder();
   String _token = '';
   String _base = '';
-  bool authenticated = false;
   bool ignoreCertificates = false;
   bool showSnackBar = true;
 
@@ -37,12 +38,10 @@ class Client {
     this.global_scaffold_key, {
     String? token,
     String? base,
-    bool authenticated = false,
   }) {
     configure(
       token: token,
-      base: base,
-      authenticated: authenticated,
+      baseUrl: base,
     );
   }
 
@@ -66,14 +65,14 @@ class Client {
     return io_client.IOClient();
   }
 
-  void reloadIgnoreCerts(bool? val) {
-    ignoreCertificates = val ?? false;
+  void reloadIgnoreCerts(bool val) {
+    ignoreCertificates = val;
     HttpOverrides.global = new IgnoreCertHttpOverrides(ignoreCertificates);
     if (global_scaffold_key == null ||
         global_scaffold_key!.currentContext == null) return;
-    VikunjaGlobal.of(global_scaffold_key!.currentContext!)
-        .settingsManager
-        .setIgnoreCertificates(ignoreCertificates);
+
+    //TODO workaround until riverpod migration is done
+    SettingsDatasource(FlutterSecureStorage()).setIgnoreCertificates(val);
   }
 
   get _headers => {
@@ -87,22 +86,23 @@ class Client {
   @override
   int get hashCode => _token.hashCode;
 
+  bool get authenticated => _token.isNotEmpty;
+
   void configure({
     String? token,
-    String? base,
-    bool? authenticated,
+    String? baseUrl,
   }) {
     if (token != null) _token = token;
-    if (base != null) {
-      base = base.replaceAll(" ", "");
-      if (base.endsWith("/")) base = base.substring(0, base.length - 1);
-      _base = base.endsWith('/api/v1') ? base : '$base/api/v1';
+    if (baseUrl != null) {
+      baseUrl = baseUrl.replaceAll(" ", "");
+      if (baseUrl.endsWith("/"))
+        baseUrl = baseUrl.substring(0, baseUrl.length - 1);
+      _base = baseUrl.endsWith('/api/v1') ? baseUrl : '$baseUrl/api/v1';
     }
-    if (authenticated != null) this.authenticated = authenticated;
   }
 
   void reset() {
-    authenticated = false;
+    _token = '';
   }
 
   Future<Response?> get(String url,

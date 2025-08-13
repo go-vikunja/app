@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:json_annotation/json_annotation.dart';
 
 import 'package:vikunja_app/data/models/label_dto.dart';
 import 'package:vikunja_app/data/models/user_dto.dart';
@@ -34,11 +33,9 @@ class TaskReminderDto {
       TaskReminderDto(b.reminder, b.relative_period, b.relative_to);
 }
 
-@JsonSerializable()
 class TaskDto {
   final int id;
   final int? parentTaskId, priority, bucketId;
-  //final int? listId;
   final int? projectId;
   final DateTime created, updated;
   DateTime? dueDate, startDate, endDate;

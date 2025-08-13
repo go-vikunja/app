@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'package:vikunja_app/presentation/pages/task/landing_page.dart';
 import 'package:vikunja_app/presentation/pages/project/overview.dart';
-import 'package:vikunja_app/presentation/pages/settings.dart';
+import 'package:vikunja_app/presentation/pages/settings_page.dart';
 
 import '../manager/project_store.dart';
 

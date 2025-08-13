@@ -3,7 +3,9 @@ import 'dart:core';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
+import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/core/network/client.dart';
 import 'package:vikunja_app/domain/entities/server.dart';
 import 'package:vikunja_app/domain/entities/user.dart';
@@ -17,12 +19,12 @@ import 'package:vikunja_app/core/utils/validator.dart';
 
 import '../../widgets/SentryModal.dart';
 
-class LoginPage extends StatefulWidget {
+class LoginPage extends ConsumerStatefulWidget {
   @override
   _LoginPageState createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _LoginPageState extends ConsumerState<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   bool _loading = false;
   bool _rememberMe = false;
@@ -46,21 +48,17 @@ class _LoginPageState extends State<LoginPage> {
               VikunjaGlobal.of(context).currentUser?.username ?? "";
         });
       }
-      final client = VikunjaGlobal.of(context).client;
-      await VikunjaGlobal.of(context)
-          .settingsManager
-          .getIgnoreCertificates()
-          .then((value) =>
-              setState(() => client.ignoreCertificates = value == "1"));
 
       await VikunjaGlobal.of(context)
           .settingsManager
           .getPastServers()
           .then((value) {
         print(value);
-        if (value != null) setState(() => pastServers = value);
+        if (value != null) {
+          setState(() => pastServers = value);
+        }
       });
-      showSentryModal(context, VikunjaGlobal.of(context));
+      showSentryModal(context, ref, VikunjaGlobal.of(context));
     });
   }
 
@@ -96,9 +94,6 @@ class _LoginPageState extends State<LoginPage> {
                       child: Row(children: [
                         Expanded(
                           child: TypeAheadField(
-                            //suggestionsBoxController: _serverSuggestionController,
-                            //getImmediateSuggestions: true,
-                            //enabled: !_loading,
                             controller: _serverController,
                             builder: (context, controller, focusnode) {
                               return TextFormField(
@@ -117,13 +112,6 @@ class _LoginPageState extends State<LoginPage> {
                                     labelText: 'Server Address'),
                               );
                             },
-                            /*
-                            textFieldConfiguration: TextFieldConfiguration(
-                              controller: _serverController,
-                              decoration: new InputDecoration(
-                                  border: OutlineInputBorder(),
-                                  labelText: 'Server Address'),
-                            ),*/
                             onSelected: (suggestion) {
                               _serverController.text = suggestion;
                               setState(
@@ -266,11 +254,6 @@ class _LoginPageState extends State<LoginPage> {
                         onChanged: (value) {
                           setState(
                               () => client.reloadIgnoreCerts(value ?? false));
-                          VikunjaGlobal.of(context)
-                              .settingsManager
-                              .setIgnoreCertificates(value ?? false);
-                          VikunjaGlobal.of(context).client.ignoreCertificates =
-                              value ?? false;
                         }),
                   ],
                 ),
@@ -295,7 +278,11 @@ class _LoginPageState extends State<LoginPage> {
     try {
       var vGlobal = VikunjaGlobal.of(context);
       vGlobal.client.showSnackBar = false;
-      vGlobal.client.configure(base: _server);
+
+      //TODO for now we need to configure the old global client and the new DI client -> global client will be deleted once riverpod migration is done
+      vGlobal.client.configure(baseUrl: _server);
+      ref.read(serverAddressProvider.notifier).set(_server);
+
       Server? info = await vGlobal.serverService.getInfo();
       if (info == null) throw Exception("Getting server info failed");
 
@@ -344,20 +331,6 @@ class _LoginPageState extends State<LoginPage> {
         vGlobal.changeUser(newUser.user!, token: newUser.token, base: _server);
     } catch (ex) {
       print(ex);
-      /*  log(stacktrace.toString());
-      showDialog(
-          context: context,
-          builder: (context) => new AlertDialog(
-                title: Text(
-                    'Login failed! Please check your server url and credentials. ' +
-                        ex.toString()),
-                actions: <Widget>[
-                  TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Close'))
-                ],
-              ));
-     */
     } finally {
       VikunjaGlobal.of(context).client.showSnackBar = true;
       setState(() {
@@ -369,10 +342,12 @@ class _LoginPageState extends State<LoginPage> {
   _loginUserByClientToken(BaseTokenPair baseTokenPair) async {
     VikunjaGlobalState vGS = VikunjaGlobal.of(context);
 
-    vGS.client.configure(
-        token: baseTokenPair.token,
-        base: baseTokenPair.base,
-        authenticated: true);
+    //TODO for now we need to configure the old global client and the new DI client -> global client will be deleted once riverpod migration is done
+    vGS.client
+        .configure(token: baseTokenPair.token, baseUrl: baseTokenPair.base);
+    ref.read(authTokenProvider.notifier).set(baseTokenPair.token);
+    ref.read(serverAddressProvider.notifier).set(baseTokenPair.base);
+
     setState(() => _loading = true);
     try {
       var newUser = await vGS.newUserService?.getCurrentUser();
