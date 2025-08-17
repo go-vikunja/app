@@ -1,8 +1,8 @@
 # Vikunja Cross-Platform App
-![GitHub release (latest by SemVer including pre-releases)](https://img.shields.io/github/downloads-pre/go-vikunja/app/latest/total)
-![Matrix](https://img.shields.io/matrix/vikunja%3Amatrix.org)
 
-Download from [Releases](https://github.com/go-vikunja/app/releases/latest)
+[![GitHub release (latest by SemVer including pre-releases)](https://img.shields.io/github/downloads-pre/go-vikunja/app/latest/total)](https://github.com/go-vikunja/app/releases/latest)
+[![Beta Release on Google Play](https://img.shields.io/badge/Google_Play-Beta-blue)](https://play.google.com/store/apps/details?id=io.vikunja.app)
+[![Talk on Matrix](https://img.shields.io/matrix/vikunja%3Amatrix.org)](https://matrix.to/#/#vikunja:matrix.org)
 
 ## Disclaimer
 
