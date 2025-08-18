@@ -64,7 +64,6 @@ void callbackDispatcher() {
       return nc
           .scheduleDueNotifications(taskService)
           .then((value) => Future.value(true));
-      // });
     } else if (task == "refresh-token") {
       final FlutterSecureStorage _storage = new FlutterSecureStorage();
 
