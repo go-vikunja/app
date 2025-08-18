@@ -4,7 +4,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:vikunja_app/core/di/network_provider.dart';
+import 'package:vikunja_app/core/di/reppository_provider.dart';
 import 'package:vikunja_app/data/data_sources/bucket_data_source.dart';
 import 'package:vikunja_app/core/network/client.dart';
 import 'package:vikunja_app/data/data_sources/task_label_data_source.dart';
@@ -15,7 +17,6 @@ import 'package:vikunja_app/data/data_sources/label_data_source.dart';
 import 'package:vikunja_app/data/data_sources/server_data_source.dart';
 import 'package:vikunja_app/data/data_sources/task_data_source.dart';
 import 'package:vikunja_app/data/data_sources/user_data_source.dart';
-import 'package:vikunja_app/data/data_sources/version_data_source.dart';
 import 'package:vikunja_app/data/repositories/bucket_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/label_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/project_repository_impl.dart';
@@ -25,7 +26,6 @@ import 'package:vikunja_app/data/repositories/task_label_bulk_repository_impl.da
 import 'package:vikunja_app/data/repositories/task_label_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/task_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/user_repository_impl.dart';
-import 'package:vikunja_app/data/repositories/version_repository_impl.dart';
 import 'package:vikunja_app/domain/entities/user.dart';
 import 'package:vikunja_app/domain/repositories/bucket_repository.dart';
 import 'package:vikunja_app/domain/repositories/label_repository.dart';
@@ -36,7 +36,6 @@ import 'package:vikunja_app/domain/repositories/task_label_bulk_repository.dart'
 import 'package:vikunja_app/domain/repositories/task_label_repository.dart';
 import 'package:vikunja_app/domain/repositories/task_repository.dart';
 import 'package:vikunja_app/domain/repositories/user_repository.dart';
-import 'package:vikunja_app/domain/repositories/version_repository.dart';
 import 'package:vikunja_app/presentation/manager/notifications.dart';
 import 'package:vikunja_app/core/services.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
@@ -83,9 +82,6 @@ class VikunjaGlobalState extends ConsumerState<VikunjaGlobal> {
       ServerRepositoryImpl(ServerDataSource(client));
 
   SettingsManager get settingsManager => new SettingsManager(_storage);
-
-  VersionRepository get versionChecker =>
-      VersionRepositoryImpl(VersionDataSource(snackbarKey));
 
   ProjectRepository get projectService =>
       ProjectRepositoryImpl(ProjectDataSource(client, _storage));
@@ -151,7 +147,7 @@ class VikunjaGlobalState extends ConsumerState<VikunjaGlobal> {
     settings.whenData((settings) {
       client.reloadIgnoreCerts(settings.ignoreCertificates);
       if (settings.versionNotifications) {
-        versionChecker.postVersionCheckSnackbar();
+        postVersionCheckSnackbar();
       }
     });
 
@@ -159,6 +155,27 @@ class VikunjaGlobalState extends ConsumerState<VikunjaGlobal> {
     _loadCurrentUser();
     tz.initializeTimeZones();
     notifications.notificationInitializer();
+  }
+
+  //TODO: moved here because this should be in repo or datasource - find better place after riverpod migration
+  String repo = "https://github.com/go-vikunja/app/releases/latest";
+
+  Future<void> postVersionCheckSnackbar() async {
+    var latestVersionTag =
+        await ref.read(versionRepositoryProvider).getLatestVersionTag();
+    ref.read(versionRepositoryProvider).isUpToDate().then((value) {
+      if (!value) {
+        // not up to date
+        SnackBar snackBar = SnackBar(
+          content: Text("New version available: $latestVersionTag"),
+          action: SnackBarAction(
+              label: "View on Github",
+              onPressed: () => launchUrl(Uri.parse(repo),
+                  mode: LaunchMode.externalApplication)),
+        );
+        snackbarKey.currentState?.showSnackBar(snackBar);
+      }
+    });
   }
 
   void changeUser(User newUser, {String? token, String? base}) async {
