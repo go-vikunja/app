@@ -21,7 +21,6 @@ void main() {
           null,
           token: 'test-token',
           base: 'https://api.example.com',
-          authenticated: true,
         );
 
         expect(client.token, 'test-token');
@@ -32,29 +31,29 @@ void main() {
 
     group('Base URL configuration', () {
       test('Configure with base URL should add /api/v1 suffix', () {
-        client.configure(base: 'https://api.example.com');
+        client.configure(baseUrl: 'https://api.example.com');
         expect(client.base, 'https://api.example.com/api/v1');
       });
 
       test('Configure with base URL ending in /api/v1 should not duplicate',
           () {
-        client.configure(base: 'https://api.example.com/api/v1');
+        client.configure(baseUrl: 'https://api.example.com/api/v1');
         expect(client.base, 'https://api.example.com/api/v1');
       });
 
       test('Configure should remove trailing slash from base URL', () {
-        client.configure(base: 'https://api.example.com/');
+        client.configure(baseUrl: 'https://api.example.com/');
         expect(client.base, 'https://api.example.com/api/v1');
       });
 
       test('Configure should remove spaces from base URL', () {
-        client.configure(base: ' https://api.example.com ');
+        client.configure(baseUrl: ' https://api.example.com ');
         expect(client.base, 'https://api.example.com/api/v1');
       });
 
       test('Configure with base ending in /api/v1/ should handle correctly',
           () {
-        client.configure(base: 'https://api.example.com/api/v1/');
+        client.configure(baseUrl: 'https://api.example.com/api/v1/');
         expect(client.base, 'https://api.example.com/api/v1');
       });
     });
@@ -63,31 +62,19 @@ void main() {
       test('Configure with token should set token', () {
         client.configure(token: 'new-token');
         expect(client.token, 'new-token');
+        expect(client.authenticated, true);
       });
 
       test('Configure with null token should not change existing token', () {
         client.configure(token: 'initial-token');
         client.configure(token: null);
         expect(client.token, 'initial-token');
-      });
-    });
-
-    group('Authentication configuration', () {
-      test('Configure with authenticated should set authentication status', () {
-        client.configure(authenticated: true);
-        expect(client.authenticated, true);
-      });
-
-      test(
-          'Configure with null authenticated should not change existing status',
-          () {
-        client.configure(authenticated: true);
-        client.configure(authenticated: null);
         expect(client.authenticated, true);
       });
 
       test('Reset should set authenticated to false', () {
-        client.configure(authenticated: true);
+        client.configure(token: "valid-token");
+        expect(client.authenticated, true);
         client.reset();
         expect(client.authenticated, false);
       });
@@ -123,12 +110,6 @@ void main() {
           'reloadIgnoreCerts with false should set ignoreCertificates to false',
           () {
         client.reloadIgnoreCerts(false);
-        expect(client.ignoreCertificates, false);
-      });
-
-      test('reloadIgnoreCerts with null should set ignoreCertificates to false',
-          () {
-        client.reloadIgnoreCerts(null);
         expect(client.ignoreCertificates, false);
       });
     });
