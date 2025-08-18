@@ -60,7 +60,8 @@ final settingsDataSourceProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef SettingsDataSourceRef = AutoDisposeProviderRef<SettingsDatasource>;
-String _$versionDataSourceHash() => r'94b59de1279e6b910908d957fc157b38ef83c188';
+
+String _$versionDataSourceHash() => r'e349ff678eda68b94fbc34c5ffe6bdae0603da84';
 
 /// See also [versionDataSource].
 @ProviderFor(versionDataSource)

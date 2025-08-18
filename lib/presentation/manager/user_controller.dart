@@ -1,5 +1,5 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:vikunja_app/core/di/reppository_provider.dart';
+import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/domain/entities/user.dart';
 
 part 'user_controller.g.dart';

@@ -10,7 +10,7 @@ import 'package:vikunja_app/domain/repositories/settings_repository.dart';
 import 'package:vikunja_app/domain/repositories/user_repository.dart';
 import 'package:vikunja_app/domain/repositories/version_repository.dart';
 
-part 'reppository_provider.g.dart';
+part 'repository_provider.g.dart';
 
 @riverpod
 ProjectRepository projectRepository(Ref ref) {
