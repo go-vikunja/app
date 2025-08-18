@@ -25,7 +25,7 @@ Client clientProvider(Ref ref) {
   final token = ref.watch(authTokenProvider);
   final serverAddress = ref.watch(serverAddressProvider);
 
-  Client client = Client(null); // TODO
+  Client client = Client(null);
 
   client.configure(token: token, baseUrl: serverAddress);
   return client;
