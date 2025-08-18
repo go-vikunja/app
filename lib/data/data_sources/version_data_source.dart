@@ -1,11 +1,9 @@
-import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'dart:convert';
 import 'package:http/http.dart';
 
 class VersionDataSource {
-  GlobalKey<ScaffoldMessengerState> snackbarKey;
-  VersionDataSource(this.snackbarKey);
+  VersionDataSource();
 
   Future<String> getLatestVersionTag() async {
     String api = "https://api.github.com/repos/go-vikunja/app";

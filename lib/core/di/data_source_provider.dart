@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -29,5 +28,5 @@ SettingsDatasource settingsDataSource(Ref ref) {
 
 @riverpod
 VersionDataSource versionDataSource(Ref ref) {
-  return VersionDataSource(GlobalKey<ScaffoldMessengerState>()); //TODO
+  return VersionDataSource();
 }
