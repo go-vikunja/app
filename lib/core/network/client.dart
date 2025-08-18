@@ -15,7 +15,7 @@ import 'package:vikunja_app/global.dart';
 import '../../../main.dart';
 
 class Client {
-  GlobalKey<ScaffoldMessengerState>? global_scaffold_key;
+  GlobalKey<ScaffoldMessengerState>? global_scaffold_key; //TODO: remove once we have proper error handling - This is UI logic and should not be part of the data layer
   final JsonDecoder _decoder = new JsonDecoder();
   final JsonEncoder _encoder = new JsonEncoder();
   String _token = '';
