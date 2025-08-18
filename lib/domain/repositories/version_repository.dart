@@ -4,6 +4,4 @@ abstract class VersionRepository {
   Future<String> getCurrentVersionTag();
 
   Future<bool> isUpToDate();
-
-  postVersionCheckSnackbar();
 }

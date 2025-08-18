@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:vikunja_app/core/di/reppository_provider.dart';
 import 'package:vikunja_app/core/services.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/user.dart';
@@ -66,13 +67,14 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
                     ),
                   ),
                   SwitchListTile(
-                      title: Text("Dynamic Colors"),
-                      value: settings.dynamicColors,
-                      onChanged: (bool? value) {
-                        ref
-                            .read(settingsControllerProvider.notifier)
-                            .setDynamicColors(value ?? false);
-                      }),
+                    title: Text("Dynamic Colors"),
+                    value: settings.dynamicColors,
+                    onChanged: (bool? value) {
+                      ref
+                          .read(settingsControllerProvider.notifier)
+                          .setDynamicColors(value ?? false);
+                    },
+                  ),
                   Divider(),
                   CheckboxListTile(
                       title: Text("Ignore Certificates"),
@@ -84,21 +86,22 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
                       }),
                   Divider(),
                   CheckboxListTile(
-                      title: Text("Enable Sentry"),
-                      subtitle: Text(
-                          "Help us debug errors better and faster by sending bug reports to us directly. This is completely anonymous."),
-                      value: settings.sentryEnabled,
-                      onChanged: (value) {
-                        ref
-                            .read(settingsControllerProvider.notifier)
-                            .setSentryEnabled(value ?? false);
-                      }),
+                    title: Text("Enable Sentry"),
+                    subtitle: Text(
+                        "Help us debug errors better and faster by sending bug reports to us directly. This is completely anonymous."),
+                    value: settings.sentryEnabled,
+                    onChanged: (value) {
+                      ref
+                          .read(settingsControllerProvider.notifier)
+                          .setSentryEnabled(value ?? false);
+                    },
+                  ),
                   Divider(),
                   Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: Row(children: [
-                        Flexible(
-                            child: TextField(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(children: [
+                      Flexible(
+                        child: TextField(
                           inputFormatters: [
                             FilteringTextInputFormatter.digitsOnly
                           ],
@@ -110,47 +113,54 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
                             helperText:
                                 'Minimum: 15, Set limit of 0 for no refresh',
                           ),
-                        )),
-                        TextButton(
-                            onPressed: () {
-                              ref
-                                  .read(settingsControllerProvider.notifier)
-                                  .setRefreshInterval(int.tryParse(
-                                          durationTextController.value.text) ??
-                                      0);
-                            },
-                            child: Text("Save")),
-                      ])),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          ref
+                              .read(settingsControllerProvider.notifier)
+                              .setRefreshInterval(int.tryParse(
+                                      durationTextController.value.text) ??
+                                  0);
+                        },
+                        child: Text("Save"),
+                      ),
+                    ]),
+                  ),
                   Divider(),
                   CheckboxListTile(
-                      title: Text("Get Version Notifications"),
-                      value: settings.versionNotifications,
-                      onChanged: (value) {
-                        ref
-                            .read(settingsControllerProvider.notifier)
-                            .setVersionNotifications(value ?? false);
-                      }),
+                    title: Text("Get Version Notifications"),
+                    value: settings.versionNotifications,
+                    onChanged: (value) {
+                      ref
+                          .read(settingsControllerProvider.notifier)
+                          .setVersionNotifications(value ?? false);
+                    },
+                  ),
                   TextButton(
-                      onPressed: () async {
-                        await Permission.notification.isDenied.then((value) {
-                          if (value) {
-                            Permission.notification.request();
-                          }
-                        });
-                        VikunjaGlobal.of(context)
-                            .notifications
-                            .sendTestNotification();
-                      },
-                      child: Text("Send test notification")),
+                    onPressed: () async {
+                      await Permission.notification.isDenied.then((value) {
+                        if (value) {
+                          Permission.notification.request();
+                        }
+                      });
+                      VikunjaGlobal.of(context)
+                          .notifications
+                          .sendTestNotification();
+                    },
+                    child: Text("Send test notification"),
+                  ),
                   TextButton(
-                      onPressed: () async {
-                        VikunjaGlobal.of(context)
-                            .versionChecker
-                            .getLatestVersionTag()
-                            .then((value) =>
-                                setState(() => newestVersionTag = value));
-                      },
-                      child: Text("Check for latest version")),
+                    onPressed: () async {
+                      var newestVersion = await ref
+                          .read(versionRepositoryProvider)
+                          .getLatestVersionTag();
+                      setState(() {
+                        newestVersion = newestVersion;
+                      });
+                    },
+                    child: Text("Check for latest version"),
+                  ),
                   Text(settings.currentVersion.isNotEmpty
                       ? "Current version: ${settings.currentVersion}"
                       : "Current version: -"),
@@ -159,9 +169,10 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
                       : ""),
                   Divider(),
                   TextButton(
-                      onPressed: () =>
-                          VikunjaGlobal.of(context).logoutUser(context),
-                      child: Text("Logout")),
+                    onPressed: () =>
+                        VikunjaGlobal.of(context).logoutUser(context),
+                    child: Text("Logout"),
+                  ),
                 ],
               ),
           error: (err, _) => Center(child: Text('Error: $err')),
@@ -184,11 +195,12 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
                   ),
                   decoration: BoxDecoration(
                     image: DecorationImage(
-                        image: AssetImage("assets/graphics/hypnotize.png"),
-                        repeat: ImageRepeat.repeat,
-                        colorFilter: ColorFilter.mode(
-                            Theme.of(context).colorScheme.primary,
-                            BlendMode.multiply)),
+                      image: AssetImage("assets/graphics/hypnotize.png"),
+                      repeat: ImageRepeat.repeat,
+                      colorFilter: ColorFilter.mode(
+                          Theme.of(context).colorScheme.primary,
+                          BlendMode.multiply),
+                    ),
                   ),
                 ),
                 projects.when(

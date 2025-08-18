@@ -18,11 +18,8 @@ class VersionRepositoryImpl extends VersionRepository {
 
   @override
   Future<bool> isUpToDate() async {
-    return _dataSource.isUpToDate();
-  }
-
-  @override
-  postVersionCheckSnackbar() async {
-    _dataSource.postVersionCheckSnackbar();
+    String latest = await getLatestVersionTag();
+    String current = await getCurrentVersionTag();
+    return latest == current;
   }
 }
