@@ -55,31 +55,39 @@ void main() {
           String priorityString = priorityToString(i);
           if (priorityString.isNotEmpty) {
             int roundTripPriority = priorityFromString(priorityString);
-            expect(roundTripPriority, i,
-                reason:
-                    'Priority $i should convert to "$priorityString" and back to $i');
+            expect(
+              roundTripPriority,
+              i,
+              reason:
+                  'Priority $i should convert to "$priorityString" and back to $i',
+            );
           }
         }
       });
 
-      test('String to priority and back should be consistent for valid strings',
-          () {
-        List<String> validPriorityStrings = [
-          'Low',
-          'Medium',
-          'High',
-          'Urgent',
-          'DO NOW'
-        ];
+      test(
+        'String to priority and back should be consistent for valid strings',
+        () {
+          List<String> validPriorityStrings = [
+            'Low',
+            'Medium',
+            'High',
+            'Urgent',
+            'DO NOW',
+          ];
 
-        for (String priorityString in validPriorityStrings) {
-          int priority = priorityFromString(priorityString);
-          String roundTripString = priorityToString(priority);
-          expect(roundTripString, priorityString,
+          for (String priorityString in validPriorityStrings) {
+            int priority = priorityFromString(priorityString);
+            String roundTripString = priorityToString(priority);
+            expect(
+              roundTripString,
+              priorityString,
               reason:
-                  'Priority string "$priorityString" should convert to $priority and back to "$priorityString"');
-        }
-      });
+                  'Priority string "$priorityString" should convert to $priority and back to "$priorityString"',
+            );
+          }
+        },
+      );
     });
   });
 }

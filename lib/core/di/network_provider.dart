@@ -1,32 +1,32 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_app/core/network/client.dart';
+import 'package:vikunja_app/domain/entities/auth_model.dart';
+import 'package:vikunja_app/domain/entities/user.dart';
 
 part 'network_provider.g.dart';
 
 @Riverpod(keepAlive: true)
-class AuthToken extends _$AuthToken {
+class AuthData extends _$AuthData {
   @override
-  String? build() => null;
+  AuthModel? build() => null;
 
-  void set(String? token) => state = token;
+  void set(AuthModel token) => state = token;
 }
 
 @Riverpod(keepAlive: true)
-class ServerAddress extends _$ServerAddress {
+class CurrentUser extends _$CurrentUser {
   @override
-  String? build() => null;
+  User? build() => null;
 
-  void set(String? token) => state = token;
+  void set(User? user) => state = user;
 }
 
 @riverpod
 Client clientProvider(Ref ref) {
-  final token = ref.watch(authTokenProvider);
-  final serverAddress = ref.watch(serverAddressProvider);
+  final authData = ref.watch(authDataProvider);
 
-  Client client = Client(null);
+  Client client = Client(base: authData?.address, token: authData?.token);
 
-  client.configure(token: token, baseUrl: serverAddress);
   return client;
 }

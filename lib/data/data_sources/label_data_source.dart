@@ -27,8 +27,9 @@ class LabelDataSource extends RemoteDataSource {
   }
 
   Future<List<LabelDto>?> getAll({String? query}) {
-    String params =
-        query == null ? '' : '?s=' + Uri.encodeQueryComponent(query);
+    String params = query == null
+        ? ''
+        : '?s=' + Uri.encodeQueryComponent(query);
     return client.get('/labels$params').then((response) {
       if (response == null) return null;
       return convertList(response.body, (result) => LabelDto.fromJson(result));

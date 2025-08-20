@@ -11,16 +11,19 @@ String _$taskPageControllerHash() =>
 
 /// See also [TaskPageController].
 @ProviderFor(TaskPageController)
-final taskPageControllerProvider = AutoDisposeAsyncNotifierProvider<
-    TaskPageController, TaskPageModel>.internal(
-  TaskPageController.new,
-  name: r'taskPageControllerProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$taskPageControllerHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final taskPageControllerProvider =
+    AutoDisposeAsyncNotifierProvider<
+      TaskPageController,
+      TaskPageModel
+    >.internal(
+      TaskPageController.new,
+      name: r'taskPageControllerProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$taskPageControllerHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
 
 typedef _$TaskPageController = AutoDisposeAsyncNotifier<TaskPageModel>;
 // ignore_for_file: type=lint

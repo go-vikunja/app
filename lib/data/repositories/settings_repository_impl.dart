@@ -1,4 +1,4 @@
-import 'package:vikunja_app/core/services.dart';
+import 'package:vikunja_app/core/theming/theme_mode.dart';
 import 'package:vikunja_app/data/data_sources/settings_data_source.dart';
 import 'package:vikunja_app/domain/repositories/settings_repository.dart';
 
@@ -13,8 +13,8 @@ class SettingsRepositoryImpl implements SettingsRepository {
   }
 
   @override
-  void setIgnoreCertificates(bool value) {
-    _datasource.setIgnoreCertificates(value);
+  Future<void> setIgnoreCertificates(bool value) {
+    return _datasource.setIgnoreCertificates(value);
   }
 
   @override
@@ -33,8 +33,8 @@ class SettingsRepositoryImpl implements SettingsRepository {
   }
 
   @override
-  void setVersionNotifications(bool value) {
-    _datasource.setVersionNotifications(value);
+  Future<void> setVersionNotifications(bool value) {
+    return _datasource.setVersionNotifications(value);
   }
 
   @override
@@ -83,7 +83,47 @@ class SettingsRepositoryImpl implements SettingsRepository {
   }
 
   @override
-  void setDisplayDoneTasks(int projectId, bool value) {
-    _datasource.setDisplayDoneTasks(projectId, value);
+  Future<void> setDisplayDoneTasks(int projectId, bool value) {
+    return _datasource.setDisplayDoneTasks(projectId, value);
+  }
+
+  @override
+  Future<List<String>> getPastServers() async {
+    return _datasource.getPastServers();
+  }
+
+  @override
+  Future<void> setPastServers(List<String> server) {
+    return _datasource.setPastServers(server);
+  }
+
+  @override
+  Future<bool> getSentryDialogShown() {
+    return _datasource.getSentryDialogShown();
+  }
+
+  @override
+  Future<void> setSentryDialogShown(bool value) {
+    return _datasource.setSentryDialogShown(value);
+  }
+
+  @override
+  Future<String?> getServer() {
+    return _datasource.getServer();
+  }
+
+  @override
+  Future<String?> getUserToken() {
+    return _datasource.getUserToken();
+  }
+
+  @override
+  Future<void> saveServer(String? server) {
+    return _datasource.saveServer(server);
+  }
+
+  @override
+  Future<void> saveUserToken(String? token) {
+    return _datasource.saveUserToken(token);
   }
 }

@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:vikunja_app/core/network/client.dart';
 import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/core/network/service.dart';
 import 'package:vikunja_app/core/services.dart';
@@ -10,12 +9,12 @@ import 'package:vikunja_app/data/models/task_attachment_dto.dart';
 import 'package:vikunja_app/data/models/task_dto.dart';
 
 class TaskDataSource extends RemoteDataSource {
-  TaskDataSource(Client client) : super(client);
+  TaskDataSource(super.client);
 
   Future<TaskDto?> add(int projectId, TaskDto task) {
-    return client
-        .put('/projects/$projectId/tasks', body: task.toJSON())
-        .then((response) {
+    return client.put('/projects/$projectId/tasks', body: task.toJSON()).then((
+      response,
+    ) {
       if (response == null) return null;
       return TaskDto.fromJson(response.body);
     });
@@ -33,9 +32,9 @@ class TaskDataSource extends RemoteDataSource {
   }
 
   Future<TaskDto?> update(TaskDto task) {
-    return client
-        .post('/tasks/${task.id}', body: task.toJSON())
-        .then((response) {
+    return client.post('/tasks/${task.id}', body: task.toJSON()).then((
+      response,
+    ) {
       if (response == null) return null;
       return TaskDto.fromJson(response.body);
     });
@@ -56,13 +55,15 @@ class TaskDataSource extends RemoteDataSource {
 
       for (int i = 0; i < page_n; i++) {
         Map<String, List<String>> paramMap = {
-          "page": [i.toString()]
+          "page": [i.toString()],
         };
-        futureList.add(client.get('/tasks/all', paramMap).then((pageResponse) {
-          convertList(pageResponse?.body, (result) {
-            taskList.add(TaskDto.fromJson(result));
-          });
-        }));
+        futureList.add(
+          client.get('/tasks/all', paramMap).then((pageResponse) {
+            convertList(pageResponse?.body, (result) {
+              taskList.add(TaskDto.fromJson(result));
+            });
+          }),
+        );
       }
       return Future.wait(futureList).then((value) {
         return taskList;
@@ -70,16 +71,19 @@ class TaskDataSource extends RemoteDataSource {
     });
   }
 
-  Future<Response<List<TaskDto>>?> getAllByProject(int projectId,
-      [Map<String, List<String>>? queryParameters]) {
-    return client
-        .get('/projects/$projectId/tasks', queryParameters)
-        .then((response) {
+  Future<Response<List<TaskDto>>?> getAllByProject(
+    int projectId, [
+    Map<String, List<String>>? queryParameters,
+  ]) {
+    return client.get('/projects/$projectId/tasks', queryParameters).then((
+      response,
+    ) {
       return response != null
-          ? new Response(
+          ? Response(
               convertList(response.body, (result) => TaskDto.fromJson(result)),
               response.statusCode,
-              response.headers)
+              response.headers,
+            )
           : null;
     });
   }
@@ -94,11 +98,13 @@ class TaskDataSource extends RemoteDataSource {
     });
   }
 
-  Future<List<TaskDto>?> getByFilterString(String filterString,
-      [Map<String, List<String>>? queryParameters]) {
+  Future<List<TaskDto>?> getByFilterString(
+    String filterString, [
+    Map<String, List<String>>? queryParameters,
+  ]) {
     Map<String, List<String>> parameters = {
       "filter": [filterString],
-      ...?queryParameters
+      ...?queryParameters,
     };
     print(parameters);
     return client.get('/tasks/all', parameters).then((response) {
@@ -108,7 +114,9 @@ class TaskDataSource extends RemoteDataSource {
   }
 
   Future<String?> downloadAttachment(
-      int taskId, TaskAttachmentDto attachment) async {
+    int taskId,
+    TaskAttachmentDto attachment,
+  ) async {
     String url = client.base;
     url += '/tasks/$taskId/attachments/${attachment.id}';
 

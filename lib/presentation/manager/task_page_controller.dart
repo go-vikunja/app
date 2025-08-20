@@ -24,9 +24,9 @@ class TaskPageController extends _$TaskPageController {
 
     var defaultProjectId =
         (await ref.read(userRepositoryProvider).getCurrentUser())
-                .settings
-                ?.default_project_id ??
-            0;
+            .settings
+            ?.default_project_id ??
+        0;
 
     var currentUser = await ref.read(userRepositoryProvider).getCurrentUser();
     Map<String, dynamic>? frontend_settings =
@@ -36,17 +36,22 @@ class TaskPageController extends _$TaskPageController {
         int? filterId = frontend_settings["filter_id_used_on_overview"];
 
         if (filterId != null && filterId != 0) {
-          var tasks =
-              await ref.read(taskRepositoryProvider).getAllByProject(filterId, {
-            "sort_by": ["due_date", "id"],
-            "order_by": ["asc", "desc"],
-          });
+          var tasks = await ref.read(taskRepositoryProvider).getAllByProject(
+            filterId,
+            {
+              "sort_by": ["due_date", "id"],
+              "order_by": ["asc", "desc"],
+            },
+          );
 
           if (tasks != null) {
             updateWidgetTasks(tasks.body);
           }
           return TaskPageModel(
-              tasks?.body ?? [], showOnlyDueDateTasks, defaultProjectId);
+            tasks?.body ?? [],
+            showOnlyDueDateTasks,
+            defaultProjectId,
+          );
         }
       }
     }
@@ -56,13 +61,14 @@ class TaskPageController extends _$TaskPageController {
       filterStrings.add("due_date > 0001-01-01 00:00");
     }
 
-    var tasks = await ref
-        .read(taskRepositoryProvider)
-        .getByFilterString(filterStrings.join(" && "), {
-      "sort_by": ["due_date", "id"],
-      "order_by": ["asc", "desc"],
-      "filter_include_nulls": ["false"],
-    });
+    var tasks = await ref.read(taskRepositoryProvider).getByFilterString(
+      filterStrings.join(" && "),
+      {
+        "sort_by": ["due_date", "id"],
+        "order_by": ["asc", "desc"],
+        "filter_include_nulls": ["false"],
+      },
+    );
 
     if (tasks != null) {
       updateWidgetTasks(tasks);

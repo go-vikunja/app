@@ -4,8 +4,7 @@ description: Vikunja as Flutter cross platform app
 version: 0.1.8-beta
 
 environment:
-  sdk: ">=2.19.0 <3.0.0"
-  flutter: 3.22.2
+  sdk: ^3.9.0
 
 dependencies:
   flutter:
@@ -13,20 +12,15 @@ dependencies:
   cupertino_icons: ^1.0.6
   http: ^1.2.1
   intl: ^0.20.2
-  flutter_local_notifications: ^18.0.1
-  rxdart: ^0.28.0
+  flutter_local_notifications: ^19.4.1
   flutter_timezone: ^4.1.0
   flutter_secure_storage: ^9.0.0
   datetime_picker_formfield_new: ^2.1.0
   flutter_typeahead: ^5.2.0
   build: ^2.4.1
-  json_serializable: ^6.7.1
-  petitparser: ^6.0.2
   provider: ^6.1.2
   webview_flutter: ^4.7.0
   flutter_colorpicker: ^1.1.0
-  flutter_keyboard_visibility: ^6.0.0
-  dotted_border: ^2.1.0
   url_launcher: ^6.2.5
   workmanager: ^0.9.0
   permission_handler: ^11.3.0
@@ -35,17 +29,17 @@ dependencies:
   flutter_downloader: ^1.11.6
   meta: ^1.11.0
   timezone: ^0.10.0
-  json_annotation: ^4.8.1
   collection: ^1.18.0
   cupertino_http: ^2.0.2
   cronet_http: ^1.2.0
   package_info_plus: ^8.2.1
   html_editor_enhanced: ^2.6.0
-  sentry_flutter: ^8.9.0
+  sentry_flutter: ^9.6.0
   home_widget: ^0.8.0
   flutter_riverpod: ^2.6.1
   riverpod_annotation: ^2.6.1
   path_provider: ^2.1.5
+  flutter_lints: ^6.0.0
 
 dependency_overrides:
   flutter_inappwebview:

@@ -10,12 +10,16 @@ class TaskLabelBulkDataSource extends RemoteDataSource {
   Future<List<LabelDto>?> update(TaskDto task, List<LabelDto>? labels) {
     if (labels == null) labels = [];
     return client
-        .post('/tasks/${task.id}/labels/bulk',
-            body: LabelTaskBulkDto(labels: labels).toJSON())
+        .post(
+          '/tasks/${task.id}/labels/bulk',
+          body: LabelTaskBulkDto(labels: labels).toJSON(),
+        )
         .then((response) {
-      if (response == null) return null;
-      return convertList(
-          response.body['labels'], (result) => LabelDto.fromJson(result));
-    });
+          if (response == null) return null;
+          return convertList(
+            response.body['labels'],
+            (result) => LabelDto.fromJson(result),
+          );
+        });
   }
 }

@@ -5,12 +5,18 @@ void main() {
   group('Duration to human readable tests', () {
     group('Positive durations (future)', () {
       test('Less than a minute should return "in less than a minute"', () {
-        expect(durationToHumanReadable(Duration(seconds: 30)),
-            "in less than a minute");
-        expect(durationToHumanReadable(Duration(seconds: 59)),
-            "in less than a minute");
-        expect(durationToHumanReadable(Duration(seconds: 0)),
-            "in less than a minute");
+        expect(
+          durationToHumanReadable(Duration(seconds: 30)),
+          "in less than a minute",
+        );
+        expect(
+          durationToHumanReadable(Duration(seconds: 59)),
+          "in less than a minute",
+        );
+        expect(
+          durationToHumanReadable(Duration(seconds: 0)),
+          "in less than a minute",
+        );
       });
 
       test('Exactly 1 minute should return "in 1 minute"', () {
@@ -46,10 +52,14 @@ void main() {
 
     group('Negative durations (past)', () {
       test('Less than a minute ago should return "less than a minute ago"', () {
-        expect(durationToHumanReadable(Duration(seconds: -30)),
-            "less than a minute ago");
-        expect(durationToHumanReadable(Duration(seconds: -59)),
-            "less than a minute ago");
+        expect(
+          durationToHumanReadable(Duration(seconds: -30)),
+          "less than a minute ago",
+        );
+        expect(
+          durationToHumanReadable(Duration(seconds: -59)),
+          "less than a minute ago",
+        );
       });
 
       test('Exactly 1 minute ago should return "1 minute ago"', () {
@@ -59,9 +69,13 @@ void main() {
       test('Multiple minutes ago should return "X minutes ago"', () {
         expect(durationToHumanReadable(Duration(minutes: -2)), "2 minutes ago");
         expect(
-            durationToHumanReadable(Duration(minutes: -30)), "30 minutes ago");
+          durationToHumanReadable(Duration(minutes: -30)),
+          "30 minutes ago",
+        );
         expect(
-            durationToHumanReadable(Duration(minutes: -59)), "59 minutes ago");
+          durationToHumanReadable(Duration(minutes: -59)),
+          "59 minutes ago",
+        );
       });
 
       test('Exactly 1 hour ago should return "1 hour ago"', () {
@@ -87,28 +101,38 @@ void main() {
 
     group('Edge cases and precedence', () {
       test('Duration with hours and minutes should prioritize larger unit', () {
-        expect(durationToHumanReadable(Duration(hours: 2, minutes: 30)),
-            "in 2 hours");
-        expect(durationToHumanReadable(Duration(hours: -5, minutes: -15)),
-            "5 hours ago");
+        expect(
+          durationToHumanReadable(Duration(hours: 2, minutes: 30)),
+          "in 2 hours",
+        );
+        expect(
+          durationToHumanReadable(Duration(hours: -5, minutes: -15)),
+          "5 hours ago",
+        );
       });
 
       test('Duration with days and hours should prioritize days', () {
         expect(
-            durationToHumanReadable(Duration(days: 3, hours: 12)), "in 3 days");
-        expect(durationToHumanReadable(Duration(days: -1, hours: -6)),
-            "1 day ago");
+          durationToHumanReadable(Duration(days: 3, hours: 12)),
+          "in 3 days",
+        );
+        expect(
+          durationToHumanReadable(Duration(days: -1, hours: -6)),
+          "1 day ago",
+        );
       });
 
       test('Duration with mixed components should use largest unit', () {
         expect(
-            durationToHumanReadable(
-                Duration(days: 1, hours: 23, minutes: 59, seconds: 59)),
-            "in 1 day");
+          durationToHumanReadable(
+            Duration(days: 1, hours: 23, minutes: 59, seconds: 59),
+          ),
+          "in 1 day",
+        );
         expect(
-            durationToHumanReadable(
-                Duration(days: -2, hours: -1, minutes: -30)),
-            "2 days ago");
+          durationToHumanReadable(Duration(days: -2, hours: -1, minutes: -30)),
+          "2 days ago",
+        );
       });
 
       test('Very large durations should work correctly', () {

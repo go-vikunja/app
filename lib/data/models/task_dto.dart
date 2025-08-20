@@ -10,19 +10,19 @@ class TaskReminderDto {
   DateTime reminder;
 
   TaskReminderDto(this.reminder, [relative_period = 0, relative_to = ""])
-      : relative_period = relative_period,
-        relative_to = relative_to;
+    : relative_period = relative_period,
+      relative_to = relative_to;
 
   TaskReminderDto.fromJson(Map<String, dynamic> json)
-      : reminder = DateTime.parse(json['reminder']),
-        relative_period = json['relative_period'],
-        relative_to = json['relative_to'];
+    : reminder = DateTime.parse(json['reminder']),
+      relative_period = json['relative_period'],
+      relative_to = json['relative_to'];
 
   toJSON() => {
-        'relative_period': relative_period,
-        'relative_to': relative_to,
-        'reminder': reminder.toUtc().toIso8601String(),
-      };
+    'relative_period': relative_period,
+    'relative_to': relative_to,
+    'reminder': reminder.toUtc().toIso8601String(),
+  };
 
   TaskReminder toDomain() =>
       TaskReminder(reminder, relative_period, relative_to);
@@ -74,134 +74,140 @@ class TaskDto {
     required this.createdBy,
     required this.projectId,
     this.bucketId,
-  })  : this.created = created ?? DateTime.now(),
-        this.updated = updated ?? DateTime.now();
+  }) : this.created = created ?? DateTime.now(),
+       this.updated = updated ?? DateTime.now();
 
   TaskDto.fromJson(Map<String, dynamic> json)
-      : id = json['id'],
-        title = json['title'],
-        description = json['description'],
-        identifier = json['identifier'],
-        done = json['done'],
-        reminderDates = json['reminders'] != null
-            ? (json['reminders'] as List<dynamic>)
+    : id = json['id'],
+      title = json['title'],
+      description = json['description'],
+      identifier = json['identifier'],
+      done = json['done'],
+      reminderDates = json['reminders'] != null
+          ? (json['reminders'] as List<dynamic>)
                 .map((ts) => TaskReminderDto.fromJson(ts))
                 .toList()
-            : [],
-        dueDate = DateTime.parse(json['due_date']),
-        startDate = DateTime.parse(json['start_date']),
-        endDate = DateTime.parse(json['end_date']),
-        parentTaskId = json['parent_task_id'],
-        priority = json['priority'],
-        repeatAfter = Duration(seconds: json['repeat_after']),
-        color = json['hex_color'] != ''
-            ? Color(int.parse(json['hex_color'], radix: 16) + 0xFF000000)
-            : null,
-        position = json['position'] is int
-            ? json['position'].toDouble()
-            : json['position'],
-        percent_done = json['percent_done'] is int
-            ? json['percent_done'].toDouble()
-            : json['percent_done'],
-        labels = json['labels'] != null
-            ? (json['labels'] as List<dynamic>)
+          : [],
+      dueDate = DateTime.parse(json['due_date']),
+      startDate = DateTime.parse(json['start_date']),
+      endDate = DateTime.parse(json['end_date']),
+      parentTaskId = json['parent_task_id'],
+      priority = json['priority'],
+      repeatAfter = Duration(seconds: json['repeat_after']),
+      color = json['hex_color'] != ''
+          ? Color(int.parse(json['hex_color'], radix: 16) + 0xFF000000)
+          : null,
+      position = json['position'] is int
+          ? json['position'].toDouble()
+          : json['position'],
+      percent_done = json['percent_done'] is int
+          ? json['percent_done'].toDouble()
+          : json['percent_done'],
+      labels = json['labels'] != null
+          ? (json['labels'] as List<dynamic>)
                 .map((label) => LabelDto.fromJson(label))
                 .toList()
-            : [],
-        subtasks = json['subtasks'] != null
-            ? (json['subtasks'] as List<dynamic>)
+          : [],
+      subtasks = json['subtasks'] != null
+          ? (json['subtasks'] as List<dynamic>)
                 .map((subtask) => TaskDto.fromJson(subtask))
                 .toList()
-            : [],
-        attachments = json['attachments'] != null
-            ? (json['attachments'] as List<dynamic>)
+          : [],
+      attachments = json['attachments'] != null
+          ? (json['attachments'] as List<dynamic>)
                 .map((attachment) => TaskAttachmentDto.fromJSON(attachment))
                 .toList()
-            : [],
-        updated = DateTime.parse(json['updated']),
-        created = DateTime.parse(json['created']),
-        projectId = json['project_id'],
-        bucketId = json['bucket_id'],
-        createdBy = UserDto.fromJson(json['created_by']);
+          : [],
+      updated = DateTime.parse(json['updated']),
+      created = DateTime.parse(json['created']),
+      projectId = json['project_id'],
+      bucketId = json['bucket_id'],
+      createdBy = UserDto.fromJson(json['created_by']);
 
   toJSON() => {
-        'id': id,
-        'title': title,
-        'description': description,
-        'identifier': identifier.isNotEmpty ? identifier : null,
-        'done': done,
-        'reminders': reminderDates.map((date) => date.toJSON()).toList(),
-        'due_date': dueDate?.toUtc().toIso8601String(),
-        'start_date': startDate?.toUtc().toIso8601String(),
-        'end_date': endDate?.toUtc().toIso8601String(),
-        'priority': priority,
-        'repeat_after': repeatAfter?.inSeconds,
-        'hex_color':
-            color?.toARGB32().toRadixString(16).padLeft(8, '0').substring(2),
-        'position': position,
-        'percent_done': percent_done,
-        'project_id': projectId,
-        'labels': labels.map((label) => label.toJSON()).toList(),
-        'subtasks': subtasks.map((subtask) => subtask.toJSON()).toList(),
-        'attachments':
-            attachments.map((attachment) => attachment.toJSON()).toList(),
-        'bucket_id': bucketId,
-        'created_by': createdBy.toJSON(),
-        'updated': updated.toUtc().toIso8601String(),
-        'created': created.toUtc().toIso8601String(),
-      };
+    'id': id,
+    'title': title,
+    'description': description,
+    'identifier': identifier.isNotEmpty ? identifier : null,
+    'done': done,
+    'reminders': reminderDates.map((date) => date.toJSON()).toList(),
+    'due_date': dueDate?.toUtc().toIso8601String(),
+    'start_date': startDate?.toUtc().toIso8601String(),
+    'end_date': endDate?.toUtc().toIso8601String(),
+    'priority': priority,
+    'repeat_after': repeatAfter?.inSeconds,
+    'hex_color': color
+        ?.toARGB32()
+        .toRadixString(16)
+        .padLeft(8, '0')
+        .substring(2),
+    'position': position,
+    'percent_done': percent_done,
+    'project_id': projectId,
+    'labels': labels.map((label) => label.toJSON()).toList(),
+    'subtasks': subtasks.map((subtask) => subtask.toJSON()).toList(),
+    'attachments': attachments
+        .map((attachment) => attachment.toJSON())
+        .toList(),
+    'bucket_id': bucketId,
+    'created_by': createdBy.toJSON(),
+    'updated': updated.toUtc().toIso8601String(),
+    'created': created.toUtc().toIso8601String(),
+  };
 
   Task toDomain() => Task(
-        id: id,
-        title: title,
-        description: description,
-        identifier: identifier,
-        done: done,
-        reminderDates: reminderDates.map((e) => e.toDomain()).toList(),
-        dueDate: dueDate,
-        startDate: startDate,
-        endDate: endDate,
-        parentTaskId: parentTaskId,
-        priority: priority,
-        repeatAfter: repeatAfter,
-        color: color,
-        position: position,
-        percent_done: percent_done,
-        labels: labels.map((e) => e.toDomain()).toList(),
-        subtasks: subtasks.map((e) => e.toDomain()).toList(),
-        attachments: attachments.map((e) => e.toDomain()).toList(),
-        updated: updated,
-        created: created,
-        projectId: projectId,
-        bucketId: bucketId,
-        createdBy: createdBy.toDomain(),
-      );
+    id: id,
+    title: title,
+    description: description,
+    identifier: identifier,
+    done: done,
+    reminderDates: reminderDates.map((e) => e.toDomain()).toList(),
+    dueDate: dueDate,
+    startDate: startDate,
+    endDate: endDate,
+    parentTaskId: parentTaskId,
+    priority: priority,
+    repeatAfter: repeatAfter,
+    color: color,
+    position: position,
+    percent_done: percent_done,
+    labels: labels.map((e) => e.toDomain()).toList(),
+    subtasks: subtasks.map((e) => e.toDomain()).toList(),
+    attachments: attachments.map((e) => e.toDomain()).toList(),
+    updated: updated,
+    created: created,
+    projectId: projectId,
+    bucketId: bucketId,
+    createdBy: createdBy.toDomain(),
+  );
 
   static TaskDto fromDomain(Task b) => TaskDto(
-        id: b.id,
-        title: b.title,
-        description: b.description,
-        identifier: b.identifier,
-        done: b.done,
-        reminderDates:
-            b.reminderDates.map((e) => TaskReminderDto.fromDomain(e)).toList(),
-        dueDate: b.dueDate,
-        startDate: b.startDate,
-        endDate: b.endDate,
-        parentTaskId: b.parentTaskId,
-        priority: b.priority,
-        repeatAfter: b.repeatAfter,
-        color: b.color,
-        position: b.position,
-        percent_done: b.percent_done,
-        labels: b.labels.map((e) => LabelDto.fromDomain(e)).toList(),
-        subtasks: b.subtasks.map((e) => TaskDto.fromDomain(e)).toList(),
-        attachments:
-            b.attachments.map((e) => TaskAttachmentDto.fromDomain(e)).toList(),
-        updated: b.updated,
-        created: b.created,
-        projectId: b.projectId,
-        bucketId: b.bucketId,
-        createdBy: UserDto.fromDomain(b.createdBy),
-      );
+    id: b.id,
+    title: b.title,
+    description: b.description,
+    identifier: b.identifier,
+    done: b.done,
+    reminderDates: b.reminderDates
+        .map((e) => TaskReminderDto.fromDomain(e))
+        .toList(),
+    dueDate: b.dueDate,
+    startDate: b.startDate,
+    endDate: b.endDate,
+    parentTaskId: b.parentTaskId,
+    priority: b.priority,
+    repeatAfter: b.repeatAfter,
+    color: b.color,
+    position: b.position,
+    percent_done: b.percent_done,
+    labels: b.labels.map((e) => LabelDto.fromDomain(e)).toList(),
+    subtasks: b.subtasks.map((e) => TaskDto.fromDomain(e)).toList(),
+    attachments: b.attachments
+        .map((e) => TaskAttachmentDto.fromDomain(e))
+        .toList(),
+    updated: b.updated,
+    created: b.created,
+    projectId: b.projectId,
+    bucketId: b.bucketId,
+    createdBy: UserDto.fromDomain(b.createdBy),
+  );
 }

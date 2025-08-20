@@ -6,6 +6,7 @@ import 'package:vikunja_app/data/data_sources/bucket_data_source.dart';
 import 'package:vikunja_app/data/data_sources/label_data_source.dart';
 import 'package:vikunja_app/data/data_sources/project_data_source.dart';
 import 'package:vikunja_app/data/data_sources/project_view_data_source.dart';
+import 'package:vikunja_app/data/data_sources/server_data_source.dart';
 import 'package:vikunja_app/data/data_sources/settings_data_source.dart';
 import 'package:vikunja_app/data/data_sources/task_data_source.dart';
 import 'package:vikunja_app/data/data_sources/task_label_bulk_data_source.dart';
@@ -61,6 +62,12 @@ LabelDataSource labelDataSource(Ref ref) {
 UserDataSource userDataSource(Ref ref) {
   final client = ref.watch(clientProviderProvider);
   return UserDataSource(client);
+}
+
+@riverpod
+ServerDataSource serverDataSource(Ref ref) {
+  final client = ref.watch(clientProviderProvider);
+  return ServerDataSource(client);
 }
 
 @riverpod

@@ -2,128 +2,139 @@
 
 import 'dart:math';
 
-import 'package:flutter_local_notifications/flutter_local_notifications.dart'
-    as notifs;
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
-import 'package:rxdart/subjects.dart' as rxSub;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/repositories/task_repository.dart';
 import 'package:vikunja_app/presentation/manager/widget_controller.dart';
 
-class NotificationClass {
-  final int? id;
-  final String? title;
-  final String? body;
-  final String? payload;
-  late String currentTimeZone;
-  notifs.NotificationAppLaunchDetails? notifLaunch;
+class NotificationHandler {
+  FlutterLocalNotificationsPlugin get notificationsPlugin =>
+      FlutterLocalNotificationsPlugin();
 
-  notifs.FlutterLocalNotificationsPlugin get notificationsPlugin =>
-      new notifs.FlutterLocalNotificationsPlugin();
+  var androidSpecificsDueDate = AndroidNotificationDetails(
+    "Vikunja1",
+    "Due Date Notifications",
+    channelDescription: "description",
+    icon: 'vikunja_notification_logo',
+    importance: Importance.high,
+  );
+  var androidSpecificsReminders = AndroidNotificationDetails(
+    "Vikunja2",
+    "Reminder Notifications",
+    channelDescription: "description",
+    icon: 'vikunja_notification_logo',
+    importance: Importance.high,
+  );
+  late DarwinNotificationDetails iOSSpecifics;
+  late NotificationDetails platformChannelSpecificsDueDate;
+  late NotificationDetails platformChannelSpecificsReminders;
 
-  var androidSpecificsDueDate = notifs.AndroidNotificationDetails(
-      "Vikunja1", "Due Date Notifications",
-      channelDescription: "description",
-      icon: 'vikunja_notification_logo',
-      importance: notifs.Importance.high);
-  var androidSpecificsReminders = notifs.AndroidNotificationDetails(
-      "Vikunja2", "Reminder Notifications",
-      channelDescription: "description",
-      icon: 'vikunja_notification_logo',
-      importance: notifs.Importance.high);
-  late notifs.DarwinNotificationDetails iOSSpecifics;
-  late notifs.NotificationDetails platformChannelSpecificsDueDate;
-  late notifs.NotificationDetails platformChannelSpecificsReminders;
+  NotificationHandler();
 
-  NotificationClass({this.id, this.body, this.payload, this.title});
-
-  final rxSub.BehaviorSubject<NotificationClass>
-      didReceiveLocalNotificationSubject =
-      rxSub.BehaviorSubject<NotificationClass>();
-  final rxSub.BehaviorSubject<String> selectNotificationSubject =
-      rxSub.BehaviorSubject<String>();
+  Future<void> initNotifications() async {
+    iOSSpecifics = DarwinNotificationDetails();
+    platformChannelSpecificsDueDate = NotificationDetails(
+      android: androidSpecificsDueDate,
+      iOS: iOSSpecifics,
+    );
+    platformChannelSpecificsReminders = NotificationDetails(
+      android: androidSpecificsReminders,
+      iOS: iOSSpecifics,
+    );
+    await _initNotifications();
+    requestIOSPermissions();
+  }
 
   Future<void> _initNotifications() async {
-    var initializationSettingsAndroid =
-        notifs.AndroidInitializationSettings('vikunja_logo');
-    var initializationSettingsIOS = notifs.DarwinInitializationSettings(
+    var initializationSettingsAndroid = AndroidInitializationSettings(
+      'vikunja_logo',
+    );
+    var initializationSettingsIOS = DarwinInitializationSettings(
       requestAlertPermission: false,
       requestBadgePermission: false,
       requestSoundPermission: false,
     );
-    var initializationSettings = notifs.InitializationSettings(
-        android: initializationSettingsAndroid, iOS: initializationSettingsIOS);
-    await notificationsPlugin.initialize(initializationSettings,
-        onDidReceiveNotificationResponse:
-            (notifs.NotificationResponse resp) async {
-      if (payload != null) {
-        print('notification payload: ' + resp.payload!);
-        selectNotificationSubject.add(resp.payload!);
-      }
-    });
+    var initializationSettings = InitializationSettings(
+      android: initializationSettingsAndroid,
+      iOS: initializationSettingsIOS,
+    );
+    await notificationsPlugin.initialize(
+      initializationSettings,
+      onDidReceiveNotificationResponse: onDidReceiveNotificationResponse,
+    );
     print("Notifications initialised successfully");
   }
 
-  Future<void> notificationInitializer() async {
-    iOSSpecifics = notifs.DarwinNotificationDetails();
-    platformChannelSpecificsDueDate = notifs.NotificationDetails(
-        android: androidSpecificsDueDate, iOS: iOSSpecifics);
-    platformChannelSpecificsReminders = notifs.NotificationDetails(
-        android: androidSpecificsReminders, iOS: iOSSpecifics);
-    currentTimeZone = await FlutterTimezone.getLocalTimezone();
-    notifLaunch = await notificationsPlugin.getNotificationAppLaunchDetails();
-    await _initNotifications();
-    requestIOSPermissions();
-    return Future.value();
+  void onDidReceiveNotificationResponse(NotificationResponse resp) async {
+    if (resp.payload != null) {
+      print('notification payload: ${resp.payload!}');
+    }
+    //TODO navigate to task screen
   }
 
   Future<void> scheduleNotification(
-      String title,
-      String description,
-      notifs.FlutterLocalNotificationsPlugin notifsPlugin,
-      DateTime scheduledTime,
-      String currentTimeZone,
-      notifs.NotificationDetails platformChannelSpecifics,
-      {int? id}) async {
-    if (id == null) id = Random().nextInt(1000000);
+    String title,
+    String description,
+    FlutterLocalNotificationsPlugin notifsPlugin,
+    DateTime scheduledTime,
+    String currentTimeZone,
+    NotificationDetails platformChannelSpecifics, {
+    int? id,
+  }) async {
+    id ??= Random().nextInt(1000000);
+
     // TODO: move to setup
-    tz.TZDateTime time =
-        tz.TZDateTime.from(scheduledTime, tz.getLocation(currentTimeZone));
+    tz.TZDateTime time = tz.TZDateTime.from(
+      scheduledTime,
+      tz.getLocation(currentTimeZone),
+    );
+
     if (time.difference(tz.TZDateTime.now(tz.getLocation(currentTimeZone))) <
-        Duration.zero) return;
-    print("scheduled notification for time " + time.toString());
+        Duration.zero) {
+      return;
+    }
+
+    print("scheduled notification for time $time");
+
     await notifsPlugin.zonedSchedule(
-        id, title, description, time, platformChannelSpecifics,
-        androidScheduleMode: notifs.AndroidScheduleMode.exactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation: notifs
-            .UILocalNotificationDateInterpretation
-            .wallClockTime); // This literally schedules the notification
+      id,
+      title,
+      description,
+      time,
+      platformChannelSpecifics,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+    ); // This literally schedules the notification
   }
 
   void sendTestNotification() {
-    notificationsPlugin.show(Random().nextInt(10000000), "Test Notification",
-        "This is a test notification", platformChannelSpecificsReminders);
+    notificationsPlugin.show(
+      Random().nextInt(10000000),
+      "Test Notification",
+      "This is a test notification",
+      platformChannelSpecificsReminders,
+    );
   }
 
   void requestIOSPermissions() {
     notificationsPlugin
         .resolvePlatformSpecificImplementation<
-            notifs.IOSFlutterLocalNotificationsPlugin>()
-        ?.requestPermissions(
-          alert: true,
-          badge: true,
-          sound: true,
-        );
+          IOSFlutterLocalNotificationsPlugin
+        >()
+        ?.requestPermissions(alert: true, badge: true, sound: true);
   }
 
-  Future<void> scheduleDueNotifications(TaskRepository taskService,
-      {List<Task>? tasks}) async {
-    if (tasks == null)
-      tasks = await taskService.getByFilterString(
-          "done=false && (due_date > now || reminders > now)", {
-        "filter_include_nulls": ["false"]
-      });
+  Future<void> scheduleDueNotifications(
+    TaskRepository taskService, {
+    List<Task>? tasks,
+  }) async {
+    tasks ??= await taskService.getByFilterString(
+      "done=false && (due_date > now || reminders > now)",
+      {
+        "filter_include_nulls": ["false"],
+      },
+    );
     if (tasks == null) {
       print("did not receive tasks on notification update");
       return;
@@ -134,7 +145,7 @@ class NotificationClass {
       for (final reminder in task.reminderDates) {
         scheduleNotification(
           "Reminder",
-          "This is your reminder for '" + task.title + "'",
+          "This is your reminder for '${task.title}'",
           notificationsPlugin,
           reminder.reminder,
           await FlutterTimezone.getLocalTimezone(),
@@ -145,7 +156,7 @@ class NotificationClass {
       if (task.hasDueDate) {
         scheduleNotification(
           "Due Reminder",
-          "The task '" + task.title + "' is due.",
+          "The task '${task.title}' is due.",
           notificationsPlugin,
           task.dueDate!,
           await FlutterTimezone.getLocalTimezone(),
@@ -159,10 +170,11 @@ class NotificationClass {
     //TODO: this should be handled separately
     try {
       // I need to provide all tasks for today for the widget, not just tasks that are due > now
-      var widget_tasks = await taskService
-          .getByFilterString("due_date > 0001-01-01 00:00 && done = false");
-      if (widget_tasks != null) {
-        updateWidgetTasks(widget_tasks);
+      var widgetTasks = await taskService.getByFilterString(
+        "due_date > 0001-01-01 00:00 && done = false",
+      );
+      if (widgetTasks != null) {
+        updateWidgetTasks(widgetTasks);
       }
     } catch (e) {
       print(e);

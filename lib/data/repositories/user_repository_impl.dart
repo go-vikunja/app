@@ -11,15 +11,22 @@ class UserRepositoryImpl extends UserRepository {
   UserRepositoryImpl(this._dataSource);
 
   @override
-  Future<UserTokenPair> login(String username, password,
-      {bool rememberMe = false, String? totp}) async {
-    return (await _dataSource.login(username, password,
-            rememberMe: rememberMe, totp: totp))
-        .toDomain();
+  Future<UserToken> login(
+    String username,
+    password, {
+    bool rememberMe = false,
+    String? totp,
+  }) async {
+    return (await _dataSource.login(
+      username,
+      password,
+      rememberMe: rememberMe,
+      totp: totp,
+    )).toDomain();
   }
 
   @override
-  Future<UserTokenPair?> register(String username, email, password) async {
+  Future<UserToken?> register(String username, email, password) async {
     return (await _dataSource.register(username, email, password))?.toDomain();
   }
 
@@ -30,10 +37,11 @@ class UserRepositoryImpl extends UserRepository {
 
   @override
   Future<UserSettings?> setCurrentUserSettings(
-      UserSettings userSettings) async {
-    return (await _dataSource
-            .setCurrentUserSettings(UserSettingsDto.fromDomain(userSettings)))
-        ?.toDomain();
+    UserSettings userSettings,
+  ) async {
+    return (await _dataSource.setCurrentUserSettings(
+      UserSettingsDto.fromDomain(userSettings),
+    ))?.toDomain();
   }
 
   @override

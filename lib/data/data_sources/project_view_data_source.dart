@@ -7,11 +7,13 @@ class ProjectViewDataSource extends RemoteDataSource {
   Future<ProjectViewDto?> update(ProjectViewDto view) {
     print(view.toJSON());
     return client
-        .post('/projects/${view.projectId}/views/${view.id}',
-            body: view.toJSON())
+        .post(
+          '/projects/${view.projectId}/views/${view.id}',
+          body: view.toJSON(),
+        )
         .then((response) {
-      if (response == null) return null;
-      return ProjectViewDto.fromJson(response.body);
-    });
+          if (response == null) return null;
+          return ProjectViewDto.fromJson(response.body);
+        });
   }
 }

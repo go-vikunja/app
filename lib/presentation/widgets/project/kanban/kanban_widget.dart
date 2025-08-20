@@ -3,11 +3,11 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/core/utils/calculate_item_position.dart';
 import 'package:vikunja_app/domain/entities/bucket.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/project_view.dart';
-import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/presentation/manager/project_controller.dart';
 import 'package:vikunja_app/presentation/widgets/project/kanban/add_bucket_dialog.dart';
 import 'package:vikunja_app/presentation/widgets/project/kanban/bucket_drag_target.dart';
@@ -104,8 +104,9 @@ class KanbanWidgetState extends ConsumerState<KanbanWidget> {
 
     if (dx.abs() > 0.1) {
       final next = (_scrollController.position.pixels + dx).clamp(
-          _scrollController.position.minScrollExtent,
-          _scrollController.position.maxScrollExtent);
+        _scrollController.position.minScrollExtent,
+        _scrollController.position.maxScrollExtent,
+      );
       if (next != _scrollController.position.pixels) {
         _scrollController.jumpTo(next);
       }
@@ -138,10 +139,11 @@ class KanbanWidgetState extends ConsumerState<KanbanWidget> {
                   onAccept: (drag) {
                     _stopAutoScroll(); // ensure timers stop on accept
                     _moveBucket(
-                        project: data.project,
-                        buckets: data.buckets,
-                        from: drag.fromIndex,
-                        to: 0);
+                      project: data.project,
+                      buckets: data.buckets,
+                      from: drag.fromIndex,
+                      to: 0,
+                    );
                   },
                 ),
                 for (int i = 0; i < data.buckets.length; i++) ...[
@@ -151,10 +153,10 @@ class KanbanWidgetState extends ConsumerState<KanbanWidget> {
                     project: data.project,
                     isDoneColumn:
                         data.project.views[data.viewIndex].doneBucketId ==
-                            data.buckets[i].id,
+                        data.buckets[i].id,
                     isDefaultColumn:
                         data.project.views[data.viewIndex].defaultBucketId ==
-                            data.buckets[i].id,
+                        data.buckets[i].id,
                     bucket: data.buckets[i],
                     buckets: data.buckets,
                     bucketIndex: i,
@@ -168,10 +170,11 @@ class KanbanWidgetState extends ConsumerState<KanbanWidget> {
                     onAccept: (drag) {
                       _stopAutoScroll();
                       _moveBucket(
-                          project: data.project,
-                          buckets: data.buckets,
-                          from: drag.fromIndex,
-                          to: i + 1);
+                        project: data.project,
+                        buckets: data.buckets,
+                        from: drag.fromIndex,
+                        to: i + 1,
+                      );
                     },
                   ),
                 ],
@@ -182,7 +185,10 @@ class KanbanWidgetState extends ConsumerState<KanbanWidget> {
                       ElevatedButton(
                         onPressed: () {
                           _addBucketDialog(
-                              context, data.project, data.viewIndex);
+                            context,
+                            data.project,
+                            data.viewIndex,
+                          );
                         },
                         child: Text("Add Bucket +"),
                       ),
@@ -200,24 +206,26 @@ class KanbanWidgetState extends ConsumerState<KanbanWidget> {
   }
 
   Future<void> _addBucketDialog(
-      BuildContext context, Project project, int viewIndex) {
+    BuildContext context,
+    Project project,
+    int viewIndex,
+  ) {
     FocusScope.of(context).unfocus();
     return showDialog(
       context: context,
       builder: (_) => AddBucketDialog(
-        onAdd: (title) => _addBucket(
-          title,
-          context,
-          project,
-          viewIndex,
-        ),
+        onAdd: (title) => _addBucket(title, context, project, viewIndex),
       ),
     );
   }
 
-  Future<void> _addBucket(String title, BuildContext context, Project project,
-      int viewIndex) async {
-    final currentUser = VikunjaGlobal.of(context).currentUser;
+  Future<void> _addBucket(
+    String title,
+    BuildContext context,
+    Project project,
+    int viewIndex,
+  ) async {
+    final currentUser = ref.read(currentUserProvider);
     if (currentUser == null) {
       return;
     }
@@ -231,15 +239,13 @@ class KanbanWidgetState extends ConsumerState<KanbanWidget> {
       limit: 0,
     );
 
-    await ref.read(projectControllerProvider(project).notifier).addBucket(
-          newBucket: bucket,
-          project: project,
-          viewId: view.id,
-        );
+    await ref
+        .read(projectControllerProvider(project).notifier)
+        .addBucket(newBucket: bucket, project: project, viewId: view.id);
 
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text('The bucket was added successfully!'),
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('The bucket was added successfully!')),
+    );
   }
 
   void _moveBucket({
@@ -255,10 +261,11 @@ class KanbanWidgetState extends ConsumerState<KanbanWidget> {
       buckets.insert(newIndex, bucket);
 
       var position = calculateItemPosition(
-          positionBefore: newIndex == 0 ? null : buckets[newIndex - 1].position,
-          positionAfter: newIndex == buckets.length - 1
-              ? null
-              : buckets[newIndex + 1].position);
+        positionBefore: newIndex == 0 ? null : buckets[newIndex - 1].position,
+        positionAfter: newIndex == buckets.length - 1
+            ? null
+            : buckets[newIndex + 1].position,
+      );
       bucket.position = position;
 
       ref
@@ -300,14 +307,17 @@ class KanbanWidgetState extends ConsumerState<KanbanWidget> {
 
       toTasks.insert(insertIndex, task);
 
-      var positionBefore =
-          insertIndex == 0 ? null : fromBucket.tasks[insertIndex - 1].position;
+      var positionBefore = insertIndex == 0
+          ? null
+          : fromBucket.tasks[insertIndex - 1].position;
       var positionAfter = insertIndex == toTasks.length - 1
           ? null
           : toTasks[insertIndex + 1].position;
 
       var position = calculateItemPosition(
-          positionBefore: positionBefore, positionAfter: positionAfter);
+        positionBefore: positionBefore,
+        positionAfter: positionAfter,
+      );
       task.position = position;
 
       ref
@@ -322,6 +332,8 @@ class _NoGlowScrollBehavior extends ScrollBehavior {
 
   @override
   Widget buildOverscrollIndicator(
-          BuildContext context, Widget child, ScrollableDetails details) =>
-      child;
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) => child;
 }

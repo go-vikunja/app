@@ -16,14 +16,18 @@ abstract class TaskRepository {
 
   Future<List<Task>> getAll();
 
-  Future<Response<List<Task>>?> getAllByProject(int projectId,
-      [Map<String, List<String>>? queryParameters]);
+  Future<Response<List<Task>>?> getAllByProject(
+    int projectId, [
+    Map<String, List<String>>? queryParameters,
+  ]);
 
   @deprecated
   Future<List<Task>?> getByOptions(TaskServiceOptions options);
 
-  Future<List<Task>?> getByFilterString(String filterString,
-      [Map<String, List<String>>? queryParameters]);
+  Future<List<Task>?> getByFilterString(
+    String filterString, [
+    Map<String, List<String>>? queryParameters,
+  ]);
 
   Future<String?> downloadAttachment(int taskId, TaskAttachment attachment);
 }

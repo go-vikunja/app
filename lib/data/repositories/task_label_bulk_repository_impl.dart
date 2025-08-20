@@ -13,8 +13,9 @@ class TaskLabelBulkRepositoryImpl extends TaskLabelBulkRepository {
   @override
   Future<List<Label>?> update(Task task, List<Label>? labels) async {
     var labelsDto = labels?.map((e) => LabelDto.fromDomain(e)).toList();
-    return (await _dataSource.update(TaskDto.fromDomain(task), labelsDto))
-        ?.map((e) => e.toDomain())
-        .toList();
+    return (await _dataSource.update(
+      TaskDto.fromDomain(task),
+      labelsDto,
+    ))?.map((e) => e.toDomain()).toList();
   }
 }

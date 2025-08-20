@@ -16,9 +16,7 @@ class TaskTile extends StatelessWidget {
 
     return Card(
       color: bgColor,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(4.0),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4.0)),
       child: Padding(
         padding: const EdgeInsets.only(left: 8, right: 8, top: 8, bottom: 12),
         child: Column(
@@ -29,27 +27,24 @@ class TaskTile extends StatelessWidget {
                 Expanded(
                   child: Text(
                     task.identifier,
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall
-                        ?.copyWith(color: textColor),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: textColor),
                   ),
                 ),
                 if (task.done)
-                  Badge(
-                    label: Text("Done"),
-                    backgroundColor: Colors.green,
-                  )
+                  Badge(label: Text("Done"), backgroundColor: Colors.green),
               ],
             ),
             Row(
               children: [
                 Expanded(
-                  child: Text(task.title,
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodyMedium
-                          ?.copyWith(color: textColor)),
+                  child: Text(
+                    task.title,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.copyWith(color: textColor),
+                  ),
                 ),
                 if (task.hasDueDate) DueDateCard(task.dueDate!),
               ],
@@ -66,8 +61,9 @@ class TaskTile extends StatelessWidget {
             ),
             if (task.labels.isNotEmpty)
               Wrap(
-                children:
-                    task.labels.map((e) => LabelWidget(label: e)).toList(),
+                children: task.labels
+                    .map((e) => LabelWidget(label: e))
+                    .toList(),
               ),
             if (task.description.isNotEmpty)
               Padding(
@@ -90,8 +86,8 @@ class TaskTile extends StatelessWidget {
 
   Color _getTextColor(BuildContext context) =>
       _getBackgroundColor(context).computeLuminance() > 0.5
-          ? Colors.black
-          : Colors.white;
+      ? Colors.black
+      : Colors.white;
 
   Color _getBackgroundColor(BuildContext context) {
     return task.color != Colors.black && task.color != null

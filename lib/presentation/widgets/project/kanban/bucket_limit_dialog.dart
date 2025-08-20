@@ -67,7 +67,7 @@ class BucketLimitDialog extends StatelessWidget {
           onPressed: () =>
               Navigator.of(context).pop(int.parse(_controller.text)),
           child: Text('Done'),
-        )
+        ),
       ],
     );
   }

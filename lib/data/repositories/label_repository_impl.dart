@@ -25,9 +25,9 @@ class LabelRepositoryImpl extends LabelRepository {
 
   @override
   Future<List<Label>?> getAll({String? query}) async {
-    return (await _dataSource.getAll(query: query))
-        ?.map((e) => e.toDomain())
-        .toList();
+    return (await _dataSource.getAll(
+      query: query,
+    ))?.map((e) => e.toDomain()).toList();
   }
 
   @override

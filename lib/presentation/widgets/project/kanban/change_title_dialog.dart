@@ -6,7 +6,7 @@ class ChangeTitleDialog extends StatelessWidget {
   final TextEditingController _controller;
 
   ChangeTitleDialog({super.key, required this.bucket})
-      : _controller = TextEditingController(text: bucket.title);
+    : _controller = TextEditingController(text: bucket.title);
 
   @override
   Widget build(BuildContext context) {
@@ -21,9 +21,7 @@ class ChangeTitleDialog extends StatelessWidget {
               Expanded(
                 child: TextField(
                   controller: _controller,
-                  decoration: InputDecoration(
-                    labelText: 'Enter title',
-                  ),
+                  decoration: InputDecoration(labelText: 'Enter title'),
                   onSubmitted: (text) => Navigator.of(context).pop(text),
                 ),
               ),
@@ -39,7 +37,7 @@ class ChangeTitleDialog extends StatelessWidget {
         TextButton(
           onPressed: () => Navigator.of(context).pop(_controller.text),
           child: Text('Done'),
-        )
+        ),
       ],
     );
   }

@@ -5,8 +5,11 @@ class BucketDragTarget extends StatefulWidget {
   final int index;
   final void Function(BucketDrag) onAccept;
 
-  const BucketDragTarget(
-      {super.key, required this.index, required this.onAccept});
+  const BucketDragTarget({
+    super.key,
+    required this.index,
+    required this.onAccept,
+  });
 
   @override
   State<BucketDragTarget> createState() => _BucketDragTargetState();

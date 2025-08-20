@@ -12,19 +12,18 @@ String _$projectDataSourceHash() => r'b71bde2e37a74f909810d1ba117c8d335d554f5a';
 @ProviderFor(projectDataSource)
 final projectDataSourceProvider =
     AutoDisposeProvider<ProjectDataSource>.internal(
-  projectDataSource,
-  name: r'projectDataSourceProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$projectDataSourceHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+      projectDataSource,
+      name: r'projectDataSourceProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$projectDataSourceHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef ProjectDataSourceRef = AutoDisposeProviderRef<ProjectDataSource>;
-
 String _$projectViewDataSourceHash() =>
     r'e0b524d3ff732b6363531d267a97aa4b70e84482';
 
@@ -32,20 +31,19 @@ String _$projectViewDataSourceHash() =>
 @ProviderFor(projectViewDataSource)
 final projectViewDataSourceProvider =
     AutoDisposeProvider<ProjectViewDataSource>.internal(
-  projectViewDataSource,
-  name: r'projectViewDataSourceProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$projectViewDataSourceHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+      projectViewDataSource,
+      name: r'projectViewDataSourceProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$projectViewDataSourceHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-typedef ProjectViewDataSourceRef
-    = AutoDisposeProviderRef<ProjectViewDataSource>;
-
+typedef ProjectViewDataSourceRef =
+    AutoDisposeProviderRef<ProjectViewDataSource>;
 String _$bucketDataSourceHash() => r'8bcd761a3cd4e40e781bf8e3df7c317769361b8d';
 
 /// See also [bucketDataSource].
@@ -87,14 +85,14 @@ String _$taskLabelDataSourceHash() =>
 @ProviderFor(taskLabelDataSource)
 final taskLabelDataSourceProvider =
     AutoDisposeProvider<TaskLabelDataSource>.internal(
-  taskLabelDataSource,
-  name: r'taskLabelDataSourceProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$taskLabelDataSourceHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+      taskLabelDataSource,
+      name: r'taskLabelDataSourceProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$taskLabelDataSourceHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
@@ -106,19 +104,19 @@ String _$taskLabelBulkDataSourceHash() =>
 @ProviderFor(taskLabelBulkDataSource)
 final taskLabelBulkDataSourceProvider =
     AutoDisposeProvider<TaskLabelBulkDataSource>.internal(
-  taskLabelBulkDataSource,
-  name: r'taskLabelBulkDataSourceProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$taskLabelBulkDataSourceHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+      taskLabelBulkDataSource,
+      name: r'taskLabelBulkDataSourceProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$taskLabelBulkDataSourceHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-typedef TaskLabelBulkDataSourceRef
-    = AutoDisposeProviderRef<TaskLabelBulkDataSource>;
+typedef TaskLabelBulkDataSourceRef =
+    AutoDisposeProviderRef<TaskLabelBulkDataSource>;
 String _$labelDataSourceHash() => r'8cf6d5fe2a9b8c982da49453c6595a49136c7662';
 
 /// See also [labelDataSource].
@@ -153,6 +151,23 @@ final userDataSourceProvider = AutoDisposeProvider<UserDataSource>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef UserDataSourceRef = AutoDisposeProviderRef<UserDataSource>;
+String _$serverDataSourceHash() => r'da5298efd4c0e5b48cefdf39bdd4e6b4fc6c4097';
+
+/// See also [serverDataSource].
+@ProviderFor(serverDataSource)
+final serverDataSourceProvider = AutoDisposeProvider<ServerDataSource>.internal(
+  serverDataSource,
+  name: r'serverDataSourceProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$serverDataSourceHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef ServerDataSourceRef = AutoDisposeProviderRef<ServerDataSource>;
 String _$settingsDataSourceHash() =>
     r'3a107bf91f9be35417a5dd7d9c38027defa8fc26';
 
@@ -160,14 +175,14 @@ String _$settingsDataSourceHash() =>
 @ProviderFor(settingsDataSource)
 final settingsDataSourceProvider =
     AutoDisposeProvider<SettingsDatasource>.internal(
-  settingsDataSource,
-  name: r'settingsDataSourceProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$settingsDataSourceHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+      settingsDataSource,
+      name: r'settingsDataSourceProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$settingsDataSourceHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
@@ -178,14 +193,14 @@ String _$versionDataSourceHash() => r'e349ff678eda68b94fbc34c5ffe6bdae0603da84';
 @ProviderFor(versionDataSource)
 final versionDataSourceProvider =
     AutoDisposeProvider<VersionDataSource>.internal(
-  versionDataSource,
-  name: r'versionDataSourceProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$versionDataSourceHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+      versionDataSource,
+      name: r'versionDataSourceProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$versionDataSourceHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element

@@ -31,7 +31,7 @@ class AddProjectDialog extends StatelessWidget {
             }
             Navigator.pop(context);
           },
-        )
+        ),
       ],
     );
   }

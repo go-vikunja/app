@@ -16,8 +16,10 @@ class TaskRepositoryImpl extends TaskRepository {
 
   @override
   Future<Task?> add(int projectId, Task task) async {
-    return (await _dataSource.add(projectId, TaskDto.fromDomain(task)))
-        ?.toDomain();
+    return (await _dataSource.add(
+      projectId,
+      TaskDto.fromDomain(task),
+    ))?.toDomain();
   }
 
   @override
@@ -41,36 +43,47 @@ class TaskRepositoryImpl extends TaskRepository {
   }
 
   @override
-  Future<Response<List<Task>>?> getAllByProject(int projectId,
-      [Map<String, List<String>>? queryParameters]) async {
+  Future<Response<List<Task>>?> getAllByProject(
+    int projectId, [
+    Map<String, List<String>>? queryParameters,
+  ]) async {
     var response = await _dataSource.getAllByProject(projectId);
 
     return response != null
-        ? Response(response.body.map((e) => e.toDomain()).toList(),
-            response.statusCode, response.headers)
+        ? Response(
+            response.body.map((e) => e.toDomain()).toList(),
+            response.statusCode,
+            response.headers,
+          )
         : null;
   }
 
   @override
   @deprecated
   Future<List<Task>?> getByOptions(TaskServiceOptions options) async {
-    return (await _dataSource.getByOptions(options))
-        ?.map((e) => e.toDomain())
-        .toList();
+    return (await _dataSource.getByOptions(
+      options,
+    ))?.map((e) => e.toDomain()).toList();
   }
 
   @override
-  Future<List<Task>?> getByFilterString(String filterString,
-      [Map<String, List<String>>? queryParameters]) async {
-    return (await _dataSource.getByFilterString(filterString))
-        ?.map((e) => e.toDomain())
-        .toList();
+  Future<List<Task>?> getByFilterString(
+    String filterString, [
+    Map<String, List<String>>? queryParameters,
+  ]) async {
+    return (await _dataSource.getByFilterString(
+      filterString,
+    ))?.map((e) => e.toDomain()).toList();
   }
 
   @override
   Future<String?> downloadAttachment(
-      int taskId, TaskAttachment attachment) async {
+    int taskId,
+    TaskAttachment attachment,
+  ) async {
     return _dataSource.downloadAttachment(
-        taskId, TaskAttachmentDto.fromDomain(attachment));
+      taskId,
+      TaskAttachmentDto.fromDomain(attachment),
+    );
   }
 }

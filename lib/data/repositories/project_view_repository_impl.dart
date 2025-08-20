@@ -10,7 +10,8 @@ class ProjectViewRepositoryImpl extends ProjectViewRepository {
 
   @override
   Future<ProjectView?> update(ProjectView view) async {
-    return (await _dataSource.update(ProjectViewDto.fromDomain(view)))
-        ?.toDomain();
+    return (await _dataSource.update(
+      ProjectViewDto.fromDomain(view),
+    ))?.toDomain();
   }
 }

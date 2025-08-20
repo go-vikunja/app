@@ -20,7 +20,7 @@ class Bucket {
     DateTime? updated,
     required this.createdBy,
     List<Task>? tasks,
-  })  : this.created = created ?? DateTime.now(),
-        this.updated = created ?? DateTime.now(),
-        this.tasks = tasks ?? [];
+  }) : this.created = created ?? DateTime.now(),
+       this.updated = created ?? DateTime.now(),
+       this.tasks = tasks ?? [];
 }

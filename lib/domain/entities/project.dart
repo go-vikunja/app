@@ -17,21 +17,21 @@ class Project {
 
   Iterable<Project> subprojects = [];
 
-  Project(
-      {this.id = 0,
-      this.owner,
-      this.parentProjectId = 0,
-      this.description = '',
-      this.position = 0,
-      this.color,
-      this.isArchived = false,
-      this.isFavourite = false,
-      this.views = const [],
-      required this.title,
-      created,
-      updated})
-      : this.created = created ?? DateTime.now(),
-        this.updated = updated ?? DateTime.now();
+  Project({
+    this.id = 0,
+    this.owner,
+    this.parentProjectId = 0,
+    this.description = '',
+    this.position = 0,
+    this.color,
+    this.isArchived = false,
+    this.isFavourite = false,
+    this.views = const [],
+    required this.title,
+    created,
+    updated,
+  }) : this.created = created ?? DateTime.now(),
+       this.updated = updated ?? DateTime.now();
 
   Project copyWith({
     int? id,

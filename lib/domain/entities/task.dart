@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:vikunja_app/core/utils/checkboxes_in_text.dart';
 import 'package:vikunja_app/domain/entities/label.dart';
 import 'package:vikunja_app/domain/entities/task_attachment.dart';
 import 'package:vikunja_app/domain/entities/user.dart';
@@ -10,19 +9,19 @@ class TaskReminder {
   DateTime reminder;
 
   TaskReminder(this.reminder, [relative_period = 0, relative_to = ""])
-      : relative_period = relative_period,
-        relative_to = relative_to;
+    : relative_period = relative_period,
+      relative_to = relative_to;
 
   TaskReminder.fromJson(Map<String, dynamic> json)
-      : reminder = DateTime.parse(json['reminder']),
-        relative_period = json['relative_period'],
-        relative_to = json['relative_to'];
+    : reminder = DateTime.parse(json['reminder']),
+      relative_period = json['relative_period'],
+      relative_to = json['relative_to'];
 
   toJSON() => {
-        'relative_period': relative_period,
-        'relative_to': relative_to,
-        'reminder': reminder.toUtc().toIso8601String(),
-      };
+    'relative_period': relative_period,
+    'relative_to': relative_to,
+    'reminder': reminder.toUtc().toIso8601String(),
+  };
 }
 
 class Task {
@@ -43,9 +42,6 @@ class Task {
   List<Task> subtasks;
   List<Label> labels;
   List<TaskAttachment> attachments;
-
-  late final checkboxStatistics = getCheckboxStatistics(description);
-  late final hasCheckboxes = checkboxStatistics.total != 0;
 
   Task({
     this.id = 0,
@@ -71,8 +67,8 @@ class Task {
     required this.createdBy,
     required this.projectId,
     this.bucketId,
-  })  : this.created = created ?? DateTime.now(),
-        this.updated = updated ?? DateTime.now();
+  }) : this.created = created ?? DateTime.now(),
+       this.updated = updated ?? DateTime.now();
 
   bool loading = false;
 

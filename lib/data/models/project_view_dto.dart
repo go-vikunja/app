@@ -18,83 +18,85 @@ class ProjectViewDto {
   final DateTime updated;
 
   ProjectViewDto(
-      this.created,
-      this.defaultBucketId,
-      this.doneBucketId,
-      this.id,
-      this.position,
-      this.projectId,
-      this.title,
-      this.updated,
-      this.filter,
-      this.bucketConfiguration,
-      this.bucketConfigurationMode,
-      this.viewKind);
+    this.created,
+    this.defaultBucketId,
+    this.doneBucketId,
+    this.id,
+    this.position,
+    this.projectId,
+    this.title,
+    this.updated,
+    this.filter,
+    this.bucketConfiguration,
+    this.bucketConfigurationMode,
+    this.viewKind,
+  );
 
   ProjectViewDto.fromJson(Map<String, dynamic> json)
-      : created = DateTime.parse(json['created']),
-        defaultBucketId = json['default_bucket_id'],
-        doneBucketId = json['done_bucket_id'],
-        id = json['id'],
-        filter =
-            json['filter'] != null ? FilterDto.fromJson(json['filter']) : null,
-        position = json['position'],
-        projectId = json['project_id'],
-        title = json['title'],
-        viewKind = json['view_kind'],
-        bucketConfigurationMode = json['bucket_configuration_mode'],
-        bucketConfiguration = json['bucket_configuration'] != null
-            ? (json['bucket_configuration'] as List<dynamic>)
+    : created = DateTime.parse(json['created']),
+      defaultBucketId = json['default_bucket_id'],
+      doneBucketId = json['done_bucket_id'],
+      id = json['id'],
+      filter = json['filter'] != null
+          ? FilterDto.fromJson(json['filter'])
+          : null,
+      position = json['position'],
+      projectId = json['project_id'],
+      title = json['title'],
+      viewKind = json['view_kind'],
+      bucketConfigurationMode = json['bucket_configuration_mode'],
+      bucketConfiguration = json['bucket_configuration'] != null
+          ? (json['bucket_configuration'] as List<dynamic>)
                 .map((task) => BucketConfigurationDto.fromJson(task))
                 .toList()
-            : null,
-        updated = DateTime.parse(json['updated']);
+          : null,
+      updated = DateTime.parse(json['updated']);
 
   Map<String, Object> toJSON() => {
-        "created": created.toUtc().toIso8601String(),
-        "default_bucket_id": defaultBucketId,
-        "done_bucket_id": doneBucketId,
-        "id": id,
-        "position": position,
-        "project_id": projectId,
-        "title": title,
-        "filter": filter?.toJSON() ?? "null",
-        "bucket_configuration_mode": bucketConfigurationMode,
-        "bucket_configuration":
-            bucketConfiguration?.map((e) => e.toJSON()).toList() ?? "null",
-        "updated": updated.toUtc().toIso8601String(),
-        "view_kind": viewKind
-      };
+    "created": created.toUtc().toIso8601String(),
+    "default_bucket_id": defaultBucketId,
+    "done_bucket_id": doneBucketId,
+    "id": id,
+    "position": position,
+    "project_id": projectId,
+    "title": title,
+    "filter": filter?.toJSON() ?? "null",
+    "bucket_configuration_mode": bucketConfigurationMode,
+    "bucket_configuration":
+        bucketConfiguration?.map((e) => e.toJSON()).toList() ?? "null",
+    "updated": updated.toUtc().toIso8601String(),
+    "view_kind": viewKind,
+  };
 
   ProjectView toDomain() => ProjectView(
-        created,
-        defaultBucketId,
-        doneBucketId,
-        id,
-        position,
-        projectId,
-        title,
-        updated,
-        filter?.toDomain(),
-        bucketConfiguration?.map((e) => e.toDomain()).toList(),
-        bucketConfigurationMode,
-        ViewKind.fromString(viewKind),
-      );
+    created,
+    defaultBucketId,
+    doneBucketId,
+    id,
+    position,
+    projectId,
+    title,
+    updated,
+    filter?.toDomain(),
+    bucketConfiguration?.map((e) => e.toDomain()).toList(),
+    bucketConfigurationMode,
+    ViewKind.fromString(viewKind),
+  );
 
   static ProjectViewDto fromDomain(ProjectView p) => ProjectViewDto(
-        p.created,
-        p.defaultBucketId,
-        p.doneBucketId,
-        p.id,
-        p.position,
-        p.projectId,
-        p.title,
-        p.updated,
-        p.filter != null ? FilterDto.fromDomain(p.filter!) : null,
-        p.bucketConfiguration
-            ?.map((e) => BucketConfigurationDto.fromDomain(e))
-            .toList(),
-        p.bucketConfigurationMode,
-        p.viewKind.toString().split(".")[1].toLowerCase(),
-      );
+    p.created,
+    p.defaultBucketId,
+    p.doneBucketId,
+    p.id,
+    p.position,
+    p.projectId,
+    p.title,
+    p.updated,
+    p.filter != null ? FilterDto.fromDomain(p.filter!) : null,
+    p.bucketConfiguration
+        ?.map((e) => BucketConfigurationDto.fromDomain(e))
+        .toList(),
+    p.bucketConfigurationMode,
+    p.viewKind.toString().split(".")[1].toLowerCase(),
+  );
 }

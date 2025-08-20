@@ -1,9 +1,9 @@
-import 'package:vikunja_app/core/services.dart';
+import 'package:vikunja_app/core/theming/theme_mode.dart';
 
 abstract class SettingsRepository {
   Future<bool> getIgnoreCertificates();
 
-  void setIgnoreCertificates(bool value);
+  Future<void> setIgnoreCertificates(bool value);
 
   Future<bool> getSentryEnabled();
 
@@ -11,7 +11,7 @@ abstract class SettingsRepository {
 
   Future<bool> getVersionNotifications();
 
-  void setVersionNotifications(bool value);
+  Future<void> setVersionNotifications(bool value);
 
   Future<int> getRefreshInterval();
 
@@ -31,5 +31,21 @@ abstract class SettingsRepository {
 
   Future<bool> getDisplayDoneTasks(int projectId);
 
-  void setDisplayDoneTasks(int projectId, bool value);
+  Future<void> setDisplayDoneTasks(int projectId, bool value);
+
+  Future<List<String>> getPastServers();
+
+  Future<void> setPastServers(List<String> server);
+
+  Future<bool> getSentryDialogShown();
+
+  Future<void> setSentryDialogShown(bool value);
+
+  Future<void> saveUserToken(String? token);
+
+  Future<String?> getUserToken();
+
+  Future<void> saveServer(String? server);
+
+  Future<String?> getServer();
 }

@@ -6,8 +6,12 @@ class TaskDeleteDialog extends ConsumerWidget {
   final Function onConfirm;
   final Function onCancel;
 
-  TaskDeleteDialog(this.taskId,
-      {required this.onConfirm, required this.onCancel});
+  const TaskDeleteDialog(
+    this.taskId, {
+    super.key,
+    required this.onConfirm,
+    required this.onCancel,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

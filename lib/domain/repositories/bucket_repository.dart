@@ -6,8 +6,11 @@ abstract class BucketRepository {
 
   Future<void> delete(int projectId, int viewId, int bucketId);
 
-  Future<Response<List<Bucket>>?> getAllByList(int projectId, int viewId,
-      [Map<String, List<String>>? queryParameters]);
+  Future<Response<List<Bucket>>?> getAllByList(
+    int projectId,
+    int viewId, [
+    Map<String, List<String>>? queryParameters,
+  ]);
 
   Future<Bucket?> update(int projectId, int viewId, Bucket bucket);
 

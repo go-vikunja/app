@@ -46,14 +46,8 @@ class ProjectTaskList extends ConsumerWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            Icons.list,
-            size: 96,
-          ),
-          Text(
-            "No tasks",
-            style: Theme.of(context).textTheme.headlineSmall,
-          )
+          Icon(Icons.list, size: 96),
+          Text("No tasks", style: Theme.of(context).textTheme.headlineSmall),
         ],
       ),
     );
@@ -129,20 +123,21 @@ class ProjectTaskList extends ConsumerWidget {
   void _onEdit(BuildContext context, Task task) {
     Navigator.push<Task>(
       context,
-      MaterialPageRoute(
-        builder: (buildContext) => TaskEditPage(
-          task: task,
-        ),
-      ),
+      MaterialPageRoute(builder: (buildContext) => TaskEditPage(task: task)),
     );
   }
 
   void _navigateToDetail(BuildContext context, Project project) {
-    Navigator.push(context, MaterialPageRoute(builder: (context) {
-      return ProjectDetailPage(
-        key: Key(project.id.toString()),
-        project: project,
-      );
-    }));
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) {
+          return ProjectDetailPage(
+            key: Key(project.id.toString()),
+            project: project,
+          );
+        },
+      ),
+    );
   }
 }

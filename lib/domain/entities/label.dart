@@ -22,8 +22,8 @@ class Label {
     DateTime? created,
     DateTime? updated,
     required this.createdBy,
-  })  : this.created = created ?? DateTime.now(),
-        this.updated = updated ?? DateTime.now();
+  }) : this.created = created ?? DateTime.now(),
+       this.updated = updated ?? DateTime.now();
 
   @override
   bool operator ==(Object other) =>

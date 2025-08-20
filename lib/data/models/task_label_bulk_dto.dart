@@ -6,9 +6,7 @@ class LabelTaskBulkDto {
   LabelTaskBulkDto({required this.labels});
 
   LabelTaskBulkDto.fromJson(Map<String, dynamic> json)
-      : labels = json['labels']?.map((label) => LabelDto.fromJson(label));
+    : labels = json['labels']?.map((label) => LabelDto.fromJson(label));
 
-  toJSON() => {
-        'labels': labels.map((label) => label.toJSON()).toList(),
-      };
+  toJSON() => {'labels': labels.map((label) => label.toJSON()).toList()};
 }

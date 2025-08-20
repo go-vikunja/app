@@ -12,14 +12,14 @@ String _$userControllerHash() => r'25c53de61b818b9826645a359fce16f0541eb7db';
 @ProviderFor(UserController)
 final userControllerProvider =
     AutoDisposeAsyncNotifierProvider<UserController, User>.internal(
-  UserController.new,
-  name: r'userControllerProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$userControllerHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+      UserController.new,
+      name: r'userControllerProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$userControllerHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
 
 typedef _$UserController = AutoDisposeAsyncNotifier<User>;
 // ignore_for_file: type=lint
