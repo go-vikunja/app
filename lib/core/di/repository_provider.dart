@@ -3,10 +3,12 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_app/core/di/data_source_provider.dart';
 import 'package:vikunja_app/data/repositories/project_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/settings_repository_impl.dart';
+import 'package:vikunja_app/data/repositories/task_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/user_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/version_repository_impl.dart';
 import 'package:vikunja_app/domain/repositories/project_repository.dart';
 import 'package:vikunja_app/domain/repositories/settings_repository.dart';
+import 'package:vikunja_app/domain/repositories/task_repository.dart';
 import 'package:vikunja_app/domain/repositories/user_repository.dart';
 import 'package:vikunja_app/domain/repositories/version_repository.dart';
 
@@ -16,6 +18,12 @@ part 'repository_provider.g.dart';
 ProjectRepository projectRepository(Ref ref) {
   var projectDataSource = ref.watch(projectDataSourceProvider);
   return ProjectRepositoryImpl(projectDataSource);
+}
+
+@riverpod
+TaskRepository taskRepository(Ref ref) {
+  var taskDataSource = ref.watch(taskDataSourceProvider);
+  return TaskRepositoryImpl(taskDataSource);
 }
 
 @riverpod

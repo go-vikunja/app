@@ -1,9 +1,9 @@
 import 'dart:async';
 
 import 'package:vikunja_app/core/network/response.dart';
+import 'package:vikunja_app/core/services.dart';
 import 'package:vikunja_app/data/data_sources/task_data_source.dart';
 import 'package:vikunja_app/data/models/task_dto.dart';
-import 'package:vikunja_app/core/services.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/repositories/task_repository.dart';
 
@@ -34,8 +34,8 @@ class TaskRepositoryImpl extends TaskRepository {
   }
 
   @override
-  Future<List<Task>?> getAll() async {
-    return (await _dataSource.getAll())?.map((e) => e.toDomain()).toList();
+  Future<List<Task>> getAll() async {
+    return (await _dataSource.getAll()).map((e) => e.toDomain()).toList();
   }
 
   @override

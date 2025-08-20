@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:vikunja_app/core/network/client.dart';
 import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/core/network/service.dart';
-import 'package:vikunja_app/data/models/task_dto.dart';
 import 'package:vikunja_app/core/services.dart';
+import 'package:vikunja_app/data/models/task_dto.dart';
 
 class TaskDataSource extends RemoteDataSource {
   TaskDataSource(Client client) : super(client);
@@ -38,10 +38,10 @@ class TaskDataSource extends RemoteDataSource {
     });
   }
 
-  Future<List<TaskDto>?> getAll() {
+  Future<List<TaskDto>> getAll() {
     return client.get('/tasks/all').then((response) {
       int page_n = 0;
-      if (response == null) return null;
+      if (response == null) return [];
       if (response.headers["x-pagination-total-pages"] != null) {
         page_n = int.parse(response.headers["x-pagination-total-pages"]!);
       } else {
@@ -84,8 +84,6 @@ class TaskDataSource extends RemoteDataSource {
   @deprecated
   Future<List<TaskDto>?> getByOptions(TaskServiceOptions options) {
     Map<String, List<String>> optionsMap = options.getOptions();
-    //optionString = "?sort_by[]=due_date&sort_by[]=id&order_by[]=asc&order_by[]=desc&filter_by[]=done&filter_value[]=false&filter_comparator[]=equals&filter_concat=and&filter_include_nulls=false&page=1";
-    //print(optionString);
 
     return client.get('/tasks/all', optionsMap).then((response) {
       if (response == null) return null;

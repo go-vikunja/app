@@ -13,9 +13,9 @@ abstract class TaskRepository {
 
   Future<Task?> update(Task task);
 
-  Future<List<Task>?> getAll();
+  Future<List<Task>> getAll();
 
-  Future<Response?> getAllByProject(int projectId,
+  Future<Response<List<Task>>?> getAllByProject(int projectId,
       [Map<String, List<String>>? queryParameters]);
 
   @deprecated

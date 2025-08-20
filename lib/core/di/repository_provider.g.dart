@@ -24,6 +24,24 @@ final projectRepositoryProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef ProjectRepositoryRef = AutoDisposeProviderRef<ProjectRepository>;
+
+String _$taskRepositoryHash() => r'c13c2278d2e356be866ee1efbf92e19113605fd5';
+
+/// See also [taskRepository].
+@ProviderFor(taskRepository)
+final taskRepositoryProvider = AutoDisposeProvider<TaskRepository>.internal(
+  taskRepository,
+  name: r'taskRepositoryProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$taskRepositoryHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef TaskRepositoryRef = AutoDisposeProviderRef<TaskRepository>;
 String _$settingsRepositoryHash() =>
     r'f0263c745437437ead43384b7bd63b41805492ff';
 

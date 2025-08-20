@@ -66,4 +66,14 @@ class SettingsRepositoryImpl implements SettingsRepository {
   Future<bool> getDynamicColors() async {
     return _datasource.getDynamicColors();
   }
+
+  @override
+  Future<bool> getLandingPageOnlyDueDateTasks() {
+    return _datasource.getLandingPageOnlyDueDateTasks();
+  }
+
+  @override
+  Future<void> setLandingPageOnlyDueDateTasks(bool value) {
+    return _datasource.setLandingPageOnlyDueDateTasks(value);
+  }
 }
