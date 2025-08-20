@@ -1,20 +1,20 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
+import 'package:provider/provider.dart';
 import 'package:vikunja_app/domain/entities/bucket.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
-import 'package:vikunja_app/presentation/widgets/AddDialog.dart';
-import 'package:vikunja_app/presentation/widgets/KanbanWidget.dart';
-import 'package:vikunja_app/presentation/widgets/TaskTile.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/presentation/pages/project/project_edit.dart';
 import 'package:vikunja_app/presentation/pages/task/task_edit.dart';
+import 'package:vikunja_app/presentation/widgets/AddDialog.dart';
+import 'package:vikunja_app/presentation/widgets/KanbanWidget.dart';
+import 'package:vikunja_app/presentation/widgets/task_tile.dart';
 
-import '../../widgets/pagestatus.dart';
 import '../../manager/project_store.dart';
+import '../../widgets/pagestatus.dart';
 
 enum BucketMenu { limit, done, delete }
 
@@ -31,8 +31,6 @@ class ListPage extends StatefulWidget {
   final Project project;
 
   ListPage({required this.project}) : super(key: Key(project.id.toString()));
-  //ListPage({required this.project})
-  //    : super(key: Key(Random().nextInt(100000).toString()));
 
   @override
   _ListPageState createState() => _ListPageState();
@@ -64,7 +62,6 @@ class _ListPageState extends State<ListPage> {
 
   @override
   Widget build(BuildContext context) {
-    //return Text("test");
     taskState = Provider.of<ProjectProvider>(context, listen: false);
     _kanban = KanbanClass(context, nullSetState, _onViewTapped, _addItemDialog,
         _project, _project.views[_viewIndex]);
@@ -257,7 +254,6 @@ class _ListPageState extends State<ListPage> {
       value: taskState,
       child: TaskTile(
         task: task,
-        loading: false,
         onEdit: () {},
         onMarkedAsDone: (done) {
           Provider.of<ProjectProvider>(context, listen: false).updateTask(
@@ -281,7 +277,6 @@ class _ListPageState extends State<ListPage> {
   TaskTile _buildLoadingTile(Task task) {
     return TaskTile(
       task: task,
-      loading: true,
       onEdit: () => Navigator.push(
         context,
         MaterialPageRoute(
@@ -382,5 +377,4 @@ openList(BuildContext context, Project project) {
       project: project,
     );
   }));
-  // ListPage(taskList: list)
 }

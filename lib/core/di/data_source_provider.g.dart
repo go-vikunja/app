@@ -24,6 +24,24 @@ final projectDataSourceProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef ProjectDataSourceRef = AutoDisposeProviderRef<ProjectDataSource>;
+
+String _$taskDataSourceHash() => r'ea8ae51eb82b058097a4ca001d6ea5420ef6d81b';
+
+/// See also [taskDataSource].
+@ProviderFor(taskDataSource)
+final taskDataSourceProvider = AutoDisposeProvider<TaskDataSource>.internal(
+  taskDataSource,
+  name: r'taskDataSourceProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$taskDataSourceHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef TaskDataSourceRef = AutoDisposeProviderRef<TaskDataSource>;
 String _$userDataSourceHash() => r'0f53c360a62e27769244b2461b30278bd3929654';
 
 /// See also [userDataSource].
@@ -60,7 +78,6 @@ final settingsDataSourceProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef SettingsDataSourceRef = AutoDisposeProviderRef<SettingsDatasource>;
-
 String _$versionDataSourceHash() => r'e349ff678eda68b94fbc34c5ffe6bdae0603da84';
 
 /// See also [versionDataSource].

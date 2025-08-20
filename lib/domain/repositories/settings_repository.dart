@@ -24,4 +24,8 @@ abstract class SettingsRepository {
   Future<void> setDynamicColors(bool dynamicColors);
 
   Future<bool> getDynamicColors();
+
+  Future<bool> getLandingPageOnlyDueDateTasks();
+
+  Future<void> setLandingPageOnlyDueDateTasks(bool value);
 }

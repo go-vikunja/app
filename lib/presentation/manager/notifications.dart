@@ -2,16 +2,14 @@
 
 import 'dart:math';
 
-import 'package:flutter_timezone/flutter_timezone.dart';
-import 'package:timezone/timezone.dart' as tz;
-
 import 'package:flutter_local_notifications/flutter_local_notifications.dart'
     as notifs;
+import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:rxdart/subjects.dart' as rxSub;
+import 'package:timezone/timezone.dart' as tz;
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/repositories/task_repository.dart';
-
-import 'updateWidget.dart';
+import 'package:vikunja_app/presentation/manager/widget_controller.dart';
 
 class NotificationClass {
   final int? id;
@@ -157,11 +155,15 @@ class NotificationClass {
       }
     }
     print("notifications scheduled successfully");
+
+    //TODO: this should be handled separately
     try {
       // I need to provide all tasks for today for the widget, not just tasks that are due > now
       var widget_tasks = await taskService
           .getByFilterString("due_date > 0001-01-01 00:00 && done = false");
-      updateWidgetTasks(widget_tasks);
+      if (widget_tasks != null) {
+        updateWidgetTasks(widget_tasks);
+      }
     } catch (e) {
       print(e);
     }

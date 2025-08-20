@@ -74,4 +74,15 @@ class SettingsDatasource {
     String? dynamicColors = await _storage.read(key: "dynamic_colors");
     return dynamicColors == "true";
   }
+
+  Future<bool> getLandingPageOnlyDueDateTasks() {
+    return _storage
+        .read(key: "landing-page-due-date-tasks")
+        .then((value) => value == "1");
+  }
+
+  Future<void> setLandingPageOnlyDueDateTasks(bool value) {
+    return _storage.write(
+        key: "landing-page-due-date-tasks", value: value ? "1" : "0");
+  }
 }

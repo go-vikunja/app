@@ -3,11 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:provider/provider.dart';
-import 'package:vikunja_app/domain/entities/task.dart';
-import 'package:vikunja_app/presentation/widgets/TaskBottomSheet.dart';
 import 'package:vikunja_app/core/utils/misc.dart';
-import 'package:vikunja_app/presentation/pages/task/task_edit.dart';
 import 'package:vikunja_app/core/utils/priority.dart';
+import 'package:vikunja_app/domain/entities/task.dart';
+import 'package:vikunja_app/presentation/pages/task/task_edit.dart';
+import 'package:vikunja_app/presentation/widgets/TaskBottomSheet.dart';
 
 import '../manager/project_store.dart';
 
@@ -15,24 +15,16 @@ class TaskTile extends StatefulWidget {
   final Task task;
   final Function onEdit;
   final bool showInfo;
-  final bool loading;
   final ValueSetter<bool>? onMarkedAsDone;
 
   const TaskTile({
     Key? key,
     required this.task,
     required this.onEdit,
-    this.loading = false,
     this.showInfo = false,
     this.onMarkedAsDone,
   }) : super(key: key);
-/*
-  @override
-  TaskTileState createState() {
-    return new TaskTileState(this.task, this.loading);
-  }
 
- */
   @override
   TaskTileState createState() => TaskTileState(this.task);
 }
@@ -56,10 +48,6 @@ Widget? _buildTaskSubtitle(Task? task, bool showInfo, BuildContext context) {
         text: " !" + priorityToString(task.priority),
         style: TextStyle(color: Colors.orange)));
   }
-
-  //if(texts.isEmpty && task.description.isNotEmpty) {
-  //  return HtmlWidget(task.description);
-  // }
 
   if (texts.isNotEmpty) {
     return RichText(text: TextSpan(children: texts));

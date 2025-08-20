@@ -165,17 +165,6 @@ class SettingsManager {
     return _storage.write(key: "sentry-modal-shown", value: value ? "1" : "0");
   }
 
-  Future<bool> getLandingPageOnlyDueDateTasks() {
-    return _storage
-        .read(key: "landing-page-due-date-tasks")
-        .then((value) => value == "1");
-  }
-
-  Future<void> setLandingPageOnlyDueDateTasks(bool value) {
-    return _storage.write(
-        key: "landing-page-due-date-tasks", value: value ? "1" : "0");
-  }
-
   Future<List<String>?> getPastServers() async {
     String jsonString = await _storage.read(key: "recent-servers") ?? "[]";
     List<dynamic> server = jsonDecode(jsonString);

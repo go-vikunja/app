@@ -1,7 +1,7 @@
-import 'package:home_widget/home_widget.dart';
-import 'package:intl/intl.dart';
 import 'dart:convert';
 
+import 'package:home_widget/home_widget.dart';
+import 'package:intl/intl.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 
 // I expect a list of tasks here, when I get it I get:
@@ -24,8 +24,8 @@ List<Task> filterForTodayTasks(List<Task> tasks) {
   return todayTasks;
 }
 
-void updateWidgetTasks(List<Task>? tasklist) async {
-  var todayTasks = filterForTodayTasks(tasklist!);
+void updateWidgetTasks(List<Task> tasklist) async {
+  var todayTasks = filterForTodayTasks(tasklist);
 
   // Set the number of tasks
   HomeWidget.saveWidgetData('numTasks', todayTasks.length);
