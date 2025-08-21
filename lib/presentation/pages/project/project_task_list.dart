@@ -9,8 +9,8 @@ import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/presentation/pages/project/project_edit.dart';
 import 'package:vikunja_app/presentation/pages/task/task_edit_page.dart';
-import 'package:vikunja_app/presentation/widgets/KanbanWidget.dart';
-import 'package:vikunja_app/presentation/widgets/add_dialog.dart';
+import 'package:vikunja_app/presentation/widgets/kanban_widget.dart';
+import 'package:vikunja_app/presentation/widgets/task/add_task_dialog.dart';
 import 'package:vikunja_app/presentation/widgets/task_tile.dart';
 
 import '../../manager/project_store.dart';
@@ -322,8 +322,8 @@ class _ListPageState extends State<ListPage> {
       [Bucket? bucket, String? taskName]) {
     return showDialog(
       context: context,
-      builder: (_) => AddDialog(
-        onAdd: (title) => _addItem(title, context, bucket),
+      builder: (_) => AddTaskDialog(
+        onAddTask: (title, dueDate) => _addItem(title, context, bucket),
         decoration: InputDecoration(
           labelText:
               (bucket != null ? '\'${bucket.title}\': ' : '') + 'New Task Name',

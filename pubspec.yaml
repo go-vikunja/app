@@ -12,7 +12,6 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^1.0.6
   http: ^1.2.1
-  after_layout: ^1.2.0
   intl: ^0.20.2
   flutter_local_notifications: ^18.0.1
   rxdart: ^0.28.0
