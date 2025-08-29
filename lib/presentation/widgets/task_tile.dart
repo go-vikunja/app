@@ -102,9 +102,9 @@ class TaskTileState extends State<TaskTile> with AutomaticKeepAliveClientMixin {
               ),
               builder: (BuildContext context) {
                 return TaskBottomSheet(
-                    task: widget.task,
-                    onEdit: widget.onEdit,
-                    taskState: taskState);
+                  task: widget.task,
+                  taskState: taskState,
+                );
               });
         },
         title: widget.showInfo

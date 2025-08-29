@@ -4,35 +4,27 @@ import 'package:vikunja_app/core/utils/priority.dart';
 import 'package:vikunja_app/domain/entities/label.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 
-import '../pages/task/task_edit.dart';
-import '../manager/project_store.dart';
 import '../../../core/utils/constants.dart';
+import '../manager/project_store.dart';
+import '../pages/task/task_edit.dart';
 import 'label.dart';
 
 class TaskBottomSheet extends StatefulWidget {
   final Task task;
   final bool showInfo;
   final bool loading;
-  final Function onEdit;
   final ValueSetter<bool>? onMarkedAsDone;
   final ProjectProvider taskState;
 
   const TaskBottomSheet({
     Key? key,
     required this.task,
-    required this.onEdit,
     required this.taskState,
     this.loading = false,
     this.showInfo = false,
     this.onMarkedAsDone,
   }) : super(key: key);
-/*
-  @override
-  TaskTileState createState() {
-    return new TaskTileState(this.task, this.loading);
-  }
 
- */
   @override
   TaskBottomSheetState createState() => TaskBottomSheetState(this.task);
 }
@@ -76,11 +68,9 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
                               taskState: widget.taskState,
                             ),
                           ),
-                        )
-                            .then((task) => setState(() {
-                                  if (task != null) _currentTask = task;
-                                }))
-                            .whenComplete(() => widget.onEdit());
+                        ).then((task) => setState(() {
+                              if (task != null) _currentTask = task;
+                            }));
                       },
                       icon: Icon(Icons.edit)),
                 ],
