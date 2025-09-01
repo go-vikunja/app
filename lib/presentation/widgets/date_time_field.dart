@@ -45,7 +45,7 @@ class VikunjaDateTimeField extends StatelessWidget {
       context: context,
       builder: (_) => DatePickerDialog(
         initialDate: currentValue.year <= 1 ? DateTime.now() : currentValue,
-        firstDate: DateTime.now(),
+        firstDate: DateTime(1900),
         lastDate: DateTime(2100),
         initialCalendarMode: DatePickerMode.day,
       ),
