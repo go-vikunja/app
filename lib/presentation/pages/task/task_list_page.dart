@@ -7,7 +7,7 @@ import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/presentation/manager/task_page_controller.dart';
-import 'package:vikunja_app/presentation/widgets/AddDialog.dart';
+import 'package:vikunja_app/presentation/widgets/add_dialog.dart';
 import 'package:vikunja_app/presentation/widgets/task_tile.dart';
 
 class TaskListPage extends ConsumerStatefulWidget {

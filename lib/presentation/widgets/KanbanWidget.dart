@@ -8,15 +8,15 @@ import 'package:vikunja_app/domain/entities/bucket.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/project_view.dart';
 
-import '../../../global.dart';
-import '../pages/project/project_task_list.dart';
-import '../manager/project_store.dart';
 import '../../../core/utils/calculate_item_position.dart';
-import 'AddDialog.dart';
+import '../../../global.dart';
+import '../manager/project_store.dart';
+import '../pages/project/project_task_list.dart';
 import 'BucketLimitDialog.dart';
-import 'BucketTaskCard.dart';
 import 'SliverBucketList.dart';
 import 'SliverBucketPersistentHeader.dart';
+import 'add_dialog.dart';
+import 'bucket_task_card.dart';
 
 class KanbanClass {
   PageController? _pageController;

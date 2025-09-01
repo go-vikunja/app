@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-
 import 'package:vikunja_app/data/models/label_dto.dart';
-import 'package:vikunja_app/data/models/user_dto.dart';
 import 'package:vikunja_app/data/models/task_attachment_dto.dart';
-import 'package:vikunja_app/core/utils/checkboxes_in_text.dart';
+import 'package:vikunja_app/data/models/user_dto.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 
 class TaskReminderDto {
@@ -51,10 +49,6 @@ class TaskDto {
   final List<TaskDto> subtasks;
   final List<LabelDto> labels;
   final List<TaskAttachmentDto> attachments;
-  // TODO: add position(?)
-
-  late final checkboxStatistics = getCheckboxStatistics(description);
-  late final hasCheckboxes = checkboxStatistics.total != 0;
 
   TaskDto({
     this.id = 0,
@@ -78,24 +72,10 @@ class TaskDto {
     DateTime? created,
     DateTime? updated,
     required this.createdBy,
-    //required this.listId,
     required this.projectId,
     this.bucketId,
   })  : this.created = created ?? DateTime.now(),
         this.updated = updated ?? DateTime.now();
-
-  bool loading = false;
-
-  Color get textColor {
-    if (color != null && color!.computeLuminance() > 0.5) {
-      return Colors.black;
-    }
-    return Colors.white;
-  }
-
-  bool get hasDueDate => dueDate?.year != 1;
-  bool get hasStartDate => startDate?.year != 1;
-  bool get hasEndDate => endDate?.year != 1;
 
   TaskDto.fromJson(Map<String, dynamic> json)
       : id = json['id'],
@@ -140,7 +120,6 @@ class TaskDto {
             : [],
         updated = DateTime.parse(json['updated']),
         created = DateTime.parse(json['created']),
-        //listId = json['list_id'],
         projectId = json['project_id'],
         bucketId = json['bucket_id'],
         createdBy = UserDto.fromJson(json['created_by']);
@@ -225,57 +204,4 @@ class TaskDto {
         bucketId: b.bucketId,
         createdBy: UserDto.fromDomain(b.createdBy),
       );
-
-  TaskDto copyWith({
-    int? id,
-    int? parentTaskId,
-    int? priority,
-    int? listId,
-    int? bucketId,
-    DateTime? created,
-    DateTime? updated,
-    DateTime? dueDate,
-    DateTime? startDate,
-    DateTime? endDate,
-    List<TaskReminderDto>? reminderDates,
-    String? title,
-    String? description,
-    String? identifier,
-    bool? done,
-    Color? color,
-    double? position,
-    double? percent_done,
-    UserDto? createdBy,
-    Duration? repeatAfter,
-    List<TaskDto>? subtasks,
-    List<LabelDto>? labels,
-    List<TaskAttachmentDto>? attachments,
-  }) {
-    return TaskDto(
-      id: id ?? this.id,
-      parentTaskId: parentTaskId ?? this.parentTaskId,
-      priority: priority ?? this.priority,
-      //listId: listId ?? this.listId,
-      projectId: projectId ?? this.projectId,
-      bucketId: bucketId ?? this.bucketId,
-      created: created ?? this.created,
-      updated: updated ?? this.updated,
-      dueDate: dueDate ?? this.dueDate,
-      startDate: startDate ?? this.startDate,
-      endDate: endDate ?? this.endDate,
-      reminderDates: reminderDates ?? this.reminderDates,
-      title: title ?? this.title,
-      description: description ?? this.description,
-      identifier: identifier ?? this.identifier,
-      done: done ?? this.done,
-      color: color ?? this.color,
-      position: position ?? this.position,
-      percent_done: percent_done ?? this.percent_done,
-      createdBy: createdBy ?? this.createdBy,
-      repeatAfter: repeatAfter ?? this.repeatAfter,
-      subtasks: subtasks ?? this.subtasks,
-      labels: labels ?? this.labels,
-      attachments: attachments ?? this.attachments,
-    );
-  }
 }

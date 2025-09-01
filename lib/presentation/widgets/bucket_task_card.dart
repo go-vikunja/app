@@ -1,14 +1,14 @@
 import 'dart:math';
 
+import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:dotted_border/dotted_border.dart';
 import 'package:provider/provider.dart';
-import 'package:vikunja_app/domain/entities/task.dart';
-import 'package:vikunja_app/presentation/widgets/label.dart';
-import 'package:vikunja_app/presentation/pages/task/task_edit.dart';
-import 'package:vikunja_app/core/utils/misc.dart';
 import 'package:vikunja_app/core/utils/constants.dart';
+import 'package:vikunja_app/core/utils/misc.dart';
+import 'package:vikunja_app/domain/entities/task.dart';
+import 'package:vikunja_app/presentation/pages/task/task_edit_page.dart';
+import 'package:vikunja_app/presentation/widgets/label.dart';
 
 import '../manager/project_store.dart';
 
@@ -251,7 +251,6 @@ class _BucketTaskCardState extends State<BucketTaskCard>
             MaterialPageRoute(
               builder: (context) => TaskEditPage(
                 task: widget.task,
-                taskState: taskState,
               ),
             ),
           );

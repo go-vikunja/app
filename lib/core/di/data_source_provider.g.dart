@@ -24,7 +24,6 @@ final projectDataSourceProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef ProjectDataSourceRef = AutoDisposeProviderRef<ProjectDataSource>;
-
 String _$taskDataSourceHash() => r'ea8ae51eb82b058097a4ca001d6ea5420ef6d81b';
 
 /// See also [taskDataSource].
@@ -42,6 +41,62 @@ final taskDataSourceProvider = AutoDisposeProvider<TaskDataSource>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef TaskDataSourceRef = AutoDisposeProviderRef<TaskDataSource>;
+String _$taskLabelDataSourceHash() =>
+    r'58fc632b0bf85e8f87f8ae1b78268d370405d501';
+
+/// See also [taskLabelDataSource].
+@ProviderFor(taskLabelDataSource)
+final taskLabelDataSourceProvider =
+    AutoDisposeProvider<TaskLabelDataSource>.internal(
+  taskLabelDataSource,
+  name: r'taskLabelDataSourceProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$taskLabelDataSourceHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef TaskLabelDataSourceRef = AutoDisposeProviderRef<TaskLabelDataSource>;
+String _$taskLabelBulkDataSourceHash() =>
+    r'3a523d9398f1f5429cb482f55ac03b73f5118976';
+
+/// See also [taskLabelBulkDataSource].
+@ProviderFor(taskLabelBulkDataSource)
+final taskLabelBulkDataSourceProvider =
+    AutoDisposeProvider<TaskLabelBulkDataSource>.internal(
+  taskLabelBulkDataSource,
+  name: r'taskLabelBulkDataSourceProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$taskLabelBulkDataSourceHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef TaskLabelBulkDataSourceRef
+    = AutoDisposeProviderRef<TaskLabelBulkDataSource>;
+String _$labelDataSourceHash() => r'8cf6d5fe2a9b8c982da49453c6595a49136c7662';
+
+/// See also [labelDataSource].
+@ProviderFor(labelDataSource)
+final labelDataSourceProvider = AutoDisposeProvider<LabelDataSource>.internal(
+  labelDataSource,
+  name: r'labelDataSourceProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$labelDataSourceHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef LabelDataSourceRef = AutoDisposeProviderRef<LabelDataSource>;
 String _$userDataSourceHash() => r'0f53c360a62e27769244b2461b30278bd3929654';
 
 /// See also [userDataSource].

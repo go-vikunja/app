@@ -11,31 +11,22 @@ import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/core/network/client.dart';
 import 'package:vikunja_app/core/services.dart';
 import 'package:vikunja_app/data/data_sources/bucket_data_source.dart';
-import 'package:vikunja_app/data/data_sources/label_data_source.dart';
 import 'package:vikunja_app/data/data_sources/project_data_source.dart';
 import 'package:vikunja_app/data/data_sources/project_view_data_source.dart';
 import 'package:vikunja_app/data/data_sources/server_data_source.dart';
 import 'package:vikunja_app/data/data_sources/task_data_source.dart';
-import 'package:vikunja_app/data/data_sources/task_label_bulk_data_source.dart';
-import 'package:vikunja_app/data/data_sources/task_label_data_source.dart';
 import 'package:vikunja_app/data/data_sources/user_data_source.dart';
 import 'package:vikunja_app/data/repositories/bucket_repository_impl.dart';
-import 'package:vikunja_app/data/repositories/label_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/project_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/project_view_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/server_repository_impl.dart';
-import 'package:vikunja_app/data/repositories/task_label_bulk_repository_impl.dart';
-import 'package:vikunja_app/data/repositories/task_label_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/task_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/user_repository_impl.dart';
 import 'package:vikunja_app/domain/entities/user.dart';
 import 'package:vikunja_app/domain/repositories/bucket_repository.dart';
-import 'package:vikunja_app/domain/repositories/label_repository.dart';
 import 'package:vikunja_app/domain/repositories/project_repository.dart';
 import 'package:vikunja_app/domain/repositories/project_view_repository.dart';
 import 'package:vikunja_app/domain/repositories/server_repository.dart';
-import 'package:vikunja_app/domain/repositories/task_label_bulk_repository.dart';
-import 'package:vikunja_app/domain/repositories/task_label_repository.dart';
 import 'package:vikunja_app/domain/repositories/task_repository.dart';
 import 'package:vikunja_app/domain/repositories/user_repository.dart';
 import 'package:vikunja_app/presentation/manager/notifications.dart';
@@ -94,18 +85,7 @@ class VikunjaGlobalState extends ConsumerState<VikunjaGlobal> {
   BucketRepository get bucketService =>
       new BucketRepositoryImpl(BucketDataSource(client));
 
-  TaskServiceOptions get taskServiceOptions => new TaskServiceOptions();
-
   NotificationClass get notifications => _notificationClass;
-
-  LabelRepository get labelService =>
-      LabelRepositoryImpl(LabelDataSource(client));
-
-  TaskLabelRepository get labelTaskService =>
-      TaskLabelRepositoryImpl(TaskLabelDataSource(client));
-
-  TaskLabelBulkRepository get labelTaskBulkService =>
-      TaskLabelBulkRepositoryImpl(TaskLabelBulkDataSource(client));
 
   late String currentTimeZone;
 

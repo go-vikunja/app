@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:vikunja_app/domain/entities/bucket.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
-import 'package:vikunja_app/presentation/widgets/BucketTaskCard.dart';
+import 'package:vikunja_app/presentation/widgets/bucket_task_card.dart';
 
 import '../manager/project_store.dart';
 

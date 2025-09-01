@@ -1,9 +1,12 @@
 import 'dart:async';
 
+import 'package:flutter_downloader/flutter_downloader.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:vikunja_app/core/network/client.dart';
 import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/core/network/service.dart';
 import 'package:vikunja_app/core/services.dart';
+import 'package:vikunja_app/data/models/task_attachment_dto.dart';
 import 'package:vikunja_app/data/models/task_dto.dart';
 
 class TaskDataSource extends RemoteDataSource {
@@ -104,6 +107,20 @@ class TaskDataSource extends RemoteDataSource {
     });
   }
 
-  // TODO: implement maxPages
-  int get maxPages => maxPages;
+  Future<String?> downloadAttachment(
+      int taskId, TaskAttachmentDto attachment) async {
+    String url = client.base;
+    url += '/tasks/$taskId/attachments/${attachment.id}';
+
+    var savedDir = (await getDownloadsDirectory())?.path;
+    if (savedDir != null) {
+      return await FlutterDownloader.enqueue(
+        url: url,
+        fileName: attachment.file.name,
+        headers: client.headers,
+        savedDir: savedDir,
+      );
+    }
+    return null;
+  }
 }

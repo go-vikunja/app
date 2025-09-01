@@ -5,8 +5,7 @@ import 'package:vikunja_app/domain/entities/label.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 
 import '../../../core/utils/constants.dart';
-import '../manager/project_store.dart';
-import '../pages/task/task_edit.dart';
+import '../pages/task/task_edit_page.dart';
 import 'label.dart';
 
 class TaskBottomSheet extends StatefulWidget {
@@ -14,12 +13,10 @@ class TaskBottomSheet extends StatefulWidget {
   final bool showInfo;
   final bool loading;
   final ValueSetter<bool>? onMarkedAsDone;
-  final ProjectProvider taskState;
 
   const TaskBottomSheet({
     Key? key,
     required this.task,
-    required this.taskState,
     this.loading = false,
     this.showInfo = false,
     this.onMarkedAsDone,
@@ -65,7 +62,6 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
                           MaterialPageRoute(
                             builder: (buildContext) => TaskEditPage(
                               task: _currentTask,
-                              taskState: widget.taskState,
                             ),
                           ),
                         ).then((task) => setState(() {
