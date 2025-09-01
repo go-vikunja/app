@@ -52,7 +52,7 @@ class _ColorPickerDialogState extends State<ColorPickerDialog> {
           },
         ),
         TextButton(
-          child: Text('Ok'),
+          child: Text('OK'),
           onPressed: () {
             widget.onConfirm(_pickerColor ?? Colors.black);
           },
