@@ -1,6 +1,6 @@
 import 'package:after_layout/after_layout.dart';
 import 'package:flutter/material.dart';
-import 'package:vikunja_app/presentation/widgets/datetimePicker.dart';
+import 'package:vikunja_app/presentation/widgets/date_time_field.dart';
 
 enum NewTaskDue { day, week, month, custom }
 
@@ -67,7 +67,7 @@ class AddDialogState extends State<AddDialog> with AfterLayoutMixin<AddDialog> {
             ? taskDueList("1 Month", NewTaskDue.month)
             : new Container(),
         widget.onAddTask != null
-            ? VikunjaDateTimePicker(
+            ? VikunjaDateTimeField(
                 label: "Enter exact time",
                 onChanged: (value) {
                   setState(() => newTaskDue = NewTaskDue.custom);

@@ -24,4 +24,12 @@ class Label {
     required this.createdBy,
   })  : this.created = created ?? DateTime.now(),
         this.updated = updated ?? DateTime.now();
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Label && runtimeType == other.runtimeType && id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
 }

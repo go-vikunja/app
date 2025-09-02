@@ -6,8 +6,8 @@ import 'package:provider/provider.dart';
 import 'package:vikunja_app/core/utils/misc.dart';
 import 'package:vikunja_app/core/utils/priority.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
-import 'package:vikunja_app/presentation/pages/task/task_edit.dart';
-import 'package:vikunja_app/presentation/widgets/TaskBottomSheet.dart';
+import 'package:vikunja_app/presentation/pages/task/task_edit_page.dart';
+import 'package:vikunja_app/presentation/widgets/task_bottom_sheet.dart';
 
 import '../manager/project_store.dart';
 
@@ -63,7 +63,6 @@ class TaskTileState extends State<TaskTile> with AutomaticKeepAliveClientMixin {
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    final taskState = Provider.of<ProjectProvider>(context);
     if (_currentTask.loading) {
       return ListTile(
         leading: Padding(
@@ -101,10 +100,7 @@ class TaskTileState extends State<TaskTile> with AutomaticKeepAliveClientMixin {
                 borderRadius: BorderRadius.vertical(top: Radius.circular(10.0)),
               ),
               builder: (BuildContext context) {
-                return TaskBottomSheet(
-                  task: widget.task,
-                  taskState: taskState,
-                );
+                return TaskBottomSheet(task: widget.task);
               });
         },
         title: widget.showInfo
@@ -115,7 +111,6 @@ class TaskTileState extends State<TaskTile> with AutomaticKeepAliveClientMixin {
                   text: null,
                   children: <TextSpan>[
                     // TODO: get list name of task
-                    //TextSpan(text: widget.task.list.title+" - ", style: TextStyle(color: Colors.grey)),
                     TextSpan(text: widget.task.title),
                   ],
                   style: TextStyle(
@@ -143,7 +138,6 @@ class TaskTileState extends State<TaskTile> with AutomaticKeepAliveClientMixin {
                 MaterialPageRoute(
                   builder: (buildContext) => TaskEditPage(
                     task: _currentTask,
-                    taskState: taskState,
                   ),
                 ),
               )

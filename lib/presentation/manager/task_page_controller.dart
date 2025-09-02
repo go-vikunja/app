@@ -82,4 +82,14 @@ class TaskPageController extends _$TaskPageController {
     await ref.read(taskRepositoryProvider).add(projectId, task);
     return reload();
   }
+
+  Future<void> deleteTask(int id) async {
+    await ref.read(taskRepositoryProvider).delete(id);
+    return reload();
+  }
+
+  Future<void> updateTask(task) async {
+    await ref.read(taskRepositoryProvider).update(task);
+    return reload();
+  }
 }

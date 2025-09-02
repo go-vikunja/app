@@ -4,7 +4,7 @@ description: Vikunja as Flutter cross platform app
 version: 0.1.8-beta
 
 environment:
-  sdk: ">=2.18.0 <3.0.0"
+  sdk: ">=2.19.0 <3.0.0"
   flutter: 3.22.2
 
 dependencies:
@@ -46,6 +46,7 @@ dependencies:
   home_widget: ^0.8.0
   flutter_riverpod: ^2.6.1
   riverpod_annotation: ^2.6.1
+  path_provider: ^2.1.5
 
 dependency_overrides:
   flutter_inappwebview:

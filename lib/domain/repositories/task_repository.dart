@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/core/services.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
+import 'package:vikunja_app/domain/entities/task_attachment.dart';
 
 abstract class TaskRepository {
   Future<Task?> add(int projectId, Task task);
@@ -24,6 +25,5 @@ abstract class TaskRepository {
   Future<List<Task>?> getByFilterString(String filterString,
       [Map<String, List<String>>? queryParameters]);
 
-  // TODO: implement maxPages
-  int get maxPages => maxPages;
+  Future<String?> downloadAttachment(int taskId, TaskAttachment attachment);
 }

@@ -1,13 +1,17 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_app/core/di/data_source_provider.dart';
+import 'package:vikunja_app/data/repositories/label_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/project_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/settings_repository_impl.dart';
+import 'package:vikunja_app/data/repositories/task_label_bulk_repository_impl.dart';
+import 'package:vikunja_app/data/repositories/task_label_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/task_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/user_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/version_repository_impl.dart';
 import 'package:vikunja_app/domain/repositories/project_repository.dart';
 import 'package:vikunja_app/domain/repositories/settings_repository.dart';
+import 'package:vikunja_app/domain/repositories/task_label_bulk_repository.dart';
 import 'package:vikunja_app/domain/repositories/task_repository.dart';
 import 'package:vikunja_app/domain/repositories/user_repository.dart';
 import 'package:vikunja_app/domain/repositories/version_repository.dart';
@@ -24,6 +28,24 @@ ProjectRepository projectRepository(Ref ref) {
 TaskRepository taskRepository(Ref ref) {
   var taskDataSource = ref.watch(taskDataSourceProvider);
   return TaskRepositoryImpl(taskDataSource);
+}
+
+@riverpod
+TaskLabelRepositoryImpl taskLabelRepository(Ref ref) {
+  var taskLabelDataSource = ref.watch(taskLabelDataSourceProvider);
+  return TaskLabelRepositoryImpl(taskLabelDataSource);
+}
+
+@riverpod
+TaskLabelBulkRepository taskLabelBulkRepository(Ref ref) {
+  var taskLabelBulkDataSource = ref.watch(taskLabelBulkDataSourceProvider);
+  return TaskLabelBulkRepositoryImpl(taskLabelBulkDataSource);
+}
+
+@riverpod
+LabelRepositoryImpl labelRepository(Ref ref) {
+  var labelDataSource = ref.watch(labelDataSourceProvider);
+  return LabelRepositoryImpl(labelDataSource);
 }
 
 @riverpod

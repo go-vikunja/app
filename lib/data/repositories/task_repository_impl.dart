@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/core/services.dart';
 import 'package:vikunja_app/data/data_sources/task_data_source.dart';
+import 'package:vikunja_app/data/models/task_attachment_dto.dart';
 import 'package:vikunja_app/data/models/task_dto.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
+import 'package:vikunja_app/domain/entities/task_attachment.dart';
 import 'package:vikunja_app/domain/repositories/task_repository.dart';
 
 class TaskRepositoryImpl extends TaskRepository {
@@ -65,7 +67,10 @@ class TaskRepositoryImpl extends TaskRepository {
         .toList();
   }
 
-  // TODO: implement maxPages
   @override
-  int get maxPages => maxPages;
+  Future<String?> downloadAttachment(
+      int taskId, TaskAttachment attachment) async {
+    return _dataSource.downloadAttachment(
+        taskId, TaskAttachmentDto.fromDomain(attachment));
+  }
 }

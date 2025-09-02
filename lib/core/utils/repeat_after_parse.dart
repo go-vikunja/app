@@ -5,12 +5,12 @@ String? getRepeatAfterTypeFromDuration(Duration? repeatAfter) {
 
   // if its dividable by 24, its something with days, otherwise hours
   if (repeatAfter.inHours % 24 == 0) {
-    if (repeatAfter.inDays % 7 == 0) {
-      return 'Weeks';
-    } else if (repeatAfter.inDays % 365 == 0) {
+    if (repeatAfter.inDays % 365 == 0) {
       return 'Years';
     } else if (repeatAfter.inDays % 30 == 0) {
       return 'Months';
+    } else if (repeatAfter.inDays % 7 == 0) {
+      return 'Weeks';
     } else {
       return 'Days';
     }
@@ -25,15 +25,15 @@ int? getRepeatAfterValueFromDuration(Duration? repeatAfter) {
 
   // if its dividable by 24, its something with days, otherwise hours
   if (repeatAfter.inHours % 24 == 0) {
-    if (repeatAfter.inDays % 7 == 0) {
-      // Weeks
-      return (repeatAfter.inDays / 7).round();
-    } else if (repeatAfter.inDays % 365 == 0) {
+    if (repeatAfter.inDays % 365 == 0) {
       // Years
       return (repeatAfter.inDays / 365).round();
     } else if (repeatAfter.inDays % 30 == 0) {
       // Months
       return (repeatAfter.inDays / 30).round();
+    } else if (repeatAfter.inDays % 7 == 0) {
+      // Weeks
+      return (repeatAfter.inDays / 7).round();
     } else {
       return repeatAfter.inDays; // Days
     }

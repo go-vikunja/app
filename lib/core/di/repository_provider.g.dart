@@ -24,7 +24,6 @@ final projectRepositoryProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef ProjectRepositoryRef = AutoDisposeProviderRef<ProjectRepository>;
-
 String _$taskRepositoryHash() => r'c13c2278d2e356be866ee1efbf92e19113605fd5';
 
 /// See also [taskRepository].
@@ -42,6 +41,64 @@ final taskRepositoryProvider = AutoDisposeProvider<TaskRepository>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef TaskRepositoryRef = AutoDisposeProviderRef<TaskRepository>;
+String _$taskLabelRepositoryHash() =>
+    r'4737d05a4336b26cfee858a79040873307c552a8';
+
+/// See also [taskLabelRepository].
+@ProviderFor(taskLabelRepository)
+final taskLabelRepositoryProvider =
+    AutoDisposeProvider<TaskLabelRepositoryImpl>.internal(
+  taskLabelRepository,
+  name: r'taskLabelRepositoryProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$taskLabelRepositoryHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef TaskLabelRepositoryRef
+    = AutoDisposeProviderRef<TaskLabelRepositoryImpl>;
+String _$taskLabelBulkRepositoryHash() =>
+    r'4c91435cc44c7cc042b3e000600971ac091a4f10';
+
+/// See also [taskLabelBulkRepository].
+@ProviderFor(taskLabelBulkRepository)
+final taskLabelBulkRepositoryProvider =
+    AutoDisposeProvider<TaskLabelBulkRepository>.internal(
+  taskLabelBulkRepository,
+  name: r'taskLabelBulkRepositoryProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$taskLabelBulkRepositoryHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef TaskLabelBulkRepositoryRef
+    = AutoDisposeProviderRef<TaskLabelBulkRepository>;
+String _$labelRepositoryHash() => r'53a4212a63e8ebef6cee16ea254b41ee9f150bd0';
+
+/// See also [labelRepository].
+@ProviderFor(labelRepository)
+final labelRepositoryProvider =
+    AutoDisposeProvider<LabelRepositoryImpl>.internal(
+  labelRepository,
+  name: r'labelRepositoryProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$labelRepositoryHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef LabelRepositoryRef = AutoDisposeProviderRef<LabelRepositoryImpl>;
 String _$settingsRepositoryHash() =>
     r'f0263c745437437ead43384b7bd63b41805492ff';
 

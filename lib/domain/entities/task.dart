@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import 'package:vikunja_app/core/utils/checkboxes_in_text.dart';
 import 'package:vikunja_app/domain/entities/label.dart';
 import 'package:vikunja_app/domain/entities/task_attachment.dart';
@@ -44,7 +43,6 @@ class Task {
   final List<Task> subtasks;
   final List<Label> labels;
   final List<TaskAttachment> attachments;
-  // TODO: add position(?)
 
   late final checkboxStatistics = getCheckboxStatistics(description);
   late final hasCheckboxes = checkboxStatistics.total != 0;
@@ -71,7 +69,6 @@ class Task {
     DateTime? created,
     DateTime? updated,
     required this.createdBy,
-    //required this.listId,
     required this.projectId,
     this.bucketId,
   })  : this.created = created ?? DateTime.now(),
@@ -86,9 +83,11 @@ class Task {
     return Colors.white;
   }
 
-  bool get hasDueDate => dueDate?.year != 1;
-  bool get hasStartDate => startDate?.year != 1;
-  bool get hasEndDate => endDate?.year != 1;
+  bool get hasDueDate => dueDate != null && dueDate?.year != 1;
+
+  bool get hasStartDate => startDate != null && startDate?.year != 1;
+
+  bool get hasEndDate => endDate != null && endDate?.year != 1;
 
   Task copyWith({
     int? id,
@@ -119,7 +118,6 @@ class Task {
       id: id ?? this.id,
       parentTaskId: parentTaskId ?? this.parentTaskId,
       priority: priority ?? this.priority,
-      //listId: listId ?? this.listId,
       projectId: projectId ?? this.projectId,
       bucketId: bucketId ?? this.bucketId,
       created: created ?? this.created,
