@@ -20,7 +20,6 @@ class ProjectRepositoryImpl extends ProjectRepository {
 
   @override
   Future<Project?> get(int projectId) async {
-    //TODO how do we add subprojects here
     return (await _dataSource.get(projectId))?.toDomain();
   }
 

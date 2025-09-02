@@ -70,7 +70,7 @@ class ProjectOverviewPage extends ConsumerWidget {
       builder: (_) => AddProjectDialog(
         onAdd: (name) => _addProject(name, ref),
         decoration: new InputDecoration(
-            //TODO remove once we also createcd add bucket dialog
+            //TODO remove once we also created add bucket dialog
             labelText: 'Project',
             hintText: 'eg. Personal Project'),
       ),
