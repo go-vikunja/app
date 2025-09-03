@@ -44,7 +44,7 @@ class ProjectOverviewPage extends ConsumerWidget {
   }
 
   Widget _buildListItem(WidgetRef ref, Project project) {
-    if (project.subprojects?.isEmpty == true) {
+    if (project.subprojects.isEmpty == true) {
       return ListTile(
         leading: Icon(Icons.list),
         title: Text(project.title),
@@ -52,16 +52,15 @@ class ProjectOverviewPage extends ConsumerWidget {
           _navigateToProject(ref.context, project);
         },
       );
-    } else {
-      return VikunjaExpansionTile(
-        title: Text(project.title),
-        children:
-            project.subprojects!.map((e) => _buildListItem(ref, e)).toList(),
-        onTitleTap: () {
-          _navigateToProject(ref.context, project);
-        },
-      );
     }
+
+    return VikunjaExpansionTile(
+      title: Text(project.title),
+      children: project.subprojects.map((e) => _buildListItem(ref, e)).toList(),
+      onTitleTap: () {
+        _navigateToProject(ref.context, project);
+      },
+    );
   }
 
   _addProjectDialog(WidgetRef ref) {

@@ -15,7 +15,7 @@ class Project {
   final bool isArchived, isFavourite;
   final List<ProjectView> views;
 
-  Iterable<Project>? subprojects;
+  Iterable<Project> subprojects = [];
 
   Project(
       {this.id = 0,

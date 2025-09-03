@@ -94,7 +94,7 @@ class _ListPageState extends State<ListPage> {
       case PageStatus.success:
         body = taskState.tasks.length > 0 ||
                 taskState.buckets.length > 0 ||
-                _project.subprojects!.length > 0
+                _project.subprojects.length > 0
             ? ListenableProvider.value(
                 value: taskState,
                 child: Theme(
@@ -185,7 +185,7 @@ class _ListPageState extends State<ListPage> {
 
   Widget _listView(BuildContext context) {
     List<Widget> children = [];
-    if (widget.project.subprojects?.isNotEmpty ?? false) {
+    if (widget.project.subprojects.isNotEmpty) {
       children.add(_buildSectionHeader("Projects"));
       children.addAll(_buildProjectList());
     }
@@ -209,7 +209,7 @@ class _ListPageState extends State<ListPage> {
   }
 
   List<Widget> _buildProjectList() {
-    return widget.project.subprojects!
+    return widget.project.subprojects
         .map((subproject) => ListTile(
               leading: Icon(Icons.list),
               onTap: () {

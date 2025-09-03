@@ -40,7 +40,7 @@ class ProjectRepositoryImpl extends ProjectRepository {
   findSubproject(Project project, List<Project> projects) {
     project.subprojects =
         projects.where((e) => e.parentProjectId == project.id).toList();
-    project.subprojects?.forEach((e) => findSubproject(e, projects));
+    project.subprojects.forEach((e) => findSubproject(e, projects));
   }
 
   @override
