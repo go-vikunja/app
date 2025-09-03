@@ -29,7 +29,6 @@ class AddDialogState extends State<AddProjectDialog> {
             ),
           ),
         ]),
-        //],)
       ]),
       actions: <Widget>[
         new TextButton(
