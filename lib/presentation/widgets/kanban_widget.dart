@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:vikunja_app/domain/entities/bucket.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/project_view.dart';
+import 'package:vikunja_app/presentation/widgets/project/add_project_dialog.dart';
 
 import '../../../core/utils/calculate_item_position.dart';
 import '../../../global.dart';
@@ -15,7 +16,6 @@ import '../pages/project/project_task_list.dart';
 import 'BucketLimitDialog.dart';
 import 'SliverBucketList.dart';
 import 'SliverBucketPersistentHeader.dart';
-import 'add_dialog.dart';
 import 'bucket_task_card.dart';
 
 class KanbanClass {
@@ -110,7 +110,6 @@ class KanbanClass {
         FocusScope.of(context).unfocus();
         _draggedBucketIndex = oldIndex;
         notify();
-        // setState(() => _draggedBucketIndex = oldIndex);
       },
       onReorder: (_, __) {},
       onReorderEnd: (newIndex) async {
@@ -157,7 +156,6 @@ class KanbanClass {
           );
         _draggedBucketIndex = null;
         notify();
-        // setState(() => _draggedBucketIndex = null);
       },
     );
   }
@@ -166,7 +164,7 @@ class KanbanClass {
     FocusScope.of(context).unfocus();
     return showDialog(
         context: context,
-        builder: (_) => AddDialog(
+        builder: (_) => AddProjectDialog(
               onAdd: (title) => _addBucket(title, context),
               decoration: InputDecoration(
                 labelText: 'New Bucket Name',
@@ -176,7 +174,6 @@ class KanbanClass {
   }
 
   Future<void> _setDoneBucket(BuildContext context, int bucketId) async {
-    //setState(() {});
     _view = (await VikunjaGlobal.of(context)
         .projectViewService
         .update(_view.copyWith(doneBucketId: bucketId)))!;

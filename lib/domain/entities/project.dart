@@ -13,9 +13,9 @@ class Project {
   final DateTime created, updated;
   final Color? color;
   final bool isArchived, isFavourite;
-
-  Iterable<Project>? subprojects;
   final List<ProjectView> views;
+
+  Iterable<Project> subprojects = [];
 
   Project(
       {this.id = 0,

@@ -7,7 +7,7 @@ import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/presentation/manager/task_page_controller.dart';
-import 'package:vikunja_app/presentation/widgets/add_dialog.dart';
+import 'package:vikunja_app/presentation/widgets/task/add_task_dialog.dart';
 import 'package:vikunja_app/presentation/widgets/task_tile.dart';
 
 class TaskListPage extends ConsumerStatefulWidget {
@@ -107,12 +107,10 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
         .setLandingPageOnlyDueDateTasks(newValue);
   }
 
-  _addItemDialog(BuildContext context, int defaultProjectId,
-      {String? prefilledTitle}) {
+  _addItemDialog(BuildContext context, int defaultProjectId) {
     showDialog(
       context: context,
-      builder: (_) => AddDialog(
-        prefilledTitle: prefilledTitle,
+      builder: (_) => AddTaskDialog(
         onAddTask: (title, dueDate) =>
             _addTask(title, dueDate, defaultProjectId, context),
         decoration: InputDecoration(

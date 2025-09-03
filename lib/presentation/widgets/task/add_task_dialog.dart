@@ -1,4 +1,3 @@
-import 'package:after_layout/after_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/presentation/widgets/date_time_field.dart';
 
@@ -11,35 +10,21 @@ Map<NewTaskDue, Duration> newTaskDueToDuration = {
   NewTaskDue.month: Duration(days: 30),
 };
 
-class AddDialog extends StatefulWidget {
-  final ValueChanged<String>? onAdd;
+class AddTaskDialog extends StatefulWidget {
   final void Function(String title, DateTime? dueDate)? onAddTask;
   final InputDecoration? decoration;
-  final String? prefilledTitle;
-  const AddDialog(
-      {Key? key,
-      this.onAdd,
-      this.decoration,
-      this.onAddTask,
-      this.prefilledTitle})
+
+  const AddTaskDialog({Key? key, this.decoration, this.onAddTask})
       : super(key: key);
 
   @override
-  State<StatefulWidget> createState() => AddDialogState();
+  State<StatefulWidget> createState() => AddTaskDialogState();
 }
 
-class AddDialogState extends State<AddDialog> with AfterLayoutMixin<AddDialog> {
+class AddTaskDialogState extends State<AddTaskDialog> {
   NewTaskDue newTaskDue = NewTaskDue.day;
   DateTime? customDueDate;
   var textController = TextEditingController();
-
-  @override
-  void afterFirstLayout(BuildContext context) {
-    setState(() {
-      textController.text = widget.prefilledTitle ?? "";
-    });
-    super.activate();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -79,14 +64,12 @@ class AddDialogState extends State<AddDialog> with AfterLayoutMixin<AddDialog> {
       ]),
       actions: <Widget>[
         new TextButton(
-          child: const Text('CANCEL'),
+          child: const Text('Cancel'),
           onPressed: () => Navigator.pop(context),
         ),
         new TextButton(
-          child: const Text('ADD'),
+          child: const Text('Add'),
           onPressed: () {
-            if (widget.onAdd != null && textController.text.isNotEmpty)
-              widget.onAdd!(textController.text);
             if (widget.onAddTask != null && textController.text.isNotEmpty) {
               widget.onAddTask!(textController.text, customDueDate);
             }

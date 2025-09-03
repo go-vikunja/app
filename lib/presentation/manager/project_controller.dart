@@ -10,4 +10,13 @@ class ProjectController extends _$ProjectController {
   Future<List<Project>> build() async {
     return ref.read(projectRepositoryProvider).getAll();
   }
+
+  void reload() async {
+    state = AsyncData(await ref.read(projectRepositoryProvider).getAll());
+  }
+
+  void create(Project project) {
+    ref.read(projectRepositoryProvider).create(project);
+    reload();
+  }
 }

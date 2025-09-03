@@ -25,7 +25,22 @@ class ProjectRepositoryImpl extends ProjectRepository {
 
   @override
   Future<List<Project>> getAll() async {
-    return (await _dataSource.getAll()).map((e) => e.toDomain()).toList();
+    var projects =
+        (await _dataSource.getAll()).map((e) => e.toDomain()).toList();
+
+    var topLevelProjects =
+        projects.where((e) => e.parentProjectId == 0).toList();
+    topLevelProjects.forEach((topLevelProject) {
+      findSubproject(topLevelProject, projects);
+    });
+
+    return topLevelProjects;
+  }
+
+  findSubproject(Project project, List<Project> projects) {
+    project.subprojects =
+        projects.where((e) => e.parentProjectId == project.id).toList();
+    project.subprojects.forEach((e) => findSubproject(e, projects));
   }
 
   @override
