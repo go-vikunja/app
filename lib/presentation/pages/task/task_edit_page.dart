@@ -13,7 +13,7 @@ import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/presentation/manager/task_page_controller.dart';
 import 'package:vikunja_app/presentation/pages/task/edit_description.dart';
 import 'package:vikunja_app/presentation/widgets/date_time_field.dart';
-import 'package:vikunja_app/presentation/widgets/label.dart';
+import 'package:vikunja_app/presentation/widgets/label_widget.dart';
 import 'package:vikunja_app/presentation/widgets/task/color_picker_dialog.dart';
 import 'package:vikunja_app/presentation/widgets/task/task_delete_dialog.dart';
 import 'package:vikunja_app/presentation/widgets/task/task_save_dialog.dart';
@@ -488,7 +488,7 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
       spacing: 10,
       children: _labels?.map(
             (label) {
-              return LabelComponent(
+              return LabelWidget(
                 label: label,
                 onDelete: () => _removeLabel(label),
               );

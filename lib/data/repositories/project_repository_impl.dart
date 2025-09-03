@@ -20,6 +20,7 @@ class ProjectRepositoryImpl extends ProjectRepository {
 
   @override
   Future<Project?> get(int projectId) async {
+    //TODO how do we add subprojects here
     return (await _dataSource.get(projectId))?.toDomain();
   }
 
@@ -46,15 +47,5 @@ class ProjectRepositoryImpl extends ProjectRepository {
   @override
   Future<Project?> update(Project p) async {
     return (await _dataSource.update(ProjectDto.fromDomain(p)))?.toDomain();
-  }
-
-  @override
-  Future<String> getDisplayDoneTasks(int listId) async {
-    return _dataSource.getDisplayDoneTasks(listId);
-  }
-
-  @override
-  void setDisplayDoneTasks(int listId, String value) {
-    _dataSource.setDisplayDoneTasks(listId, value);
   }
 }

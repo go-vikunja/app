@@ -17,7 +17,7 @@ class BucketRepositoryImpl implements BucketRepository {
   }
 
   @override
-  Future delete(int projectId, int viewId, int bucketId) async {
+  Future<void> delete(int projectId, int viewId, int bucketId) async {
     return _dataSource.delete(projectId, viewId, bucketId);
   }
 
@@ -37,5 +37,18 @@ class BucketRepositoryImpl implements BucketRepository {
     return (await _dataSource.update(
             projectId, viewId, BucketDto.fromDomain(bucket)))
         ?.toDomain();
+  }
+
+  @override
+  Future<void> updateTaskBucket(
+      int taskId, bucketId, projectId, int viewId) async {
+    return await _dataSource.updateTaskBucket(
+        taskId, bucketId, projectId, viewId);
+  }
+
+  @override
+  Future<void> updateTaskPosition(
+      int taskId, int viewId, double position) async {
+    return await _dataSource.updateTaskPosition(taskId, viewId, position);
   }
 }

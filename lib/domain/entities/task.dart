@@ -26,23 +26,23 @@ class TaskReminder {
 }
 
 class Task {
-  final int id;
-  final int? parentTaskId, priority, bucketId;
-  final int? projectId;
-  final DateTime created, updated;
+  int id;
+  int? parentTaskId, priority, bucketId;
+  int? projectId;
+  DateTime created, updated;
   DateTime? dueDate, startDate, endDate;
-  final List<TaskReminder> reminderDates;
-  final String identifier;
-  final String title, description;
-  final bool done;
+  List<TaskReminder> reminderDates;
+  String identifier;
+  String title, description;
+  bool done;
   Color? color;
-  final double? position;
-  final double? percent_done;
-  final User createdBy;
+  double? position;
+  double? percent_done;
+  User createdBy;
   Duration? repeatAfter;
-  final List<Task> subtasks;
-  final List<Label> labels;
-  final List<TaskAttachment> attachments;
+  List<Task> subtasks;
+  List<Label> labels;
+  List<TaskAttachment> attachments;
 
   late final checkboxStatistics = getCheckboxStatistics(description);
   late final hasCheckboxes = checkboxStatistics.total != 0;

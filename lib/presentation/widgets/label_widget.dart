@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/domain/entities/label.dart';
 
-class LabelComponent extends StatelessWidget {
+class LabelWidget extends StatelessWidget {
   final Label label;
   final VoidCallback? onDelete;
 
-  const LabelComponent({Key? key, required this.label, this.onDelete})
-      : super(key: key);
+  const LabelWidget({super.key, required this.label, this.onDelete});
 
   @override
   Widget build(BuildContext context) {
     return Chip(
+      visualDensity: VisualDensity.compact,
       label: Text(
         label.title,
         style: TextStyle(

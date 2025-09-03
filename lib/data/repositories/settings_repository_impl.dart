@@ -76,4 +76,14 @@ class SettingsRepositoryImpl implements SettingsRepository {
   Future<void> setLandingPageOnlyDueDateTasks(bool value) {
     return _datasource.setLandingPageOnlyDueDateTasks(value);
   }
+
+  @override
+  Future<bool> getDisplayDoneTasks(int projectId) async {
+    return _datasource.getDisplayDoneTasks(projectId);
+  }
+
+  @override
+  void setDisplayDoneTasks(int projectId, bool value) {
+    _datasource.setDisplayDoneTasks(projectId, value);
+  }
 }

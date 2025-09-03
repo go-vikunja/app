@@ -27,7 +27,7 @@ class TaskRepositoryImpl extends TaskRepository {
 
   @override
   Future delete(int taskId) async {
-    return (await _dataSource.delete(taskId))?.toDomain();
+    return (await _dataSource.delete(taskId));
   }
 
   @override

@@ -6,7 +6,7 @@ part of 'data_source_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$projectDataSourceHash() => r'b83acc133e9d946f6ecb9dc1485e3fb561208d04';
+String _$projectDataSourceHash() => r'b71bde2e37a74f909810d1ba117c8d335d554f5a';
 
 /// See also [projectDataSource].
 @ProviderFor(projectDataSource)
@@ -24,6 +24,45 @@ final projectDataSourceProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef ProjectDataSourceRef = AutoDisposeProviderRef<ProjectDataSource>;
+
+String _$projectViewDataSourceHash() =>
+    r'e0b524d3ff732b6363531d267a97aa4b70e84482';
+
+/// See also [projectViewDataSource].
+@ProviderFor(projectViewDataSource)
+final projectViewDataSourceProvider =
+    AutoDisposeProvider<ProjectViewDataSource>.internal(
+  projectViewDataSource,
+  name: r'projectViewDataSourceProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$projectViewDataSourceHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef ProjectViewDataSourceRef
+    = AutoDisposeProviderRef<ProjectViewDataSource>;
+
+String _$bucketDataSourceHash() => r'8bcd761a3cd4e40e781bf8e3df7c317769361b8d';
+
+/// See also [bucketDataSource].
+@ProviderFor(bucketDataSource)
+final bucketDataSourceProvider = AutoDisposeProvider<BucketDataSource>.internal(
+  bucketDataSource,
+  name: r'bucketDataSourceProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$bucketDataSourceHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef BucketDataSourceRef = AutoDisposeProviderRef<BucketDataSource>;
 String _$taskDataSourceHash() => r'ea8ae51eb82b058097a4ca001d6ea5420ef6d81b';
 
 /// See also [taskDataSource].

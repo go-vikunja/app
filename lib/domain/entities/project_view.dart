@@ -1,52 +1,46 @@
 import 'package:flutter/material.dart';
-
-enum ViewKind { LIST, GANTT, TABLE, KANBAN }
+import 'package:vikunja_app/domain/entities/bucket_configuration.dart';
+import 'package:vikunja_app/domain/entities/filter.dart';
+import 'package:vikunja_app/domain/entities/view_kind.dart';
 
 class ProjectView {
-  final DateTime created; // "created": "string",
-  final int defaultBucketId; //": 0,
-  final int doneBucketId;
-  final int id; //": 0,
-  final int position;
-  final int projectId;
+  final int id;
   final String title;
+  final int projectId;
+  final ViewKind viewKind;
+  final Filter? filter;
+  final int position;
+  final String bucketConfigurationMode;
+  final List<BucketConfiguration>? bucketConfiguration;
+  int defaultBucketId;
+  int doneBucketId;
+  final DateTime created;
   final DateTime updated;
-  final String viewKind;
 
-  get icon {
+  Icon get icon {
     switch (viewKind) {
-      case "list":
+      case ViewKind.list:
         return Icon(Icons.view_list);
-      case "kanban":
+      case ViewKind.kanban:
         return Icon(Icons.view_kanban);
-      default:
-        return Icon(Icons.disabled_by_default_outlined);
+      case ViewKind.gantt:
+        return Icon(Icons.view_timeline);
+      case ViewKind.table:
+        return Icon(Icons.table_chart);
     }
   }
 
-  ProjectView(this.created, this.defaultBucketId, this.doneBucketId, this.id,
-      this.position, this.projectId, this.title, this.updated, this.viewKind);
-
-  ProjectView copyWith({
-    DateTime? created, // "created": "string",
-    int? defaultBucketId, //": 0,
-    int? doneBucketId,
-    int? id, //": 0,
-    int? position,
-    int? projectId,
-    String? title,
-    DateTime? updated,
-    String? viewKind,
-  }) {
-    return ProjectView(
-        created ?? this.created,
-        defaultBucketId ?? this.defaultBucketId,
-        doneBucketId ?? this.doneBucketId,
-        id ?? this.id,
-        position ?? this.position,
-        projectId ?? this.projectId,
-        title ?? this.title,
-        updated ?? this.updated,
-        viewKind ?? this.viewKind);
-  }
+  ProjectView(
+      this.created,
+      this.defaultBucketId,
+      this.doneBucketId,
+      this.id,
+      this.position,
+      this.projectId,
+      this.title,
+      this.updated,
+      this.filter,
+      this.bucketConfiguration,
+      this.bucketConfigurationMode,
+      this.viewKind);
 }

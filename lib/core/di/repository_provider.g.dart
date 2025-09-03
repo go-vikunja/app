@@ -24,6 +24,45 @@ final projectRepositoryProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef ProjectRepositoryRef = AutoDisposeProviderRef<ProjectRepository>;
+
+String _$projectViewRepositoryHash() =>
+    r'7dd16f3bf7014daaa131fbeb3091a9525e2ff9bf';
+
+/// See also [projectViewRepository].
+@ProviderFor(projectViewRepository)
+final projectViewRepositoryProvider =
+    AutoDisposeProvider<ProjectViewRepository>.internal(
+  projectViewRepository,
+  name: r'projectViewRepositoryProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$projectViewRepositoryHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef ProjectViewRepositoryRef
+    = AutoDisposeProviderRef<ProjectViewRepository>;
+
+String _$bucketRepositoryHash() => r'2a18412f71ddf6837e496d3eea09730eac368397';
+
+/// See also [bucketRepository].
+@ProviderFor(bucketRepository)
+final bucketRepositoryProvider = AutoDisposeProvider<BucketRepository>.internal(
+  bucketRepository,
+  name: r'bucketRepositoryProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$bucketRepositoryHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef BucketRepositoryRef = AutoDisposeProviderRef<BucketRepository>;
 String _$taskRepositoryHash() => r'c13c2278d2e356be866ee1efbf92e19113605fd5';
 
 /// See also [taskRepository].

@@ -8,7 +8,7 @@ import 'package:vikunja_app/core/services.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/user.dart';
 import 'package:vikunja_app/global.dart';
-import 'package:vikunja_app/presentation/manager/project_controller.dart';
+import 'package:vikunja_app/presentation/manager/projects_controller.dart';
 import 'package:vikunja_app/presentation/manager/settings_controller.dart';
 import 'package:vikunja_app/presentation/manager/user_controller.dart';
 
@@ -30,7 +30,7 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsControllerProvider);
     final user = ref.watch(userControllerProvider);
-    final projects = ref.watch(projectControllerProvider);
+    final projects = ref.watch(projectsControllerProvider);
 
     return Scaffold(
       appBar: AppBar(

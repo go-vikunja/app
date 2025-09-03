@@ -85,4 +85,15 @@ class SettingsDatasource {
     return _storage.write(
         key: "landing-page-due-date-tasks", value: value ? "1" : "0");
   }
+
+  Future<bool> getDisplayDoneTasks(int projectId) async {
+    var value = await _storage.read(key: "display_done_tasks_list_$projectId");
+
+    return value == "1";
+  }
+
+  void setDisplayDoneTasks(int projectId, bool value) {
+    _storage.write(
+        key: "display_done_tasks_list_$projectId", value: value ? "1" : "0");
+  }
 }

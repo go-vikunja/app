@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:vikunja_app/presentation/pages/project/project_list_page.dart';
 import 'package:vikunja_app/presentation/pages/settings_page.dart';
 import 'package:vikunja_app/presentation/pages/task/task_list_page.dart';
-
-import '../manager/project_store.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -16,11 +13,8 @@ class HomePageState extends State<HomePage> {
   Widget? drawerItem;
 
   List<Widget> widgets = [
-    ChangeNotifierProvider<ProjectProvider>(
-      create: (_) => new ProjectProvider(),
-      child: TaskListPage(),
-    ),
-    ProjectOverviewPage(),
+    TaskListPage(),
+    ProjectListPage(),
     SettingsPage()
   ];
 

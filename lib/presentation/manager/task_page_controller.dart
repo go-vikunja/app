@@ -88,7 +88,7 @@ class TaskPageController extends _$TaskPageController {
     return reload();
   }
 
-  Future<void> updateTask(task) async {
+  Future<void> updateTask(Task task) async {
     await ref.read(taskRepositoryProvider).update(task);
     return reload();
   }
