@@ -11,7 +11,7 @@ class ChangeTitleDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text('Change name of \'${bucket.title}\''),
+      title: Text('Change the title of \'${bucket.title}\''),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
