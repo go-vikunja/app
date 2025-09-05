@@ -52,19 +52,19 @@ class ProjectPageState extends ConsumerState<ProjectDetailPage> {
   Widget getBody(Project project) {
     if (project.views.isEmpty) {
       return Text("No views");
-    } else {
-      switch (project.views[_viewIndex].viewKind) {
-        case ViewKind.list:
-          return ProjectTaskList(
-            project,
-          );
-        case ViewKind.kanban:
-          return KanbanWidget(
-            project: project,
-          );
-        default:
-          return Text("Not implemented");
-      }
+    }
+
+    switch (project.views[_viewIndex].viewKind) {
+      case ViewKind.list:
+        return ProjectTaskList(
+          project,
+        );
+      case ViewKind.kanban:
+        return KanbanWidget(
+          project: project,
+        );
+      default:
+        return Text("Not implemented");
     }
   }
 
@@ -94,14 +94,14 @@ class ProjectPageState extends ConsumerState<ProjectDetailPage> {
         project.views[_viewIndex].viewKind == ViewKind.kanban ||
         project.id < 0) {
       return null;
-    } else {
-      return Builder(
-        builder: (context) => FloatingActionButton(
-          onPressed: () => _addITaskDialog(context, project),
-          child: Icon(Icons.add),
-        ),
-      );
     }
+
+    return Builder(
+      builder: (context) => FloatingActionButton(
+        onPressed: () => _addITaskDialog(context, project),
+        child: Icon(Icons.add),
+      ),
+    );
   }
 
   BottomNavigationBar? _buildBottomNavigation(Project project) {
@@ -118,9 +118,9 @@ class ProjectPageState extends ConsumerState<ProjectDetailPage> {
         currentIndex: _viewIndex,
         onTap: _onViewTapped,
       );
-    } else {
-      return null;
     }
+
+    return null;
   }
 
   Future<void> _addITaskDialog(BuildContext context, Project project) {
