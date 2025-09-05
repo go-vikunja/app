@@ -48,13 +48,14 @@ class ProjectEditPageState extends ConsumerState<ProjectEditPage> {
                 keyboardType: TextInputType.multiline,
                 initialValue: widget.project.title,
                 validator: (title) {
-                  if (title != null &&
-                      (title.length < 3 || title.length > 250)) {
-                    return 'The title needs to have between 3 and 250 characters.';
-                  }
                   if (title == null) {
                     return "Title can't be null";
                   }
+
+                  if (title.length < 3 || title.length > 250) {
+                    return 'The title needs to have between 3 and 250 characters.';
+                  }
+
                   return null;
                 },
                 onSaved: (value) {
