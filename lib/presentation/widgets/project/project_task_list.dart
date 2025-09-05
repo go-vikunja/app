@@ -70,7 +70,7 @@ class ProjectTaskList extends ConsumerWidget {
   }
 
   List<Widget> _buildProjectList(BuildContext context) {
-    return project.subprojects!
+    return project.subprojects
         .map(
           (subproject) => ListTile(
             leading: Icon(Icons.list),
