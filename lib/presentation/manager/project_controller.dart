@@ -52,9 +52,7 @@ class ProjectController extends _$ProjectController {
 
     if (!displayDoneTasks) {
       queryParams.addAll({
-        "filter_by": ["done"],
-        "filter_value": ["false"],
-        "sort_by": ["done"],
+        "filter": ["done=false"],
       });
     }
     var tasks = await repo.getAllByProject(projectId, queryParams);
