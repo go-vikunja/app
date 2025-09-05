@@ -12,11 +12,7 @@ class HomePageState extends State<HomePage> {
   int _selectedDrawerIndex = 0, _previousDrawerIndex = 0;
   Widget? drawerItem;
 
-  List<Widget> widgets = [
-    TaskListPage(),
-    ProjectListPage(),
-    SettingsPage()
-  ];
+  List<Widget> widgets = [TaskListPage(), ProjectListPage(), SettingsPage()];
 
   List<NavigationDestination> navbarItems = [
     NavigationDestination(icon: Icon(Icons.home), label: "Home"),

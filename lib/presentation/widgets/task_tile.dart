@@ -35,45 +35,46 @@ class TaskTileState extends State<TaskTile> {
         color: widget.task.color,
       ),
       Flexible(
-          child: ListTile(
-        onTap: () {
-          widget.onTap();
-        },
-        title: widget.showInfo
-            ? RichText(
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                text: TextSpan(
-                  text: null,
-                  children: <TextSpan>[
-                    // TODO: get list name of task
-                    TextSpan(text: widget.task.title),
-                  ],
-                  style: TextStyle(
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? Colors.white
-                        : Colors.black,
-                  ),
-                ))
-            : Text(
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                widget.task.title,
-              ),
-        subtitle: _buildTaskSubtitle(widget.task, widget.showInfo, context),
-        leading: Checkbox(
-          value: widget.task.done,
-          onChanged: (bool? newValue) {
-            if (newValue != null) {
-              widget.onCheckedChanged(newValue);
-            }
+        child: ListTile(
+          onTap: () {
+            widget.onTap();
           },
+          title: widget.showInfo
+              ? RichText(
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  text: TextSpan(
+                    text: null,
+                    children: <TextSpan>[
+                      // TODO: get list name of task
+                      TextSpan(text: widget.task.title),
+                    ],
+                    style: TextStyle(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white
+                          : Colors.black,
+                    ),
+                  ))
+              : Text(
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  widget.task.title,
+                ),
+          subtitle: _buildTaskSubtitle(widget.task, widget.showInfo, context),
+          leading: Checkbox(
+            value: widget.task.done,
+            onChanged: (bool? newValue) {
+              if (newValue != null) {
+                widget.onCheckedChanged(newValue);
+              }
+            },
+          ),
+          trailing: IconButton(
+            icon: Icon(Icons.edit),
+            onPressed: () => widget.onEdit(),
+          ),
         ),
-        trailing: IconButton(
-          icon: Icon(Icons.edit),
-          onPressed: () => widget.onEdit(),
-        ),
-      ))
+      )
     ]));
   }
 

@@ -15,8 +15,8 @@ class ProjectsController extends _$ProjectsController {
     state = AsyncData(await ref.read(projectRepositoryProvider).getAll());
   }
 
-  void create(Project project) {
-    ref.read(projectRepositoryProvider).create(project);
+  void create(Project project) async {
+    await ref.read(projectRepositoryProvider).create(project);
     reload();
   }
 }
