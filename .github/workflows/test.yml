@@ -30,6 +30,13 @@ jobs:
       - run: flutter pub get
       - run: flutter build apk --debug --flavor unsigned
 
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-test-bundle
+          path: |
+            build/app/outputs/flutter-apk/app-*.apk
+
   test:
     runs-on: ubuntu-latest
     steps:
