@@ -28,4 +28,8 @@ abstract class SettingsRepository {
   Future<bool> getLandingPageOnlyDueDateTasks();
 
   Future<void> setLandingPageOnlyDueDateTasks(bool value);
+
+  Future<bool> getDisplayDoneTasks(int projectId);
+
+  void setDisplayDoneTasks(int projectId, bool value);
 }

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-class AddProjectDialog extends StatelessWidget {
+class AddBucketDialog extends StatelessWidget {
   final ValueChanged<String> onAdd;
   final TextEditingController textController = TextEditingController();
 
-  AddProjectDialog({super.key, required this.onAdd});
+  AddBucketDialog({super.key, required this.onAdd});
 
   @override
   Widget build(BuildContext context) {
@@ -13,8 +13,8 @@ class AddProjectDialog extends StatelessWidget {
       content: TextField(
         autofocus: true,
         decoration: InputDecoration(
-          labelText: 'Project',
-          hintText: 'eg. Personal Project',
+          labelText: 'New bucket name',
+          hintText: 'eg. To Do',
         ),
         controller: textController,
       ),

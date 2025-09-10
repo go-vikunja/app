@@ -8,7 +8,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart'
     hide ChangeNotifierProvider;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:provider/provider.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:vikunja_app/core/network/client.dart';
@@ -19,7 +18,6 @@ import 'package:vikunja_app/data/repositories/task_repository_impl.dart';
 import 'package:vikunja_app/domain/repositories/task_repository.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/presentation/manager/notifications.dart';
-import 'package:vikunja_app/presentation/manager/project_store.dart';
 import 'package:vikunja_app/presentation/manager/settings_controller.dart';
 import 'package:vikunja_app/presentation/manager/theme_model.dart';
 import 'package:vikunja_app/presentation/pages/home.dart';
@@ -116,19 +114,17 @@ void main() async {
     print("Failed to initialize workmanager: $e");
   }
   runApp(ProviderScope(
-    child: ChangeNotifierProvider<ProjectProvider>(
-        create: (_) => new ProjectProvider(),
-        child: VikunjaGlobal(
-          child: new VikunjaApp(
-            home: HomePage(),
-            key: UniqueKey(),
-            navkey: globalNavigatorKey,
-          ),
-          login: new VikunjaApp(
-            home: LoginPage(),
-            key: UniqueKey(),
-          ),
-        )),
+    child: VikunjaGlobal(
+      child: new VikunjaApp(
+        home: HomePage(),
+        key: UniqueKey(),
+        navkey: globalNavigatorKey,
+      ),
+      login: new VikunjaApp(
+        home: LoginPage(),
+        key: UniqueKey(),
+      ),
+    ),
   ));
 }
 

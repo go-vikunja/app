@@ -6,21 +6,23 @@ import 'package:vikunja_app/domain/entities/task.dart';
 
 import '../../../core/utils/constants.dart';
 import '../pages/task/task_edit_page.dart';
-import 'label.dart';
+import 'label_widget.dart';
 
 class TaskBottomSheet extends StatefulWidget {
   final Task task;
   final bool showInfo;
   final bool loading;
+  final Function onEdit;
   final ValueSetter<bool>? onMarkedAsDone;
 
   const TaskBottomSheet({
-    Key? key,
+    super.key,
     required this.task,
+    required this.onEdit,
     this.loading = false,
     this.showInfo = false,
     this.onMarkedAsDone,
-  }) : super(key: key);
+  });
 
   @override
   TaskBottomSheetState createState() => TaskBottomSheetState(this.task);
@@ -75,7 +77,7 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
               Wrap(
                   spacing: 10,
                   children: _currentTask.labels.map((Label label) {
-                    return LabelComponent(
+                    return LabelWidget(
                       label: label,
                     );
                   }).toList()),

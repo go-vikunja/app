@@ -1,173 +1,148 @@
-import 'dart:developer';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
-import 'package:vikunja_app/global.dart';
+import 'package:vikunja_app/presentation/manager/project_controller.dart';
 import 'package:vikunja_app/presentation/widgets/button.dart';
 import 'package:vikunja_app/presentation/widgets/buttonText.dart';
 
-class ProjectEditPage extends StatefulWidget {
+class ProjectEditPage extends ConsumerStatefulWidget {
   final Project project;
+  final bool displayDoneTask;
 
-  ProjectEditPage({required this.project})
-      : super(key: Key(project.toString()));
+  const ProjectEditPage(
+      {super.key, required this.project, required this.displayDoneTask});
 
   @override
-  State<StatefulWidget> createState() => _ProjectEditPageState();
+  ProjectEditPageState createState() => ProjectEditPageState();
 }
 
-class _ProjectEditPageState extends State<ProjectEditPage> {
+class ProjectEditPageState extends ConsumerState<ProjectEditPage> {
   final _formKey = GlobalKey<FormState>();
-  bool _loading = false;
-  String _title = '', _description = '';
-  bool? displayDoneTasks;
-  late int listId;
+
+  String? title;
+  String? description;
+  bool? displayDoneTask;
 
   @override
   void initState() {
-    listId = widget.project.id;
+    displayDoneTask = widget.displayDoneTask;
+
     super.initState();
   }
 
   @override
   Widget build(BuildContext ctx) {
-    if (displayDoneTasks == null)
-      VikunjaGlobal.of(context)
-          .projectService
-          .getDisplayDoneTasks(listId)
-          .then((value) => setState(() => displayDoneTasks = value == "1"));
-    else
-      log("Display done tasks: " + displayDoneTasks.toString());
     return Scaffold(
       appBar: AppBar(
         title: Text('Edit Project'),
       ),
       body: Builder(
-        builder: (BuildContext context) => SafeArea(
-          child: Form(
-            key: _formKey,
-            child: ListView(
-                //reverse: true,
-                padding: const EdgeInsets.all(16.0),
-                children: <Widget>[
-                  Padding(
-                    padding: EdgeInsets.symmetric(vertical: 10.0),
-                    child: TextFormField(
-                      maxLines: null,
-                      keyboardType: TextInputType.multiline,
-                      initialValue: widget.project.title,
-                      onSaved: (title) => _title = title ?? '',
-                      validator: (title) {
-                        //if (title?.length < 3 || title.length > 250) {
-                        //  return 'The title needs to have between 3 and 250 characters.';
-                        //}
-                        return null;
-                      },
-                      decoration: new InputDecoration(
-                        labelText: 'Title',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.symmetric(vertical: 10.0),
-                    child: TextFormField(
-                      maxLines: null,
-                      keyboardType: TextInputType.multiline,
-                      initialValue: widget.project.description,
-                      onSaved: (description) =>
-                          _description = description ?? '',
-                      validator: (description) {
-                        if (description == null) return null;
-                        if (description.length > 1000) {
-                          return 'The description can have a maximum of 1000 characters.';
-                        }
-                        return null;
-                      },
-                      decoration: new InputDecoration(
-                        labelText: 'Description',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.symmetric(vertical: 10.0),
-                    child: CheckboxListTile(
-                      value: displayDoneTasks ?? false,
-                      title: Text("Show done tasks"),
-                      onChanged: (value) {
-                        value ??= false;
-                        VikunjaGlobal.of(context)
-                            .projectService
-                            .setDisplayDoneTasks(listId, value ? "1" : "0");
-                        setState(() => displayDoneTasks = value);
-                      },
-                    ),
-                  ),
-                  Builder(
-                      builder: (context) => Padding(
-                          padding: EdgeInsets.symmetric(vertical: 10.0),
-                          child: FancyButton(
-                            onPressed: !_loading
-                                ? () {
-                                    if (_formKey.currentState!.validate()) {
-                                      Form.of(context).save();
-                                      _saveList(context);
-                                    }
-                                  }
-                                : () {},
-                            child: _loading
-                                ? CircularProgressIndicator()
-                                : VikunjaButtonText('Save'),
-                          ))),
-                  /*ExpansionTile(
-                    title: Text("Sharing"),
-                    children: [
-                      TypeAheadFormField(
-                          onSuggestionSelected: (suggestion) {},
-                          itemBuilder: (BuildContext context, Object? itemData) {
-                            return Card(
-                              child: Container(
-                                  padding: EdgeInsets.all(10),
-                                  child: Text(itemData.toString())),
-                            );},
-                          suggestionsCallback: (String pattern) {
-                            List<String> matches = <String>[];
-                            matches.addAll(["test", "test2", "test3"]);
-                            matches.retainWhere((s){
-                              return s.toLowerCase().contains(pattern.toLowerCase());
-                            });
-                            return matches;
-                          },)
-                    ],
-                  )*/
-                ]),
-          ),
+        builder: (BuildContext context) => Form(
+          key: _formKey,
+          child:
+              ListView(padding: const EdgeInsets.all(16.0), children: <Widget>[
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: 10.0),
+              child: TextFormField(
+                maxLines: null,
+                keyboardType: TextInputType.multiline,
+                initialValue: widget.project.title,
+                validator: (title) {
+                  if (title == null) {
+                    return "Title can't be null";
+                  }
+
+                  if (title.length < 3 || title.length > 250) {
+                    return 'The title needs to have between 3 and 250 characters.';
+                  }
+
+                  return null;
+                },
+                onSaved: (value) {
+                  title = value;
+                },
+                decoration: InputDecoration(
+                  labelText: 'Title',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: 10.0),
+              child: TextFormField(
+                maxLines: null,
+                keyboardType: TextInputType.multiline,
+                initialValue: widget.project.description,
+                validator: (description) {
+                  if (description == null) return null;
+                  if (description.length > 1000) {
+                    return 'The description can have a maximum of 1000 characters.';
+                  }
+                  return null;
+                },
+                onSaved: (value) {
+                  description = value;
+                },
+                decoration: InputDecoration(
+                  labelText: 'Description',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: 10.0),
+              child: CheckboxListTile(
+                value: widget.displayDoneTask,
+                title: Text("Show done tasks"),
+                onChanged: (value) {
+                  value ??= false;
+
+                  setState(() {
+                    displayDoneTask = value;
+                  });
+                },
+              ),
+            ),
+            Builder(
+              builder: (context) => Padding(
+                padding: EdgeInsets.symmetric(vertical: 10.0),
+                child: FancyButton(
+                  onPressed: () {
+                    if (_formKey.currentState!.validate()) {
+                      Form.of(context).save();
+                      _saveProject(ref, widget.project);
+                    }
+                  },
+                  child: VikunjaButtonText('Save'),
+                ),
+              ),
+            ),
+          ]),
         ),
       ),
     );
   }
 
-  _saveList(BuildContext context) async {
-    setState(() => _loading = true);
-    // FIXME: is there a way we can update the list without creating a new list object?
-    //  aka updating the existing list we got from context (setters?)
-    Project newProject =
-        widget.project.copyWith(title: _title, description: _description);
-    VikunjaGlobal.of(context).projectService.update(newProject).then((_) {
-      setState(() => _loading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+  Future<void> _saveProject(WidgetRef ref, Project project) async {
+    if (_formKey.currentState?.validate() == true) {
+      _formKey.currentState?.save();
+
+      project.title = title!;
+      project.description = description!;
+
+      await ref
+          .read(projectControllerProvider(project).notifier)
+          .updateProject(project);
+
+      ref
+          .read(projectControllerProvider(project).notifier)
+          .setDisplayDoneTasks(displayDoneTask!);
+
+      ScaffoldMessenger.of(ref.context).showSnackBar(SnackBar(
         content: Text('The project was updated successfully!'),
       ));
-    }).catchError((err) {
-      setState(() => _loading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Something went wrong: ' + err.toString()),
-          action: SnackBarAction(
-              label: 'CLOSE',
-              onPressed: ScaffoldMessenger.of(context).hideCurrentSnackBar),
-        ),
-      );
-    });
+
+      Navigator.of(ref.context).pop();
+    }
   }
 }

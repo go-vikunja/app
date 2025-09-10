@@ -4,16 +4,16 @@ import 'package:vikunja_app/domain/entities/project_view.dart';
 import 'package:vikunja_app/domain/entities/user.dart';
 
 class Project {
-  final int id;
-  final double position;
-  final User? owner;
-  final int parentProjectId;
-  final String description;
-  final String title;
-  final DateTime created, updated;
-  final Color? color;
-  final bool isArchived, isFavourite;
-  final List<ProjectView> views;
+  int id;
+  double position;
+  User? owner;
+  int parentProjectId;
+  String description;
+  String title;
+  DateTime created, updated;
+  Color? color;
+  bool isArchived, isFavourite;
+  List<ProjectView> views;
 
   Iterable<Project> subprojects = [];
 

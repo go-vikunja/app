@@ -11,14 +11,14 @@ class VikunjaDateTimeField extends StatelessWidget {
   final Icon icon;
 
   const VikunjaDateTimeField({
-    Key? key,
+    super.key,
     required this.label,
     this.onSaved,
     this.onChanged,
     this.initialValue,
     this.padding = const EdgeInsets.symmetric(vertical: 10.0),
     this.icon = const Icon(Icons.date_range),
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +26,7 @@ class VikunjaDateTimeField extends StatelessWidget {
       initialValue: initialValue == null || initialValue!.year <= 1
           ? null
           : initialValue!.toLocal(),
-      format: vDateFormatLong,
+      format: vDateFormatShort,
       decoration: InputDecoration(
         labelText: label,
         border: InputBorder.none,

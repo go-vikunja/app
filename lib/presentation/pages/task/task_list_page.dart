@@ -7,7 +7,9 @@ import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/presentation/manager/task_page_controller.dart';
+import 'package:vikunja_app/presentation/pages/task/task_edit_page.dart';
 import 'package:vikunja_app/presentation/widgets/task/add_task_dialog.dart';
+import 'package:vikunja_app/presentation/widgets/task_bottom_sheet.dart';
 import 'package:vikunja_app/presentation/widgets/task_tile.dart';
 
 class TaskListPage extends ConsumerStatefulWidget {
@@ -18,7 +20,7 @@ class TaskListPage extends ConsumerStatefulWidget {
 }
 
 class TaskListPageState extends ConsumerState<TaskListPage> {
-  static const platform = const MethodChannel('vikunja');
+  static const platform = MethodChannel('vikunja');
 
   @override
   void initState() {
@@ -107,16 +109,12 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
         .setLandingPageOnlyDueDateTasks(newValue);
   }
 
-  _addItemDialog(BuildContext context, int defaultProjectId) {
+  void _addItemDialog(BuildContext context, int defaultProjectId) {
     showDialog(
       context: context,
       builder: (_) => AddTaskDialog(
         onAddTask: (title, dueDate) =>
             _addTask(title, dueDate, defaultProjectId, context),
-        decoration: InputDecoration(
-          labelText: 'Task Name',
-          hintText: 'eg. Milk',
-        ),
       ),
     );
   }
@@ -152,11 +150,44 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
           (task) => TaskTile(
             key: Key(task.id.toString()),
             task: task,
-            onEdit: () {},
+            onTap: () {
+              _showTaskBottomSheet(context, task);
+            },
+            onEdit: () => _onEdit(context, task),
+            onCheckedChanged: (value) {
+              task.done = value;
+              ref.read(taskPageControllerProvider.notifier).updateTask(task);
+            },
             showInfo: true,
           ),
         )
         .toList();
+  }
+
+  void _showTaskBottomSheet(BuildContext context, Task task) {
+    showModalBottomSheet<void>(
+      context: context,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(10.0)),
+      ),
+      builder: (BuildContext context) {
+        return TaskBottomSheet(
+          task: task,
+          onEdit: () => _onEdit(context, task),
+        );
+      },
+    );
+  }
+
+  void _onEdit(BuildContext context, Task task) {
+    Navigator.push<Task>(
+      context,
+      MaterialPageRoute(
+        builder: (buildContext) => TaskEditPage(
+          task: task,
+        ),
+      ),
+    );
   }
 
   //TODO should we move that up the widget tree - It's not really specific to that page

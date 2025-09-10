@@ -1,10 +1,9 @@
-import 'package:vikunja_app/core/network/client.dart';
 import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/core/network/service.dart';
 import 'package:vikunja_app/data/models/bucket_dto.dart';
 
 class BucketDataSource extends RemoteDataSource {
-  BucketDataSource(Client client) : super(client);
+  BucketDataSource(super.client);
 
   Future<BucketDto?> add(int projectId, int viewId, BucketDto bucket) {
     return client
@@ -16,7 +15,7 @@ class BucketDataSource extends RemoteDataSource {
     });
   }
 
-  Future delete(int projectId, int viewId, int bucketId) {
+  Future<void> delete(int projectId, int viewId, int bucketId) {
     return client
         .delete('/projects/$projectId/views/$viewId/buckets/$bucketId');
   }
@@ -26,16 +25,13 @@ class BucketDataSource extends RemoteDataSource {
     return client
         .get('/projects/$projectId/views/$viewId/tasks', queryParameters)
         .then((response) => response != null
-            ? new Response(
+            ? Response(
                 convertList(
                     response.body, (result) => BucketDto.fromJSON(result)),
                 response.statusCode,
                 response.headers)
             : null);
   }
-
-  // TODO: implement maxPages
-  int get maxPages => maxPages;
 
   Future<BucketDto?> update(int projectId, int viewId, BucketDto bucket) {
     return client
@@ -45,5 +41,26 @@ class BucketDataSource extends RemoteDataSource {
       if (response == null) return null;
       return BucketDto.fromJSON(response.body);
     });
+  }
+
+  Future<void> updateTaskBucket(
+      int taskId, bucketId, projectId, int viewId) async {
+    await client.post(
+        '/projects/$projectId/views/$viewId/buckets/$bucketId/tasks',
+        body: {
+          "task_id": taskId,
+          "bucket_id": bucketId,
+          "project_view_id": viewId,
+          "project_id": projectId
+        }).then((response) {});
+  }
+
+  Future<void> updateTaskPosition(
+      int taskId, int viewId, double position) async {
+    await client.post('/tasks/$taskId/position', body: {
+      "position": position,
+      "project_view_id": viewId,
+      "task_id": taskId
+    }).then((response) {});
   }
 }

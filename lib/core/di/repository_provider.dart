@@ -1,15 +1,19 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_app/core/di/data_source_provider.dart';
+import 'package:vikunja_app/data/repositories/bucket_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/label_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/project_repository_impl.dart';
+import 'package:vikunja_app/data/repositories/project_view_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/settings_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/task_label_bulk_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/task_label_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/task_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/user_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/version_repository_impl.dart';
+import 'package:vikunja_app/domain/repositories/bucket_repository.dart';
 import 'package:vikunja_app/domain/repositories/project_repository.dart';
+import 'package:vikunja_app/domain/repositories/project_view_repository.dart';
 import 'package:vikunja_app/domain/repositories/settings_repository.dart';
 import 'package:vikunja_app/domain/repositories/task_label_bulk_repository.dart';
 import 'package:vikunja_app/domain/repositories/task_repository.dart';
@@ -22,6 +26,18 @@ part 'repository_provider.g.dart';
 ProjectRepository projectRepository(Ref ref) {
   var projectDataSource = ref.watch(projectDataSourceProvider);
   return ProjectRepositoryImpl(projectDataSource);
+}
+
+@riverpod
+ProjectViewRepository projectViewRepository(Ref ref) {
+  var projectViewDataSource = ref.watch(projectViewDataSourceProvider);
+  return ProjectViewRepositoryImpl(projectViewDataSource);
+}
+
+@riverpod
+BucketRepository bucketRepository(Ref ref) {
+  var bucketDataSource = ref.watch(bucketDataSourceProvider);
+  return BucketRepositoryImpl(bucketDataSource);
 }
 
 @riverpod

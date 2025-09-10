@@ -1,45 +1,56 @@
-import 'package:flutter/material.dart';
+import 'package:vikunja_app/data/models/bucket_configuration_dto.dart';
+import 'package:vikunja_app/data/models/filter_dto.dart';
 import 'package:vikunja_app/domain/entities/project_view.dart';
-
-enum ViewKind { LIST, GANTT, TABLE, KANBAN }
+import 'package:vikunja_app/domain/entities/view_kind.dart';
 
 class ProjectViewDto {
-  final DateTime created; // "created": "string",
-  final int defaultBucketId; //": 0,
-  final int doneBucketId;
-  final int id; //": 0,
-  final int position;
-  final int projectId;
+  final int id;
   final String title;
-  final DateTime updated;
+  final int projectId;
   final String viewKind;
+  final FilterDto? filter;
+  final int position;
+  final String bucketConfigurationMode;
+  final List<BucketConfigurationDto>? bucketConfiguration;
+  final int defaultBucketId;
+  final int doneBucketId;
+  final DateTime created;
+  final DateTime updated;
 
-  get icon {
-    switch (viewKind) {
-      case "list":
-        return Icon(Icons.view_list);
-      case "kanban":
-        return Icon(Icons.view_kanban);
-      default:
-        return Icon(Icons.disabled_by_default_outlined);
-    }
-  }
-
-  ProjectViewDto(this.created, this.defaultBucketId, this.doneBucketId, this.id,
-      this.position, this.projectId, this.title, this.updated, this.viewKind);
+  ProjectViewDto(
+      this.created,
+      this.defaultBucketId,
+      this.doneBucketId,
+      this.id,
+      this.position,
+      this.projectId,
+      this.title,
+      this.updated,
+      this.filter,
+      this.bucketConfiguration,
+      this.bucketConfigurationMode,
+      this.viewKind);
 
   ProjectViewDto.fromJson(Map<String, dynamic> json)
       : created = DateTime.parse(json['created']),
         defaultBucketId = json['default_bucket_id'],
         doneBucketId = json['done_bucket_id'],
         id = json['id'],
+        filter =
+            json['filter'] != null ? FilterDto.fromJson(json['filter']) : null,
         position = json['position'],
         projectId = json['project_id'],
         title = json['title'],
         viewKind = json['view_kind'],
+        bucketConfigurationMode = json['bucket_configuration_mode'],
+        bucketConfiguration = json['bucket_configuration'] != null
+            ? (json['bucket_configuration'] as List<dynamic>)
+                .map((task) => BucketConfigurationDto.fromJson(task))
+                .toList()
+            : null,
         updated = DateTime.parse(json['updated']);
 
-  toJSON() => {
+  Map<String, Object> toJSON() => {
         "created": created.toUtc().toIso8601String(),
         "default_bucket_id": defaultBucketId,
         "done_bucket_id": doneBucketId,
@@ -47,6 +58,10 @@ class ProjectViewDto {
         "position": position,
         "project_id": projectId,
         "title": title,
+        "filter": filter?.toJSON() ?? "null",
+        "bucket_configuration_mode": bucketConfigurationMode,
+        "bucket_configuration":
+            bucketConfiguration?.map((e) => e.toJSON()).toList() ?? "null",
         "updated": updated.toUtc().toIso8601String(),
         "view_kind": viewKind
       };
@@ -60,7 +75,10 @@ class ProjectViewDto {
         projectId,
         title,
         updated,
-        viewKind,
+        filter?.toDomain(),
+        bucketConfiguration?.map((e) => e.toDomain()).toList(),
+        bucketConfigurationMode,
+        ViewKind.fromString(viewKind),
       );
 
   static ProjectViewDto fromDomain(ProjectView p) => ProjectViewDto(
@@ -72,29 +90,11 @@ class ProjectViewDto {
         p.projectId,
         p.title,
         p.updated,
-        p.viewKind,
+        p.filter != null ? FilterDto.fromDomain(p.filter!) : null,
+        p.bucketConfiguration
+            ?.map((e) => BucketConfigurationDto.fromDomain(e))
+            .toList(),
+        p.bucketConfigurationMode,
+        p.viewKind.toString().split(".")[1].toLowerCase(),
       );
-
-  ProjectViewDto copyWith({
-    DateTime? created, // "created": "string",
-    int? defaultBucketId, //": 0,
-    int? doneBucketId,
-    int? id, //": 0,
-    int? position,
-    int? projectId,
-    String? title,
-    DateTime? updated,
-    String? viewKind,
-  }) {
-    return ProjectViewDto(
-        created ?? this.created,
-        defaultBucketId ?? this.defaultBucketId,
-        doneBucketId ?? this.doneBucketId,
-        id ?? this.id,
-        position ?? this.position,
-        projectId ?? this.projectId,
-        title ?? this.title,
-        updated ?? this.updated,
-        viewKind ?? this.viewKind);
-  }
 }
