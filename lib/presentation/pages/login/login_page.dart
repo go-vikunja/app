@@ -329,7 +329,6 @@ class LoginPageState extends ConsumerState<LoginPage> {
       var currentUser = await ref.read(userRepositoryProvider).getCurrentUser();
       ref.read(currentUserProvider.notifier).set(currentUser);
 
-
       globalNavigatorKey.currentState?.pushNamed("/home");
     } catch (e) {
       log("failed to change to user by client token");
