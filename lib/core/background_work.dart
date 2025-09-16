@@ -19,46 +19,55 @@ void callbackDispatcher() {
     print(
       "Native called background task: $task",
     ); //simpleTask will be emitted here.
-    if (task == "update-tasks") {
-      var datasource = SettingsDatasource(FlutterSecureStorage());
-      var token = await datasource.getUserToken();
-      var base = await datasource.getServer();
+    switch (task) {
+      case "update-tasks":
+        {
+          var datasource = SettingsDatasource(FlutterSecureStorage());
+          var token = await datasource.getUserToken();
+          var base = await datasource.getServer();
 
-      Client client = Client(token: token, base: base);
-      tz.initializeTimeZones();
-      var ignoreCertificates = await datasource.getIgnoreCertificates();
+          Client client = Client(token: token, base: base);
+          tz.initializeTimeZones();
+          var ignoreCertificates = await datasource.getIgnoreCertificates();
 
-      print("ignoring: $ignoreCertificates");
-      client.reloadIgnoreCerts(ignoreCertificates);
+          print("ignoring: $ignoreCertificates");
+          client.reloadIgnoreCerts(ignoreCertificates);
 
-      TaskRepository taskService = TaskRepositoryImpl(TaskDataSource(client));
-      NotificationHandler nc = NotificationHandler();
-      await nc.initNotifications();
-      return nc
-          .scheduleDueNotifications(taskService)
-          .then((value) => Future.value(true));
-    } else if (task == "refresh-token") {
-      final FlutterSecureStorage storage = new FlutterSecureStorage();
+          TaskRepository taskService = TaskRepositoryImpl(
+            TaskDataSource(client),
+          );
+          NotificationHandler nc = NotificationHandler();
+          await nc.initNotifications();
+          return nc
+              .scheduleDueNotifications(taskService)
+              .then((value) => Future.value(true));
+        }
+      case "refresh-token":
+        {
+          final FlutterSecureStorage storage = new FlutterSecureStorage();
 
-      var currentUser = await storage.read(key: 'currentUser');
-      if (currentUser == null) {
-        return Future.value(true);
-      }
-      var token = await storage.read(key: currentUser);
+          var currentUser = await storage.read(key: 'currentUser');
+          if (currentUser == null) {
+            return Future.value(true);
+          }
+          var token = await storage.read(key: currentUser);
 
-      var base = await storage.read(key: '${currentUser}_base');
-      if (token == null || base == null) {
-        return Future.value(true);
-      }
-      Client client = Client(base: base, token: token);
-      // load new token from server to avoid expiration
-      String? newToken = await UserDataSource(client).getToken();
-      if (newToken != null) {
-        storage.write(key: currentUser, value: newToken);
-      }
-      return Future.value(true);
-    } else {
-      return Future.value(true);
+          var base = await storage.read(key: '${currentUser}_base');
+          if (token == null || base == null) {
+            return Future.value(true);
+          }
+          Client client = Client(base: base, token: token);
+          // load new token from server to avoid expiration
+          String? newToken = await UserDataSource(client).getToken();
+          if (newToken != null) {
+            storage.write(key: currentUser, value: newToken);
+          }
+          return Future.value(true);
+        }
+      default:
+        {
+          return Future.value(true);
+        }
     }
   });
 }
