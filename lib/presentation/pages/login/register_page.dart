@@ -109,8 +109,6 @@ class RegisterPageState extends ConsumerState<RegisterPage> {
                             if (_formKey.currentState!.validate()) {
                               _formKey.currentState?.save();
                               _registerUser(context);
-                            } else {
-                              print("awhat");
                             }
                           }
                         : () => null,
