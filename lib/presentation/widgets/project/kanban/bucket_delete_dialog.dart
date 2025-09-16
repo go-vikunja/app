@@ -17,7 +17,7 @@ class TaskDeleteDialog extends ConsumerWidget {
       title: Text('Delete Bucket'),
       content: Text(
         'Are you sure you want to delete this bucket?'
-        'You won't delete any tasks, they will be moved to the default bucket',
+        "You won't delete any tasks, they will be moved to the default bucket",
       ),
       actions: [
         TextButton(child: Text('Cancel'), onPressed: () => onCancel()),
