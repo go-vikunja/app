@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:vikunja_app/core/network/response.dart';
-import 'package:vikunja_app/core/services.dart';
 import 'package:vikunja_app/data/data_sources/task_data_source.dart';
 import 'package:vikunja_app/data/models/task_attachment_dto.dart';
 import 'package:vikunja_app/data/models/task_dto.dart';
@@ -56,14 +55,6 @@ class TaskRepositoryImpl extends TaskRepository {
             response.headers,
           )
         : null;
-  }
-
-  @override
-  @deprecated
-  Future<List<Task>?> getByOptions(TaskServiceOptions options) async {
-    return (await _dataSource.getByOptions(
-      options,
-    ))?.map((e) => e.toDomain()).toList();
   }
 
   @override

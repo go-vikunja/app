@@ -4,7 +4,6 @@ import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/core/network/service.dart';
-import 'package:vikunja_app/core/services.dart';
 import 'package:vikunja_app/data/models/task_attachment_dto.dart';
 import 'package:vikunja_app/data/models/task_dto.dart';
 
@@ -85,16 +84,6 @@ class TaskDataSource extends RemoteDataSource {
               response.headers,
             )
           : null;
-    });
-  }
-
-  @deprecated
-  Future<List<TaskDto>?> getByOptions(TaskServiceOptions options) {
-    Map<String, List<String>> optionsMap = options.getOptions();
-
-    return client.get('/tasks/all', optionsMap).then((response) {
-      if (response == null) return null;
-      return convertList(response.body, (result) => TaskDto.fromJson(result));
     });
   }
 

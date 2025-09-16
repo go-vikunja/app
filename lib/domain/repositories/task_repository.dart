@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:vikunja_app/core/network/response.dart';
-import 'package:vikunja_app/core/services.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/entities/task_attachment.dart';
 
@@ -20,9 +19,6 @@ abstract class TaskRepository {
     int projectId, [
     Map<String, List<String>>? queryParameters,
   ]);
-
-  @deprecated
-  Future<List<Task>?> getByOptions(TaskServiceOptions options);
 
   Future<List<Task>?> getByFilterString(
     String filterString, [
