@@ -53,8 +53,8 @@ class ProjectEditPageState extends ConsumerState<ProjectEditPage> {
                       return "Title can't be null";
                     }
 
-                    if (title.length < 3 || title.length > 250) {
-                      return 'The title needs to have between 3 and 250 characters.';
+                    if (title.length < 1 || title.length > 250) {
+                      return 'The title needs to have between 1 and 250 characters.';
                     }
 
                     return null;
