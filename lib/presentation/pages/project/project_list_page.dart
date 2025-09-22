@@ -21,10 +21,11 @@ class ProjectListPage extends ConsumerWidget {
             child: ListView(
               padding: EdgeInsets.zero,
               children: ListTile.divideTiles(
-                  context: context,
-                  tiles: projects.map<Widget>((e) {
-                    return _buildListItem(ref, e);
-                  })).toList(),
+                context: context,
+                tiles: projects.map<Widget>((e) {
+                  return _buildListItem(ref, e);
+                }),
+              ).toList(),
             ),
             onRefresh: () async {
               ref.watch(projectsControllerProvider.notifier).reload();
@@ -36,7 +37,7 @@ class ProjectListPage extends ConsumerWidget {
               IconButton(
                 icon: Icon(Icons.add),
                 onPressed: () => _addProjectDialog(ref),
-              )
+              ),
             ],
           ),
         );
@@ -58,8 +59,9 @@ class ProjectListPage extends ConsumerWidget {
     } else {
       return VikunjaExpansionTile(
         title: Text(project.title),
-        children:
-            project.subprojects.map((e) => _buildListItem(ref, e)).toList(),
+        children: project.subprojects
+            .map((e) => _buildListItem(ref, e))
+            .toList(),
         onTitleTap: () {
           _navigateToProject(ref, project);
         },
@@ -70,14 +72,11 @@ class ProjectListPage extends ConsumerWidget {
   void _addProjectDialog(WidgetRef ref) {
     showDialog(
       context: ref.context,
-      builder: (_) => AddProjectDialog(
-        onAdd: (name) => _addProject(name, ref),
-      ),
+      builder: (_) => AddProjectDialog(onAdd: (name) => _addProject(name, ref)),
     );
   }
 
   Future<void> _addProject(String name, WidgetRef ref) async {
-    //TODO replace with injection
     final currentUser = await ref.read(userRepositoryProvider).getCurrentUser();
 
     ref
@@ -86,11 +85,16 @@ class ProjectListPage extends ConsumerWidget {
   }
 
   void _navigateToProject(WidgetRef ref, Project project) async {
-    Navigator.push(ref.context, MaterialPageRoute(builder: (context) {
-      return ProjectDetailPage(
-        key: Key(project.id.toString()),
-        project: project,
-      );
-    }));
+    Navigator.push(
+      ref.context,
+      MaterialPageRoute(
+        builder: (context) {
+          return ProjectDetailPage(
+            key: Key(project.id.toString()),
+            project: project,
+          );
+        },
+      ),
+    );
   }
 }

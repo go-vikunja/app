@@ -6,7 +6,7 @@ void main() {
     late Client client;
 
     setUp(() {
-      client = Client(null);
+      client = Client();
     });
 
     group('Constructor and configuration', () {
@@ -18,7 +18,6 @@ void main() {
 
       test('Constructor with parameters should set values', () {
         final client = Client(
-          null,
           token: 'test-token',
           base: 'https://api.example.com',
         );
@@ -29,68 +28,11 @@ void main() {
       });
     });
 
-    group('Base URL configuration', () {
-      test('Configure with base URL should add /api/v1 suffix', () {
-        client.configure(baseUrl: 'https://api.example.com');
-        expect(client.base, 'https://api.example.com/api/v1');
-      });
-
-      test('Configure with base URL ending in /api/v1 should not duplicate',
-          () {
-        client.configure(baseUrl: 'https://api.example.com/api/v1');
-        expect(client.base, 'https://api.example.com/api/v1');
-      });
-
-      test('Configure should remove trailing slash from base URL', () {
-        client.configure(baseUrl: 'https://api.example.com/');
-        expect(client.base, 'https://api.example.com/api/v1');
-      });
-
-      test('Configure should remove spaces from base URL', () {
-        client.configure(baseUrl: ' https://api.example.com ');
-        expect(client.base, 'https://api.example.com/api/v1');
-      });
-
-      test('Configure with base ending in /api/v1/ should handle correctly',
-          () {
-        client.configure(baseUrl: 'https://api.example.com/api/v1/');
-        expect(client.base, 'https://api.example.com/api/v1');
-      });
-    });
-
-    group('Token configuration', () {
-      test('Configure with token should set token', () {
-        client.configure(token: 'new-token');
-        expect(client.token, 'new-token');
-        expect(client.authenticated, true);
-      });
-
-      test('Configure with null token should not change existing token', () {
-        client.configure(token: 'initial-token');
-        client.configure(token: null);
-        expect(client.token, 'initial-token');
-        expect(client.authenticated, true);
-      });
-
-      test('Reset should set authenticated to false', () {
-        client.configure(token: "valid-token");
-        expect(client.authenticated, true);
-        client.reset();
-        expect(client.authenticated, false);
-      });
-    });
-
     group('Headers generation', () {
       test('Headers should include correct content type and user agent', () {
         final headers = client.headers;
         expect(headers['Content-Type'], 'application/json');
         expect(headers['User-Agent'], 'Vikunja Mobile App');
-      });
-
-      test('Headers should include Bearer token when token is set', () {
-        client.configure(token: 'test-token');
-        final headers = client.headers;
-        expect(headers['Authorization'], 'Bearer test-token');
       });
 
       test('Headers should have empty Authorization when no token is set', () {
@@ -100,18 +42,21 @@ void main() {
     });
 
     group('Certificate configuration', () {
-      test('reloadIgnoreCerts with true should set ignoreCertificates to true',
-          () {
-        client.reloadIgnoreCerts(true);
-        expect(client.ignoreCertificates, true);
-      });
+      test(
+        'reloadIgnoreCerts with true should set ignoreCertificates to true',
+        () {
+          client.reloadIgnoreCerts(true);
+          expect(client.ignoreCertificates, true);
+        },
+      );
 
       test(
-          'reloadIgnoreCerts with false should set ignoreCertificates to false',
-          () {
-        client.reloadIgnoreCerts(false);
-        expect(client.ignoreCertificates, false);
-      });
+        'reloadIgnoreCerts with false should set ignoreCertificates to false',
+        () {
+          client.reloadIgnoreCerts(false);
+          expect(client.ignoreCertificates, false);
+        },
+      );
     });
   });
 }

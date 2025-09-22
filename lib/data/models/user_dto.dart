@@ -1,6 +1,4 @@
-import 'package:flutter/cupertino.dart';
 import 'package:vikunja_app/domain/entities/user.dart';
-import 'package:vikunja_app/global.dart';
 
 class UserSettingsDto {
   final int default_project_id;
@@ -20,7 +18,7 @@ class UserSettingsDto {
     this.discoverable_by_email = false,
     this.discoverable_by_name = false,
     this.email_reminders_enabled = false,
-    this.frontend_settings = null,
+    this.frontend_settings,
     this.language = '',
     this.name = '',
     this.overdue_tasks_reminders_enabled = false,
@@ -30,92 +28,59 @@ class UserSettingsDto {
   });
 
   UserSettingsDto.fromJson(Map<String, dynamic> json)
-      : default_project_id = json['default_project_id'],
-        discoverable_by_email = json['discoverable_by_email'],
-        discoverable_by_name = json['discoverable_by_name'],
-        email_reminders_enabled = json['email_reminders_enabled'],
-        frontend_settings = json['frontend_settings'],
-        language = json['language'],
-        name = json['name'],
-        overdue_tasks_reminders_enabled =
-            json['overdue_tasks_reminders_enabled'],
-        overdue_tasks_reminders_time = json['overdue_tasks_reminders_time'],
-        timezone = json['timezone'],
-        week_start = json['week_start'];
+    : default_project_id = json['default_project_id'],
+      discoverable_by_email = json['discoverable_by_email'],
+      discoverable_by_name = json['discoverable_by_name'],
+      email_reminders_enabled = json['email_reminders_enabled'],
+      frontend_settings = json['frontend_settings'],
+      language = json['language'],
+      name = json['name'],
+      overdue_tasks_reminders_enabled = json['overdue_tasks_reminders_enabled'],
+      overdue_tasks_reminders_time = json['overdue_tasks_reminders_time'],
+      timezone = json['timezone'],
+      week_start = json['week_start'];
 
-  toJson() => {
-        'default_project_id': default_project_id,
-        'discoverable_by_email': discoverable_by_email,
-        'discoverable_by_name': discoverable_by_name,
-        'email_reminders_enabled': email_reminders_enabled,
-        'frontend_settings': frontend_settings,
-        'language': language,
-        'name': name,
-        'overdue_tasks_reminders_enabled': overdue_tasks_reminders_enabled,
-        'overdue_tasks_reminders_time': overdue_tasks_reminders_time,
-        'timezone': timezone,
-        'week_start': week_start,
-      };
+  Map<String, Object?> toJson() => {
+    'default_project_id': default_project_id,
+    'discoverable_by_email': discoverable_by_email,
+    'discoverable_by_name': discoverable_by_name,
+    'email_reminders_enabled': email_reminders_enabled,
+    'frontend_settings': frontend_settings,
+    'language': language,
+    'name': name,
+    'overdue_tasks_reminders_enabled': overdue_tasks_reminders_enabled,
+    'overdue_tasks_reminders_time': overdue_tasks_reminders_time,
+    'timezone': timezone,
+    'week_start': week_start,
+  };
 
   UserSettings toDomain() => UserSettings(
-        default_project_id: default_project_id,
-        discoverable_by_email: discoverable_by_email,
-        discoverable_by_name: discoverable_by_name,
-        email_reminders_enabled: email_reminders_enabled,
-        frontend_settings: frontend_settings,
-        language: language,
-        name: name,
-        overdue_tasks_reminders_enabled: overdue_tasks_reminders_enabled,
-        overdue_tasks_reminders_time: overdue_tasks_reminders_time,
-        timezone: timezone,
-        week_start: week_start,
-      );
+    default_project_id: default_project_id,
+    discoverable_by_email: discoverable_by_email,
+    discoverable_by_name: discoverable_by_name,
+    email_reminders_enabled: email_reminders_enabled,
+    frontend_settings: frontend_settings,
+    language: language,
+    name: name,
+    overdue_tasks_reminders_enabled: overdue_tasks_reminders_enabled,
+    overdue_tasks_reminders_time: overdue_tasks_reminders_time,
+    timezone: timezone,
+    week_start: week_start,
+  );
 
   static UserSettingsDto fromDomain(UserSettings u) => UserSettingsDto(
-        default_project_id: u.default_project_id,
-        discoverable_by_email: u.discoverable_by_email,
-        discoverable_by_name: u.discoverable_by_name,
-        email_reminders_enabled: u.email_reminders_enabled,
-        frontend_settings: u.frontend_settings,
-        language: u.language,
-        name: u.name,
-        overdue_tasks_reminders_enabled: u.overdue_tasks_reminders_enabled,
-        overdue_tasks_reminders_time: u.overdue_tasks_reminders_time,
-        timezone: u.timezone,
-        week_start: u.week_start,
-      );
-
-  UserSettingsDto copyWith({
-    int? default_project_id,
-    bool? discoverable_by_email,
-    bool? discoverable_by_name,
-    bool? email_reminders_enabled,
-    Map<String, dynamic>? frontend_settings,
-    String? language,
-    String? name,
-    bool? overdue_tasks_reminders_enabled,
-    String? overdue_tasks_reminders_time,
-    String? timezone,
-    int? week_start,
-  }) {
-    return UserSettingsDto(
-      default_project_id: default_project_id ?? this.default_project_id,
-      discoverable_by_email:
-          discoverable_by_email ?? this.discoverable_by_email,
-      discoverable_by_name: discoverable_by_name ?? this.discoverable_by_name,
-      email_reminders_enabled:
-          email_reminders_enabled ?? this.email_reminders_enabled,
-      frontend_settings: frontend_settings ?? this.frontend_settings,
-      language: language ?? this.language,
-      name: name ?? this.name,
-      overdue_tasks_reminders_enabled: overdue_tasks_reminders_enabled ??
-          this.overdue_tasks_reminders_enabled,
-      overdue_tasks_reminders_time:
-          overdue_tasks_reminders_time ?? this.overdue_tasks_reminders_time,
-      timezone: timezone ?? this.timezone,
-      week_start: week_start ?? this.week_start,
-    );
-  }
+    default_project_id: u.default_project_id,
+    discoverable_by_email: u.discoverable_by_email,
+    discoverable_by_name: u.discoverable_by_name,
+    email_reminders_enabled: u.email_reminders_enabled,
+    frontend_settings: u.frontend_settings,
+    language: u.language,
+    name: u.name,
+    overdue_tasks_reminders_enabled: u.overdue_tasks_reminders_enabled,
+    overdue_tasks_reminders_time: u.overdue_tasks_reminders_time,
+    timezone: u.timezone,
+    week_start: u.week_start,
+  );
 }
 
 class UserDto {
@@ -131,73 +96,69 @@ class UserDto {
     DateTime? created,
     DateTime? updated,
     this.settings,
-  })  : this.created = created ?? DateTime.now(),
-        this.updated = updated ?? DateTime.now();
+  }) : created = created ?? DateTime.now(),
+       updated = updated ?? DateTime.now();
 
   UserDto.fromJson(Map<String, dynamic> json)
-      : id = json.containsKey('id') ? json['id'] : 0,
-        name = json.containsKey('name') ? json['name'] : '',
-        username = json['username'],
-        created = DateTime.parse(json['created']),
-        updated = DateTime.parse(json['updated']) {
+    : id = json.containsKey('id') ? json['id'] : 0,
+      name = json.containsKey('name') ? json['name'] : '',
+      username = json['username'],
+      created = DateTime.parse(json['created']),
+      updated = DateTime.parse(json['updated']) {
     if (json.containsKey('settings')) {
-      this.settings = UserSettingsDto.fromJson(json['settings']);
+      settings = UserSettingsDto.fromJson(json['settings']);
     }
-    ;
   }
 
-  toJSON() => {
-        'id': id,
-        'name': name,
-        'username': username,
-        'created': created.toUtc().toIso8601String(),
-        'updated': updated.toUtc().toIso8601String(),
-        'user_settings': settings?.toJson(),
-      };
+  Map<String, dynamic> toJSON() => {
+    'id': id,
+    'name': name,
+    'username': username,
+    'created': created.toUtc().toIso8601String(),
+    'updated': updated.toUtc().toIso8601String(),
+    'user_settings': settings?.toJson(),
+  };
 
   User toDomain() => User(
-      id: id,
-      name: name,
-      username: username,
-      created: created,
-      updated: updated,
-      settings: settings?.toDomain());
+    id: id,
+    name: name,
+    username: username,
+    created: created,
+    updated: updated,
+    settings: settings?.toDomain(),
+  );
 
   static UserDto fromDomain(User u) => UserDto(
-      id: u.id,
-      name: u.name,
-      username: u.username,
-      created: u.created,
-      updated: u.updated,
-      settings:
-          u.settings != null ? UserSettingsDto.fromDomain(u.settings!) : null);
-
-  String avatarUrl(BuildContext context) {
-    return VikunjaGlobal.of(context).client.base + "/avatar/${this.username}";
-  }
+    id: u.id,
+    name: u.name,
+    username: u.username,
+    created: u.created,
+    updated: u.updated,
+    settings: u.settings != null
+        ? UserSettingsDto.fromDomain(u.settings!)
+        : null,
+  );
 }
 
 class UserTokenPairDto {
-  final UserDto? user;
-  final String? token;
+  final String token;
   final int error;
   final String errorString;
-  UserTokenPairDto(this.user, this.token,
-      {this.error = 0, this.errorString = ""});
 
-  UserTokenPair toDomain() {
-    return UserTokenPair(user?.toDomain(), token,
-        error: error, errorString: errorString);
+  UserTokenPairDto(this.token, {this.error = 0, this.errorString = ""});
+
+  UserToken toDomain() {
+    return UserToken(token, error: error, errorString: errorString);
   }
 
-  static UserTokenPairDto fromDomain(UserTokenPair u) => UserTokenPairDto(
-      u.user != null ? UserDto.fromDomain(u.user!) : null, u.token,
-      error: u.error, errorString: u.errorString);
+  static UserTokenPairDto fromDomain(UserToken u) =>
+      UserTokenPairDto(u.token, error: u.error, errorString: u.errorString);
 }
 
 class BaseTokenPairDto {
   final String base;
   final String token;
+
   BaseTokenPairDto(this.base, this.token);
 
   BaseTokenPair toDomain() => BaseTokenPair(base, token);

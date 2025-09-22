@@ -3,9 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vikunja_app/core/di/network_provider.dart';
+import 'package:vikunja_app/core/di/notification_provider.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
-import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/presentation/manager/task_page_controller.dart';
 import 'package:vikunja_app/presentation/pages/task/task_edit_page.dart';
 import 'package:vikunja_app/presentation/widgets/task/add_task_dialog.dart';
@@ -35,12 +36,10 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
   Widget build(BuildContext context) {
     var pageModel = ref.watch(taskPageControllerProvider);
 
-    //TODO workaround until notification are migrated to riverpod
-    pageModel.whenData((data) {
-      VikunjaGlobal.of(context)
-          .notifications
-          .scheduleDueNotifications(ref.read(taskRepositoryProvider));
-    });
+    //TODO find a better place for that
+    ref
+        .read(notificationProvider)
+        ?.scheduleDueNotifications(ref.read(taskRepositoryProvider));
 
     return pageModel.when(
       data: (model) {
@@ -54,8 +53,9 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
               shrinkWrap: true,
               padding: EdgeInsets.symmetric(vertical: 8.0),
               children: ListTile.divideTiles(
-                      context: context, tiles: _listTasks(context, model.tasks))
-                  .toList(),
+                context: context,
+                tiles: _listTasks(context, model.tasks),
+              ).toList(),
             ),
           ),
           floatingActionButton: FloatingActionButton(
@@ -75,29 +75,31 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
     return AppBar(
       title: Text("Vikunja"),
       actions: [
-        PopupMenuButton(itemBuilder: (BuildContext context) {
-          return [
-            PopupMenuItem(
-              child: InkWell(
-                onTap: () {
-                  _onlyDueDateChanged(context, !onlyDueDate);
-                },
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Text("Only show tasks with due date"),
-                    Checkbox(
-                      value: onlyDueDate,
-                      onChanged: (bool? value) {
-                        _onlyDueDateChanged(context, !onlyDueDate);
-                      },
-                    )
-                  ],
+        PopupMenuButton(
+          itemBuilder: (BuildContext context) {
+            return [
+              PopupMenuItem(
+                child: InkWell(
+                  onTap: () {
+                    _onlyDueDateChanged(context, !onlyDueDate);
+                  },
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Text("Only show tasks with due date"),
+                      Checkbox(
+                        value: onlyDueDate,
+                        onChanged: (bool? value) {
+                          _onlyDueDateChanged(context, !onlyDueDate);
+                        },
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            )
-          ];
-        }),
+            ];
+          },
+        ),
       ],
     );
   }
@@ -119,17 +121,21 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
     );
   }
 
-  Future<void> _addTask(String title, DateTime? dueDate, int defaultProjectId,
-      BuildContext context) async {
-    final globalState = VikunjaGlobal.of(context);
-    if (globalState.currentUser == null) {
+  Future<void> _addTask(
+    String title,
+    DateTime? dueDate,
+    int defaultProjectId,
+    BuildContext context,
+  ) async {
+    final currentUser = ref.read(currentUserProvider);
+    if (currentUser == null) {
       return;
     }
 
     var task = Task(
       title: title,
       dueDate: dueDate,
-      createdBy: globalState.currentUser!,
+      createdBy: currentUser,
       projectId: defaultProjectId,
     );
 
@@ -137,9 +143,9 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
         .read(taskPageControllerProvider.notifier)
         .addTask(defaultProjectId, task);
 
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text('The task was added successfully!'),
-    ));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('The task was added successfully!')));
 
     ref.read(taskPageControllerProvider.notifier).reload();
   }
@@ -182,11 +188,7 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
   void _onEdit(BuildContext context, Task task) {
     Navigator.push<Task>(
       context,
-      MaterialPageRoute(
-        builder: (buildContext) => TaskEditPage(
-          task: task,
-        ),
-      ),
+      MaterialPageRoute(builder: (buildContext) => TaskEditPage(task: task)),
     );
   }
 

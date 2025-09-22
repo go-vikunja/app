@@ -73,7 +73,7 @@ class _BucketLimitDialogState extends State<BucketLimitDialog> {
           onPressed: () =>
               Navigator.of(context).pop(int.parse(_controller.text)),
           child: Text('Done'),
-        )
+        ),
       ],
     );
   }

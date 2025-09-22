@@ -2,10 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/entities/view_kind.dart';
-import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/presentation/manager/project_controller.dart';
 import 'package:vikunja_app/presentation/pages/project/project_edit.dart';
 import 'package:vikunja_app/presentation/widgets/project/kanban/kanban_widget.dart';
@@ -26,20 +26,22 @@ class ProjectPageState extends ConsumerState<ProjectDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    var projectController =
-        ref.watch(projectControllerProvider(widget.project));
+    var projectController = ref.watch(
+      projectControllerProvider(widget.project),
+    );
 
     return projectController.when(
       data: (data) {
         return Scaffold(
           appBar: _buildAppBar(context, data.project, data.displayDoneTask),
           body: RefreshIndicator(
-              onRefresh: () {
-                return ref
-                    .read(projectControllerProvider(widget.project).notifier)
-                    .loadForView(data.project, _viewIndex);
-              },
-              child: getBody(data.project)),
+            onRefresh: () {
+              return ref
+                  .read(projectControllerProvider(widget.project).notifier)
+                  .loadForView(data.project, _viewIndex);
+            },
+            child: getBody(data.project),
+          ),
           floatingActionButton: _buildFab(data.project),
           bottomNavigationBar: _buildBottomNavigation(data.project),
         );
@@ -56,20 +58,19 @@ class ProjectPageState extends ConsumerState<ProjectDetailPage> {
 
     switch (project.views[_viewIndex].viewKind) {
       case ViewKind.list:
-        return ProjectTaskList(
-          project,
-        );
+        return ProjectTaskList(project);
       case ViewKind.kanban:
-        return KanbanWidget(
-          project: project,
-        );
+        return KanbanWidget(project: project);
       default:
         return Text("Not implemented");
     }
   }
 
   AppBar _buildAppBar(
-      BuildContext context, Project project, bool displayDoneTask) {
+    BuildContext context,
+    Project project,
+    bool displayDoneTask,
+  ) {
     return AppBar(
       title: Text(project.title),
       actions: <Widget>[
@@ -109,11 +110,13 @@ class ProjectPageState extends ConsumerState<ProjectDetailPage> {
       return BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         items: project.views
-            .map((view) => BottomNavigationBarItem(
-                  icon: view.icon,
-                  label: view.title,
-                  tooltip: view.title,
-                ))
+            .map(
+              (view) => BottomNavigationBarItem(
+                icon: view.icon,
+                label: view.title,
+                tooltip: view.title,
+              ),
+            )
             .toList(),
         currentIndex: _viewIndex,
         onTap: _onViewTapped,
@@ -133,8 +136,11 @@ class ProjectPageState extends ConsumerState<ProjectDetailPage> {
   }
 
   Future<void> _addItem(
-      BuildContext context, Project project, String title) async {
-    final currentUser = VikunjaGlobal.of(context).currentUser;
+    BuildContext context,
+    Project project,
+    String title,
+  ) async {
+    final currentUser = ref.read(currentUserProvider);
     if (currentUser == null) {
       return;
     }
@@ -150,9 +156,9 @@ class ProjectPageState extends ConsumerState<ProjectDetailPage> {
         .read(projectControllerProvider(widget.project).notifier)
         .addTask(project, task);
 
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text('The task was added successfully!'),
-    ));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('The task was added successfully!')));
   }
 
   void _onViewTapped(int index) {

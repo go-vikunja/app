@@ -5,6 +5,7 @@ import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
+import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/core/utils/priority.dart';
 import 'package:vikunja_app/core/utils/repeat_after_parse.dart';
@@ -21,9 +22,7 @@ import 'package:vikunja_app/presentation/widgets/task/task_save_dialog.dart';
 class TaskEditPage extends ConsumerStatefulWidget {
   final Task task;
 
-  TaskEditPage({
-    required this.task,
-  }) : super(key: Key(task.toString()));
+  TaskEditPage({required this.task}) : super(key: Key(task.toString()));
 
   @override
   _TaskEditPageState createState() => _TaskEditPageState();
@@ -95,21 +94,22 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
           icon: Icon(Icons.delete),
           onPressed: () {
             showDialog(
-                context: context,
-                builder: (BuildContext context) {
-                  return TaskDeleteDialog(
-                    widget.task.id,
-                    onConfirm: () {
-                      ref
-                          .read(taskPageControllerProvider.notifier)
-                          .deleteTask(widget.task.id);
-                      Navigator.of(context).pop();
-                    },
-                    onCancel: () {
-                      Navigator.of(context).pop();
-                    },
-                  );
-                });
+              context: context,
+              builder: (BuildContext context) {
+                return TaskDeleteDialog(
+                  widget.task.id,
+                  onConfirm: () {
+                    ref
+                        .read(taskPageControllerProvider.notifier)
+                        .deleteTask(widget.task.id);
+                    Navigator.of(context).pop();
+                  },
+                  onCancel: () {
+                    Navigator.of(context).pop();
+                  },
+                );
+              },
+            );
           },
         ),
       ],
@@ -121,7 +121,11 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
       key: _formKey,
       child: ListView(
         padding: EdgeInsets.fromLTRB(
-            16, 16, 16, MediaQuery.of(context).size.height / 2),
+          16,
+          16,
+          16,
+          MediaQuery.of(context).size.height / 2,
+        ),
         children: <Widget>[
           _buildTitle(),
           _buildDescription(context),
@@ -135,7 +139,7 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
           _buildAddLabel(context),
           _buildLabelList(),
           _buildColor(),
-          _buildAttachments()
+          _buildAttachments(),
         ],
       ),
     );
@@ -168,9 +172,8 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
           var description = await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (buildContext) => EditDescription(
-                initialText: _description,
-              ),
+              builder: (buildContext) =>
+                  EditDescription(initialText: _description),
             ),
           );
           setState(() {
@@ -184,14 +187,12 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
           children: [
             Padding(
               padding: EdgeInsets.only(right: 15, left: 2),
-              child: Icon(
-                Icons.description,
-                color: Colors.grey,
-              ),
+              child: Icon(Icons.description, color: Colors.grey),
             ),
             Flexible(
               child: HtmlWidget(
-                  _description != null ? _description! : "No description"),
+                _description != null ? _description! : "No description",
+              ),
             ),
           ],
         ),
@@ -251,18 +252,19 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
             flex: 65,
             child: TextFormField(
               keyboardType: TextInputType.number,
-              initialValue:
-                  getRepeatAfterValueFromDuration(widget.task.repeatAfter)
-                      ?.toString(),
+              initialValue: getRepeatAfterValueFromDuration(
+                widget.task.repeatAfter,
+              )?.toString(),
               onChanged: (newValue) {
                 _repeatAfter = getDurationFromType(newValue, _repeatAfterType);
                 _checkChanged();
               },
               decoration: new InputDecoration(
-                  labelText: 'Repeat after',
-                  border: InputBorder.none,
-                  icon: Icon(Icons.repeat),
-                  contentPadding: EdgeInsets.fromLTRB(0, 0, 0, 0)),
+                labelText: 'Repeat after',
+                border: InputBorder.none,
+                icon: Icon(Icons.repeat),
+                contentPadding: EdgeInsets.fromLTRB(0, 0, 0, 0),
+              ),
             ),
           ),
           Spacer(),
@@ -270,8 +272,9 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
             flex: 30,
             child: DropdownButtonFormField<String>(
               decoration: InputDecoration(
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.fromLTRB(0, 0, 0, 0)),
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.fromLTRB(0, 0, 0, 0),
+              ),
               isExpanded: true,
               initialValue:
                   getRepeatAfterTypeFromDuration(_repeatAfter) ?? "Days",
@@ -283,11 +286,12 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
               },
               items: <String>['Hours', 'Days', 'Weeks', 'Months', 'Years']
                   .map<DropdownMenuItem<String>>((String value) {
-                return DropdownMenuItem<String>(
-                  value: value,
-                  child: Text(value),
-                );
-              }).toList(),
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(value),
+                    );
+                  })
+                  .toList(),
             ),
           ),
         ],
@@ -299,7 +303,8 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
     return Padding(
       padding: EdgeInsets.only(top: 15.0),
       child: Column(
-        children: _reminderDates?.map((e) {
+        children:
+            _reminderDates?.map((e) {
               return VikunjaDateTimeField(
                 label: "Reminder",
                 initialValue: e.reminder,
@@ -314,25 +319,20 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 15),
       child: GestureDetector(
-          child: Row(
-            children: <Widget>[
-              Padding(
-                padding: EdgeInsets.only(right: 15, left: 2),
-                child: Icon(
-                  Icons.alarm_add,
-                  color: Colors.grey,
-                ),
-              ),
-              Text(
-                'Add a reminder',
-                style: TextStyle(
-                  color: Colors.grey,
-                  fontSize: 16,
-                ),
-              ),
-            ],
-          ),
-          onTap: () => _addNewReminder(context)),
+        child: Row(
+          children: <Widget>[
+            Padding(
+              padding: EdgeInsets.only(right: 15, left: 2),
+              child: Icon(Icons.alarm_add, color: Colors.grey),
+            ),
+            Text(
+              'Add a reminder',
+              style: TextStyle(color: Colors.grey, fontSize: 16),
+            ),
+          ],
+        ),
+        onTap: () => _addNewReminder(context),
+      ),
     );
   }
 
@@ -349,12 +349,10 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
         _priority = priorityFromString(newValue);
         _checkChanged();
       },
-      items: ['Unset', 'Low', 'Medium', 'High', 'Urgent', 'DO NOW']
-          .map((String value) {
-        return new DropdownMenuItem(
-          value: value,
-          child: new Text(value),
-        );
+      items: ['Unset', 'Low', 'Medium', 'High', 'Urgent', 'DO NOW'].map((
+        String value,
+      ) {
+        return new DropdownMenuItem(value: value, child: new Text(value));
       }).toList(),
     );
   }
@@ -366,13 +364,11 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
         children: <Widget>[
           Padding(
             padding: const EdgeInsets.only(right: 15, left: 2),
-            child: Icon(
-              Icons.label,
-              color: Colors.grey,
-            ),
+            child: Icon(Icons.label, color: Colors.grey),
           ),
           Container(
-            width: MediaQuery.of(context).size.width -
+            width:
+                MediaQuery.of(context).size.width -
                 80 -
                 ((IconTheme.of(context).size ?? 0) * 2),
             child: TypeAheadField(
@@ -400,7 +396,7 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
           IconButton(
             onPressed: () => _createAndAddLabel(_labelTypeAheadController.text),
             icon: Icon(Icons.add),
-          )
+          ),
         ],
       ),
     );
@@ -413,10 +409,7 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
         children: <Widget>[
           Padding(
             padding: const EdgeInsets.only(right: 15, left: 2),
-            child: Icon(
-              Icons.palette,
-              color: Colors.grey,
-            ),
+            child: Icon(Icons.palette, color: Colors.grey),
           ),
           ElevatedButton(
             child: Text(
@@ -432,16 +425,18 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
             style: (_color == null || _color == Colors.black)
                 ? null
                 : ButtonStyle(
-                    backgroundColor:
-                        WidgetStateProperty.resolveWith((_) => _color),
+                    backgroundColor: WidgetStateProperty.resolveWith(
+                      (_) => _color,
+                    ),
                   ),
             onPressed: _onColorEdit,
           ),
           Padding(
             padding: const EdgeInsets.only(left: 15),
             child: () {
-              Color? color =
-                  (_color == null || _color == Colors.black) ? null : _color;
+              Color? color = (_color == null || _color == Colors.black)
+                  ? null
+                  : _color;
 
               return Text(
                 color != null ? "#${color.toHexString()}" : "None",
@@ -473,7 +468,9 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
               var taskId = await ref
                   .read(taskRepositoryProvider)
                   .downloadAttachment(
-                      widget.task.id, widget.task.attachments[index]);
+                    widget.task.id,
+                    widget.task.attachments[index],
+                  );
               if (taskId == null) return;
               FlutterDownloader.open(taskId: taskId);
             },
@@ -486,14 +483,13 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
   Widget _buildLabelList() {
     return Wrap(
       spacing: 10,
-      children: _labels?.map(
-            (label) {
-              return LabelWidget(
-                label: label,
-                onDelete: () => _removeLabel(label),
-              );
-            },
-          ).toList() ??
+      children:
+          _labels?.map((label) {
+            return LabelWidget(
+              label: label,
+              onDelete: () => _removeLabel(label),
+            );
+          }).toList() ??
           [],
     );
   }
@@ -503,15 +499,17 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
 
     if (labels == null) return [];
     labels.removeWhere(
-        (labelToRemove) => _labels?.contains(labelToRemove) == true);
+      (labelToRemove) => _labels?.contains(labelToRemove) == true,
+    );
     _suggestedLabels = labels;
 
     return labels.map((e) => e.title).toList();
   }
 
   _addLabel(String labelTitle) {
-    var label =
-        _suggestedLabels?.firstWhereOrNull((e) => e.title == labelTitle);
+    var label = _suggestedLabels?.firstWhereOrNull(
+      (e) => e.title == labelTitle,
+    );
 
     if (label != null) {
       setState(() {
@@ -535,23 +533,21 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
       return;
     }
 
-    //TODO inject after riverpod migration
-    final currentUser = await ref.read(userRepositoryProvider).getCurrentUser();
+    final currentUser = ref.read(currentUserProvider);
 
-    final newLabel = Label(
-      title: labelTitle,
-      createdBy: currentUser,
-    );
+    if (currentUser != null) {
+      final newLabel = Label(title: labelTitle, createdBy: currentUser);
 
-    ref.read(labelRepositoryProvider).create(newLabel).then((createdLabel) {
-      if (createdLabel == null) return;
-      setState(() {
-        _labels?.add(createdLabel);
-        _labelTypeAheadController.clear();
+      ref.read(labelRepositoryProvider).create(newLabel).then((createdLabel) {
+        if (createdLabel == null) return;
+        setState(() {
+          _labels?.add(createdLabel);
+          _labelTypeAheadController.clear();
+        });
       });
-    });
 
-    _checkChanged();
+      _checkChanged();
+    }
   }
 
   Future<void> _addNewReminder(BuildContext context) async {
@@ -568,17 +564,20 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
     if (selectedDate != null) {
       var selectedTime = await showDialog<TimeOfDay>(
         context: context,
-        builder: (_) => TimePickerDialog(
-          initialTime: TimeOfDay.fromDateTime(selectedDate),
-        ),
+        builder: (_) =>
+            TimePickerDialog(initialTime: TimeOfDay.fromDateTime(selectedDate)),
       );
 
       if (selectedTime != null) {
         setState(() {
-          _reminderDates?.add(TaskReminder(selectedDate.copyWith(
-            hour: selectedTime.hour,
-            minute: selectedTime.minute,
-          )));
+          _reminderDates?.add(
+            TaskReminder(
+              selectedDate.copyWith(
+                hour: selectedTime.hour,
+                minute: selectedTime.minute,
+              ),
+            ),
+          );
 
           _checkChanged();
         });
@@ -590,22 +589,26 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
     var _pickerColor = _color == null ? Colors.black : _color;
     showDialog(
       context: context,
-      builder: (context) => ColorPickerDialog(_pickerColor, (color) {
-        if (color != Colors.black) {
-          setState(() {
-            _color = color;
-          });
-        } else {
-          setState(() {
-            _color = null;
-          });
-        }
-        Navigator.of(context).pop();
+      builder: (context) => ColorPickerDialog(
+        _pickerColor,
+        (color) {
+          if (color != Colors.black) {
+            setState(() {
+              _color = color;
+            });
+          } else {
+            setState(() {
+              _color = null;
+            });
+          }
+          Navigator.of(context).pop();
 
-        _checkChanged();
-      }, () {
-        Navigator.of(context).pop();
-      }),
+          _checkChanged();
+        },
+        () {
+          Navigator.of(context).pop();
+        },
+      ),
     );
   }
 
@@ -614,19 +617,23 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
-        return TaskSaveDialog(onConfirm: () {
-          Navigator.pop(context);
-          Navigator.pop(context);
-        }, onCancel: () {
-          Navigator.pop(context);
-        });
+        return TaskSaveDialog(
+          onConfirm: () {
+            Navigator.pop(context);
+            Navigator.pop(context);
+          },
+          onCancel: () {
+            Navigator.pop(context);
+          },
+        );
       },
     );
   }
 
   void _checkChanged() {
     setState(() {
-      changed = widget.task.title != _title ||
+      changed =
+          widget.task.title != _title ||
           widget.task.description != _description ||
           widget.task.dueDate != _dueDate ||
           widget.task.startDate != _startDate ||
@@ -643,19 +650,20 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
     // Removes all reminders with no value set.
     _reminderDates?.removeWhere((d) => d.reminder == DateTime(0));
 
-    final updatedTask = widget.task.copyWith(
-      title: _title,
-      description: _description,
-      reminderDates: _reminderDates,
-      priority: _priority,
-      labels: _labels,
-      repeatAfter: _repeatAfter,
-    )
-      ..dueDate = _dueDate
-      ..startDate = _startDate
-      ..endDate = _endDate
-      ..color = _color
-      ..repeatAfter = _repeatAfter;
+    final updatedTask =
+        widget.task.copyWith(
+            title: _title,
+            description: _description,
+            reminderDates: _reminderDates,
+            priority: _priority,
+            labels: _labels,
+            repeatAfter: _repeatAfter,
+          )
+          ..dueDate = _dueDate
+          ..startDate = _startDate
+          ..endDate = _endDate
+          ..color = _color
+          ..repeatAfter = _repeatAfter;
 
     // update the labels
     try {
@@ -664,17 +672,15 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
           .update(updatedTask, _labels);
     } catch (err) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Something went wrong: ' + err.toString()),
-        ),
+        SnackBar(content: Text('Something went wrong: ' + err.toString())),
       );
     }
 
     await ref.read(taskPageControllerProvider.notifier).updateTask(updatedTask);
     Navigator.of(context).pop(updatedTask);
 
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text('The task was updated successfully!'),
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('The task was updated successfully!')),
+    );
   }
 }

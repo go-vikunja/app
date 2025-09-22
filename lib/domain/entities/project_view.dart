@@ -31,16 +31,17 @@ class ProjectView {
   }
 
   ProjectView(
-      this.created,
-      this.defaultBucketId,
-      this.doneBucketId,
-      this.id,
-      this.position,
-      this.projectId,
-      this.title,
-      this.updated,
-      this.filter,
-      this.bucketConfiguration,
-      this.bucketConfigurationMode,
-      this.viewKind);
+    this.created,
+    this.defaultBucketId,
+    this.doneBucketId,
+    this.id,
+    this.position,
+    this.projectId,
+    this.title,
+    this.updated,
+    this.filter,
+    this.bucketConfiguration,
+    this.bucketConfigurationMode,
+    this.viewKind,
+  );
 }

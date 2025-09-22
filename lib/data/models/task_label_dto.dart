@@ -10,17 +10,19 @@ class LabelTaskDto {
   LabelTaskDto({required this.label, required this.task});
 
   LabelTaskDto.fromJson(Map<String, dynamic> json, UserDto createdBy)
-      : label =
-            new LabelDto(id: json['label_id'], title: '', createdBy: createdBy),
-        task = null;
+    : label = new LabelDto(
+        id: json['label_id'],
+        title: '',
+        createdBy: createdBy,
+      ),
+      task = null;
 
-  toJSON() => {
-        'label_id': label.id,
-      };
+  toJSON() => {'label_id': label.id};
 
   LabelTaskDto toDomain() => LabelTaskDto(label: label, task: task);
 
   static LabelTaskDto fromDomain(LabelTask b) => LabelTaskDto(
-      label: LabelDto.fromDomain(b.label),
-      task: b.task != null ? TaskDto.fromDomain(b.task!) : null);
+    label: LabelDto.fromDomain(b.label),
+    task: b.task != null ? TaskDto.fromDomain(b.task!) : null,
+  );
 }

@@ -8,22 +8,14 @@ class BucketConfigurationDto {
   BucketConfigurationDto(this.title, this.filter);
 
   BucketConfigurationDto.fromJson(Map<String, dynamic> json)
-      : title = json['title'],
-        filter = FilterDto.fromJson(json['filter']);
+    : title = json['title'],
+      filter = FilterDto.fromJson(json['filter']);
 
-  Map<String, dynamic> toJSON() => {
-        'title': title,
-        'filter': filter.toJSON(),
-      };
+  Map<String, dynamic> toJSON() => {'title': title, 'filter': filter.toJSON()};
 
-  BucketConfiguration toDomain() => BucketConfiguration(
-        title,
-        filter.toDomain(),
-      );
+  BucketConfiguration toDomain() =>
+      BucketConfiguration(title, filter.toDomain());
 
   static BucketConfigurationDto fromDomain(BucketConfiguration p) =>
-      BucketConfigurationDto(
-        p.title,
-        FilterDto.fromDomain(p.filter),
-      );
+      BucketConfigurationDto(p.title, FilterDto.fromDomain(p.filter));
 }

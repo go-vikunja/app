@@ -27,7 +27,9 @@ class ProjectDataSource extends RemoteDataSource {
     return client.get('/projects').then((response) {
       if (response == null) return [];
       return convertList(
-          response.body, (result) => ProjectDto.fromJson(result));
+        response.body,
+        (result) => ProjectDto.fromJson(result),
+      );
     });
   }
 

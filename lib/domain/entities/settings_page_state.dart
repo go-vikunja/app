@@ -1,4 +1,4 @@
-import 'package:vikunja_app/core/services.dart';
+import 'package:vikunja_app/core/theming/theme_mode.dart';
 
 class SettingsPageState {
   bool ignoreCertificates;
@@ -13,11 +13,12 @@ class SettingsPageState {
   String currentVersion;
 
   SettingsPageState(
-      this.ignoreCertificates,
-      this.sentryEnabled,
-      this.versionNotifications,
-      this.refreshInterval,
-      this.themeMode,
-      this.dynamicColors,
-      this.currentVersion);
+    this.ignoreCertificates,
+    this.sentryEnabled,
+    this.versionNotifications,
+    this.refreshInterval,
+    this.themeMode,
+    this.dynamicColors,
+    this.currentVersion,
+  );
 }

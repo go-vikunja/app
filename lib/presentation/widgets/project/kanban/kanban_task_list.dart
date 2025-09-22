@@ -21,7 +21,8 @@ class TaskList extends StatefulWidget {
     required int fromIndex,
     required int toBucketId,
     required int toIndex,
-  }) onMoveTask;
+  })
+  onMoveTask;
 
   final VoidCallback onAnyDragStarted;
   final VoidCallback onAnyDragEnded;
@@ -74,7 +75,8 @@ class _TaskListState extends State<TaskList> {
   void _autoScrollStep() {
     if (!_dragActive ||
         _lastGlobalDragPos == null ||
-        !_scrollController.hasClients) return;
+        !_scrollController.hasClients)
+      return;
 
     final box = _listKey.currentContext?.findRenderObject() as RenderBox?;
     if (box == null || !box.attached) return;
@@ -94,15 +96,18 @@ class _TaskListState extends State<TaskList> {
       final t = (1 - (local.dy / _edgePx)).clamp(0.0, 1.0);
       dy = -_maxStep * t;
     } else if (local.dy >= size.height - _edgePx) {
-      final t =
-          ((local.dy - (size.height - _edgePx)) / _edgePx).clamp(0.0, 1.0);
+      final t = ((local.dy - (size.height - _edgePx)) / _edgePx).clamp(
+        0.0,
+        1.0,
+      );
       dy = _maxStep * t;
     }
 
     if (dy.abs() > 0.1) {
       final next = (_scrollController.position.pixels + dy).clamp(
-          _scrollController.position.minScrollExtent,
-          _scrollController.position.maxScrollExtent);
+        _scrollController.position.minScrollExtent,
+        _scrollController.position.maxScrollExtent,
+      );
       if (next != _scrollController.position.pixels) {
         _scrollController.jumpTo(next);
       }
@@ -147,9 +152,10 @@ class _TaskListState extends State<TaskList> {
             for (int i = 0; i < tasks.length; i++) ...[
               LongPressDraggable<TaskDrag>(
                 data: TaskDrag(
-                    taskId: tasks[i].id,
-                    fromBucketId: widget.bucket.id,
-                    fromIndex: i),
+                  taskId: tasks[i].id,
+                  fromBucketId: widget.bucket.id,
+                  fromIndex: i,
+                ),
                 feedback: TaskFeedback(title: tasks[i].title),
                 onDragStarted: () {
                   widget.onAnyDragStarted(); // horizontal
@@ -206,11 +212,7 @@ class _TaskListState extends State<TaskList> {
   void _navigateToTask(BuildContext context, List<Task> tasks, int i) {
     Navigator.push<Task>(
       context,
-      MaterialPageRoute(
-        builder: (context) => TaskEditPage(
-          task: tasks[i],
-        ),
-      ),
+      MaterialPageRoute(builder: (context) => TaskEditPage(task: tasks[i])),
     );
   }
 }

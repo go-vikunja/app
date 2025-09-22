@@ -12,8 +12,10 @@ class BucketRepositoryImpl implements BucketRepository {
   @override
   Future<Bucket?> add(int projectId, int viewId, Bucket bucket) async {
     return (await _dataSource.add(
-            projectId, viewId, BucketDto.fromDomain(bucket)))
-        ?.toDomain();
+      projectId,
+      viewId,
+      BucketDto.fromDomain(bucket),
+    ))?.toDomain();
   }
 
   @override
@@ -22,33 +24,55 @@ class BucketRepositoryImpl implements BucketRepository {
   }
 
   @override
-  Future<Response<List<Bucket>>?> getAllByList(int projectId, int viewId,
-      [Map<String, List<String>>? queryParameters]) async {
-    var response =
-        await _dataSource.getAllByList(projectId, viewId, queryParameters);
+  Future<Response<List<Bucket>>?> getAllByList(
+    int projectId,
+    int viewId, [
+    Map<String, List<String>>? queryParameters,
+  ]) async {
+    var response = await _dataSource.getAllByList(
+      projectId,
+      viewId,
+      queryParameters,
+    );
     return response != null
-        ? Response(response.body.map((e) => e.toDomain()).toList(),
-            response.statusCode, response.headers)
+        ? Response(
+            response.body.map((e) => e.toDomain()).toList(),
+            response.statusCode,
+            response.headers,
+          )
         : null;
   }
 
   @override
   Future<Bucket?> update(int projectId, int viewId, Bucket bucket) async {
     return (await _dataSource.update(
-            projectId, viewId, BucketDto.fromDomain(bucket)))
-        ?.toDomain();
+      projectId,
+      viewId,
+      BucketDto.fromDomain(bucket),
+    ))?.toDomain();
   }
 
   @override
   Future<void> updateTaskBucket(
-      int taskId, bucketId, projectId, int viewId) async {
+    int taskId,
+    bucketId,
+    projectId,
+    int viewId,
+  ) async {
     return await _dataSource.updateTaskBucket(
-        taskId, bucketId, projectId, viewId);
+      taskId,
+      bucketId,
+      projectId,
+      viewId,
+    );
   }
 
   @override
   Future<void> updateTaskPosition(
-      int taskId, int viewId, double position) async {
+    int taskId,
+    int viewId,
+    double position,
+  ) async {
     return await _dataSource.updateTaskPosition(taskId, viewId, position);
   }
 }

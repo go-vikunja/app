@@ -32,9 +32,12 @@ class BucketFeedback extends StatelessWidget {
                 runSpacing: 6,
                 children: bucket.tasks
                     .take(3)
-                    .map((t) => Chip(
+                    .map(
+                      (t) => Chip(
                         label: Text(t.title),
-                        visualDensity: VisualDensity.compact))
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    )
                     .toList(),
               ),
             ),

@@ -6,7 +6,7 @@ part of 'project_controller.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$projectControllerHash() => r'd4ee760e1b46ada47d951f2a245a737fd41956da';
+String _$projectControllerHash() => r'9fe70a5a7d4657d05aa5b00b16c1b5b36a6b630f';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -33,9 +33,7 @@ abstract class _$ProjectController
     extends BuildlessAutoDisposeAsyncNotifier<ProjectPageModel> {
   late final Project project;
 
-  FutureOr<ProjectPageModel> build(
-    Project project,
-  );
+  FutureOr<ProjectPageModel> build(Project project);
 }
 
 /// See also [ProjectController].
@@ -48,21 +46,15 @@ class ProjectControllerFamily extends Family<AsyncValue<ProjectPageModel>> {
   const ProjectControllerFamily();
 
   /// See also [ProjectController].
-  ProjectControllerProvider call(
-    Project project,
-  ) {
-    return ProjectControllerProvider(
-      project,
-    );
+  ProjectControllerProvider call(Project project) {
+    return ProjectControllerProvider(project);
   }
 
   @override
   ProjectControllerProvider getProviderOverride(
     covariant ProjectControllerProvider provider,
   ) {
-    return call(
-      provider.project,
-    );
+    return call(provider.project);
   }
 
   static const Iterable<ProviderOrFamily>? _dependencies = null;
@@ -81,24 +73,26 @@ class ProjectControllerFamily extends Family<AsyncValue<ProjectPageModel>> {
 }
 
 /// See also [ProjectController].
-class ProjectControllerProvider extends AutoDisposeAsyncNotifierProviderImpl<
-    ProjectController, ProjectPageModel> {
+class ProjectControllerProvider
+    extends
+        AutoDisposeAsyncNotifierProviderImpl<
+          ProjectController,
+          ProjectPageModel
+        > {
   /// See also [ProjectController].
-  ProjectControllerProvider(
-    Project project,
-  ) : this._internal(
-          () => ProjectController()..project = project,
-          from: projectControllerProvider,
-          name: r'projectControllerProvider',
-          debugGetCreateSourceHash:
-              const bool.fromEnvironment('dart.vm.product')
-                  ? null
-                  : _$projectControllerHash,
-          dependencies: ProjectControllerFamily._dependencies,
-          allTransitiveDependencies:
-              ProjectControllerFamily._allTransitiveDependencies,
-          project: project,
-        );
+  ProjectControllerProvider(Project project)
+    : this._internal(
+        () => ProjectController()..project = project,
+        from: projectControllerProvider,
+        name: r'projectControllerProvider',
+        debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+            ? null
+            : _$projectControllerHash,
+        dependencies: ProjectControllerFamily._dependencies,
+        allTransitiveDependencies:
+            ProjectControllerFamily._allTransitiveDependencies,
+        project: project,
+      );
 
   ProjectControllerProvider._internal(
     super._createNotifier, {
@@ -116,9 +110,7 @@ class ProjectControllerProvider extends AutoDisposeAsyncNotifierProviderImpl<
   FutureOr<ProjectPageModel> runNotifierBuild(
     covariant ProjectController notifier,
   ) {
-    return notifier.build(
-      project,
-    );
+    return notifier.build(project);
   }
 
   @override
@@ -139,7 +131,7 @@ class ProjectControllerProvider extends AutoDisposeAsyncNotifierProviderImpl<
 
   @override
   AutoDisposeAsyncNotifierProviderElement<ProjectController, ProjectPageModel>
-      createElement() {
+  createElement() {
     return _ProjectControllerProviderElement(this);
   }
 
@@ -166,12 +158,17 @@ mixin ProjectControllerRef
 }
 
 class _ProjectControllerProviderElement
-    extends AutoDisposeAsyncNotifierProviderElement<ProjectController,
-        ProjectPageModel> with ProjectControllerRef {
+    extends
+        AutoDisposeAsyncNotifierProviderElement<
+          ProjectController,
+          ProjectPageModel
+        >
+    with ProjectControllerRef {
   _ProjectControllerProviderElement(super.provider);
 
   @override
   Project get project => (origin as ProjectControllerProvider).project;
 }
+
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

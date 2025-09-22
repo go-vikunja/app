@@ -7,26 +7,27 @@ class TaskLabelDataSource extends RemoteDataSource {
   TaskLabelDataSource(Client client) : super(client);
 
   Future<LabelDto?> create(LabelTaskDto lt) async {
-    return client
-        .put('/tasks/${lt.task!.id}/labels', body: lt.toJSON())
-        .then((response) {
+    return client.put('/tasks/${lt.task!.id}/labels', body: lt.toJSON()).then((
+      response,
+    ) {
       if (response == null) return null;
       return LabelDto.fromJson(response.body);
     });
   }
 
   Future<LabelDto?> delete(LabelTaskDto lt) async {
-    return client
-        .delete('/tasks/${lt.task!.id}/labels/${lt.label.id}')
-        .then((response) {
+    return client.delete('/tasks/${lt.task!.id}/labels/${lt.label.id}').then((
+      response,
+    ) {
       if (response == null) return null;
       return LabelDto.fromJson(response.body);
     });
   }
 
   Future<List<LabelDto>?> getAll(LabelTaskDto lt, {String? query}) async {
-    String? params =
-        query == null ? null : '?s=' + Uri.encodeQueryComponent(query);
+    String? params = query == null
+        ? null
+        : '?s=' + Uri.encodeQueryComponent(query);
 
     return client.get('/tasks/${lt.task!.id}/labels$params').then((label) {
       if (label == null) return null;

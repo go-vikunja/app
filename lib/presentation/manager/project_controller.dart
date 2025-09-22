@@ -93,7 +93,9 @@ class ProjectController extends _$ProjectController {
   }
 
   void deleteBucket({required Bucket bucket, required Project project}) async {
-    await ref.read(bucketRepositoryProvider).delete(
+    await ref
+        .read(bucketRepositoryProvider)
+        .delete(
           project.id,
           project.views[state.value!.viewIndex].id,
           bucket.id,
@@ -160,8 +162,9 @@ class ProjectController extends _$ProjectController {
   }
 
   Future<void> updateProject(Project project) async {
-    var projectUpdated =
-        await ref.read(projectRepositoryProvider).update(project);
+    var projectUpdated = await ref
+        .read(projectRepositoryProvider)
+        .update(project);
 
     if (projectUpdated != null) {
       state.value!.project = projectUpdated;

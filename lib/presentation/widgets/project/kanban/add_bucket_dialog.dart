@@ -31,7 +31,7 @@ class AddBucketDialog extends StatelessWidget {
             }
             Navigator.pop(context);
           },
-        )
+        ),
       ],
     );
   }

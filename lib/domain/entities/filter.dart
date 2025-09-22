@@ -6,5 +6,10 @@ class Filter {
   bool filterIncludesNulls;
 
   Filter(
-      this.s, this.sortBy, this.orderBy, this.filter, this.filterIncludesNulls);
+    this.s,
+    this.sortBy,
+    this.orderBy,
+    this.filter,
+    this.filterIncludesNulls,
+  );
 }

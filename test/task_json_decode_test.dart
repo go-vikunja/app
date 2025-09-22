@@ -16,9 +16,13 @@ void main() {
     expect(task.done, true);
     expect(task.reminderDates.length, 2);
     expect(
-        task.reminderDates[0].reminder, DateTime.parse('2018-12-03T07:00:00Z'));
+      task.reminderDates[0].reminder,
+      DateTime.parse('2018-12-03T07:00:00Z'),
+    );
     expect(
-        task.reminderDates[1].reminder, DateTime.parse('2018-12-04T08:00:00Z'));
+      task.reminderDates[1].reminder,
+      DateTime.parse('2018-12-04T08:00:00Z'),
+    );
     expect(task.dueDate, DateTime.parse('2018-12-03T07:00:00Z'));
     expect(task.repeatAfter, Duration(seconds: 3600));
     expect(task.parentTaskId, 0);

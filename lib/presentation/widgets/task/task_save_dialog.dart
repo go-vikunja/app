@@ -12,9 +12,7 @@ class TaskSaveDialog extends StatelessWidget {
       title: Text('You have unsaved changes!'),
       content: SingleChildScrollView(
         child: Column(
-          children: <Widget>[
-            Text('Would you like to dismiss those changes?'),
-          ],
+          children: <Widget>[Text('Would you like to dismiss those changes?')],
         ),
       ),
       actions: <Widget>[

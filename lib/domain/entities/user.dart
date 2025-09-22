@@ -1,6 +1,3 @@
-import 'package:flutter/cupertino.dart';
-import 'package:vikunja_app/global.dart';
-
 class UserSettings {
   int default_project_id;
   final bool discoverable_by_email,
@@ -51,7 +48,8 @@ class UserSettings {
       frontend_settings: frontend_settings ?? this.frontend_settings,
       language: language ?? this.language,
       name: name ?? this.name,
-      overdue_tasks_reminders_enabled: overdue_tasks_reminders_enabled ??
+      overdue_tasks_reminders_enabled:
+          overdue_tasks_reminders_enabled ??
           this.overdue_tasks_reminders_enabled,
       overdue_tasks_reminders_time:
           overdue_tasks_reminders_time ?? this.overdue_tasks_reminders_time,
@@ -74,24 +72,25 @@ class User {
     DateTime? created,
     DateTime? updated,
     this.settings,
-  })  : this.created = created ?? DateTime.now(),
-        this.updated = updated ?? DateTime.now();
+  }) : this.created = created ?? DateTime.now(),
+       this.updated = updated ?? DateTime.now();
 
-  String avatarUrl(BuildContext context) {
-    return VikunjaGlobal.of(context).client.base + "/avatar/${this.username}";
+  String avatarUrl(String baseUrl) {
+    return "$baseUrl/avatar/$username";
   }
 }
 
-class UserTokenPair {
-  final User? user;
-  final String? token;
+class UserToken {
+  final String token;
   final int error;
   final String errorString;
-  UserTokenPair(this.user, this.token, {this.error = 0, this.errorString = ""});
+
+  UserToken(this.token, {this.error = 0, this.errorString = ""});
 }
 
 class BaseTokenPair {
   final String base;
   final String token;
+
   BaseTokenPair(this.base, this.token);
 }

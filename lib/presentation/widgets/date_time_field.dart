@@ -55,9 +55,8 @@ class VikunjaDateTimeField extends StatelessWidget {
 
     var selectedTime = await showDialog<TimeOfDay>(
       context: context,
-      builder: (_) => TimePickerDialog(
-        initialTime: TimeOfDay.fromDateTime(currentValue),
-      ),
+      builder: (_) =>
+          TimePickerDialog(initialTime: TimeOfDay.fromDateTime(currentValue)),
     );
 
     if (selectedTime == null) return null;

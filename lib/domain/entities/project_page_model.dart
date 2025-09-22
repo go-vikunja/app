@@ -9,6 +9,11 @@ class ProjectPageModel {
   List<Bucket> buckets;
   bool displayDoneTask;
 
-  ProjectPageModel(this.project, this.viewIndex, this.tasks, this.buckets,
-      this.displayDoneTask);
+  ProjectPageModel(
+    this.project,
+    this.viewIndex,
+    this.tasks,
+    this.buckets,
+    this.displayDoneTask,
+  );
 }

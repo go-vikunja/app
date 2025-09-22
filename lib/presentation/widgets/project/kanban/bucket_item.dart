@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/domain/entities/bucket.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
-import 'package:vikunja_app/global.dart';
 import 'package:vikunja_app/presentation/manager/project_controller.dart';
-import 'package:vikunja_app/presentation/widgets/BucketLimitDialog.dart';
+import 'package:vikunja_app/presentation/widgets/bucket_limit_dialog.dart';
 import 'package:vikunja_app/presentation/widgets/project/kanban/bucket_delete_dialog.dart';
 import 'package:vikunja_app/presentation/widgets/project/kanban/bucket_feedback.dart';
 import 'package:vikunja_app/presentation/widgets/project/kanban/bucket_header.dart';
@@ -28,7 +28,8 @@ class BucketColumn extends ConsumerStatefulWidget {
     required int fromIndex,
     required int toBucketId,
     required int toIndex,
-  }) onMoveTask;
+  })
+  onMoveTask;
 
   final VoidCallback onAnyDragStarted;
   final VoidCallback onAnyDragEnded;
@@ -68,7 +69,9 @@ class _BucketColumnState extends ConsumerState<BucketColumn> {
       children: [
         LongPressDraggable<BucketDrag>(
           data: BucketDrag(
-              bucketId: widget.bucket.id, fromIndex: widget.bucketIndex),
+            bucketId: widget.bucket.id,
+            fromIndex: widget.bucketIndex,
+          ),
           feedback: BucketFeedback(bucket: widget.bucket),
           onDragStarted: () {
             _safeSet(() => _isHeaderDragging = true);
@@ -79,7 +82,7 @@ class _BucketColumnState extends ConsumerState<BucketColumn> {
             _safeSet(() => _isHeaderDragging = false);
             widget.onAnyDragEnded();
           },
-          onDraggableCanceled: (_, __) {
+          onDraggableCanceled: (_, _) {
             _safeSet(() => _isHeaderDragging = false);
             widget.onAnyDragEnded();
           },
@@ -148,8 +151,9 @@ class _BucketColumnState extends ConsumerState<BucketColumn> {
             ),
             elevation: 0.5,
             child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                child: columnBody),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              child: columnBody,
+            ),
           ),
         ),
       );
@@ -196,13 +200,19 @@ class _BucketColumnState extends ConsumerState<BucketColumn> {
             ref
                 .read(projectControllerProvider(widget.project).notifier)
                 .updateDoneBucket(
-                    widget.project, widget.bucket.id, widget.isDoneColumn);
+                  widget.project,
+                  widget.bucket.id,
+                  widget.isDoneColumn,
+                );
             break;
           case HeaderAction.defaultColumn:
             ref
                 .read(projectControllerProvider(widget.project).notifier)
                 .selectDefaultBucket(
-                    widget.project, widget.bucket.id, widget.isDefaultColumn);
+                  widget.project,
+                  widget.bucket.id,
+                  widget.isDefaultColumn,
+                );
             break;
           case HeaderAction.collapseColumn:
             setState(() {
@@ -224,9 +234,7 @@ class _BucketColumnState extends ConsumerState<BucketColumn> {
     var result = await showDialog<String?>(
       context: context,
       builder: (BuildContext context) {
-        return ChangeTitleDialog(
-          bucket: widget.bucket,
-        );
+        return ChangeTitleDialog(bucket: widget.bucket);
       },
     );
 
@@ -242,9 +250,7 @@ class _BucketColumnState extends ConsumerState<BucketColumn> {
     var result = await showDialog<int?>(
       context: context,
       builder: (BuildContext context) {
-        return BucketLimitDialog(
-          bucket: widget.bucket,
-        );
+        return BucketLimitDialog(bucket: widget.bucket);
       },
     );
 
@@ -285,8 +291,7 @@ class _BucketColumnState extends ConsumerState<BucketColumn> {
   }
 
   Future<void> _addItem(String title, BuildContext context) async {
-    //TODO injection
-    final currentUser = VikunjaGlobal.of(context).currentUser;
+    final currentUser = ref.read(currentUserProvider);
     if (currentUser == null) {
       return;
     }
@@ -304,9 +309,9 @@ class _BucketColumnState extends ConsumerState<BucketColumn> {
         .addTask(widget.project, newTask);
 
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('The task was added successfully!'),
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('The task was added successfully!')),
+      );
     }
   }
 }

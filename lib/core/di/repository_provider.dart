@@ -5,6 +5,7 @@ import 'package:vikunja_app/data/repositories/bucket_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/label_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/project_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/project_view_repository_impl.dart';
+import 'package:vikunja_app/data/repositories/server_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/settings_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/task_label_bulk_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/task_label_repository_impl.dart';
@@ -14,6 +15,7 @@ import 'package:vikunja_app/data/repositories/version_repository_impl.dart';
 import 'package:vikunja_app/domain/repositories/bucket_repository.dart';
 import 'package:vikunja_app/domain/repositories/project_repository.dart';
 import 'package:vikunja_app/domain/repositories/project_view_repository.dart';
+import 'package:vikunja_app/domain/repositories/server_repository.dart';
 import 'package:vikunja_app/domain/repositories/settings_repository.dart';
 import 'package:vikunja_app/domain/repositories/task_label_bulk_repository.dart';
 import 'package:vikunja_app/domain/repositories/task_repository.dart';
@@ -65,15 +67,21 @@ LabelRepositoryImpl labelRepository(Ref ref) {
 }
 
 @riverpod
-SettingsRepository settingsRepository(Ref ref) {
-  var settingsDataSource = ref.watch(settingsDataSourceProvider);
-  return SettingsRepositoryImpl(settingsDataSource);
-}
-
-@riverpod
 UserRepository userRepository(Ref ref) {
   var userDataSource = ref.watch(userDataSourceProvider);
   return UserRepositoryImpl(userDataSource);
+}
+
+@riverpod
+ServerRepository serverRepository(Ref ref) {
+  var serverDataSource = ref.watch(serverDataSourceProvider);
+  return ServerRepositoryImpl(serverDataSource);
+}
+
+@riverpod
+SettingsRepository settingsRepository(Ref ref) {
+  var settingsDataSource = ref.watch(settingsDataSourceProvider);
+  return SettingsRepositoryImpl(settingsDataSource);
 }
 
 @riverpod

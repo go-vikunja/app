@@ -7,20 +7,23 @@ part of 'projects_controller.dart';
 // **************************************************************************
 
 String _$projectsControllerHash() =>
-    r'8c34fc6404605f00df621a88b67c7907311b22b8';
+    r'55e2911939f3560d7a24675d8f27b5b603acd865';
 
 /// See also [ProjectsController].
 @ProviderFor(ProjectsController)
-final projectsControllerProvider = AutoDisposeAsyncNotifierProvider<
-    ProjectsController, List<Project>>.internal(
-  ProjectsController.new,
-  name: r'projectsControllerProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$projectsControllerHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final projectsControllerProvider =
+    AutoDisposeAsyncNotifierProvider<
+      ProjectsController,
+      List<Project>
+    >.internal(
+      ProjectsController.new,
+      name: r'projectsControllerProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$projectsControllerHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
 
 typedef _$ProjectsController = AutoDisposeAsyncNotifier<List<Project>>;
 // ignore_for_file: type=lint

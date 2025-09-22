@@ -11,12 +11,7 @@ class LabelWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return Chip(
       visualDensity: VisualDensity.compact,
-      label: Text(
-        label.title,
-        style: TextStyle(
-          color: label.textColor,
-        ),
-      ),
+      label: Text(label.title, style: TextStyle(color: label.textColor)),
       backgroundColor: label.color,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.all(Radius.circular(4)),
@@ -30,11 +25,7 @@ class LabelWidget extends StatelessWidget {
           color: Color.fromARGB(50, 0, 0, 0),
           shape: BoxShape.circle,
         ),
-        child: Icon(
-          Icons.close,
-          color: label.textColor,
-          size: 15,
-        ),
+        child: Icon(Icons.close, color: label.textColor, size: 15),
       ),
     );
   }

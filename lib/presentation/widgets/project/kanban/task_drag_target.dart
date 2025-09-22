@@ -42,10 +42,9 @@ class _TaskDragTargetState extends State<TaskDragTarget> {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(3),
               color: _hovering
-                  ? Theme.of(context)
-                      .colorScheme
-                      .primary
-                      .withValues(alpha: 0.25)
+                  ? Theme.of(
+                      context,
+                    ).colorScheme.primary.withValues(alpha: 0.25)
                   : Colors.transparent,
             ),
           ),

@@ -28,16 +28,20 @@ class AddTaskDialogState extends State<AddTaskDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: <Widget>[
-            Expanded(
-              child: TextField(
-                autofocus: true,
-                decoration: InputDecoration(
-                    labelText: 'New Task Name', hintText: 'eg. Milk'),
-                controller: textController,
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: TextField(
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    labelText: 'New Task Name',
+                    hintText: 'eg. Milk',
+                  ),
+                  controller: textController,
+                ),
               ),
-            ),
-          ]),
+            ],
+          ),
           Padding(
             padding: const EdgeInsets.only(top: 16.0, bottom: 8),
             child: Text("Due Date:"),
@@ -70,23 +74,28 @@ class AddTaskDialogState extends State<AddTaskDialog> {
             }
             Navigator.pop(context);
           },
-        )
+        ),
       ],
     );
   }
 
   Widget taskDueList(String name, NewTaskDue thisNewTaskDue) {
-    return Row(children: [
-      Checkbox(
-        value: newTaskDue == thisNewTaskDue,
-        onChanged: (value) {
-          newTaskDue = thisNewTaskDue;
-          setState(() => customDueDate =
-              DateTime.now().add(thisNewTaskDue.newTaskDueToDuration()));
-        },
-        shape: CircleBorder(),
-      ),
-      Text(name),
-    ]);
+    return Row(
+      children: [
+        Checkbox(
+          value: newTaskDue == thisNewTaskDue,
+          onChanged: (value) {
+            newTaskDue = thisNewTaskDue;
+            setState(
+              () => customDueDate = DateTime.now().add(
+                thisNewTaskDue.newTaskDueToDuration(),
+              ),
+            );
+          },
+          shape: CircleBorder(),
+        ),
+        Text(name),
+      ],
+    );
   }
 }

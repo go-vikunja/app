@@ -25,27 +25,20 @@ class LoginWithWebViewState extends State<LoginWithWebView> {
       ..clearLocalStorage()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setUserAgent(
-          "Mozilla/5.0 (Linux; Android 8.0; Pixel 2 Build/OPD3.170816.012) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.82 Mobile Safari/537.36")
-      ..setNavigationDelegate(NavigationDelegate(
-        onPageFinished: (value) => _handlePageFinished(value),
-      ))
-      ..loadRequest(Uri.parse(widget.frontEndUrl)).then((value) => {
-            webViewController.runJavaScript(
-                "localStorage.clear(); location.href=location.href;")
-          });
-
-    /*
-    webView = WebViewWidget(
-      initialUrl: widget.frontEndUrl,
-      javascriptMode: JavascriptMode.unrestricted,
-      onPageFinished: (value) => _handlePageFinished(value),
-      userAgent: "Mozilla/5.0 (Linux; Android 8.0; Pixel 2 Build/OPD3.170816.012) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.82 Mobile Safari/537.36",
-      onWebViewCreated: (controller) {
-        webViewController = controller;
-        webViewController!.runJavaScript("localStorage.clear(); location.href=location.href;");
+        "Mozilla/5.0 (Linux; Android 8.0; Pixel 2 Build/OPD3.170816.012) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.82 Mobile Safari/537.36",
+      )
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onPageFinished: (value) => _handlePageFinished(value),
+        ),
+      )
+      ..loadRequest(Uri.parse(widget.frontEndUrl)).then(
+        (value) => {
+          webViewController.runJavaScript(
+            "localStorage.clear(); location.href=location.href;",
+          ),
         },
-    );
-    */
+      );
   }
 
   @override
@@ -61,25 +54,24 @@ class LoginWithWebViewState extends State<LoginWithWebView> {
         }
       },
       child: Scaffold(
-          appBar: AppBar(),
-          body: WebViewWidget(
-            controller: webViewController,
-          )),
+        appBar: AppBar(),
+        body: WebViewWidget(controller: webViewController),
+      ),
     );
   }
 
   Future<bool> _handlePageFinished(String pageLocation) async {
     log("handlePageFinished");
-    String localStorage = (await webViewController
-            .runJavaScriptReturningResult("JSON.stringify(localStorage);"))
-        .toString();
+    String localStorage = (await webViewController.runJavaScriptReturningResult(
+      "JSON.stringify(localStorage);",
+    )).toString();
 
-    String apiUrl =
-        (await webViewController.runJavaScriptReturningResult("API_URL"))
-            .toString();
-    String token = (await webViewController
-            .runJavaScriptReturningResult("localStorage['token']"))
-        .toString();
+    String apiUrl = (await webViewController.runJavaScriptReturningResult(
+      "API_URL",
+    )).toString();
+    String token = (await webViewController.runJavaScriptReturningResult(
+      "localStorage['token']",
+    )).toString();
     if (localStorage.toString() != "{}") {
       apiUrl = apiUrl.replaceAll("\"", "");
       token = token.replaceAll("\"", "");

@@ -24,7 +24,7 @@ class EditDescriptionState extends State<EditDescription> {
               print(controller.getText());
               Navigator.pop(context, controller.getText());
             },
-          )
+          ),
         ],
       ),
       body: HtmlEditor(
