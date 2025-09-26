@@ -1,6 +1,7 @@
+import 'package:vikunja_app/data/models/dto.dart';
 import 'package:vikunja_app/domain/entities/filter.dart';
 
-class FilterDto {
+class FilterDto extends Dto<Filter> {
   final String s;
   String? sortBy;
   String? orderBy;
@@ -30,6 +31,7 @@ class FilterDto {
     'filterIncludesNulls': filterIncludesNulls,
   };
 
+  @override
   Filter toDomain() => Filter(s, sortBy, orderBy, filter, filterIncludesNulls);
 
   static FilterDto fromDomain(Filter p) =>

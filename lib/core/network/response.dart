@@ -1,16 +1,51 @@
 // This is a wrapper class to be able to return the headers up to the provider
 // to properly handle things like pagination with it.
 
-class Error {
-  Error(this.message);
-  final String message;
+sealed class Response<T> {
+  Response();
+
+  bool get isSuccessful => this is SuccessResponse;
+
+  bool get isError => this is ErrorResponse;
+
+  bool get isException => this is ExceptionResponse;
+
+  SuccessResponse<T> toSuccess() {
+    return this as SuccessResponse<T>;
+  }
+
+  ErrorResponse<T> toError() {
+    return this as ErrorResponse<T>;
+  }
+
+  ExceptionResponse<T> toException() {
+    return this as ExceptionResponse<T>;
+  }
 }
 
-class Response<T> {
-  Response(this.body, this.statusCode, this.headers, {this.error});
-
-  final T body;
+class SuccessResponse<T> extends Response<T> {
   final int statusCode;
   final Map<String, String> headers;
-  final Error? error;
+  final T body;
+
+  SuccessResponse(this.body, this.statusCode, this.headers) : super();
+}
+
+class VoidResponse<T> extends SuccessResponse<T> {
+  VoidResponse() : super(Object() as T, 200, {});
+}
+
+class ExceptionResponse<T> extends Response<T> {
+  final String message;
+  final StackTrace stackTrace;
+
+  ExceptionResponse(this.message, this.stackTrace) : super();
+}
+
+class ErrorResponse<T> extends Response<T> {
+  final int statusCode;
+  final Map<String, String> headers;
+  final Map<String, dynamic> error;
+
+  ErrorResponse(this.statusCode, this.headers, this.error) : super();
 }

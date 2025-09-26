@@ -1,7 +1,8 @@
+import 'package:vikunja_app/data/models/dto.dart';
 import 'package:vikunja_app/data/models/filter_dto.dart';
 import 'package:vikunja_app/domain/entities/bucket_configuration.dart';
 
-class BucketConfigurationDto {
+class BucketConfigurationDto extends Dto<BucketConfiguration> {
   final String title;
   final FilterDto filter;
 
@@ -13,6 +14,7 @@ class BucketConfigurationDto {
 
   Map<String, dynamic> toJSON() => {'title': title, 'filter': filter.toJSON()};
 
+  @override
   BucketConfiguration toDomain() =>
       BucketConfiguration(title, filter.toDomain());
 

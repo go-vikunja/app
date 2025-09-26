@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
+import 'package:vikunja_app/core/utils/constants.dart';
 import 'package:vikunja_app/core/utils/priority.dart';
 import 'package:vikunja_app/domain/entities/label.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
-
-import '../../../core/utils/constants.dart';
-import '../pages/task/task_edit_page.dart';
-import 'label_widget.dart';
+import 'package:vikunja_app/presentation/pages/task/task_edit_page.dart';
+import 'package:vikunja_app/presentation/widgets/label_widget.dart';
 
 class TaskBottomSheet extends StatefulWidget {
   final Task task;
@@ -25,7 +24,7 @@ class TaskBottomSheet extends StatefulWidget {
   });
 
   @override
-  TaskBottomSheetState createState() => TaskBottomSheetState(this.task);
+  TaskBottomSheetState createState() => TaskBottomSheetState(task);
 }
 
 class TaskBottomSheetState extends State<TaskBottomSheet> {
@@ -37,7 +36,7 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
   @override
   Widget build(BuildContext context) {
     ThemeData theme = Theme.of(context);
-    return Container(
+    return SizedBox(
       height: MediaQuery.of(context).size.height * 0.9,
       child: SingleChildScrollView(
         child: Padding(
@@ -52,7 +51,7 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
+                  SizedBox(
                     width: MediaQuery.of(context).size.width * 0.7,
                     child: Text(
                       _currentTask.title,
@@ -161,11 +160,8 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
                   Icon(Icons.percent),
                   Padding(padding: EdgeInsets.fromLTRB(10, 0, 0, 0)),
                   Text(
-                    _currentTask.percent_done != null
-                        ? (_currentTask.percent_done! * 100)
-                                  .toInt()
-                                  .toString() +
-                              "%"
+                    _currentTask.percentDone != null
+                        ? "${(_currentTask.percentDone! * 100).toInt()}%"
                         : "Unset",
                   ),
                 ],

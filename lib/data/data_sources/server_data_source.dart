@@ -1,14 +1,16 @@
-import 'package:vikunja_app/core/network/client.dart';
-import 'package:vikunja_app/core/network/service.dart';
+import 'package:vikunja_app/core/network/response.dart';
+import 'package:vikunja_app/core/network/remote_data_source.dart';
 import 'package:vikunja_app/data/models/server_dto.dart';
 
 class ServerDataSource extends RemoteDataSource {
-  ServerDataSource(Client client) : super(client);
+  ServerDataSource(super.client);
 
-  Future<ServerDto?> getInfo() {
-    return client.get('/info').then((value) {
-      if (value == null) return null;
-      return ServerDto.fromJson(value.body);
-    });
+  Future<Response<ServerDto>> getInfo() {
+    return client.get(
+      url: '/info',
+      mapper: (body) {
+        return ServerDto.fromJson(body);
+      },
+    );
   }
 }

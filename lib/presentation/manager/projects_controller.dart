@@ -8,11 +8,31 @@ part 'projects_controller.g.dart';
 class ProjectsController extends _$ProjectsController {
   @override
   Future<List<Project>> build() async {
-    return ref.read(projectRepositoryProvider).getAll();
+    var response = await ref.read(projectRepositoryProvider).getAll();
+    if (response.isSuccessful) {
+      return response.toSuccess().body;
+    } else if (response.isException) {
+      throw Exception(response.toException().message);
+    } else {
+      throw Exception(response.toError().error);
+    }
   }
 
   void reload() async {
-    state = AsyncData(await ref.read(projectRepositoryProvider).getAll());
+    var response = await ref.read(projectRepositoryProvider).getAll();
+    if (response.isSuccessful) {
+      state = AsyncData(response.toSuccess().body);
+    } else if (response.isException) {
+      state = AsyncError(
+        response.toException().message,
+        response.toException().stackTrace,
+      );
+    } else {
+      state = AsyncError(
+        response.toError().error,
+        response.toException().stackTrace,
+      );
+    }
   }
 
   void create(Project project) async {

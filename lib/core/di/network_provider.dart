@@ -19,14 +19,12 @@ class CurrentUser extends _$CurrentUser {
   @override
   User? build() => null;
 
-  void set(User? user) => state = user;
+  void set(User user) => state = user;
 }
 
 @riverpod
 Client clientProvider(Ref ref) {
   final authData = ref.watch(authDataProvider);
 
-  Client client = Client(base: authData?.address, token: authData?.token);
-
-  return client;
+  return Client(base: authData?.address ?? '', token: authData?.token);
 }

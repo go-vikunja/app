@@ -5,6 +5,7 @@ import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/core/di/theme_provider.dart';
 import 'package:vikunja_app/core/theming/theme_mode.dart';
 import 'package:vikunja_app/domain/entities/settings_page_state.dart';
+import 'package:vikunja_app/presentation/manager/projects_controller.dart';
 import 'package:workmanager/workmanager.dart';
 
 part 'settings_controller.g.dart';
@@ -43,7 +44,12 @@ class SettingsController extends _$SettingsController {
         .read(versionRepositoryProvider)
         .getCurrentVersionTag();
 
+    final user = ref.read(currentUserProvider)!;
+    final projects = ref.watch(projectsControllerProvider).value;
+
     return SettingsPageState(
+      user,
+      projects ?? [],
       ignoreCertificates,
       sentryEnabled,
       versionNotification,
@@ -83,7 +89,7 @@ class SettingsController extends _$SettingsController {
   Future<void> setIgnoreCertificates(bool value) async {
     ref.read(settingsRepositoryProvider).setIgnoreCertificates(value);
 
-    ref.read(clientProviderProvider).reloadIgnoreCerts(value);
+    ref.read(clientProviderProvider).setIgnoreCerts(value);
 
     state = AsyncData(await getAll());
   }

@@ -9,6 +9,8 @@ import 'package:vikunja_app/domain/entities/bucket.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/project_view.dart';
 import 'package:vikunja_app/presentation/manager/project_controller.dart';
+import 'package:vikunja_app/presentation/pages/error_widget.dart';
+import 'package:vikunja_app/presentation/pages/loading_widget.dart';
 import 'package:vikunja_app/presentation/widgets/project/kanban/add_bucket_dialog.dart';
 import 'package:vikunja_app/presentation/widgets/project/kanban/bucket_drag_target.dart';
 import 'package:vikunja_app/presentation/widgets/project/kanban/bucket_item.dart';
@@ -200,8 +202,8 @@ class KanbanWidgetState extends ConsumerState<KanbanWidget> {
           ),
         );
       },
-      error: (err, _) => Center(child: Text('Error: $err')),
-      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (err, _) => VikunjaErrorWidget(error: err),
+      loading: () => const LoadingWidget(),
     );
   }
 
@@ -239,13 +241,19 @@ class KanbanWidgetState extends ConsumerState<KanbanWidget> {
       limit: 0,
     );
 
-    await ref
+    var success = await ref
         .read(projectControllerProvider(project).notifier)
         .addBucket(newBucket: bucket, project: project, viewId: view.id);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('The bucket was added successfully!')),
-    );
+    if (context.mounted && success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('The bucket was added successfully!')),
+      );
+    } else if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error adding the bucket!')));
+    }
   }
 
   void _moveBucket({
@@ -253,13 +261,14 @@ class KanbanWidgetState extends ConsumerState<KanbanWidget> {
     required List<Bucket> buckets,
     required int from,
     required int to,
-  }) {
+  }) async {
     if (from == -1 || to == -1 || from == to) return;
-    setState(() {
-      final bucket = buckets.removeAt(from);
-      final newIndex = to > from ? max(0, to - 1) : to;
-      buckets.insert(newIndex, bucket);
 
+    final bucket = buckets.removeAt(from);
+    final newIndex = to > from ? max(0, to - 1) : to;
+    buckets.insert(newIndex, bucket);
+
+    setState(() {
       var position = calculateItemPosition(
         positionBefore: newIndex == 0 ? null : buckets[newIndex - 1].position,
         positionAfter: newIndex == buckets.length - 1
@@ -267,11 +276,21 @@ class KanbanWidgetState extends ConsumerState<KanbanWidget> {
             : buckets[newIndex + 1].position,
       );
       bucket.position = position;
-
-      ref
-          .read(projectControllerProvider(project).notifier)
-          .updateBucket(bucket: bucket, project: project);
     });
+
+    var success = await ref
+        .read(projectControllerProvider(project).notifier)
+        .updateBucket(bucket: bucket, project: project);
+
+    var context = this.context;
+    if (!success && context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error updating the bucket!')));
+
+      //We need to update the drag immediately for UX reasons -> if it fails afterwards just reload the project
+      ref.read(projectControllerProvider(project).notifier).reload();
+    }
   }
 
   void _moveTask({
@@ -282,7 +301,7 @@ class KanbanWidgetState extends ConsumerState<KanbanWidget> {
     required int toBucketId,
     required int toIndex,
   }) {
-    setState(() {
+    setState(() async {
       final fromBucket =
           buckets[buckets.indexWhere((b) => b.id == fromBucketId)];
       final toBucket = buckets[buckets.indexWhere((b) => b.id == toBucketId)];
@@ -320,9 +339,18 @@ class KanbanWidgetState extends ConsumerState<KanbanWidget> {
       );
       task.position = position;
 
-      ref
+      var success = await ref
           .read(projectControllerProvider(project).notifier)
           .moveTask(project, task, toBucket, position);
+
+      if (!success && context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error moving the task!')));
+
+        //We need to update the drag immediately for UX reasons -> if it fails afterwards just reload the project
+        ref.read(projectControllerProvider(project).notifier).reload();
+      }
     });
   }
 }

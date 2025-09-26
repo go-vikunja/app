@@ -1,10 +1,11 @@
 import 'dart:ui';
 
+import 'package:vikunja_app/data/models/dto.dart';
 import 'package:vikunja_app/data/models/user_dto.dart';
 import 'package:vikunja_app/core/utils/constants.dart';
 import 'package:vikunja_app/domain/entities/label.dart';
 
-class LabelDto {
+class LabelDto extends Dto<Label> {
   final int id;
   final String title, description;
   final DateTime created, updated;
@@ -23,8 +24,8 @@ class LabelDto {
     DateTime? created,
     DateTime? updated,
     required this.createdBy,
-  }) : this.created = created ?? DateTime.now(),
-       this.updated = updated ?? DateTime.now();
+  }) : created = created ?? DateTime.now(),
+       updated = updated ?? DateTime.now();
 
   LabelDto.fromJson(Map<String, dynamic> json)
     : id = json['id'],
@@ -32,12 +33,12 @@ class LabelDto {
       description = json['description'],
       color = json['hex_color'] == ''
           ? null
-          : new Color(int.parse(json['hex_color'], radix: 16) + 0xFF000000),
+          : Color(int.parse(json['hex_color'], radix: 16) + 0xFF000000),
       updated = DateTime.parse(json['updated']),
       created = DateTime.parse(json['created']),
       createdBy = UserDto.fromJson(json['created_by']);
 
-  toJSON() => {
+  Map<String, Object?> toJSON() => {
     'id': id,
     'title': title,
     'description': description,
@@ -51,6 +52,7 @@ class LabelDto {
     'created': created.toUtc().toIso8601String(),
   };
 
+  @override
   Label toDomain() => Label(
     id: id,
     title: title,

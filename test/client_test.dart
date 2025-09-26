@@ -6,13 +6,14 @@ void main() {
     late Client client;
 
     setUp(() {
-      client = Client();
+      client = Client(base: 'https://api.example.com');
     });
 
     group('Constructor and configuration', () {
       test('Default constructor should create client with empty values', () {
+        final client = Client(base: 'https://api.example.com');
+
         expect(client.token, '');
-        expect(client.base, '');
         expect(client.authenticated, false);
       });
 
@@ -45,7 +46,7 @@ void main() {
       test(
         'reloadIgnoreCerts with true should set ignoreCertificates to true',
         () {
-          client.reloadIgnoreCerts(true);
+          client.setIgnoreCerts(true);
           expect(client.ignoreCertificates, true);
         },
       );
@@ -53,7 +54,7 @@ void main() {
       test(
         'reloadIgnoreCerts with false should set ignoreCertificates to false',
         () {
-          client.reloadIgnoreCerts(false);
+          client.setIgnoreCerts(false);
           expect(client.ignoreCertificates, false);
         },
       );

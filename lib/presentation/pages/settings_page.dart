@@ -9,9 +9,9 @@ import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/core/theming/theme_mode.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/user.dart';
-import 'package:vikunja_app/presentation/manager/projects_controller.dart';
 import 'package:vikunja_app/presentation/manager/settings_controller.dart';
-import 'package:vikunja_app/presentation/manager/user_controller.dart';
+import 'package:vikunja_app/presentation/pages/error_widget.dart';
+import 'package:vikunja_app/presentation/pages/loading_widget.dart';
 import 'package:vikunja_app/presentation/pages/login/login_page.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
@@ -31,15 +31,13 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsControllerProvider);
-    final user = ref.watch(userControllerProvider);
-    final projects = ref.watch(projectsControllerProvider);
 
     return Scaffold(
       appBar: AppBar(title: Text("Settings")),
       body: settings.when(
         data: (settings) => ListView(
           children: [
-            _buildUserHeader(ref, user, projects, context),
+            _buildUserHeader(ref, settings.user, settings.projects, context),
             Divider(),
             ListTile(
               title: Text("Theme"),
@@ -184,6 +182,7 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
                 ref.read(settingsRepositoryProvider).saveServer(null);
                 ref.read(settingsRepositoryProvider).saveUserToken(null);
 
+                Navigator.of(context).popUntil((route) => route.isFirst);
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(builder: (buildContext) => LoginPage()),
@@ -193,78 +192,72 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
             ),
           ],
         ),
-        error: (err, _) => Center(child: Text('Error: $err')),
-        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, _) => VikunjaErrorWidget(error: err),
+        loading: () => const LoadingWidget(),
       ),
     );
   }
 
   Widget _buildUserHeader(
     WidgetRef ref,
-    AsyncValue<User> user,
-    AsyncValue<List<Project>> projects,
+    User user,
+    List<Project> projects,
     BuildContext context,
   ) {
-    return user.when(
-      data: (user) => Column(
-        children: [
-          UserAccountsDrawerHeader(
-            accountName: Text(user.name),
-            accountEmail: Text(user.username),
-            currentAccountPicture: CircleAvatar(
-              backgroundImage: user.username != ""
-                  ? NetworkImage(
-                      user.avatarUrl(ref.read(clientProviderProvider).base),
-                      headers: ref.read(clientProviderProvider).headers,
-                    )
-                  : null,
-            ),
-            decoration: BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage("assets/graphics/hypnotize.png"),
-                repeat: ImageRepeat.repeat,
-                colorFilter: ColorFilter.mode(
-                  Theme.of(context).colorScheme.primary,
-                  BlendMode.multiply,
-                ),
+    return Column(
+      children: [
+        UserAccountsDrawerHeader(
+          accountName: Text(user.name),
+          accountEmail: Text(user.username),
+          currentAccountPicture: CircleAvatar(
+            backgroundImage: user.username != ""
+                ? NetworkImage(
+                    user.avatarUrl(ref.read(clientProviderProvider).base),
+                    headers: ref.read(clientProviderProvider).headers,
+                  )
+                : null,
+          ),
+          decoration: BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage("assets/graphics/hypnotize.png"),
+              repeat: ImageRepeat.repeat,
+              colorFilter: ColorFilter.mode(
+                Theme.of(context).colorScheme.primary,
+                BlendMode.multiply,
               ),
             ),
           ),
-          projects.when(
-            data: (projects) => ListTile(
-              title: Text("Default List"),
-              trailing: DropdownButton<int>(
-                items: [
-                  DropdownMenuItem(value: 0, child: Text("None")),
-                  ...projects.map(
-                    (e) => DropdownMenuItem(value: e.id, child: Text(e.title)),
-                  ),
-                ],
-                value:
-                    projects.firstWhereOrNull(
-                          (element) =>
-                              element.id == user.settings?.default_project_id,
-                        ) !=
-                        null
-                    ? user.settings?.default_project_id
-                    : 0,
-                onChanged: (int? value) {
-                  if (value != null && user.settings != null) {
-                    user.settings!.default_project_id = value;
-                    ref
-                        .watch(userControllerProvider.notifier)
-                        .setCurrentUserSettings(user.settings!);
-                  }
-                },
+        ),
+        ListTile(
+          title: Text("Default List"),
+          trailing: DropdownButton<int>(
+            items: [
+              DropdownMenuItem(value: 0, child: Text("None")),
+              ...projects.map(
+                (e) => DropdownMenuItem(value: e.id, child: Text(e.title)),
               ),
-            ),
-            error: (err, _) => Center(child: Text('Error: $err')),
-            loading: () => const Center(child: CircularProgressIndicator()),
+            ],
+            value:
+                projects.firstWhereOrNull(
+                      (element) =>
+                          element.id == user.settings?.default_project_id,
+                    ) !=
+                    null
+                ? user.settings?.default_project_id
+                : 0,
+            onChanged: (int? value) {
+              if (value != null && user.settings != null) {
+                user.settings!.default_project_id = value;
+                ref
+                    .watch(userRepositoryProvider)
+                    .setCurrentUserSettings(user.settings!);
+
+                ref.read(currentUserProvider.notifier).set(user);
+              }
+            },
           ),
-        ],
-      ),
-      error: (err, _) => Center(child: Text('Error: $err')),
-      loading: () => const Center(child: CircularProgressIndicator()),
+        ),
+      ],
     );
   }
 }

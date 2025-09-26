@@ -16,4 +16,20 @@ class ProjectPageModel {
     this.buckets,
     this.displayDoneTask,
   );
+
+  ProjectPageModel copyWith({
+    Project? project,
+    int? viewIndex,
+    List<Task>? tasks,
+    List<Bucket>? buckets,
+    bool? displayDoneTask,
+  }) {
+    return ProjectPageModel(
+      project ?? this.project,
+      viewIndex ?? this.viewIndex,
+      tasks ?? this.tasks,
+      buckets ?? this.buckets,
+      displayDoneTask ?? this.displayDoneTask,
+    );
+  }
 }

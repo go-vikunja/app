@@ -3,8 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/presentation/manager/project_controller.dart';
+import 'package:vikunja_app/presentation/pages/error_widget.dart';
+import 'package:vikunja_app/presentation/pages/loading_widget.dart';
 import 'package:vikunja_app/presentation/pages/project/project_detail_page.dart';
 import 'package:vikunja_app/presentation/pages/task/task_edit_page.dart';
+import 'package:vikunja_app/presentation/widgets/empty_view.dart';
 import 'package:vikunja_app/presentation/widgets/task_bottom_sheet.dart';
 import 'package:vikunja_app/presentation/widgets/task_tile.dart';
 
@@ -33,23 +36,11 @@ class ProjectTaskList extends ConsumerWidget {
         if (children.isNotEmpty) {
           return ListView(children: children);
         } else {
-          return _buildEmptyView(context);
+          return EmptyView(Icons.list, "No tasks");
         }
       },
-      error: (err, _) => Center(child: Text('Error: $err')),
-      loading: () => const Center(child: CircularProgressIndicator()),
-    );
-  }
-
-  Center _buildEmptyView(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.list, size: 96),
-          Text("No tasks", style: Theme.of(context).textTheme.headlineSmall),
-        ],
-      ),
+      error: (err, _) => VikunjaErrorWidget(error: err),
+      loading: () => const LoadingWidget(),
     );
   }
 
@@ -97,9 +88,15 @@ class ProjectTaskList extends ConsumerWidget {
       task: task,
       onTap: () => _showTaskBottomSheet(ref.context, task),
       onEdit: () => _onEdit(ref.context, task),
-      onCheckedChanged: (value) {
-        task.done = value;
-        ref.read(projectControllerProvider(project).notifier).updateTask(task);
+      onCheckedChanged: (value) async {
+        var success = await ref
+            .read(projectControllerProvider(project).notifier)
+            .markAsDone(task);
+        if (!success) {
+          ScaffoldMessenger.of(
+            ref.context,
+          ).showSnackBar(SnackBar(content: Text("Failed to mark as done")));
+        }
       },
       showInfo: true,
     );

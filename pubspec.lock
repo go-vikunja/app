@@ -1343,6 +1343,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "9.6.0"
+  sentry_logging:
+    dependency: "direct main"
+    description:
+      name: sentry_logging
+      sha256: "040046d5fe79b94b1c73069031547c066ab37bcbd18c029dc3ceeb9b5d0c67c5"
+      url: "https://pub.dev"
+    source: hosted
+    version: "9.6.0"
   shelf:
     dependency: transitive
     description:

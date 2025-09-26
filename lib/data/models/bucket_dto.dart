@@ -1,8 +1,9 @@
+import 'package:vikunja_app/data/models/dto.dart';
 import 'package:vikunja_app/data/models/task_dto.dart';
 import 'package:vikunja_app/data/models/user_dto.dart';
 import 'package:vikunja_app/domain/entities/bucket.dart';
 
-class BucketDto {
+class BucketDto extends Dto<Bucket> {
   int id, limit;
   int? projectViewId;
   String title;
@@ -21,9 +22,9 @@ class BucketDto {
     DateTime? updated,
     required this.createdBy,
     List<TaskDto>? tasks,
-  }) : this.created = created ?? DateTime.now(),
-       this.updated = created ?? DateTime.now(),
-       this.tasks = tasks ?? [];
+  }) : created = created ?? DateTime.now(),
+       updated = created ?? DateTime.now(),
+       tasks = tasks ?? [];
 
   BucketDto.fromJSON(Map<String, dynamic> json)
     : id = json['id'],
@@ -42,7 +43,7 @@ class BucketDto {
                 .map((task) => TaskDto.fromJson(task))
                 .toList();
 
-  toJSON() => {
+  Map<String, Object?> toJSON() => {
     'id': id,
     'project_view_id': projectViewId,
     'title': title,
@@ -54,6 +55,7 @@ class BucketDto {
     'tasks': tasks.map((task) => task.toJSON()).toList(),
   };
 
+  @override
   Bucket toDomain() => Bucket(
     id: id,
     projectViewId: projectViewId,

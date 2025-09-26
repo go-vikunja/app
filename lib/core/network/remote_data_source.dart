@@ -10,10 +10,9 @@ class RemoteDataSource {
   RemoteDataSource(this._client);
 
   @protected
-  List<T> convertList<T>(dynamic value, Mapper<T> mapper) {
-    if (value == null) return [];
-    return (value as List<dynamic>).map((map) => mapper(map)).toList();
+  List<T> convertList<T>(List<dynamic> value, Mapper<T> mapper) {
+    return value.map((map) => mapper(map)).toList();
   }
 }
 
-typedef T Mapper<T>(Map<String, dynamic> json);
+typedef Mapper<T> = T Function(Map<String, dynamic> json);

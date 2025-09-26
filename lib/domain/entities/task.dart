@@ -1,28 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/domain/entities/label.dart';
 import 'package:vikunja_app/domain/entities/task_attachment.dart';
+import 'package:vikunja_app/domain/entities/task_reminder.dart';
 import 'package:vikunja_app/domain/entities/user.dart';
-
-class TaskReminder {
-  final int relative_period;
-  final String relative_to;
-  DateTime reminder;
-
-  TaskReminder(this.reminder, [relative_period = 0, relative_to = ""])
-    : relative_period = relative_period,
-      relative_to = relative_to;
-
-  TaskReminder.fromJson(Map<String, dynamic> json)
-    : reminder = DateTime.parse(json['reminder']),
-      relative_period = json['relative_period'],
-      relative_to = json['relative_to'];
-
-  toJSON() => {
-    'relative_period': relative_period,
-    'relative_to': relative_to,
-    'reminder': reminder.toUtc().toIso8601String(),
-  };
-}
 
 class Task {
   int id;
@@ -36,7 +16,7 @@ class Task {
   bool done;
   Color? color;
   double? position;
-  double? percent_done;
+  double? percentDone;
   User createdBy;
   Duration? repeatAfter;
   List<Task> subtasks;
@@ -58,7 +38,7 @@ class Task {
     this.repeatAfter,
     this.color,
     this.position,
-    this.percent_done,
+    this.percentDone,
     this.subtasks = const [],
     this.labels = const [],
     this.attachments = const [],
@@ -67,8 +47,8 @@ class Task {
     required this.createdBy,
     required this.projectId,
     this.bucketId,
-  }) : this.created = created ?? DateTime.now(),
-       this.updated = updated ?? DateTime.now();
+  }) : created = created ?? DateTime.now(),
+       updated = updated ?? DateTime.now();
 
   bool loading = false;
 
@@ -90,6 +70,7 @@ class Task {
     int? parentTaskId,
     int? priority,
     int? listId,
+    int? projectId,
     int? bucketId,
     DateTime? created,
     DateTime? updated,
@@ -103,7 +84,7 @@ class Task {
     bool? done,
     Color? color,
     double? position,
-    double? percent_done,
+    double? percentDone,
     User? createdBy,
     Duration? repeatAfter,
     List<Task>? subtasks,
@@ -128,7 +109,7 @@ class Task {
       done: done ?? this.done,
       color: color ?? this.color,
       position: position ?? this.position,
-      percent_done: percent_done ?? this.percent_done,
+      percentDone: percentDone ?? this.percentDone,
       createdBy: createdBy ?? this.createdBy,
       repeatAfter: repeatAfter ?? this.repeatAfter,
       subtasks: subtasks ?? this.subtasks,

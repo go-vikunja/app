@@ -5,22 +5,18 @@ import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/entities/task_attachment.dart';
 
 abstract class TaskRepository {
-  Future<Task?> add(int projectId, Task task);
-
-  Future<Task?> get(int listId);
+  Future<Response<Task>> add(int projectId, Task task);
 
   Future delete(int taskId);
 
-  Future<Task?> update(Task task);
+  Future<Response<Task>> update(Task task);
 
-  Future<List<Task>> getAll();
-
-  Future<Response<List<Task>>?> getAllByProject(
+  Future<Response<List<Task>>> getAllByProject(
     int projectId, [
     Map<String, List<String>>? queryParameters,
   ]);
 
-  Future<List<Task>?> getByFilterString(
+  Future<Response<List<Task>>> getByFilterString(
     String filterString, [
     Map<String, List<String>>? queryParameters,
   ]);

@@ -7,8 +7,10 @@ import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/core/di/notification_provider.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
+import 'package:vikunja_app/domain/entities/task_page_model.dart';
 import 'package:vikunja_app/presentation/manager/task_page_controller.dart';
 import 'package:vikunja_app/presentation/pages/task/task_edit_page.dart';
+import 'package:vikunja_app/presentation/widgets/empty_view.dart';
 import 'package:vikunja_app/presentation/widgets/task/add_task_dialog.dart';
 import 'package:vikunja_app/presentation/widgets/task_bottom_sheet.dart';
 import 'package:vikunja_app/presentation/widgets/task_tile.dart';
@@ -49,14 +51,7 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
             onRefresh: () async {
               ref.read(taskPageControllerProvider.notifier).reload();
             },
-            child: ListView(
-              shrinkWrap: true,
-              padding: EdgeInsets.symmetric(vertical: 8.0),
-              children: ListTile.divideTiles(
-                context: context,
-                tiles: _listTasks(context, model.tasks),
-              ).toList(),
-            ),
+            child: _buildList(model, context),
           ),
           floatingActionButton: FloatingActionButton(
             onPressed: () {
@@ -69,6 +64,20 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
       error: (err, _) => Center(child: Text('Error: $err')),
       loading: () => const Center(child: CircularProgressIndicator()),
     );
+  }
+
+  Widget _buildList(TaskPageModel model, BuildContext context) {
+    if (model.tasks.isEmpty) {
+      return EmptyView(Icons.list, "No tasks");
+    } else {
+      return ListView(
+        padding: EdgeInsets.symmetric(vertical: 8.0),
+        children: ListTile.divideTiles(
+          context: context,
+          tiles: _listTasks(context, model.tasks),
+        ).toList(),
+      );
+    }
   }
 
   AppBar _buildAppBar(bool onlyDueDate) {
@@ -139,15 +148,19 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
       projectId: defaultProjectId,
     );
 
-    ref
+    var success = await ref
         .read(taskPageControllerProvider.notifier)
         .addTask(defaultProjectId, task);
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('The task was added successfully!')));
-
-    ref.read(taskPageControllerProvider.notifier).reload();
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('The task was added successfully!')),
+      );
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error adding the task!')));
+    }
   }
 
   List<Widget> _listTasks(BuildContext context, List<Task> tasks) {
@@ -160,9 +173,15 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
               _showTaskBottomSheet(context, task);
             },
             onEdit: () => _onEdit(context, task),
-            onCheckedChanged: (value) {
-              task.done = value;
-              ref.read(taskPageControllerProvider.notifier).updateTask(task);
+            onCheckedChanged: (value) async {
+              var success = await ref
+                  .read(taskPageControllerProvider.notifier)
+                  .markAsDone(task);
+              if (!success) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Error marking task as done')),
+                );
+              }
             },
             showInfo: true,
           ),
@@ -194,8 +213,13 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
 
   //TODO should we move that up the widget tree - It's not really specific to that page
   void scheduleIntent() async {
-    ref.read(userRepositoryProvider).getCurrentUser().then((user) async {
-      var defaultProject = user.settings?.default_project_id;
+    var response = await ref.read(userRepositoryProvider).getCurrentUser();
+    if (response.isSuccessful) {
+      var defaultProject = response
+          .toSuccess()
+          .body
+          .settings
+          ?.default_project_id;
 
       if (defaultProject == null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -209,6 +233,6 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
           return Future.value();
         });
       }
-    });
+    }
   }
 }

@@ -35,6 +35,7 @@ dependencies:
   package_info_plus: ^8.2.1
   html_editor_enhanced: ^2.6.0
   sentry_flutter: ^9.6.0
+  sentry_logging: ^9.6.0
   home_widget: ^0.8.0
   flutter_riverpod: ^2.6.1
   riverpod_annotation: ^2.6.1

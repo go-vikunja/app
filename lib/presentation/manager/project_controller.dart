@@ -1,5 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
+import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/domain/entities/bucket.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/project_page_model.dart';
@@ -17,9 +18,22 @@ class ProjectController extends _$ProjectController {
         .read(settingsRepositoryProvider)
         .getDisplayDoneTasks(project.id);
 
-    var tasks = await loadTasks(project.id, displayDoneTask);
+    var tasksResponse = await _loadTasks(project.id, displayDoneTask);
 
-    return ProjectPageModel(project, 0, tasks, [], displayDoneTask);
+    switch (tasksResponse) {
+      case SuccessResponse<List<Task>>():
+        return ProjectPageModel(
+          project,
+          -1,
+          tasksResponse.body,
+          [],
+          displayDoneTask,
+        );
+      case ExceptionResponse<List<Task>>():
+        throw Exception(tasksResponse.message);
+      case ErrorResponse<List<Task>>():
+        throw Exception(tasksResponse.error.toString());
+    }
   }
 
   Future<void> loadForView(Project project, int viewIndex) async {
@@ -27,13 +41,33 @@ class ProjectController extends _$ProjectController {
         .read(settingsRepositoryProvider)
         .getDisplayDoneTasks(project.id);
 
-    var tasks = await loadTasks(project.id, displayDoneTask);
+    var tasks = <Task>[];
+    var tasksResponse = await _loadTasks(project.id, displayDoneTask);
+
+    switch (tasksResponse) {
+      case SuccessResponse<List<Task>>():
+        tasks = tasksResponse.body;
+      case ErrorResponse<List<Task>>():
+        state = AsyncError(tasksResponse.error, StackTrace.current);
+      case ExceptionResponse<List<Task>>():
+        state = AsyncError(tasksResponse.message, StackTrace.current);
+    }
+
     var buckets = <Bucket>[];
     if (project.views[viewIndex].viewKind == ViewKind.kanban) {
-      buckets = await loadBuckets(
+      var bucketsResponse = await _loadBuckets(
         projectId: project.id,
         viewId: project.views[viewIndex].id,
       );
+
+      switch (bucketsResponse) {
+        case SuccessResponse<List<Bucket>>():
+          buckets = bucketsResponse.body;
+        case ErrorResponse<List<Bucket>>():
+          state = AsyncError(bucketsResponse.error, StackTrace.current);
+        case ExceptionResponse<List<Bucket>>():
+          state = AsyncError(bucketsResponse.message, StackTrace.current);
+      }
     }
 
     state = AsyncData(
@@ -41,7 +75,10 @@ class ProjectController extends _$ProjectController {
     );
   }
 
-  Future<List<Task>> loadTasks(int projectId, bool displayDoneTasks) async {
+  Future<Response<List<Task>>> _loadTasks(
+    int projectId,
+    bool displayDoneTasks,
+  ) async {
     var repo = ref.read(taskRepositoryProvider);
 
     Map<String, List<String>> queryParams = {
@@ -52,15 +89,16 @@ class ProjectController extends _$ProjectController {
 
     if (!displayDoneTasks) {
       queryParams.addAll({
-        "filter": ["done=false"],
+        "filter_by": ["done"],
+        "filter_value": ["false"],
+        "sort_by": ["done"],
       });
     }
-    var tasks = await repo.getAllByProject(projectId, queryParams);
 
-    return tasks?.body ?? [];
+    return repo.getAllByProject(projectId, queryParams);
   }
 
-  Future<List<Bucket>> loadBuckets({
+  Future<Response<List<Bucket>>> _loadBuckets({
     required int projectId,
     required int viewId,
     int page = 1,
@@ -69,31 +107,58 @@ class ProjectController extends _$ProjectController {
       "page": [page.toString()],
     };
 
-    var buckets = await ref
+    var bucketsResponse = await ref
         .read(bucketRepositoryProvider)
         .getAllByList(projectId, viewId, queryParams);
 
-    return buckets?.body ?? [];
+    return bucketsResponse;
   }
 
-  Future<void> addTask(Project project, Task newTask) async {
-    await ref.read(taskRepositoryProvider).add(project.id, newTask);
+  Future<bool> addTask(Project project, Task newTask) async {
+    var response = await ref
+        .read(taskRepositoryProvider)
+        .add(project.id, newTask);
+    if (response.isSuccessful) {
+      var value = state.value;
+      if (value != null) {
+        var tasks = value.tasks;
+        tasks.add(newTask);
+        state = AsyncData(value.copyWith(tasks: tasks));
 
-    loadForView(project, state.value!.viewIndex);
+        return true;
+      }
+    }
+
+    return false;
   }
 
-  Future<void> addBucket({
+  Future<bool> addBucket({
     required Bucket newBucket,
     required Project project,
     required int viewId,
   }) async {
-    await ref.read(bucketRepositoryProvider).add(project.id, viewId, newBucket);
+    var response = await ref
+        .read(bucketRepositoryProvider)
+        .add(project.id, viewId, newBucket);
+    if (response.isSuccessful) {
+      var value = state.value;
+      if (value != null) {
+        var buckets = value.buckets;
+        buckets.add(newBucket);
+        state = AsyncData(value.copyWith(buckets: buckets));
 
-    loadForView(project, state.value!.viewIndex);
+        return true;
+      }
+    }
+
+    return false;
   }
 
-  void deleteBucket({required Bucket bucket, required Project project}) async {
-    await ref
+  Future<bool> deleteBucket({
+    required Bucket bucket,
+    required Project project,
+  }) async {
+    var response = await ref
         .read(bucketRepositoryProvider)
         .delete(
           project.id,
@@ -101,18 +166,44 @@ class ProjectController extends _$ProjectController {
           bucket.id,
         );
 
-    loadForView(project, state.value!.viewIndex);
+    if (response.isSuccessful) {
+      var value = state.value;
+      if (value != null) {
+        var buckets = value.buckets;
+        buckets.removeWhere((element) => element.id == bucket.id);
+        state = AsyncData(value.copyWith(buckets: buckets));
+
+        return true;
+      }
+    }
+
+    return false;
   }
 
-  void updateBucket({required Bucket bucket, required Project project}) async {
-    await ref
+  Future<bool> updateBucket({
+    required Bucket bucket,
+    required Project project,
+  }) async {
+    var response = await ref
         .read(bucketRepositoryProvider)
         .update(project.id, project.views[state.value!.viewIndex].id, bucket);
 
-    loadForView(project, state.value!.viewIndex);
+    if (response.isSuccessful) {
+      var value = state.value;
+      if (value != null) {
+        var buckets = value.buckets;
+        buckets.removeWhere((element) => element.id == bucket.id);
+        buckets.add(bucket);
+        state = AsyncData(value.copyWith(buckets: buckets));
+
+        return true;
+      }
+    }
+
+    return false;
   }
 
-  void moveTask(
+  Future<bool> moveTask(
     Project project,
     Task task,
     Bucket bucket,
@@ -120,64 +211,121 @@ class ProjectController extends _$ProjectController {
   ) async {
     var viewId = project.views[state.value!.viewIndex].id;
 
-    await ref
+    var updateBucketResponse = await ref
         .read(bucketRepositoryProvider)
         .updateTaskBucket(task.id, bucket.id, project.id, viewId);
 
-    await ref
+    var updateTaskResponse = await ref
         .read(bucketRepositoryProvider)
         .updateTaskPosition(task.id, viewId, position);
+
+    if (updateBucketResponse.isSuccessful && updateTaskResponse.isSuccessful) {
+      return true;
+    }
+
+    return false;
   }
 
-  void updateDoneBucket(Project project, int bucketId, isDoneColumn) async {
-    var viewId = project.views[state.value!.viewIndex].id;
-
-    var projectView = project.views.firstWhere((e) => e.id == viewId);
+  Future<bool> updateDoneBucket(
+    Project project,
+    int bucketId,
+    isDoneColumn,
+  ) async {
+    var projectView = project.views[state.value!.viewIndex];
     projectView.doneBucketId = isDoneColumn ? 0 : bucketId;
 
-    await ref.read(projectViewRepositoryProvider).update(projectView);
+    var response = await ref
+        .read(projectViewRepositoryProvider)
+        .update(projectView);
+    if (response.isSuccessful) {
+      var value = state.value;
+      if (value != null) {
+        state = AsyncData(value.copyWith(project: project));
+
+        return true;
+      }
+    }
+
+    return false;
   }
 
-  void selectDefaultBucket(
+  Future<bool> selectDefaultBucket(
     Project project,
     int bucketId,
     isDefaultColumn,
   ) async {
-    var viewId = project.views[state.value!.viewIndex].id;
-
-    var projectView = project.views.firstWhere((e) => e.id == viewId);
+    var projectView = project.views[state.value!.viewIndex];
     projectView.defaultBucketId = isDefaultColumn ? 0 : bucketId;
 
-    await ref.read(projectViewRepositoryProvider).update(projectView);
+    var response = await ref
+        .read(projectViewRepositoryProvider)
+        .update(projectView);
+    if (response.isSuccessful) {
+      var value = state.value;
+      if (value != null) {
+        state = AsyncData(value.copyWith(project: project));
+
+        return true;
+      }
+    }
+
+    return false;
   }
 
-  void setDisplayDoneTasks(bool value) {
-    state.value!.displayDoneTask = value;
-
-    ref
+  Future<bool> setDisplayDoneTasks(bool displayDoneTasks) async {
+    await ref
         .read(settingsRepositoryProvider)
-        .setDisplayDoneTasks(state.value!.project.id, value);
+        .setDisplayDoneTasks(state.value!.project.id, displayDoneTasks);
 
-    state = state;
+    var value = state.value;
+    if (value != null) {
+      state = AsyncData(value.copyWith(displayDoneTask: displayDoneTasks));
+      return true;
+    }
+
+    return false;
   }
 
-  Future<void> updateProject(Project project) async {
-    var projectUpdated = await ref
+  Future<bool> updateProject(Project project) async {
+    var updateResponse = await ref
         .read(projectRepositoryProvider)
         .update(project);
 
-    if (projectUpdated != null) {
-      state.value!.project = projectUpdated;
+    if (updateResponse.isSuccessful) {
+      var value = state.value;
+      if (value != null) {
+        state = AsyncData(value.copyWith(project: project));
 
-      state = state;
+        return true;
+      }
 
       ref.read(projectsControllerProvider.notifier).reload();
     }
+
+    return false;
   }
 
-  void updateTask(Task task) async {
-    await ref.read(taskRepositoryProvider).update(task);
+  Future<bool> markAsDone(Task task) async {
+    task.done = true;
+    var response = await ref.read(taskRepositoryProvider).update(task);
+    if (response.isSuccessful) {
+      var value = state.value;
+      if (value != null) {
+        var tasks = value.tasks;
+        tasks.removeWhere((element) => element.id == task.id);
+        state = AsyncData(value.copyWith(tasks: tasks));
 
-    loadForView(project, state.value!.viewIndex);
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  void reload() {
+    var value = state.value;
+    if (value != null) {
+      loadForView(value.project, value.viewIndex);
+    }
   }
 }
