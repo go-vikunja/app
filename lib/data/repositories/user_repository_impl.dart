@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:vikunja_app/core/network/response.dart';
+import 'package:vikunja_app/core/utils/mapping_extensions.dart';
 import 'package:vikunja_app/data/data_sources/user_data_source.dart';
 import 'package:vikunja_app/data/models/user_dto.dart';
 import 'package:vikunja_app/domain/entities/user.dart';
@@ -11,7 +13,7 @@ class UserRepositoryImpl extends UserRepository {
   UserRepositoryImpl(this._dataSource);
 
   @override
-  Future<UserToken> login(
+  Future<Response<UserToken>> login(
     String username,
     password, {
     bool rememberMe = false,
@@ -26,26 +28,21 @@ class UserRepositoryImpl extends UserRepository {
   }
 
   @override
-  Future<UserToken?> register(String username, email, password) async {
-    return (await _dataSource.register(username, email, password))?.toDomain();
+  Future<Response<UserToken>> register(String username, email, password) async {
+    return (await _dataSource.register(username, email, password)).toDomain();
   }
 
   @override
-  Future<User> getCurrentUser() async {
+  Future<Response<User>> getCurrentUser() async {
     return (await _dataSource.getCurrentUser()).toDomain();
   }
 
   @override
-  Future<UserSettings?> setCurrentUserSettings(
+  Future<Response<UserSettings>> setCurrentUserSettings(
     UserSettings userSettings,
   ) async {
     return (await _dataSource.setCurrentUserSettings(
       UserSettingsDto.fromDomain(userSettings),
-    ))?.toDomain();
-  }
-
-  @override
-  Future<String?> getToken() {
-    return _dataSource.getToken();
+    )).toDomain();
   }
 }

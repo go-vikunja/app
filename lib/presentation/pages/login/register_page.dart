@@ -125,7 +125,7 @@ class RegisterPageState extends ConsumerState<RegisterPage> {
     );
   }
 
-  _registerUser(BuildContext context) async {
+  Future<void> _registerUser(BuildContext context) async {
     setState(() {
       _loading = true;
     });
@@ -134,18 +134,22 @@ class RegisterPageState extends ConsumerState<RegisterPage> {
       var newUserLoggedIn = await ref
           .read(userRepositoryProvider)
           .register(_username!, _email, _password);
-      if (newUserLoggedIn != null)
+      if (newUserLoggedIn.isSuccessful) {
         ref
             .read(settingsRepositoryProvider)
-            .saveUserToken(newUserLoggedIn.token);
-      ref.read(settingsRepositoryProvider).saveServer(_server!);
+            .saveUserToken(newUserLoggedIn.toSuccess().body.token);
+        ref.read(settingsRepositoryProvider).saveServer(_server!);
+      } else {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Registration failed!')));
+      }
     } catch (ex) {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
           title: Text(
-            'Registration failed! Please check your server url and credentials. ' +
-                ex.toString(),
+            'Registration failed! Please check your server url and credentials. $ex',
           ),
           actions: <Widget>[
             TextButton(

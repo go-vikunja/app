@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart'
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
+import 'package:sentry_logging/sentry_logging.dart';
 import 'package:vikunja_app/core/di/theme_provider.dart';
 import 'package:vikunja_app/data/data_sources/settings_data_source.dart';
 import 'package:vikunja_app/init_page.dart';
@@ -20,7 +21,7 @@ final globalSnackbarKey = GlobalKey<ScaffoldMessengerState>();
 final globalNavigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  SentryWidgetsFlutterBinding.ensureInitialized();
 
   var notifDenies = await Permission.notification.isDenied;
   if (notifDenies) {
@@ -46,9 +47,12 @@ void main() async {
     FlutterSecureStorage(),
   ).getSentryEnabled();
   if (sentryEnabled) {
-    await SentryFlutter.init((options) {
+  await SentryFlutter.init(
+    (options) {
       options.dsn =
           'https://a09618e3bb30e03b93233c21973df869@o1047380.ingest.us.sentry.io/4507995557134336';
+      options.addIntegration(LoggingIntegration());
+      options.enableLogs = true;
       options.tracesSampleRate = 1.0;
       options.profilesSampleRate = 1.0;
     }, appRunner: () => runApp(ProviderScope(child: VikunjaApp())));

@@ -1,6 +1,7 @@
+import 'package:vikunja_app/data/models/dto.dart';
 import 'package:vikunja_app/domain/entities/server.dart';
 
-class ServerDto {
+class ServerDto extends Dto<Server> {
   bool? caldavEnabled;
   bool? emailRemindersEnabled;
   String? frontendUrl;
@@ -43,6 +44,7 @@ class ServerDto {
       userDeletion = json['user_deletion'],
       version = json['version'];
 
+  @override
   Server toDomain() => Server(
     caldavEnabled,
     emailRemindersEnabled,

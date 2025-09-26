@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:vikunja_app/core/network/response.dart';
+import 'package:vikunja_app/core/utils/mapping_extensions.dart';
 import 'package:vikunja_app/data/data_sources/task_data_source.dart';
 import 'package:vikunja_app/data/models/task_attachment_dto.dart';
 import 'package:vikunja_app/data/models/task_dto.dart';
@@ -14,57 +15,39 @@ class TaskRepositoryImpl extends TaskRepository {
   TaskRepositoryImpl(this._dataSource);
 
   @override
-  Future<Task?> add(int projectId, Task task) async {
+  Future<Response<Task>> add(int projectId, Task task) async {
     return (await _dataSource.add(
       projectId,
       TaskDto.fromDomain(task),
-    ))?.toDomain();
+    )).toDomain();
   }
 
   @override
-  Future<Task?> get(int listId) async {
-    return (await _dataSource.get(listId))?.toDomain();
+  Future<Response<Object>> delete(int taskId) async {
+    return _dataSource.delete(taskId);
   }
 
   @override
-  Future delete(int taskId) async {
-    return (await _dataSource.delete(taskId));
+  Future<Response<Task>> update(Task task) async {
+    return (await _dataSource.update(TaskDto.fromDomain(task))).toDomain();
   }
 
   @override
-  Future<Task?> update(Task task) async {
-    return (await _dataSource.update(TaskDto.fromDomain(task)))?.toDomain();
-  }
-
-  @override
-  Future<List<Task>> getAll() async {
-    return (await _dataSource.getAll()).map((e) => e.toDomain()).toList();
-  }
-
-  @override
-  Future<Response<List<Task>>?> getAllByProject(
+  Future<Response<List<Task>>> getAllByProject(
     int projectId, [
     Map<String, List<String>>? queryParameters,
   ]) async {
     var response = await _dataSource.getAllByProject(projectId);
 
-    return response != null
-        ? Response(
-            response.body.map((e) => e.toDomain()).toList(),
-            response.statusCode,
-            response.headers,
-          )
-        : null;
+    return response.toDomain();
   }
 
   @override
-  Future<List<Task>?> getByFilterString(
+  Future<Response<List<Task>>> getByFilterString(
     String filterString, [
     Map<String, List<String>>? queryParameters,
   ]) async {
-    return (await _dataSource.getByFilterString(
-      filterString,
-    ))?.map((e) => e.toDomain()).toList();
+    return (await _dataSource.getByFilterString(filterString)).toDomain();
   }
 
   @override

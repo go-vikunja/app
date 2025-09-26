@@ -1,7 +1,8 @@
+import 'package:vikunja_app/data/models/dto.dart';
 import 'package:vikunja_app/data/models/user_dto.dart';
 import 'package:vikunja_app/domain/entities/task_attachment.dart';
 
-class TaskAttachmentFileDto {
+class TaskAttachmentFileDto extends Dto<TaskAttachmentFile> {
   final int id;
   final DateTime created;
   final String mime;
@@ -23,7 +24,7 @@ class TaskAttachmentFileDto {
       name = json['name'],
       size = json['size'];
 
-  toJSON() => {
+  Map<String, Object> toJSON() => {
     'id': id,
     'created': created.toUtc().toIso8601String(),
     'mime': mime,
@@ -31,6 +32,7 @@ class TaskAttachmentFileDto {
     'size': size,
   };
 
+  @override
   TaskAttachmentFile toDomain() => TaskAttachmentFile(
     id: id,
     created: created,
@@ -49,7 +51,7 @@ class TaskAttachmentFileDto {
       );
 }
 
-class TaskAttachmentDto {
+class TaskAttachmentDto extends Dto<TaskAttachment> {
   final int id, taskId;
   final DateTime created;
   final UserDto createdBy;
@@ -62,7 +64,7 @@ class TaskAttachmentDto {
     DateTime? created,
     required this.createdBy,
     required this.file,
-  }) : this.created = created ?? DateTime.now();
+  }) : created = created ?? DateTime.now();
 
   TaskAttachmentDto.fromJSON(Map<String, dynamic> json)
     : id = json['id'],
@@ -71,7 +73,7 @@ class TaskAttachmentDto {
       file = TaskAttachmentFileDto.fromJSON(json['file']),
       createdBy = UserDto.fromJson(json['created_by']);
 
-  toJSON() => {
+  Map<String, Object> toJSON() => {
     'id': id,
     'task_id': taskId,
     'created': created.toUtc().toIso8601String(),
@@ -79,6 +81,7 @@ class TaskAttachmentDto {
     'file': file.toJSON(),
   };
 
+  @override
   TaskAttachment toDomain() => TaskAttachment(
     id: id,
     taskId: taskId,

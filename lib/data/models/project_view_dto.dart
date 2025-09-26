@@ -1,9 +1,10 @@
 import 'package:vikunja_app/data/models/bucket_configuration_dto.dart';
+import 'package:vikunja_app/data/models/dto.dart';
 import 'package:vikunja_app/data/models/filter_dto.dart';
 import 'package:vikunja_app/domain/entities/project_view.dart';
 import 'package:vikunja_app/domain/entities/view_kind.dart';
 
-class ProjectViewDto {
+class ProjectViewDto extends Dto<ProjectView> {
   final int id;
   final String title;
   final int projectId;
@@ -68,6 +69,7 @@ class ProjectViewDto {
     "view_kind": viewKind,
   };
 
+  @override
   ProjectView toDomain() => ProjectView(
     created,
     defaultBucketId,

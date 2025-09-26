@@ -6,7 +6,7 @@ part of 'network_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$clientProviderHash() => r'2f55bd3fa678b613bb189e426c40876476a31f2a';
+String _$clientProviderHash() => r'5b68f6922e1223e1b0a4d106a013c69df0c052c6';
 
 /// See also [clientProvider].
 @ProviderFor(clientProvider)
@@ -38,7 +38,7 @@ final authDataProvider = NotifierProvider<AuthData, AuthModel?>.internal(
 );
 
 typedef _$AuthData = Notifier<AuthModel?>;
-String _$currentUserHash() => r'd28b1a5808147269974b299003f38780be019a3a';
+String _$currentUserHash() => r'6c693923886cc2ac9303d1f1c51786f9b4638b0a';
 
 /// See also [CurrentUser].
 @ProviderFor(CurrentUser)

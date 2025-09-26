@@ -1,13 +1,10 @@
-// https://medium.com/@fuzzymemory/adding-scheduled-notifications-in-your-flutter-application-19be1f82ade8
-
 import 'dart:math';
+import 'dart:developer' as developer;
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/timezone.dart' as tz;
-import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/repositories/task_repository.dart';
-import 'package:vikunja_app/presentation/manager/widget_controller.dart';
 
 class NotificationHandler {
   FlutterLocalNotificationsPlugin get notificationsPlugin =>
@@ -64,7 +61,7 @@ class NotificationHandler {
       initializationSettings,
       onDidReceiveNotificationResponse: onDidReceiveNotificationResponse,
     );
-    print("Notifications initialised successfully");
+    developer.log("Notifications initialised successfully");
   }
 
   void onDidReceiveNotificationResponse(NotificationResponse resp) async {
@@ -96,7 +93,7 @@ class NotificationHandler {
       return;
     }
 
-    print("scheduled notification for time $time");
+    developer.log("scheduled notification for time $time");
 
     await notifsPlugin.zonedSchedule(
       id,
@@ -125,59 +122,42 @@ class NotificationHandler {
         ?.requestPermissions(alert: true, badge: true, sound: true);
   }
 
-  Future<void> scheduleDueNotifications(
-    TaskRepository taskService, {
-    List<Task>? tasks,
-  }) async {
-    tasks ??= await taskService.getByFilterString(
+  Future<void> scheduleDueNotifications(TaskRepository taskService) async {
+    var taskResponse = await taskService.getByFilterString(
       "done=false && (due_date > now || reminders > now)",
       {
         "filter_include_nulls": ["false"],
       },
     );
-    if (tasks == null) {
-      print("did not receive tasks on notification update");
-      return;
-    }
-    await notificationsPlugin.cancelAll();
-    for (final task in tasks) {
-      if (task.done) continue;
-      for (final reminder in task.reminderDates) {
-        scheduleNotification(
-          "Reminder",
-          "This is your reminder for '${task.title}'",
-          notificationsPlugin,
-          reminder.reminder,
-          await FlutterTimezone.getLocalTimezone(),
-          platformChannelSpecificsReminders,
-          id: (reminder.reminder.millisecondsSinceEpoch / 1000).floor(),
-        );
-      }
-      if (task.hasDueDate) {
-        scheduleNotification(
-          "Due Reminder",
-          "The task '${task.title}' is due.",
-          notificationsPlugin,
-          task.dueDate!,
-          await FlutterTimezone.getLocalTimezone(),
-          platformChannelSpecificsDueDate,
-          id: task.id,
-        );
-      }
-    }
-    print("notifications scheduled successfully");
 
-    //TODO: this should be handled separately
-    try {
-      // I need to provide all tasks for today for the widget, not just tasks that are due > now
-      var widgetTasks = await taskService.getByFilterString(
-        "due_date > 0001-01-01 00:00 && done = false",
-      );
-      if (widgetTasks != null) {
-        updateWidgetTasks(widgetTasks);
+    if (taskResponse.isSuccessful) {
+      await notificationsPlugin.cancelAll();
+      for (final task in taskResponse.toSuccess().body) {
+        if (task.done) continue;
+        for (final reminder in task.reminderDates) {
+          scheduleNotification(
+            "Reminder",
+            "This is your reminder for '${task.title}'",
+            notificationsPlugin,
+            reminder.reminder,
+            await FlutterTimezone.getLocalTimezone(),
+            platformChannelSpecificsReminders,
+            id: (reminder.reminder.millisecondsSinceEpoch / 1000).floor(),
+          );
+        }
+        if (task.hasDueDate) {
+          scheduleNotification(
+            "Due Reminder",
+            "The task '${task.title}' is due.",
+            notificationsPlugin,
+            task.dueDate!,
+            await FlutterTimezone.getLocalTimezone(),
+            platformChannelSpecificsDueDate,
+            id: task.id,
+          );
+        }
       }
-    } catch (e) {
-      print(e);
+      developer.log("notifications scheduled successfully");
     }
   }
 }

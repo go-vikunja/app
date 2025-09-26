@@ -1,3 +1,5 @@
+import 'package:vikunja_app/core/network/response.dart';
+import 'package:vikunja_app/core/utils/mapping_extensions.dart';
 import 'package:vikunja_app/data/data_sources/task_label_bulk_data_source.dart';
 import 'package:vikunja_app/data/models/label_dto.dart';
 import 'package:vikunja_app/data/models/task_dto.dart';
@@ -11,11 +13,12 @@ class TaskLabelBulkRepositoryImpl extends TaskLabelBulkRepository {
   TaskLabelBulkRepositoryImpl(this._dataSource);
 
   @override
-  Future<List<Label>?> update(Task task, List<Label>? labels) async {
-    var labelsDto = labels?.map((e) => LabelDto.fromDomain(e)).toList();
+  Future<Response<List<Label>>> update(Task task, List<Label> labels) async {
+    var labelsDto = labels.map((e) => LabelDto.fromDomain(e)).toList();
+
     return (await _dataSource.update(
       TaskDto.fromDomain(task),
       labelsDto,
-    ))?.map((e) => e.toDomain()).toList();
+    )).toDomain();
   }
 }

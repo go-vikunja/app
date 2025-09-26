@@ -11,6 +11,7 @@ import 'package:vikunja_app/core/utils/priority.dart';
 import 'package:vikunja_app/core/utils/repeat_after_parse.dart';
 import 'package:vikunja_app/domain/entities/label.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
+import 'package:vikunja_app/domain/entities/task_reminder.dart';
 import 'package:vikunja_app/presentation/manager/task_page_controller.dart';
 import 'package:vikunja_app/presentation/pages/task/edit_description.dart';
 import 'package:vikunja_app/presentation/widgets/date_time_field.dart';
@@ -25,10 +26,10 @@ class TaskEditPage extends ConsumerStatefulWidget {
   TaskEditPage({required this.task}) : super(key: Key(task.toString()));
 
   @override
-  _TaskEditPageState createState() => _TaskEditPageState();
+  TaskEditPageState createState() => TaskEditPageState();
 }
 
-class _TaskEditPageState extends ConsumerState<TaskEditPage> {
+class TaskEditPageState extends ConsumerState<TaskEditPage> {
   final _formKey = GlobalKey<FormState>();
 
   String? _title, _description;
@@ -98,11 +99,18 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
               builder: (BuildContext context) {
                 return TaskDeleteDialog(
                   widget.task.id,
-                  onConfirm: () {
-                    ref
+                  onConfirm: () async {
+                    var success = await ref
                         .read(taskPageControllerProvider.notifier)
                         .deleteTask(widget.task.id);
-                    Navigator.of(context).pop();
+
+                    if (success) {
+                      Navigator.of(context).pop();
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error deleting the task!')),
+                      );
+                    }
                   },
                   onCancel: () {
                     Navigator.of(context).pop();
@@ -156,7 +164,7 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
           _title = title;
           _checkChanged();
         },
-        decoration: new InputDecoration(
+        decoration: InputDecoration(
           labelText: 'Title',
           border: OutlineInputBorder(),
         ),
@@ -259,7 +267,7 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
                 _repeatAfter = getDurationFromType(newValue, _repeatAfterType);
                 _checkChanged();
               },
-              decoration: new InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Repeat after',
                 border: InputBorder.none,
                 icon: Icon(Icons.repeat),
@@ -352,7 +360,7 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
       items: ['Unset', 'Low', 'Medium', 'High', 'Urgent', 'DO NOW'].map((
         String value,
       ) {
-        return new DropdownMenuItem(value: value, child: new Text(value));
+        return DropdownMenuItem(value: value, child: Text(value));
       }).toList(),
     );
   }
@@ -366,7 +374,7 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
             padding: const EdgeInsets.only(right: 15, left: 2),
             child: Icon(Icons.label, color: Colors.grey),
           ),
-          Container(
+          SizedBox(
             width:
                 MediaQuery.of(context).size.width -
                 80 -
@@ -386,7 +394,7 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
                 );
               },
               itemBuilder: (context, suggestion) {
-                return new ListTile(title: Text(suggestion.toString()));
+                return ListTile(title: Text(suggestion.toString()));
               },
               onSelected: (suggestion) {
                 _addLabel(suggestion.toString());
@@ -412,6 +420,14 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
             child: Icon(Icons.palette, color: Colors.grey),
           ),
           ElevatedButton(
+            style: (_color == null || _color == Colors.black)
+                ? null
+                : ButtonStyle(
+                    backgroundColor: WidgetStateProperty.resolveWith(
+                      (_) => _color,
+                    ),
+                  ),
+            onPressed: _onColorEdit,
             child: Text(
               'Set Color',
               style: (_color == null || _color == Colors.black)
@@ -422,14 +438,6 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
                           : Colors.white,
                     ),
             ),
-            style: (_color == null || _color == Colors.black)
-                ? null
-                : ButtonStyle(
-                    backgroundColor: WidgetStateProperty.resolveWith(
-                      (_) => _color,
-                    ),
-                  ),
-            onPressed: _onColorEdit,
           ),
           Padding(
             padding: const EdgeInsets.only(left: 15),
@@ -495,18 +503,24 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
   }
 
   Future<List<String>> _searchLabel(String query) async {
-    var labels = await ref.read(labelRepositoryProvider).getAll(query: query);
+    var labelsResponse = await ref
+        .read(labelRepositoryProvider)
+        .getAll(query: query);
 
-    if (labels == null) return [];
-    labels.removeWhere(
-      (labelToRemove) => _labels?.contains(labelToRemove) == true,
-    );
-    _suggestedLabels = labels;
+    if (labelsResponse.isSuccessful) {
+      var labels = labelsResponse.toSuccess().body;
 
-    return labels.map((e) => e.title).toList();
+      labels.removeWhere(
+        (labelToRemove) => _labels?.contains(labelToRemove) == true,
+      );
+      _suggestedLabels = labels;
+
+      return labels.map((e) => e.title).toList();
+    }
+    return [];
   }
 
-  _addLabel(String labelTitle) {
+  void _addLabel(String labelTitle) {
     var label = _suggestedLabels?.firstWhereOrNull(
       (e) => e.title == labelTitle,
     );
@@ -521,7 +535,7 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
     _checkChanged();
   }
 
-  _removeLabel(Label label) {
+  void _removeLabel(Label label) {
     setState(() {
       _labels?.removeWhere((l) => l.id == label.id);
     });
@@ -529,7 +543,11 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
 
   void _createAndAddLabel(String labelTitle) async {
     // Only add a label if there are none to add
-    if (labelTitle.isEmpty || _suggestedLabels?.contains(labelTitle) == true) {
+    if (labelTitle.isEmpty ||
+        _suggestedLabels?.firstWhereOrNull(
+              (label) => label.title == labelTitle,
+            ) !=
+            null) {
       return;
     }
 
@@ -539,11 +557,12 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
       final newLabel = Label(title: labelTitle, createdBy: currentUser);
 
       ref.read(labelRepositoryProvider).create(newLabel).then((createdLabel) {
-        if (createdLabel == null) return;
-        setState(() {
-          _labels?.add(createdLabel);
-          _labelTypeAheadController.clear();
-        });
+        if (createdLabel.isSuccessful) {
+          setState(() {
+            _labels?.add(createdLabel.toSuccess().body);
+            _labelTypeAheadController.clear();
+          });
+        }
       });
 
       _checkChanged();
@@ -585,12 +604,12 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
     }
   }
 
-  _onColorEdit() {
-    var _pickerColor = _color == null ? Colors.black : _color;
+  void _onColorEdit() {
+    var pickerColor = _color ?? Colors.black;
     showDialog(
       context: context,
       builder: (context) => ColorPickerDialog(
-        _pickerColor,
+        pickerColor,
         (color) {
           if (color != Colors.black) {
             setState(() {
@@ -646,7 +665,7 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
     });
   }
 
-  _saveTask(BuildContext context) async {
+  Future<void> _saveTask(BuildContext context) async {
     // Removes all reminders with no value set.
     _reminderDates?.removeWhere((d) => d.reminder == DateTime(0));
 
@@ -666,21 +685,32 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
           ..repeatAfter = _repeatAfter;
 
     // update the labels
-    try {
-      await ref
+    if (_labels != null) {
+      var updateLabelSuccess = await ref
           .read(taskLabelBulkRepositoryProvider)
-          .update(updatedTask, _labels);
-    } catch (err) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Something went wrong: ' + err.toString())),
-      );
+          .update(updatedTask, _labels!);
+
+      if (!updateLabelSuccess.isSuccessful) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error saving the task!')));
+        return;
+      }
     }
 
-    await ref.read(taskPageControllerProvider.notifier).updateTask(updatedTask);
-    Navigator.of(context).pop(updatedTask);
+    var saveSuccess = await ref
+        .read(taskPageControllerProvider.notifier)
+        .updateTask(updatedTask);
+    if (saveSuccess) {
+      Navigator.of(context).pop(updatedTask);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('The task was updated successfully!')),
-    );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('The task was updated successfully!')),
+      );
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error saving the task!')));
+    }
   }
 }

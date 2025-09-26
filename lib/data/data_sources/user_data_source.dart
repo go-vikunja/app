@@ -1,12 +1,13 @@
 import 'dart:async';
 
-import 'package:vikunja_app/core/network/service.dart';
+import 'package:vikunja_app/core/network/remote_data_source.dart';
+import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/data/models/user_dto.dart';
 
 class UserDataSource extends RemoteDataSource {
   UserDataSource(super.client);
 
-  Future<UserTokenPairDto> login(
+  Future<Response<UserTokenDto>> login(
     String username,
     password, {
     bool rememberMe = false,
@@ -20,49 +21,73 @@ class UserDataSource extends RemoteDataSource {
     if (totp != null) {
       body['totp_passcode'] = totp;
     }
-    var response = await client.post('/login', body: body);
-    var token = response?.body["token"];
-    if (token == null || response == null || response.error != null) {
-      return Future.value(
-        UserTokenPairDto(
-          "",
-          error: response != null ? response.body["code"] : 0,
-          errorString: response != null
-              ? response.body["message"]
-              : "Login error",
-        ),
+
+    return client.post(
+      url: '/login',
+      mapper: (body) {
+        var token = body["token"];
+        return UserTokenDto(token);
+      },
+      body: body,
+    );
+  }
+
+  Future<Response<UserTokenDto>> register(
+    String username,
+    email,
+    password,
+  ) async {
+    var registerResponse = await client.post(
+      url: '/register',
+      body: {'username': username, 'email': email, 'password': password},
+      mapper: (body) {
+        return body['username'];
+      },
+    );
+
+    if (registerResponse.isSuccessful) {
+      return login(username, password);
+    } else if (registerResponse.isError) {
+      return ErrorResponse(
+        registerResponse.toError().statusCode,
+        registerResponse.toError().headers,
+        registerResponse.toError().error,
+      );
+    } else {
+      return ExceptionResponse(
+        registerResponse.toException().message,
+        registerResponse.toException().stackTrace,
       );
     }
-
-    return UserTokenPairDto(token);
   }
 
-  Future<UserTokenPairDto?> register(String username, email, password) async {
-    var newUser = await client
-        .post(
-          '/register',
-          body: {'username': username, 'email': email, 'password': password},
-        )
-        .then((resp) => resp?.body['username']);
-    return login(newUser, password);
+  Future<Response<UserDto>> getCurrentUser() {
+    return client.get(
+      url: '/user',
+      mapper: (body) {
+        return UserDto.fromJson(body);
+      },
+    );
   }
 
-  Future<UserDto> getCurrentUser() {
-    return client.get('/user').then((map) => UserDto.fromJson(map?.body));
-  }
-
-  Future<UserSettingsDto?> setCurrentUserSettings(
+  Future<Response<UserSettingsDto>> setCurrentUserSettings(
     UserSettingsDto userSettings,
   ) async {
-    return client
-        .post('/user/settings/general', body: userSettings.toJson())
-        .then((response) {
-          if (response == null) return null;
-          return userSettings;
-        });
+    return client.post(
+      url: '/user/settings/general',
+      mapper: (body) {
+        return userSettings;
+      },
+      body: userSettings.toJson(),
+    );
   }
 
-  Future<String?> getToken() {
-    return client.post('/user/token').then((value) => value?.body["token"]);
+  Future<Response<String>> getToken() {
+    return client.post(
+      url: '/user/token',
+      mapper: (body) {
+        return body["token"];
+      },
+    );
   }
 }

@@ -1,37 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:vikunja_app/data/models/dto.dart';
 import 'package:vikunja_app/data/models/label_dto.dart';
 import 'package:vikunja_app/data/models/task_attachment_dto.dart';
+import 'package:vikunja_app/data/models/task_reminder_dto.dart';
 import 'package:vikunja_app/data/models/user_dto.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 
-class TaskReminderDto {
-  final int relative_period;
-  final String relative_to;
-  DateTime reminder;
-
-  TaskReminderDto(this.reminder, [relative_period = 0, relative_to = ""])
-    : relative_period = relative_period,
-      relative_to = relative_to;
-
-  TaskReminderDto.fromJson(Map<String, dynamic> json)
-    : reminder = DateTime.parse(json['reminder']),
-      relative_period = json['relative_period'],
-      relative_to = json['relative_to'];
-
-  toJSON() => {
-    'relative_period': relative_period,
-    'relative_to': relative_to,
-    'reminder': reminder.toUtc().toIso8601String(),
-  };
-
-  TaskReminder toDomain() =>
-      TaskReminder(reminder, relative_period, relative_to);
-
-  static TaskReminderDto fromDomain(TaskReminder b) =>
-      TaskReminderDto(b.reminder, b.relative_period, b.relative_to);
-}
-
-class TaskDto {
+class TaskDto extends Dto<Task> {
   final int id;
   final int? parentTaskId, priority, bucketId;
   final int? projectId;
@@ -43,7 +18,7 @@ class TaskDto {
   final bool done;
   Color? color;
   final double? position;
-  final double? percent_done;
+  final double? percentDone;
   final UserDto createdBy;
   Duration? repeatAfter;
   final List<TaskDto> subtasks;
@@ -65,7 +40,7 @@ class TaskDto {
     this.repeatAfter,
     this.color,
     this.position,
-    this.percent_done,
+    this.percentDone,
     this.subtasks = const [],
     this.labels = const [],
     this.attachments = const [],
@@ -74,8 +49,8 @@ class TaskDto {
     required this.createdBy,
     required this.projectId,
     this.bucketId,
-  }) : this.created = created ?? DateTime.now(),
-       this.updated = updated ?? DateTime.now();
+  }) : created = created ?? DateTime.now(),
+       updated = updated ?? DateTime.now();
 
   TaskDto.fromJson(Map<String, dynamic> json)
     : id = json['id'],
@@ -100,7 +75,7 @@ class TaskDto {
       position = json['position'] is int
           ? json['position'].toDouble()
           : json['position'],
-      percent_done = json['percent_done'] is int
+      percentDone = json['percent_done'] is int
           ? json['percent_done'].toDouble()
           : json['percent_done'],
       labels = json['labels'] != null
@@ -124,7 +99,7 @@ class TaskDto {
       bucketId = json['bucket_id'],
       createdBy = UserDto.fromJson(json['created_by']);
 
-  toJSON() => {
+  Map<String, Object?> toJSON() => {
     'id': id,
     'title': title,
     'description': description,
@@ -142,7 +117,7 @@ class TaskDto {
         .padLeft(8, '0')
         .substring(2),
     'position': position,
-    'percent_done': percent_done,
+    'percent_done': percentDone,
     'project_id': projectId,
     'labels': labels.map((label) => label.toJSON()).toList(),
     'subtasks': subtasks.map((subtask) => subtask.toJSON()).toList(),
@@ -155,6 +130,7 @@ class TaskDto {
     'created': created.toUtc().toIso8601String(),
   };
 
+  @override
   Task toDomain() => Task(
     id: id,
     title: title,
@@ -170,7 +146,7 @@ class TaskDto {
     repeatAfter: repeatAfter,
     color: color,
     position: position,
-    percent_done: percent_done,
+    percentDone: percentDone,
     labels: labels.map((e) => e.toDomain()).toList(),
     subtasks: subtasks.map((e) => e.toDomain()).toList(),
     attachments: attachments.map((e) => e.toDomain()).toList(),
@@ -198,7 +174,7 @@ class TaskDto {
     repeatAfter: b.repeatAfter,
     color: b.color,
     position: b.position,
-    percent_done: b.percent_done,
+    percentDone: b.percentDone,
     labels: b.labels.map((e) => LabelDto.fromDomain(e)).toList(),
     subtasks: b.subtasks.map((e) => TaskDto.fromDomain(e)).toList(),
     attachments: b.attachments

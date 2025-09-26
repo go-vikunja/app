@@ -188,31 +188,19 @@ class _BucketColumnState extends ConsumerState<BucketColumn> {
       widget.bucket,
       widget.isDoneColumn,
       widget.isDefaultColumn,
-      (action) async {
+      (action) {
         switch (action) {
           case HeaderAction.changeTitle:
-            await _showChangeTitleDialog(context);
+            _showChangeTitleDialog(context);
             break;
           case HeaderAction.setLimit:
-            await _showSetLimitDialog(context);
+            _showSetLimitDialog(context);
             break;
           case HeaderAction.doneColumn:
-            ref
-                .read(projectControllerProvider(widget.project).notifier)
-                .updateDoneBucket(
-                  widget.project,
-                  widget.bucket.id,
-                  widget.isDoneColumn,
-                );
+            _selectDoneColumn(context);
             break;
           case HeaderAction.defaultColumn:
-            ref
-                .read(projectControllerProvider(widget.project).notifier)
-                .selectDefaultBucket(
-                  widget.project,
-                  widget.bucket.id,
-                  widget.isDefaultColumn,
-                );
+            _selectDefaultColumn(context);
             break;
           case HeaderAction.collapseColumn:
             setState(() {
@@ -230,6 +218,38 @@ class _BucketColumnState extends ConsumerState<BucketColumn> {
     );
   }
 
+  Future<void> _selectDefaultColumn(BuildContext context) async {
+    var success = await ref
+        .read(projectControllerProvider(widget.project).notifier)
+        .selectDefaultBucket(
+          widget.project,
+          widget.bucket.id,
+          widget.isDefaultColumn,
+        );
+
+    if (!success && context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error updating the bucket!')));
+    }
+  }
+
+  Future<void> _selectDoneColumn(BuildContext context) async {
+    var success = await ref
+        .read(projectControllerProvider(widget.project).notifier)
+        .updateDoneBucket(
+          widget.project,
+          widget.bucket.id,
+          widget.isDoneColumn,
+        );
+
+    if (!success && context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error updating the bucket!')));
+    }
+  }
+
   Future<void> _showChangeTitleDialog(BuildContext context) async {
     var result = await showDialog<String?>(
       context: context,
@@ -240,9 +260,15 @@ class _BucketColumnState extends ConsumerState<BucketColumn> {
 
     if (result != null) {
       widget.bucket.title = result;
-      ref
+      var success = await ref
           .read(projectControllerProvider(widget.project).notifier)
           .updateBucket(bucket: widget.bucket, project: widget.project);
+
+      if (!success && context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error updating the bucket!')));
+      }
     }
   }
 
@@ -256,9 +282,15 @@ class _BucketColumnState extends ConsumerState<BucketColumn> {
 
     if (result != null) {
       widget.bucket.limit = result;
-      ref
+      var success = await ref
           .read(projectControllerProvider(widget.project).notifier)
           .updateBucket(bucket: widget.bucket, project: widget.project);
+
+      if (!success && context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error updating the bucket!')));
+      }
     }
   }
 
@@ -267,11 +299,18 @@ class _BucketColumnState extends ConsumerState<BucketColumn> {
       context: context,
       builder: (BuildContext context) {
         return TaskDeleteDialog(
-          onConfirm: () {
-            ref
+          onConfirm: () async {
+            var success = await ref
                 .read(projectControllerProvider(widget.project).notifier)
                 .deleteBucket(bucket: widget.bucket, project: widget.project);
-            Navigator.of(context).pop();
+
+            if (success && context.mounted) {
+              Navigator.of(context).pop();
+            } else if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Error deleting the bucket!')),
+              );
+            }
           },
           onCancel: () {
             Navigator.of(context).pop();
@@ -304,14 +343,18 @@ class _BucketColumnState extends ConsumerState<BucketColumn> {
       projectId: widget.project.id,
     );
 
-    await ref
+    var success = await ref
         .read(projectControllerProvider(widget.project).notifier)
         .addTask(widget.project, newTask);
 
-    if (context.mounted) {
+    if (context.mounted && success) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('The task was added successfully!')),
       );
+    } else if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error adding the task!')));
     }
   }
 }

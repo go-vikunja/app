@@ -1,10 +1,11 @@
 import 'dart:ui';
 
+import 'package:vikunja_app/data/models/dto.dart';
 import 'package:vikunja_app/data/models/user_dto.dart';
 import 'package:vikunja_app/data/models/project_view_dto.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 
-class ProjectDto {
+class ProjectDto extends Dto<Project> {
   final int id;
   final double position;
   final UserDto? owner;
@@ -30,8 +31,8 @@ class ProjectDto {
     required this.title,
     created,
     updated,
-  }) : this.created = created ?? DateTime.now(),
-       this.updated = updated ?? DateTime.now();
+  }) : created = created ?? DateTime.now(),
+       updated = updated ?? DateTime.now();
 
   ProjectDto.fromJson(Map<String, dynamic> json)
     : title = json['title'],
@@ -69,6 +70,7 @@ class ProjectDto {
     'position': position,
   };
 
+  @override
   Project toDomain() => Project(
     id: id,
     position: position,
@@ -98,33 +100,4 @@ class ProjectDto {
     isFavourite: p.isFavourite,
     views: p.views.map((e) => ProjectViewDto.fromDomain(e)).toList(),
   );
-
-  ProjectDto copyWith({
-    int? id,
-    DateTime? created,
-    DateTime? updated,
-    String? title,
-    UserDto? owner,
-    String? description,
-    int? parentProjectId,
-    Color? color,
-    bool? isArchived,
-    bool? isFavourite,
-    int? doneBucketId,
-    double? position,
-  }) {
-    return ProjectDto(
-      id: id ?? this.id,
-      created: created ?? this.created,
-      updated: updated ?? this.updated,
-      title: title ?? this.title,
-      owner: owner ?? this.owner,
-      description: description ?? this.description,
-      parentProjectId: parentProjectId ?? this.parentProjectId,
-      color: color ?? this.color,
-      isArchived: isArchived ?? this.isArchived,
-      isFavourite: isFavourite ?? this.isFavourite,
-      position: position ?? this.position,
-    );
-  }
 }

@@ -7,6 +7,8 @@ import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/entities/view_kind.dart';
 import 'package:vikunja_app/presentation/manager/project_controller.dart';
+import 'package:vikunja_app/presentation/pages/error_widget.dart';
+import 'package:vikunja_app/presentation/pages/loading_widget.dart';
 import 'package:vikunja_app/presentation/pages/project/project_edit.dart';
 import 'package:vikunja_app/presentation/widgets/project/kanban/kanban_widget.dart';
 import 'package:vikunja_app/presentation/widgets/project/project_task_list.dart';
@@ -46,8 +48,8 @@ class ProjectPageState extends ConsumerState<ProjectDetailPage> {
           bottomNavigationBar: _buildBottomNavigation(data.project),
         );
       },
-      error: (err, _) => Center(child: Text('Error: $err')),
-      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (err, _) => VikunjaErrorWidget(error: err),
+      loading: () => const LoadingWidget(),
     );
   }
 
@@ -152,13 +154,19 @@ class ProjectPageState extends ConsumerState<ProjectDetailPage> {
       projectId: project.id,
     );
 
-    await ref
+    var success = await ref
         .read(projectControllerProvider(widget.project).notifier)
         .addTask(project, task);
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('The task was added successfully!')));
+    if (context.mounted && success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('The task was added successfully!')),
+      );
+    } else if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error adding the task!')));
+    }
   }
 
   void _onViewTapped(int index) {

@@ -25,26 +25,35 @@ class InitPage extends ConsumerWidget {
     if (server != null && token != null) {
       ref.read(authDataProvider.notifier).set(AuthModel(server, token));
 
-      try {
-        var user = await ref.read(userRepositoryProvider).getCurrentUser();
-        ref.read(currentUserProvider.notifier).set(user);
-        globalNavigatorKey.currentState?.pushNamed("/home");
-      } catch (e) {
-        globalNavigatorKey.currentState?.pushNamed("/login");
-      }
+      var userResponse = await ref
+          .read(userRepositoryProvider)
+          .getCurrentUser();
+      if (userResponse.isSuccessful) {
+        ref
+            .read(currentUserProvider.notifier)
+            .set(userResponse.toSuccess().body);
 
-      //TODO display this message on 401 when error handling complete
-      // if (VikunjaGlobal.of(context).expired) {
-      //   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      //       content: Text("Login has expired. Please reenter your details!")));
-      //   setState(() {
-      //     _serverController.text = VikunjaGlobal.of(context).client.base;
-      //     _usernameController.text =
-      //         VikunjaGlobal.of(context).currentUser?.username ?? "";
-      //   });
-      // }
+        globalNavigatorKey.currentState?.pushReplacementNamed("/home");
+      } else {
+        if (userResponse.toError().statusCode == 401) {
+          ref.read(settingsRepositoryProvider).saveUserToken(null);
+
+          ScaffoldMessenger.of(ref.context).showSnackBar(
+            SnackBar(
+              content: Text("Login has expired. Please reenter your details!"),
+            ),
+          );
+
+          globalNavigatorKey.currentState?.pushReplacementNamed("/login");
+        } else {
+          ScaffoldMessenger.of(
+            ref.context,
+          ).showSnackBar(SnackBar(content: Text("Unknown error occurred.")));
+          globalNavigatorKey.currentState?.pushReplacementNamed("/login");
+        }
+      }
     } else {
-      globalNavigatorKey.currentState?.pushNamed("/login");
+      globalNavigatorKey.currentState?.pushReplacementNamed("/login");
     }
   }
 }

@@ -1,42 +1,45 @@
-import 'package:vikunja_app/core/network/service.dart';
+import 'package:vikunja_app/core/network/remote_data_source.dart';
+import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/data/models/project_dto.dart';
 
 class ProjectDataSource extends RemoteDataSource {
   ProjectDataSource(super.client);
 
-  Future<ProjectDto?> create(ProjectDto p) {
-    return client.put('/projects', body: p.toJSON()).then((response) {
-      if (response == null) return null;
-      return ProjectDto.fromJson(response.body);
-    });
+  Future<Response<ProjectDto>> create(ProjectDto p) {
+    return client.put(
+      url: '/projects',
+      body: p.toJSON(),
+      mapper: (body) {
+        return ProjectDto.fromJson(body);
+      },
+    );
   }
 
-  Future delete(int projectId) {
-    return client.delete('/projects/$projectId').then((_) {});
+  Future<Response<ProjectDto>> get(int projectId) {
+    return client.get(
+      url: '/projects/$projectId',
+      mapper: (body) {
+        return ProjectDto.fromJson(body);
+      },
+    );
   }
 
-  Future<ProjectDto?> get(int projectId) {
-    return client.get('/projects/$projectId').then((response) {
-      if (response == null) return null;
-      final map = response.body;
-      return ProjectDto.fromJson(map);
-    });
+  Future<Response<List<ProjectDto>>> getAll() {
+    return client.get(
+      url: '/projects',
+      mapper: (body) {
+        return convertList(body, (result) => ProjectDto.fromJson(result));
+      },
+    );
   }
 
-  Future<List<ProjectDto>> getAll() {
-    return client.get('/projects').then((response) {
-      if (response == null) return [];
-      return convertList(
-        response.body,
-        (result) => ProjectDto.fromJson(result),
-      );
-    });
-  }
-
-  Future<ProjectDto?> update(ProjectDto p) {
-    return client.post('/projects/${p.id}', body: p.toJSON()).then((response) {
-      if (response == null) return null;
-      return ProjectDto.fromJson(response.body);
-    });
+  Future<Response<ProjectDto>> update(ProjectDto p) {
+    return client.post(
+      url: '/projects/${p.id}',
+      body: p.toJSON(),
+      mapper: (body) {
+        return ProjectDto.fromJson(body);
+      },
+    );
   }
 }

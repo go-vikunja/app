@@ -8,6 +8,7 @@ import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/core/network/client.dart';
+import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/core/utils/constants.dart';
 import 'package:vikunja_app/core/utils/validator.dart';
 import 'package:vikunja_app/domain/entities/auth_model.dart';
@@ -153,7 +154,7 @@ class LoginPageState extends ConsumerState<LoginPage> {
                       .read(settingsRepositoryProvider)
                       .setIgnoreCertificates(value ?? false);
                   setState(() {
-                    client.reloadIgnoreCerts(value ?? false);
+                    client.setIgnoreCerts(value ?? false);
                   });
                 },
               ),
@@ -269,15 +270,13 @@ class LoginPageState extends ConsumerState<LoginPage> {
     );
   }
 
-  Future<UserToken> _showOtpDialog(
+  Future<Response<UserToken>?> _showOtpDialog(
     BuildContext context,
-    UserToken newUser,
     String username,
     String password,
   ) async {
     TextEditingController totpController = TextEditingController();
-    bool dismissed = true;
-    await showDialog(
+    return showDialog<Response<UserToken>>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text("Enter One Time Passcode"),
@@ -291,27 +290,23 @@ class LoginPageState extends ConsumerState<LoginPage> {
         actions: [
           TextButton(
             onPressed: () {
-              dismissed = false;
-              Navigator.pop(context);
+              Navigator.pop(
+                context,
+                ref
+                    .read(userRepositoryProvider)
+                    .login(
+                      username,
+                      password,
+                      rememberMe: _rememberMe,
+                      totp: totpController.text,
+                    ),
+              );
             },
             child: Text("Login"),
           ),
         ],
       ),
     );
-    if (!dismissed) {
-      newUser = await ref
-          .read(userRepositoryProvider)
-          .login(
-            username,
-            password,
-            rememberMe: _rememberMe,
-            totp: totpController.text,
-          );
-    } else {
-      throw Exception();
-    }
-    return newUser;
   }
 
   Future<void> _loginUserByClientToken(BaseTokenPair baseTokenPair) async {
@@ -327,7 +322,13 @@ class LoginPageState extends ConsumerState<LoginPage> {
 
     try {
       var currentUser = await ref.read(userRepositoryProvider).getCurrentUser();
-      ref.read(currentUserProvider.notifier).set(currentUser);
+      if (currentUser.isSuccessful) {
+        ref
+            .read(currentUserProvider.notifier)
+            .set(currentUser.toSuccess().body);
+      } else {
+        _showGenericError(context);
+      }
 
       globalNavigatorKey.currentState?.pushNamed("/home");
     } catch (e) {
@@ -351,16 +352,16 @@ class LoginPageState extends ConsumerState<LoginPage> {
     });
 
     try {
-      ref.read(clientProviderProvider).showSnackBar = false;
-
       ref.read(authDataProvider.notifier).set(AuthModel(server, ""));
       ref.read(settingsRepositoryProvider).saveServer(server);
 
-      Server? info = await ref.read(serverRepositoryProvider).getInfo();
-      if (info == null) {
-        throw Exception(
-          "Getting server info failed",
-        ); //TODO server not reachable?
+      Response<Server> info = await ref
+          .read(serverRepositoryProvider)
+          .getInfo();
+      if (!info.isSuccessful) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Cannot reach server")));
       }
 
       if (!pastServers.contains(server)) {
@@ -368,36 +369,66 @@ class LoginPageState extends ConsumerState<LoginPage> {
         ref.read(settingsRepositoryProvider).setPastServers(pastServers);
       }
 
-      UserToken newUser = await ref
+      Response<UserToken> response = await ref
           .read(userRepositoryProvider)
           .login(username, password, rememberMe: _rememberMe);
 
-      if (newUser.error == 1017) {
-        newUser = await _showOtpDialog(context, newUser, username, password);
-      } else if (newUser.error > 0) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(newUser.errorString)));
-      } else if (newUser.error == 0) {
-        ref
-            .read(authDataProvider.notifier)
-            .set(AuthModel(server, newUser.token));
-        await ref.read(settingsRepositoryProvider).saveUserToken(newUser.token);
+      if (response.isSuccessful) {
+        var success = response.toSuccess();
+        var userToken = success.body.token;
+        onUserToken(server, userToken, context);
+      } else if (response.isError) {
+        var error = response.toError();
+        if (error.error["code"] == 1017) {
+          var response = await _showOtpDialog(context, username, password);
 
-        var currentUser = await ref
-            .read(userRepositoryProvider)
-            .getCurrentUser();
-        ref.read(currentUserProvider.notifier).set(currentUser);
-
-        Navigator.pushNamed(context, "/home");
+          //Otherwise user cancelled
+          if (response != null) {
+            if (response.isSuccessful) {
+              var success = response.toSuccess();
+              var userToken = success.body.token;
+              onUserToken(server, userToken, context);
+            } else {
+              _showGenericError(context);
+            }
+          }
+        } else if (error.error["code"] > 0) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(error.error["message"])));
+        }
       }
     } catch (ex) {
-      print(ex);
+      _showGenericError(context);
     } finally {
-      ref.read(clientProviderProvider).showSnackBar = true;
       setState(() {
         _loading = false;
       });
+    }
+  }
+
+  void _showGenericError(BuildContext context) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text("Something went wrong")));
+  }
+
+  Future<void> onUserToken(
+    String server,
+    String userToken,
+    BuildContext context,
+  ) async {
+    ref.read(authDataProvider.notifier).set(AuthModel(server, userToken));
+    await ref.read(settingsRepositoryProvider).saveUserToken(userToken);
+
+    var currentUser = await ref.read(userRepositoryProvider).getCurrentUser();
+
+    if (currentUser.isSuccessful) {
+      ref.read(currentUserProvider.notifier).set(currentUser.toSuccess().body);
+
+      Navigator.pushReplacementNamed(context, "/home");
+    } else {
+      _showGenericError(context);
     }
   }
 }

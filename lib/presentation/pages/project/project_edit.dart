@@ -53,7 +53,7 @@ class ProjectEditPageState extends ConsumerState<ProjectEditPage> {
                       return "Title can't be null";
                     }
 
-                    if (title.length < 1 || title.length > 250) {
+                    if (title.isEmpty || title.length > 250) {
                       return 'The title needs to have between 1 and 250 characters.';
                     }
 
@@ -132,19 +132,26 @@ class ProjectEditPageState extends ConsumerState<ProjectEditPage> {
       project.title = title!;
       project.description = description!;
 
-      await ref
+      var success = await ref
           .read(projectControllerProvider(project).notifier)
           .updateProject(project);
 
-      ref
-          .read(projectControllerProvider(project).notifier)
-          .setDisplayDoneTasks(displayDoneTask!);
+      var context = ref.context;
+      if (success && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('The project was updated successfully!')),
+        );
 
-      ScaffoldMessenger.of(ref.context).showSnackBar(
-        SnackBar(content: Text('The project was updated successfully!')),
-      );
+        Navigator.of(context).pop();
 
-      Navigator.of(ref.context).pop();
+        await ref
+            .read(projectControllerProvider(project).notifier)
+            .setDisplayDoneTasks(displayDoneTask!);
+      } else if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error updating the project!')));
+      }
     }
   }
 }

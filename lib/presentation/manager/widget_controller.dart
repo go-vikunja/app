@@ -1,15 +1,16 @@
 import 'dart:convert';
+import 'dart:developer' as developer;
 
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:intl/intl.dart';
+import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:vikunja_app/core/network/client.dart';
+import 'package:vikunja_app/data/data_sources/settings_data_source.dart';
+import 'package:vikunja_app/data/data_sources/task_data_source.dart';
+import 'package:vikunja_app/data/repositories/task_repository_impl.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
-
-// I expect a list of tasks here, when I get it I get:
-// Filter tasks and get only the ones due today
-// Extract the time from the datetime
-// Take the title of the task
-// Update shared preferences using the home_widget package
-// First item needs to be the number of tasks that need to be saved
+import 'package:vikunja_app/domain/repositories/task_repository.dart';
 
 List<Task> filterForTodayTasks(List<Task> tasks) {
   var todayTasks = <Task>[];
@@ -22,6 +23,32 @@ List<Task> filterForTodayTasks(List<Task> tasks) {
     }
   }
   return todayTasks;
+}
+
+Future<void> updateWidget() async {
+  var datasource = SettingsDatasource(FlutterSecureStorage());
+  var token = await datasource.getUserToken();
+  var base = await datasource.getServer();
+
+  if (token != null && base != null) {
+    Client client = Client(token: token, base: base);
+    tz.initializeTimeZones();
+
+    var ignoreCertificates = await datasource.getIgnoreCertificates();
+    client.setIgnoreCerts(ignoreCertificates);
+
+    try {
+      TaskRepository taskService = TaskRepositoryImpl(TaskDataSource(client));
+      var widgetTasks = await taskService.getByFilterString(
+        "due_date > 0001-01-01 00:00 && done = false",
+      );
+      if (widgetTasks.isSuccessful) {
+        updateWidgetTasks(widgetTasks.toSuccess().body);
+      }
+    } catch (e, s) {
+      developer.log("Update widget error:", error: e, stackTrace: s);
+    }
+  }
 }
 
 void updateWidgetTasks(List<Task> tasklist) async {

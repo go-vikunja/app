@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:vikunja_app/core/di/repository_provider.dart';
+import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/presentation/manager/projects_controller.dart';
+import 'package:vikunja_app/presentation/pages/error_widget.dart';
+import 'package:vikunja_app/presentation/pages/loading_widget.dart';
 import 'package:vikunja_app/presentation/pages/project/expansion_title.dart';
 import 'package:vikunja_app/presentation/pages/project/project_detail_page.dart';
 import 'package:vikunja_app/presentation/widgets/project/add_project_dialog.dart';
@@ -42,8 +44,8 @@ class ProjectListPage extends ConsumerWidget {
           ),
         );
       },
-      error: (err, _) => Center(child: Text('Error: $err')),
-      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (err, _) => VikunjaErrorWidget(error: err),
+      loading: () => const LoadingWidget(),
     );
   }
 
@@ -77,7 +79,7 @@ class ProjectListPage extends ConsumerWidget {
   }
 
   Future<void> _addProject(String name, WidgetRef ref) async {
-    final currentUser = await ref.read(userRepositoryProvider).getCurrentUser();
+    final currentUser = ref.read(currentUserProvider);
 
     ref
         .read(projectsControllerProvider.notifier)

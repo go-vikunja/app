@@ -1,13 +1,10 @@
+import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 
 abstract class ProjectRepository {
-  Future<Project?> create(Project p);
+  Future<Response<Project>> create(Project p);
 
-  Future delete(int projectId);
+  Future<Response<List<Project>>> getAll();
 
-  Future<Project?> get(int projectId);
-
-  Future<List<Project>> getAll();
-
-  Future<Project?> update(Project p);
+  Future<Response<Project>> update(Project p);
 }
