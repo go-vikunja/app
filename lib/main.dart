@@ -47,8 +47,7 @@ void main() async {
     FlutterSecureStorage(),
   ).getSentryEnabled();
   if (sentryEnabled) {
-  await SentryFlutter.init(
-    (options) {
+    await SentryFlutter.init((options) {
       options.dsn =
           'https://a09618e3bb30e03b93233c21973df869@o1047380.ingest.us.sentry.io/4507995557134336';
       options.addIntegration(LoggingIntegration());
