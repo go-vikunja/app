@@ -17,7 +17,6 @@ dependencies:
   flutter_secure_storage: ^9.0.0
   datetime_picker_formfield_new: ^2.1.0
   flutter_typeahead: ^5.2.0
-  build: ^2.4.1
   provider: ^6.1.2
   webview_flutter: ^4.7.0
   flutter_colorpicker: ^1.1.0
@@ -25,7 +24,7 @@ dependencies:
   workmanager: ^0.9.0
   permission_handler: ^11.3.0
   dynamic_color: ^1.7.0
-  flutter_widget_from_html: ^0.15.2
+  flutter_widget_from_html: ^0.17.1
   flutter_downloader: ^1.11.6
   meta: ^1.11.0
   timezone: ^0.10.0
