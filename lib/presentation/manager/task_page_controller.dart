@@ -110,7 +110,7 @@ class TaskPageController extends _$TaskPageController {
       var value = state.value;
       if (value != null) {
         var tasks = value.tasks;
-        tasks.add(task);
+        tasks.add(response.toSuccess().body);
         state = AsyncData(value.copyWith(tasks: tasks));
       }
 
