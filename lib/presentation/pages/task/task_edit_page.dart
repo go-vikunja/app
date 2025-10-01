@@ -106,6 +106,7 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
 
                     if (success) {
                       Navigator.of(context).pop();
+                      Navigator.of(context).pop();
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text('Error deleting the task!')),
