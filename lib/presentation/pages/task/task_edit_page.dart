@@ -34,7 +34,7 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
 
   String? _title, _description;
   DateTime? _dueDate, _startDate, _endDate;
-  Duration? _repeatAfter;
+  int _repeatAfterValue = 0;
   String _repeatAfterType = "Days";
   int? _priority;
   List<TaskReminder>? _reminderDates;
@@ -59,6 +59,11 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
     _dueDate = widget.task.dueDate;
     _startDate = widget.task.startDate;
     _endDate = widget.task.endDate;
+
+    _repeatAfterValue =
+        getRepeatAfterValueFromDuration(widget.task.repeatAfter) ?? 0;
+    _repeatAfterType =
+        getRepeatAfterTypeFromDuration(widget.task.repeatAfter) ?? "Days";
 
     super.initState();
   }
@@ -265,7 +270,7 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
                 widget.task.repeatAfter,
               )?.toString(),
               onChanged: (newValue) {
-                _repeatAfter = getDurationFromType(newValue, _repeatAfterType);
+                _repeatAfterValue = int.tryParse(newValue) ?? 0;
                 _checkChanged();
               },
               decoration: InputDecoration(
@@ -285,8 +290,7 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
                 contentPadding: EdgeInsets.fromLTRB(0, 0, 0, 0),
               ),
               isExpanded: true,
-              initialValue:
-                  getRepeatAfterTypeFromDuration(_repeatAfter) ?? "Days",
+              initialValue: _repeatAfterType,
               onChanged: (String? newType) {
                 if (newType != null) {
                   _repeatAfterType = newType;
@@ -317,8 +321,8 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
               return VikunjaDateTimeField(
                 label: "Reminder",
                 initialValue: e.reminder,
-                onChanged: (date){
-                  if(date != null) {
+                onChanged: (date) {
+                  if (date != null) {
                     e.reminder = date;
                   } else {
                     _reminderDates?.remove(e);
@@ -659,13 +663,20 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
 
   void _checkChanged() {
     setState(() {
+      var repeatAfterValue =
+          getRepeatAfterValueFromDuration(widget.task.repeatAfter) ?? 0;
+      var repeatAfterType =
+          getRepeatAfterTypeFromDuration(widget.task.repeatAfter) ?? "Days";
+
+      var repeatAfter = getDurationFromType(repeatAfterValue, repeatAfterType);
+
       changed =
           widget.task.title != _title ||
           widget.task.description != _description ||
           widget.task.dueDate != _dueDate ||
           widget.task.startDate != _startDate ||
           widget.task.endDate != _endDate ||
-          widget.task.repeatAfter != _repeatAfter ||
+          widget.task.repeatAfter != repeatAfter ||
           widget.task.priority != _priority ||
           widget.task.reminderDates != _reminderDates ||
           widget.task.labels != _labels ||
@@ -684,13 +695,16 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
             reminderDates: _reminderDates,
             priority: _priority,
             labels: _labels,
-            repeatAfter: _repeatAfter,
+            repeatAfter: getDurationFromType(
+              _repeatAfterValue,
+              _repeatAfterType,
+            ),
           )
+          //Need to be here as they can be null
           ..dueDate = _dueDate
           ..startDate = _startDate
           ..endDate = _endDate
-          ..color = _color
-          ..repeatAfter = _repeatAfter;
+          ..color = _color;
 
     // update the labels
     if (_labels != null) {

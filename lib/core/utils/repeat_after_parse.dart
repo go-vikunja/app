@@ -43,15 +43,10 @@ int? getRepeatAfterValueFromDuration(Duration? repeatAfter) {
   return repeatAfter.inHours;
 }
 
-Duration? getDurationFromType(String? value, String? type) {
+Duration? getDurationFromType(int? val, String? type) {
   // Return an empty duration if either of the values is not set
-  if (value == null || value == '' || type == null || type == '') {
+  if (val == null || val == '' || type == null || type == '') {
     return Duration();
-  }
-
-  int? val = int.tryParse(value);
-  if (val == null) {
-    return null;
   }
 
   switch (type) {

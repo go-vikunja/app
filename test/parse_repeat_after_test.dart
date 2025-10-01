@@ -45,27 +45,27 @@ void main() {
   });
 
   test('Hours to duration', () {
-    Duration? parsedDuration = getDurationFromType('6', 'Hours');
+    Duration? parsedDuration = getDurationFromType(6, 'Hours');
     expect(parsedDuration, Duration(hours: 6));
   });
 
   test('Days to duration', () {
-    Duration? parsedDuration = getDurationFromType('6', 'Days');
+    Duration? parsedDuration = getDurationFromType(6, 'Days');
     expect(parsedDuration, Duration(days: 6));
   });
 
   test('Weeks to duration', () {
-    Duration? parsedDuration = getDurationFromType('6', 'Weeks');
+    Duration? parsedDuration = getDurationFromType(6, 'Weeks');
     expect(parsedDuration, Duration(days: 6 * 7));
   });
 
   test('Months to duration', () {
-    Duration? parsedDuration = getDurationFromType('6', 'Months');
+    Duration? parsedDuration = getDurationFromType(6, 'Months');
     expect(parsedDuration, Duration(days: 6 * 30));
   });
 
   test('Years to duration', () {
-    Duration? parsedDuration = getDurationFromType('6', 'Years');
+    Duration? parsedDuration = getDurationFromType(6, 'Years');
     expect(parsedDuration, Duration(days: 6 * 365));
   });
 
