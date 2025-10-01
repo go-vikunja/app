@@ -93,7 +93,7 @@ class ProjectEditPageState extends ConsumerState<ProjectEditPage> {
               Padding(
                 padding: EdgeInsets.symmetric(vertical: 10.0),
                 child: CheckboxListTile(
-                  value: widget.displayDoneTask,
+                  value: displayDoneTask,
                   title: Text("Show done tasks"),
                   onChanged: (value) {
                     value ??= false;
