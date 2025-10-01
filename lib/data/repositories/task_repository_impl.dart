@@ -37,7 +37,10 @@ class TaskRepositoryImpl extends TaskRepository {
     int projectId, [
     Map<String, List<String>>? queryParameters,
   ]) async {
-    var response = await _dataSource.getAllByProject(projectId, queryParameters);
+    var response = await _dataSource.getAllByProject(
+      projectId,
+      queryParameters,
+    );
 
     return response.toDomain();
   }
