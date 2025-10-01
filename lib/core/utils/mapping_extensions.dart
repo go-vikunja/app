@@ -22,7 +22,7 @@ extension DtoResponseMapper on Response<Dto> {
     } else {
       var exceptionResponse = toException();
       return ExceptionResponse(
-        exceptionResponse.message,
+        exceptionResponse.exception,
         exceptionResponse.stackTrace,
       );
     }
@@ -50,7 +50,7 @@ extension DtoListResponseMapping on Response<List<Dto>> {
     } else {
       var exceptionResponse = toException();
       return ExceptionResponse(
-        exceptionResponse.message,
+        exceptionResponse.exception,
         exceptionResponse.stackTrace,
       );
     }
