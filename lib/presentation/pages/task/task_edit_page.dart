@@ -317,6 +317,13 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
               return VikunjaDateTimeField(
                 label: "Reminder",
                 initialValue: e.reminder,
+                onChanged: (date){
+                  if(date != null) {
+                    e.reminder = date;
+                  } else {
+                    _reminderDates?.remove(e);
+                  }
+                },
               );
             }).toList() ??
             [],
