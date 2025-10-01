@@ -122,7 +122,7 @@ class ProjectController extends _$ProjectController {
       var value = state.value;
       if (value != null) {
         var tasks = value.tasks;
-        tasks.add(newTask);
+        tasks.add(response.toSuccess().body);
         state = AsyncData(value.copyWith(tasks: tasks));
 
         return true;
