@@ -4,6 +4,8 @@ import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/domain/entities/auth_model.dart';
 import 'package:vikunja_app/main.dart';
+import 'package:vikunja_app/presentation/pages/error_widget.dart';
+import 'package:vikunja_app/presentation/pages/loading_widget.dart';
 
 class InitPage extends ConsumerWidget {
   const InitPage({super.key});
@@ -13,12 +15,18 @@ class InitPage extends ConsumerWidget {
     return FutureBuilder(
       future: checkLogin(ref),
       builder: (context, asyncSnapshot) {
-        return Center(child: CircularProgressIndicator());
+        if (asyncSnapshot.connectionState == ConnectionState.waiting) {
+          return Scaffold(body: LoadingWidget());
+        } else {
+          return VikunjaErrorWidget(
+            error: asyncSnapshot.data ?? "Unknown error occurred.",
+          );
+        }
       },
     );
   }
 
-  Future<void> checkLogin(WidgetRef ref) async {
+  Future<Object?> checkLogin(WidgetRef ref) async {
     var server = await ref.read(settingsRepositoryProvider).getServer();
     var token = await ref.read(settingsRepositoryProvider).getUserToken();
 
@@ -34,7 +42,7 @@ class InitPage extends ConsumerWidget {
             .set(userResponse.toSuccess().body);
 
         globalNavigatorKey.currentState?.pushReplacementNamed("/home");
-      } else {
+      } else if (userResponse.isError) {
         if (userResponse.toError().statusCode == 401) {
           ref.read(settingsRepositoryProvider).saveUserToken(null);
 
@@ -46,14 +54,15 @@ class InitPage extends ConsumerWidget {
 
           globalNavigatorKey.currentState?.pushReplacementNamed("/login");
         } else {
-          ScaffoldMessenger.of(
-            ref.context,
-          ).showSnackBar(SnackBar(content: Text("Unknown error occurred.")));
-          globalNavigatorKey.currentState?.pushReplacementNamed("/login");
+          return userResponse.toError().error["message"];
         }
+      } else {
+        return userResponse.toException().exception;
       }
     } else {
       globalNavigatorKey.currentState?.pushReplacementNamed("/login");
     }
+
+    return null;
   }
 }

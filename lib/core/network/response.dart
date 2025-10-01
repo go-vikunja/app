@@ -36,10 +36,12 @@ class VoidResponse<T> extends SuccessResponse<T> {
 }
 
 class ExceptionResponse<T> extends Response<T> {
-  final String message;
+  final Object exception;
   final StackTrace stackTrace;
 
-  ExceptionResponse(this.message, this.stackTrace) : super();
+  ExceptionResponse(this.exception, this.stackTrace) : super();
+
+  String get message => exception.toString();
 }
 
 class ErrorResponse<T> extends Response<T> {

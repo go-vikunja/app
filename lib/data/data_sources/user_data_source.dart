@@ -55,7 +55,7 @@ class UserDataSource extends RemoteDataSource {
       );
     } else {
       return ExceptionResponse(
-        registerResponse.toException().message,
+        registerResponse.toException().exception,
         registerResponse.toException().stackTrace,
       );
     }

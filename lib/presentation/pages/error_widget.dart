@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart';
 
 class VikunjaErrorWidget extends StatelessWidget {
   final Function()? onRetry;
@@ -36,7 +37,12 @@ class VikunjaErrorWidget extends StatelessWidget {
   }
 
   Widget getErrorWidget(BuildContext context, Object error) {
-    if (error is String) {
+    if (error is ClientException) {
+      return Text(
+        "Connection error",
+        style: Theme.of(context).textTheme.titleLarge,
+      );
+    } else if (error is String) {
       return Text(error, style: Theme.of(context).textTheme.titleLarge);
     }
 
