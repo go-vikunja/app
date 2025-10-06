@@ -140,7 +140,9 @@ class LoginPageState extends ConsumerState<LoginPage> {
                     });
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text("Please enter your frontend url")),
+                      SnackBar(
+                        content: Text("Please enter a valid frontend url"),
+                      ),
                     );
                   }
                 },
@@ -207,7 +209,7 @@ class LoginPageState extends ConsumerState<LoginPage> {
             focusNode: focusnode,
             enabled: !_loading,
             validator: (address) {
-              return (isUrl(address) || address != null || address!.isEmpty)
+              return (isUrl(address) || address == null || address.isEmpty)
                   ? null
                   : 'Invalid URL';
             },
