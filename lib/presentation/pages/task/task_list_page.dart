@@ -57,7 +57,17 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
           ),
           floatingActionButton: FloatingActionButton(
             onPressed: () {
-              _addItemDialog(context, model.defaultProjectId);
+              if (model.defaultProjectId == 0) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Please select a default project in the settings',
+                    ),
+                  ),
+                );
+              } else {
+                _addItemDialog(context, model.defaultProjectId);
+              }
             },
             child: const Icon(Icons.add),
           ),
@@ -217,13 +227,13 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
   void scheduleIntent() async {
     var response = await ref.read(userRepositoryProvider).getCurrentUser();
     if (response.isSuccessful) {
-      var defaultProject = response
+      var defaultProjectId = response
           .toSuccess()
           .body
           .settings
           ?.default_project_id;
 
-      if (defaultProject == null) {
+      if (defaultProjectId == null || defaultProjectId == 0) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Please select a default project in the settings'),
@@ -231,7 +241,7 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
         );
       } else {
         platform.setMethodCallHandler((call) async {
-          _addItemDialog(context, defaultProject);
+          _addItemDialog(context, defaultProjectId);
           return Future.value();
         });
       }
