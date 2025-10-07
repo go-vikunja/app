@@ -179,29 +179,29 @@ class Client {
       }
 
       return ErrorResponse<T>(response.statusCode, headers, error);
-    } else {
-      var decode = utf8.decode(response.bodyBytes);
-
-      if (mapper != null) {
-        //Empty lists can be returned as "null" from the backend
-        if (decode.trim() == "null") {
-          return SuccessResponse<T>(
-            mapper.call([]),
-            response.statusCode,
-            response.headers,
-          );
-        } else {
-          var convert = _decoder.convert(decode);
-          return SuccessResponse<T>(
-            mapper.call(convert),
-            response.statusCode,
-            response.headers,
-          );
-        }
-      } else {
-        return VoidResponse<T>();
-      }
     }
+
+    var decode = utf8.decode(response.bodyBytes);
+
+    if (mapper != null) {
+      //Empty lists can be returned as "null" from the backend
+      if (decode.trim() == "null") {
+        return SuccessResponse<T>(
+          mapper.call([]),
+          response.statusCode,
+          response.headers,
+        );
+      }
+
+      var convert = _decoder.convert(decode);
+      return SuccessResponse<T>(
+        mapper.call(convert),
+        response.statusCode,
+        response.headers,
+      );
+    }
+
+    return VoidResponse<T>();
   }
 
   ExceptionResponse<T> _handleException<T>(Object e, StackTrace s) {
