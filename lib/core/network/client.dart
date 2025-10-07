@@ -181,13 +181,23 @@ class Client {
       return ErrorResponse<T>(response.statusCode, headers, error);
     } else {
       var decode = utf8.decode(response.bodyBytes);
-      var convert = _decoder.convert(decode);
+
       if (mapper != null) {
-        return SuccessResponse<T>(
-          mapper.call(convert),
-          response.statusCode,
-          response.headers,
-        );
+        //Empty lists can be returned as "null" from the backend
+        if (decode.trim() == "null") {
+          return SuccessResponse<T>(
+            mapper.call([]),
+            response.statusCode,
+            response.headers,
+          );
+        } else {
+          var convert = _decoder.convert(decode);
+          return SuccessResponse<T>(
+            mapper.call(convert),
+            response.statusCode,
+            response.headers,
+          );
+        }
       } else {
         return VoidResponse<T>();
       }
