@@ -138,4 +138,16 @@ class SettingsController extends _$SettingsController {
       });
     });
   }
+
+  void setDefaultProject(int value) {
+    final user = ref.read(currentUserProvider);
+    user!.settings!.default_project_id = value;
+    ref
+        .watch(userRepositoryProvider)
+        .setCurrentUserSettings(user.settings!);
+
+    ref.read(currentUserProvider.notifier).set(user);
+
+    refresh();
+  }
 }

@@ -247,12 +247,9 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
                 : 0,
             onChanged: (int? value) {
               if (value != null && user.settings != null) {
-                user.settings!.default_project_id = value;
                 ref
-                    .watch(userRepositoryProvider)
-                    .setCurrentUserSettings(user.settings!);
-
-                ref.read(currentUserProvider.notifier).set(user);
+                    .read(settingsControllerProvider.notifier)
+                    .setDefaultProject(value);
               }
             },
           ),
