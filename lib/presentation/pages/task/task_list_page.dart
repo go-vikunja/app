@@ -233,18 +233,18 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
           .settings
           ?.default_project_id;
 
-      if (defaultProjectId == null || defaultProjectId == 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Please select a default project in the settings'),
-          ),
-        );
-      } else {
-        platform.setMethodCallHandler((call) async {
+      platform.setMethodCallHandler((call) async {
+        if (defaultProjectId == null || defaultProjectId == 0) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Please select a default project in the settings'),
+            ),
+          );
+        } else {
           _addItemDialog(context, defaultProjectId);
           return Future.value();
-        });
-      }
+        }
+      });
     }
   }
 }
