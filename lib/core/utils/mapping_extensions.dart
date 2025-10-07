@@ -19,13 +19,13 @@ extension DtoResponseMapper on Response<Dto> {
         errorResponse.headers,
         errorResponse.error,
       );
-    } else {
-      var exceptionResponse = toException();
-      return ExceptionResponse(
-        exceptionResponse.exception,
-        exceptionResponse.stackTrace,
-      );
     }
+
+    var exceptionResponse = toException();
+    return ExceptionResponse(
+      exceptionResponse.exception,
+      exceptionResponse.stackTrace,
+    );
   }
 }
 
@@ -47,13 +47,13 @@ extension DtoListResponseMapping on Response<List<Dto>> {
         errorResponse.headers,
         errorResponse.error,
       );
-    } else {
-      var exceptionResponse = toException();
-      return ExceptionResponse(
-        exceptionResponse.exception,
-        exceptionResponse.stackTrace,
-      );
     }
+
+    var exceptionResponse = toException();
+    return ExceptionResponse(
+      exceptionResponse.exception,
+      exceptionResponse.stackTrace,
+    );
   }
 }
 
