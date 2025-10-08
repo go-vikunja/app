@@ -1,7 +1,7 @@
 class Filter {
   final String s;
-  String? sortBy;
-  String? orderBy;
+  List<String>? sortBy;
+  List<String>? orderBy;
   String filter;
   bool filterIncludesNulls;
 
