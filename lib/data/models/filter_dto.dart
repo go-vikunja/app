@@ -3,8 +3,8 @@ import 'package:vikunja_app/domain/entities/filter.dart';
 
 class FilterDto extends Dto<Filter> {
   final String s;
-  String? sortBy;
-  String? orderBy;
+  List<String>? sortBy;
+  List<String>? orderBy;
   String filter;
   bool filterIncludesNulls;
 
@@ -18,8 +18,16 @@ class FilterDto extends Dto<Filter> {
 
   FilterDto.fromJson(Map<String, dynamic> json)
     : s = json['s'],
-      sortBy = json['sort_by'],
-      orderBy = json['order_by'],
+      sortBy = json['sort_by'] == null
+          ? []
+          : (json['sort_by'] as List<dynamic>)
+                .map((e) => e.toString())
+                .toList(),
+      orderBy = json['order_by'] == null
+          ? []
+          : (json['order_by'] as List<dynamic>)
+                .map((e) => e.toString())
+                .toList(),
       filter = json['filter'],
       filterIncludesNulls = json['filter_include_nulls'];
 
