@@ -165,8 +165,6 @@ class Client {
     http.Response response,
     T Function(dynamic body)? mapper,
   ) {
-    log.info("Processing response: ${response.body}");
-
     if (response.statusCode < 200 || response.statusCode >= 400) {
       Map<String, dynamic> error = _decoder.convert(response.body);
 
