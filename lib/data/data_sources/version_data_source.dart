@@ -21,7 +21,15 @@ class VersionDataSource {
 
   Future<String> getCurrentVersionTag() async {
     PackageInfo packageInfo = await PackageInfo.fromPlatform();
-    print("current: " + packageInfo.version);
-    return packageInfo.version;
+    String version = packageInfo.version;
+    String buildNumber = packageInfo.buildNumber;
+
+    // Include build number if it exists and is not empty
+    if (buildNumber.isNotEmpty && buildNumber != '1') {
+      version = '$version+$buildNumber';
+    }
+
+    print("current: $version");
+    return version;
   }
 }
