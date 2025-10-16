@@ -1,7 +1,8 @@
+import 'package:background_downloader/background_downloader.dart'
+    show TaskStatus, FileDownloader;
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
-import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
@@ -484,15 +485,15 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
           trailing: IconButton(
             icon: Icon(Icons.download),
             onPressed: () async {
-              //FIXME: download doesn't seem to work now.
               var taskId = await ref
                   .read(taskRepositoryProvider)
                   .downloadAttachment(
                     widget.task.id,
                     widget.task.attachments[index],
                   );
-              if (taskId == null) return;
-              FlutterDownloader.open(taskId: taskId);
+              if (taskId.status == TaskStatus.complete) {
+                FileDownloader().openFile(task: taskId.task);
+              }
             },
           ),
         );
