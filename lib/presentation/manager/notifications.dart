@@ -58,9 +58,7 @@ class NotificationHandler {
       android: initializationSettingsAndroid,
       iOS: initializationSettingsIOS,
     );
-    await notificationsPlugin.initialize(
-      initializationSettings,
-    );
+    await notificationsPlugin.initialize(initializationSettings);
     developer.log("Notifications initialised successfully");
   }
 
