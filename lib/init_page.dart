@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
+import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/domain/entities/auth_model.dart';
+import 'package:vikunja_app/domain/entities/server.dart';
 import 'package:vikunja_app/main.dart';
 import 'package:vikunja_app/presentation/pages/error_widget.dart';
 import 'package:vikunja_app/presentation/pages/loading_widget.dart';
@@ -32,6 +35,18 @@ class InitPage extends ConsumerWidget {
 
     if (server != null && token != null) {
       ref.read(authDataProvider.notifier).set(AuthModel(server, token));
+
+      Response<Server> info = await ref
+          .read(serverRepositoryProvider)
+          .getInfo();
+      if (info.isSuccessful) {
+        Sentry.configureScope(
+          (scope) => scope.setTag(
+            'server.version',
+            info.toSuccess().body.version ?? "-",
+          ),
+        );
+      }
 
       var userResponse = await ref
           .read(userRepositoryProvider)
