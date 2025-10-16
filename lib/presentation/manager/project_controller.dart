@@ -277,8 +277,16 @@ class ProjectController extends _$ProjectController {
 
     var value = state.value;
     if (value != null) {
-      state = AsyncData(value.copyWith(displayDoneTask: displayDoneTasks));
-      return true;
+      var tasksResponse = await _loadTasks(project.id, displayDoneTasks);
+      if (tasksResponse.isSuccessful) {
+        var tasks = tasksResponse.toSuccess().body;
+        state = AsyncData(
+          value.copyWith(tasks: tasks, displayDoneTask: displayDoneTasks),
+        );
+        return true;
+      } else {
+        return false;
+      }
     }
 
     return false;
