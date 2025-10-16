@@ -18,12 +18,13 @@ class InitPage extends ConsumerWidget {
     return FutureBuilder(
       future: checkLogin(ref),
       builder: (context, asyncSnapshot) {
-        if (asyncSnapshot.connectionState == ConnectionState.waiting) {
-          return Scaffold(body: LoadingWidget());
-        } else {
+        if (asyncSnapshot.connectionState == ConnectionState.done &&
+            asyncSnapshot.data != null) {
           return VikunjaErrorWidget(
             error: asyncSnapshot.data ?? "Unknown error occurred.",
           );
+        } else {
+          return Scaffold(body: LoadingWidget());
         }
       },
     );
