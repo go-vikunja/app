@@ -1,10 +1,11 @@
-import 'dart:math';
 import 'dart:developer' as developer;
+import 'dart:math';
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:vikunja_app/domain/repositories/task_repository.dart';
+import 'package:vikunja_app/main.dart';
 
 class NotificationHandler {
   FlutterLocalNotificationsPlugin get notificationsPlugin =>
@@ -59,30 +60,19 @@ class NotificationHandler {
     );
     await notificationsPlugin.initialize(
       initializationSettings,
-      onDidReceiveNotificationResponse: onDidReceiveNotificationResponse,
     );
     developer.log("Notifications initialised successfully");
   }
 
-  void onDidReceiveNotificationResponse(NotificationResponse resp) async {
-    if (resp.payload != null) {
-      print('notification payload: ${resp.payload!}');
-    }
-    //TODO navigate to task screen
-  }
-
   Future<void> scheduleNotification(
+    int id,
     String title,
     String description,
     FlutterLocalNotificationsPlugin notifsPlugin,
     DateTime scheduledTime,
     String currentTimeZone,
-    NotificationDetails platformChannelSpecifics, {
-    int? id,
-  }) async {
-    id ??= Random().nextInt(1000000);
-
-    // TODO: move to setup
+    NotificationDetails platformChannelSpecifics,
+  ) async {
     tz.TZDateTime time = tz.TZDateTime.from(
       scheduledTime,
       tz.getLocation(currentTimeZone),
@@ -102,7 +92,8 @@ class NotificationHandler {
       time,
       platformChannelSpecifics,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-    ); // This literally schedules the notification
+      payload: id.toString(),
+    );
   }
 
   void sendTestNotification() {
@@ -136,24 +127,24 @@ class NotificationHandler {
         if (task.done) continue;
         for (final reminder in task.reminderDates) {
           scheduleNotification(
+            (reminder.reminder.millisecondsSinceEpoch / 1000).floor(),
             "Reminder",
             "This is your reminder for '${task.title}'",
             notificationsPlugin,
             reminder.reminder,
             await FlutterTimezone.getLocalTimezone(),
             platformChannelSpecificsReminders,
-            id: (reminder.reminder.millisecondsSinceEpoch / 1000).floor(),
           );
         }
         if (task.hasDueDate) {
           scheduleNotification(
+            task.id,
             "Due Reminder",
             "The task '${task.title}' is due.",
             notificationsPlugin,
             task.dueDate!,
             await FlutterTimezone.getLocalTimezone(),
             platformChannelSpecificsDueDate,
-            id: task.id,
           );
         }
       }
