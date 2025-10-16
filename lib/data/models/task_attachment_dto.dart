@@ -56,7 +56,6 @@ class TaskAttachmentDto extends Dto<TaskAttachment> {
   final DateTime created;
   final UserDto createdBy;
   final TaskAttachmentFileDto file;
-  // TODO: add file
 
   TaskAttachmentDto({
     this.id = 0,

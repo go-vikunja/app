@@ -21,7 +21,6 @@ class TaskAttachment {
   final DateTime created;
   final User createdBy;
   final TaskAttachmentFile file;
-  // TODO: add file
 
   TaskAttachment({
     this.id = 0,
