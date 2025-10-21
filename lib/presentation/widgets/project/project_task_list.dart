@@ -8,8 +8,8 @@ import 'package:vikunja_app/presentation/pages/loading_widget.dart';
 import 'package:vikunja_app/presentation/pages/project/project_detail_page.dart';
 import 'package:vikunja_app/presentation/pages/task/task_edit_page.dart';
 import 'package:vikunja_app/presentation/widgets/empty_view.dart';
+import 'package:vikunja_app/presentation/widgets/project/project_task_list_item.dart';
 import 'package:vikunja_app/presentation/widgets/task_bottom_sheet.dart';
-import 'package:vikunja_app/presentation/widgets/task_tile.dart';
 
 class ProjectTaskList extends ConsumerWidget {
   final Project project;
@@ -83,7 +83,7 @@ class ProjectTaskList extends ConsumerWidget {
   }
 
   Widget _buildTile(WidgetRef ref, Task task) {
-    return TaskTile(
+    return ProjectTaskListItem(
       key: Key(task.id.toString()),
       task: task,
       onTap: () => _showTaskBottomSheet(ref.context, task),
@@ -98,7 +98,6 @@ class ProjectTaskList extends ConsumerWidget {
           ).showSnackBar(SnackBar(content: Text("Failed to mark as done")));
         }
       },
-      showInfo: true,
     );
   }
 

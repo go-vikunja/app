@@ -4,6 +4,7 @@ import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/entities/task_page_model.dart';
+import 'package:vikunja_app/presentation/manager/projects_controller.dart';
 
 part 'task_page_controller.g.dart';
 
@@ -22,11 +23,18 @@ class TaskPageController extends _$TaskPageController {
 
     switch (tasksResponse) {
       case SuccessResponse<List<Task>>():
-        return TaskPageModel(
-          tasksResponse.body,
-          showOnlyDueDateTasks,
-          defaultProjectId,
-        );
+        var tasks = tasksResponse.body;
+        var projects = ref.watch(projectsControllerProvider).asData?.value;
+
+        if (projects != null) {
+          var projectsMap = {for (var v in projects) v.id: v};
+
+          for (var tasks in tasks) {
+            tasks.project = projectsMap[tasks.projectId];
+          }
+        }
+
+        return TaskPageModel(tasks, showOnlyDueDateTasks, defaultProjectId);
       case ErrorResponse<List<Task>>():
         throw AsyncError(tasksResponse.error, StackTrace.current);
       case ExceptionResponse<List<Task>>():
@@ -46,6 +54,17 @@ class TaskPageController extends _$TaskPageController {
 
     switch (tasksResponse) {
       case SuccessResponse<List<Task>>():
+        var tasks = tasksResponse.body;
+        var projects = ref.watch(projectsControllerProvider).asData?.value;
+
+        if (projects != null) {
+          var projectsMap = {for (var v in projects) v.id: v};
+
+          for (var tasks in tasks) {
+            tasks.project = projectsMap[tasks.projectId];
+          }
+        }
+
         state = AsyncData(
           TaskPageModel(
             tasksResponse.body,

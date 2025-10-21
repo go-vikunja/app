@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/domain/entities/label.dart';
+import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/task_attachment.dart';
 import 'package:vikunja_app/domain/entities/task_reminder.dart';
 import 'package:vikunja_app/domain/entities/user.dart';
@@ -8,6 +9,7 @@ class Task {
   int id;
   int? parentTaskId, priority, bucketId;
   int? projectId;
+  Project? project;
   DateTime created, updated;
   DateTime? dueDate, startDate, endDate;
   List<TaskReminder> reminderDates;
