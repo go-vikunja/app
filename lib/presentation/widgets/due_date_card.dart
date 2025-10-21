@@ -13,6 +13,7 @@ class DueDateCard extends StatelessWidget {
     var bgColor = _getBackgroundColor(difference, context);
 
     return Card(
+      margin: EdgeInsets.zero,
       color: bgColor,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4.0)),
       child: Padding(
