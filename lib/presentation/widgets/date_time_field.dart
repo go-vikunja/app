@@ -7,7 +7,6 @@ class VikunjaDateTimeField extends StatelessWidget {
   final void Function(DateTime?)? onSaved;
   final void Function(DateTime?)? onChanged;
   final DateTime? initialValue;
-  final EdgeInsetsGeometry padding;
   final Icon icon;
 
   const VikunjaDateTimeField({
@@ -16,7 +15,6 @@ class VikunjaDateTimeField extends StatelessWidget {
     this.onSaved,
     this.onChanged,
     this.initialValue,
-    this.padding = const EdgeInsets.symmetric(vertical: 10.0),
     this.icon = const Icon(Icons.date_range),
   });
 
