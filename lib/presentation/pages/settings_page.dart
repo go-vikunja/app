@@ -207,8 +207,18 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
     return Column(
       children: [
         UserAccountsDrawerHeader(
-          accountName: Text(user.name),
-          accountEmail: Text(user.username),
+          accountName: Text(
+            user.name,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSecondaryContainer,
+            ),
+          ),
+          accountEmail: Text(
+            user.username,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSecondaryContainer,
+            ),
+          ),
           currentAccountPicture: CircleAvatar(
             backgroundImage: user.username != ""
                 ? NetworkImage(
@@ -222,7 +232,7 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
               image: AssetImage("assets/graphics/hypnotize.png"),
               repeat: ImageRepeat.repeat,
               colorFilter: ColorFilter.mode(
-                Theme.of(context).colorScheme.primary,
+                Theme.of(context).colorScheme.secondaryContainer,
                 BlendMode.multiply,
               ),
             ),

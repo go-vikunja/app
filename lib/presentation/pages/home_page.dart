@@ -64,14 +64,20 @@ class HomePageState extends ConsumerState<HomePage> {
     }
 
     return Scaffold(
-      bottomNavigationBar: NavigationBar(
-        destinations: navbarItems,
-        selectedIndex: _selectedDrawerIndex,
-        onDestinationSelected: (index) {
-          setState(() {
-            _selectedDrawerIndex = index;
-          });
-        },
+      bottomNavigationBar: ClipRRect(
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(16),
+          topRight: Radius.circular(16),
+        ),
+        child: NavigationBar(
+          destinations: navbarItems,
+          selectedIndex: _selectedDrawerIndex,
+          onDestinationSelected: (index) {
+            setState(() {
+              _selectedDrawerIndex = index;
+            });
+          },
+        ),
       ),
       body: drawerItem,
     );
