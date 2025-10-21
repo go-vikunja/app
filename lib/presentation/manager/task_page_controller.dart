@@ -126,12 +126,7 @@ class TaskPageController extends _$TaskPageController {
   Future<bool> addTask(int projectId, Task task) async {
     var response = await ref.read(taskRepositoryProvider).add(projectId, task);
     if (response.isSuccessful) {
-      var value = state.value;
-      if (value != null) {
-        var tasks = value.tasks;
-        tasks.add(response.toSuccess().body);
-        state = AsyncData(value.copyWith(tasks: tasks));
-      }
+      reload();
 
       return true;
     }
@@ -158,13 +153,7 @@ class TaskPageController extends _$TaskPageController {
   Future<bool> updateTask(Task task) async {
     var response = await ref.read(taskRepositoryProvider).update(task);
     if (response.isSuccessful) {
-      var value = state.value;
-      if (value != null) {
-        var tasks = value.tasks;
-        tasks.removeWhere((element) => element.id == task.id);
-        tasks.add(task);
-        state = AsyncData(value.copyWith(tasks: tasks));
-      }
+      reload();
 
       return true;
     }
