@@ -13,7 +13,14 @@ class EmptyView extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 96),
-          Text(text, style: Theme.of(context).textTheme.headlineSmall),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+            child: Text(
+              text,
+              style: Theme.of(context).textTheme.titleLarge,
+              textAlign: TextAlign.center,
+            ),
+          ),
         ],
       ),
     );
