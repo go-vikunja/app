@@ -26,41 +26,34 @@ class ProjectTaskListItemState extends State<ProjectTaskListItem> {
 
   @override
   Widget build(BuildContext context) {
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            width: 4.0, // Adjust the width of the red line
-            color: widget.task.color,
+    return Stack(
+      fit: StackFit.loose,
+      children: [
+        ListTile(
+          onTap: () {
+            widget.onTap();
+          },
+          title: Text(
+            widget.task.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-          Flexible(
-            child: ListTile(
-              onTap: () {
-                widget.onTap();
-              },
-              title: Text(
-                widget.task.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              subtitle: _buildTaskSubtitle(widget.task, context),
-              leading: Checkbox(
-                value: widget.task.done,
-                onChanged: (bool? newValue) {
-                  if (newValue != null) {
-                    widget.onCheckedChanged(newValue);
-                  }
-                },
-              ),
-              trailing: IconButton(
-                icon: Icon(Icons.edit),
-                onPressed: () => widget.onEdit(),
-              ),
-            ),
+          subtitle: _buildTaskSubtitle(widget.task, context),
+          leading: Checkbox(
+            value: widget.task.done,
+            onChanged: (bool? newValue) {
+              if (newValue != null) {
+                widget.onCheckedChanged(newValue);
+              }
+            },
           ),
-        ],
-      ),
+          trailing: IconButton(
+            icon: Icon(Icons.edit),
+            onPressed: () => widget.onEdit(),
+          ),
+        ),
+        Container(width: 4.0, height: 72.0, color: widget.task.color),
+      ],
     );
   }
 
@@ -68,32 +61,29 @@ class ProjectTaskListItemState extends State<ProjectTaskListItem> {
     List<Widget> texts = [];
 
     if (task.hasDueDate) {
-      texts.add(DueDateCard(task.dueDate!));
-    }
-    if (task.priority != null && task.priority != 0) {
       texts.add(
         Padding(
-          padding: const EdgeInsets.only(left: 8.0),
-          child: PriorityBatch(task.priority!),
+          padding: const EdgeInsets.only(right: 8.0),
+          child: DueDateCard(task.dueDate!),
         ),
       );
+    }
+    if (task.priority != null && task.priority != 0) {
+      texts.add(PriorityBatch(task.priority!));
     }
 
     if (texts.isEmpty) {
       return null;
     }
 
-    return Padding(
-      padding: const EdgeInsets.only(top: 2.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(top: 4.0),
-            child: Row(children: texts),
-          ),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 4.0, bottom: 4.0),
+          child: Row(children: texts),
+        ),
+      ],
     );
   }
 }
