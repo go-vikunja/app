@@ -74,7 +74,7 @@ class ProjectTaskList extends ConsumerWidget {
 
   List<Widget> _buildTaskList(WidgetRef ref, List<Task> tasks) {
     return List.generate(tasks.length * 2, (i) {
-      if (i.isOdd) return Divider();
+      if (i.isOdd) return Divider(height: 1);
 
       final index = i ~/ 2;
 
