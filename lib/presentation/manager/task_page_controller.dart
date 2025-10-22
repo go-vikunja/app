@@ -24,10 +24,14 @@ class TaskPageController extends _$TaskPageController {
     switch (tasksResponse) {
       case SuccessResponse<List<Task>>():
         var tasks = tasksResponse.body;
-        var projects = ref.watch(projectsControllerProvider).asData?.value;
+        var projectsResponse = await ref
+            .read(projectRepositoryProvider)
+            .getAll();
 
-        if (projects != null) {
-          var projectsMap = {for (var v in projects) v.id: v};
+        if (projectsResponse.isSuccessful) {
+          var projectsMap = {
+            for (var v in projectsResponse.toSuccess().body) v.id: v,
+          };
 
           for (var tasks in tasks) {
             tasks.project = projectsMap[tasks.projectId];
@@ -55,10 +59,14 @@ class TaskPageController extends _$TaskPageController {
     switch (tasksResponse) {
       case SuccessResponse<List<Task>>():
         var tasks = tasksResponse.body;
-        var projects = ref.watch(projectsControllerProvider).asData?.value;
+        var projectsResponse = await ref
+            .read(projectRepositoryProvider)
+            .getAll();
 
-        if (projects != null) {
-          var projectsMap = {for (var v in projects) v.id: v};
+        if (projectsResponse.isSuccessful) {
+          var projectsMap = {
+            for (var v in projectsResponse.toSuccess().body) v.id: v,
+          };
 
           for (var tasks in tasks) {
             tasks.project = projectsMap[tasks.projectId];

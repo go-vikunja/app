@@ -4,8 +4,8 @@ import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/core/di/theme_provider.dart';
 import 'package:vikunja_app/core/theming/theme_mode.dart';
+import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/settings_page_state.dart';
-import 'package:vikunja_app/presentation/manager/projects_controller.dart';
 import 'package:workmanager/workmanager.dart';
 
 part 'settings_controller.g.dart';
@@ -45,11 +45,15 @@ class SettingsController extends _$SettingsController {
         .getCurrentVersionTag();
 
     final user = ref.read(currentUserProvider)!;
-    final projects = ref.watch(projectsControllerProvider).value;
+    final projectsResponse = await ref.read(projectRepositoryProvider).getAll();
+
+    var projects = projectsResponse.isSuccessful
+        ? projectsResponse.toSuccess().body
+        : <Project>[];
 
     return SettingsPageState(
       user,
-      projects ?? [],
+      projects,
       ignoreCertificates,
       sentryEnabled,
       versionNotification,
@@ -142,7 +146,7 @@ class SettingsController extends _$SettingsController {
   void setDefaultProject(int value) {
     final user = ref.read(currentUserProvider);
     user!.settings!.default_project_id = value;
-    ref.watch(userRepositoryProvider).setCurrentUserSettings(user.settings!);
+    ref.read(userRepositoryProvider).setCurrentUserSettings(user.settings!);
 
     ref.read(currentUserProvider.notifier).set(user);
 
