@@ -24,19 +24,27 @@ class ProjectTaskList extends ConsumerWidget {
       data: (pageModel) {
         List<Widget> children = [];
         if (project.subprojects.isNotEmpty) {
-          children.add(_buildSectionHeader("Projects"));
+          if (pageModel.tasks.isNotEmpty) {
+            children.add(_buildSectionHeader("Projects"));
+            children.add(Divider());
+          }
           children.addAll(_buildProjectList(context));
         }
         if (pageModel.tasks.isNotEmpty) {
-          children.add(_buildSectionHeader("Tasks"));
-          children.add(Divider());
+          if (project.subprojects.isNotEmpty) {
+            children.add(_buildSectionHeader("Tasks"));
+            children.add(Divider());
+          }
           children.addAll(_buildTaskList(ref, pageModel.tasks));
         }
 
         if (children.isNotEmpty) {
           return ListView(children: children);
         } else {
-          return EmptyView(Icons.list, "No tasks");
+          return EmptyView(
+            Icons.list,
+            "No tasks or sub project in this project",
+          );
         }
       },
       error: (err, _) => VikunjaErrorWidget(error: err),
