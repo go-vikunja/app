@@ -41,7 +41,7 @@ class TaskListItemState extends State<TaskListItem> {
               },
               title: Text(
                 widget.task.title,
-                maxLines: 2,
+                maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
               subtitle: _buildTaskSubtitle(widget.task, context),
