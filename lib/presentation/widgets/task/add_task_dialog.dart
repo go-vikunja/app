@@ -13,7 +13,7 @@ class AddTaskDialog extends StatefulWidget {
 }
 
 class AddTaskDialogState extends State<AddTaskDialog> {
-  NewTaskDue newTaskDue = NewTaskDue.day;
+  NewTaskDue newTaskDue = NewTaskDue.none;
   DateTime? customDueDate;
   var textController = TextEditingController();
 
@@ -29,10 +29,6 @@ class AddTaskDialogState extends State<AddTaskDialog> {
 
   @override
   Widget build(BuildContext context) {
-    if (newTaskDue != NewTaskDue.custom) {
-      customDueDate = DateTime.now().add(newTaskDue.newTaskDueToDuration());
-    }
-
     return AlertDialog(
       contentPadding: const EdgeInsets.all(16.0),
       content: Column(
@@ -57,19 +53,27 @@ class AddTaskDialogState extends State<AddTaskDialog> {
             padding: const EdgeInsets.only(top: 16.0, bottom: 8),
             child: Text("Due Date:"),
           ),
-          taskDueList("1 Day", NewTaskDue.day),
-          taskDueList("1 Week", NewTaskDue.week),
-          taskDueList("1 Month", NewTaskDue.month),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: VikunjaDateTimeField(
-              label: "Enter exact time",
-              onChanged: (value) {
-                setState(() => newTaskDue = NewTaskDue.custom);
-                customDueDate = value;
-              },
-            ),
+          Wrap(
+            spacing: 8,
+            children: [
+              taskDueList("None", NewTaskDue.none),
+              taskDueList("1 Day", NewTaskDue.day),
+              taskDueList("1 Week", NewTaskDue.week),
+              taskDueList("1 Month", NewTaskDue.month),
+              taskDueList("Custom", NewTaskDue.custom),
+            ],
           ),
+          if (newTaskDue == NewTaskDue.custom)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: VikunjaDateTimeField(
+                label: "Enter exact time",
+                onChanged: (value) {
+                  setState(() => newTaskDue = NewTaskDue.custom);
+                  customDueDate = value;
+                },
+              ),
+            ),
         ],
       ),
       actions: <Widget>[
@@ -80,8 +84,17 @@ class AddTaskDialogState extends State<AddTaskDialog> {
         TextButton(
           child: const Text('Add'),
           onPressed: () {
+            var dueDate;
+            if (newTaskDue == NewTaskDue.custom) {
+              dueDate = customDueDate;
+            } else if (newTaskDue == NewTaskDue.none) {
+              dueDate = null;
+            } else {
+              dueDate = DateTime.now().add(newTaskDue.newTaskDueToDuration());
+            }
+
             if (textController.text.isNotEmpty) {
-              widget.onAddTask(textController.text, customDueDate);
+              widget.onAddTask(textController.text, dueDate);
             }
             Navigator.pop(context);
           },
@@ -91,22 +104,15 @@ class AddTaskDialogState extends State<AddTaskDialog> {
   }
 
   Widget taskDueList(String name, NewTaskDue thisNewTaskDue) {
-    return Row(
-      children: [
-        Checkbox(
-          value: newTaskDue == thisNewTaskDue,
-          onChanged: (value) {
-            newTaskDue = thisNewTaskDue;
-            setState(
-              () => customDueDate = DateTime.now().add(
-                thisNewTaskDue.newTaskDueToDuration(),
-              ),
-            );
-          },
-          shape: CircleBorder(),
-        ),
-        Text(name),
-      ],
+    return ChoiceChip(
+      label: Text(name),
+      selected: newTaskDue == thisNewTaskDue,
+      onSelected: (value) {
+        newTaskDue = thisNewTaskDue;
+        setState(() {
+          customDueDate = null;
+        });
+      },
     );
   }
 }

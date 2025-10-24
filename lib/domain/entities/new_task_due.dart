@@ -1,4 +1,5 @@
 enum NewTaskDue {
+  none,
   day,
   week,
   month,
@@ -6,6 +7,8 @@ enum NewTaskDue {
 
   Duration newTaskDueToDuration() {
     switch (this) {
+      case NewTaskDue.none:
+        return Duration();
       case NewTaskDue.day:
         return Duration(days: 1);
       case NewTaskDue.week:
