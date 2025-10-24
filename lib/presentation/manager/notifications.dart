@@ -2,9 +2,50 @@ import 'dart:developer' as developer;
 import 'dart:math';
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/timezone.dart' as tz;
+import 'package:vikunja_app/core/network/client.dart';
+import 'package:vikunja_app/data/data_sources/settings_data_source.dart';
+import 'package:vikunja_app/data/data_sources/task_data_source.dart';
+import 'package:vikunja_app/data/repositories/task_repository_impl.dart';
 import 'package:vikunja_app/domain/repositories/task_repository.dart';
+
+@pragma('vm:entry-point')
+void notificationTapBackground(NotificationResponse notificationResponse) {
+  if (notificationResponse.actionId == "action_done") {
+    var id = notificationResponse.id;
+
+    if (id != null) {
+      print("Try mark as done");
+      markAsDone(id);
+    }
+  }
+}
+
+void markAsDone(int id) async {
+  var datasource = SettingsDatasource(FlutterSecureStorage());
+  var token = await datasource.getUserToken();
+  var base = await datasource.getServer();
+
+  if (token == null || base == null) {
+    return Future.value(true);
+  }
+
+  Client client = Client(token: token, base: base);
+
+  var ignoreCertificates = await datasource.getIgnoreCertificates();
+  client.setIgnoreCerts(ignoreCertificates);
+
+  TaskRepository taskService = TaskRepositoryImpl(TaskDataSource(client));
+  var response = await taskService.getTask(id);
+
+  if (response.isSuccessful) {
+    var task = response.toSuccess().body;
+    task.done = true;
+    await taskService.update(task);
+  }
+}
 
 class NotificationHandler {
   FlutterLocalNotificationsPlugin get notificationsPlugin =>
@@ -16,6 +57,9 @@ class NotificationHandler {
     channelDescription: "description",
     icon: 'vikunja_notification_logo',
     importance: Importance.high,
+    actions: <AndroidNotificationAction>[
+      AndroidNotificationAction('action_done', 'Done'),
+    ],
   );
   var androidSpecificsReminders = AndroidNotificationDetails(
     "Vikunja2",
@@ -23,6 +67,9 @@ class NotificationHandler {
     channelDescription: "description",
     icon: 'vikunja_notification_logo',
     importance: Importance.high,
+    actions: <AndroidNotificationAction>[
+      AndroidNotificationAction('action_done', 'Done'),
+    ],
   );
   late DarwinNotificationDetails iOSSpecifics;
   late NotificationDetails platformChannelSpecificsDueDate;
@@ -57,7 +104,10 @@ class NotificationHandler {
       android: initializationSettingsAndroid,
       iOS: initializationSettingsIOS,
     );
-    await notificationsPlugin.initialize(settings: initializationSettings);
+    await notificationsPlugin.initialize(
+      settings: initializationSettings,
+      onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
+    );
     developer.log("Notifications initialised successfully");
   }
 
