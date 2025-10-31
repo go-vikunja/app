@@ -30,7 +30,7 @@ class ProjectsController extends _$ProjectsController {
     } else {
       state = AsyncError(
         response.toError().error,
-        response.toException().stackTrace,
+        StackTrace.empty
       );
     }
   }
