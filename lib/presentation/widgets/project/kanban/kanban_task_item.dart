@@ -61,6 +61,7 @@ class TaskTile extends StatelessWidget {
             ),
             if (task.labels.isNotEmpty)
               Wrap(
+                spacing: 4,
                 children: task.labels
                     .map((e) => LabelWidget(label: e))
                     .toList(),
