@@ -83,7 +83,7 @@ class TaskListItemState extends State<TaskListItem> {
     var project = task.project;
 
     if (texts.isEmpty) {
-      if(project != null) {
+      if (project != null) {
         return Text(project.title);
       }
 
@@ -95,11 +95,8 @@ class TaskListItemState extends State<TaskListItem> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if(project != null)
-            Text(
-              project.title,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
+          if (project != null)
+            Text(project.title, style: Theme.of(context).textTheme.bodyMedium),
           Padding(
             padding: const EdgeInsets.only(top: 4.0),
             child: Row(children: texts),

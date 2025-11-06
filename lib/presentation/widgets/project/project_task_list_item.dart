@@ -54,7 +54,11 @@ class ProjectTaskListItemState extends State<ProjectTaskListItem> {
             onPressed: () => widget.onEdit(),
           ),
         ),
-        Container(width: 4.0, height: subtitle != null ? 68.0 : 56.0, color: widget.task.color),
+        Container(
+          width: 4.0,
+          height: subtitle != null ? 68.0 : 56.0,
+          color: widget.task.color,
+        ),
       ],
     );
   }
