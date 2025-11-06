@@ -83,7 +83,6 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
       return EmptyView(Icons.list, "No tasks");
     } else {
       return ListView(
-        padding: EdgeInsets.symmetric(vertical: 8.0),
         children: ListTile.divideTiles(
           context: context,
           tiles: _listTasks(context, model.tasks),
