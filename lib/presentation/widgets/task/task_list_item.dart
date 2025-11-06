@@ -58,7 +58,7 @@ class TaskListItemState extends State<TaskListItem> {
         ),
         Container(
           width: 4.0,
-          height: isThreeLine ? 88.0 : 72.0,
+          height: isThreeLine ? 86.0 : 72.0,
           color: widget.task.color,
         ),
       ],
