@@ -26,7 +26,7 @@ class DueDateCard extends StatelessWidget {
   Color? _getBackgroundColor(Duration difference, BuildContext context) {
     return difference.isNegative
         ? Theme.of(context).colorScheme.errorContainer
-        : null;
+        : Theme.of(context).colorScheme.surfaceContainerHighest;
   }
 
   TextStyle? _getTextStyle(BuildContext context, Duration difference) {
