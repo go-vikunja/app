@@ -80,8 +80,14 @@ class TaskListItemState extends State<TaskListItem> {
       texts.add(PriorityBatch(task.priority!));
     }
 
+    var project = task.project;
+
     if (texts.isEmpty) {
-      return Text(task.project?.title ?? "-");
+      if(project != null) {
+        return Text(project.title);
+      }
+
+      return null;
     }
 
     return Padding(
@@ -89,10 +95,11 @@ class TaskListItemState extends State<TaskListItem> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            task.project?.title ?? "-",
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
+          if(project != null)
+            Text(
+              project.title,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
           Padding(
             padding: const EdgeInsets.only(top: 4.0),
             child: Row(children: texts),
