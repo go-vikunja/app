@@ -1,17 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:url_launcher/url_launcher.dart';
+import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/core/di/notification_provider.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/core/utils/constants.dart';
+import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/main.dart';
 import 'package:vikunja_app/presentation/manager/notifications.dart';
 import 'package:vikunja_app/presentation/manager/settings_controller.dart';
+import 'package:vikunja_app/presentation/manager/task_page_controller.dart';
 import 'package:vikunja_app/presentation/pages/project/project_list_page.dart';
 import 'package:vikunja_app/presentation/pages/settings_page.dart';
 import 'package:vikunja_app/presentation/pages/task/task_list_page.dart';
+import 'package:vikunja_app/presentation/widgets/task/add_task_dialog.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -21,6 +26,8 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 class HomePageState extends ConsumerState<HomePage> {
+  static const platform = MethodChannel('vikunja');
+
   int _selectedDrawerIndex = 0, _previousDrawerIndex = 0;
   Widget? drawerItem;
 
@@ -35,6 +42,10 @@ class HomePageState extends ConsumerState<HomePage> {
   @override
   void initState() {
     super.initState();
+
+    Future.delayed(Duration.zero, () {
+      scheduleIntent();
+    });
 
     initNotifications();
 
@@ -86,6 +97,91 @@ class HomePageState extends ConsumerState<HomePage> {
   Widget _getDrawerItemWidget(int pos) {
     _previousDrawerIndex = pos;
     return widgets[pos];
+  }
+
+  void scheduleIntent() async {
+    try {
+      String? argument = await platform.invokeMethod<String>("isQuickTile", "");
+
+      print("Method $argument");
+      return showAddItemDialog(argument);
+    } catch (e) {
+      print("Error $e");
+    }
+
+    platform.setMethodCallHandler((call) async {
+      print("Called $call");
+      return showAddItemDialog(call.arguments as String);
+    });
+  }
+
+  Future<dynamic> showAddItemDialog(String? title) async {
+    var response = await ref.read(userRepositoryProvider).getCurrentUser();
+    if (response.isSuccessful) {
+      var defaultProjectId = response
+          .toSuccess()
+          .body
+          .settings
+          ?.default_project_id;
+      if (defaultProjectId == null || defaultProjectId == 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Please select a default project in the settings'),
+          ),
+        );
+      } else {
+        _addItemDialog(context, defaultProjectId, title);
+        return Future.value();
+      }
+    }
+  }
+
+  void _addItemDialog(
+    BuildContext context,
+    int defaultProjectId, [
+    String? title = null,
+  ]) {
+    showDialog(
+      context: context,
+      builder: (_) => AddTaskDialog(
+        onAddTask: (title, dueDate) =>
+            _addTask(title, dueDate, defaultProjectId, context),
+        title: title,
+      ),
+    );
+  }
+
+  Future<void> _addTask(
+    String title,
+    DateTime? dueDate,
+    int defaultProjectId,
+    BuildContext context,
+  ) async {
+    final currentUser = ref.read(currentUserProvider);
+    if (currentUser == null) {
+      return;
+    }
+
+    var task = Task(
+      title: title,
+      dueDate: dueDate,
+      createdBy: currentUser,
+      projectId: defaultProjectId,
+    );
+
+    var success = await ref
+        .read(taskPageControllerProvider.notifier)
+        .addTask(defaultProjectId, task);
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('The task was added successfully!')),
+      );
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error adding the task!')));
+    }
   }
 
   Future<void> postVersionCheckSnackbar() async {
