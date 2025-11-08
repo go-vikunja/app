@@ -67,9 +67,6 @@ class AppWidget : GlanceAppWidget() {
         // For some reason if there are no tasks an array will get created with 1 empty/null entry.
         if (taskIDs.isNotEmpty() && taskIDs[0].isNotEmpty()) {
             for (taskId in taskIDs) {
-                Log.d("ITEM", "a" + taskId + "a")
-                Log.d("ITEM", taskId.length.toString())
-                Log.d("ITEM", (taskId == null).toString())
                 val taskJSON = prefs.getString(taskId.trim(), null)
                 val task = gson.fromJson(taskJSON, Task::class.java)
                 if (task.today) {
