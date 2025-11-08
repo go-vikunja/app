@@ -1,4 +1,4 @@
-class WidgetTask{
+class WidgetTask {
   String id;
   String title;
   DateTime? dueDate;
@@ -10,15 +10,14 @@ class WidgetTask{
     this.title = 'None',
     this.dueDate,
     this.today = false,
-    this.overdue = false
+    this.overdue = false,
   });
 
-    toJSON() => {
+  toJSON() => {
     'id': id,
     'title': title,
     'dueDate': dueDate?.toUtc().toIso8601String(),
     'today': today,
     'overdue': overdue,
   };
-
 }

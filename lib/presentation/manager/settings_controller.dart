@@ -111,33 +111,32 @@ class SettingsController extends _$SettingsController {
       return;
     }
 
-
     var settings = await getAll();
     // var settings = ref.read(settingsControllerProvider);
     // settings.whenData((settings) {
-      Workmanager().cancelAll().then((value) {
-        var duration = Duration(minutes: settings.refreshInterval);
-        if (duration.inMinutes > 0) {
-          Workmanager().registerPeriodicTask(
-            "update-tasks",
-            "update-tasks",
-            frequency: duration,
-            constraints: Constraints(networkType: NetworkType.connected),
-            initialDelay: Duration(seconds: 15),
-          );
-        }
-
+    Workmanager().cancelAll().then((value) {
+      var duration = Duration(minutes: settings.refreshInterval);
+      if (duration.inMinutes > 0) {
         Workmanager().registerPeriodicTask(
-          "refresh-token",
-          "refresh-token",
-          frequency: Duration(hours: 12),
-          constraints: Constraints(
-            networkType: NetworkType.connected,
-            requiresDeviceIdle: true,
-          ),
+          "update-tasks",
+          "update-tasks",
+          frequency: duration,
+          constraints: Constraints(networkType: NetworkType.connected),
           initialDelay: Duration(seconds: 15),
         );
-      });
+      }
+
+      Workmanager().registerPeriodicTask(
+        "refresh-token",
+        "refresh-token",
+        frequency: Duration(hours: 12),
+        constraints: Constraints(
+          networkType: NetworkType.connected,
+          requiresDeviceIdle: true,
+        ),
+        initialDelay: Duration(seconds: 15),
+      );
+    });
   }
 
   void setDefaultProject(int value) {

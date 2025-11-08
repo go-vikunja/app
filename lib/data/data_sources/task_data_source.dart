@@ -52,7 +52,7 @@ class TaskDataSource extends RemoteDataSource {
       url: '/tasks/${taskId}',
       mapper: (body) {
         return TaskDto.fromJson(body);
-      }
+      },
     );
   }
 

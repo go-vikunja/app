@@ -13,13 +13,16 @@ import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/entities/widget_task.dart';
 import 'package:vikunja_app/domain/repositories/task_repository.dart';
 
-
 void completeTask() async {
   // Response<Task> task;
-  var taskID = await HomeWidget.getWidgetData("completeTask", defaultValue: "null");
+  var taskID = await HomeWidget.getWidgetData(
+    "completeTask",
+    defaultValue: "null",
+  );
   if (taskID == "null") {
     developer.log("Tried to complete an empy task");
-  };
+  }
+  ;
 
   var datasource = SettingsDatasource(FlutterSecureStorage());
   var token = await datasource.getUserToken();
@@ -40,8 +43,6 @@ void completeTask() async {
   } else {
     developer.log("There was an error initialising the client");
   }
-
-
 }
 
 WidgetTask convertTask(Task task) {
@@ -59,7 +60,7 @@ WidgetTask convertTask(Task task) {
     title: task.title,
     dueDate: task.dueDate,
     today: wgToday,
-    overdue: overdue
+    overdue: overdue,
   );
   return wgTask;
 }
@@ -109,7 +110,10 @@ void updateWidgetTasks(List<Task> tasklist) async {
   for (var task in tasklist) {
     widgetTaskIDs.add(task.id);
     var wgTask = convertTask(task);
-    await HomeWidget.saveWidgetData(task.id.toString(), jsonEncode(wgTask.toJSON()));
+    await HomeWidget.saveWidgetData(
+      task.id.toString(),
+      jsonEncode(wgTask.toJSON()),
+    );
   }
   HomeWidget.saveWidgetData("WidgetTaskIDs", widgetTaskIDs.toString());
   reRenderWidget();
@@ -119,7 +123,7 @@ void reRenderWidget() {
   HomeWidget.updateWidget(
     name: 'AppWidget',
     // androidName: '.widget.AppWidgetReciever',
-    qualifiedAndroidName: 'io.vikunja.flutteringvikunja.widget.AppWidgetReciever',
+    qualifiedAndroidName:
+        'io.vikunja.flutteringvikunja.widget.AppWidgetReciever',
   );
-
 }
