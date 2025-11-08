@@ -33,6 +33,11 @@ class TaskRepositoryImpl extends TaskRepository {
   }
 
   @override
+  Future<Response<Task>> getTask(int id) async {
+    return (await _dataSource.getTask(id)).toDomain();
+  }
+
+  @override
   Future<Response<List<Task>>> getAllByProject(
     int projectId, [
     Map<String, List<String>>? queryParameters,

@@ -14,6 +14,13 @@ import 'package:vikunja_app/presentation/manager/notifications.dart';
 import 'package:vikunja_app/presentation/manager/widget_controller.dart';
 import 'package:workmanager/workmanager.dart';
 
+@pragma("vm:entry-point")
+Future<void> widgetCallback(Uri? uri) async {
+  if (uri?.host == "completetask") {
+    completeTask();
+  }
+}
+
 @pragma('vm:entry-point')
 void callbackDispatcher() {
   if (kIsWeb) {

@@ -106,13 +106,15 @@ class SettingsController extends _$SettingsController {
     state = AsyncData(await getAll());
   }
 
-  void updateWorkManagerDuration() {
+  void updateWorkManagerDuration() async {
     if (kIsWeb) {
       return;
     }
 
-    var settings = ref.read(settingsControllerProvider);
-    settings.whenData((settings) {
+
+    var settings = await getAll();
+    // var settings = ref.read(settingsControllerProvider);
+    // settings.whenData((settings) {
       Workmanager().cancelAll().then((value) {
         var duration = Duration(minutes: settings.refreshInterval);
         if (duration.inMinutes > 0) {
@@ -136,7 +138,6 @@ class SettingsController extends _$SettingsController {
           initialDelay: Duration(seconds: 15),
         );
       });
-    });
   }
 
   void setDefaultProject(int value) {
