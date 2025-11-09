@@ -16,7 +16,7 @@ build-all: build-release build-debug build-profile
 
 .PHONY: build-release
 build-release:
-	$(FLUTTER) build apk --release --build-number=$(VERSION) --flavor main
+	$(FLUTTER) build apk --release --build-number=$(VERSION) --flavor main --dart-define=cronetHttpNoPlay=true
 
 .PHONY: build-debug
 build-debug:
