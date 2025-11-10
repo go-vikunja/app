@@ -42,9 +42,11 @@ class ProjectDto extends Dto<Project> {
       isArchived = json['is_archived'],
       isFavourite = json['is_archived'],
       parentProjectId = json['parent_project_id'],
-      views = json['views']
-          .map<ProjectViewDto>((view) => ProjectViewDto.fromJson(view))
-          .toList(),
+      views = (json['views'] is List)
+          ? (json['views'] as List)
+                .map<ProjectViewDto>((view) => ProjectViewDto.fromJson(view))
+                .toList()
+          : [],
       created = DateTime.parse(json['created']),
       updated = DateTime.parse(json['updated']),
       color = json['hex_color'] != ''
