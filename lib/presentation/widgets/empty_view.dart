@@ -9,12 +9,22 @@ class EmptyView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 96),
-          Text(text, style: Theme.of(context).textTheme.headlineSmall),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 96),
+            Padding(
+              padding: const EdgeInsets.only(top: 16.0),
+              child: Text(
+                text,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

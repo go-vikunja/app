@@ -10,6 +10,7 @@ import 'package:vikunja_app/presentation/manager/project_controller.dart';
 import 'package:vikunja_app/presentation/pages/error_widget.dart';
 import 'package:vikunja_app/presentation/pages/loading_widget.dart';
 import 'package:vikunja_app/presentation/pages/project/project_edit.dart';
+import 'package:vikunja_app/presentation/widgets/empty_view.dart';
 import 'package:vikunja_app/presentation/widgets/project/kanban/kanban_widget.dart';
 import 'package:vikunja_app/presentation/widgets/project/project_task_list.dart';
 import 'package:vikunja_app/presentation/widgets/task/add_task_dialog.dart';
@@ -55,7 +56,7 @@ class ProjectPageState extends ConsumerState<ProjectDetailPage> {
 
   Widget getBody(Project project) {
     if (project.views.isEmpty) {
-      return Text("No views");
+      return EmptyView(Icons.list, "There are no views in this project");
     }
 
     switch (project.views[_viewIndex].viewKind) {
