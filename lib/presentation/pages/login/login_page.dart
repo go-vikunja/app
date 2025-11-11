@@ -145,14 +145,16 @@ class LoginPageState extends ConsumerState<LoginPage> {
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(AppLocalizations.of(context)
-                            .pleaseEnterValidFrontendUrl),
+                        content: Text(
+                          AppLocalizations.of(
+                            context,
+                          ).pleaseEnterValidFrontendUrl,
+                        ),
                       ),
                     );
                   }
                 },
-                child:
-                    Text(AppLocalizations.of(context).loginWithFrontend),
+                child: Text(AppLocalizations.of(context).loginWithFrontend),
               ),
               CheckboxListTile(
                 title: Text(AppLocalizations.of(context).ignoreCertificates),
@@ -367,10 +369,11 @@ class LoginPageState extends ConsumerState<LoginPage> {
           .read(serverRepositoryProvider)
           .getInfo();
       if (!info.isSuccessful) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(
-            content: Text(AppLocalizations.of(context).cannotReachServer)));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context).cannotReachServer),
+          ),
+        );
       } else {
         Sentry.configureScope(
           (scope) => scope.setTag(
@@ -424,10 +427,9 @@ class LoginPageState extends ConsumerState<LoginPage> {
   }
 
   void _showGenericError(BuildContext context) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context).somethingWentWrong)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(AppLocalizations.of(context).somethingWentWrong)),
+    );
   }
 
   Future<void> onUserToken(

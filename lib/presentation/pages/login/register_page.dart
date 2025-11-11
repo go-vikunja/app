@@ -41,8 +41,7 @@ class RegisterPageState extends ConsumerState<RegisterPage> {
                     },
                     decoration: InputDecoration(
                       border: OutlineInputBorder(),
-                      labelText:
-                          AppLocalizations.of(context).serverAddress,
+                      labelText: AppLocalizations.of(context).serverAddress,
                     ),
                   ),
                 ),
@@ -53,8 +52,7 @@ class RegisterPageState extends ConsumerState<RegisterPage> {
                     validator: (username) {
                       return username!.trim().isNotEmpty
                           ? null
-                          : AppLocalizations.of(context)
-                              .pleaseSpecifyUsername;
+                          : AppLocalizations.of(context).pleaseSpecifyUsername;
                     },
                     decoration: InputDecoration(
                       border: OutlineInputBorder(),
@@ -147,17 +145,19 @@ class RegisterPageState extends ConsumerState<RegisterPage> {
             .saveUserToken(newUserLoggedIn.toSuccess().body.token);
         ref.read(settingsRepositoryProvider).saveServer(_server!);
       } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(
-            content: Text(AppLocalizations.of(context).registrationFailed)));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context).registrationFailed),
+          ),
+        );
       }
     } catch (ex) {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          title: Text(AppLocalizations.of(context)
-              .registrationFailedLong(ex.toString())),
+          title: Text(
+            AppLocalizations.of(context).registrationFailedLong(ex.toString()),
+          ),
           actions: <Widget>[
             TextButton(
               onPressed: () => Navigator.pop(context),

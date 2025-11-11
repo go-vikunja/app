@@ -17,11 +17,7 @@ class SentryDialog extends StatelessWidget {
     return AlertDialog(
       title: Text(l10n.sentryDialogTitle),
       content: SingleChildScrollView(
-        child: ListBody(
-          children: <Widget>[
-            Text(l10n.sentryDialogMessage),
-          ],
-        ),
+        child: ListBody(children: <Widget>[Text(l10n.sentryDialogMessage)]),
       ),
       actions: <Widget>[
         TextButton(

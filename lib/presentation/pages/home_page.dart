@@ -28,16 +28,19 @@ class HomePageState extends ConsumerState<HomePage> {
   List<Widget> widgets = [TaskListPage(), ProjectListPage(), SettingsPage()];
 
   List<NavigationDestination> navbarItems(BuildContext context) => [
-        NavigationDestination(
-            icon: Icon(Icons.home),
-            label: AppLocalizations.of(context).homeTab),
-        NavigationDestination(
-            icon: Icon(Icons.list),
-            label: AppLocalizations.of(context).projectsTab),
-        NavigationDestination(
-            icon: Icon(Icons.settings),
-            label: AppLocalizations.of(context).settingsTab),
-      ];
+    NavigationDestination(
+      icon: Icon(Icons.home),
+      label: AppLocalizations.of(context).homeTab,
+    ),
+    NavigationDestination(
+      icon: Icon(Icons.list),
+      label: AppLocalizations.of(context).projectsTab,
+    ),
+    NavigationDestination(
+      icon: Icon(Icons.settings),
+      label: AppLocalizations.of(context).settingsTab,
+    ),
+  ];
 
   @override
   void initState() {
@@ -105,7 +108,8 @@ class HomePageState extends ConsumerState<HomePage> {
         final ctx = globalSnackbarKey.currentContext ?? context;
         SnackBar snackBar = SnackBar(
           content: Text(
-              AppLocalizations.of(ctx).newVersionAvailable(latestVersionTag)),
+            AppLocalizations.of(ctx).newVersionAvailable(latestVersionTag),
+          ),
           action: SnackBarAction(
             label: AppLocalizations.of(ctx).viewOnGithub,
             onPressed: () => launchUrl(

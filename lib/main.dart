@@ -11,6 +11,7 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:sentry_logging/sentry_logging.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/core/di/theme_provider.dart';
+import 'package:vikunja_app/core/di/locale_provider.dart';
 import 'package:vikunja_app/data/data_sources/settings_data_source.dart';
 import 'package:vikunja_app/init_page.dart';
 import 'package:vikunja_app/presentation/pages/home_page.dart';
@@ -77,6 +78,7 @@ class VikunjaApp extends ConsumerWidget {
 
     return DynamicColorBuilder(
       builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
+        final overrideLocale = ref.watch(localeOverrideProvider);
         return MaterialApp(
           title: 'Vikunja',
           theme: currentAppTheme?.getTheme(lightDynamic),
@@ -84,6 +86,8 @@ class VikunjaApp extends ConsumerWidget {
           themeMode: currentAppTheme?.getThemeMode(),
           scaffoldMessengerKey: globalSnackbarKey,
           navigatorKey: globalNavigatorKey,
+          // When overrideLocale is null, Flutter falls back to system locale.
+          locale: overrideLocale,
           localizationsDelegates: const [
             AppLocalizations.delegate,
             GlobalMaterialLocalizations.delegate,

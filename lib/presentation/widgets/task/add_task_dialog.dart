@@ -48,8 +48,14 @@ class AddTaskDialogState extends State<AddTaskDialog> {
             child: Text(AppLocalizations.of(context).dueDate),
           ),
           taskDueList(AppLocalizations.of(context).dueInOneDay, NewTaskDue.day),
-          taskDueList(AppLocalizations.of(context).dueInOneWeek, NewTaskDue.week),
-          taskDueList(AppLocalizations.of(context).dueInOneMonth, NewTaskDue.month),
+          taskDueList(
+            AppLocalizations.of(context).dueInOneWeek,
+            NewTaskDue.week,
+          ),
+          taskDueList(
+            AppLocalizations.of(context).dueInOneMonth,
+            NewTaskDue.month,
+          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: VikunjaDateTimeField(

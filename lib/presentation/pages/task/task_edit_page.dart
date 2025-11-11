@@ -117,8 +117,10 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                            content: Text(AppLocalizations.of(context)
-                                .taskDeleteError)),
+                          content: Text(
+                            AppLocalizations.of(context).taskDeleteError,
+                          ),
+                        ),
                       );
                     }
                   },
@@ -369,24 +371,29 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
         labelText: AppLocalizations.of(context).priority,
         border: InputBorder.none,
       ),
-      initialValue: priorityToStringL10n(AppLocalizations.of(context), _priority),
+      initialValue: priorityToStringL10n(
+        AppLocalizations.of(context),
+        _priority,
+      ),
       isExpanded: true,
       onChanged: (String? newValue) {
-        _priority = priorityFromStringL10n(AppLocalizations.of(context), newValue);
+        _priority = priorityFromStringL10n(
+          AppLocalizations.of(context),
+          newValue,
+        );
         _checkChanged();
       },
-      items: [
-        AppLocalizations.of(context).priorityUnset,
-        AppLocalizations.of(context).priorityLow,
-        AppLocalizations.of(context).priorityMedium,
-        AppLocalizations.of(context).priorityHigh,
-        AppLocalizations.of(context).priorityUrgent,
-        AppLocalizations.of(context).priorityDoNow,
-      ].map((
-        String value,
-      ) {
-        return DropdownMenuItem(value: value, child: Text(value));
-      }).toList(),
+      items:
+          [
+            AppLocalizations.of(context).priorityUnset,
+            AppLocalizations.of(context).priorityLow,
+            AppLocalizations.of(context).priorityMedium,
+            AppLocalizations.of(context).priorityHigh,
+            AppLocalizations.of(context).priorityUrgent,
+            AppLocalizations.of(context).priorityDoNow,
+          ].map((String value) {
+            return DropdownMenuItem(value: value, child: Text(value));
+          }).toList(),
     );
   }
 
@@ -728,10 +735,9 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
           .update(updatedTask, _labels!);
 
       if (!updateLabelSuccess.isSuccessful) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(
-            SnackBar(content: Text(AppLocalizations.of(context).taskSaveError)));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.of(context).taskSaveError)),
+        );
         return;
       }
     }
@@ -743,13 +749,14 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
       Navigator.of(context).pop(updatedTask);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context).taskUpdatedSuccess)),
+        SnackBar(
+          content: Text(AppLocalizations.of(context).taskUpdatedSuccess),
+        ),
       );
     } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(
-          SnackBar(content: Text(AppLocalizations.of(context).taskSaveError)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context).taskSaveError)),
+      );
     }
   }
 }

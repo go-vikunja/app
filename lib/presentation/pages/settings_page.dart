@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
+import 'package:vikunja_app/core/di/locale_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/core/di/notification_provider.dart';
@@ -66,6 +67,28 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
                 },
               ),
             ),
+            // Language selector (override system language)
+            ListTile(
+              title: Text(l10n.language),
+              trailing: DropdownButton<Locale?>(
+                items: [
+                  DropdownMenuItem(
+                    value: null,
+                    child: Text(l10n.systemLanguage),
+                  ),
+                  ...AppLocalizations.supportedLocales.map(
+                    (loc) => DropdownMenuItem(
+                      value: loc,
+                      child: Text(_localeName(l10n, loc)),
+                    ),
+                  ),
+                ],
+                value: ref.watch(localeOverrideProvider),
+                onChanged: (Locale? value) {
+                  ref.read(localeOverrideProvider.notifier).setLocale(value);
+                },
+              ),
+            ),
             SwitchListTile(
               title: Text(l10n.dynamicColors),
               value: settings.dynamicColors,
@@ -107,7 +130,8 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
                       keyboardType: TextInputType.number,
                       controller: durationTextController,
                       decoration: InputDecoration(
-                        labelText: l10n.repeatAfter, // reuse or add new key later
+                        labelText:
+                            l10n.repeatAfter, // reuse or add new key later
                         helperText: l10n.noLimitHelper,
                       ),
                     ),
@@ -242,8 +266,9 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
           trailing: DropdownButton<int>(
             items: [
               DropdownMenuItem(
-                  value: 0,
-                  child: Text(AppLocalizations.of(context).none)),
+                value: 0,
+                child: Text(AppLocalizations.of(context).none),
+              ),
               ...projects.map(
                 (e) => DropdownMenuItem(value: e.id, child: Text(e.title)),
               ),
@@ -267,5 +292,16 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
         ),
       ],
     );
+  }
+
+  String _localeName(AppLocalizations l10n, Locale locale) {
+    switch (locale.languageCode) {
+      case 'en':
+        return l10n.languageEnglish;
+      case 'pl':
+        return l10n.languagePolish;
+      default:
+        return locale.languageCode;
+    }
   }
 }

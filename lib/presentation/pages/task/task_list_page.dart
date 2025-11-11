@@ -61,9 +61,7 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
             onPressed: () {
               if (model.defaultProjectId == 0) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(l10n.selectDefaultProject),
-                  ),
+                  SnackBar(content: Text(l10n.selectDefaultProject)),
                 );
               } else {
                 _addItemDialog(context, model.defaultProjectId);
@@ -80,8 +78,7 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
 
   Widget _buildList(TaskPageModel model, BuildContext context) {
     if (model.tasks.isEmpty) {
-      return EmptyView(
-          Icons.list, AppLocalizations.of(context).noTasks);
+      return EmptyView(Icons.list, AppLocalizations.of(context).noTasks);
     } else {
       return ListView(
         children: ListTile.divideTiles(
@@ -107,8 +104,9 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      Text(AppLocalizations.of(context)
-                          .onlyShowTasksWithDueDate),
+                      Text(
+                        AppLocalizations.of(context).onlyShowTasksWithDueDate,
+                      ),
                       Checkbox(
                         value: onlyDueDate,
                         onChanged: (bool? value) {
@@ -170,10 +168,9 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
         SnackBar(content: Text(AppLocalizations.of(context).taskAddedSuccess)),
       );
     } else {
-      ScaffoldMessenger.of(
-        context,
-        ).showSnackBar(SnackBar(
-            content: Text(AppLocalizations.of(context).taskAddError)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context).taskAddError)),
+      );
     }
   }
 
@@ -194,8 +191,10 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
               if (!success) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                      content:
-                          Text(AppLocalizations.of(context).taskMarkDoneError)),
+                    content: Text(
+                      AppLocalizations.of(context).taskMarkDoneError,
+                    ),
+                  ),
                 );
               }
             },

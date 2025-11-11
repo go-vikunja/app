@@ -17,7 +17,7 @@ class EditDescriptionState extends State<EditDescription> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-  title: Text(AppLocalizations.of(context).editDescriptionTitle),
+        title: Text(AppLocalizations.of(context).editDescriptionTitle),
         actions: <Widget>[
           IconButton(
             icon: Icon(Icons.save),

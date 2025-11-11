@@ -164,10 +164,9 @@ class ProjectPageState extends ConsumerState<ProjectDetailPage> {
         SnackBar(content: Text(AppLocalizations.of(context).taskAddedSuccess)),
       );
     } else if (context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(
-          SnackBar(content: Text(AppLocalizations.of(context).taskAddError)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context).taskAddError)),
+      );
     }
   }
 

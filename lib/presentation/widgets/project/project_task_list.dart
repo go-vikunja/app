@@ -26,14 +26,18 @@ class ProjectTaskList extends ConsumerWidget {
         List<Widget> children = [];
         if (project.subprojects.isNotEmpty) {
           if (pageModel.tasks.isNotEmpty) {
-            children.add(_buildSectionHeader(AppLocalizations.of(context).projectSection));
+            children.add(
+              _buildSectionHeader(AppLocalizations.of(context).projectSection),
+            );
             children.add(Divider());
           }
           children.addAll(_buildProjectList(context));
         }
         if (pageModel.tasks.isNotEmpty) {
           if (project.subprojects.isNotEmpty) {
-            children.add(_buildSectionHeader(AppLocalizations.of(context).tasksSection));
+            children.add(
+              _buildSectionHeader(AppLocalizations.of(context).tasksSection),
+            );
             children.add(Divider());
           }
           children.addAll(_buildTaskList(ref, pageModel.tasks));
@@ -102,9 +106,11 @@ class ProjectTaskList extends ConsumerWidget {
             .read(projectControllerProvider(project).notifier)
             .markAsDone(task);
         if (!success) {
-          ScaffoldMessenger.of(
-            ref.context,
-          ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(ref.context).failedToMarkDone)));
+          ScaffoldMessenger.of(ref.context).showSnackBar(
+            SnackBar(
+              content: Text(AppLocalizations.of(ref.context).failedToMarkDone),
+            ),
+          );
         }
       },
     );

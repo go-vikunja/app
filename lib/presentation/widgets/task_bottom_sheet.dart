@@ -106,14 +106,17 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
               ),
 
               // description with html rendering
-              Text(AppLocalizations.of(context).description, style: theme.textTheme.headlineSmall),
+              Text(
+                AppLocalizations.of(context).description,
+                style: theme.textTheme.headlineSmall,
+              ),
               SizedBox(height: propertyPadding),
               Padding(
                 padding: EdgeInsets.fromLTRB(10, 0, 0, 0),
                 child: HtmlWidget(
-          _currentTask.description.isNotEmpty
-            ? _currentTask.description
-            : AppLocalizations.of(context).noDescription,
+                  _currentTask.description.isNotEmpty
+                      ? _currentTask.description
+                      : AppLocalizations.of(context).noDescription,
                 ),
               ),
               SizedBox(height: propertyPadding),
@@ -168,9 +171,12 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
                   Icon(Icons.priority_high),
                   Padding(padding: EdgeInsets.fromLTRB(10, 0, 0, 0)),
                   Text(
-          _currentTask.priority != null
-            ? priorityToStringLocalized(context, _currentTask.priority)
-            : AppLocalizations.of(context).noPriority,
+                    _currentTask.priority != null
+                        ? priorityToStringLocalized(
+                            context,
+                            _currentTask.priority,
+                          )
+                        : AppLocalizations.of(context).noPriority,
                   ),
                 ],
               ),
@@ -181,9 +187,9 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
                   Icon(Icons.percent),
                   Padding(padding: EdgeInsets.fromLTRB(10, 0, 0, 0)),
                   Text(
-          _currentTask.percentDone != null
-            ? "${(_currentTask.percentDone! * 100).toInt()}%"
-            : AppLocalizations.of(context).percentUnset,
+                    _currentTask.percentDone != null
+                        ? "${(_currentTask.percentDone! * 100).toInt()}%"
+                        : AppLocalizations.of(context).percentUnset,
                   ),
                 ],
               ),

@@ -193,7 +193,9 @@ class KanbanWidgetState extends ConsumerState<KanbanWidget> {
                             data.viewIndex,
                           );
                         },
-                        child: Text(AppLocalizations.of(context).kanbanAddBucket),
+                        child: Text(
+                          AppLocalizations.of(context).kanbanAddBucket,
+                        ),
                       ),
                     ],
                   ),
@@ -248,12 +250,14 @@ class KanbanWidgetState extends ConsumerState<KanbanWidget> {
 
     if (context.mounted && success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context).bucketAddedSuccess)),
+        SnackBar(
+          content: Text(AppLocalizations.of(context).bucketAddedSuccess),
+        ),
       );
     } else if (context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).bucketAddError)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context).bucketAddError)),
+      );
     }
   }
 
@@ -285,9 +289,9 @@ class KanbanWidgetState extends ConsumerState<KanbanWidget> {
 
     var context = this.context;
     if (!success && context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-  ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).bucketUpdateError)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context).bucketUpdateError)),
+      );
 
       //We need to update the drag immediately for UX reasons -> if it fails afterwards just reload the project
       ref.read(projectControllerProvider(project).notifier).reload();
@@ -345,9 +349,9 @@ class KanbanWidgetState extends ConsumerState<KanbanWidget> {
           .moveTask(project, task, toBucket, position);
 
       if (!success && context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-  ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).taskMoveError)));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.of(context).taskMoveError)),
+        );
 
         //We need to update the drag immediately for UX reasons -> if it fails afterwards just reload the project
         ref.read(projectControllerProvider(project).notifier).reload();

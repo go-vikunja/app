@@ -141,9 +141,9 @@ class ProjectEditPageState extends ConsumerState<ProjectEditPage> {
       var context = ref.context;
       final loc = AppLocalizations.of(context);
       if (success && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(loc.projectUpdatedSuccess)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(loc.projectUpdatedSuccess)));
 
         Navigator.of(context).pop();
 

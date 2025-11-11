@@ -229,9 +229,9 @@ class _BucketColumnState extends ConsumerState<BucketColumn> {
         );
 
     if (!success && context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-  ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).bucketUpdateError)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context).bucketUpdateError)),
+      );
     }
   }
 
@@ -245,9 +245,9 @@ class _BucketColumnState extends ConsumerState<BucketColumn> {
         );
 
     if (!success && context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-  ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).bucketUpdateError)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context).bucketUpdateError)),
+      );
     }
   }
 
@@ -266,9 +266,11 @@ class _BucketColumnState extends ConsumerState<BucketColumn> {
           .updateBucket(bucket: widget.bucket, project: widget.project);
 
       if (!success && context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-  ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).bucketUpdateError)));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context).bucketUpdateError),
+          ),
+        );
       }
     }
   }
@@ -288,9 +290,11 @@ class _BucketColumnState extends ConsumerState<BucketColumn> {
           .updateBucket(bucket: widget.bucket, project: widget.project);
 
       if (!success && context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error updating the bucket!')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context).bucketUpdateError),
+          ),
+        );
       }
     }
   }
@@ -309,7 +313,9 @@ class _BucketColumnState extends ConsumerState<BucketColumn> {
               Navigator.of(context).pop();
             } else if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(AppLocalizations.of(context).bucketDeleteError)),
+                SnackBar(
+                  content: Text(AppLocalizations.of(context).bucketDeleteError),
+                ),
               );
             }
           },
@@ -353,9 +359,9 @@ class _BucketColumnState extends ConsumerState<BucketColumn> {
         SnackBar(content: Text(AppLocalizations.of(context).taskAddedSuccess)),
       );
     } else if (context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).taskAddError)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context).taskAddError)),
+      );
     }
   }
 }
