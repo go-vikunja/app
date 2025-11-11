@@ -8,8 +8,8 @@ import 'package:vikunja_app/presentation/pages/loading_widget.dart';
 import 'package:vikunja_app/presentation/pages/project/project_detail_page.dart';
 import 'package:vikunja_app/presentation/pages/task/task_edit_page.dart';
 import 'package:vikunja_app/presentation/widgets/empty_view.dart';
+import 'package:vikunja_app/presentation/widgets/project/project_task_list_item.dart';
 import 'package:vikunja_app/presentation/widgets/task_bottom_sheet.dart';
-import 'package:vikunja_app/presentation/widgets/task_tile.dart';
 
 class ProjectTaskList extends ConsumerWidget {
   final Project project;
@@ -24,19 +24,27 @@ class ProjectTaskList extends ConsumerWidget {
       data: (pageModel) {
         List<Widget> children = [];
         if (project.subprojects.isNotEmpty) {
-          children.add(_buildSectionHeader("Projects"));
+          if (pageModel.tasks.isNotEmpty) {
+            children.add(_buildSectionHeader("Projects"));
+            children.add(Divider());
+          }
           children.addAll(_buildProjectList(context));
         }
         if (pageModel.tasks.isNotEmpty) {
-          children.add(_buildSectionHeader("Tasks"));
-          children.add(Divider());
+          if (project.subprojects.isNotEmpty) {
+            children.add(_buildSectionHeader("Tasks"));
+            children.add(Divider());
+          }
           children.addAll(_buildTaskList(ref, pageModel.tasks));
         }
 
         if (children.isNotEmpty) {
           return ListView(children: children);
         } else {
-          return EmptyView(Icons.list, "No tasks");
+          return EmptyView(
+            Icons.list,
+            "No tasks or sub project in this project",
+          );
         }
       },
       error: (err, _) => VikunjaErrorWidget(error: err),
@@ -74,7 +82,7 @@ class ProjectTaskList extends ConsumerWidget {
 
   List<Widget> _buildTaskList(WidgetRef ref, List<Task> tasks) {
     return List.generate(tasks.length * 2, (i) {
-      if (i.isOdd) return Divider();
+      if (i.isOdd) return Divider(height: 1);
 
       final index = i ~/ 2;
 
@@ -83,7 +91,7 @@ class ProjectTaskList extends ConsumerWidget {
   }
 
   Widget _buildTile(WidgetRef ref, Task task) {
-    return TaskTile(
+    return ProjectTaskListItem(
       key: Key(task.id.toString()),
       task: task,
       onTap: () => _showTaskBottomSheet(ref.context, task),
@@ -98,7 +106,6 @@ class ProjectTaskList extends ConsumerWidget {
           ).showSnackBar(SnackBar(content: Text("Failed to mark as done")));
         }
       },
-      showInfo: true,
     );
   }
 

@@ -52,7 +52,10 @@ class TaskRepositoryImpl extends TaskRepository {
     String filterString, [
     Map<String, List<String>>? queryParameters,
   ]) async {
-    return (await _dataSource.getByFilterString(filterString)).toDomain();
+    return (await _dataSource.getByFilterString(
+      filterString,
+      queryParameters,
+    )).toDomain();
   }
 
   @override

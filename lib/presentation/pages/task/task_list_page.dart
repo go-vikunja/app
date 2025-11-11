@@ -15,7 +15,7 @@ import 'package:vikunja_app/presentation/pages/task/task_edit_page.dart';
 import 'package:vikunja_app/presentation/widgets/empty_view.dart';
 import 'package:vikunja_app/presentation/widgets/task/add_task_dialog.dart';
 import 'package:vikunja_app/presentation/widgets/task_bottom_sheet.dart';
-import 'package:vikunja_app/presentation/widgets/task_tile.dart';
+import 'package:vikunja_app/presentation/widgets/task/task_list_item.dart';
 
 class TaskListPage extends ConsumerStatefulWidget {
   const TaskListPage({super.key});
@@ -83,7 +83,6 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
       return EmptyView(Icons.list, "No tasks");
     } else {
       return ListView(
-        padding: EdgeInsets.symmetric(vertical: 8.0),
         children: ListTile.divideTiles(
           context: context,
           tiles: _listTasks(context, model.tasks),
@@ -178,7 +177,7 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
   List<Widget> _listTasks(BuildContext context, List<Task> tasks) {
     return tasks
         .map(
-          (task) => TaskTile(
+          (task) => TaskListItem(
             key: Key(task.id.toString()),
             task: task,
             onTap: () {
@@ -195,7 +194,6 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
                 );
               }
             },
-            showInfo: true,
           ),
         )
         .toList();
