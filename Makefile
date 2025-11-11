@@ -16,7 +16,7 @@ build-all: build-release build-debug build-profile
 
 .PHONY: build-release
 build-release: l10n
-	$(FLUTTER) build apk --release --build-number=$(VERSION) --flavor production
+	$(FLUTTER) build apk --release --build-number=$(VERSION) --flavor main
 
 .PHONY: build-debug
 build-debug: l10n
