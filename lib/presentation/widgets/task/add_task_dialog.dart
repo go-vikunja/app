@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/domain/entities/new_task_due.dart';
 import 'package:vikunja_app/presentation/widgets/date_time_field.dart';
+import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 
 class AddTaskDialog extends StatefulWidget {
   final void Function(String title, DateTime? dueDate) onAddTask;
@@ -34,8 +35,8 @@ class AddTaskDialogState extends State<AddTaskDialog> {
                 child: TextField(
                   autofocus: true,
                   decoration: InputDecoration(
-                    labelText: 'New Task Name',
-                    hintText: 'eg. Milk',
+                    labelText: AppLocalizations.of(context).newTaskName,
+                    hintText: AppLocalizations.of(context).newTaskExample,
                   ),
                   controller: textController,
                 ),
@@ -44,15 +45,15 @@ class AddTaskDialogState extends State<AddTaskDialog> {
           ),
           Padding(
             padding: const EdgeInsets.only(top: 16.0, bottom: 8),
-            child: Text("Due Date:"),
+            child: Text(AppLocalizations.of(context).dueDate),
           ),
-          taskDueList("1 Day", NewTaskDue.day),
-          taskDueList("1 Week", NewTaskDue.week),
-          taskDueList("1 Month", NewTaskDue.month),
+          taskDueList(AppLocalizations.of(context).dueInOneDay, NewTaskDue.day),
+          taskDueList(AppLocalizations.of(context).dueInOneWeek, NewTaskDue.week),
+          taskDueList(AppLocalizations.of(context).dueInOneMonth, NewTaskDue.month),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: VikunjaDateTimeField(
-              label: "Enter exact time",
+              label: AppLocalizations.of(context).enterExactTime,
               onChanged: (value) {
                 setState(() => newTaskDue = NewTaskDue.custom);
                 customDueDate = value;
@@ -63,11 +64,11 @@ class AddTaskDialogState extends State<AddTaskDialog> {
       ),
       actions: <Widget>[
         TextButton(
-          child: const Text('Cancel'),
+          child: Text(AppLocalizations.of(context).cancel),
           onPressed: () => Navigator.pop(context),
         ),
         TextButton(
-          child: const Text('Add'),
+          child: Text(AppLocalizations.of(context).add),
           onPressed: () {
             if (textController.text.isNotEmpty) {
               widget.onAddTask(textController.text, customDueDate);

@@ -13,6 +13,7 @@ import 'package:vikunja_app/presentation/widgets/project/kanban/change_title_dia
 import 'package:vikunja_app/presentation/widgets/project/kanban/kanban_task_list.dart';
 import 'package:vikunja_app/presentation/widgets/project/kanban/kanban_widget.dart';
 import 'package:vikunja_app/presentation/widgets/task/add_task_dialog.dart';
+import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 
 class BucketColumn extends ConsumerStatefulWidget {
   final Project project;
@@ -230,7 +231,7 @@ class _BucketColumnState extends ConsumerState<BucketColumn> {
     if (!success && context.mounted) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Error updating the bucket!')));
+  ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).bucketUpdateError)));
     }
   }
 
@@ -246,7 +247,7 @@ class _BucketColumnState extends ConsumerState<BucketColumn> {
     if (!success && context.mounted) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Error updating the bucket!')));
+  ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).bucketUpdateError)));
     }
   }
 
@@ -267,7 +268,7 @@ class _BucketColumnState extends ConsumerState<BucketColumn> {
       if (!success && context.mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Error updating the bucket!')));
+  ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).bucketUpdateError)));
       }
     }
   }
@@ -308,7 +309,7 @@ class _BucketColumnState extends ConsumerState<BucketColumn> {
               Navigator.of(context).pop();
             } else if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Error deleting the bucket!')),
+                SnackBar(content: Text(AppLocalizations.of(context).bucketDeleteError)),
               );
             }
           },
@@ -349,12 +350,12 @@ class _BucketColumnState extends ConsumerState<BucketColumn> {
 
     if (context.mounted && success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('The task was added successfully!')),
+        SnackBar(content: Text(AppLocalizations.of(context).taskAddedSuccess)),
       );
     } else if (context.mounted) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Error adding the task!')));
+      ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).taskAddError)));
     }
   }
 }

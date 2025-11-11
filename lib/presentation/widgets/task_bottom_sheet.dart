@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:vikunja_app/core/utils/constants.dart';
-import 'package:vikunja_app/core/utils/priority.dart';
+import 'package:vikunja_app/l10n/gen/app_localizations.dart';
+// removed unused priority import after localizing strings
 import 'package:vikunja_app/domain/entities/label.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/presentation/pages/task/task_edit_page.dart';
@@ -32,6 +33,26 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
   final double propertyPadding = 10.0;
 
   TaskBottomSheetState(this._currentTask);
+
+  String priorityToStringLocalized(BuildContext context, int? priority) {
+    if (priority == null) return AppLocalizations.of(context).priorityUnset;
+    switch (priority) {
+      case 0:
+        return AppLocalizations.of(context).priorityUnset;
+      case 1:
+        return AppLocalizations.of(context).priorityLow;
+      case 2:
+        return AppLocalizations.of(context).priorityMedium;
+      case 3:
+        return AppLocalizations.of(context).priorityHigh;
+      case 4:
+        return AppLocalizations.of(context).priorityUrgent;
+      case 5:
+        return AppLocalizations.of(context).priorityDoNow;
+      default:
+        return '';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -85,14 +106,14 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
               ),
 
               // description with html rendering
-              Text("Description", style: theme.textTheme.headlineSmall),
+              Text(AppLocalizations.of(context).description, style: theme.textTheme.headlineSmall),
               SizedBox(height: propertyPadding),
               Padding(
                 padding: EdgeInsets.fromLTRB(10, 0, 0, 0),
                 child: HtmlWidget(
-                  _currentTask.description.isNotEmpty
-                      ? _currentTask.description
-                      : "No description",
+          _currentTask.description.isNotEmpty
+            ? _currentTask.description
+            : AppLocalizations.of(context).noDescription,
                 ),
               ),
               SizedBox(height: propertyPadding),
@@ -106,7 +127,7 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
                         ? vDateFormatShort.format(
                             _currentTask.dueDate!.toLocal(),
                           )
-                        : "No due date",
+                        : AppLocalizations.of(context).noDueDate,
                   ),
                 ],
               ),
@@ -121,7 +142,7 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
                         ? vDateFormatShort.format(
                             _currentTask.startDate!.toLocal(),
                           )
-                        : "No start date",
+                        : AppLocalizations.of(context).noStartDate,
                   ),
                 ],
               ),
@@ -136,7 +157,7 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
                         ? vDateFormatShort.format(
                             _currentTask.endDate!.toLocal(),
                           )
-                        : "No end date",
+                        : AppLocalizations.of(context).noEndDate,
                   ),
                 ],
               ),
@@ -147,9 +168,9 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
                   Icon(Icons.priority_high),
                   Padding(padding: EdgeInsets.fromLTRB(10, 0, 0, 0)),
                   Text(
-                    _currentTask.priority != null
-                        ? priorityToString(_currentTask.priority)
-                        : "No priority",
+          _currentTask.priority != null
+            ? priorityToStringLocalized(context, _currentTask.priority)
+            : AppLocalizations.of(context).noPriority,
                   ),
                 ],
               ),
@@ -160,9 +181,9 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
                   Icon(Icons.percent),
                   Padding(padding: EdgeInsets.fromLTRB(10, 0, 0, 0)),
                   Text(
-                    _currentTask.percentDone != null
-                        ? "${(_currentTask.percentDone! * 100).toInt()}%"
-                        : "Unset",
+          _currentTask.percentDone != null
+            ? "${(_currentTask.percentDone! * 100).toInt()}%"
+            : AppLocalizations.of(context).percentUnset,
                   ),
                 ],
               ),

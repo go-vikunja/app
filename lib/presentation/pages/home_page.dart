@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:url_launcher/url_launcher.dart';
@@ -26,11 +27,17 @@ class HomePageState extends ConsumerState<HomePage> {
 
   List<Widget> widgets = [TaskListPage(), ProjectListPage(), SettingsPage()];
 
-  List<NavigationDestination> navbarItems = [
-    NavigationDestination(icon: Icon(Icons.home), label: "Home"),
-    NavigationDestination(icon: Icon(Icons.list), label: "Projects"),
-    NavigationDestination(icon: Icon(Icons.settings), label: "Settings"),
-  ];
+  List<NavigationDestination> navbarItems(BuildContext context) => [
+        NavigationDestination(
+            icon: Icon(Icons.home),
+            label: AppLocalizations.of(context).homeTab),
+        NavigationDestination(
+            icon: Icon(Icons.list),
+            label: AppLocalizations.of(context).projectsTab),
+        NavigationDestination(
+            icon: Icon(Icons.settings),
+            label: AppLocalizations.of(context).settingsTab),
+      ];
 
   @override
   void initState() {
@@ -70,7 +77,7 @@ class HomePageState extends ConsumerState<HomePage> {
           topRight: Radius.circular(16),
         ),
         child: NavigationBar(
-          destinations: navbarItems,
+          destinations: navbarItems(context),
           selectedIndex: _selectedDrawerIndex,
           onDestinationSelected: (index) {
             setState(() {
@@ -95,10 +102,12 @@ class HomePageState extends ConsumerState<HomePage> {
     ref.read(versionRepositoryProvider).isUpToDate().then((value) {
       if (!value) {
         // not up to date
+        final ctx = globalSnackbarKey.currentContext ?? context;
         SnackBar snackBar = SnackBar(
-          content: Text("New version available: $latestVersionTag"),
+          content: Text(
+              AppLocalizations.of(ctx).newVersionAvailable(latestVersionTag)),
           action: SnackBarAction(
-            label: "View on Github",
+            label: AppLocalizations.of(ctx).viewOnGithub,
             onPressed: () => launchUrl(
               Uri.parse(repo),
               mode: LaunchMode.externalApplication,

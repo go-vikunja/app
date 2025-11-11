@@ -1,6 +1,7 @@
 import 'package:html_editor_enhanced/html_editor.dart';
 
 import 'package:flutter/material.dart';
+import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 
 class EditDescription extends StatefulWidget {
   final String? initialText;
@@ -16,7 +17,7 @@ class EditDescriptionState extends State<EditDescription> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Edit Description'),
+  title: Text(AppLocalizations.of(context).editDescriptionTitle),
         actions: <Widget>[
           IconButton(
             icon: Icon(Icons.save),

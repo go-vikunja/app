@@ -2,12 +2,14 @@ import 'package:background_downloader/background_downloader.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart'
     hide ChangeNotifierProvider;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:sentry_logging/sentry_logging.dart';
+import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/core/di/theme_provider.dart';
 import 'package:vikunja_app/data/data_sources/settings_data_source.dart';
 import 'package:vikunja_app/init_page.dart';
@@ -82,6 +84,13 @@ class VikunjaApp extends ConsumerWidget {
           themeMode: currentAppTheme?.getThemeMode(),
           scaffoldMessengerKey: globalSnackbarKey,
           navigatorKey: globalNavigatorKey,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
           initialRoute: '/',
           routes: {
             '/': (context) => const InitPage(),

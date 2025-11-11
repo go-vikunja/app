@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:http/http.dart';
 
 class VikunjaErrorWidget extends StatelessWidget {
@@ -28,7 +29,7 @@ class VikunjaErrorWidget extends StatelessWidget {
                 onPressed: () {
                   onRetry?.call();
                 },
-                child: Text('Retry'),
+                child: Text(AppLocalizations.of(context).retry),
               ),
           ],
         ),

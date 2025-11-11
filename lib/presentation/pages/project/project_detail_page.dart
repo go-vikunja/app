@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
@@ -55,7 +56,7 @@ class ProjectPageState extends ConsumerState<ProjectDetailPage> {
 
   Widget getBody(Project project) {
     if (project.views.isEmpty) {
-      return Text("No views");
+      return Text(AppLocalizations.of(context).noViews);
     }
 
     switch (project.views[_viewIndex].viewKind) {
@@ -64,7 +65,7 @@ class ProjectPageState extends ConsumerState<ProjectDetailPage> {
       case ViewKind.kanban:
         return KanbanWidget(project: project);
       default:
-        return Text("Not implemented");
+        return Text(AppLocalizations.of(context).notImplemented);
     }
   }
 
@@ -160,12 +161,13 @@ class ProjectPageState extends ConsumerState<ProjectDetailPage> {
 
     if (context.mounted && success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('The task was added successfully!')),
+        SnackBar(content: Text(AppLocalizations.of(context).taskAddedSuccess)),
       );
     } else if (context.mounted) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Error adding the task!')));
+      ).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.of(context).taskAddError)));
     }
   }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 
 class ColorPickerDialog extends StatefulWidget {
   final Color? _pickerColor;
@@ -24,8 +25,9 @@ class _ColorPickerDialogState extends State<ColorPickerDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return AlertDialog(
-      title: const Text('Task Color'),
+      title: Text(l10n.taskColorTitle),
       content: SingleChildScrollView(
         child: ColorPicker(
           pickerColor: _pickerColor ?? Colors.black,
@@ -40,11 +42,11 @@ class _ColorPickerDialogState extends State<ColorPickerDialog> {
       ),
       actions: <TextButton>[
         TextButton(
-          child: Text('Cancel'),
+          child: Text(l10n.cancel),
           onPressed: () => Navigator.of(context).pop(),
         ),
         TextButton(
-          child: Text('Reset'),
+          child: Text(l10n.reset),
           onPressed: () {
             setState(() {
               _pickerColor = Colors.black;
@@ -52,7 +54,7 @@ class _ColorPickerDialogState extends State<ColorPickerDialog> {
           },
         ),
         TextButton(
-          child: Text('OK'),
+          child: Text(l10n.ok),
           onPressed: () {
             widget.onConfirm(_pickerColor ?? Colors.black);
           },

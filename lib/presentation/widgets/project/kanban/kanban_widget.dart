@@ -12,6 +12,7 @@ import 'package:vikunja_app/presentation/manager/project_controller.dart';
 import 'package:vikunja_app/presentation/pages/error_widget.dart';
 import 'package:vikunja_app/presentation/pages/loading_widget.dart';
 import 'package:vikunja_app/presentation/widgets/project/kanban/add_bucket_dialog.dart';
+import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/presentation/widgets/project/kanban/bucket_drag_target.dart';
 import 'package:vikunja_app/presentation/widgets/project/kanban/bucket_item.dart';
 
@@ -192,7 +193,7 @@ class KanbanWidgetState extends ConsumerState<KanbanWidget> {
                             data.viewIndex,
                           );
                         },
-                        child: Text("Add Bucket +"),
+                        child: Text(AppLocalizations.of(context).kanbanAddBucket),
                       ),
                     ],
                   ),
@@ -247,12 +248,12 @@ class KanbanWidgetState extends ConsumerState<KanbanWidget> {
 
     if (context.mounted && success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('The bucket was added successfully!')),
+        SnackBar(content: Text(AppLocalizations.of(context).bucketAddedSuccess)),
       );
     } else if (context.mounted) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Error adding the bucket!')));
+      ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).bucketAddError)));
     }
   }
 
@@ -286,7 +287,7 @@ class KanbanWidgetState extends ConsumerState<KanbanWidget> {
     if (!success && context.mounted) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Error updating the bucket!')));
+  ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).bucketUpdateError)));
 
       //We need to update the drag immediately for UX reasons -> if it fails afterwards just reload the project
       ref.read(projectControllerProvider(project).notifier).reload();
@@ -346,7 +347,7 @@ class KanbanWidgetState extends ConsumerState<KanbanWidget> {
       if (!success && context.mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Error moving the task!')));
+  ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).taskMoveError)));
 
         //We need to update the drag immediately for UX reasons -> if it fails afterwards just reload the project
         ref.read(projectControllerProvider(project).notifier).reload();

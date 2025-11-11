@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/core/di/notification_provider.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
@@ -38,6 +39,7 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     var pageModel = ref.watch(taskPageControllerProvider);
 
     //TODO find a better place for that
@@ -60,9 +62,7 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
               if (model.defaultProjectId == 0) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text(
-                      'Please select a default project in the settings',
-                    ),
+                    content: Text(l10n.selectDefaultProject),
                   ),
                 );
               } else {
@@ -80,7 +80,8 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
 
   Widget _buildList(TaskPageModel model, BuildContext context) {
     if (model.tasks.isEmpty) {
-      return EmptyView(Icons.list, "No tasks");
+      return EmptyView(
+          Icons.list, AppLocalizations.of(context).noTasks);
     } else {
       return ListView(
         children: ListTile.divideTiles(
@@ -93,7 +94,7 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
 
   AppBar _buildAppBar(bool onlyDueDate) {
     return AppBar(
-      title: Text("Vikunja"),
+      title: Text(AppLocalizations.of(context).appTitle),
       actions: [
         PopupMenuButton(
           itemBuilder: (BuildContext context) {
@@ -106,7 +107,8 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      Text("Only show tasks with due date"),
+                      Text(AppLocalizations.of(context)
+                          .onlyShowTasksWithDueDate),
                       Checkbox(
                         value: onlyDueDate,
                         onChanged: (bool? value) {
@@ -165,12 +167,13 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
 
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('The task was added successfully!')),
+        SnackBar(content: Text(AppLocalizations.of(context).taskAddedSuccess)),
       );
     } else {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Error adding the task!')));
+        ).showSnackBar(SnackBar(
+            content: Text(AppLocalizations.of(context).taskAddError)));
     }
   }
 
@@ -190,7 +193,9 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
                   .markAsDone(task);
               if (!success) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Error marking task as done')),
+                  SnackBar(
+                      content:
+                          Text(AppLocalizations.of(context).taskMarkDoneError)),
                 );
               }
             },
@@ -235,7 +240,7 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
         if (defaultProjectId == null || defaultProjectId == 0) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Please select a default project in the settings'),
+              content: Text(AppLocalizations.of(context).selectDefaultProject),
             ),
           );
         } else {
