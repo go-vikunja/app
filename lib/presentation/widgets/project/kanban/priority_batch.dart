@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:vikunja_app/core/theming/app_colors.dart';
 import 'package:vikunja_app/core/utils/priority.dart';
 
 class PriorityBatch extends StatelessWidget {
@@ -11,24 +12,41 @@ class PriorityBatch extends StatelessWidget {
     return Badge(
       padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       label: Text(priorityToString(priority)),
-      backgroundColor: getBackgroundColor(priority),
+      backgroundColor: getBackgroundColor(context, priority),
     );
   }
 
-  Color? getBackgroundColor(int priority) {
+  Color? getBackgroundColor(BuildContext context, int priority) {
+    final appColors = Theme.of(context).extension<AppColors>();
     switch (priority) {
       case 0:
         return null;
       case 1:
-        return Colors.green;
+        return appColors?.success ?? Colors.green;
       case 2:
-        return Colors.orange;
+        return appColors?.warning ?? Colors.yellow;
       case 3:
-        return Colors.red;
       case 4:
-        return Colors.red;
       case 5:
-        return Colors.red;
+        return appColors?.danger ?? Colors.red;
+      default:
+        return null;
+    }
+  }
+
+  Color? getTextColor(BuildContext context, int priority) {
+    final appColors = Theme.of(context).extension<AppColors>();
+    switch (priority) {
+      case 0:
+        return null;
+      case 1:
+        return appColors?.onSuccess ?? Colors.green;
+      case 2:
+        return appColors?.onWarning ?? Colors.yellow;
+      case 3:
+      case 4:
+      case 5:
+        return appColors?.onDanger ?? Colors.red;
       default:
         return null;
     }

@@ -13,6 +13,7 @@ class DueDateCard extends StatelessWidget {
     var bgColor = _getBackgroundColor(difference, context);
 
     return Card(
+      margin: EdgeInsets.zero,
       color: bgColor,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4.0)),
       child: Padding(
@@ -25,7 +26,7 @@ class DueDateCard extends StatelessWidget {
   Color? _getBackgroundColor(Duration difference, BuildContext context) {
     return difference.isNegative
         ? Theme.of(context).colorScheme.errorContainer
-        : null;
+        : Theme.of(context).colorScheme.surfaceContainerHighest;
   }
 
   TextStyle? _getTextStyle(BuildContext context, Duration difference) {

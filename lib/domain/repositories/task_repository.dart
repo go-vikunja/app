@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:background_downloader/background_downloader.dart'
+    show TaskStatusUpdate;
 import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/entities/task_attachment.dart';
@@ -23,5 +25,8 @@ abstract class TaskRepository {
     Map<String, List<String>>? queryParameters,
   ]);
 
-  Future<String?> downloadAttachment(int taskId, TaskAttachment attachment);
+  Future<TaskStatusUpdate> downloadAttachment(
+    int taskId,
+    TaskAttachment attachment,
+  );
 }

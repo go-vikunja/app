@@ -1,7 +1,7 @@
+import 'package:background_downloader/background_downloader.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart'
     hide ChangeNotifierProvider;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -31,7 +31,12 @@ void main() async {
 
   try {
     if (!kIsWeb) {
-      await FlutterDownloader.initialize();
+      FileDownloader().configureNotification(
+        running: TaskNotification('Downloading', 'file: {filename}'),
+        complete: TaskNotification('Download finished', 'file: {filename}'),
+        tapOpensFile: true,
+        progressBar: true,
+      );
     }
   } catch (e) {
     print("Failed to initialize downloader: $e");

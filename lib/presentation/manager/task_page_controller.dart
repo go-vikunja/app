@@ -5,6 +5,7 @@ import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/entities/task_page_model.dart';
 import 'package:vikunja_app/presentation/manager/widget_controller.dart';
+import 'package:vikunja_app/presentation/manager/projects_controller.dart';
 
 part 'task_page_controller.g.dart';
 
@@ -23,11 +24,22 @@ class TaskPageController extends _$TaskPageController {
 
     switch (tasksResponse) {
       case SuccessResponse<List<Task>>():
-        return TaskPageModel(
-          tasksResponse.body,
-          showOnlyDueDateTasks,
-          defaultProjectId,
-        );
+        var tasks = tasksResponse.body;
+        var projectsResponse = await ref
+            .read(projectRepositoryProvider)
+            .getAll();
+
+        if (projectsResponse.isSuccessful) {
+          var projectsMap = {
+            for (var v in projectsResponse.toSuccess().body) v.id: v,
+          };
+
+          for (var tasks in tasks) {
+            tasks.project = projectsMap[tasks.projectId];
+          }
+        }
+
+        return TaskPageModel(tasks, showOnlyDueDateTasks, defaultProjectId);
       case ErrorResponse<List<Task>>():
         throw AsyncError(tasksResponse.error, StackTrace.current);
       case ExceptionResponse<List<Task>>():
@@ -47,6 +59,21 @@ class TaskPageController extends _$TaskPageController {
 
     switch (tasksResponse) {
       case SuccessResponse<List<Task>>():
+        var tasks = tasksResponse.body;
+        var projectsResponse = await ref
+            .read(projectRepositoryProvider)
+            .getAll();
+
+        if (projectsResponse.isSuccessful) {
+          var projectsMap = {
+            for (var v in projectsResponse.toSuccess().body) v.id: v,
+          };
+
+          for (var tasks in tasks) {
+            tasks.project = projectsMap[tasks.projectId];
+          }
+        }
+
         state = AsyncData(
           TaskPageModel(
             tasksResponse.body,
@@ -108,12 +135,7 @@ class TaskPageController extends _$TaskPageController {
   Future<bool> addTask(int projectId, Task task) async {
     var response = await ref.read(taskRepositoryProvider).add(projectId, task);
     if (response.isSuccessful) {
-      var value = state.value;
-      if (value != null) {
-        var tasks = value.tasks;
-        tasks.add(response.toSuccess().body);
-        state = AsyncData(value.copyWith(tasks: tasks));
-      }
+      reload();
 
       return true;
     }
@@ -140,13 +162,7 @@ class TaskPageController extends _$TaskPageController {
   Future<bool> updateTask(Task task) async {
     var response = await ref.read(taskRepositoryProvider).update(task);
     if (response.isSuccessful) {
-      var value = state.value;
-      if (value != null) {
-        var tasks = value.tasks;
-        tasks.removeWhere((element) => element.id == task.id);
-        tasks.add(task);
-        state = AsyncData(value.copyWith(tasks: tasks));
-      }
+      reload();
 
       return true;
     }

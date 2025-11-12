@@ -4,8 +4,9 @@ import 'package:vikunja_app/presentation/widgets/date_time_field.dart';
 
 class AddTaskDialog extends StatefulWidget {
   final void Function(String title, DateTime? dueDate) onAddTask;
+  final String? title;
 
-  const AddTaskDialog({super.key, required this.onAddTask});
+  const AddTaskDialog({super.key, required this.onAddTask, this.title = null});
 
   @override
   State<StatefulWidget> createState() => AddTaskDialogState();
@@ -15,6 +16,16 @@ class AddTaskDialogState extends State<AddTaskDialog> {
   NewTaskDue newTaskDue = NewTaskDue.day;
   DateTime? customDueDate;
   var textController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+
+    var title = widget.title;
+    if (title != null) {
+      textController.text = title;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

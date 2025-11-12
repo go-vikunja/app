@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:background_downloader/background_downloader.dart'
+    show TaskStatusUpdate;
 import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/core/utils/mapping_extensions.dart';
 import 'package:vikunja_app/data/data_sources/task_data_source.dart';
@@ -55,11 +57,14 @@ class TaskRepositoryImpl extends TaskRepository {
     String filterString, [
     Map<String, List<String>>? queryParameters,
   ]) async {
-    return (await _dataSource.getByFilterString(filterString)).toDomain();
+    return (await _dataSource.getByFilterString(
+      filterString,
+      queryParameters,
+    )).toDomain();
   }
 
   @override
-  Future<String?> downloadAttachment(
+  Future<TaskStatusUpdate> downloadAttachment(
     int taskId,
     TaskAttachment attachment,
   ) async {

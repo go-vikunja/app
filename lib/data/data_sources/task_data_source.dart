@@ -1,7 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter_downloader/flutter_downloader.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:background_downloader/background_downloader.dart';
 import 'package:vikunja_app/core/network/remote_data_source.dart';
 import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/data/models/task_attachment_dto.dart';
@@ -74,22 +73,25 @@ class TaskDataSource extends RemoteDataSource {
     );
   }
 
-  Future<String?> downloadAttachment(
+  Future<TaskStatusUpdate> downloadAttachment(
     int taskId,
     TaskAttachmentDto attachment,
   ) async {
     String url = client.base;
     url += '/tasks/$taskId/attachments/${attachment.id}';
 
-    var savedDir = (await getDownloadsDirectory())?.path;
-    if (savedDir != null) {
-      return await FlutterDownloader.enqueue(
-        url: url,
-        fileName: attachment.file.name,
-        headers: client.headers,
-        savedDir: savedDir,
-      );
-    }
-    return null;
+    final task = DownloadTask(
+      url: url,
+      baseDirectory: BaseDirectory.applicationSupport,
+      filename: attachment.file.name,
+      headers: client.headers,
+      updates: Updates.statusAndProgress,
+    );
+
+    return await FileDownloader().download(
+      task,
+      onProgress: (progress) => print('Progress: ${progress * 100}%'),
+      onStatus: (status) => print('Status: $status'),
+    );
   }
 }

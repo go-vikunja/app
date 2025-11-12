@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/core/network/client.dart';
@@ -364,6 +365,13 @@ class LoginPageState extends ConsumerState<LoginPage> {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text("Cannot reach server")));
+      } else {
+        Sentry.configureScope(
+          (scope) => scope.setTag(
+            'server.version',
+            info.toSuccess().body.version ?? "-",
+          ),
+        );
       }
 
       if (!pastServers.contains(server)) {
