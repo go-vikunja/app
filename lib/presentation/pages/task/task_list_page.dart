@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/core/di/network_provider.dart';
@@ -18,27 +17,11 @@ import 'package:vikunja_app/presentation/widgets/task/add_task_dialog.dart';
 import 'package:vikunja_app/presentation/widgets/task_bottom_sheet.dart';
 import 'package:vikunja_app/presentation/widgets/task/task_list_item.dart';
 
-class TaskListPage extends ConsumerStatefulWidget {
+class TaskListPage extends ConsumerWidget {
   const TaskListPage({super.key});
 
   @override
-  TaskListPageState createState() => TaskListPageState();
-}
-
-class TaskListPageState extends ConsumerState<TaskListPage> {
-  static const platform = MethodChannel('vikunja');
-
-  @override
-  void initState() {
-    super.initState();
-
-    Future.delayed(Duration.zero, () {
-      scheduleIntent();
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     var pageModel = ref.watch(taskPageControllerProvider);
 
@@ -50,12 +33,12 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
     return pageModel.when(
       data: (model) {
         return Scaffold(
-          appBar: _buildAppBar(model.onlyDueDate),
+          appBar: _buildAppBar(ref, context, model.onlyDueDate),
           body: RefreshIndicator(
             onRefresh: () async {
               ref.read(taskPageControllerProvider.notifier).reload();
             },
-            child: _buildList(model, context),
+            child: _buildList(ref, context, model),
           ),
           floatingActionButton: FloatingActionButton(
             onPressed: () {
@@ -64,7 +47,7 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
                   SnackBar(content: Text(l10n.selectDefaultProject)),
                 );
               } else {
-                _addItemDialog(context, model.defaultProjectId);
+                _addItemDialog(ref, context, model.defaultProjectId);
               }
             },
             child: const Icon(Icons.add),
@@ -76,20 +59,20 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
     );
   }
 
-  Widget _buildList(TaskPageModel model, BuildContext context) {
+  Widget _buildList(WidgetRef ref, BuildContext context, TaskPageModel model) {
     if (model.tasks.isEmpty) {
       return EmptyView(Icons.list, AppLocalizations.of(context).noTasks);
     } else {
       return ListView(
         children: ListTile.divideTiles(
           context: context,
-          tiles: _listTasks(context, model.tasks),
+          tiles: _listTasks(ref, context, model.tasks),
         ).toList(),
       );
     }
   }
 
-  AppBar _buildAppBar(bool onlyDueDate) {
+  AppBar _buildAppBar(WidgetRef ref, BuildContext context, bool onlyDueDate) {
     return AppBar(
       title: Text(AppLocalizations.of(context).appTitle),
       actions: [
@@ -99,7 +82,7 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
               PopupMenuItem(
                 child: InkWell(
                   onTap: () {
-                    _onlyDueDateChanged(context, !onlyDueDate);
+                    _onlyDueDateChanged(ref, context, !onlyDueDate);
                   },
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.end,
@@ -110,7 +93,7 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
                       Checkbox(
                         value: onlyDueDate,
                         onChanged: (bool? value) {
-                          _onlyDueDateChanged(context, !onlyDueDate);
+                          _onlyDueDateChanged(ref, context, !onlyDueDate);
                         },
                       ),
                     ],
@@ -124,28 +107,33 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
     );
   }
 
-  void _onlyDueDateChanged(BuildContext context, bool newValue) {
+  void _onlyDueDateChanged(WidgetRef ref, BuildContext context, bool newValue) {
     Navigator.pop(context);
     ref
         .read(taskPageControllerProvider.notifier)
         .setLandingPageOnlyDueDateTasks(newValue);
   }
 
-  void _addItemDialog(BuildContext context, int defaultProjectId) {
+  void _addItemDialog(
+    WidgetRef ref,
+    BuildContext context,
+    int defaultProjectId,
+  ) {
     showDialog(
       context: context,
       builder: (_) => AddTaskDialog(
         onAddTask: (title, dueDate) =>
-            _addTask(title, dueDate, defaultProjectId, context),
+            _addTask(ref, context, title, dueDate, defaultProjectId),
       ),
     );
   }
 
   Future<void> _addTask(
+    WidgetRef ref,
+    BuildContext context,
     String title,
     DateTime? dueDate,
     int defaultProjectId,
-    BuildContext context,
   ) async {
     final currentUser = ref.read(currentUserProvider);
     if (currentUser == null) {
@@ -174,7 +162,11 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
     }
   }
 
-  List<Widget> _listTasks(BuildContext context, List<Task> tasks) {
+  List<Widget> _listTasks(
+    WidgetRef ref,
+    BuildContext context,
+    List<Task> tasks,
+  ) {
     return tasks
         .map(
           (task) => TaskListItem(
@@ -223,30 +215,5 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
       context,
       MaterialPageRoute(builder: (buildContext) => TaskEditPage(task: task)),
     );
-  }
-
-  //TODO should we move that up the widget tree - It's not really specific to that page
-  void scheduleIntent() async {
-    var response = await ref.read(userRepositoryProvider).getCurrentUser();
-    if (response.isSuccessful) {
-      var defaultProjectId = response
-          .toSuccess()
-          .body
-          .settings
-          ?.default_project_id;
-
-      platform.setMethodCallHandler((call) async {
-        if (defaultProjectId == null || defaultProjectId == 0) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(AppLocalizations.of(context).selectDefaultProject),
-            ),
-          );
-        } else {
-          _addItemDialog(context, defaultProjectId);
-          return Future.value();
-        }
-      });
-    }
   }
 }
