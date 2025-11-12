@@ -39,7 +39,7 @@ class MainActivity : FlutterActivity() {
 
         when (action) {
             Intent.ACTION_INSERT -> {
-                if ("ADD_NEW_TASK" == type) {
+                if (INTENT_TYPE_ADD_TASK == type) {
                     channel.invokeMethod("open_add_task", "")
                 }
             }
@@ -68,7 +68,7 @@ class MainActivity : FlutterActivity() {
 
         when (action) {
             Intent.ACTION_INSERT -> {
-                if ("ADD_NEW_TASK" == type) {
+                if (INTENT_TYPE_ADD_TASK == type) {
                     launchMethod = "open_add_task"
                 }
             }
