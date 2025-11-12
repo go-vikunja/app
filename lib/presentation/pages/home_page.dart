@@ -136,7 +136,7 @@ class HomePageState extends ConsumerState<HomePage> {
       if (defaultProjectId == null || defaultProjectId == 0) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Please select a default project in the settings'),
+            content: Text(AppLocalizations.of(context).selectDefaultProject),
           ),
         );
       } else {
@@ -185,12 +185,12 @@ class HomePageState extends ConsumerState<HomePage> {
 
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('The task was added successfully!')),
+        SnackBar(content: Text(AppLocalizations.of(context).taskAddedSuccess)),
       );
     } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error adding the task!')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context).taskAddError)),
+      );
     }
   }
 
