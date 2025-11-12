@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -103,14 +105,12 @@ class HomePageState extends ConsumerState<HomePage> {
     try {
       String? argument = await platform.invokeMethod<String>("isQuickTile", "");
 
-      print("Method $argument");
       return showAddItemDialog(argument);
     } catch (e) {
-      print("Error $e");
+      developer.log("Error $e");
     }
 
     platform.setMethodCallHandler((call) async {
-      print("Called $call");
       return showAddItemDialog(call.arguments as String);
     });
   }
