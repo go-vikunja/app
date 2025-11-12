@@ -31,6 +31,7 @@ import androidx.core.content.edit
 import java.time.format.DateTimeFormatter
 import java.time.*
 import java.util.*
+import androidx.core.net.toUri
 
 
 class AppWidget : GlanceAppWidget() {
@@ -84,16 +85,17 @@ class AppWidget : GlanceAppWidget() {
             putString("completeTask", taskID)
             commit()
         }
+        val uri = "vikunja-app://completeTask".toUri()
+        val taskURI = uri.buildUpon().appendQueryParameter("taskID", taskID).build()
         val backgroundIntent = HomeWidgetBackgroundIntent.getBroadcast(
             context,
-            Uri.parse("appWidget://completeTask")
+            taskURI
         )
         backgroundIntent.send()
     }
 
     @Composable
     private fun GlanceContent(context: Context, currentState: HomeWidgetGlanceState) {
-        Log.d("Widget", "ProvideGLance")
         val prefs = currentState.preferences
         getTasks(prefs)
         Column {

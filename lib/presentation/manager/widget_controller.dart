@@ -13,16 +13,10 @@ import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/entities/widget_task.dart';
 import 'package:vikunja_app/domain/repositories/task_repository.dart';
 
-void completeTask() async {
-  // Response<Task> task;
-  var taskID = await HomeWidget.getWidgetData(
-    "completeTask",
-    defaultValue: "null",
-  );
+void completeTask(String taskID) async {
   if (taskID == "null") {
-    developer.log("Tried to complete an empy task");
-  }
-  ;
+    developer.log("Tried to complete an empty task");
+  };
 
   var datasource = SettingsDatasource(FlutterSecureStorage());
   var token = await datasource.getUserToken();

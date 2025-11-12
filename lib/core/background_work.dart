@@ -17,7 +17,8 @@ import 'package:workmanager/workmanager.dart';
 @pragma("vm:entry-point")
 Future<void> widgetCallback(Uri? uri) async {
   if (uri?.host == "completetask") {
-    completeTask();
+    String? taskID = uri?.queryParameters['taskID'];
+    completeTask(taskID!);
   }
 }
 
