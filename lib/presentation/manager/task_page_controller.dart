@@ -77,7 +77,6 @@ class TaskPageController extends _$TaskPageController {
               "order_by": ["asc", "desc"],
             });
 
-
         return tasksResponse;
       }
     }

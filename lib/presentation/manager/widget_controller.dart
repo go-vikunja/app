@@ -16,7 +16,8 @@ import 'package:vikunja_app/domain/repositories/task_repository.dart';
 void completeTask(String taskID) async {
   if (taskID == "null") {
     developer.log("Tried to complete an empty task");
-  };
+  }
+  ;
 
   var datasource = SettingsDatasource(FlutterSecureStorage());
   var token = await datasource.getUserToken();
