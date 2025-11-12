@@ -48,7 +48,6 @@ class TaskListPageState extends ConsumerState<TaskListPage> {
 
     return pageModel.when(
       data: (model) {
-        updateWidget();
         return Scaffold(
           appBar: _buildAppBar(model.onlyDueDate),
           body: RefreshIndicator(

@@ -4,6 +4,7 @@ import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/entities/task_page_model.dart';
+import 'package:vikunja_app/presentation/manager/widget_controller.dart';
 
 part 'task_page_controller.g.dart';
 
@@ -67,7 +68,7 @@ class TaskPageController extends _$TaskPageController {
     if (user != null) {
       Map<String, dynamic>? frontendSettings = user.settings?.frontend_settings;
       int? filterId = frontendSettings?["filter_id_used_on_overview"];
-
+      updateWidget();
       if (filterId != null && filterId != 0) {
         var tasksResponse = await ref
             .read(taskRepositoryProvider)
@@ -75,6 +76,7 @@ class TaskPageController extends _$TaskPageController {
               "sort_by": ["due_date", "id"],
               "order_by": ["asc", "desc"],
             });
+
 
         return tasksResponse;
       }
