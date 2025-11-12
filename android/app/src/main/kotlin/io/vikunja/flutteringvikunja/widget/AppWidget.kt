@@ -129,7 +129,7 @@ class AppWidget : GlanceAppWidget() {
     @Composable
     private fun WidgetTitleBar() {
         Box(
-            modifier = GlanceModifier.fillMaxWidth().height(50.dp).background(Color.Blue),
+            modifier = GlanceModifier.fillMaxWidth().height(50.dp).background(ColorProvider(Color(0xFF126cfd))),
             contentAlignment = Alignment.Center,
         ) {
             Text(
