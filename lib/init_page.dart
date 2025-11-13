@@ -65,7 +65,9 @@ class InitPage extends ConsumerWidget {
 
           ScaffoldMessenger.of(ref.context).showSnackBar(
             SnackBar(
-              content: Text(AppLocalizations.of(ref.context).loginExpiredMessage),
+              content: Text(
+                AppLocalizations.of(ref.context).loginExpiredMessage,
+              ),
             ),
           );
 
