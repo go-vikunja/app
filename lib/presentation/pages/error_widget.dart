@@ -40,7 +40,7 @@ class VikunjaErrorWidget extends StatelessWidget {
   Widget getErrorWidget(BuildContext context, Object error) {
     if (error is ClientException) {
       return Text(
-        "Connection error",
+        AppLocalizations.of(context).connectionError,
         style: Theme.of(context).textTheme.titleLarge,
       );
     } else if (error is String) {

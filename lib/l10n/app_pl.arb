@@ -151,5 +151,6 @@
   "language": "Język",
   "systemLanguage": "Język systemowy (domyślnie)",
   "languageEnglish": "Angielski",
-  "languagePolish": "Polski"
+  "languagePolish": "Polski",
+  "connectionError": "Błąd połączenia"
 }

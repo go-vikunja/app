@@ -176,5 +176,6 @@
   "language": "Language",
   "systemLanguage": "System Language (default)",
   "languageEnglish": "English",
-  "languagePolish": "Polish"
+  "languagePolish": "Polish",
+  "connectionError": "Connection error"
 }
