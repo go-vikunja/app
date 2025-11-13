@@ -10,10 +10,10 @@ class PriorityBatch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+    final loc = AppLocalizations.of(context);
     return Badge(
       padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      label: Text(priorityToStringL10n(l10n, priority)),
+      label: Text(priorityToString(loc, priority)),
       backgroundColor: getBackgroundColor(context, priority),
     );
   }

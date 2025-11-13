@@ -371,16 +371,10 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
         labelText: AppLocalizations.of(context).priority,
         border: InputBorder.none,
       ),
-      initialValue: priorityToStringL10n(
-        AppLocalizations.of(context),
-        _priority,
-      ),
+      initialValue: priorityToString(AppLocalizations.of(context), _priority),
       isExpanded: true,
       onChanged: (String? newValue) {
-        _priority = priorityFromStringL10n(
-          AppLocalizations.of(context),
-          newValue,
-        );
+        _priority = priorityFromString(AppLocalizations.of(context), newValue);
         _checkChanged();
       },
       items:
