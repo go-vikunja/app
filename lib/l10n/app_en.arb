@@ -174,7 +174,7 @@
   "deleteBucketMessage": "Are you sure you want to delete this bucket? The tasks will be moved to the default bucket.",
   "sentryDialogMessage": "Would you like to help us improve Vikunja by sending error reports? Enabling this will send automatic error reports to the developers using Sentry.",
   "language": "Language",
-  "systemLanguage": "System Language (default)",
+  "systemLanguage": "System Language",
   "languageEnglish": "English",
   "languagePolish": "Polish",
   "connectionError": "Connection error"

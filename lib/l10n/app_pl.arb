@@ -149,7 +149,7 @@
   "deleteBucketMessage": "Czy na pewno usunąć kolumnę? Zadania zostaną przeniesione do domyślnej.",
   "sentryDialogMessage": "Czy chcesz pomóc ulepszać Vikunja wysyłając raporty błędów? Włączenie spowoduje automatyczne raportowanie do deweloperów przez Sentry.",
   "language": "Język",
-  "systemLanguage": "Język systemowy (domyślnie)",
+  "systemLanguage": "Język systemowy",
   "languageEnglish": "Angielski",
   "languagePolish": "Polski",
   "connectionError": "Błąd połączenia"
