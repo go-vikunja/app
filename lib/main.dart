@@ -31,11 +31,19 @@ void main() async {
     Permission.notification.request();
   }
 
+  // Shared settings datasource for reading app settings
+  final settingsDatasource = SettingsDatasource(FlutterSecureStorage());
+
   try {
     if (!kIsWeb) {
+      final overrideCode = await settingsDatasource.getLocaleOverride();
+      final effectiveLocale = (overrideCode != null && overrideCode.isNotEmpty)
+          ? Locale(overrideCode)
+          : WidgetsBinding.instance.platformDispatcher.locale;
+      final loc = await AppLocalizations.delegate.load(effectiveLocale);
       FileDownloader().configureNotification(
-        running: TaskNotification('Downloading', 'file: {filename}'),
-        complete: TaskNotification('Download finished', 'file: {filename}'),
+        running: TaskNotification(loc.downloading, 'file: {filename}'),
+        complete: TaskNotification(loc.downloadFinished, 'file: {filename}'),
         tapOpensFile: true,
         progressBar: true,
       );
@@ -51,9 +59,7 @@ void main() async {
     print("Failed to initialize workmanager: $e");
   }
 
-  var sentryEnabled = await SettingsDatasource(
-    FlutterSecureStorage(),
-  ).getSentryEnabled();
+  var sentryEnabled = await settingsDatasource.getSentryEnabled();
   if (sentryEnabled) {
     await SentryFlutter.init((options) {
       options.dsn =
