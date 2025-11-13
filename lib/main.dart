@@ -84,7 +84,8 @@ class VikunjaApp extends ConsumerWidget {
 
     return DynamicColorBuilder(
       builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
-        final overrideLocale = ref.watch(localeOverrideProvider);
+        final localeState = ref.watch(localeOverrideProvider);
+        final overrideLocale = localeState.asData?.value;
         return MaterialApp(
           title: 'Vikunja',
           theme: currentAppTheme?.getTheme(lightDynamic),

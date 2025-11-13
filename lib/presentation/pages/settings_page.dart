@@ -83,7 +83,7 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
                     ),
                   ),
                 ],
-                value: ref.watch(localeOverrideProvider),
+                value: ref.watch(localeOverrideProvider).asData?.value,
                 onChanged: (Locale? value) {
                   ref.read(localeOverrideProvider.notifier).setLocale(value);
                 },
