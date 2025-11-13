@@ -18,7 +18,9 @@ enum NewTaskDue {
       case NewTaskDue.today:
         return dateTime.copyWith(hour: hour, minute: 0, second: 0);
       case NewTaskDue.tomorrow:
-        return dateTime.copyWith(hour: hour, minute: 0, second: 0).add(Duration(days: 1));
+        return dateTime
+            .copyWith(hour: hour, minute: 0, second: 0)
+            .add(Duration(days: 1));
       case NewTaskDue.next_monday:
         return dateTime
             .copyWith(hour: hour, minute: 0, second: 0)
