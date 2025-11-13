@@ -154,10 +154,6 @@ class SettingsDatasource {
   }
 
   Future<void> setLocaleOverride(String? localeCode) async {
-    if (localeCode == null || localeCode.isEmpty) {
-      await _storage.delete(key: "locale_override");
-    } else {
-      await _storage.write(key: "locale_override", value: localeCode);
-    }
+    await _storage.write(key: "locale_override", value: localeCode);
   }
 }
