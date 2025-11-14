@@ -16,9 +16,9 @@ bool isUrl(String? url) {
   return _url.hasMatch(url);
 }
 
-String? isURLValid(String? url) {
-  if (url == null || url.isEmpty) return null;
+bool isURLValid(String? url) {
+  if (url == null || url.isEmpty) return true;
   final trimmed = url.trim();
-  if (isUrl(trimmed) || isUrl('https://$trimmed')) return null;
-  return 'Invalid URL';
+  if (isUrl(trimmed) || isUrl('https://$trimmed')) return true;
+  return false;
 }
