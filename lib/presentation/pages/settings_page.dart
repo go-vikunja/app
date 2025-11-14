@@ -68,7 +68,6 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
                 },
               ),
             ),
-            // Language selector (override system language)
             ListTile(
               title: Text(l10n.language),
               trailing: DropdownButton<Locale?>(
