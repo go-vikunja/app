@@ -28,10 +28,7 @@ class ProjectsController extends _$ProjectsController {
         response.toException().stackTrace,
       );
     } else {
-      state = AsyncError(
-        response.toError().error,
-        response.toException().stackTrace,
-      );
+      state = AsyncError(response.toError().error, StackTrace.empty);
     }
   }
 
