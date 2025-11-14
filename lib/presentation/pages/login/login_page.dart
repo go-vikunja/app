@@ -292,18 +292,17 @@ class LoginPageState extends ConsumerState<LoginPage> {
         ),
         actions: [
           TextButton(
-            onPressed: () {
-              Navigator.pop(
-                context,
-                ref
-                    .read(userRepositoryProvider)
-                    .login(
-                      username,
-                      password,
-                      rememberMe: _rememberMe,
-                      totp: totpController.text,
-                    ),
-              );
+            onPressed: () async {
+              var loginResponse = await ref
+                  .read(userRepositoryProvider)
+                  .login(
+                    username,
+                    password,
+                    rememberMe: _rememberMe,
+                    totp: totpController.text,
+                  );
+
+              Navigator.pop(context, loginResponse);
             },
             child: Text("Login"),
           ),
