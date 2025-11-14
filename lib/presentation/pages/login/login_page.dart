@@ -416,15 +416,6 @@ class LoginPageState extends ConsumerState<LoginPage> {
     }
   }
 
-  String _normalizeServer(String input) {
-    final trimmed = input.trim();
-    if (trimmed.isEmpty) return trimmed;
-    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-      return trimmed;
-    }
-    return 'https://$trimmed';
-  }
-
   void _showGenericError(BuildContext context) {
     ScaffoldMessenger.of(
       context,
