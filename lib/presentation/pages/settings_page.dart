@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/core/di/locale_provider.dart';
+import 'package:vikunja_app/core/utils/language_autonyms.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/core/di/notification_provider.dart';
@@ -79,7 +80,7 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
                   ...AppLocalizations.supportedLocales.map(
                     (loc) => DropdownMenuItem(
                       value: loc,
-                      child: Text(_localeName(l10n, loc)),
+                      child: Text(languageAutonym(loc)),
                     ),
                   ),
                 ],
@@ -292,16 +293,5 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
         ),
       ],
     );
-  }
-
-  String _localeName(AppLocalizations l10n, Locale locale) {
-    switch (locale.languageCode) {
-      case 'en':
-        return l10n.languageEnglish;
-      case 'pl':
-        return l10n.languagePolish;
-      default:
-        return locale.languageCode;
-    }
   }
 }

@@ -175,7 +175,5 @@
   "sentryDialogMessage": "Would you like to help us improve Vikunja by sending error reports? Enabling this will send automatic error reports to the developers using Sentry.",
   "language": "Language",
   "systemLanguage": "System Language",
-  "languageEnglish": "English",
-  "languagePolish": "Polish",
   "connectionError": "Connection error"
 }
