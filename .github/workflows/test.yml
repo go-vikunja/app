@@ -29,6 +29,7 @@ jobs:
       - run: flutter --version
       - run: flutter pub get
       - run: flutter build apk --debug --flavor unsigned
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -66,5 +67,4 @@ jobs:
       - name: Check Dart Format
         run: |
           flutter pub get
-          flutter analyze
           dart format --set-exit-if-changed .

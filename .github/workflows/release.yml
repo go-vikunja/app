@@ -85,6 +85,7 @@ jobs:
           cache: true
       - run: flutter --version
       - run: flutter pub get
+
       - name: Update version with build number
         run: |
           CURRENT_VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //')
