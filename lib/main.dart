@@ -42,8 +42,11 @@ void main() async {
           : WidgetsBinding.instance.platformDispatcher.locale;
       final loc = await AppLocalizations.delegate.load(effectiveLocale);
       FileDownloader().configureNotification(
-        running: TaskNotification(loc.downloading, 'file: {filename}'),
-        complete: TaskNotification(loc.downloadFinished, 'file: {filename}'),
+        running: TaskNotification(loc.downloading, '${loc.file}: {filename}'),
+        complete: TaskNotification(
+          loc.downloadFinished,
+          '${loc.file}: {filename}',
+        ),
         tapOpensFile: true,
         progressBar: true,
       );

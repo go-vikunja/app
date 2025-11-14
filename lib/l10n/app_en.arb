@@ -16,6 +16,7 @@
   "register": "Register",
   "login": "Login",
   "system": "System",
+  "file": "File",
   "light": "Light",
   "dark": "Dark",
   "settings": "Settings",
