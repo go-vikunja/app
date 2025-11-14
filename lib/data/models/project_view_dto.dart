@@ -38,7 +38,7 @@ class ProjectViewDto extends Dto<ProjectView> {
       defaultBucketId = json['default_bucket_id'],
       doneBucketId = json['done_bucket_id'],
       id = json['id'],
-      filter = json['filter'] != null
+      filter = json['filter'] != null && json['filter'] is Map<String, dynamic>
           ? FilterDto.fromJson(json['filter'])
           : null,
       position = json['position'],
