@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:vikunja_app/core/utils/constants.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
-// removed unused priority import after localizing strings
 import 'package:vikunja_app/domain/entities/label.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/presentation/pages/task/task_edit_page.dart';
