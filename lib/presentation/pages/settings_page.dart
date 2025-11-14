@@ -131,8 +131,7 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
                       keyboardType: TextInputType.number,
                       controller: durationTextController,
                       decoration: InputDecoration(
-                        labelText:
-                            l10n.repeatAfter, // reuse or add new key later
+                        labelText: l10n.backgroundRefreshInterval,
                         helperText: l10n.noLimitHelper,
                       ),
                     ),

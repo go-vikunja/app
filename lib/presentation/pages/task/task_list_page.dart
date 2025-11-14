@@ -74,7 +74,7 @@ class TaskListPage extends ConsumerWidget {
 
   AppBar _buildAppBar(WidgetRef ref, BuildContext context, bool onlyDueDate) {
     return AppBar(
-      title: Text(AppLocalizations.of(context).appTitle),
+      title: Text("Vikunja"),
       actions: [
         PopupMenuButton(
           itemBuilder: (BuildContext context) {
