@@ -131,7 +131,6 @@ class LoginPageState extends ConsumerState<LoginPage> {
                 onPressed: () {
                   if (_formKey.currentState?.validate() == true &&
                       _serverController.text.isNotEmpty) {
-                    final normalized = _normalizeServer(_serverController.text);
                     Navigator.push(
                       context,
                       MaterialPageRoute(
