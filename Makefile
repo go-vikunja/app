@@ -8,26 +8,26 @@ else
 endif
 
 .PHONY: test
-test: l10n
+test:
 	$(FLUTTER) test
 
 .PHONY: build-all
 build-all: build-release build-debug build-profile
 
 .PHONY: build-release
-build-release: l10n
+build-release:
 	$(FLUTTER) build apk --release --build-number=$(VERSION) --flavor main
 
 .PHONY: build-debug
-build-debug: l10n
+build-debug:
 	$(FLUTTER) build apk --debug --build-number=$(VERSION) --flavor unsigned
 
 .PHONY: build-profile
-build-profile: l10n
+build-profile:
 	$(FLUTTER) build apk --profile --build-number=$(VERSION) --flavor unsigned
 
 .PHONY: build-ios
-build-ios: l10n
+build-ios:
 	$(FLUTTER) build ios --release --build-number=$(VERSION) --no-codesign
 
 .PHONY: format
@@ -43,11 +43,3 @@ format-check:
 		echo "Please run 'make format' and commit the result."; \
 		exit 1; \
 	fi;
-
-.PHONY: l10n
-l10n:
-	$(FLUTTER) gen-l10n
-
-.PHONY: check-l10n
-check-l10n: l10n
-	@if [ -s lib/l10n/untranslated_messages.json ]; then echo "Untranslated strings found:" && cat lib/l10n/untranslated_messages.json && exit 1; fi

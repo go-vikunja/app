@@ -85,8 +85,6 @@ jobs:
           cache: true
       - run: flutter --version
       - run: flutter pub get
-      - name: Generate localizations
-        run: flutter gen-l10n
       - name: Update version with build number
         run: |
           CURRENT_VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //')

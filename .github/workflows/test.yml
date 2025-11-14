@@ -28,8 +28,6 @@ jobs:
           cache: true
       - run: flutter --version
       - run: flutter pub get
-      - name: Generate localizations
-        run: flutter gen-l10n
       - run: flutter build apk --debug --flavor unsigned
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -52,7 +50,6 @@ jobs:
       - name: Run Flutter tests
         run: |
           flutter pub get
-          flutter gen-l10n
           flutter test
 
   lint:
@@ -69,6 +66,5 @@ jobs:
       - name: Check Dart Format
         run: |
           flutter pub get
-          flutter gen-l10n
           flutter analyze
           dart format --set-exit-if-changed .
