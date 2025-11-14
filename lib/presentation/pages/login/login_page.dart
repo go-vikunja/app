@@ -11,6 +11,7 @@ import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/core/network/client.dart';
 import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/core/utils/constants.dart';
+import 'package:vikunja_app/core/utils/network.dart';
 import 'package:vikunja_app/core/utils/validator.dart';
 import 'package:vikunja_app/domain/entities/auth_model.dart';
 import 'package:vikunja_app/domain/entities/server.dart';
@@ -130,11 +131,13 @@ class LoginPageState extends ConsumerState<LoginPage> {
                 onPressed: () {
                   if (_formKey.currentState?.validate() == true &&
                       _serverController.text.isNotEmpty) {
+                    final normalized = _normalizeServer(_serverController.text);
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) =>
-                            LoginWithWebView(_serverController.text),
+                        builder: (context) => LoginWithWebView(
+                          normalizeServerURL(_serverController.text),
+                        ),
                       ),
                     ).then((btp) {
                       if (btp != null) _loginUserByClientToken(btp);
@@ -210,9 +213,7 @@ class LoginPageState extends ConsumerState<LoginPage> {
             focusNode: focusnode,
             enabled: !_loading,
             validator: (address) {
-              return (isUrl(address) || address == null || address.isEmpty)
-                  ? null
-                  : 'Invalid URL';
+              return isURLValid(address);
             },
             decoration: InputDecoration(
               border: OutlineInputBorder(),
@@ -292,18 +293,17 @@ class LoginPageState extends ConsumerState<LoginPage> {
         ),
         actions: [
           TextButton(
-            onPressed: () {
-              Navigator.pop(
-                context,
-                ref
-                    .read(userRepositoryProvider)
-                    .login(
-                      username,
-                      password,
-                      rememberMe: _rememberMe,
-                      totp: totpController.text,
-                    ),
-              );
+            onPressed: () async {
+              var loginResponse = await ref
+                  .read(userRepositoryProvider)
+                  .login(
+                    username,
+                    password,
+                    rememberMe: _rememberMe,
+                    totp: totpController.text,
+                  );
+
+              Navigator.pop(context, loginResponse);
             },
             child: Text("Login"),
           ),
@@ -345,7 +345,7 @@ class LoginPageState extends ConsumerState<LoginPage> {
   }
 
   Future<void> _loginUser(BuildContext context) async {
-    String server = _serverController.text;
+    String server = normalizeServerURL(_serverController.text);
     String username = _usernameController.text;
     String password = _passwordController.text;
     if (server.isEmpty) return;
@@ -415,6 +415,15 @@ class LoginPageState extends ConsumerState<LoginPage> {
         _loading = false;
       });
     }
+  }
+
+  String _normalizeServer(String input) {
+    final trimmed = input.trim();
+    if (trimmed.isEmpty) return trimmed;
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return trimmed;
+    }
+    return 'https://$trimmed';
   }
 
   void _showGenericError(BuildContext context) {
