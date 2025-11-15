@@ -53,25 +53,33 @@ class TaskDto extends Dto<Task> {
        updated = updated ?? DateTime.now();
 
   TaskDto.fromJson(Map<String, dynamic> json)
-    : id = json['id'],
-      title = json['title'],
-      description = json['description'],
-      identifier = json['identifier'],
-      done = json['done'],
+    : id = json['id'] ?? 0,
+      title = json['title'] ?? '',
+      description = json['description'] ?? '',
+      identifier = json['identifier'] ?? '',
+      done = json['done'] ?? false,
       reminderDates = json['reminders'] != null
           ? (json['reminders'] as List<dynamic>)
                 .map((ts) => TaskReminderDto.fromJson(ts))
                 .toList()
           : [],
-      dueDate = DateTime.parse(json['due_date']),
-      startDate = DateTime.parse(json['start_date']),
-      endDate = DateTime.parse(json['end_date']),
+    dueDate = json['due_date'] != null
+      ? DateTime.parse(json['due_date'])
+      : null,
+    startDate = json['start_date'] != null
+      ? DateTime.parse(json['start_date'])
+      : null,
+    endDate = json['end_date'] != null
+      ? DateTime.parse(json['end_date'])
+      : null,
       parentTaskId = json['parent_task_id'],
       priority = json['priority'],
-      repeatAfter = Duration(seconds: json['repeat_after']),
-      color = json['hex_color'] != ''
-          ? Color(int.parse(json['hex_color'], radix: 16) + 0xFF000000)
-          : null,
+    repeatAfter = json['repeat_after'] != null
+      ? Duration(seconds: json['repeat_after'])
+      : null,
+    color = (json['hex_color'] != null && json['hex_color'] != '')
+      ? Color(int.parse(json['hex_color'], radix: 16) + 0xFF000000)
+      : null,
       position = json['position'] is int
           ? json['position'].toDouble()
           : json['position'],
@@ -93,11 +101,17 @@ class TaskDto extends Dto<Task> {
                 .map((attachment) => TaskAttachmentDto.fromJSON(attachment))
                 .toList()
           : [],
-      updated = DateTime.parse(json['updated']),
-      created = DateTime.parse(json['created']),
+    updated = json['updated'] != null
+      ? DateTime.parse(json['updated'])
+      : DateTime.now(),
+    created = json['created'] != null
+      ? DateTime.parse(json['created'])
+      : DateTime.now(),
       projectId = json['project_id'],
       bucketId = json['bucket_id'],
-      createdBy = UserDto.fromJson(json['created_by']);
+    createdBy = json['created_by'] != null
+      ? UserDto.fromJson(json['created_by'])
+      : UserDto(username: '');
 
   Map<String, Object?> toJSON() => {
     'id': id,

@@ -42,7 +42,9 @@ class BucketDto extends Dto<Bucket> {
     updated = json['updated'] != null
       ? DateTime.parse(json['updated'])
       : DateTime.now(),
-      createdBy = UserDto.fromJson(json['created_by']),
+    createdBy = json['created_by'] != null
+      ? UserDto.fromJson(json['created_by'])
+      : UserDto(username: ''),
       tasks = json['tasks'] == null
           ? []
           : (json['tasks'] as List<dynamic>)
