@@ -17,8 +17,8 @@ class ProjectController extends _$ProjectController {
     var displayDoneTask = await ref
         .read(settingsRepositoryProvider)
         .getDisplayDoneTasks(project.id);
-
-    var tasksResponse = await _loadTasks(project.id, displayDoneTask);
+    final initialViewId = project.views.isNotEmpty ? project.views.first.id : null;
+    var tasksResponse = await _loadTasks(project.id, displayDoneTask, viewId: initialViewId);
 
     switch (tasksResponse) {
       case SuccessResponse<List<Task>>():
@@ -42,7 +42,11 @@ class ProjectController extends _$ProjectController {
         .getDisplayDoneTasks(project.id);
 
     var tasks = <Task>[];
-    var tasksResponse = await _loadTasks(project.id, displayDoneTask);
+    var tasksResponse = await _loadTasks(
+      project.id,
+      displayDoneTask,
+      viewId: project.views[viewIndex].id,
+    );
 
     switch (tasksResponse) {
       case SuccessResponse<List<Task>>():
@@ -77,13 +81,14 @@ class ProjectController extends _$ProjectController {
 
   Future<Response<List<Task>>> _loadTasks(
     int projectId,
-    bool displayDoneTasks,
-  ) async {
+    bool displayDoneTasks, {
+    int? viewId,
+  }) async {
     var repo = ref.read(taskRepositoryProvider);
 
     Map<String, List<String>> queryParams = {
-      "sort_by": ["done", "id"],
-      "order_by": ["asc", "desc"],
+      "sort_by": ["position"],
+      "order_by": ["asc"],
       "page": ["1"],
     };
 
@@ -91,6 +96,11 @@ class ProjectController extends _$ProjectController {
       queryParams.addAll({
         "filter": ["done=false"],
       });
+    }
+
+    // If a viewId is provided, use the view-scoped endpoint for correct position ordering in that view.
+    if (viewId != null) {
+      return repo.getAllByProjectView(projectId, viewId, queryParams);
     }
 
     return repo.getAllByProject(projectId, queryParams);
@@ -277,13 +287,22 @@ class ProjectController extends _$ProjectController {
 
     var value = state.value;
     if (value != null) {
-      var tasksResponse = await _loadTasks(project.id, displayDoneTasks);
+      // Keep tasks in sync with the currently selected view when toggling done tasks
+      final currentViewId = value.viewIndex >= 0 &&
+              value.viewIndex < value.project.views.length
+          ? value.project.views[value.viewIndex].id
+          : (value.project.views.isNotEmpty ? value.project.views.first.id : null);
+      var tasksResponse = await _loadTasks(
+        value.project.id,
+        displayDoneTasks,
+        viewId: currentViewId,
+      );
       if (tasksResponse.isSuccessful) {
         var tasks = tasksResponse.toSuccess().body;
-        state = AsyncData(
-          value.copyWith(tasks: tasks, displayDoneTask: displayDoneTasks),
-        );
-        return true;
+      state = AsyncData(
+        value.copyWith(tasks: tasks, displayDoneTask: displayDoneTasks),
+      );
+      return true;
       } else {
         return false;
       }

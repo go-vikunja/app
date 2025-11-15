@@ -18,6 +18,12 @@ abstract class TaskRepository {
     Map<String, List<String>>? queryParameters,
   ]);
 
+  Future<Response<List<Task>>> getAllByProjectView(
+    int projectId,
+    int viewId, [
+    Map<String, List<String>>? queryParameters,
+  ]);
+
   Future<Response<List<Task>>> getByFilterString(
     String filterString, [
     Map<String, List<String>>? queryParameters,
