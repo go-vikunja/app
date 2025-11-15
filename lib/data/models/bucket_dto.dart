@@ -29,19 +29,13 @@ class BucketDto extends Dto<Bucket> {
   BucketDto.fromJSON(Map<String, dynamic> json)
     : id = json['id'],
       projectViewId = json['project_view_id'],
-      title = (json['title'] ?? '') as String,
+      title = json['title'],
       position = json['position'] is int
           ? json['position'].toDouble()
           : json['position'],
-      limit = (json['limit'] ?? 0) is int
-          ? (json['limit'] ?? 0) as int
-          : int.tryParse(json['limit']?.toString() ?? '') ?? 0,
-      created = json['created'] != null
-          ? DateTime.parse(json['created'])
-          : DateTime.now(),
-      updated = json['updated'] != null
-          ? DateTime.parse(json['updated'])
-          : DateTime.now(),
+      limit = json['limit'],
+      created = DateTime.parse(json['created']),
+      updated = DateTime.parse(json['updated']),
       createdBy = UserDto.fromJson(json['created_by']),
       tasks = json['tasks'] == null
           ? []
