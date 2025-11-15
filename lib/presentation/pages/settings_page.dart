@@ -36,6 +36,13 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
     final settings = ref.watch(settingsControllerProvider);
 
     final l10n = AppLocalizations.of(context);
+    final overrideLocale = ref.watch(localeOverrideProvider).asData?.value;
+    final resolvedLocale = Localizations.localeOf(context);
+    final platformLocale = WidgetsBinding.instance.platformDispatcher.locale;
+    final bool isSystemSelected = overrideLocale == null;
+    final bool isFallback =
+        isSystemSelected &&
+        platformLocale.languageCode != resolvedLocale.languageCode;
     return Scaffold(
       appBar: AppBar(title: Text(l10n.settings)),
       body: settings.when(
@@ -70,6 +77,16 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
             ),
             ListTile(
               title: Text(l10n.language),
+              subtitle: isFallback
+                  ? Text(
+                      'System language (${platformLocale.languageCode}${platformLocale.countryCode != null ? '-${platformLocale.countryCode}' : ''}) not supported. Using ${languageAutonym(resolvedLocale)}.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withOpacity(0.6),
+                      ),
+                    )
+                  : null,
               trailing: DropdownButton<Locale?>(
                 items: [
                   DropdownMenuItem(
@@ -83,7 +100,7 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
                     ),
                   ),
                 ],
-                value: ref.watch(localeOverrideProvider).asData?.value,
+                value: overrideLocale,
                 onChanged: (Locale? value) {
                   ref.read(localeOverrideProvider.notifier).setLocale(value);
                 },
