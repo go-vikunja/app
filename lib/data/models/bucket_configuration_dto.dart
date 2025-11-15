@@ -9,9 +9,8 @@ class BucketConfigurationDto extends Dto<BucketConfiguration> {
   BucketConfigurationDto(this.title, this.filter);
 
   BucketConfigurationDto.fromJson(Map<String, dynamic> json)
-    : title = json['title'] ?? '',
-      filter = FilterDto.fromJson(
-          (json['filter'] is Map<String, dynamic>) ? json['filter'] : <String, dynamic>{});
+    : title = json['title'],
+      filter = FilterDto.fromJson(json['filter']);
 
   Map<String, dynamic> toJSON() => {'title': title, 'filter': filter.toJSON()};
 
