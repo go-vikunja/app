@@ -53,8 +53,8 @@ class TaskDto extends Dto<Task> {
        updated = updated ?? DateTime.now();
 
   TaskDto.fromJson(Map<String, dynamic> json)
-    : id = json['id'] ?? 0,
-      title = json['title'] ?? '',
+    : id = json['id'],
+      title = json['title'],
       description = json['description'] ?? '',
       identifier = json['identifier'] ?? '',
       done = json['done'] ?? false,
@@ -109,9 +109,8 @@ class TaskDto extends Dto<Task> {
       : DateTime.now(),
       projectId = json['project_id'],
       bucketId = json['bucket_id'],
-    createdBy = json['created_by'] != null
-      ? UserDto.fromJson(json['created_by'])
-      : UserDto(username: '');
+      createdBy = UserDto.fromJson(json['created_by']);
+
 
   Map<String, Object?> toJSON() => {
     'id': id,
