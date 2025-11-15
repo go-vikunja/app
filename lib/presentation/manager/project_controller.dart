@@ -98,7 +98,6 @@ class ProjectController extends _$ProjectController {
       });
     }
 
-    // If a viewId is provided, use the view-scoped endpoint for correct position ordering in that view.
     if (viewId != null) {
       return repo.getAllByProjectView(projectId, viewId, queryParams);
     }
@@ -287,7 +286,6 @@ class ProjectController extends _$ProjectController {
 
     var value = state.value;
     if (value != null) {
-      // Keep tasks in sync with the currently selected view when toggling done tasks
       final currentViewId = value.viewIndex >= 0 &&
               value.viewIndex < value.project.views.length
           ? value.project.views[value.viewIndex].id
