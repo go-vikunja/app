@@ -32,7 +32,7 @@ class ProjectController extends _$ProjectController {
         return ProjectPageModel(
           project,
           -1,
-          tasksResponse.body,
+          sortTasksByDoneThenPosition(tasksResponse.body),
           [],
           displayDoneTask,
         );
@@ -57,7 +57,7 @@ class ProjectController extends _$ProjectController {
 
     switch (tasksResponse) {
       case SuccessResponse<List<Task>>():
-        tasks = tasksResponse.body;
+        tasks = sortTasksByDoneThenPosition(tasksResponse.body);
       case ErrorResponse<List<Task>>():
         state = AsyncError(tasksResponse.error, StackTrace.current);
       case ExceptionResponse<List<Task>>():
@@ -93,22 +93,77 @@ class ProjectController extends _$ProjectController {
   }) async {
     var repo = ref.read(taskRepositoryProvider);
 
-    Map<String, List<String>> queryParams = {
+    Map<String, List<String>> baseParams = {
       "sort_by": ["position"],
       "order_by": ["asc"],
       "page": ["1"],
     };
 
+    if (viewId != null) {
+      if (!displayDoneTasks) {
+        final params = {
+          ...baseParams,
+          "filter": ["done=false"],
+        };
+        return repo.getAllByProjectView(projectId, viewId, params);
+      } else {
+        final paramsOpen = {
+          ...baseParams,
+          "filter": ["done=false"],
+        };
+        final openResp = await repo.getAllByProjectView(
+          projectId,
+          viewId,
+          paramsOpen,
+        );
+        if (!openResp.isSuccessful) return openResp;
+        final openTasks = sortTasksByPosition(openResp.toSuccess().body);
+
+        final paramsDoneView = {
+          ...baseParams,
+          "filter": ["done=true"],
+        };
+        final doneRespView = await repo.getAllByProjectView(
+          projectId,
+          viewId,
+          paramsDoneView,
+        );
+        List<Task> doneTasks;
+        if (doneRespView.isSuccessful &&
+            doneRespView.toSuccess().body.isNotEmpty) {
+          doneTasks = sortTasksByPosition(doneRespView.toSuccess().body);
+        } else {
+          // Fallback: project-level done tasks
+          final paramsDoneProject = {
+            "sort_by": ["id"],
+            "order_by": ["desc"],
+            "page": ["1"],
+            "filter": ["done=true"],
+          };
+          final doneRespProject = await repo.getAllByProject(
+            projectId,
+            paramsDoneProject,
+          );
+          if (!doneRespProject.isSuccessful) return doneRespProject;
+          doneTasks = sortTasksByPosition(doneRespProject.toSuccess().body);
+        }
+
+        final combined = [...openTasks, ...doneTasks];
+
+        return SuccessResponse<List<Task>>(combined, 200, {});
+      }
+    }
+
+    Map<String, List<String>> queryParams = {
+      "sort_by": ["done", "id"],
+      "order_by": ["asc", "desc"],
+      "page": ["1"],
+    };
     if (!displayDoneTasks) {
       queryParams.addAll({
         "filter": ["done=false"],
       });
     }
-
-    if (viewId != null) {
-      return repo.getAllByProjectView(projectId, viewId, queryParams);
-    }
-
     return repo.getAllByProject(projectId, queryParams);
   }
 
@@ -137,7 +192,7 @@ class ProjectController extends _$ProjectController {
       if (value != null) {
         var tasks = value.tasks;
         tasks.add(response.toSuccess().body);
-        tasks = sortTasksByPosition(tasks);
+        tasks = sortTasksByDoneThenPosition(tasks);
         state = AsyncData(value.copyWith(tasks: tasks));
         return true;
       }
@@ -305,7 +360,7 @@ class ProjectController extends _$ProjectController {
         viewId: currentViewId,
       );
       if (tasksResponse.isSuccessful) {
-        var tasks = tasksResponse.toSuccess().body;
+        var tasks = sortTasksByDoneThenPosition(tasksResponse.toSuccess().body);
         state = AsyncData(
           value.copyWith(tasks: tasks, displayDoneTask: displayDoneTasks),
         );
