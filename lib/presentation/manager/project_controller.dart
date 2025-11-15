@@ -18,8 +18,14 @@ class ProjectController extends _$ProjectController {
     var displayDoneTask = await ref
         .read(settingsRepositoryProvider)
         .getDisplayDoneTasks(project.id);
-    final initialViewId = project.views.isNotEmpty ? project.views.first.id : null;
-    var tasksResponse = await _loadTasks(project.id, displayDoneTask, viewId: initialViewId);
+    final initialViewId = project.views.isNotEmpty
+        ? project.views.first.id
+        : null;
+    var tasksResponse = await _loadTasks(
+      project.id,
+      displayDoneTask,
+      viewId: initialViewId,
+    );
 
     switch (tasksResponse) {
       case SuccessResponse<List<Task>>():
@@ -287,10 +293,12 @@ class ProjectController extends _$ProjectController {
 
     var value = state.value;
     if (value != null) {
-      final currentViewId = value.viewIndex >= 0 &&
-              value.viewIndex < value.project.views.length
+      final currentViewId =
+          value.viewIndex >= 0 && value.viewIndex < value.project.views.length
           ? value.project.views[value.viewIndex].id
-          : (value.project.views.isNotEmpty ? value.project.views.first.id : null);
+          : (value.project.views.isNotEmpty
+                ? value.project.views.first.id
+                : null);
       var tasksResponse = await _loadTasks(
         value.project.id,
         displayDoneTasks,
@@ -298,10 +306,10 @@ class ProjectController extends _$ProjectController {
       );
       if (tasksResponse.isSuccessful) {
         var tasks = tasksResponse.toSuccess().body;
-      state = AsyncData(
-        value.copyWith(tasks: tasks, displayDoneTask: displayDoneTasks),
-      );
-      return true;
+        state = AsyncData(
+          value.copyWith(tasks: tasks, displayDoneTask: displayDoneTasks),
+        );
+        return true;
       } else {
         return false;
       }
