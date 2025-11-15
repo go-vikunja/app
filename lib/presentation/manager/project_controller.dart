@@ -272,6 +272,74 @@ class ProjectController extends _$ProjectController {
     return false;
   }
 
+  Future<bool> reorderTask(Project project, int oldIndex, int newIndex) async {
+    final value = state.value;
+    if (value == null) return false;
+
+    final currentViewIndex = value.viewIndex >= 0 ? value.viewIndex : 0;
+    if (project.views.isEmpty ||
+        project.views[currentViewIndex].viewKind != ViewKind.list) {
+      return false;
+    }
+
+    if (oldIndex == newIndex) return true;
+
+    final tasks = [...value.tasks];
+    if (oldIndex < 0 ||
+        oldIndex >= tasks.length ||
+        newIndex < 0 ||
+        newIndex > tasks.length) {
+      return false;
+    }
+
+    final moved = tasks.removeAt(oldIndex);
+    final firstDoneIndex = tasks.indexWhere((t) => t.done);
+    final openBoundary = firstDoneIndex == -1 ? tasks.length : firstDoneIndex;
+
+    int targetIndex;
+    if (moved.done) {
+      targetIndex = newIndex.clamp(openBoundary, tasks.length);
+    } else {
+      targetIndex = newIndex.clamp(0, openBoundary);
+    }
+    tasks.insert(targetIndex, moved);
+
+    double? before = targetIndex > 0 ? tasks[targetIndex - 1].position : null;
+    final nextIndex = targetIndex + 1;
+    double? after;
+    if (moved.done) {
+      after = (nextIndex < tasks.length) ? tasks[nextIndex].position : null;
+    } else {
+      after = (nextIndex < openBoundary) ? tasks[nextIndex].position : null;
+    }
+
+    double newPos;
+    if (before != null && after != null) {
+      newPos = (before + after) / 2;
+    } else if (before == null && after != null) {
+      newPos = after - 1;
+    } else if (before != null && after == null) {
+      newPos = before + 1;
+    } else {
+      newPos = targetIndex.toDouble();
+    }
+
+    tasks[targetIndex] = tasks[targetIndex].copyWith(position: newPos);
+    state = AsyncData(value.copyWith(tasks: tasks));
+
+    final viewId = project.views[currentViewIndex].id;
+    final res = await ref
+        .read(bucketRepositoryProvider)
+        .updateTaskPosition(moved.id, viewId, newPos);
+
+    if (res.isSuccessful) {
+      return true;
+    }
+
+    state = AsyncData(value);
+    return false;
+  }
+
   Future<bool> moveTask(
     Project project,
     Task task,

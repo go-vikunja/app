@@ -22,6 +22,86 @@ class ProjectTaskList extends ConsumerWidget {
 
     return projectController.when(
       data: (pageModel) {
+        if (project.subprojects.isEmpty && pageModel.tasks.isNotEmpty) {
+          final openTasks = pageModel.tasks.where((t) => !t.done).toList();
+          final doneTasks = pageModel.tasks.where((t) => t.done).toList();
+          return CustomScrollView(
+            slivers: [
+              SliverReorderableList(
+                itemCount: openTasks.length,
+                onReorder: (oldIndex, newIndex) async {
+                  final rawNewIndex = newIndex;
+                  final target = newIndex;
+
+                  if (oldIndex == target) return;
+
+                  final movedTask = openTasks[oldIndex];
+                  final oldIndexFull = pageModel.tasks.indexWhere(
+                    (t) => t.id == movedTask.id,
+                  );
+
+                  int targetFull;
+                  if (rawNewIndex >= openTasks.length) {
+                    final firstDoneFullIndex = pageModel.tasks.indexWhere(
+                      (t) => t.done,
+                    );
+                    targetFull = firstDoneFullIndex == -1
+                        ? pageModel.tasks.length
+                        : firstDoneFullIndex;
+                  } else if (target < openTasks.length) {
+                    final beforeTaskId = openTasks[target].id;
+                    targetFull = pageModel.tasks.indexWhere(
+                      (t) => t.id == beforeTaskId,
+                    );
+                  } else {
+                    final firstDoneFullIndex = pageModel.tasks.indexWhere(
+                      (t) => t.done,
+                    );
+                    targetFull = firstDoneFullIndex == -1
+                        ? pageModel.tasks.length
+                        : firstDoneFullIndex;
+                  }
+                  if (targetFull > oldIndexFull) targetFull -= 1;
+
+                  final success = await ref
+                      .read(projectControllerProvider(project).notifier)
+                      .reorderTask(project, oldIndexFull, targetFull);
+
+                  if (context.mounted && !success) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Failed to reorder task')),
+                    );
+                  }
+                },
+                itemBuilder: (context, index) {
+                  final task = openTasks[index];
+                  return ReorderableDelayedDragStartListener(
+                    key: Key('task_${task.id}'),
+                    index: index,
+                    child: Material(
+                      color: Colors.transparent,
+                      child: _buildTile(ref, task),
+                    ),
+                  );
+                },
+              ),
+              if (doneTasks.isNotEmpty)
+                SliverList(
+                  delegate: SliverChildBuilderDelegate((context, idx) {
+                    final task = doneTasks[idx];
+                    return KeyedSubtree(
+                      key: Key('task_${task.id}'),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: _buildTile(ref, task),
+                      ),
+                    );
+                  }, childCount: doneTasks.length),
+                ),
+            ],
+          );
+        }
+
         List<Widget> children = [];
         if (project.subprojects.isNotEmpty) {
           if (pageModel.tasks.isNotEmpty) {
