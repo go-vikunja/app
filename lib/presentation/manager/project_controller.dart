@@ -7,6 +7,7 @@ import 'package:vikunja_app/domain/entities/project_page_model.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/entities/view_kind.dart';
 import 'package:vikunja_app/presentation/manager/projects_controller.dart';
+import 'package:vikunja_app/core/utils/sort_tasks.dart';
 
 part 'project_controller.g.dart';
 
@@ -130,8 +131,8 @@ class ProjectController extends _$ProjectController {
       if (value != null) {
         var tasks = value.tasks;
         tasks.add(response.toSuccess().body);
+        tasks = sortTasksByPosition(tasks);
         state = AsyncData(value.copyWith(tasks: tasks));
-
         return true;
       }
     }
