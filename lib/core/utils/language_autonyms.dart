@@ -1,22 +1,22 @@
 import 'package:flutter/widgets.dart';
+import 'package:flutter_localized_locales/flutter_localized_locales.dart';
+import 'package:intl/intl.dart';
 
-/// Returns the native name (autonym) for a given locale's language code.
-/// Fallback is the raw language code (and country code if present).
 String languageAutonym(Locale locale) {
-  final code = locale.languageCode.toLowerCase();
-  final country = locale.countryCode?.toUpperCase();
+  final canonicalLocale = Intl.canonicalizedLocale(locale.toString());
+  final nativeNames = LocaleNamesLocalizationsDelegate.nativeLocaleNames;
 
-  switch (code) {
-    case 'en':
-      return 'English';
-    case 'pl':
-      return 'Polski';
-    // On new language: Add autonyms here
+  final autonym = nativeNames[canonicalLocale] ??
+      nativeNames[locale.languageCode.toLowerCase()];
+
+  if (autonym != null && autonym.isNotEmpty) {
+    return autonym;
   }
 
-  // For region-specific locales, return languageCode_countryCode (e.g., pt_BR)
+  final country = locale.countryCode;
   if (country != null && country.isNotEmpty) {
-    return '${locale.languageCode}_${country}';
+    return '${locale.languageCode}_$country';
   }
+
   return locale.languageCode;
 }
