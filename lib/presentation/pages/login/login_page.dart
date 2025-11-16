@@ -219,7 +219,9 @@ class LoginPageState extends ConsumerState<LoginPage> {
             focusNode: focusnode,
             enabled: !_loading,
             validator: (address) {
-              return isURLValid(address) ? null : AppLocalizations.of(context).invalidUrl;
+              return isURLValid(address)
+                  ? null
+                  : AppLocalizations.of(context).invalidUrl;
             },
             decoration: InputDecoration(
               border: OutlineInputBorder(),

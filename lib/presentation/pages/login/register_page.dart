@@ -37,7 +37,9 @@ class RegisterPageState extends ConsumerState<RegisterPage> {
                     onSaved: (serverAddress) =>
                         _server = normalizeServerURL(serverAddress ?? ''),
                     validator: (address) {
-                      return isURLValid(address) ? null : AppLocalizations.of(context).invalidUrl;
+                      return isURLValid(address)
+                          ? null
+                          : AppLocalizations.of(context).invalidUrl;
                     },
                     decoration: InputDecoration(
                       border: OutlineInputBorder(),
