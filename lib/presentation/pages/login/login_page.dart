@@ -12,6 +12,7 @@ import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/core/network/client.dart';
 import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/core/utils/constants.dart';
+import 'package:vikunja_app/core/utils/network.dart';
 import 'package:vikunja_app/core/utils/validator.dart';
 import 'package:vikunja_app/domain/entities/auth_model.dart';
 import 'package:vikunja_app/domain/entities/server.dart';
@@ -136,8 +137,9 @@ class LoginPageState extends ConsumerState<LoginPage> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) =>
-                            LoginWithWebView(_serverController.text),
+                        builder: (context) => LoginWithWebView(
+                          normalizeServerURL(_serverController.text),
+                        ),
                       ),
                     ).then((btp) {
                       if (btp != null) _loginUserByClientToken(btp);
@@ -217,9 +219,7 @@ class LoginPageState extends ConsumerState<LoginPage> {
             focusNode: focusnode,
             enabled: !_loading,
             validator: (address) {
-              return (isUrl(address) || address == null || address.isEmpty)
-                  ? null
-                  : AppLocalizations.of(context).invalidUrl;
+              return isURLValid(address) ? null : AppLocalizations.of(context).invalidUrl;
             },
             decoration: InputDecoration(
               border: OutlineInputBorder(),
@@ -351,7 +351,7 @@ class LoginPageState extends ConsumerState<LoginPage> {
   }
 
   Future<void> _loginUser(BuildContext context) async {
-    String server = _serverController.text;
+    String server = normalizeServerURL(_serverController.text);
     String username = _usernameController.text;
     String password = _passwordController.text;
     if (server.isEmpty) return;
