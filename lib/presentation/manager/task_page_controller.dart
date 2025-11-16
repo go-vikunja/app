@@ -38,7 +38,7 @@ class TaskPageController extends _$TaskPageController {
             tasks.project = projectsMap[tasks.projectId];
           }
         }
-
+        updateWidget();
         return TaskPageModel(tasks, showOnlyDueDateTasks, defaultProjectId);
       case ErrorResponse<List<Task>>():
         throw AsyncError(tasksResponse.error, StackTrace.current);
@@ -81,6 +81,8 @@ class TaskPageController extends _$TaskPageController {
             defaultProjectId,
           ),
         );
+
+      updateWidget();
       case ErrorResponse<List<Task>>():
         state = AsyncError(tasksResponse.error, StackTrace.current);
       case ExceptionResponse<List<Task>>():
@@ -95,7 +97,6 @@ class TaskPageController extends _$TaskPageController {
     if (user != null) {
       Map<String, dynamic>? frontendSettings = user.settings?.frontend_settings;
       int? filterId = frontendSettings?["filter_id_used_on_overview"];
-      updateWidget();
       if (filterId != null && filterId != 0) {
         var tasksResponse = await ref
             .read(taskRepositoryProvider)
