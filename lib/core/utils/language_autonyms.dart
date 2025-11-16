@@ -6,7 +6,8 @@ String languageAutonym(Locale locale) {
   final canonicalLocale = Intl.canonicalizedLocale(locale.toString());
   final nativeNames = LocaleNamesLocalizationsDelegate.nativeLocaleNames;
 
-  final autonym = nativeNames[canonicalLocale] ??
+  final autonym =
+      nativeNames[canonicalLocale] ??
       nativeNames[locale.languageCode.toLowerCase()];
 
   if (autonym != null && autonym.isNotEmpty) {
