@@ -123,14 +123,13 @@ class TaskListPage extends ConsumerWidget {
       context: context,
       builder: (_) => AddTaskDialog(
         onAddTask: (title, dueDate) =>
-            _addTask(ref, context, title, dueDate, defaultProjectId),
+            _addTask(ref, title, dueDate, defaultProjectId),
       ),
     );
   }
 
   Future<void> _addTask(
     WidgetRef ref,
-    BuildContext context,
     String title,
     DateTime? dueDate,
     int defaultProjectId,
@@ -152,12 +151,12 @@ class TaskListPage extends ConsumerWidget {
         .addTask(defaultProjectId, task);
 
     if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(ref.context).showSnackBar(
         SnackBar(content: Text('The task was added successfully!')),
       );
     } else {
       ScaffoldMessenger.of(
-        context,
+        ref.context,
       ).showSnackBar(SnackBar(content: Text('Error adding the task!')));
     }
   }
