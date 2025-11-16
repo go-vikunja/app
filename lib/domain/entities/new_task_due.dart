@@ -35,15 +35,15 @@ enum NewTaskDue {
             .add(
               Duration(
                 days:
-                    dateTime.day == DateTime.friday ||
-                        dateTime.day == DateTime.saturday ||
-                        dateTime.day == DateTime.sunday
+                    dateTime.weekday == DateTime.friday ||
+                        dateTime.weekday == DateTime.saturday ||
+                        dateTime.weekday == DateTime.sunday
                     ? 0
                     : 2,
               ),
             );
       case NewTaskDue.next_week:
-        return dateTime.copyWith(hour: hour).add(Duration(days: 7));
+        return dateTime.copyWith(hour: hour, minute: 0, second: 0).add(Duration(days: 7));
       case NewTaskDue.custom:
         return DateTime.now();
     }
