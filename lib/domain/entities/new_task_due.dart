@@ -8,10 +8,9 @@ enum NewTaskDue {
   next_week,
   custom;
 
-  DateTime? calculateDate() {
-    int hour = calculateNearestHours();
+  DateTime? calculateDate(DateTime currentDateTime) {
+    int hour = calculateNearestHours(currentDateTime);
 
-    var currentDateTime = DateTime.now();
     var newDateTime = currentDateTime.copyWith(
       hour: hour,
       minute: 0,
@@ -41,8 +40,7 @@ enum NewTaskDue {
       case NewTaskDue.later_this_week:
         return newDateTime.add(
           Duration(
-            days:
-                currentDateTime.weekday == DateTime.friday ||
+            days: currentDateTime.weekday == DateTime.friday ||
                     currentDateTime.weekday == DateTime.saturday ||
                     currentDateTime.weekday == DateTime.sunday
                 ? 0
@@ -52,13 +50,11 @@ enum NewTaskDue {
       case NewTaskDue.next_week:
         return newDateTime.add(Duration(days: 7));
       case NewTaskDue.custom:
-        return DateTime.now();
+        return currentDateTime;
     }
   }
 
-  int calculateNearestHours() {
-    DateTime currentDate = DateTime.now();
-
+  int calculateNearestHours(DateTime currentDate) {
     if (currentDate.hour <= 9 || currentDate.hour >= 21) {
       return 9;
     } else if (currentDate.hour < 12) {

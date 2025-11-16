@@ -131,7 +131,7 @@ class AddTaskDialogState extends State<AddTaskDialog> {
               newTaskDue == NewTaskDue.none) {
             dueDate = null;
           } else {
-            dueDate = newTaskDue.calculateDate();
+            dueDate = newTaskDue.calculateDate(DateTime.now());
           }
         });
       },
