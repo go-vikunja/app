@@ -40,7 +40,8 @@ enum NewTaskDue {
       case NewTaskDue.later_this_week:
         return newDateTime.add(
           Duration(
-            days: currentDateTime.weekday == DateTime.friday ||
+            days:
+                currentDateTime.weekday == DateTime.friday ||
                     currentDateTime.weekday == DateTime.saturday ||
                     currentDateTime.weekday == DateTime.sunday
                 ? 0
