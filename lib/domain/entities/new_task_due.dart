@@ -11,39 +11,46 @@ enum NewTaskDue {
   DateTime? calculateDate() {
     int hour = calculateNearestHours();
 
-    var dateTime = DateTime.now();
+    var currentDateTime = DateTime.now();
+    var newDateTime = currentDateTime.copyWith(
+      hour: hour,
+      minute: 0,
+      second: 0,
+    );
+
     switch (this) {
       case NewTaskDue.none:
         return null;
       case NewTaskDue.today:
-        return dateTime.copyWith(hour: hour, minute: 0, second: 0);
+        return newDateTime;
       case NewTaskDue.tomorrow:
-        return dateTime
-            .copyWith(hour: hour, minute: 0, second: 0)
-            .add(Duration(days: 1));
+        return newDateTime.add(Duration(days: 1));
       case NewTaskDue.next_monday:
-        return dateTime
-            .copyWith(hour: hour, minute: 0, second: 0)
-            .add(Duration(days: (DateTime.monday - dateTime.weekday) % 7));
+        return newDateTime.add(
+          Duration(days: (DateTime.monday - currentDateTime.weekday) % 7),
+        );
       case NewTaskDue.weekend:
-        return dateTime
-            .copyWith(hour: hour, minute: 0, second: 0)
-            .add(Duration(days: (DateTime.saturday - dateTime.weekday) % 6));
+        if (currentDateTime.weekday == DateTime.saturday ||
+            currentDateTime.weekday == DateTime.sunday) {
+          return newDateTime;
+        } else {
+          return newDateTime.add(
+            Duration(days: (DateTime.saturday - currentDateTime.weekday) % 6),
+          );
+        }
       case NewTaskDue.later_this_week:
-        return dateTime
-            .copyWith(hour: hour, minute: 0, second: 0)
-            .add(
-              Duration(
-                days:
-                    dateTime.weekday == DateTime.friday ||
-                        dateTime.weekday == DateTime.saturday ||
-                        dateTime.weekday == DateTime.sunday
-                    ? 0
-                    : 2,
-              ),
-            );
+        return newDateTime.add(
+          Duration(
+            days:
+                currentDateTime.weekday == DateTime.friday ||
+                    currentDateTime.weekday == DateTime.saturday ||
+                    currentDateTime.weekday == DateTime.sunday
+                ? 0
+                : 2,
+          ),
+        );
       case NewTaskDue.next_week:
-        return dateTime.copyWith(hour: hour, minute: 0, second: 0).add(Duration(days: 7));
+        return newDateTime.add(Duration(days: 7));
       case NewTaskDue.custom:
         return DateTime.now();
     }
