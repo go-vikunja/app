@@ -34,7 +34,13 @@ void main() {
     });
 
     test('next_monday when today is Wednesday returns next Monday', () {
-      final wednesday = DateTime(2025, 11, 12, 13, 0); // Wednesday 13:00 -> nearest 15
+      final wednesday = DateTime(
+        2025,
+        11,
+        12,
+        13,
+        0,
+      ); // Wednesday 13:00 -> nearest 15
       final result = NewTaskDue.next_monday.calculateDate(wednesday);
       expect(result!.day, wednesday.day + 5); // Wednesday -> next Monday
       expect(result.weekday, DateTime.monday);
@@ -42,7 +48,13 @@ void main() {
     });
 
     test('weekend when today is Monday returns Saturday', () {
-      final monday = DateTime(2025, 11, 10, 11, 0); // Monday 11:00 -> nearest 12
+      final monday = DateTime(
+        2025,
+        11,
+        10,
+        11,
+        0,
+      ); // Monday 11:00 -> nearest 12
       final result = NewTaskDue.weekend.calculateDate(monday);
       expect(result!.weekday, DateTime.saturday);
       expect(result.day, monday.day + 5);
@@ -50,14 +62,26 @@ void main() {
     });
 
     test('weekend when today is Saturday returns today', () {
-      final saturday = DateTime(2025, 11, 15, 20, 0); // Saturday 20:00 -> nearest 21
+      final saturday = DateTime(
+        2025,
+        11,
+        15,
+        20,
+        0,
+      ); // Saturday 20:00 -> nearest 21
       final result = NewTaskDue.weekend.calculateDate(saturday);
       expect(result!.day, saturday.day);
       expect(result.hour, 21);
     });
 
     test('later_this_week early in week adds two days', () {
-      final tuesday = DateTime(2025, 11, 11, 14, 59); // Tuesday 14:59 -> nearest 15
+      final tuesday = DateTime(
+        2025,
+        11,
+        11,
+        14,
+        59,
+      ); // Tuesday 14:59 -> nearest 15
       final result = NewTaskDue.later_this_week.calculateDate(tuesday);
       expect(result!.day, tuesday.day + 2);
       expect(result.hour, 15);
@@ -87,8 +111,11 @@ void main() {
   group('NewTaskDue.calculateNearestHours boundaries', () {
     void check(int hour, int minute, int expected) {
       final base = DateTime(2025, 11, 10, hour, minute);
-      expect(NewTaskDue.today.calculateNearestHours(base), expected,
-          reason: 'At $hour:$minute expected $expected');
+      expect(
+        NewTaskDue.today.calculateNearestHours(base),
+        expected,
+        reason: 'At $hour:$minute expected $expected',
+      );
     }
 
     test('hour rounding cases', () {
