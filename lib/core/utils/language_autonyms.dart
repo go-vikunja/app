@@ -11,7 +11,7 @@ String languageAutonym(Locale locale) {
       nativeNames[locale.languageCode.toLowerCase()];
 
   if (autonym != null && autonym.isNotEmpty) {
-    return autonym;
+    return autonym[0].toUpperCase() + autonym.substring(1);
   }
 
   final country = locale.countryCode;
