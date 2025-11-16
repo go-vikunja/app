@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/core/utils/constants.dart';
+import 'package:vikunja_app/core/utils/network.dart';
 import 'package:vikunja_app/core/utils/validator.dart';
 import 'package:vikunja_app/presentation/widgets/button.dart';
 
@@ -32,9 +33,10 @@ class RegisterPageState extends ConsumerState<RegisterPage> {
                 Padding(
                   padding: vStandardVerticalPadding,
                   child: TextFormField(
-                    onSaved: (serverAddress) => _server = serverAddress,
+                    onSaved: (serverAddress) =>
+                        _server = normalizeServerURL(serverAddress ?? ''),
                     validator: (address) {
-                      return isUrl(address) ? null : 'Invalid URL';
+                      return isURLValid(address) ? null : 'Invalid URL';
                     },
                     decoration: InputDecoration(
                       border: OutlineInputBorder(),
