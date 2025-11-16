@@ -130,7 +130,6 @@ class AddTaskDialogState extends State<AddTaskDialog> {
           if (newTaskDue == NewTaskDue.custom ||
               newTaskDue == NewTaskDue.none) {
             dueDate = null;
-            dueDate = null;
           } else {
             dueDate = newTaskDue.calculateDate();
           }
