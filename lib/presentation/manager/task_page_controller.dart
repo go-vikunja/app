@@ -82,7 +82,7 @@ class TaskPageController extends _$TaskPageController {
           ),
         );
 
-      updateWidget();
+        updateWidget();
       case ErrorResponse<List<Task>>():
         state = AsyncError(tasksResponse.error, StackTrace.current);
       case ExceptionResponse<List<Task>>():
