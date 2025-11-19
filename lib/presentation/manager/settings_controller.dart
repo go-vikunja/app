@@ -116,8 +116,6 @@ class SettingsController extends _$SettingsController {
     }
 
     var settings = await getAll();
-    // var settings = ref.read(settingsControllerProvider);
-    // settings.whenData((settings) {
     Workmanager().cancelAll().then((value) {
       var duration = Duration(minutes: settings.refreshInterval);
       if (duration.inMinutes > 0) {

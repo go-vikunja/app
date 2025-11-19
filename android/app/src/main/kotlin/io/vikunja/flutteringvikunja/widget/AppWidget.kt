@@ -109,7 +109,7 @@ class AppWidget : GlanceAppWidget() {
                         RenderRow(context, task, prefs, "HH:mm")
                     }
                     item{
-                        Text("OverDue")
+                        Text("Overdue:")
                     }
                     items(otherTasks.sortedBy { it.dueDate }) { task ->
                         RenderRow(context, task, prefs, "dd MMM HH:mm")

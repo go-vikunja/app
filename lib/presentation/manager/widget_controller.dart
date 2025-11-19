@@ -5,7 +5,6 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:vikunja_app/core/network/client.dart';
-import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/data/data_sources/settings_data_source.dart';
 import 'package:vikunja_app/data/data_sources/task_data_source.dart';
 import 'package:vikunja_app/data/repositories/task_repository_impl.dart';
@@ -17,7 +16,6 @@ void completeTask(String taskID) async {
   if (taskID == "null") {
     developer.log("Tried to complete an empty task");
   }
-  ;
 
   var datasource = SettingsDatasource(FlutterSecureStorage());
   var token = await datasource.getUserToken();
@@ -31,9 +29,9 @@ void completeTask(String taskID) async {
     client.setIgnoreCerts(ignoreCertificates);
 
     TaskRepository taskService = TaskRepositoryImpl(TaskDataSource(client));
-    var taskResponse = await taskService.getTask(int.parse(taskID!));
+    var taskResponse = await taskService.getTask(int.parse(taskID));
     var task = taskResponse.toSuccess().body;
-    taskService.update(task.copyWith(done: true));
+    await taskService.update(task.copyWith(done: true));
     updateWidget();
   } else {
     developer.log("There was an error initialising the client");
@@ -47,8 +45,6 @@ WidgetTask convertTask(Task task) {
 
   bool wgToday = task.dueDate!.day == today.day ? true : false;
   bool overdue = task.dueDate!.isBefore(now) ? true : false;
-
-  // CHeck if task is overdue
 
   WidgetTask wgTask = WidgetTask(
     id: task.id.toString(),
@@ -117,7 +113,6 @@ void updateWidgetTasks(List<Task> tasklist) async {
 void reRenderWidget() {
   HomeWidget.updateWidget(
     name: 'AppWidget',
-    // androidName: '.widget.AppWidgetReciever',
     qualifiedAndroidName:
         'io.vikunja.flutteringvikunja.widget.AppWidgetReciever',
   );
