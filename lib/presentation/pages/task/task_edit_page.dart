@@ -135,12 +135,7 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
     return Form(
       key: _formKey,
       child: ListView(
-        padding: EdgeInsets.fromLTRB(
-          16,
-          16,
-          16,
-          MediaQuery.of(context).size.height / 2,
-        ),
+        padding: EdgeInsets.fromLTRB(16, 16, 16, 16),
         children: <Widget>[
           _buildTitle(),
           _buildDescription(context),
@@ -216,16 +211,10 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
                         fontWeight: FontWeight.normal,
                       ),
                     ),
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4.0),
-                      child: Flexible(
-                        child: HtmlWidget(
-                          _description != null &&
-                                  _description?.isNotEmpty == true
-                              ? _description!
-                              : "No description",
-                        ),
-                      ),
+                    HtmlWidget(
+                      _description != null && _description?.isNotEmpty == true
+                          ? _description!
+                          : "No description",
                     ),
                   ],
                 ),
