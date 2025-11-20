@@ -22,11 +22,3 @@ List<Task> sortTasksByPosition(List<Task> tasks) {
   });
   return sorted;
 }
-
-List<Task> sortTasksByDoneThenPosition(List<Task> tasks) {
-  final open = tasks.where((t) => !t.done).toList();
-  final done = tasks.where((t) => t.done).toList();
-  final sortedOpen = sortTasksByPosition(open);
-  final sortedDone = sortTasksByPosition(done);
-  return [...sortedOpen, ...sortedDone];
-}

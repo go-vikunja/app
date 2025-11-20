@@ -32,7 +32,7 @@ class ProjectController extends _$ProjectController {
         return ProjectPageModel(
           project,
           -1,
-          sortTasksByDoneThenPosition(tasksResponse.body),
+          sortTasksByPosition(tasksResponse.body),
           [],
           displayDoneTask,
         );
@@ -57,7 +57,7 @@ class ProjectController extends _$ProjectController {
 
     switch (tasksResponse) {
       case SuccessResponse<List<Task>>():
-        tasks = sortTasksByDoneThenPosition(tasksResponse.body);
+        tasks = sortTasksByPosition(tasksResponse.body);
       case ErrorResponse<List<Task>>():
         state = AsyncError(tasksResponse.error, StackTrace.current);
       case ExceptionResponse<List<Task>>():
@@ -148,7 +148,7 @@ class ProjectController extends _$ProjectController {
           doneTasks = sortTasksByPosition(doneRespProject.toSuccess().body);
         }
 
-        final combined = [...openTasks, ...doneTasks];
+        final combined = sortTasksByPosition([...openTasks, ...doneTasks]);
 
         return SuccessResponse<List<Task>>(combined, 200, {});
       }
@@ -192,7 +192,7 @@ class ProjectController extends _$ProjectController {
       if (value != null) {
         var tasks = value.tasks;
         tasks.add(response.toSuccess().body);
-        tasks = sortTasksByDoneThenPosition(tasks);
+        tasks = sortTasksByPosition(tasks);
         state = AsyncData(value.copyWith(tasks: tasks));
         return true;
       }
@@ -282,36 +282,29 @@ class ProjectController extends _$ProjectController {
       return false;
     }
 
-    if (oldIndex == newIndex) return true;
-
     final tasks = [...value.tasks];
-    if (oldIndex < 0 ||
-        oldIndex >= tasks.length ||
-        newIndex < 0 ||
-        newIndex > tasks.length) {
+    if (oldIndex < 0 || oldIndex >= tasks.length) {
       return false;
     }
 
-    final moved = tasks.removeAt(oldIndex);
-    final firstDoneIndex = tasks.indexWhere((t) => t.done);
-    final openBoundary = firstDoneIndex == -1 ? tasks.length : firstDoneIndex;
-
-    int targetIndex;
-    if (moved.done) {
-      targetIndex = newIndex.clamp(openBoundary, tasks.length);
-    } else {
-      targetIndex = newIndex.clamp(0, openBoundary);
+    var targetIndex = newIndex.clamp(0, tasks.length);
+    if (targetIndex > oldIndex) {
+      targetIndex -= 1;
     }
+
+    targetIndex = targetIndex.clamp(0, tasks.length - 1);
+
+    if (oldIndex == targetIndex) {
+      return true;
+    }
+
+    final moved = tasks.removeAt(oldIndex);
     tasks.insert(targetIndex, moved);
 
     double? before = targetIndex > 0 ? tasks[targetIndex - 1].position : null;
-    final nextIndex = targetIndex + 1;
-    double? after;
-    if (moved.done) {
-      after = (nextIndex < tasks.length) ? tasks[nextIndex].position : null;
-    } else {
-      after = (nextIndex < openBoundary) ? tasks[nextIndex].position : null;
-    }
+    double? after = (targetIndex + 1) < tasks.length
+        ? tasks[targetIndex + 1].position
+        : null;
 
     double newPos;
     if (before != null && after != null) {
@@ -428,7 +421,7 @@ class ProjectController extends _$ProjectController {
         viewId: currentViewId,
       );
       if (tasksResponse.isSuccessful) {
-        var tasks = sortTasksByDoneThenPosition(tasksResponse.toSuccess().body);
+        var tasks = sortTasksByPosition(tasksResponse.toSuccess().body);
         state = AsyncData(
           value.copyWith(tasks: tasks, displayDoneTask: displayDoneTasks),
         );
