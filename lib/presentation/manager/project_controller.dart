@@ -43,7 +43,7 @@ class ProjectController extends _$ProjectController {
         .getDisplayDoneTasks(project.id);
 
     var tasks = <Task>[];
-    int? viewId = _getFirstListViewIdFromProject(project);
+    int? viewId = viewIndex == 0 ? project.views.firstWhere((view) => view.viewKind == ViewKind.list).id : null;
     var tasksResponse = await _loadTasks(project.id, displayDoneTask, viewId);
 
     switch (tasksResponse) {
