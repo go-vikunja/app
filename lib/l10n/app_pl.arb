@@ -150,8 +150,7 @@
   "sentryDialogMessage": "Czy chcesz pomóc ulepszać Vikunja wysyłając raporty błędów? Włączenie spowoduje automatyczne raportowanie do deweloperów przez Sentry.",
   "language": "Język",
   "systemLanguage": "Język systemowy",
-  "connectionError": "Błąd połączenia"
-  ,
+  "connectionError": "Błąd połączenia",
   "dueOptionNone": "Brak",
   "dueOptionToday": "Dzisiaj",
   "dueOptionTomorrow": "Jutro",

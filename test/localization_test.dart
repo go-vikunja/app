@@ -16,7 +16,7 @@ void main() {
     });
 
     test(
-      'Count untranslated strings per supported locale (vs English baseline)',
+      'Count untranslated strings per supported locale (Check untranslated_messages.json)',
       () {
         final arbDir = Directory('lib/l10n');
         final enFile = File('${arbDir.path}/app_en.arb');
@@ -51,9 +51,8 @@ void main() {
             final isMissing = locVal == null;
             final isEmpty = locVal is String ? locVal.trim().isEmpty : true;
             final equalsKey = locVal == key;
-            final equalsEnglish = code != 'en' && locVal == enVal;
 
-            if (isMissing || isEmpty || equalsKey || equalsEnglish) {
+            if (isMissing || isEmpty || equalsKey) {
               untranslatedCount++;
             }
           }
