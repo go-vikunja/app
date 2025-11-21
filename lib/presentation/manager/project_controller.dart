@@ -110,18 +110,9 @@ class ProjectController extends _$ProjectController {
       });
     }
 
-    var response = view == null
+    return view == null
         ? await repo.getAllByProject(projectId, queryParams)
         : await repo.getAllByProjectView(projectId, view, queryParams);
-    if (response is SuccessResponse<List<Task>>) {
-      return SuccessResponse(
-        response.body,
-        response.statusCode,
-        response.headers,
-      );
-    } else {
-      return response;
-    }
   }
 
   Future<Response<List<Bucket>>> _loadBuckets({
@@ -149,8 +140,8 @@ class ProjectController extends _$ProjectController {
       if (value != null) {
         var tasks = value.tasks;
         tasks.add(response.toSuccess().body);
-        tasks = tasks;
         state = AsyncData(value.copyWith(tasks: tasks));
+
         return true;
       }
     }
@@ -230,29 +221,24 @@ class ProjectController extends _$ProjectController {
   }
 
   Future<bool> reorderTask(Project project, int oldIndex, int newIndex) async {
-    final value = state.value;
-    if (value == null) return false;
-
-    if (project.views.isEmpty ||
-        project.views[value.viewIndex].viewKind != ViewKind.list) {
-      return false;
-    }
-
-    final tasks = [...value.tasks];
-
-    var targetIndex = newIndex.clamp(0, tasks.length);
-
-    if (oldIndex == targetIndex) {
+    var value = state.value;
+    if (value == null || oldIndex == newIndex) {
       return true;
     }
 
-    final moved = tasks.removeAt(oldIndex);
-    tasks.insert(targetIndex, moved);
+    final moved = value.tasks[oldIndex];
 
-    double? before = targetIndex > 0 ? tasks[targetIndex - 1].position : null;
-    double? after = (targetIndex + 1) < tasks.length
-        ? tasks[targetIndex + 1].position
-        : null;
+    // Dragging to top = newIndex -1
+    double? before = null;
+    if (newIndex > 0) {
+      before = value.tasks[newIndex - 1].position;
+    } else if (newIndex == -1) {
+      before = value.tasks[0].position;
+    } else {
+      before = null;
+    }
+
+    double? after = newIndex < value.tasks.length ? value.tasks[newIndex].position : null;
 
     double newPos;
     if (before != null && after != null) {
@@ -262,23 +248,30 @@ class ProjectController extends _$ProjectController {
     } else if (before != null && after == null) {
       newPos = before + 1;
     } else {
-      newPos = targetIndex.toDouble();
+      newPos = newIndex.toDouble();
     }
-
-    tasks[targetIndex] = tasks[targetIndex].copyWith(position: newPos);
-    state = AsyncData(value.copyWith(tasks: tasks));
-
-    final viewId = project.views[value.viewIndex].id;
-    final res = await ref
+    int? viewId = _getFirstListViewIdFromProject(value.project);
+    if (viewId != null) {
+      final res = await ref
         .read(bucketRepositoryProvider)
         .updateTaskPosition(moved.id, viewId, newPos);
-
-    if (res.isSuccessful) {
-      return true;
+      if (!res.isSuccessful) {
+        return false;
+      } 
     }
 
-    state = AsyncData(value);
-    return false;
+    var displayDoneTasks = await ref
+      .read(settingsRepositoryProvider)
+      .getDisplayDoneTasks(value.project.id);
+    var tasksResponse = await _loadTasks(value.project.id, displayDoneTasks, viewId);
+    if (tasksResponse.isSuccessful) {
+      var tasks = tasksResponse.toSuccess().body;
+      state = AsyncData(
+        value.copyWith(tasks: tasks, displayDoneTask: displayDoneTasks),
+      );
+    }
+
+    return true;
   }
 
   Future<bool> moveTask(
