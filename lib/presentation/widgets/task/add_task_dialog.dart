@@ -60,15 +60,40 @@ class AddTaskDialogState extends State<AddTaskDialog> {
           Wrap(
             spacing: 8,
             children: [
-              taskDueList("None", NewTaskDue.none),
-              if (dateTime.hour < 21) taskDueList("Today", NewTaskDue.today),
-              taskDueList("Tomorrow", NewTaskDue.tomorrow),
-              taskDueList("Next Monday", NewTaskDue.next_monday),
+              taskDueList(
+                AppLocalizations.of(context).dueOptionNone,
+                NewTaskDue.none,
+              ),
+              if (dateTime.hour < 21)
+                taskDueList(
+                  AppLocalizations.of(context).dueOptionToday,
+                  NewTaskDue.today,
+                ),
+              taskDueList(
+                AppLocalizations.of(context).dueOptionTomorrow,
+                NewTaskDue.tomorrow,
+              ),
+              taskDueList(
+                AppLocalizations.of(context).dueOptionNextMonday,
+                NewTaskDue.next_monday,
+              ),
               if (dateTime.weekday != DateTime.sunday || dateTime.hour < 21)
-                taskDueList("This Weekend", NewTaskDue.weekend),
-              taskDueList("Later this week", NewTaskDue.later_this_week),
-              taskDueList(AppLocalizations.of(context).dueInOneWeek, NewTaskDue.next_week),
-              taskDueList("Custom", NewTaskDue.custom),
+                taskDueList(
+                  AppLocalizations.of(context).dueOptionThisWeekend,
+                  NewTaskDue.weekend,
+                ),
+              taskDueList(
+                AppLocalizations.of(context).dueOptionLaterThisWeek,
+                NewTaskDue.later_this_week,
+              ),
+              taskDueList(
+                AppLocalizations.of(context).dueInOneWeek,
+                NewTaskDue.next_week,
+              ),
+              taskDueList(
+                AppLocalizations.of(context).dueOptionCustom,
+                NewTaskDue.custom,
+              ),
             ],
           ),
           if (newTaskDue == NewTaskDue.custom)

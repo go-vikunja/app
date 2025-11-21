@@ -151,4 +151,12 @@
   "language": "Język",
   "systemLanguage": "Język systemowy",
   "connectionError": "Błąd połączenia"
+  ,
+  "dueOptionNone": "Brak",
+  "dueOptionToday": "Dzisiaj",
+  "dueOptionTomorrow": "Jutro",
+  "dueOptionNextMonday": "Następny poniedziałek",
+  "dueOptionThisWeekend": "W ten weekend",
+  "dueOptionLaterThisWeek": "Później w tym tygodniu",
+  "dueOptionCustom": "Własny"
 }

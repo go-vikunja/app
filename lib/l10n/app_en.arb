@@ -176,4 +176,12 @@
   "language": "Language",
   "systemLanguage": "System Language",
   "connectionError": "Connection error"
+  ,
+  "dueOptionNone": "None",
+  "dueOptionToday": "Today",
+  "dueOptionTomorrow": "Tomorrow",
+  "dueOptionNextMonday": "Next Monday",
+  "dueOptionThisWeekend": "This Weekend",
+  "dueOptionLaterThisWeek": "Later this week",
+  "dueOptionCustom": "Custom"
 }

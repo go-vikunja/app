@@ -152,11 +152,13 @@ class TaskListPage extends ConsumerWidget {
 
     if (success) {
       ScaffoldMessenger.of(ref.context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context).taskAddedSuccess)),
+        SnackBar(
+          content: Text(AppLocalizations.of(ref.context).taskAddedSuccess),
+        ),
       );
     } else {
       ScaffoldMessenger.of(ref.context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context).taskAddError)),
+        SnackBar(content: Text(AppLocalizations.of(ref.context).taskAddError)),
       );
     }
   }
