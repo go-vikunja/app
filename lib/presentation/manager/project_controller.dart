@@ -266,6 +266,31 @@ class ProjectController extends _$ProjectController {
     return true;
   }
 
+  Future<bool> reorderTasks({
+    required Project project,
+    required List<Task> newOrderedTasks,
+    required int movedTaskId,
+    required double newPosition,
+  }) async {
+    final value = state.value;
+    if (value == null) return false;
+
+    int? viewId = _getFirstListViewIdFromProject(value.project);
+    if (viewId != null) {
+      final res = await ref
+          .read(bucketRepositoryProvider)
+          .updateTaskPosition(movedTaskId, viewId, newPosition);
+      if (!res.isSuccessful) {
+        return false;
+      }
+    }
+
+    state = AsyncData(
+      value.copyWith(tasks: newOrderedTasks, displayDoneTask: value.displayDoneTask),
+    );
+    return true;
+  }
+
   Future<bool> moveTask(
     Project project,
     Task task,
