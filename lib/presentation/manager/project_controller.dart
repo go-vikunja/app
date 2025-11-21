@@ -43,7 +43,9 @@ class ProjectController extends _$ProjectController {
         .getDisplayDoneTasks(project.id);
 
     var tasks = <Task>[];
-    int? viewId = viewIndex == 0 ? project.views.firstWhere((view) => view.viewKind == ViewKind.list).id : null;
+    int? viewId = viewIndex == 0
+        ? project.views.firstWhere((view) => view.viewKind == ViewKind.list).id
+        : null;
     var tasksResponse = await _loadTasks(project.id, displayDoneTask, viewId);
 
     switch (tasksResponse) {
@@ -240,7 +242,10 @@ class ProjectController extends _$ProjectController {
           : null;
     }
 
-    final newPos = calculateItemPosition(positionBefore: before, positionAfter: after);
+    final newPos = calculateItemPosition(
+      positionBefore: before,
+      positionAfter: after,
+    );
 
     int? viewId = _getFirstListViewIdFromProject(value.project);
     if (viewId != null) {
@@ -255,7 +260,11 @@ class ProjectController extends _$ProjectController {
     var displayDoneTasks = await ref
         .read(settingsRepositoryProvider)
         .getDisplayDoneTasks(value.project.id);
-    var tasksResponse = await _loadTasks(value.project.id, displayDoneTasks, viewId);
+    var tasksResponse = await _loadTasks(
+      value.project.id,
+      displayDoneTasks,
+      viewId,
+    );
     if (tasksResponse.isSuccessful) {
       var tasks = tasksResponse.toSuccess().body;
       state = AsyncData(
@@ -276,7 +285,10 @@ class ProjectController extends _$ProjectController {
     if (value == null) return false;
 
     state = AsyncData(
-      value.copyWith(tasks: newOrderedTasks, displayDoneTask: value.displayDoneTask),
+      value.copyWith(
+        tasks: newOrderedTasks,
+        displayDoneTask: value.displayDoneTask,
+      ),
     );
 
     int? viewId = _getFirstListViewIdFromProject(value.project);
@@ -371,7 +383,11 @@ class ProjectController extends _$ProjectController {
     var value = state.value;
     if (value != null) {
       int? viewId = _getFirstListViewIdFromProject(value.project);
-      var tasksResponse = await _loadTasks(value.project.id, displayDoneTasks, viewId);
+      var tasksResponse = await _loadTasks(
+        value.project.id,
+        displayDoneTasks,
+        viewId,
+      );
       if (tasksResponse.isSuccessful) {
         var tasks = tasksResponse.toSuccess().body;
         state = AsyncData(

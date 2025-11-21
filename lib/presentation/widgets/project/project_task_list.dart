@@ -37,12 +37,21 @@ class ProjectTaskList extends ConsumerWidget {
 
               final tasks = List<Task>.from(pageModel.tasks);
               final moved = tasks.removeAt(oldIndex);
-              final insertIndex = newIndex == -1 ? 0 : newIndex.clamp(0, tasks.length);
+              final insertIndex = newIndex == -1
+                  ? 0
+                  : newIndex.clamp(0, tasks.length);
               tasks.insert(insertIndex, moved);
 
-              final before = insertIndex == 0 ? null : tasks[insertIndex - 1].position;
-              final after = insertIndex == tasks.length - 1 ? null : tasks[insertIndex + 1].position;
-              final newPos = calculateItemPosition(positionBefore: before, positionAfter: after);
+              final before = insertIndex == 0
+                  ? null
+                  : tasks[insertIndex - 1].position;
+              final after = insertIndex == tasks.length - 1
+                  ? null
+                  : tasks[insertIndex + 1].position;
+              final newPos = calculateItemPosition(
+                positionBefore: before,
+                positionAfter: after,
+              );
 
               ref
                   .read(projectControllerProvider(project).notifier)
@@ -53,12 +62,12 @@ class ProjectTaskList extends ConsumerWidget {
                     newPosition: newPos,
                   )
                   .then((success) {
-                if (context.mounted && !success) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Failed to reorder task')),
-                  );
-                }
-              });
+                    if (context.mounted && !success) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Failed to reorder task')),
+                      );
+                    }
+                  });
             },
             itemBuilder: (context, index) {
               final task = pageModel.tasks[index];
