@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 
 class SentryDialog extends StatelessWidget {
   final Function onAccepts;
@@ -12,27 +13,22 @@ class SentryDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return AlertDialog(
-      title: Text('Enable automatic error reporting'),
+      title: Text(l10n.sentryDialogTitle),
       content: SingleChildScrollView(
-        child: ListBody(
-          children: <Widget>[
-            Text(
-              'Would you like to help us improve Vikunja by sending error reports? Enabling this will send automatic error reports to the developers using Sentry.',
-            ),
-          ],
-        ),
+        child: ListBody(children: <Widget>[Text(l10n.sentryDialogMessage)]),
       ),
       actions: <Widget>[
         TextButton(
-          child: Text('Yes'),
+          child: Text(l10n.yes),
           onPressed: () {
             onAccepts();
             Navigator.pop(context);
           },
         ),
         TextButton(
-          child: Text('No'),
+          child: Text(l10n.no),
           onPressed: () {
             onRefuse();
             Navigator.pop(context);

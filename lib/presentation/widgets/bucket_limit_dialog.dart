@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/domain/entities/bucket.dart';
 
 class BucketLimitDialog extends StatefulWidget {
@@ -17,8 +18,9 @@ class _BucketLimitDialogState extends State<BucketLimitDialog> {
   @override
   Widget build(BuildContext context) {
     if (_controller.text.isEmpty) _controller.text = '${widget.bucket.limit}';
+    final l10n = AppLocalizations.of(context);
     return AlertDialog(
-      title: Text('Limit for \'${widget.bucket.title}\''),
+      title: Text(l10n.bucketLimitTitle(widget.bucket.title)),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -29,8 +31,8 @@ class _BucketLimitDialogState extends State<BucketLimitDialog> {
                 child: TextField(
                   controller: _controller,
                   decoration: InputDecoration(
-                    labelText: 'Limit: ',
-                    helperText: 'Set limit of 0 for no limit.',
+                    labelText: l10n.limitLabel,
+                    helperText: l10n.noLimitHelper,
                   ),
                   keyboardType: TextInputType.number,
                   inputFormatters: <TextInputFormatter>[
@@ -63,16 +65,16 @@ class _BucketLimitDialogState extends State<BucketLimitDialog> {
       actions: <TextButton>[
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: Text('Cancel'),
+          child: Text(l10n.cancel),
         ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(0),
-          child: Text('Remove Limit'),
+          child: Text(l10n.removeLimit),
         ),
         TextButton(
           onPressed: () =>
               Navigator.of(context).pop(int.parse(_controller.text)),
-          child: Text('Done'),
+          child: Text(l10n.done),
         ),
       ],
     );

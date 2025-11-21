@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 
 class TaskDeleteDialog extends ConsumerWidget {
   final int taskId;
@@ -16,17 +17,17 @@ class TaskDeleteDialog extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return AlertDialog(
-      title: Text('Delete Task'),
-      content: Text('Are you sure you want to delete this task?'),
+      title: Text(AppLocalizations.of(context).deleteTaskTitle),
+      content: Text(AppLocalizations.of(context).deleteTaskMessage),
       actions: [
         TextButton(
-          child: Text('Cancel'),
+          child: Text(AppLocalizations.of(context).cancel),
           onPressed: () {
             onCancel();
           },
         ),
         TextButton(
-          child: Text('Delete'),
+          child: Text(AppLocalizations.of(context).delete),
           onPressed: () {
             onConfirm();
           },

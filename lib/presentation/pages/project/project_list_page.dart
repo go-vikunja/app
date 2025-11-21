@@ -8,6 +8,7 @@ import 'package:vikunja_app/presentation/pages/loading_widget.dart';
 import 'package:vikunja_app/presentation/pages/project/expansion_title.dart';
 import 'package:vikunja_app/presentation/pages/project/project_detail_page.dart';
 import 'package:vikunja_app/presentation/widgets/project/add_project_dialog.dart';
+import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 
 class ProjectListPage extends ConsumerWidget {
   const ProjectListPage({super.key});
@@ -34,7 +35,7 @@ class ProjectListPage extends ConsumerWidget {
             },
           ),
           appBar: AppBar(
-            title: Text("Projects"),
+            title: Text(AppLocalizations.of(context).projectsTitle),
             actions: [
               IconButton(
                 icon: Icon(Icons.add),
