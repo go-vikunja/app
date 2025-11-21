@@ -275,19 +275,22 @@ class ProjectController extends _$ProjectController {
     final value = state.value;
     if (value == null) return false;
 
-    int? viewId = _getFirstListViewIdFromProject(value.project);
-    if (viewId != null) {
-      final res = await ref
-          .read(bucketRepositoryProvider)
-          .updateTaskPosition(movedTaskId, viewId, newPosition);
-      if (!res.isSuccessful) {
-        return false;
-      }
-    }
-
     state = AsyncData(
       value.copyWith(tasks: newOrderedTasks, displayDoneTask: value.displayDoneTask),
     );
+
+    int? viewId = _getFirstListViewIdFromProject(value.project);
+    if (viewId == null) {
+      return true;
+    }
+
+    final res = await ref
+        .read(bucketRepositoryProvider)
+        .updateTaskPosition(movedTaskId, viewId, newPosition);
+    if (!res.isSuccessful) {
+      reload();
+      return false;
+    }
     return true;
   }
 

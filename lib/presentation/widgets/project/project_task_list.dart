@@ -27,7 +27,7 @@ class ProjectTaskList extends ConsumerWidget {
           return ReorderableListView.builder(
             buildDefaultDragHandles: false,
             itemCount: pageModel.tasks.length,
-            onReorder: (oldIndex, newIndexRaw) async {
+            onReorder: (oldIndex, newIndexRaw) {
               int newIndex = newIndexRaw;
               if (newIndex > oldIndex) {
                 newIndex -= 1;
@@ -44,21 +44,21 @@ class ProjectTaskList extends ConsumerWidget {
               final after = insertIndex == tasks.length - 1 ? null : tasks[insertIndex + 1].position;
               final newPos = calculateItemPosition(positionBefore: before, positionAfter: after);
 
-              final success = await ref
+              ref
                   .read(projectControllerProvider(project).notifier)
                   .reorderTasks(
                     project: project,
                     newOrderedTasks: tasks,
                     movedTaskId: moved.id,
                     newPosition: newPos,
+                  )
+                  .then((success) {
+                if (context.mounted && !success) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Failed to reorder task')),
                   );
-
-              if (context.mounted && !success) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Failed to reorder task')),
-                );
-                ref.read(projectControllerProvider(project).notifier).reload();
-              }
+                }
+              });
             },
             itemBuilder: (context, index) {
               final task = pageModel.tasks[index];
