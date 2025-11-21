@@ -52,7 +52,7 @@ android {
 
     defaultConfig {
         applicationId "io.vikunja.app"
-        minSdk 23
+        minSdkVersion flutter.minSdkVersion
         targetSdk flutter.targetSdkVersion
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
         versionCode flutterVersionCode.toInteger()

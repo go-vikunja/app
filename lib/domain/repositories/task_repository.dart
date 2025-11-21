@@ -13,6 +13,8 @@ abstract class TaskRepository {
 
   Future<Response<Task>> update(Task task);
 
+  Future<Response<Task>> getTask(int id);
+
   Future<Response<List<Task>>> getAllByProject(
     int projectId, [
     Map<String, List<String>>? queryParameters,
