@@ -222,59 +222,6 @@ class ProjectController extends _$ProjectController {
     return false;
   }
 
-  Future<bool> reorderTask(Project project, int oldIndex, int newIndex) async {
-    var value = state.value;
-    if (value == null || oldIndex == newIndex) {
-      return true;
-    }
-
-    final moved = value.tasks[oldIndex];
-
-    double? before;
-    double? after;
-    if (newIndex == -1) {
-      before = null;
-      after = value.tasks.isNotEmpty ? value.tasks.first.position : null;
-    } else {
-      before = newIndex > 0 ? value.tasks[newIndex - 1].position : null;
-      after = (newIndex >= 0 && newIndex < value.tasks.length)
-          ? value.tasks[newIndex].position
-          : null;
-    }
-
-    final newPos = calculateItemPosition(
-      positionBefore: before,
-      positionAfter: after,
-    );
-
-    int? viewId = _getFirstListViewIdFromProject(value.project);
-    if (viewId != null) {
-      final res = await ref
-          .read(bucketRepositoryProvider)
-          .updateTaskPosition(moved.id, viewId, newPos);
-      if (!res.isSuccessful) {
-        return false;
-      }
-    }
-
-    var displayDoneTasks = await ref
-        .read(settingsRepositoryProvider)
-        .getDisplayDoneTasks(value.project.id);
-    var tasksResponse = await _loadTasks(
-      value.project.id,
-      displayDoneTasks,
-      viewId,
-    );
-    if (tasksResponse.isSuccessful) {
-      var tasks = tasksResponse.toSuccess().body;
-      state = AsyncData(
-        value.copyWith(tasks: tasks, displayDoneTask: displayDoneTasks),
-      );
-    }
-
-    return true;
-  }
-
   Future<bool> reorderTasks({
     required Project project,
     required List<Task> newOrderedTasks,
