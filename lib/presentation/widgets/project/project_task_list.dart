@@ -31,7 +31,7 @@ class ProjectTaskList extends ConsumerWidget {
                   .read(projectControllerProvider(project).notifier)
                   .reorderTask(project, oldIndex, newIndex);
 
-              if (context.mounted && !success) {
+              if (!success) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Failed to reorder task')),
                 );

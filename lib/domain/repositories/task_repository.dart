@@ -20,7 +20,7 @@ abstract class TaskRepository {
 
   Future<Response<List<Task>>> getAllByProjectView(
     int projectId,
-    int viewId, [
+    int view, [
     Map<String, List<String>>? queryParameters,
   ]);
 

@@ -50,12 +50,12 @@ class TaskRepositoryImpl extends TaskRepository {
   @override
   Future<Response<List<Task>>> getAllByProjectView(
     int projectId,
-    int viewId, [
+    int view, [
     Map<String, List<String>>? queryParameters,
   ]) async {
     var response = await _dataSource.getAllByProjectView(
       projectId,
-      viewId,
+      view,
       queryParameters,
     );
 

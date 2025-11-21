@@ -4,10 +4,10 @@ import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/domain/entities/bucket.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/project_page_model.dart';
+import 'package:vikunja_app/domain/entities/project_view.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/entities/view_kind.dart';
 import 'package:vikunja_app/presentation/manager/projects_controller.dart';
-import 'package:vikunja_app/core/utils/sort_tasks.dart';
 
 part 'project_controller.g.dart';
 
@@ -18,21 +18,15 @@ class ProjectController extends _$ProjectController {
     var displayDoneTask = await ref
         .read(settingsRepositoryProvider)
         .getDisplayDoneTasks(project.id);
-    final initialViewId = project.views.isNotEmpty
-        ? project.views.first.id
-        : null;
-    var tasksResponse = await _loadTasks(
-      project.id,
-      displayDoneTask,
-      viewId: initialViewId,
-    );
+    int? viewId = _getFirstListViewIdFromProject(project);
+    var tasksResponse = await _loadTasks(project.id, displayDoneTask, viewId);
 
     switch (tasksResponse) {
       case SuccessResponse<List<Task>>():
         return ProjectPageModel(
           project,
           -1,
-          sortTasksByPosition(tasksResponse.body),
+          tasksResponse.body,
           [],
           displayDoneTask,
         );
@@ -49,15 +43,12 @@ class ProjectController extends _$ProjectController {
         .getDisplayDoneTasks(project.id);
 
     var tasks = <Task>[];
-    var tasksResponse = await _loadTasks(
-      project.id,
-      displayDoneTask,
-      viewId: project.views[viewIndex].id,
-    );
+    int? viewId = _getFirstListViewIdFromProject(project);
+    var tasksResponse = await _loadTasks(project.id, displayDoneTask, viewId);
 
     switch (tasksResponse) {
       case SuccessResponse<List<Task>>():
-        tasks = sortTasksByPosition(tasksResponse.body);
+        tasks = tasksResponse.body;
       case ErrorResponse<List<Task>>():
         state = AsyncError(tasksResponse.error, StackTrace.current);
       case ExceptionResponse<List<Task>>():
@@ -86,85 +77,51 @@ class ProjectController extends _$ProjectController {
     );
   }
 
+  int? _getFirstListViewIdFromProject(Project project) {
+    // Return null in case the first view is kanban
+    return project.views.isNotEmpty &&
+            project.views.first.viewKind == ViewKind.list
+        ? project.views.first.id
+        : null;
+  }
+
   Future<Response<List<Task>>> _loadTasks(
     int projectId,
-    bool displayDoneTasks, {
-    int? viewId,
-  }) async {
+    bool displayDoneTasks, [
+    int? view,
+  ]) async {
     var repo = ref.read(taskRepositoryProvider);
 
-    Map<String, List<String>> baseParams = {
-      "sort_by": ["position"],
-      "order_by": ["asc"],
-      "page": ["1"],
-    };
-
-    if (viewId != null) {
-      if (!displayDoneTasks) {
-        final params = {
-          ...baseParams,
-          "filter": ["done=false"],
-        };
-        return repo.getAllByProjectView(projectId, viewId, params);
-      } else {
-        final paramsOpen = {
-          ...baseParams,
-          "filter": ["done=false"],
-        };
-        final openResp = await repo.getAllByProjectView(
-          projectId,
-          viewId,
-          paramsOpen,
-        );
-        if (!openResp.isSuccessful) return openResp;
-        final openTasks = sortTasksByPosition(openResp.toSuccess().body);
-
-        final paramsDoneView = {
-          ...baseParams,
-          "filter": ["done=true"],
-        };
-        final doneRespView = await repo.getAllByProjectView(
-          projectId,
-          viewId,
-          paramsDoneView,
-        );
-        List<Task> doneTasks;
-        if (doneRespView.isSuccessful &&
-            doneRespView.toSuccess().body.isNotEmpty) {
-          doneTasks = sortTasksByPosition(doneRespView.toSuccess().body);
-        } else {
-          // Fallback: project-level done tasks
-          final paramsDoneProject = {
-            "sort_by": ["id"],
-            "order_by": ["desc"],
+    Map<String, List<String>> queryParams = view == null
+        ? {
+            "sort_by": ["done", "id"],
+            "order_by": ["asc", "desc"],
             "page": ["1"],
-            "filter": ["done=true"],
+          }
+        : {
+            "sort_by": ["position"],
+            "order_by": ["asc"],
+            "page": ["1"],
           };
-          final doneRespProject = await repo.getAllByProject(
-            projectId,
-            paramsDoneProject,
-          );
-          if (!doneRespProject.isSuccessful) return doneRespProject;
-          doneTasks = sortTasksByPosition(doneRespProject.toSuccess().body);
-        }
 
-        final combined = sortTasksByPosition([...openTasks, ...doneTasks]);
-
-        return SuccessResponse<List<Task>>(combined, 200, {});
-      }
-    }
-
-    Map<String, List<String>> queryParams = {
-      "sort_by": ["done", "id"],
-      "order_by": ["asc", "desc"],
-      "page": ["1"],
-    };
     if (!displayDoneTasks) {
       queryParams.addAll({
         "filter": ["done=false"],
       });
     }
-    return repo.getAllByProject(projectId, queryParams);
+
+    var response = view == null
+        ? await repo.getAllByProject(projectId, queryParams)
+        : await repo.getAllByProjectView(projectId, view, queryParams);
+    if (response is SuccessResponse<List<Task>>) {
+      return SuccessResponse(
+        response.body,
+        response.statusCode,
+        response.headers,
+      );
+    } else {
+      return response;
+    }
   }
 
   Future<Response<List<Bucket>>> _loadBuckets({
@@ -192,7 +149,7 @@ class ProjectController extends _$ProjectController {
       if (value != null) {
         var tasks = value.tasks;
         tasks.add(response.toSuccess().body);
-        tasks = sortTasksByPosition(tasks);
+        tasks = tasks;
         state = AsyncData(value.copyWith(tasks: tasks));
         return true;
       }
@@ -276,23 +233,14 @@ class ProjectController extends _$ProjectController {
     final value = state.value;
     if (value == null) return false;
 
-    final currentViewIndex = value.viewIndex >= 0 ? value.viewIndex : 0;
     if (project.views.isEmpty ||
-        project.views[currentViewIndex].viewKind != ViewKind.list) {
+        project.views[value.viewIndex].viewKind != ViewKind.list) {
       return false;
     }
 
     final tasks = [...value.tasks];
-    if (oldIndex < 0 || oldIndex >= tasks.length) {
-      return false;
-    }
 
     var targetIndex = newIndex.clamp(0, tasks.length);
-    if (targetIndex > oldIndex) {
-      targetIndex -= 1;
-    }
-
-    targetIndex = targetIndex.clamp(0, tasks.length - 1);
 
     if (oldIndex == targetIndex) {
       return true;
@@ -320,7 +268,7 @@ class ProjectController extends _$ProjectController {
     tasks[targetIndex] = tasks[targetIndex].copyWith(position: newPos);
     state = AsyncData(value.copyWith(tasks: tasks));
 
-    final viewId = project.views[currentViewIndex].id;
+    final viewId = project.views[value.viewIndex].id;
     final res = await ref
         .read(bucketRepositoryProvider)
         .updateTaskPosition(moved.id, viewId, newPos);
@@ -409,19 +357,10 @@ class ProjectController extends _$ProjectController {
 
     var value = state.value;
     if (value != null) {
-      final currentViewId =
-          value.viewIndex >= 0 && value.viewIndex < value.project.views.length
-          ? value.project.views[value.viewIndex].id
-          : (value.project.views.isNotEmpty
-                ? value.project.views.first.id
-                : null);
-      var tasksResponse = await _loadTasks(
-        value.project.id,
-        displayDoneTasks,
-        viewId: currentViewId,
-      );
+      int? viewId = _getFirstListViewIdFromProject(value.project);
+      var tasksResponse = await _loadTasks(value.project.id, displayDoneTasks, viewId);
       if (tasksResponse.isSuccessful) {
-        var tasks = sortTasksByPosition(tasksResponse.toSuccess().body);
+        var tasks = tasksResponse.toSuccess().body;
         state = AsyncData(
           value.copyWith(tasks: tasks, displayDoneTask: displayDoneTasks),
         );

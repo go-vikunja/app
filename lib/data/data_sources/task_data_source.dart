@@ -48,11 +48,11 @@ class TaskDataSource extends RemoteDataSource {
 
   Future<Response<List<TaskDto>>> getAllByProjectView(
     int projectId,
-    int viewId, [
+    int view, [
     Map<String, List<String>>? queryParameters,
   ]) {
     return client.get(
-      url: '/projects/$projectId/views/$viewId/tasks',
+      url: '/projects/$projectId/views/$view/tasks',
       mapper: (body) {
         return convertList(body, (result) => TaskDto.fromJson(result));
       },
