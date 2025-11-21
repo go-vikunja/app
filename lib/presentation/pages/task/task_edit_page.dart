@@ -140,12 +140,7 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
     return Form(
       key: _formKey,
       child: ListView(
-        padding: EdgeInsets.fromLTRB(
-          16,
-          16,
-          16,
-          MediaQuery.of(context).size.height / 2,
-        ),
+        padding: EdgeInsets.fromLTRB(16, 16, 16, 16),
         children: <Widget>[
           _buildTitle(),
           _buildDescription(context),
@@ -167,7 +162,7 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
 
   Widget _buildTitle() {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 10.0),
+      padding: EdgeInsets.symmetric(vertical: 8.0),
       child: TextFormField(
         maxLines: null,
         keyboardType: TextInputType.multiline,
@@ -186,8 +181,8 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
 
   Widget _buildDescription(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 10.0),
-      child: GestureDetector(
+      padding: EdgeInsets.symmetric(vertical: 8.0),
+      child: InkWell(
         onTap: () async {
           var description = await Navigator.push(
             context,
@@ -204,16 +199,30 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
           });
         },
         child: Row(
+          mainAxisSize: MainAxisSize.max,
           children: [
-            Padding(
-              padding: EdgeInsets.only(right: 15, left: 2),
-              child: Icon(Icons.description, color: Colors.grey),
-            ),
-            Flexible(
-              child: HtmlWidget(
-                _description != null
-                    ? _description!
-                    : AppLocalizations.of(context).noDescription,
+            Icon(Icons.description_outlined),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(left: 16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      AppLocalizations.of(context).description,
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: Theme.of(context).hintColor,
+                        fontWeight: FontWeight.normal,
+                      ),
+                    ),
+                    HtmlWidget(
+                      _description != null && _description?.isNotEmpty == true
+                          ? _description!
+                          : AppLocalizations.of(context).noDescription,
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -224,7 +233,7 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
 
   Widget _buildDueDate() {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 10.0),
+      padding: EdgeInsets.symmetric(vertical: 8.0),
       child: VikunjaDateTimeField(
         icon: Icon(Icons.access_time),
         label: AppLocalizations.of(context).dueDateLabel,
@@ -239,7 +248,7 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
 
   Widget _buildStartDate() {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 10.0),
+      padding: EdgeInsets.symmetric(vertical: 8.0),
       child: VikunjaDateTimeField(
         label: AppLocalizations.of(context).startDateLabel,
         initialValue: widget.task.startDate,
@@ -253,7 +262,7 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
 
   Widget _buildEndDate() {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 10.0),
+      padding: EdgeInsets.symmetric(vertical: 8.0),
       child: VikunjaDateTimeField(
         label: AppLocalizations.of(context).endDateLabel,
         initialValue: widget.task.endDate,
@@ -267,7 +276,7 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
 
   Widget _buildRepeatAfter() {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 10.0),
+      padding: EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         children: [
           Flexible(
@@ -322,7 +331,7 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
 
   Widget _buildReminderList() {
     return Padding(
-      padding: EdgeInsets.only(top: 15.0),
+      padding: EdgeInsets.only(top: 8.0),
       child: Column(
         children:
             _reminderDates?.map((e) {
@@ -345,12 +354,12 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
 
   Widget _buildAddReminderButton(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 15),
+      padding: const EdgeInsets.only(bottom: 16),
       child: GestureDetector(
         child: Row(
           children: <Widget>[
             Padding(
-              padding: EdgeInsets.only(right: 15, left: 2),
+              padding: EdgeInsets.only(right: 16),
               child: Icon(Icons.alarm_add, color: Colors.grey),
             ),
             Text(
@@ -393,7 +402,7 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
 
   Widget _buildAddLabel(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: 10.0, bottom: 10),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: <Widget>[
           Padding(
@@ -438,7 +447,7 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
 
   Widget _buildColor() {
     return Padding(
-      padding: const EdgeInsets.only(top: 15),
+      padding: const EdgeInsets.only(top: 8),
       child: Row(
         children: <Widget>[
           Padding(
