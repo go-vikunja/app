@@ -1,10 +1,10 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/core/network/response.dart';
+import 'package:vikunja_app/core/utils/calculate_item_position.dart';
 import 'package:vikunja_app/domain/entities/bucket.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/project_page_model.dart';
-import 'package:vikunja_app/domain/entities/project_view.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/entities/view_kind.dart';
 import 'package:vikunja_app/presentation/manager/projects_controller.dart';
@@ -228,41 +228,33 @@ class ProjectController extends _$ProjectController {
 
     final moved = value.tasks[oldIndex];
 
-    // Dragging to top = newIndex -1
-    double? before = null;
-    if (newIndex > 0) {
-      before = value.tasks[newIndex - 1].position;
-    } else if (newIndex == -1) {
-      before = value.tasks[0].position;
-    } else {
+    double? before;
+    double? after;
+    if (newIndex == -1) {
       before = null;
-    }
-
-    double? after = newIndex < value.tasks.length ? value.tasks[newIndex].position : null;
-
-    double newPos;
-    if (before != null && after != null) {
-      newPos = (before + after) / 2;
-    } else if (before == null && after != null) {
-      newPos = after - 1;
-    } else if (before != null && after == null) {
-      newPos = before + 1;
+      after = value.tasks.isNotEmpty ? value.tasks.first.position : null;
     } else {
-      newPos = newIndex.toDouble();
+      before = newIndex > 0 ? value.tasks[newIndex - 1].position : null;
+      after = (newIndex >= 0 && newIndex < value.tasks.length)
+          ? value.tasks[newIndex].position
+          : null;
     }
+
+    final newPos = calculateItemPosition(positionBefore: before, positionAfter: after);
+
     int? viewId = _getFirstListViewIdFromProject(value.project);
     if (viewId != null) {
       final res = await ref
-        .read(bucketRepositoryProvider)
-        .updateTaskPosition(moved.id, viewId, newPos);
+          .read(bucketRepositoryProvider)
+          .updateTaskPosition(moved.id, viewId, newPos);
       if (!res.isSuccessful) {
         return false;
-      } 
+      }
     }
 
     var displayDoneTasks = await ref
-      .read(settingsRepositoryProvider)
-      .getDisplayDoneTasks(value.project.id);
+        .read(settingsRepositoryProvider)
+        .getDisplayDoneTasks(value.project.id);
     var tasksResponse = await _loadTasks(value.project.id, displayDoneTasks, viewId);
     if (tasksResponse.isSuccessful) {
       var tasks = tasksResponse.toSuccess().body;
