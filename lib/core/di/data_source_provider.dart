@@ -8,6 +8,7 @@ import 'package:vikunja_app/data/data_sources/project_data_source.dart';
 import 'package:vikunja_app/data/data_sources/project_view_data_source.dart';
 import 'package:vikunja_app/data/data_sources/server_data_source.dart';
 import 'package:vikunja_app/data/data_sources/settings_data_source.dart';
+import 'package:vikunja_app/data/data_sources/task_comment_data_source.dart';
 import 'package:vikunja_app/data/data_sources/task_data_source.dart';
 import 'package:vikunja_app/data/data_sources/task_label_bulk_data_source.dart';
 import 'package:vikunja_app/data/data_sources/task_label_data_source.dart';
@@ -78,4 +79,10 @@ SettingsDatasource settingsDataSource(Ref ref) {
 @riverpod
 VersionDataSource versionDataSource(Ref ref) {
   return VersionDataSource();
+}
+
+@riverpod
+TaskCommentDataSource taskCommentDataSource(Ref ref) {
+  final client = ref.watch(clientProviderProvider);
+  return TaskCommentDataSource(client);
 }
