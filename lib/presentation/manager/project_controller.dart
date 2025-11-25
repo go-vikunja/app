@@ -1,6 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/core/network/response.dart';
+import 'package:vikunja_app/core/utils/calculate_item_position.dart';
 import 'package:vikunja_app/domain/entities/bucket.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/project_page_model.dart';
@@ -17,8 +18,8 @@ class ProjectController extends _$ProjectController {
     var displayDoneTask = await ref
         .read(settingsRepositoryProvider)
         .getDisplayDoneTasks(project.id);
-
-    var tasksResponse = await _loadTasks(project.id, displayDoneTask);
+    int? viewId = _getFirstListViewIdFromProject(project);
+    var tasksResponse = await _loadTasks(project.id, displayDoneTask, viewId);
 
     switch (tasksResponse) {
       case SuccessResponse<List<Task>>():
@@ -42,7 +43,10 @@ class ProjectController extends _$ProjectController {
         .getDisplayDoneTasks(project.id);
 
     var tasks = <Task>[];
-    var tasksResponse = await _loadTasks(project.id, displayDoneTask);
+    int? viewId = viewIndex == 0
+        ? project.views.firstWhere((view) => view.viewKind == ViewKind.list).id
+        : null;
+    var tasksResponse = await _loadTasks(project.id, displayDoneTask, viewId);
 
     switch (tasksResponse) {
       case SuccessResponse<List<Task>>():
@@ -75,17 +79,32 @@ class ProjectController extends _$ProjectController {
     );
   }
 
+  int? _getFirstListViewIdFromProject(Project project) {
+    // Return null in case the first view is kanban
+    return project.views.isNotEmpty &&
+            project.views.first.viewKind == ViewKind.list
+        ? project.views.first.id
+        : null;
+  }
+
   Future<Response<List<Task>>> _loadTasks(
     int projectId,
-    bool displayDoneTasks,
-  ) async {
+    bool displayDoneTasks, [
+    int? view,
+  ]) async {
     var repo = ref.read(taskRepositoryProvider);
 
-    Map<String, List<String>> queryParams = {
-      "sort_by": ["done", "id"],
-      "order_by": ["asc", "desc"],
-      "page": ["1"],
-    };
+    Map<String, List<String>> queryParams = view == null
+        ? {
+            "sort_by": ["done", "id"],
+            "order_by": ["asc", "desc"],
+            "page": ["1"],
+          }
+        : {
+            "sort_by": ["position"],
+            "order_by": ["asc"],
+            "page": ["1"],
+          };
 
     if (!displayDoneTasks) {
       queryParams.addAll({
@@ -93,7 +112,9 @@ class ProjectController extends _$ProjectController {
       });
     }
 
-    return repo.getAllByProject(projectId, queryParams);
+    return view == null
+        ? await repo.getAllByProject(projectId, queryParams)
+        : await repo.getAllByProjectView(projectId, view, queryParams);
   }
 
   Future<Response<List<Bucket>>> _loadBuckets({
@@ -201,6 +222,37 @@ class ProjectController extends _$ProjectController {
     return false;
   }
 
+  Future<bool> reorderTasks({
+    required Project project,
+    required List<Task> newOrderedTasks,
+    required int movedTaskId,
+    required double newPosition,
+  }) async {
+    final value = state.value;
+    if (value == null) return false;
+
+    state = AsyncData(
+      value.copyWith(
+        tasks: newOrderedTasks,
+        displayDoneTask: value.displayDoneTask,
+      ),
+    );
+
+    int? viewId = _getFirstListViewIdFromProject(value.project);
+    if (viewId == null) {
+      return true;
+    }
+
+    final res = await ref
+        .read(bucketRepositoryProvider)
+        .updateTaskPosition(movedTaskId, viewId, newPosition);
+    if (!res.isSuccessful) {
+      reload();
+      return false;
+    }
+    return true;
+  }
+
   Future<bool> moveTask(
     Project project,
     Task task,
@@ -277,7 +329,12 @@ class ProjectController extends _$ProjectController {
 
     var value = state.value;
     if (value != null) {
-      var tasksResponse = await _loadTasks(project.id, displayDoneTasks);
+      int? viewId = _getFirstListViewIdFromProject(value.project);
+      var tasksResponse = await _loadTasks(
+        value.project.id,
+        displayDoneTasks,
+        viewId,
+      );
       if (tasksResponse.isSuccessful) {
         var tasks = tasksResponse.toSuccess().body;
         state = AsyncData(

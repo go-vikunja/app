@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/presentation/manager/project_controller.dart';
+import 'package:vikunja_app/core/utils/calculate_item_position.dart';
 import 'package:vikunja_app/presentation/pages/error_widget.dart';
 import 'package:vikunja_app/presentation/pages/loading_widget.dart';
 import 'package:vikunja_app/presentation/pages/project/project_detail_page.dart';
@@ -22,6 +23,66 @@ class ProjectTaskList extends ConsumerWidget {
 
     return projectController.when(
       data: (pageModel) {
+        if (project.subprojects.isEmpty && pageModel.tasks.isNotEmpty) {
+          return ReorderableListView.builder(
+            buildDefaultDragHandles: false,
+            itemCount: pageModel.tasks.length,
+            onReorder: (oldIndex, newIndexRaw) {
+              int newIndex = newIndexRaw;
+              if (newIndex > oldIndex) {
+                newIndex -= 1;
+              }
+
+              if (newIndex < -1) newIndex = -1;
+
+              final tasks = List<Task>.from(pageModel.tasks);
+              final moved = tasks.removeAt(oldIndex);
+              final insertIndex = newIndex == -1
+                  ? 0
+                  : newIndex.clamp(0, tasks.length);
+              tasks.insert(insertIndex, moved);
+
+              final before = insertIndex == 0
+                  ? null
+                  : tasks[insertIndex - 1].position;
+              final after = insertIndex == tasks.length - 1
+                  ? null
+                  : tasks[insertIndex + 1].position;
+              final newPos = calculateItemPosition(
+                positionBefore: before,
+                positionAfter: after,
+              );
+
+              ref
+                  .read(projectControllerProvider(project).notifier)
+                  .reorderTasks(
+                    project: project,
+                    newOrderedTasks: tasks,
+                    movedTaskId: moved.id,
+                    newPosition: newPos,
+                  )
+                  .then((success) {
+                    if (context.mounted && !success) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Failed to reorder task')),
+                      );
+                    }
+                  });
+            },
+            itemBuilder: (context, index) {
+              final task = pageModel.tasks[index];
+              return ReorderableDelayedDragStartListener(
+                key: Key('task_${task.id}'),
+                index: index,
+                child: Material(
+                  color: Colors.transparent,
+                  child: _buildTile(ref, task),
+                ),
+              );
+            },
+          );
+        }
+
         List<Widget> children = [];
         if (project.subprojects.isNotEmpty) {
           if (pageModel.tasks.isNotEmpty) {
