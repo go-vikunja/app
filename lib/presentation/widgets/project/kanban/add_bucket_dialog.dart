@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 
 class AddBucketDialog extends StatelessWidget {
   final ValueChanged<String> onAdd;
@@ -13,18 +14,18 @@ class AddBucketDialog extends StatelessWidget {
       content: TextField(
         autofocus: true,
         decoration: InputDecoration(
-          labelText: 'New bucket name',
-          hintText: 'eg. To Do',
+          labelText: AppLocalizations.of(context).newBucketName,
+          hintText: AppLocalizations.of(context).bucketExample,
         ),
         controller: textController,
       ),
       actions: <Widget>[
         TextButton(
-          child: const Text('Cancel'),
+          child: Text(AppLocalizations.of(context).cancel),
           onPressed: () => Navigator.pop(context),
         ),
         TextButton(
-          child: const Text('Add'),
+          child: Text(AppLocalizations.of(context).add),
           onPressed: () {
             if (textController.text.isNotEmpty) {
               onAdd(textController.text);

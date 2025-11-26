@@ -9,6 +9,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
 
   background_downloader: ^9.2.3
   collection: ^1.18.0
@@ -27,6 +29,7 @@ dependencies:
   home_widget: ^0.8.0
   html_editor_enhanced: ^2.6.0
   intl: ^0.20.2
+  flutter_localized_locales: ^2.0.5
   meta: ^1.11.0
   package_info_plus: ^8.2.1
   path_provider: ^2.1.5
@@ -68,6 +71,7 @@ flutter_icons:
 flutter:
   default-flavor: unsigned
   uses-material-design: true
+  generate: true
   assets:
     - assets/graphics/hypnotize.png
     - assets/vikunja_logo.png

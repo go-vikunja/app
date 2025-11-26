@@ -48,4 +48,8 @@ abstract class SettingsRepository {
   Future<void> saveServer(String? server);
 
   Future<String?> getServer();
+
+  // Locale override (null -> system default)
+  Future<String?> getLocaleOverride();
+  Future<void> setLocaleOverride(String? localeCode);
 }
