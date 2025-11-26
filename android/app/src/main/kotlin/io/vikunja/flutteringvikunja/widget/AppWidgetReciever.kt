@@ -1,4 +1,4 @@
-package io.vikunja.flutteringvikunja
+package io.vikunja.flutteringvikunja.widget
 
 
 import HomeWidgetGlanceWidgetReceiver
