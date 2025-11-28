@@ -27,11 +27,16 @@ class Client {
 
   late http.Client _httpClient;
 
+  // Cache a single CronetEngine instance across all clients to avoid
+  // repeated Play Services probes/log spam on non-GMS devices.
+  static cronet_http.CronetEngine? _cachedCronetEngine;
+  static bool _cronetTried = false;
+
   String get base => _base;
 
   String get token => _token;
 
-  Client({String? token, required String base}) {
+  Client({String? token, required String base, http.Client? httpClient}) {
     if (token != null) _token = token;
     base = base.replaceAll(" ", "");
     if (base.endsWith("/")) {
@@ -39,17 +44,31 @@ class Client {
     }
     _base = base.endsWith('/api/v1') ? base : '$base/api/v1';
 
-    _httpClient = createClient();
+    _httpClient = httpClient ?? createClient();
   }
 
   http.Client createClient() {
     try {
       if (Platform.isAndroid) {
-        final engine = cronet_http.CronetEngine.build(
-          cacheMode: cronet_http.CacheMode.memory,
-          cacheMaxSize: 1000000,
-        );
-        return cronet_http.CronetClient.fromCronetEngine(engine);
+        // Only attempt to build the Cronet engine once; reuse it for all clients.
+        if (!_cronetTried) {
+          _cronetTried = true;
+          try {
+            _cachedCronetEngine = cronet_http.CronetEngine.build(
+              cacheMode: cronet_http.CacheMode.memory,
+              cacheMaxSize: 1000000,
+            );
+          } catch (e) {
+            developer.log(
+              "Cronet engine creation failed: $e. Falling back to default client.",
+            );
+          }
+        }
+        if (_cachedCronetEngine != null) {
+          return cronet_http.CronetClient.fromCronetEngine(
+            _cachedCronetEngine!,
+          );
+        }
       } else if (Platform.isIOS || Platform.isMacOS) {
         final config =
             cupertino_http
