@@ -160,9 +160,15 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
                 var newestVersion = await ref
                     .read(versionRepositoryProvider)
                     .getLatestVersionTag();
-                setState(() {
-                  newestVersion = newestVersion;
-                });
+                if (newestVersion == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Couldn't get latest version!")),
+                  );
+                } else {
+                  setState(() {
+                    newestVersionTag = newestVersion;
+                  });
+                }
               },
               child: Text("Check for latest version"),
             ),

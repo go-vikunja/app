@@ -1,5 +1,5 @@
 abstract class VersionRepository {
-  Future<String> getLatestVersionTag();
+  Future<String?> getLatestVersionTag();
 
   Future<String> getCurrentVersionTag();
 

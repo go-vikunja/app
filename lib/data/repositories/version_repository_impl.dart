@@ -7,7 +7,7 @@ class VersionRepositoryImpl extends VersionRepository {
   VersionRepositoryImpl(this._dataSource);
 
   @override
-  Future<String> getLatestVersionTag() async {
+  Future<String?> getLatestVersionTag() async {
     return _dataSource.getLatestVersionTag();
   }
 
@@ -18,8 +18,8 @@ class VersionRepositoryImpl extends VersionRepository {
 
   @override
   Future<bool> isUpToDate() async {
-    String latest = await getLatestVersionTag();
+    String? latest = await getLatestVersionTag();
     String current = await getCurrentVersionTag();
-    return latest == current;
+    return latest == null || latest == current;
   }
 }

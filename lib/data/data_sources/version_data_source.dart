@@ -5,14 +5,16 @@ import 'package:http/http.dart';
 class VersionDataSource {
   VersionDataSource();
 
-  Future<String> getLatestVersionTag() async {
+  Future<String?> getLatestVersionTag() async {
     String api = "https://api.github.com/repos/go-vikunja/app";
     String endpoint = "/releases";
 
     return get(Uri.parse(api + endpoint)).then((response) {
       dynamic jsonResponse = json.decode(response.body);
-      String latestVersion = jsonResponse[0]['tag_name'];
-      if (latestVersion.startsWith("v")) {
+      if (jsonResponse[0] == null) return null;
+
+      String? latestVersion = jsonResponse[0]['tag_name'] ?? null;
+      if (latestVersion != null && latestVersion.startsWith("v")) {
         latestVersion = latestVersion.replaceFirst("v", "");
       }
       return latestVersion;
