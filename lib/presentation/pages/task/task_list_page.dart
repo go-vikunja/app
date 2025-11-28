@@ -206,7 +206,7 @@ class TaskListPage extends ConsumerWidget {
   }
 
   void _onEdit(BuildContext context, Task task) {
-    Navigator.push<Task>(
+    Navigator.push<Task?>(
       context,
       MaterialPageRoute(builder: (buildContext) => TaskEditPage(task: task)),
     );
