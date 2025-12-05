@@ -71,6 +71,7 @@ android {
     productFlavors {
         unsigned {
             signingConfig signingConfigs.debug
+            applicationIdSuffix ".unsigned"
         }
         production {
             signingConfig signingConfigs.release
