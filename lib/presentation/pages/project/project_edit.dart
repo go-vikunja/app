@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/presentation/manager/project_controller.dart';
 import 'package:vikunja_app/presentation/widgets/button.dart';
@@ -34,8 +35,9 @@ class ProjectEditPageState extends ConsumerState<ProjectEditPage> {
 
   @override
   Widget build(BuildContext ctx) {
+    final l10n = AppLocalizations.of(ctx);
     return Scaffold(
-      appBar: AppBar(title: Text('Edit Project')),
+      appBar: AppBar(title: Text(l10n.editProjectTitle)),
       body: Builder(
         builder: (BuildContext context) => Form(
           key: _formKey,
@@ -50,7 +52,7 @@ class ProjectEditPageState extends ConsumerState<ProjectEditPage> {
                   initialValue: widget.project.title,
                   validator: (title) {
                     if (title == null) {
-                      return "Title can't be null";
+                      return l10n.title;
                     }
 
                     if (title.isEmpty || title.length > 250) {
@@ -63,7 +65,7 @@ class ProjectEditPageState extends ConsumerState<ProjectEditPage> {
                     title = value;
                   },
                   decoration: InputDecoration(
-                    labelText: 'Title',
+                    labelText: l10n.title,
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -85,7 +87,7 @@ class ProjectEditPageState extends ConsumerState<ProjectEditPage> {
                     description = value;
                   },
                   decoration: InputDecoration(
-                    labelText: 'Description',
+                    labelText: l10n.description,
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -94,7 +96,7 @@ class ProjectEditPageState extends ConsumerState<ProjectEditPage> {
                 padding: EdgeInsets.symmetric(vertical: 10.0),
                 child: CheckboxListTile(
                   value: displayDoneTask,
-                  title: Text("Show done tasks"),
+                  title: Text(l10n.showDoneTasks),
                   onChanged: (value) {
                     value ??= false;
 
@@ -114,7 +116,7 @@ class ProjectEditPageState extends ConsumerState<ProjectEditPage> {
                         _saveProject(ref, widget.project);
                       }
                     },
-                    child: Text('Save'),
+                    child: Text(l10n.save),
                   ),
                 ),
               ),
@@ -137,10 +139,11 @@ class ProjectEditPageState extends ConsumerState<ProjectEditPage> {
           .updateProject(project);
 
       var context = ref.context;
+      final loc = AppLocalizations.of(context);
       if (success && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('The project was updated successfully!')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(loc.projectUpdatedSuccess)));
 
         Navigator.of(context).pop();
 
@@ -150,7 +153,7 @@ class ProjectEditPageState extends ConsumerState<ProjectEditPage> {
       } else if (context.mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Error updating the project!')));
+        ).showSnackBar(SnackBar(content: Text(loc.projectUpdateError)));
       }
     }
   }

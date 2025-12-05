@@ -147,4 +147,13 @@ class SettingsDatasource {
   Future<void> saveUserToken(String? token) {
     return _storage.write(key: "user-token", value: token);
   }
+
+  // Locale override (if null or empty -> use system locale)
+  Future<String?> getLocaleOverride() async {
+    return _storage.read(key: "locale_override");
+  }
+
+  Future<void> setLocaleOverride(String? localeCode) async {
+    await _storage.write(key: "locale_override", value: localeCode);
+  }
 }

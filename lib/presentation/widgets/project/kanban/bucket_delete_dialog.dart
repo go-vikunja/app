@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 
 class TaskDeleteDialog extends ConsumerWidget {
   final Function onConfirm;
@@ -13,15 +14,13 @@ class TaskDeleteDialog extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     return AlertDialog(
-      title: Text('Delete Bucket'),
-      content: Text(
-        'Are you sure you want to delete this bucket?'
-        "You won't delete any tasks, they will be moved to the default bucket",
-      ),
+      title: Text(l10n.deleteBucketTitle),
+      content: Text(l10n.deleteBucketMessage),
       actions: [
-        TextButton(child: Text('Cancel'), onPressed: () => onCancel()),
-        TextButton(child: Text('Delete'), onPressed: () => onConfirm()),
+        TextButton(child: Text(l10n.cancel), onPressed: () => onCancel()),
+        TextButton(child: Text(l10n.delete), onPressed: () => onConfirm()),
       ],
     );
   }

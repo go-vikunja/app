@@ -1,8 +1,17 @@
-import 'package:test/test.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_app/core/utils/priority.dart';
+import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 
 void main() {
   group('Priority utility tests', () {
+    late AppLocalizations loc;
+
+    setUpAll(() async {
+      // Load English localizations for deterministic test values
+      loc = await AppLocalizations.delegate.load(const Locale('en'));
+    });
+
     group('priorityToString', () {
       final testCases = <int?, String>{
         0: 'Unset',
@@ -20,7 +29,7 @@ void main() {
 
       testCases.forEach((input, expected) {
         test('Priority $input should return "$expected"', () {
-          expect(priorityToString(input), expected);
+          expect(priorityToString(loc, input), expected);
         });
       });
     });
@@ -44,7 +53,7 @@ void main() {
       testCases.forEach((input, expected) {
         String description = input == null ? 'null' : '"$input"';
         test('$description should return $expected', () {
-          expect(priorityFromString(input), expected);
+          expect(priorityFromString(loc, input), expected);
         });
       });
     });
@@ -52,9 +61,9 @@ void main() {
     group('Round-trip conversion tests', () {
       test('Priority to string and back should be consistent', () {
         for (int i = 0; i <= 5; i++) {
-          String priorityString = priorityToString(i);
+          String priorityString = priorityToString(loc, i);
           if (priorityString.isNotEmpty) {
-            int roundTripPriority = priorityFromString(priorityString);
+            int roundTripPriority = priorityFromString(loc, priorityString);
             expect(
               roundTripPriority,
               i,
@@ -77,8 +86,8 @@ void main() {
           ];
 
           for (String priorityString in validPriorityStrings) {
-            int priority = priorityFromString(priorityString);
-            String roundTripString = priorityToString(priority);
+            int priority = priorityFromString(loc, priorityString);
+            String roundTripString = priorityToString(loc, priority);
             expect(
               roundTripString,
               priorityString,
