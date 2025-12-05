@@ -1,10 +1,7 @@
 import 'dart:convert';
 import 'dart:core';
-import 'dart:developer' as developer;
 import 'dart:io';
 
-import 'package:cronet_http/cronet_http.dart' as cronet_http;
-import 'package:cupertino_http/cupertino_http.dart' as cupertino_http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart' as io_client;
@@ -27,11 +24,6 @@ class Client {
 
   late http.Client _httpClient;
 
-  // Cache a single CronetEngine instance across all clients to avoid
-  // repeated Play Services probes/log spam on non-GMS devices.
-  static cronet_http.CronetEngine? _cachedCronetEngine;
-  static bool _cronetTried = false;
-
   String get base => _base;
 
   String get token => _token;
@@ -44,47 +36,7 @@ class Client {
     }
     _base = base.endsWith('/api/v1') ? base : '$base/api/v1';
 
-    _httpClient = httpClient ?? createClient();
-  }
-
-  http.Client createClient() {
-    try {
-      if (Platform.isAndroid) {
-        // Only attempt to build the Cronet engine once; reuse it for all clients.
-        if (!_cronetTried) {
-          _cronetTried = true;
-          try {
-            _cachedCronetEngine = cronet_http.CronetEngine.build(
-              cacheMode: cronet_http.CacheMode.memory,
-              cacheMaxSize: 1000000,
-            );
-          } catch (e) {
-            developer.log(
-              "Cronet engine creation failed: $e. Falling back to default client.",
-            );
-          }
-        }
-        if (_cachedCronetEngine != null) {
-          return cronet_http.CronetClient.fromCronetEngine(
-            _cachedCronetEngine!,
-          );
-        }
-      } else if (Platform.isIOS || Platform.isMacOS) {
-        final config =
-            cupertino_http
-                  .URLSessionConfiguration.ephemeralSessionConfiguration()
-              ..cache = cupertino_http.URLCache.withCapacity(
-                memoryCapacity: 1000000,
-              );
-        return cupertino_http.CupertinoClient.fromSessionConfiguration(config);
-      }
-    } catch (e) {
-      developer.log(
-        "Error creating http client: $e. Falling back to default client.",
-      );
-    }
-
-    return io_client.IOClient();
+    _httpClient = httpClient ?? io_client.IOClient();
   }
 
   void setIgnoreCerts(bool val) {
