@@ -66,6 +66,7 @@ flutter_icons:
   adaptive_icon_foreground: "assets/vikunja_logo_adaptive.png"
 
 flutter:
+  default-flavor: unsigned
   uses-material-design: true
   assets:
     - assets/graphics/hypnotize.png
