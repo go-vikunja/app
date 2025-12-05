@@ -6,11 +6,49 @@ part of 'network_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$clientProviderHash() => r'5b68f6922e1223e1b0a4d106a013c69df0c052c6';
+String _$cronetEngineHash() => r'9e2b1ad521d37468e49fb6c708d8e76454ba8ac8';
+
+/// Returns null if Cronet is unavailable or fails to initialize.
+///
+/// Copied from [cronetEngine].
+@ProviderFor(cronetEngine)
+final cronetEngineProvider = Provider<cronet_http.CronetEngine?>.internal(
+  cronetEngine,
+  name: r'cronetEngineProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$cronetEngineHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef CronetEngineRef = ProviderRef<cronet_http.CronetEngine?>;
+String _$httpClientHash() => r'b95237f0f76abad9d51818ede124b4bcba61be94';
+
+/// Uses Cronet on Android, CupertinoClient on iOS, IOClient as fallback.
+///
+/// Copied from [httpClient].
+@ProviderFor(httpClient)
+final httpClientProvider = Provider<http.Client>.internal(
+  httpClient,
+  name: r'httpClientProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$httpClientHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef HttpClientRef = ProviderRef<http.Client>;
+String _$clientProviderHash() => r'b593735bd3acdb835a5a03f47d8948abb4830530';
 
 /// See also [clientProvider].
 @ProviderFor(clientProvider)
-final clientProviderProvider = AutoDisposeProvider<Client>.internal(
+final clientProviderProvider = Provider<Client>.internal(
   clientProvider,
   name: r'clientProviderProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -22,7 +60,7 @@ final clientProviderProvider = AutoDisposeProvider<Client>.internal(
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-typedef ClientProviderRef = AutoDisposeProviderRef<Client>;
+typedef ClientProviderRef = ProviderRef<Client>;
 String _$authDataHash() => r'37d6f0a9be23c0f1bbe648fe223fbedcd22002e5';
 
 /// See also [AuthData].
