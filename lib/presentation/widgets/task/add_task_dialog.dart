@@ -34,24 +34,19 @@ class AddTaskDialogState extends State<AddTaskDialog> {
     var dateTime = DateTime.now();
 
     return AlertDialog(
+      scrollable: true,
       contentPadding: const EdgeInsets.all(16.0),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: TextField(
-                  autofocus: true,
-                  decoration: InputDecoration(
-                    labelText: AppLocalizations.of(context).newTaskName,
-                    hintText: AppLocalizations.of(context).newTaskExample,
-                  ),
-                  controller: textController,
-                ),
-              ),
-            ],
+          TextField(
+            autofocus: true,
+            decoration: InputDecoration(
+              labelText: AppLocalizations.of(context).newTaskName,
+              hintText: AppLocalizations.of(context).newTaskExample,
+            ),
+            controller: textController,
           ),
           Padding(
             padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
