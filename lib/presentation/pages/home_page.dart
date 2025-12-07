@@ -195,9 +195,9 @@ class HomePageState extends ConsumerState<HomePage> {
   }
 
   Future<void> postVersionCheckSnackbar() async {
-    var latestVersionTag = await ref
-        .read(versionRepositoryProvider)
-        .getLatestVersionTag();
+    var latestVersionTag =
+        await ref.read(versionRepositoryProvider).getLatestVersionTag() ??
+        "N/A";
     ref.read(versionRepositoryProvider).isUpToDate().then((value) {
       if (!value) {
         // not up to date
