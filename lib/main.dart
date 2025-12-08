@@ -59,6 +59,21 @@ void main() async {
       options.enableLogs = true;
       options.tracesSampleRate = 1.0;
       options.profilesSampleRate = 1.0;
+      options.beforeSend = (event, hint) {
+        // Filter out network unreachability errors (Cronet exceptions)
+        final exceptionMessage = event.throwable?.toString() ?? '';
+        if (exceptionMessage.contains('ERR_ADDRESS_UNREACHABLE') ||
+            exceptionMessage.contains('ERR_NETWORK_CHANGED') ||
+            exceptionMessage.contains('ERR_INTERNET_DISCONNECTED') ||
+            exceptionMessage.contains('ERR_CONNECTION_REFUSED') ||
+            exceptionMessage.contains('ERR_CONNECTION_RESET') ||
+            exceptionMessage.contains('ERR_CONNECTION_CLOSED') ||
+            exceptionMessage.contains('ERR_CONNECTION_TIMED_OUT') ||
+            exceptionMessage.contains('ERR_NAME_NOT_RESOLVED')) {
+          return null; // Don't send to Sentry
+        }
+        return event;
+      };
     }, appRunner: () => runApp(ProviderScope(child: VikunjaApp())));
   } else {
     runApp(ProviderScope(child: VikunjaApp()));
