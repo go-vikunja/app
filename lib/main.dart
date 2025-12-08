@@ -61,16 +61,22 @@ void main() async {
       options.profilesSampleRate = 1.0;
       options.beforeSend = (event, hint) {
         // Filter out network unreachability errors (Cronet exceptions)
+        const ignoredNetworkErrors = [
+          'ERR_ADDRESS_UNREACHABLE',
+          'ERR_NETWORK_CHANGED',
+          'ERR_INTERNET_DISCONNECTED',
+          'ERR_CONNECTION_REFUSED',
+          'ERR_CONNECTION_RESET',
+          'ERR_CONNECTION_CLOSED',
+          'ERR_CONNECTION_TIMED_OUT',
+          'ERR_NAME_NOT_RESOLVED',
+        ];
+        
         final exceptionMessage = event.throwable?.toString() ?? '';
-        if (exceptionMessage.contains('ERR_ADDRESS_UNREACHABLE') ||
-            exceptionMessage.contains('ERR_NETWORK_CHANGED') ||
-            exceptionMessage.contains('ERR_INTERNET_DISCONNECTED') ||
-            exceptionMessage.contains('ERR_CONNECTION_REFUSED') ||
-            exceptionMessage.contains('ERR_CONNECTION_RESET') ||
-            exceptionMessage.contains('ERR_CONNECTION_CLOSED') ||
-            exceptionMessage.contains('ERR_CONNECTION_TIMED_OUT') ||
-            exceptionMessage.contains('ERR_NAME_NOT_RESOLVED')) {
-          return null; // Don't send to Sentry
+        for (final error in ignoredNetworkErrors) {
+          if (exceptionMessage.contains(error)) {
+            return null; // Don't send to Sentry
+          }
         }
         return event;
       };
