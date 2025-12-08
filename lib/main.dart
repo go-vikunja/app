@@ -75,7 +75,7 @@ void main() async {
         // Filter out network unreachability errors (Cronet exceptions)
         // These are Chromium/Cronet network errors that appear in format: "net::ERR_..."
         final exceptionMessage = event.throwable?.toString() ?? '';
-        
+
         // Only filter Cronet-specific exceptions
         if (exceptionMessage.contains('Cronet exception') ||
             exceptionMessage.contains('CronetUrlRequest')) {
