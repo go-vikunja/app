@@ -61,6 +61,7 @@ void main() async {
       options.profilesSampleRate = 1.0;
       options.beforeSend = (event, hint) {
         // Filter out network unreachability errors (Cronet exceptions)
+        // These are Chromium/Cronet network errors that appear in format: "net::ERR_..."
         const ignoredNetworkErrors = [
           'ERR_ADDRESS_UNREACHABLE',
           'ERR_NETWORK_CHANGED',
@@ -73,9 +74,14 @@ void main() async {
         ];
         
         final exceptionMessage = event.throwable?.toString() ?? '';
-        for (final error in ignoredNetworkErrors) {
-          if (exceptionMessage.contains(error)) {
-            return null; // Don't send to Sentry
+        // Check if the error message contains Cronet network errors
+        if (exceptionMessage.contains('Cronet exception') ||
+            exceptionMessage.contains('CronetUrlRequest')) {
+          for (final error in ignoredNetworkErrors) {
+            if (exceptionMessage.contains('net::$error') || 
+                exceptionMessage.contains(error)) {
+              return null; // Don't send to Sentry
+            }
           }
         }
         return event;
