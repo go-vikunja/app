@@ -28,9 +28,57 @@ jobs:
         env:
           CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
           CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
-      - name: Ensure file permissions
+      - name: Fix locale files for Flutter
         run: |
-          find lib/l10n -type f -name "*.arb" -exec sudo chmod 666 {} \;
+          cd lib/l10n
+
+          # Remove @@locale from all ARB files (Flutter infers from filename)
+          for file in *.arb; do
+            sed -i '/^[[:space:]]*"@@locale":/d' "$file"
+          done
+
+          # Rename files from hyphens to underscores (e.g., pt-BR -> pt_BR)
+          for file in app_*-*.arb; do
+            [ -f "$file" ] || continue
+            newname=$(echo "$file" | tr '-' '_')
+            mv "$file" "$newname"
+          done
+
+          # Remove redundant country-specific files where base locale exists
+          # Keep meaningful dialects: pt_BR, pt_PT, zh_CN, zh_TW
+          for file in app_*_*.arb; do
+            [ -f "$file" ] || continue
+
+            # Extract base and country (e.g., ar_SA -> ar, SA)
+            base=$(echo "$file" | sed -E 's/app_([a-z]+)_.*\.arb/\1/')
+            country=$(echo "$file" | sed -E 's/app_[a-z]+_(.*)\.arb/\1/')
+            basefile="app_${base}.arb"
+
+            # Skip meaningful dialect variants
+            case "${base}_${country}" in
+              pt_BR|pt_PT|zh_CN|zh_TW) continue ;;
+            esac
+
+            # If base file exists, remove redundant country-specific file
+            if [ -f "$basefile" ]; then
+              rm "$file"
+            else
+              # No base file - rename this to be the base
+              mv "$file" "$basefile"
+            fi
+          done
+
+          # Ensure base fallback files exist for dialect variants
+          for dialect in pt_BR pt_PT; do
+            if [ -f "app_${dialect}.arb" ] && [ ! -f "app_${dialect%_*}.arb" ]; then
+              echo '{}' > "app_${dialect%_*}.arb"
+            fi
+          done
+          for dialect in zh_CN zh_TW; do
+            if [ -f "app_${dialect}.arb" ] && [ ! -f "app_zh.arb" ]; then
+              echo '{}' > "app_zh.arb"
+            fi
+          done
       - name: Check for changes
         id: check_changes
         run: |
