@@ -37,13 +37,6 @@ jobs:
             sed -i '/^[[:space:]]*"@@locale":/d' "$file"
           done
 
-          # Rename files from hyphens to underscores (e.g., pt-BR -> pt_BR)
-          for file in app_*-*.arb; do
-            [ -f "$file" ] || continue
-            newname=$(echo "$file" | tr '-' '_')
-            mv "$file" "$newname"
-          done
-
           # Remove redundant country-specific files where base locale exists
           # Keep meaningful dialects: pt_BR, pt_PT, zh_CN, zh_TW
           for file in app_*_*.arb; do
