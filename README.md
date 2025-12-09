@@ -7,6 +7,10 @@
 This repo contains the Cross-Platform app for Vikunja, the fluffy, open-source, self-hostable to-do app. 
 Vikunja helps you organize tasks, collaborate with teams, and view projects in multiple formats including list, Gantt, table, and Kanban views. Built with privacy in mind, Vikunja gives you complete control over your data whether you self-host or use Vikunja Cloud. Learn more at the [main Vikunja repository](https://github.com/go-vikunja/vikunja/).
 
+## Translations
+
+[Check out the docs](https://vikunja.io/docs/translations/) about how to contribute translations or add a new language for translation.
+
 ## Disclaimer
 
 This app is in alpha pre-release. You must absolutely expect things to not work, and sometimes even break something in the backend. Using this app on important production backends is possible but discouraged. However, as we rely on your feedback about missing features and bugs, we do encourage you to try it out and give us feedback here on GitHub. We are not responsible for lost data and similar destruction.

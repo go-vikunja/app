@@ -1,0 +1,3 @@
+output-dir: lib/l10n/gen
+nullable-getter: false
+untranslated-messages-file: lib/l10n/untranslated_messages.json

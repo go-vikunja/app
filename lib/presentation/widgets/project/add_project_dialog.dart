@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 
 class AddProjectDialog extends StatelessWidget {
   final ValueChanged<String> onAdd;
@@ -13,18 +14,18 @@ class AddProjectDialog extends StatelessWidget {
       content: TextField(
         autofocus: true,
         decoration: InputDecoration(
-          labelText: 'Project',
-          hintText: 'eg. Personal Project',
+          labelText: AppLocalizations.of(context).project,
+          hintText: AppLocalizations.of(context).projectExample,
         ),
         controller: textController,
       ),
       actions: <Widget>[
         TextButton(
-          child: const Text('Cancel'),
+          child: Text(AppLocalizations.of(context).cancel),
           onPressed: () => Navigator.pop(context),
         ),
         TextButton(
-          child: const Text('Add'),
+          child: Text(AppLocalizations.of(context).add),
           onPressed: () {
             if (textController.text.isNotEmpty) {
               onAdd(textController.text);

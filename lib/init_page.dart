@@ -9,6 +9,7 @@ import 'package:vikunja_app/domain/entities/server.dart';
 import 'package:vikunja_app/main.dart';
 import 'package:vikunja_app/presentation/pages/error_widget.dart';
 import 'package:vikunja_app/presentation/pages/loading_widget.dart';
+import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 
 class InitPage extends ConsumerWidget {
   const InitPage({super.key});
@@ -64,7 +65,9 @@ class InitPage extends ConsumerWidget {
 
           ScaffoldMessenger.of(ref.context).showSnackBar(
             SnackBar(
-              content: Text("Login has expired. Please reenter your details!"),
+              content: Text(
+                AppLocalizations.of(ref.context).loginExpiredMessage,
+              ),
             ),
           );
 
