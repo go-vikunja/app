@@ -1,0 +1,54 @@
+name: Crowdin Sync
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+
+jobs:
+  synchronize-with-crowdin:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+        with:
+          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          persist-credentials: true
+      - name: push source files
+        uses: crowdin/github-action@60debf382ee245b21794321190ad0501db89d8c1 # v2
+        with:
+          command: 'push'
+        env:
+          CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
+          CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
+      - name: pull translations
+        uses: crowdin/github-action@60debf382ee245b21794321190ad0501db89d8c1 # v2
+        with:
+          command: 'download'
+          command_args: '--export-only-approved --skip-untranslated-strings'
+        env:
+          CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
+          CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
+      - name: Ensure file permissions
+        run: |
+          find lib/l10n -type f -name "*.arb" -exec sudo chmod 666 {} \;
+      - name: Check for changes
+        id: check_changes
+        run: |
+          if git diff --quiet && [ -z "$(git ls-files --others --exclude-standard)" ]; then
+            echo "changes_exist=0" >> "$GITHUB_OUTPUT"
+          else
+            echo "changes_exist=1" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Commit files
+        if: steps.check_changes.outputs.changes_exist != '0'
+        run: |
+          git config --local user.email "bot@vikunja.io"
+          git config --local user.name "Frederick [Bot]"
+          git add lib/l10n
+          git commit -m "chore(i18n): update translations via Crowdin"
+      - name: Push changes
+        if: steps.check_changes.outputs.changes_exist != '0'
+        uses: ad-m/github-push-action@master
+        with:
+          ssh: true
+          branch: ${{ github.ref }}
