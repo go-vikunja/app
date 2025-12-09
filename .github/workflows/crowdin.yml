@@ -1,9 +1,6 @@
 name: Crowdin Sync
 
 on:
-  push:
-    branches:
-      - main
   schedule:
     - cron: '0 0 * * *'
 
@@ -37,7 +34,7 @@ jobs:
       - name: Check for changes
         id: check_changes
         run: |
-          if git diff --quiet; then
+          if git diff --quiet && [ -z "$(git ls-files --others --exclude-standard)" ]; then
             echo "changes_exist=0" >> "$GITHUB_OUTPUT"
           else
             echo "changes_exist=1" >> "$GITHUB_OUTPUT"
@@ -47,7 +44,8 @@ jobs:
         run: |
           git config --local user.email "bot@vikunja.io"
           git config --local user.name "Frederick [Bot]"
-          git commit -am "chore(i18n): update translations via Crowdin"
+          git add lib/l10n
+          git commit -m "chore(i18n): update translations via Crowdin"
       - name: Push changes
         if: steps.check_changes.outputs.changes_exist != '0'
         uses: ad-m/github-push-action@master
