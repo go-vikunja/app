@@ -3,7 +3,7 @@ name: Crowdin Sync
 on:
   push:
     branches:
-      - main
+      - translations
   schedule:
     - cron: '0 0 * * *'
 
@@ -37,6 +37,8 @@ jobs:
       - name: Check for changes
         id: check_changes
         run: |
+          git diff
+          git status
           if git diff --quiet; then
             echo "changes_exist=0" >> "$GITHUB_OUTPUT"
           else
