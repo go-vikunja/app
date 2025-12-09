@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 
 class TaskSaveDialog extends StatelessWidget {
   final Function onConfirm;
@@ -9,21 +10,23 @@ class TaskSaveDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text('You have unsaved changes!'),
+      title: Text(AppLocalizations.of(context).unsavedChangesTitle),
       content: SingleChildScrollView(
         child: Column(
-          children: <Widget>[Text('Would you like to dismiss those changes?')],
+          children: <Widget>[
+            Text(AppLocalizations.of(context).unsavedChangesMessage),
+          ],
         ),
       ),
       actions: <Widget>[
         TextButton(
-          child: Text('Dismiss'),
+          child: Text(AppLocalizations.of(context).dismiss),
           onPressed: () {
             onConfirm();
           },
         ),
         TextButton(
-          child: Text('Keep editing'),
+          child: Text(AppLocalizations.of(context).keepEditing),
           onPressed: () {
             onCancel();
           },

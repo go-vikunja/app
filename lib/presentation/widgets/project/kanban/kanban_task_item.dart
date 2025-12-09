@@ -3,6 +3,7 @@ import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/presentation/widgets/due_date_card.dart';
 import 'package:vikunja_app/presentation/widgets/label_widget.dart';
 import 'package:vikunja_app/presentation/widgets/project/kanban/priority_batch.dart';
+import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 
 class TaskTile extends StatelessWidget {
   final Task task;
@@ -33,7 +34,10 @@ class TaskTile extends StatelessWidget {
                   ),
                 ),
                 if (task.done)
-                  Badge(label: Text("Done"), backgroundColor: Colors.green),
+                  Badge(
+                    label: Text(AppLocalizations.of(context).badgeDone),
+                    backgroundColor: Colors.green,
+                  ),
               ],
             ),
             Row(

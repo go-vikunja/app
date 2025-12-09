@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/domain/entities/bucket.dart';
+import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 
 class ChangeTitleDialog extends StatelessWidget {
   final Bucket bucket;
@@ -10,8 +11,9 @@ class ChangeTitleDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return AlertDialog(
-      title: Text('Change the title of \'${bucket.title}\''),
+      title: Text(l10n.changeBucketTitle(bucket.title)),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -21,7 +23,7 @@ class ChangeTitleDialog extends StatelessWidget {
               Expanded(
                 child: TextField(
                   controller: _controller,
-                  decoration: InputDecoration(labelText: 'Enter title'),
+                  decoration: InputDecoration(labelText: l10n.enterTitle),
                   onSubmitted: (text) => Navigator.of(context).pop(text),
                 ),
               ),
@@ -32,11 +34,11 @@ class ChangeTitleDialog extends StatelessWidget {
       actions: <TextButton>[
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: Text('Cancel'),
+          child: Text(l10n.cancel),
         ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(_controller.text),
-          child: Text('Done'),
+          child: Text(l10n.done),
         ),
       ],
     );

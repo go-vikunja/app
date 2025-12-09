@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:vikunja_app/core/utils/constants.dart';
 import 'package:vikunja_app/domain/entities/new_task_due.dart';
 import 'package:vikunja_app/presentation/widgets/date_time_field.dart';
+import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 
 class AddTaskDialog extends StatefulWidget {
   final void Function(String title, DateTime? dueDate) onAddTask;
@@ -42,34 +43,59 @@ class AddTaskDialogState extends State<AddTaskDialog> {
           TextField(
             autofocus: true,
             decoration: InputDecoration(
-              labelText: 'New Task Name',
-              hintText: 'eg. Milk',
+              labelText: AppLocalizations.of(context).newTaskName,
+              hintText: AppLocalizations.of(context).newTaskExample,
             ),
             controller: textController,
           ),
           Padding(
             padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
-            child: Text("Due Date:"),
+            child: Text(AppLocalizations.of(context).dueDate),
           ),
           Wrap(
             spacing: 8,
             children: [
-              taskDueList("None", NewTaskDue.none),
-              if (dateTime.hour < 21) taskDueList("Today", NewTaskDue.today),
-              taskDueList("Tomorrow", NewTaskDue.tomorrow),
-              taskDueList("Next Monday", NewTaskDue.next_monday),
+              taskDueList(
+                AppLocalizations.of(context).dueOptionNone,
+                NewTaskDue.none,
+              ),
+              if (dateTime.hour < 21)
+                taskDueList(
+                  AppLocalizations.of(context).dueOptionToday,
+                  NewTaskDue.today,
+                ),
+              taskDueList(
+                AppLocalizations.of(context).dueOptionTomorrow,
+                NewTaskDue.tomorrow,
+              ),
+              taskDueList(
+                AppLocalizations.of(context).dueOptionNextMonday,
+                NewTaskDue.next_monday,
+              ),
               if (dateTime.weekday != DateTime.sunday || dateTime.hour < 21)
-                taskDueList("This Weekend", NewTaskDue.weekend),
-              taskDueList("Later this week", NewTaskDue.later_this_week),
-              taskDueList("Next week", NewTaskDue.next_week),
-              taskDueList("Custom", NewTaskDue.custom),
+                taskDueList(
+                  AppLocalizations.of(context).dueOptionThisWeekend,
+                  NewTaskDue.weekend,
+                ),
+              taskDueList(
+                AppLocalizations.of(context).dueOptionLaterThisWeek,
+                NewTaskDue.later_this_week,
+              ),
+              taskDueList(
+                AppLocalizations.of(context).dueInOneWeek,
+                NewTaskDue.next_week,
+              ),
+              taskDueList(
+                AppLocalizations.of(context).dueOptionCustom,
+                NewTaskDue.custom,
+              ),
             ],
           ),
           if (newTaskDue == NewTaskDue.custom)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8.0),
               child: VikunjaDateTimeField(
-                label: "Enter exact time",
+                label: AppLocalizations.of(context).enterExactTime,
                 onChanged: (value) {
                   setState(() => newTaskDue = NewTaskDue.custom);
                   dueDate = value;
@@ -99,11 +125,11 @@ class AddTaskDialogState extends State<AddTaskDialog> {
       ),
       actions: <Widget>[
         TextButton(
-          child: const Text('Cancel'),
+          child: Text(AppLocalizations.of(context).cancel),
           onPressed: () => Navigator.pop(context),
         ),
         TextButton(
-          child: const Text('Add'),
+          child: Text(AppLocalizations.of(context).add),
           onPressed: () {
             if (textController.text.isNotEmpty) {
               widget.onAddTask(textController.text, dueDate);
