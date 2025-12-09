@@ -28,7 +28,7 @@
   "getVersionNotifications": "Get Version Notifications",
   "sendTestNotification": "Send test notification",
   "checkForLatestVersion": "Check for latest version",
-  "defaultList": "Default List",
+  "defaultProject": "Default Project",
   "none": "None",
   "description": "Description",
   "dueDate": "Due Date:",
