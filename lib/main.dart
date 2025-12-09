@@ -23,6 +23,18 @@ import 'core/background_work.dart';
 final globalSnackbarKey = GlobalKey<ScaffoldMessengerState>();
 final globalNavigatorKey = GlobalKey<NavigatorState>();
 
+// Network error codes to ignore in Sentry reporting (Cronet exceptions)
+const _ignoredNetworkErrors = [
+  'ERR_ADDRESS_UNREACHABLE',
+  'ERR_NETWORK_CHANGED',
+  'ERR_INTERNET_DISCONNECTED',
+  'ERR_CONNECTION_REFUSED',
+  'ERR_CONNECTION_RESET',
+  'ERR_CONNECTION_CLOSED',
+  'ERR_CONNECTION_TIMED_OUT',
+  'ERR_NAME_NOT_RESOLVED',
+];
+
 void main() async {
   SentryWidgetsFlutterBinding.ensureInitialized();
 
@@ -71,6 +83,22 @@ void main() async {
       options.enableLogs = true;
       options.tracesSampleRate = 1.0;
       options.profilesSampleRate = 1.0;
+      options.beforeSend = (event, hint) {
+        // Filter out network unreachability errors (Cronet exceptions)
+        // These are Chromium/Cronet network errors that appear in format: "net::ERR_..."
+        final exceptionMessage = event.throwable?.toString() ?? '';
+
+        // Only filter Cronet-specific exceptions
+        if (exceptionMessage.contains('Cronet exception') ||
+            exceptionMessage.contains('CronetUrlRequest')) {
+          for (final error in _ignoredNetworkErrors) {
+            if (exceptionMessage.contains('net::$error')) {
+              return null; // Don't send to Sentry
+            }
+          }
+        }
+        return event;
+      };
     }, appRunner: () => runApp(ProviderScope(child: VikunjaApp())));
   } else {
     runApp(ProviderScope(child: VikunjaApp()));
