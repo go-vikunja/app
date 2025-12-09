@@ -1,7 +1,10 @@
 import 'dart:convert';
 import 'dart:core';
+import 'dart:developer' as developer;
 import 'dart:io';
 
+import 'package:cronet_http/cronet_http.dart' as cronet_http;
+import 'package:cupertino_http/cupertino_http.dart' as cupertino_http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart' as io_client;
@@ -28,7 +31,7 @@ class Client {
 
   String get token => _token;
 
-  Client({String? token, required String base, http.Client? httpClient}) {
+  Client({String? token, required String base}) {
     if (token != null) _token = token;
     base = base.replaceAll(" ", "");
     if (base.endsWith("/")) {
@@ -36,7 +39,33 @@ class Client {
     }
     _base = base.endsWith('/api/v1') ? base : '$base/api/v1';
 
-    _httpClient = httpClient ?? io_client.IOClient();
+    _httpClient = createClient();
+  }
+
+  http.Client createClient() {
+    try {
+      if (Platform.isAndroid) {
+        final engine = cronet_http.CronetEngine.build(
+          cacheMode: cronet_http.CacheMode.memory,
+          cacheMaxSize: 1000000,
+        );
+        return cronet_http.CronetClient.fromCronetEngine(engine);
+      } else if (Platform.isIOS || Platform.isMacOS) {
+        final config =
+        cupertino_http
+            .URLSessionConfiguration.ephemeralSessionConfiguration()
+          ..cache = cupertino_http.URLCache.withCapacity(
+            memoryCapacity: 1000000,
+          );
+        return cupertino_http.CupertinoClient.fromSessionConfiguration(config);
+      }
+    } catch (e) {
+      developer.log(
+        "Error creating http client: $e. Falling back to default client.",
+      );
+    }
+
+    return io_client.IOClient();
   }
 
   void setIgnoreCerts(bool val) {
@@ -133,9 +162,9 @@ class Client {
   }
 
   Response<T> _handleResponse<T>(
-    http.Response response,
-    T Function(dynamic body)? mapper,
-  ) {
+      http.Response response,
+      T Function(dynamic body)? mapper,
+      ) {
     if (response.statusCode < 200 || response.statusCode >= 400) {
       Map<String, dynamic> error = _decoder.convert(response.body);
 
