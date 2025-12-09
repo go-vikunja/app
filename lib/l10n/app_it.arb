@@ -1,5 +1,5 @@
 {
-  "@@locale": "en",
+  "@@locale": "it",
   "ok": "OK",
   "cancel": "Annulla",
   "delete": "Elimina",
@@ -69,13 +69,13 @@
   "setColor": "Imposta colore",
   "currentVersionPrefix": "Versione attuale: {version}",
   "@currentVersionPrefix": {
-    "description": "Label showing the current app version.",
+    "description": "Etichetta che mostra la versione corrente dell’app.",
     "placeholders": { "version": { "type": "String" } }
   },
   "currentVersionUnknown": "Versione attuale: -",
   "latestVersionPrefix": "Ultima versione: {version}",
   "@latestVersionPrefix": {
-    "description": "Label showing the latest available version.",
+    "description": "Etichetta che mostra la versione più recente disponibile.",
     "placeholders": { "version": { "type": "String" } }
   },
   "noNotificationPermission": "Nessuna autorizzazione per le notifiche!",
@@ -89,11 +89,11 @@
   "viewOnGithub": "Visualizza su GitHub",
   "newVersionAvailable": "Nuova versione disponibile: {version}",
   "@newVersionAvailable": {
-    "description": "Snackbar text notifying the user about a new version.",
+    "description": "Testo della notifica a scomparsa che avvisa l’utente di una nuova versione.",
     "placeholders": { "version": { "type": "String" } }
   },
-  "unsavedChangesTitle": "You have unsaved changes!",
-  "unsavedChangesMessage": "Would you like to dismiss those changes?",
+  "unsavedChangesTitle": "Hai modifiche non salvate!",
+  "unsavedChangesMessage": "Vuoi scartare queste modifiche?",
   "dismiss": "Chiudi",
   "keepEditing": "Continua a modificare",
   "deleteTaskTitle": "Elimina attività",
