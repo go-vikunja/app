@@ -2,6 +2,9 @@ import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vikunja_app/l10n/gen/app_localizations.dart';
+import 'package:vikunja_app/core/di/locale_provider.dart';
+import 'package:vikunja_app/core/utils/language_autonyms.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/core/di/notification_provider.dart';
@@ -32,28 +35,36 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsControllerProvider);
 
+    final l10n = AppLocalizations.of(context);
+    final overrideLocale = ref.watch(localeOverrideProvider).asData?.value;
+    final resolvedLocale = Localizations.localeOf(context);
+    final platformLocale = WidgetsBinding.instance.platformDispatcher.locale;
+    final bool isSystemSelected = overrideLocale == null;
+    final bool isFallback =
+        isSystemSelected &&
+        platformLocale.languageCode != resolvedLocale.languageCode;
     return Scaffold(
-      appBar: AppBar(title: Text("Settings")),
+      appBar: AppBar(title: Text(l10n.settings)),
       body: settings.when(
         data: (settings) => ListView(
           children: [
             _buildUserHeader(ref, settings.user, settings.projects, context),
             Divider(),
             ListTile(
-              title: Text("Theme"),
+              title: Text(l10n.theme),
               trailing: DropdownButton<FlutterThemeMode>(
                 items: [
                   DropdownMenuItem(
                     value: FlutterThemeMode.system,
-                    child: Text("System"),
+                    child: Text(l10n.system),
                   ),
                   DropdownMenuItem(
                     value: FlutterThemeMode.light,
-                    child: Text("Light"),
+                    child: Text(l10n.light),
                   ),
                   DropdownMenuItem(
                     value: FlutterThemeMode.dark,
-                    child: Text("Dark"),
+                    child: Text(l10n.dark),
                   ),
                 ],
                 value: settings.themeMode,
@@ -64,8 +75,39 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
                 },
               ),
             ),
+            ListTile(
+              title: Text(l10n.language),
+              subtitle: isFallback
+                  ? Text(
+                      'System language (${platformLocale.languageCode}${platformLocale.countryCode != null ? '-${platformLocale.countryCode}' : ''}) not supported. Using ${languageAutonym(resolvedLocale)}.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withOpacity(0.6),
+                      ),
+                    )
+                  : null,
+              trailing: DropdownButton<Locale?>(
+                items: [
+                  DropdownMenuItem(
+                    value: null,
+                    child: Text(l10n.systemLanguage),
+                  ),
+                  ...AppLocalizations.supportedLocales.map(
+                    (loc) => DropdownMenuItem(
+                      value: loc,
+                      child: Text(languageAutonym(loc)),
+                    ),
+                  ),
+                ],
+                value: overrideLocale,
+                onChanged: (Locale? value) {
+                  ref.read(localeOverrideProvider.notifier).setLocale(value);
+                },
+              ),
+            ),
             SwitchListTile(
-              title: Text("Dynamic Colors"),
+              title: Text(l10n.dynamicColors),
               value: settings.dynamicColors,
               onChanged: (bool? value) {
                 ref
@@ -75,7 +117,7 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
             ),
             Divider(),
             CheckboxListTile(
-              title: Text("Ignore Certificates"),
+              title: Text(l10n.ignoreCertificates),
               value: settings.ignoreCertificates,
               onChanged: (value) {
                 ref
@@ -85,10 +127,8 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
             ),
             Divider(),
             CheckboxListTile(
-              title: Text("Enable Sentry"),
-              subtitle: Text(
-                "Help us debug errors better and faster by sending bug reports to us directly. This is completely anonymous.",
-              ),
+              title: Text(l10n.enableSentry),
+              subtitle: Text(l10n.sentryHelp),
               value: settings.sentryEnabled,
               onChanged: (value) {
                 ref
@@ -107,9 +147,8 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
                       keyboardType: TextInputType.number,
                       controller: durationTextController,
                       decoration: InputDecoration(
-                        labelText: 'Background Refresh Interval (minutes): ',
-                        helperText:
-                            'Minimum: 15, Set limit of 0 for no refresh',
+                        labelText: l10n.backgroundRefreshInterval,
+                        helperText: l10n.noLimitHelper,
                       ),
                     ),
                   ),
@@ -122,14 +161,14 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
                                 0,
                           );
                     },
-                    child: Text("Save"),
+                    child: Text(l10n.save),
                   ),
                 ],
               ),
             ),
             Divider(),
             CheckboxListTile(
-              title: Text("Get Version Notifications"),
+              title: Text(l10n.getVersionNotifications),
               value: settings.versionNotifications,
               onChanged: (value) {
                 ref
@@ -148,12 +187,12 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
                     ref.read(notificationProvider)?.sendTestNotification();
                   } else if (status.isPermanentlyDenied) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text("No notification permission!")),
+                      SnackBar(content: Text(l10n.noNotificationPermission)),
                     );
                   }
                 }
               },
-              child: Text("Send test notification"),
+              child: Text(l10n.sendTestNotification),
             ),
             TextButton(
               onPressed: () async {
@@ -170,16 +209,16 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
                   });
                 }
               },
-              child: Text("Check for latest version"),
+              child: Text(l10n.checkForLatestVersion),
             ),
             Text(
               settings.currentVersion.isNotEmpty
-                  ? "Current version: ${settings.currentVersion}"
-                  : "Current version: -",
+                  ? l10n.currentVersionPrefix(settings.currentVersion)
+                  : l10n.currentVersionUnknown,
             ),
             Text(
               newestVersionTag.isNotEmpty
-                  ? "Latest version: $newestVersionTag"
+                  ? l10n.latestVersionPrefix(newestVersionTag)
                   : "",
             ),
             Divider(),
@@ -194,7 +233,7 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
                   MaterialPageRoute(builder: (buildContext) => LoginPage()),
                 );
               },
-              child: Text("Logout"),
+              child: Text(l10n.logout),
             ),
           ],
         ),
@@ -245,10 +284,13 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
           ),
         ),
         ListTile(
-          title: Text("Default List"),
+          title: Text(AppLocalizations.of(context).defaultList),
           trailing: DropdownButton<int>(
             items: [
-              DropdownMenuItem(value: 0, child: Text("None")),
+              DropdownMenuItem(
+                value: 0,
+                child: Text(AppLocalizations.of(context).none),
+              ),
               ...projects.map(
                 (e) => DropdownMenuItem(value: e.id, child: Text(e.title)),
               ),

@@ -11,6 +11,7 @@ import 'package:vikunja_app/presentation/pages/task/task_edit_page.dart';
 import 'package:vikunja_app/presentation/widgets/empty_view.dart';
 import 'package:vikunja_app/presentation/widgets/project/project_task_list_item.dart';
 import 'package:vikunja_app/presentation/widgets/task_bottom_sheet.dart';
+import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 
 class ProjectTaskList extends ConsumerWidget {
   final Project project;
@@ -27,7 +28,7 @@ class ProjectTaskList extends ConsumerWidget {
         if (project.subprojects.isNotEmpty) {
           if (pageModel.tasks.isNotEmpty) {
             children.add(
-              SliverToBoxAdapter(child: _buildSectionHeader("Projects")),
+              SliverToBoxAdapter(child: _buildSectionHeader(AppLocalizations.of(context).projectSection)),
             );
             children.add(SliverToBoxAdapter(child: Divider()));
           }
@@ -36,7 +37,7 @@ class ProjectTaskList extends ConsumerWidget {
         if (pageModel.tasks.isNotEmpty) {
           if (project.subprojects.isNotEmpty) {
             children.add(
-              SliverToBoxAdapter(child: _buildSectionHeader("Tasks")),
+              SliverToBoxAdapter(child: _buildSectionHeader(AppLocalizations.of(context).tasksSection)),
             );
             children.add(SliverToBoxAdapter(child: Divider()));
           }
@@ -48,7 +49,7 @@ class ProjectTaskList extends ConsumerWidget {
         } else {
           return EmptyView(
             Icons.list,
-            "No tasks or sub project in this project",
+            AppLocalizations.of(context).noTasksOrSubproject,
           );
         }
       },
@@ -161,9 +162,11 @@ class ProjectTaskList extends ConsumerWidget {
             .read(projectControllerProvider(project).notifier)
             .markAsDone(task);
         if (!success) {
-          ScaffoldMessenger.of(
-            ref.context,
-          ).showSnackBar(SnackBar(content: Text("Failed to mark as done")));
+          ScaffoldMessenger.of(ref.context).showSnackBar(
+            SnackBar(
+              content: Text(AppLocalizations.of(ref.context).failedToMarkDone),
+            ),
+          );
         }
       },
     );

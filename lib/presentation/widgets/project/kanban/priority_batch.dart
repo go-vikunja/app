@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/core/theming/app_colors.dart';
 import 'package:vikunja_app/core/utils/priority.dart';
+import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 
 class PriorityBatch extends StatelessWidget {
   final int priority;
@@ -9,9 +10,10 @@ class PriorityBatch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context);
     return Badge(
       padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      label: Text(priorityToString(priority)),
+      label: Text(priorityToString(loc, priority)),
       backgroundColor: getBackgroundColor(context, priority),
     );
   }

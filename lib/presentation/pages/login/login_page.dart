@@ -4,6 +4,7 @@ import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:vikunja_app/core/di/network_provider.dart';
@@ -106,7 +107,7 @@ class LoginPageState extends ConsumerState<LoginPage> {
                   value: _rememberMe,
                   onChanged: (value) =>
                       setState(() => _rememberMe = value ?? false),
-                  title: Text("Remember me"),
+                  title: Text(AppLocalizations.of(context).rememberMe),
                 ),
               ),
               FancyButton(
@@ -118,14 +119,16 @@ class LoginPageState extends ConsumerState<LoginPage> {
                         }
                       }
                     : null,
-                child: _loading ? CircularProgressIndicator() : Text('Login'),
+                child: _loading
+                    ? CircularProgressIndicator()
+                    : Text(AppLocalizations.of(context).login),
               ),
               FancyButton(
                 onPressed: () => Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => RegisterPage()),
                 ),
-                child: Text('Register'),
+                child: Text(AppLocalizations.of(context).register),
               ),
               FancyButton(
                 onPressed: () {
@@ -144,15 +147,19 @@ class LoginPageState extends ConsumerState<LoginPage> {
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text("Please enter a valid frontend url"),
+                        content: Text(
+                          AppLocalizations.of(
+                            context,
+                          ).pleaseEnterValidFrontendUrl,
+                        ),
                       ),
                     );
                   }
                 },
-                child: Text("Login with Frontend"),
+                child: Text(AppLocalizations.of(context).loginWithFrontend),
               ),
               CheckboxListTile(
-                title: Text("Ignore Certificates"),
+                title: Text(AppLocalizations.of(context).ignoreCertificates),
                 value: client.ignoreCertificates,
                 onChanged: (value) {
                   ref
@@ -179,7 +186,7 @@ class LoginPageState extends ConsumerState<LoginPage> {
         autofillHints: [AutofillHints.password],
         decoration: InputDecoration(
           border: OutlineInputBorder(),
-          labelText: 'Password',
+          labelText: AppLocalizations.of(context).password,
         ),
         obscureText: true,
       ),
@@ -195,7 +202,7 @@ class LoginPageState extends ConsumerState<LoginPage> {
         autofillHints: [AutofillHints.username],
         decoration: InputDecoration(
           border: OutlineInputBorder(),
-          labelText: 'Username',
+          labelText: AppLocalizations.of(context).username,
         ),
       ),
     );
@@ -212,11 +219,13 @@ class LoginPageState extends ConsumerState<LoginPage> {
             focusNode: focusnode,
             enabled: !_loading,
             validator: (address) {
-              return isURLValid(address) ? null : 'Invalid URL';
+              return isURLValid(address)
+                  ? null
+                  : AppLocalizations.of(context).invalidUrl;
             },
             decoration: InputDecoration(
               border: OutlineInputBorder(),
-              labelText: 'Server Address',
+              labelText: AppLocalizations.of(context).serverAddress,
             ),
           );
         },
@@ -268,7 +277,7 @@ class LoginPageState extends ConsumerState<LoginPage> {
             ? AssetImage('assets/vikunja_logo_full_white.png')
             : AssetImage('assets/vikunja_logo_full.png'),
         height: 85.0,
-        semanticLabel: 'Vikunja Logo',
+        semanticLabel: AppLocalizations.of(context).vikunjaLogoAlt,
       ),
     );
   }
@@ -282,7 +291,7 @@ class LoginPageState extends ConsumerState<LoginPage> {
     return showDialog<Response<UserToken>>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text("Enter One Time Passcode"),
+        title: Text(AppLocalizations.of(context).enterOneTimePasscode),
         content: TextField(
           controller: totpController,
           keyboardType: TextInputType.number,
@@ -304,7 +313,7 @@ class LoginPageState extends ConsumerState<LoginPage> {
 
               Navigator.pop(context, loginResponse);
             },
-            child: Text("Login"),
+            child: Text(AppLocalizations.of(context).login),
           ),
         ],
       ),
@@ -361,9 +370,11 @@ class LoginPageState extends ConsumerState<LoginPage> {
           .read(serverRepositoryProvider)
           .getInfo();
       if (!info.isSuccessful) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Cannot reach server")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context).cannotReachServer),
+          ),
+        );
       } else {
         Sentry.configureScope(
           (scope) => scope.setTag(
@@ -417,9 +428,9 @@ class LoginPageState extends ConsumerState<LoginPage> {
   }
 
   void _showGenericError(BuildContext context) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text("Something went wrong")));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(AppLocalizations.of(context).somethingWentWrong)),
+    );
   }
 
   Future<void> onUserToken(

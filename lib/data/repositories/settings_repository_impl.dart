@@ -126,4 +126,14 @@ class SettingsRepositoryImpl implements SettingsRepository {
   Future<void> saveUserToken(String? token) {
     return _datasource.saveUserToken(token);
   }
+
+  @override
+  Future<String?> getLocaleOverride() {
+    return _datasource.getLocaleOverride();
+  }
+
+  @override
+  Future<void> setLocaleOverride(String? localeCode) {
+    return _datasource.setLocaleOverride(localeCode);
+  }
 }
