@@ -39,7 +39,7 @@ jobs:
         run: |
           git diff
           git status
-          if git diff --quiet; then
+          if git diff --quiet && [ -z "$(git ls-files --others --exclude-standard)" ]; then
             echo "changes_exist=0" >> "$GITHUB_OUTPUT"
           else
             echo "changes_exist=1" >> "$GITHUB_OUTPUT"
