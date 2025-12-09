@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/presentation/manager/project_controller.dart';
+import 'package:vikunja_app/core/utils/calculate_item_position.dart';
 import 'package:vikunja_app/presentation/pages/error_widget.dart';
 import 'package:vikunja_app/presentation/pages/loading_widget.dart';
 import 'package:vikunja_app/presentation/pages/project/project_detail_page.dart';
@@ -27,24 +28,32 @@ class ProjectTaskList extends ConsumerWidget {
         if (project.subprojects.isNotEmpty) {
           if (pageModel.tasks.isNotEmpty) {
             children.add(
-              _buildSectionHeader(AppLocalizations.of(context).projectSection),
+              SliverToBoxAdapter(
+                child: _buildSectionHeader(
+                  AppLocalizations.of(context).projectSection,
+                ),
+              ),
             );
-            children.add(Divider());
+            children.add(SliverToBoxAdapter(child: Divider()));
           }
           children.addAll(_buildProjectList(context));
         }
         if (pageModel.tasks.isNotEmpty) {
           if (project.subprojects.isNotEmpty) {
             children.add(
-              _buildSectionHeader(AppLocalizations.of(context).tasksSection),
+              SliverToBoxAdapter(
+                child: _buildSectionHeader(
+                  AppLocalizations.of(context).tasksSection,
+                ),
+              ),
             );
-            children.add(Divider());
+            children.add(SliverToBoxAdapter(child: Divider()));
           }
-          children.addAll(_buildTaskList(ref, pageModel.tasks));
+          children.add(_buildTaskList(ref, pageModel.tasks));
         }
 
         if (children.isNotEmpty) {
-          return ListView(children: children);
+          return CustomScrollView(slivers: children);
         } else {
           return EmptyView(
             Icons.list,
@@ -68,31 +77,86 @@ class ProjectTaskList extends ConsumerWidget {
   }
 
   List<Widget> _buildProjectList(BuildContext context) {
-    return project.subprojects
-        .map(
-          (subproject) => ListTile(
+    return [
+      SliverList(
+        delegate: SliverChildBuilderDelegate((context, index) {
+          final subproject = project.subprojects.toList()[index];
+          return ListTile(
             leading: Icon(Icons.list),
-            onTap: () {
-              _navigateToDetail(context, subproject);
-            },
+            onTap: () => _navigateToDetail(context, subproject),
             title: Text(
               subproject.title,
               overflow: TextOverflow.ellipsis,
               softWrap: false,
             ),
-          ),
-        )
-        .toList();
+          );
+        }, childCount: project.subprojects.length),
+      ),
+    ];
   }
 
-  List<Widget> _buildTaskList(WidgetRef ref, List<Task> tasks) {
-    return List.generate(tasks.length * 2, (i) {
-      if (i.isOdd) return Divider(height: 1);
+  Widget _buildTaskList(WidgetRef ref, List<Task> tasks) {
+    return SliverReorderableList(
+      itemBuilder: (context, index) {
+        final task = tasks[index];
+        return ReorderableDelayedDragStartListener(
+          key: Key('task_${task.id}'),
+          index: index,
+          child: Material(
+            color: Colors.transparent,
+            child: Column(
+              children: [
+                _buildTile(ref, task),
+                if (index < tasks.length - 1) Divider(height: 1),
+              ],
+            ),
+          ),
+        );
+      },
+      itemCount: tasks.length,
+      onReorder: (oldIndex, newIndexRaw) {
+        int newIndex = newIndexRaw;
+        if (newIndex > oldIndex) {
+          newIndex -= 1;
+        }
 
-      final index = i ~/ 2;
+        if (newIndex < -1) newIndex = -1;
 
-      return _buildTile(ref, tasks[index]);
-    });
+        final taskList = List<Task>.from(tasks);
+        final moved = taskList.removeAt(oldIndex);
+        final insertIndex = newIndex == -1
+            ? 0
+            : newIndex.clamp(0, taskList.length);
+        taskList.insert(insertIndex, moved);
+
+        final before = insertIndex == 0
+            ? null
+            : taskList[insertIndex - 1].position;
+        final after = insertIndex == taskList.length - 1
+            ? null
+            : taskList[insertIndex + 1].position;
+        final newPos = calculateItemPosition(
+          positionBefore: before,
+          positionAfter: after,
+        );
+
+        ref
+            .read(projectControllerProvider(project).notifier)
+            .reorderTasks(
+              project: project,
+              newOrderedTasks: taskList,
+              movedTaskId: moved.id,
+              newPosition: newPos,
+            )
+            .then((success) {
+              if (!success) {
+                ScaffoldMessenger.of(ref.context).showSnackBar(
+                  const SnackBar(content: Text('Failed to reorder task')),
+                );
+              }
+            });
+      },
+    );
   }
 
   Widget _buildTile(WidgetRef ref, Task task) {
