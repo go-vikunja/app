@@ -24,7 +24,7 @@ class ProjectController extends _$ProjectController {
       case SuccessResponse<List<Task>>():
         return ProjectPageModel(
           project,
-          -1,
+          0,
           tasksResponse.body,
           [],
           displayDoneTask,

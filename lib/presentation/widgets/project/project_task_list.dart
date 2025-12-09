@@ -99,8 +99,8 @@ class ProjectTaskList extends ConsumerWidget {
     return ProjectTaskListItem(
       key: Key(task.id.toString()),
       task: task,
-      onTap: () => _showTaskBottomSheet(ref.context, task),
-      onEdit: () => _onEdit(ref.context, task),
+      onTap: () => _showTaskBottomSheet(ref, task),
+      onEdit: () => _onEdit(ref, task),
       onCheckedChanged: (value) async {
         var success = await ref
             .read(projectControllerProvider(project).notifier)
@@ -116,26 +116,27 @@ class ProjectTaskList extends ConsumerWidget {
     );
   }
 
-  void _showTaskBottomSheet(BuildContext context, Task task) {
+  void _showTaskBottomSheet(WidgetRef ref, Task task) {
     showModalBottomSheet<void>(
-      context: context,
+      context: ref.context,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(10.0)),
       ),
       builder: (BuildContext context) {
-        return TaskBottomSheet(
-          task: task,
-          onEdit: () => _onEdit(context, task),
-        );
+        return TaskBottomSheet(task: task, onEdit: () => _onEdit(ref, task));
       },
     );
   }
 
-  void _onEdit(BuildContext context, Task task) {
-    Navigator.push<Task>(
-      context,
+  void _onEdit(WidgetRef ref, Task task) async {
+    var editedTask = await Navigator.push<Task?>(
+      ref.context,
       MaterialPageRoute(builder: (buildContext) => TaskEditPage(task: task)),
     );
+
+    if (editedTask != null) {
+      ref.read(projectControllerProvider(project).notifier).reload();
+    }
   }
 
   void _navigateToDetail(BuildContext context, Project project) {
