@@ -6,24 +6,7 @@ part of 'network_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$clientProviderHash() => r'5b68f6922e1223e1b0a4d106a013c69df0c052c6';
-
-/// See also [clientProvider].
-@ProviderFor(clientProvider)
-final clientProviderProvider = AutoDisposeProvider<Client>.internal(
-  clientProvider,
-  name: r'clientProviderProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$clientProviderHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef ClientProviderRef = AutoDisposeProviderRef<Client>;
-String _$authDataHash() => r'37d6f0a9be23c0f1bbe648fe223fbedcd22002e5';
+String _$authDataHash() => r'321e34c6d952287a0371852203f99572aa89a741';
 
 /// See also [AuthData].
 @ProviderFor(AuthData)
@@ -53,5 +36,21 @@ final currentUserProvider = NotifierProvider<CurrentUser, User?>.internal(
 );
 
 typedef _$CurrentUser = Notifier<User?>;
+String _$clientProviderHash() => r'8eb84a87b52debe94e19875bcfe8ebea0727168c';
+
+/// See also [ClientProvider].
+@ProviderFor(ClientProvider)
+final clientProviderProvider =
+    NotifierProvider<ClientProvider, Client>.internal(
+      ClientProvider.new,
+      name: r'clientProviderProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$clientProviderHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+typedef _$ClientProvider = Notifier<Client>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

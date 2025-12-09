@@ -11,7 +11,10 @@ class AuthData extends _$AuthData {
   @override
   AuthModel? build() => null;
 
-  void set(AuthModel token) => state = token;
+  void set(AuthModel token) {
+    state = token;
+    ref.invalidate(clientProviderProvider);
+  }
 }
 
 @Riverpod(keepAlive: true)
@@ -22,9 +25,12 @@ class CurrentUser extends _$CurrentUser {
   void set(User user) => state = user;
 }
 
-@riverpod
-Client clientProvider(Ref ref) {
-  final authData = ref.watch(authDataProvider);
+@Riverpod(keepAlive: true)
+class ClientProvider extends _$ClientProvider {
+  @override
+  Client build() {
+    final authData = ref.read(authDataProvider);
 
-  return Client(base: authData?.address ?? '', token: authData?.token);
+    return Client(base: authData?.address ?? '', token: authData?.token);
+  }
 }
