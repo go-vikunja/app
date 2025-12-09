@@ -284,7 +284,7 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
           ),
         ),
         ListTile(
-          title: Text(AppLocalizations.of(context).defaultList),
+          title: Text(AppLocalizations.of(context).defaultProject),
           trailing: DropdownButton<int>(
             items: [
               DropdownMenuItem(
