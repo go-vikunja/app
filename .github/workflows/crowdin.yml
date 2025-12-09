@@ -1,9 +1,6 @@
 name: Crowdin Sync
 
 on:
-  push:
-    branches:
-      - translations
   schedule:
     - cron: '0 0 * * *'
 
