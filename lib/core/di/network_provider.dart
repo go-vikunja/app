@@ -27,12 +27,10 @@ class CurrentUser extends _$CurrentUser {
 
 @Riverpod(keepAlive: true)
 class ClientProvider extends _$ClientProvider {
-
   @override
   Client build() {
     final authData = ref.read(authDataProvider);
 
     return Client(base: authData?.address ?? '', token: authData?.token);
   }
-
 }

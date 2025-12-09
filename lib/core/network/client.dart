@@ -52,11 +52,11 @@ class Client {
         return cronet_http.CronetClient.fromCronetEngine(engine);
       } else if (Platform.isIOS || Platform.isMacOS) {
         final config =
-        cupertino_http
-            .URLSessionConfiguration.ephemeralSessionConfiguration()
-          ..cache = cupertino_http.URLCache.withCapacity(
-            memoryCapacity: 1000000,
-          );
+            cupertino_http
+                  .URLSessionConfiguration.ephemeralSessionConfiguration()
+              ..cache = cupertino_http.URLCache.withCapacity(
+                memoryCapacity: 1000000,
+              );
         return cupertino_http.CupertinoClient.fromSessionConfiguration(config);
       }
     } catch (e) {
@@ -162,9 +162,9 @@ class Client {
   }
 
   Response<T> _handleResponse<T>(
-      http.Response response,
-      T Function(dynamic body)? mapper,
-      ) {
+    http.Response response,
+    T Function(dynamic body)? mapper,
+  ) {
     if (response.statusCode < 200 || response.statusCode >= 400) {
       Map<String, dynamic> error = _decoder.convert(response.body);
 
