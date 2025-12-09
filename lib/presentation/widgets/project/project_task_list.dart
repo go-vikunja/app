@@ -28,7 +28,11 @@ class ProjectTaskList extends ConsumerWidget {
         if (project.subprojects.isNotEmpty) {
           if (pageModel.tasks.isNotEmpty) {
             children.add(
-              SliverToBoxAdapter(child: _buildSectionHeader(AppLocalizations.of(context).projectSection)),
+              SliverToBoxAdapter(
+                child: _buildSectionHeader(
+                  AppLocalizations.of(context).projectSection,
+                ),
+              ),
             );
             children.add(SliverToBoxAdapter(child: Divider()));
           }
@@ -37,7 +41,11 @@ class ProjectTaskList extends ConsumerWidget {
         if (pageModel.tasks.isNotEmpty) {
           if (project.subprojects.isNotEmpty) {
             children.add(
-              SliverToBoxAdapter(child: _buildSectionHeader(AppLocalizations.of(context).tasksSection)),
+              SliverToBoxAdapter(
+                child: _buildSectionHeader(
+                  AppLocalizations.of(context).tasksSection,
+                ),
+              ),
             );
             children.add(SliverToBoxAdapter(child: Divider()));
           }
