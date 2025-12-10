@@ -9,6 +9,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
 
   background_downloader: ^9.2.3
   collection: ^1.18.0
@@ -66,7 +68,9 @@ flutter_icons:
   adaptive_icon_foreground: "assets/vikunja_logo_adaptive.png"
 
 flutter:
+  default-flavor: unsigned
   uses-material-design: true
+  generate: true
   assets:
     - assets/graphics/hypnotize.png
     - assets/vikunja_logo.png

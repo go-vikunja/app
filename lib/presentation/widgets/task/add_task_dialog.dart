@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:vikunja_app/core/utils/constants.dart';
 import 'package:vikunja_app/domain/entities/new_task_due.dart';
 import 'package:vikunja_app/presentation/widgets/date_time_field.dart';
+import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 
 class AddTaskDialog extends StatefulWidget {
   final void Function(String title, DateTime? dueDate) onAddTask;
@@ -13,8 +15,8 @@ class AddTaskDialog extends StatefulWidget {
 }
 
 class AddTaskDialogState extends State<AddTaskDialog> {
-  NewTaskDue newTaskDue = NewTaskDue.day;
-  DateTime? customDueDate;
+  NewTaskDue newTaskDue = NewTaskDue.none;
+  DateTime? dueDate;
   var textController = TextEditingController();
 
   @override
@@ -29,59 +31,110 @@ class AddTaskDialogState extends State<AddTaskDialog> {
 
   @override
   Widget build(BuildContext context) {
-    if (newTaskDue != NewTaskDue.custom) {
-      customDueDate = DateTime.now().add(newTaskDue.newTaskDueToDuration());
-    }
+    var dateTime = DateTime.now();
 
     return AlertDialog(
+      scrollable: true,
       contentPadding: const EdgeInsets.all(16.0),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: TextField(
-                  autofocus: true,
-                  decoration: InputDecoration(
-                    labelText: 'New Task Name',
-                    hintText: 'eg. Milk',
-                  ),
-                  controller: textController,
+          TextField(
+            keyboardType: TextInputType.multiline,
+            maxLines: null,
+            autofocus: true,
+            decoration: InputDecoration(
+              labelText: AppLocalizations.of(context).newTaskName,
+              hintText: AppLocalizations.of(context).newTaskExample,
+            ),
+            controller: textController,
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
+            child: Text(AppLocalizations.of(context).dueDate),
+          ),
+          Wrap(
+            spacing: 8,
+            children: [
+              taskDueList(
+                AppLocalizations.of(context).dueOptionNone,
+                NewTaskDue.none,
+              ),
+              if (dateTime.hour < 21)
+                taskDueList(
+                  AppLocalizations.of(context).dueOptionToday,
+                  NewTaskDue.today,
                 ),
+              taskDueList(
+                AppLocalizations.of(context).dueOptionTomorrow,
+                NewTaskDue.tomorrow,
+              ),
+              taskDueList(
+                AppLocalizations.of(context).dueOptionNextMonday,
+                NewTaskDue.next_monday,
+              ),
+              if (dateTime.weekday != DateTime.sunday || dateTime.hour < 21)
+                taskDueList(
+                  AppLocalizations.of(context).dueOptionThisWeekend,
+                  NewTaskDue.weekend,
+                ),
+              taskDueList(
+                AppLocalizations.of(context).dueOptionLaterThisWeek,
+                NewTaskDue.later_this_week,
+              ),
+              taskDueList(
+                AppLocalizations.of(context).dueInOneWeek,
+                NewTaskDue.next_week,
+              ),
+              taskDueList(
+                AppLocalizations.of(context).dueOptionCustom,
+                NewTaskDue.custom,
               ),
             ],
           ),
-          Padding(
-            padding: const EdgeInsets.only(top: 16.0, bottom: 8),
-            child: Text("Due Date:"),
-          ),
-          taskDueList("1 Day", NewTaskDue.day),
-          taskDueList("1 Week", NewTaskDue.week),
-          taskDueList("1 Month", NewTaskDue.month),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: VikunjaDateTimeField(
-              label: "Enter exact time",
-              onChanged: (value) {
-                setState(() => newTaskDue = NewTaskDue.custom);
-                customDueDate = value;
-              },
+          if (newTaskDue == NewTaskDue.custom)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: VikunjaDateTimeField(
+                label: AppLocalizations.of(context).enterExactTime,
+                onChanged: (value) {
+                  setState(() => newTaskDue = NewTaskDue.custom);
+                  dueDate = value;
+                },
+              ),
             ),
-          ),
+          if (newTaskDue != NewTaskDue.custom && dueDate != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 8.0,
+                vertical: 16,
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.date_range),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 16.0),
+                    child: Text(
+                      vDateFormatShort.format(dueDate!),
+                      style: Theme.of(context).textTheme.bodyLarge,
+                    ),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
       actions: <Widget>[
         TextButton(
-          child: const Text('Cancel'),
+          child: Text(AppLocalizations.of(context).cancel),
           onPressed: () => Navigator.pop(context),
         ),
         TextButton(
-          child: const Text('Add'),
+          child: Text(AppLocalizations.of(context).add),
           onPressed: () {
             if (textController.text.isNotEmpty) {
-              widget.onAddTask(textController.text, customDueDate);
+              widget.onAddTask(textController.text, dueDate);
             }
             Navigator.pop(context);
           },
@@ -91,22 +144,20 @@ class AddTaskDialogState extends State<AddTaskDialog> {
   }
 
   Widget taskDueList(String name, NewTaskDue thisNewTaskDue) {
-    return Row(
-      children: [
-        Checkbox(
-          value: newTaskDue == thisNewTaskDue,
-          onChanged: (value) {
-            newTaskDue = thisNewTaskDue;
-            setState(
-              () => customDueDate = DateTime.now().add(
-                thisNewTaskDue.newTaskDueToDuration(),
-              ),
-            );
-          },
-          shape: CircleBorder(),
-        ),
-        Text(name),
-      ],
+    return ChoiceChip(
+      label: Text(name),
+      selected: newTaskDue == thisNewTaskDue,
+      onSelected: (value) {
+        newTaskDue = thisNewTaskDue;
+        setState(() {
+          if (newTaskDue == NewTaskDue.custom ||
+              newTaskDue == NewTaskDue.none) {
+            dueDate = null;
+          } else {
+            dueDate = newTaskDue.calculateDate(DateTime.now());
+          }
+        });
+      },
     );
   }
 }

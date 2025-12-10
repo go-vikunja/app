@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/presentation/manager/project_controller.dart';
+import 'package:vikunja_app/core/utils/calculate_item_position.dart';
 import 'package:vikunja_app/presentation/pages/error_widget.dart';
 import 'package:vikunja_app/presentation/pages/loading_widget.dart';
 import 'package:vikunja_app/presentation/pages/project/project_detail_page.dart';
@@ -10,6 +11,7 @@ import 'package:vikunja_app/presentation/pages/task/task_edit_page.dart';
 import 'package:vikunja_app/presentation/widgets/empty_view.dart';
 import 'package:vikunja_app/presentation/widgets/project/project_task_list_item.dart';
 import 'package:vikunja_app/presentation/widgets/task_bottom_sheet.dart';
+import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 
 class ProjectTaskList extends ConsumerWidget {
   final Project project;
@@ -25,25 +27,37 @@ class ProjectTaskList extends ConsumerWidget {
         List<Widget> children = [];
         if (project.subprojects.isNotEmpty) {
           if (pageModel.tasks.isNotEmpty) {
-            children.add(_buildSectionHeader("Projects"));
-            children.add(Divider());
+            children.add(
+              SliverToBoxAdapter(
+                child: _buildSectionHeader(
+                  AppLocalizations.of(context).projectSection,
+                ),
+              ),
+            );
+            children.add(SliverToBoxAdapter(child: Divider()));
           }
           children.addAll(_buildProjectList(context));
         }
         if (pageModel.tasks.isNotEmpty) {
           if (project.subprojects.isNotEmpty) {
-            children.add(_buildSectionHeader("Tasks"));
-            children.add(Divider());
+            children.add(
+              SliverToBoxAdapter(
+                child: _buildSectionHeader(
+                  AppLocalizations.of(context).tasksSection,
+                ),
+              ),
+            );
+            children.add(SliverToBoxAdapter(child: Divider()));
           }
-          children.addAll(_buildTaskList(ref, pageModel.tasks));
+          children.add(_buildTaskList(ref, pageModel.tasks));
         }
 
         if (children.isNotEmpty) {
-          return ListView(children: children);
+          return CustomScrollView(slivers: children);
         } else {
           return EmptyView(
             Icons.list,
-            "No tasks or sub project in this project",
+            AppLocalizations.of(context).noTasksOrSubproject,
           );
         }
       },
@@ -63,72 +77,130 @@ class ProjectTaskList extends ConsumerWidget {
   }
 
   List<Widget> _buildProjectList(BuildContext context) {
-    return project.subprojects
-        .map(
-          (subproject) => ListTile(
+    return [
+      SliverList(
+        delegate: SliverChildBuilderDelegate((context, index) {
+          final subproject = project.subprojects.toList()[index];
+          return ListTile(
             leading: Icon(Icons.list),
-            onTap: () {
-              _navigateToDetail(context, subproject);
-            },
+            onTap: () => _navigateToDetail(context, subproject),
             title: Text(
               subproject.title,
               overflow: TextOverflow.ellipsis,
               softWrap: false,
             ),
-          ),
-        )
-        .toList();
+          );
+        }, childCount: project.subprojects.length),
+      ),
+    ];
   }
 
-  List<Widget> _buildTaskList(WidgetRef ref, List<Task> tasks) {
-    return List.generate(tasks.length * 2, (i) {
-      if (i.isOdd) return Divider(height: 1);
+  Widget _buildTaskList(WidgetRef ref, List<Task> tasks) {
+    return SliverReorderableList(
+      itemBuilder: (context, index) {
+        final task = tasks[index];
+        return ReorderableDelayedDragStartListener(
+          key: Key('task_${task.id}'),
+          index: index,
+          child: Material(
+            color: Colors.transparent,
+            child: Column(
+              children: [
+                _buildTile(ref, task),
+                if (index < tasks.length - 1) Divider(height: 1),
+              ],
+            ),
+          ),
+        );
+      },
+      itemCount: tasks.length,
+      onReorder: (oldIndex, newIndexRaw) {
+        int newIndex = newIndexRaw;
+        if (newIndex > oldIndex) {
+          newIndex -= 1;
+        }
 
-      final index = i ~/ 2;
+        if (newIndex < -1) newIndex = -1;
 
-      return _buildTile(ref, tasks[index]);
-    });
+        final taskList = List<Task>.from(tasks);
+        final moved = taskList.removeAt(oldIndex);
+        final insertIndex = newIndex == -1
+            ? 0
+            : newIndex.clamp(0, taskList.length);
+        taskList.insert(insertIndex, moved);
+
+        final before = insertIndex == 0
+            ? null
+            : taskList[insertIndex - 1].position;
+        final after = insertIndex == taskList.length - 1
+            ? null
+            : taskList[insertIndex + 1].position;
+        final newPos = calculateItemPosition(
+          positionBefore: before,
+          positionAfter: after,
+        );
+
+        ref
+            .read(projectControllerProvider(project).notifier)
+            .reorderTasks(
+              project: project,
+              newOrderedTasks: taskList,
+              movedTaskId: moved.id,
+              newPosition: newPos,
+            )
+            .then((success) {
+              if (!success) {
+                ScaffoldMessenger.of(ref.context).showSnackBar(
+                  const SnackBar(content: Text('Failed to reorder task')),
+                );
+              }
+            });
+      },
+    );
   }
 
   Widget _buildTile(WidgetRef ref, Task task) {
     return ProjectTaskListItem(
       key: Key(task.id.toString()),
       task: task,
-      onTap: () => _showTaskBottomSheet(ref.context, task),
-      onEdit: () => _onEdit(ref.context, task),
+      onTap: () => _showTaskBottomSheet(ref, task),
+      onEdit: () => _onEdit(ref, task),
       onCheckedChanged: (value) async {
         var success = await ref
             .read(projectControllerProvider(project).notifier)
             .markAsDone(task);
         if (!success) {
-          ScaffoldMessenger.of(
-            ref.context,
-          ).showSnackBar(SnackBar(content: Text("Failed to mark as done")));
+          ScaffoldMessenger.of(ref.context).showSnackBar(
+            SnackBar(
+              content: Text(AppLocalizations.of(ref.context).failedToMarkDone),
+            ),
+          );
         }
       },
     );
   }
 
-  void _showTaskBottomSheet(BuildContext context, Task task) {
+  void _showTaskBottomSheet(WidgetRef ref, Task task) {
     showModalBottomSheet<void>(
-      context: context,
+      context: ref.context,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(10.0)),
       ),
       builder: (BuildContext context) {
-        return TaskBottomSheet(
-          task: task,
-          onEdit: () => _onEdit(context, task),
-        );
+        return TaskBottomSheet(task: task, onEdit: () => _onEdit(ref, task));
       },
     );
   }
 
-  void _onEdit(BuildContext context, Task task) {
-    Navigator.push<Task>(
-      context,
+  void _onEdit(WidgetRef ref, Task task) async {
+    var editedTask = await Navigator.push<Task?>(
+      ref.context,
       MaterialPageRoute(builder: (buildContext) => TaskEditPage(task: task)),
     );
+
+    if (editedTask != null) {
+      ref.read(projectControllerProvider(project).notifier).reload();
+    }
   }
 
   void _navigateToDetail(BuildContext context, Project project) {

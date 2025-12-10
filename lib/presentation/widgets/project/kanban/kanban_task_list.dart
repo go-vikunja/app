@@ -1,16 +1,18 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vikunja_app/domain/entities/bucket.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
+import 'package:vikunja_app/presentation/manager/project_controller.dart';
 import 'package:vikunja_app/presentation/pages/task/task_edit_page.dart';
 import 'package:vikunja_app/presentation/widgets/project/kanban/kanban_task_item.dart';
 import 'package:vikunja_app/presentation/widgets/project/kanban/kanban_widget.dart';
 import 'package:vikunja_app/presentation/widgets/project/kanban/task_drag_target.dart';
 import 'package:vikunja_app/presentation/widgets/project/kanban/task_feedback.dart';
 
-class TaskList extends StatefulWidget {
+class TaskList extends ConsumerStatefulWidget {
   final Project project;
   final Bucket bucket;
   final List<Bucket> buckets;
@@ -40,10 +42,10 @@ class TaskList extends StatefulWidget {
   });
 
   @override
-  State<TaskList> createState() => _TaskListState();
+  ConsumerState<TaskList> createState() => _TaskListState();
 }
 
-class _TaskListState extends State<TaskList> {
+class _TaskListState extends ConsumerState<TaskList> {
   final ScrollController _scrollController = ScrollController();
   final GlobalKey _listKey = GlobalKey();
 
@@ -209,10 +211,14 @@ class _TaskListState extends State<TaskList> {
     );
   }
 
-  void _navigateToTask(BuildContext context, List<Task> tasks, int i) {
-    Navigator.push<Task>(
+  void _navigateToTask(BuildContext context, List<Task> tasks, int i) async {
+    var editedTask = await Navigator.push<Task?>(
       context,
       MaterialPageRoute(builder: (context) => TaskEditPage(task: tasks[i])),
     );
+
+    if (editedTask != null) {
+      ref.read(projectControllerProvider(widget.project).notifier).reload();
+    }
   }
 }

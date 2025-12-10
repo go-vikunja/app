@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/core/utils/constants.dart';
+import 'package:vikunja_app/core/utils/network.dart';
 import 'package:vikunja_app/core/utils/validator.dart';
 import 'package:vikunja_app/presentation/widgets/button.dart';
 
@@ -19,7 +21,7 @@ class RegisterPageState extends ConsumerState<RegisterPage> {
   @override
   Widget build(BuildContext ctx) {
     return Scaffold(
-      appBar: AppBar(title: Text('Register')),
+      appBar: AppBar(title: Text(AppLocalizations.of(ctx).register)),
       body: Builder(
         builder: (BuildContext context) => SafeArea(
           top: false,
@@ -32,13 +34,16 @@ class RegisterPageState extends ConsumerState<RegisterPage> {
                 Padding(
                   padding: vStandardVerticalPadding,
                   child: TextFormField(
-                    onSaved: (serverAddress) => _server = serverAddress,
+                    onSaved: (serverAddress) =>
+                        _server = normalizeServerURL(serverAddress ?? ''),
                     validator: (address) {
-                      return isUrl(address) ? null : 'Invalid URL';
+                      return isURLValid(address)
+                          ? null
+                          : AppLocalizations.of(context).invalidUrl;
                     },
                     decoration: InputDecoration(
                       border: OutlineInputBorder(),
-                      labelText: 'Server Address',
+                      labelText: AppLocalizations.of(context).serverAddress,
                     ),
                   ),
                 ),
@@ -49,11 +54,11 @@ class RegisterPageState extends ConsumerState<RegisterPage> {
                     validator: (username) {
                       return username!.trim().isNotEmpty
                           ? null
-                          : 'Please specify a username';
+                          : AppLocalizations.of(context).pleaseSpecifyUsername;
                     },
                     decoration: InputDecoration(
                       border: OutlineInputBorder(),
-                      labelText: 'Username',
+                      labelText: AppLocalizations.of(context).username,
                     ),
                   ),
                 ),
@@ -62,11 +67,13 @@ class RegisterPageState extends ConsumerState<RegisterPage> {
                   child: TextFormField(
                     onSaved: (email) => _email = email,
                     validator: (email) {
-                      return isEmail(email) ? null : 'Email adress is invalid';
+                      return isEmail(email)
+                          ? null
+                          : AppLocalizations.of(context).emailInvalid;
                     },
                     decoration: InputDecoration(
                       border: OutlineInputBorder(),
-                      labelText: 'Email Address',
+                      labelText: AppLocalizations.of(context).emailAddress,
                     ),
                   ),
                 ),
@@ -78,11 +85,11 @@ class RegisterPageState extends ConsumerState<RegisterPage> {
                     validator: (password) {
                       return (password?.length ?? 0) >= 8
                           ? null
-                          : 'Please use at least 8 characters';
+                          : AppLocalizations.of(context).passwordMinChars;
                     },
                     decoration: InputDecoration(
                       border: OutlineInputBorder(),
-                      labelText: 'Password',
+                      labelText: AppLocalizations.of(context).password,
                     ),
                     obscureText: true,
                   ),
@@ -93,11 +100,11 @@ class RegisterPageState extends ConsumerState<RegisterPage> {
                     validator: (password) {
                       return passwordController.text == password
                           ? null
-                          : 'Passwords don\'t match.';
+                          : AppLocalizations.of(context).passwordsDontMatch;
                     },
                     decoration: InputDecoration(
                       border: OutlineInputBorder(),
-                      labelText: 'Repeat Password',
+                      labelText: AppLocalizations.of(context).repeatAfter,
                     ),
                     obscureText: true,
                   ),
@@ -114,7 +121,7 @@ class RegisterPageState extends ConsumerState<RegisterPage> {
                         : () => null,
                     child: _loading
                         ? CircularProgressIndicator()
-                        : Text('Register'),
+                        : Text(AppLocalizations.of(context).register),
                   ),
                 ),
               ],
@@ -140,21 +147,23 @@ class RegisterPageState extends ConsumerState<RegisterPage> {
             .saveUserToken(newUserLoggedIn.toSuccess().body.token);
         ref.read(settingsRepositoryProvider).saveServer(_server!);
       } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Registration failed!')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context).registrationFailed),
+          ),
+        );
       }
     } catch (ex) {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
           title: Text(
-            'Registration failed! Please check your server url and credentials. $ex',
+            AppLocalizations.of(context).registrationFailedLong(ex.toString()),
           ),
           actions: <Widget>[
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Close'),
+              child: Text(AppLocalizations.of(context).close),
             ),
           ],
         ),

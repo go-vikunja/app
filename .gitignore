@@ -86,6 +86,11 @@ ios/Runner.app.dSYM.zip
 # Web related
 lib/generated_plugin_registrant.dart
 
+# Generated localization (Flutter gen-l10n)
+# All generated localization code is placed under this directory via l10n.yaml (output-dir)
+lib/l10n/gen/
+lib/l10n/untranslated_messages.json
+
 # Symbolication related
 app.*.symbols
 

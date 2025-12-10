@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/core/di/notification_provider.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
@@ -22,6 +23,7 @@ class TaskListPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     var pageModel = ref.watch(taskPageControllerProvider);
 
     //TODO find a better place for that
@@ -43,11 +45,7 @@ class TaskListPage extends ConsumerWidget {
             onPressed: () {
               if (model.defaultProjectId == 0) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      'Please select a default project in the settings',
-                    ),
-                  ),
+                  SnackBar(content: Text(l10n.selectDefaultProject)),
                 );
               } else {
                 _addItemDialog(ref, context, model.defaultProjectId);
@@ -64,7 +62,7 @@ class TaskListPage extends ConsumerWidget {
 
   Widget _buildList(WidgetRef ref, BuildContext context, TaskPageModel model) {
     if (model.tasks.isEmpty) {
-      return EmptyView(Icons.list, "No tasks");
+      return EmptyView(Icons.list, AppLocalizations.of(context).noTasks);
     } else {
       return ListView(
         children: ListTile.divideTiles(
@@ -90,7 +88,9 @@ class TaskListPage extends ConsumerWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      Text("Only show tasks with due date"),
+                      Text(
+                        AppLocalizations.of(context).onlyShowTasksWithDueDate,
+                      ),
                       Checkbox(
                         value: onlyDueDate,
                         onChanged: (bool? value) {
@@ -124,14 +124,13 @@ class TaskListPage extends ConsumerWidget {
       context: context,
       builder: (_) => AddTaskDialog(
         onAddTask: (title, dueDate) =>
-            _addTask(ref, context, title, dueDate, defaultProjectId),
+            _addTask(ref, title, dueDate, defaultProjectId),
       ),
     );
   }
 
   Future<void> _addTask(
     WidgetRef ref,
-    BuildContext context,
     String title,
     DateTime? dueDate,
     int defaultProjectId,
@@ -153,13 +152,15 @@ class TaskListPage extends ConsumerWidget {
         .addTask(defaultProjectId, task);
 
     if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('The task was added successfully!')),
+      ScaffoldMessenger.of(ref.context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(ref.context).taskAddedSuccess),
+        ),
       );
     } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error adding the task!')));
+      ScaffoldMessenger.of(ref.context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(ref.context).taskAddError)),
+      );
     }
   }
 
@@ -183,7 +184,11 @@ class TaskListPage extends ConsumerWidget {
                   .markAsDone(task);
               if (!success) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Error marking task as done')),
+                  SnackBar(
+                    content: Text(
+                      AppLocalizations.of(context).taskMarkDoneError,
+                    ),
+                  ),
                 );
               }
             },
@@ -208,7 +213,7 @@ class TaskListPage extends ConsumerWidget {
   }
 
   void _onEdit(BuildContext context, Task task) {
-    Navigator.push<Task>(
+    Navigator.push<Task?>(
       context,
       MaterialPageRoute(builder: (buildContext) => TaskEditPage(task: task)),
     );

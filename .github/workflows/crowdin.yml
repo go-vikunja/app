@@ -1,0 +1,95 @@
+name: Crowdin Sync
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+
+jobs:
+  synchronize-with-crowdin:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+        with:
+          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          persist-credentials: true
+      - name: push source files
+        uses: crowdin/github-action@60debf382ee245b21794321190ad0501db89d8c1 # v2
+        with:
+          command: 'push'
+        env:
+          CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
+          CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
+      - name: pull translations
+        uses: crowdin/github-action@60debf382ee245b21794321190ad0501db89d8c1 # v2
+        with:
+          command: 'download'
+          command_args: '--export-only-approved --skip-untranslated-strings'
+        env:
+          CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
+          CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
+      - name: Fix locale files for Flutter
+        run: |
+          cd lib/l10n
+
+          # Remove @@locale from all ARB files (Flutter infers from filename)
+          for file in *.arb; do
+            sed -i '/^[[:space:]]*"@@locale":/d' "$file"
+          done
+
+          # Remove redundant country-specific files where base locale exists
+          # Keep meaningful dialects: pt_BR, pt_PT, zh_CN, zh_TW
+          for file in app_*_*.arb; do
+            [ -f "$file" ] || continue
+
+            # Extract base and country (e.g., ar_SA -> ar, SA)
+            base=$(echo "$file" | sed -E 's/app_([a-z]+)_.*\.arb/\1/')
+            country=$(echo "$file" | sed -E 's/app_[a-z]+_(.*)\.arb/\1/')
+            basefile="app_${base}.arb"
+
+            # Skip meaningful dialect variants
+            case "${base}_${country}" in
+              pt_BR|pt_PT|zh_CN|zh_TW) continue ;;
+            esac
+
+            # If base file exists, remove redundant country-specific file
+            if [ -f "$basefile" ]; then
+              rm "$file"
+            else
+              # No base file - rename this to be the base
+              mv "$file" "$basefile"
+            fi
+          done
+
+          # Ensure base fallback files exist for dialect variants
+          for dialect in pt_BR pt_PT; do
+            if [ -f "app_${dialect}.arb" ] && [ ! -f "app_${dialect%_*}.arb" ]; then
+              echo '{}' > "app_${dialect%_*}.arb"
+            fi
+          done
+          for dialect in zh_CN zh_TW; do
+            if [ -f "app_${dialect}.arb" ] && [ ! -f "app_zh.arb" ]; then
+              echo '{}' > "app_zh.arb"
+            fi
+          done
+      - name: Check for changes
+        id: check_changes
+        run: |
+          if git diff --quiet && [ -z "$(git ls-files --others --exclude-standard)" ]; then
+            echo "changes_exist=0" >> "$GITHUB_OUTPUT"
+          else
+            echo "changes_exist=1" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Commit files
+        if: steps.check_changes.outputs.changes_exist != '0'
+        run: |
+          git config --local user.email "bot@vikunja.io"
+          git config --local user.name "Frederick [Bot]"
+          git add lib/l10n
+          git commit -m "chore(i18n): update translations via Crowdin"
+      - name: Push changes
+        if: steps.check_changes.outputs.changes_exist != '0'
+        uses: ad-m/github-push-action@master
+        with:
+          ssh: true
+          branch: ${{ github.ref }}

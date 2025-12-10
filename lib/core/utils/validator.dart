@@ -15,3 +15,10 @@ bool isUrl(String? url) {
   if (url == null) return false;
   return _url.hasMatch(url);
 }
+
+bool isURLValid(String? url) {
+  if (url == null || url.isEmpty) return true;
+  final trimmed = url.trim();
+  if (isUrl(trimmed) || isUrl('https://$trimmed')) return true;
+  return false;
+}

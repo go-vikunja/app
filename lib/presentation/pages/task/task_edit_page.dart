@@ -6,6 +6,7 @@ import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
+import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/core/utils/priority.dart';
@@ -95,7 +96,7 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
 
   AppBar _buildAppBar() {
     return AppBar(
-      title: Text('Edit Task'),
+      title: Text(AppLocalizations.of(context).editTaskTitle),
       actions: [
         IconButton(
           icon: Icon(Icons.delete),
@@ -115,7 +116,11 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
                       Navigator.of(context).pop();
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Error deleting the task!')),
+                        SnackBar(
+                          content: Text(
+                            AppLocalizations.of(context).taskDeleteError,
+                          ),
+                        ),
                       );
                     }
                   },
@@ -135,12 +140,7 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
     return Form(
       key: _formKey,
       child: ListView(
-        padding: EdgeInsets.fromLTRB(
-          16,
-          16,
-          16,
-          MediaQuery.of(context).size.height / 2,
-        ),
+        padding: EdgeInsets.fromLTRB(16, 16, 16, 16),
         children: <Widget>[
           _buildTitle(),
           _buildDescription(context),
@@ -162,7 +162,7 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
 
   Widget _buildTitle() {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 10.0),
+      padding: EdgeInsets.symmetric(vertical: 8.0),
       child: TextFormField(
         maxLines: null,
         keyboardType: TextInputType.multiline,
@@ -172,7 +172,7 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
           _checkChanged();
         },
         decoration: InputDecoration(
-          labelText: 'Title',
+          labelText: AppLocalizations.of(context).title,
           border: OutlineInputBorder(),
         ),
       ),
@@ -181,8 +181,8 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
 
   Widget _buildDescription(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 10.0),
-      child: GestureDetector(
+      padding: EdgeInsets.symmetric(vertical: 8.0),
+      child: InkWell(
         onTap: () async {
           var description = await Navigator.push(
             context,
@@ -199,14 +199,30 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
           });
         },
         child: Row(
+          mainAxisSize: MainAxisSize.max,
           children: [
-            Padding(
-              padding: EdgeInsets.only(right: 15, left: 2),
-              child: Icon(Icons.description, color: Colors.grey),
-            ),
-            Flexible(
-              child: HtmlWidget(
-                _description != null ? _description! : "No description",
+            Icon(Icons.description_outlined),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(left: 16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      AppLocalizations.of(context).description,
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: Theme.of(context).hintColor,
+                        fontWeight: FontWeight.normal,
+                      ),
+                    ),
+                    HtmlWidget(
+                      _description != null && _description?.isNotEmpty == true
+                          ? _description!
+                          : AppLocalizations.of(context).noDescription,
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -217,10 +233,10 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
 
   Widget _buildDueDate() {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 10.0),
+      padding: EdgeInsets.symmetric(vertical: 8.0),
       child: VikunjaDateTimeField(
         icon: Icon(Icons.access_time),
-        label: 'Due Date',
+        label: AppLocalizations.of(context).dueDateLabel,
         initialValue: widget.task.dueDate,
         onChanged: (duedate) {
           _dueDate = duedate;
@@ -232,9 +248,9 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
 
   Widget _buildStartDate() {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 10.0),
+      padding: EdgeInsets.symmetric(vertical: 8.0),
       child: VikunjaDateTimeField(
-        label: 'Start Date',
+        label: AppLocalizations.of(context).startDateLabel,
         initialValue: widget.task.startDate,
         onChanged: (startDate) {
           _startDate = startDate;
@@ -246,9 +262,9 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
 
   Widget _buildEndDate() {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 10.0),
+      padding: EdgeInsets.symmetric(vertical: 8.0),
       child: VikunjaDateTimeField(
-        label: 'End Date',
+        label: AppLocalizations.of(context).endDateLabel,
         initialValue: widget.task.endDate,
         onChanged: (endDate) {
           _endDate = endDate;
@@ -260,7 +276,7 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
 
   Widget _buildRepeatAfter() {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 10.0),
+      padding: EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         children: [
           Flexible(
@@ -275,7 +291,7 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
                 _checkChanged();
               },
               decoration: InputDecoration(
-                labelText: 'Repeat after',
+                labelText: AppLocalizations.of(context).repeatAfter,
                 border: InputBorder.none,
                 icon: Icon(Icons.repeat),
                 contentPadding: EdgeInsets.fromLTRB(0, 0, 0, 0),
@@ -315,12 +331,12 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
 
   Widget _buildReminderList() {
     return Padding(
-      padding: EdgeInsets.only(top: 15.0),
+      padding: EdgeInsets.only(top: 8.0),
       child: Column(
         children:
             _reminderDates?.map((e) {
               return VikunjaDateTimeField(
-                label: "Reminder",
+                label: AppLocalizations.of(context).reminder,
                 initialValue: e.reminder,
                 onChanged: (date) {
                   if (date != null) {
@@ -338,16 +354,16 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
 
   Widget _buildAddReminderButton(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 15),
+      padding: const EdgeInsets.only(bottom: 16),
       child: GestureDetector(
         child: Row(
           children: <Widget>[
             Padding(
-              padding: EdgeInsets.only(right: 15, left: 2),
+              padding: EdgeInsets.only(right: 16),
               child: Icon(Icons.alarm_add, color: Colors.grey),
             ),
             Text(
-              'Add a reminder',
+              AppLocalizations.of(context).addReminder,
               style: TextStyle(color: Colors.grey, fontSize: 16),
             ),
           ],
@@ -361,26 +377,32 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
     return DropdownButtonFormField<String>(
       decoration: InputDecoration(
         icon: const Icon(Icons.flag),
-        labelText: 'Priority',
+        labelText: AppLocalizations.of(context).priority,
         border: InputBorder.none,
       ),
-      initialValue: priorityToString(_priority),
+      initialValue: priorityToString(AppLocalizations.of(context), _priority),
       isExpanded: true,
       onChanged: (String? newValue) {
-        _priority = priorityFromString(newValue);
+        _priority = priorityFromString(AppLocalizations.of(context), newValue);
         _checkChanged();
       },
-      items: ['Unset', 'Low', 'Medium', 'High', 'Urgent', 'DO NOW'].map((
-        String value,
-      ) {
-        return DropdownMenuItem(value: value, child: Text(value));
-      }).toList(),
+      items:
+          [
+            AppLocalizations.of(context).priorityUnset,
+            AppLocalizations.of(context).priorityLow,
+            AppLocalizations.of(context).priorityMedium,
+            AppLocalizations.of(context).priorityHigh,
+            AppLocalizations.of(context).priorityUrgent,
+            AppLocalizations.of(context).priorityDoNow,
+          ].map((String value) {
+            return DropdownMenuItem(value: value, child: Text(value));
+          }).toList(),
     );
   }
 
   Widget _buildAddLabel(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: 10.0, bottom: 10),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: <Widget>[
           Padding(
@@ -401,7 +423,7 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
                   controller: _labelTypeAheadController,
                   focusNode: focusnode,
                   decoration: InputDecoration(
-                    labelText: 'Add a new label',
+                    labelText: AppLocalizations.of(context).addNewLabel,
                     border: InputBorder.none,
                   ),
                 );
@@ -425,7 +447,7 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
 
   Widget _buildColor() {
     return Padding(
-      padding: const EdgeInsets.only(top: 15),
+      padding: const EdgeInsets.only(top: 8),
       child: Row(
         children: <Widget>[
           Padding(
@@ -442,7 +464,7 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
                   ),
             onPressed: _onColorEdit,
             child: Text(
-              'Set Color',
+              AppLocalizations.of(context).setColor,
               style: (_color == null || _color == Colors.black)
                   ? null
                   : TextStyle(
@@ -460,7 +482,9 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
                   : _color;
 
               return Text(
-                color != null ? "#${color.toHexString()}" : "None",
+                color != null
+                    ? "#${color.toHexString()}"
+                    : AppLocalizations.of(context).none,
                 style: TextStyle(
                   color: Colors.grey,
                   fontStyle: FontStyle.italic,
@@ -714,9 +738,9 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
           .update(updatedTask, _labels!);
 
       if (!updateLabelSuccess.isSuccessful) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error saving the task!')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.of(context).taskSaveError)),
+        );
         return;
       }
     }
@@ -728,12 +752,14 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
       Navigator.of(context).pop(updatedTask);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('The task was updated successfully!')),
+        SnackBar(
+          content: Text(AppLocalizations.of(context).taskUpdatedSuccess),
+        ),
       );
     } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error saving the task!')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context).taskSaveError)),
+      );
     }
   }
 }
