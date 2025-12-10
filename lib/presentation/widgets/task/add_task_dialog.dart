@@ -41,6 +41,8 @@ class AddTaskDialogState extends State<AddTaskDialog> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TextField(
+            keyboardType: TextInputType.multiline,
+            maxLines: null,
             autofocus: true,
             decoration: InputDecoration(
               labelText: AppLocalizations.of(context).newTaskName,
