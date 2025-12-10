@@ -4,7 +4,6 @@ import 'package:vikunja_app/core/utils/constants.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/domain/entities/label.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
-import 'package:vikunja_app/presentation/pages/task/task_edit_page.dart';
 import 'package:vikunja_app/presentation/widgets/label_widget.dart';
 
 class TaskBottomSheet extends StatefulWidget {
@@ -12,7 +11,6 @@ class TaskBottomSheet extends StatefulWidget {
   final bool showInfo;
   final bool loading;
   final Function onEdit;
-  final ValueSetter<bool>? onMarkedAsDone;
 
   const TaskBottomSheet({
     super.key,
@@ -20,7 +18,6 @@ class TaskBottomSheet extends StatefulWidget {
     required this.onEdit,
     this.loading = false,
     this.showInfo = false,
-    this.onMarkedAsDone,
   });
 
   @override
@@ -67,30 +64,22 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Row(
-                // Title and edit button
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   SizedBox(
                     width: MediaQuery.of(context).size.width * 0.7,
                     child: Text(
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       _currentTask.title,
-                      style: theme.textTheme.headlineLarge,
+                      style: theme.textTheme.headlineMedium,
                     ),
                   ),
                   IconButton(
                     onPressed: () {
-                      Navigator.push<Task>(
-                        context,
-                        MaterialPageRoute(
-                          builder: (buildContext) =>
-                              TaskEditPage(task: _currentTask),
-                        ),
-                      ).then(
-                        (task) => setState(() {
-                          if (task != null) _currentTask = task;
-                        }),
-                      );
+                      Navigator.of(context).pop();
+                      widget.onEdit();
                     },
                     icon: Icon(Icons.edit),
                   ),
@@ -107,7 +96,7 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
               // description with html rendering
               Text(
                 AppLocalizations.of(context).description,
-                style: theme.textTheme.headlineSmall,
+                style: theme.textTheme.titleLarge,
               ),
               SizedBox(height: propertyPadding),
               Padding(
