@@ -64,15 +64,16 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Row(
-                // Title and edit button
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   SizedBox(
                     width: MediaQuery.of(context).size.width * 0.7,
                     child: Text(
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       _currentTask.title,
-                      style: theme.textTheme.headlineLarge,
+                      style: theme.textTheme.headlineMedium,
                     ),
                   ),
                   IconButton(
@@ -95,7 +96,7 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
               // description with html rendering
               Text(
                 AppLocalizations.of(context).description,
-                style: theme.textTheme.headlineSmall,
+                style: theme.textTheme.titleLarge,
               ),
               SizedBox(height: propertyPadding),
               Padding(
