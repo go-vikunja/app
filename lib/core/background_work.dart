@@ -18,7 +18,11 @@ import 'package:workmanager/workmanager.dart';
 Future<void> widgetCallback(Uri? uri) async {
   if (uri?.host == "completetask") {
     String? taskID = uri?.queryParameters['taskID'];
-    completeTask(taskID!);
+    if (taskID != null) {
+      completeTask(taskID);
+    } else {
+      developer.log("No TaskID provided for widget");
+    }
   }
 }
 
