@@ -48,7 +48,7 @@ class AppWidget : GlanceAppWidget() {
         }
     }
 
-    // This function cannot be composable otherwise it wont run sometimes when shared prefs isnt changed
+    // This function cannot be composable otherwise it wont run sometimes when shared prefs isn't changed
     private fun getTasks(prefs: SharedPreferences) {
         // These need to be cleared in case this gets run multiple times
         todayTasks.clear()
@@ -56,7 +56,7 @@ class AppWidget : GlanceAppWidget() {
         val gson = Gson()
         val taskIDChars = prefs.getString("WidgetTaskIDs", null)
 
-        var taskIDs: List<String>  = emptyList()
+        var taskIDs: List<String> = emptyList()
 
         if (taskIDChars != null) {
             val noBrackets = taskIDChars.substring(1, taskIDChars.length - 1)
@@ -102,21 +102,28 @@ class AppWidget : GlanceAppWidget() {
             WidgetTitleBar()
             if (todayTasks.isNotEmpty() or otherTasks.isNotEmpty()) {
                 LazyColumn(modifier = GlanceModifier.background(Color.White)) {
-                    item{
-                        Text("Today:")
+                    if (todayTasks.isNotEmpty()) {
+                        item {
+                            Text("Today:")
+                        }
+                        items(todayTasks.sortedBy { it.dueDate }) { task ->
+                            RenderRow(context, task, prefs, "HH:mm")
+                        }
                     }
-                    items(todayTasks.sortedBy { it.dueDate }) { task ->
-                        RenderRow(context, task, prefs, "HH:mm")
-                    }
-                    item{
-                        Text("Overdue:")
-                    }
-                    items(otherTasks.sortedBy { it.dueDate }) { task ->
-                        RenderRow(context, task, prefs, "dd MMM HH:mm")
+                    if (otherTasks.isNotEmpty()) {
+                        item {
+                            Text("Overdue:")
+                        }
+                        items(otherTasks.sortedBy { it.dueDate }) { task ->
+                            RenderRow(context, task, prefs, "dd MMM HH:mm")
+                        }
                     }
                 }
             } else {
-                Box(modifier = GlanceModifier.fillMaxSize().background(Color.White),  contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = GlanceModifier.fillMaxSize().background(Color.White),
+                    contentAlignment = Alignment.Center
+                ) {
                     Text(
                         text = "There are no tasks due today"
                     )
@@ -129,7 +136,8 @@ class AppWidget : GlanceAppWidget() {
     @Composable
     private fun WidgetTitleBar() {
         Box(
-            modifier = GlanceModifier.fillMaxWidth().height(50.dp).background(ColorProvider(Color(0xFF126cfd))),
+            modifier = GlanceModifier.fillMaxWidth().height(50.dp)
+                .background(ColorProvider(Color(0xFF126cfd))),
             contentAlignment = Alignment.Center,
         ) {
             Text(
@@ -140,18 +148,19 @@ class AppWidget : GlanceAppWidget() {
     }
 
     @Composable
-    private fun RenderRow(context: Context, task: Task, prefs : SharedPreferences, pattern: String) {
+    private fun RenderRow(context: Context, task: Task, prefs: SharedPreferences, pattern: String) {
         Row(modifier = GlanceModifier.fillMaxWidth().padding(8.dp)) {
             CheckBox(
                 checked = false,
-                onCheckedChange = { doneTask(context, prefs, task.id)},
+                onCheckedChange = { doneTask(context, prefs, task.id) },
                 modifier = GlanceModifier.padding(horizontal = 8.dp)
             )
             Box(
                 modifier = GlanceModifier.padding(horizontal = 8.dp)
             ) {
                 Text(
-                    text = task.dueDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime().format(DateTimeFormatter.ofPattern(pattern)), style = TextStyle(
+                    text = task.dueDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime()
+                        .format(DateTimeFormatter.ofPattern(pattern)), style = TextStyle(
                         fontSize = 18.sp
                     )
                 )
