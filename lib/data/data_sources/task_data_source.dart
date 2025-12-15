@@ -70,7 +70,7 @@ class TaskDataSource extends RemoteDataSource {
     };
 
     return await client.get(
-      url: '/tasks/all',
+      url: '/tasks',
       mapper: (body) {
         return convertList(body, (result) => TaskDto.fromJson(result));
       },
