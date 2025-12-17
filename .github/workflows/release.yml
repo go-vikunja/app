@@ -12,6 +12,9 @@ jobs:
     steps:
       - name: Clone repository
         uses: actions/checkout@v4
+      - name: Git describe
+        id: ghd
+        uses: proudust/gh-describe@v2
       - name: Setup Java
         uses: actions/setup-java@v1
         with:
@@ -86,13 +89,17 @@ jobs:
       - run: flutter --version
       - run: flutter pub get
 
-      - name: Update version with build number
+      - name: Update version from git describe
         run: |
-          CURRENT_VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //')
-          NEW_VERSION="${CURRENT_VERSION}+${{ github.run_number }}"
+          # Remove 'v' prefix from describe output (e.g., v1.5.4-2-g4fdf9d0 -> 1.5.4-2-g4fdf9d0)
+          VERSION="${{ steps.ghd.outputs.describe }}"
+          VERSION=${VERSION#v}
+
+          # Add build number for Play Store (must be incrementing integer)
+          NEW_VERSION="${VERSION}+${{ github.run_number }}"
           sed -i "s/^version: .*/version: ${NEW_VERSION}/" pubspec.yaml
 
-          echo "Updated version from ${CURRENT_VERSION} to ${NEW_VERSION}"
+          echo "Updated version to ${NEW_VERSION}"
       - run: flutter build appbundle --flavor production
       - run: flutter build apk --flavor production
 

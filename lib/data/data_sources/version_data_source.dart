@@ -23,7 +23,11 @@ class VersionDataSource {
 
   Future<String> getCurrentVersionTag() async {
     PackageInfo packageInfo = await PackageInfo.fromPlatform();
-    print("current: " + packageInfo.version);
-    return packageInfo.version;
+    String version = packageInfo.version;
+    if (packageInfo.buildNumber.isNotEmpty) {
+      version = '$version+${packageInfo.buildNumber}';
+    }
+    print("current: " + version);
+    return version;
   }
 }
