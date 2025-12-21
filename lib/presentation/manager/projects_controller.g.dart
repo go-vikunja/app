@@ -7,7 +7,7 @@ part of 'projects_controller.dart';
 // **************************************************************************
 
 String _$projectsControllerHash() =>
-    r'd40609b8f71fb8acae57d4759778a4293c17d300';
+    r'ebc40d80bcf2d05af4d2178b20f26eec9f1a0cfe';
 
 /// See also [ProjectsController].
 @ProviderFor(ProjectsController)

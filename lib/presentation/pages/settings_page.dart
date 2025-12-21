@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/core/di/locale_provider.dart';
 import 'package:vikunja_app/core/utils/language_autonyms.dart';
+import 'package:vikunja_app/core/utils/user_extensions.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/core/di/notification_provider.dart';
@@ -253,7 +254,7 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
       children: [
         UserAccountsDrawerHeader(
           accountName: Text(
-            user.name,
+            user.displayName,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
               color: Theme.of(context).colorScheme.onSecondaryContainer,
             ),
