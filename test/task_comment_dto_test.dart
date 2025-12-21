@@ -32,28 +32,6 @@ void main() {
       expect(comment.updated, DateTime.utc(2024, 2, 1, 9, 5, 0));
     });
 
-    test('parses comment with missing optional id', () {
-      final json = '''
-        {
-          "comment": "New comment without id",
-          "author": {
-            "id": 1,
-            "username": "testuser",
-            "name": "Test User",
-            "created": "2024-01-15T10:30:00Z",
-            "updated": "2024-01-16T14:20:00Z"
-          },
-          "created": "2024-02-01T09:00:00Z",
-          "updated": "2024-02-01T09:05:00Z"
-        }
-      ''';
-
-      final comment = TaskCommentDto.fromJson(jsonDecode(json));
-
-      expect(comment.id, 0);
-      expect(comment.comment, 'New comment without id');
-    });
-
     test('parses comment with empty comment text', () {
       final json = '''
         {

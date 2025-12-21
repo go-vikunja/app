@@ -19,7 +19,7 @@ class TaskCommentDto extends Dto<TaskComment> {
        updated = updated ?? DateTime.now();
 
   TaskCommentDto.fromJson(Map<String, dynamic> json)
-    : id = json['id'] ?? 0,
+    : id = json['id'] as int,
       comment = json['comment'] ?? '',
       author = UserDto.fromJson(json['author']),
       created = DateTime.parse(json['created']),
