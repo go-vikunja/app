@@ -10,20 +10,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
-      - name: Upload sources to Crowdin
+      - name: Crowdin sync
         uses: crowdin/github-action@60debf382ee245b21794321190ad0501db89d8c1 # v2
         with:
           upload_sources: true
-          upload_translations: false
-          download_translations: false
-        env:
-          CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
-          CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
-      - name: Download translations from Crowdin
-        uses: crowdin/github-action@60debf382ee245b21794321190ad0501db89d8c1 # v2
-        with:
-          upload_sources: false
-          upload_translations: false
           download_translations: true
           push_translations: false
           export_only_approved: true
@@ -75,12 +65,9 @@ jobs:
               echo '{}' > "app_zh.arb"
             fi
           done
-      - name: Create Pull Request with translations
+      - name: Create Pull Request
         uses: crowdin/github-action@60debf382ee245b21794321190ad0501db89d8c1 # v2
         with:
-          upload_sources: false
-          upload_translations: false
-          download_translations: false
           push_translations: true
           create_pull_request: true
           localization_branch_name: crowdin-sync
