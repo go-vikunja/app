@@ -46,6 +46,15 @@ class TaskDataSource extends RemoteDataSource {
     );
   }
 
+  Future<Response<TaskDto>> getTask(int taskId) async {
+    return await client.get(
+      url: '/tasks/${taskId}',
+      mapper: (body) {
+        return TaskDto.fromJson(body);
+      },
+    );
+  }
+
   Future<Response<List<TaskDto>>> getAllByProjectView(
     int projectId,
     int view, [

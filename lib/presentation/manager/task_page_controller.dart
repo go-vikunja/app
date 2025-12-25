@@ -4,6 +4,8 @@ import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/entities/task_page_model.dart';
+import 'package:vikunja_app/presentation/manager/widget_controller.dart';
+import 'package:vikunja_app/presentation/manager/projects_controller.dart';
 
 part 'task_page_controller.g.dart';
 
@@ -36,7 +38,7 @@ class TaskPageController extends _$TaskPageController {
             tasks.project = projectsMap[tasks.projectId];
           }
         }
-
+        updateWidget();
         return TaskPageModel(tasks, showOnlyDueDateTasks, defaultProjectId);
       case ErrorResponse<List<Task>>():
         throw AsyncError(tasksResponse.error, StackTrace.current);
@@ -79,6 +81,8 @@ class TaskPageController extends _$TaskPageController {
             defaultProjectId,
           ),
         );
+
+        updateWidget();
       case ErrorResponse<List<Task>>():
         state = AsyncError(tasksResponse.error, StackTrace.current);
       case ExceptionResponse<List<Task>>():
@@ -93,7 +97,6 @@ class TaskPageController extends _$TaskPageController {
     if (user != null) {
       Map<String, dynamic>? frontendSettings = user.settings?.frontend_settings;
       int? filterId = frontendSettings?["filter_id_used_on_overview"];
-
       if (filterId != null && filterId != 0) {
         var tasksResponse = await ref
             .read(taskRepositoryProvider)
