@@ -1,0 +1,3 @@
+#include "Generated.xcconfig"
+PRODUCT_BUNDLE_IDENTIFIER=io.vikunja.flutteringVikunja
+APP_DISPLAY_NAME=Vikunja

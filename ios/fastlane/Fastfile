@@ -21,9 +21,9 @@ platform :ios do
     setup_ci if ENV['CI']
     match(type: "appstore", readonly: true)
     build_app(
-      scheme: "Runner",
+      scheme: "production",
       export_method: "app-store",
-      archive_path: "./build/ios/archive/Runner.xcarchive",
+      archive_path: "./build/ios/archive/production.xcarchive",
       output_directory: "./build/ios/ipa/"
     )
   end
@@ -33,9 +33,9 @@ platform :ios do
     setup_ci if ENV['CI']
     match(type: "appstore", readonly: true)
     build_app(
-      scheme: "Runner",
+      scheme: "production",
       export_method: "app-store",
-      archive_path: "./build/ios/archive/Runner.xcarchive",
+      archive_path: "./build/ios/archive/production.xcarchive",
       output_directory: "./build/ios/ipa/"
     )
     upload_to_testflight(
@@ -63,9 +63,9 @@ platform :ios do
     setup_ci if ENV['CI']
     match(type: "appstore", readonly: true)
     build_app(
-      scheme: "Runner",
+      scheme: "production",
       export_method: "app-store",
-      archive_path: "./build/ios/archive/Runner.xcarchive",
+      archive_path: "./build/ios/archive/production.xcarchive",
       output_directory: "./build/ios/ipa/"
     )
     upload_to_app_store(

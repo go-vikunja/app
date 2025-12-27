@@ -16,19 +16,23 @@ build-all: build-release build-debug build-profile
 
 .PHONY: build-release
 build-release:
-	$(FLUTTER) build apk --release --build-number=$(VERSION) --flavor main
+	$(FLUTTER) build apk --release --build-number=$(VERSION) --flavor production
 
 .PHONY: build-debug
 build-debug:
-	$(FLUTTER) build apk --debug --build-number=$(VERSION) --flavor unsigned
+	$(FLUTTER) build apk --debug --build-number=$(VERSION) --flavor dev
 
 .PHONY: build-profile
 build-profile:
-	$(FLUTTER) build apk --profile --build-number=$(VERSION) --flavor unsigned
+	$(FLUTTER) build apk --profile --build-number=$(VERSION) --flavor dev
 
 .PHONY: build-ios
 build-ios:
-	$(FLUTTER) build ios --release --build-number=$(VERSION) --no-codesign
+	$(FLUTTER) build ios --release --build-number=$(VERSION) --no-codesign --flavor production
+
+.PHONY: build-ios-dev
+build-ios-dev:
+	$(FLUTTER) build ios --release --build-number=$(VERSION) --no-codesign --flavor dev
 
 .PHONY: format
 format:
