@@ -100,8 +100,8 @@ jobs:
           sed -i "s/^version: .*/version: ${NEW_VERSION}/" pubspec.yaml
 
           echo "Updated version to ${NEW_VERSION}"
-      - run: flutter build appbundle --flavor production
-      - run: flutter build apk --flavor production
+      - run: flutter build appbundle
+      - run: flutter build apk
 
       - name: Copy and rename artifacts for S3
         run: |
@@ -113,9 +113,9 @@ jobs:
             FILENAME="vikunja-unstable"
           fi
           mkdir -p build/s3
-          cp build/app/outputs/flutter-apk/app-production-release.apk \
+          cp build/app/outputs/flutter-apk/app-release.apk \
              build/s3/${FILENAME}.apk
-          cp build/app/outputs/bundle/productionRelease/app-production-release.aab \
+          cp build/app/outputs/bundle/release/app-release.aab \
              build/s3/${FILENAME}.aab
 
       - name: Upload artifacts to S3
