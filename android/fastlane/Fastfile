@@ -20,8 +20,7 @@ platform :android do
   lane :build do
     gradle(
       task: 'clean assemble bundle',
-      build_type: 'Release',
-      flavor: 'production'
+      build_type: 'Release'
     )
   end
 
@@ -29,7 +28,7 @@ platform :android do
   lane :beta do
     upload_to_play_store(
       track: 'beta',
-      aab: '../build/app/outputs/bundle/productionRelease/app-production-release.aab',
+      aab: '../build/app/outputs/bundle/release/app-release.aab',
       skip_upload_apk: true,
       skip_upload_metadata: true,
       skip_upload_screenshots: true,
@@ -41,7 +40,7 @@ platform :android do
   lane :production_appbundle do
     upload_to_play_store(
       track: 'production',
-      aab: '../build/app/outputs/bundle/productionRelease/app-production-release.aab',
+      aab: '../build/app/outputs/bundle/release/app-release.aab',
       skip_upload_apk: true,
       skip_upload_metadata: true,
       skip_upload_screenshots: true,
