@@ -13,7 +13,7 @@ Vikunja helps you organize tasks, collaborate with teams, and view projects in m
 
 ## Disclaimer
 
-This app is in alpha pre-release. You must absolutely expect things to not work, and sometimes even break something in the backend. Using this app on important production backends is possible but discouraged. However, as we rely on your feedback about missing features and bugs, we do encourage you to try it out and give us feedback here on GitHub. This app requires the latest **unstable** build of the cloud version (see [here](https://vikunja.io/docs/versions/)) to run in the background. We are not responsible for lost data and similar destruction.
+This app is in alpha pre-release. You must absolutely expect things to not work, and sometimes even break something in the backend. Using this app on important production backends is possible but discouraged. However, as we rely on your feedback about missing features and bugs, we do encourage you to try it out and give us feedback here on GitHub. This app requires the latest **unstable** build of Vikunja (see [here](https://vikunja.io/docs/versions/)) to run. We are not responsible for lost data and similar destruction.
 
 If you have anything to contribute, please open a PR. It is encouraged to let us know before you start developing, so we can discuss possible overlap with features other people might already be working on. This avoids unnecessary waste of time for either party.
 
