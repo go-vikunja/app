@@ -11,7 +11,7 @@ class WidgetTask {
     this.today = false,
   });
 
-  toJSON() => {
+  Map<String, Object?> toJSON() => {
     'id': id,
     'title': title,
     'dueDate': dueDate?.toUtc().toIso8601String(),

@@ -64,28 +64,22 @@ class AppWidget : GlanceAppWidget() {
         todayTasks.clear()
         otherTasks.clear()
         val gson = Gson()
-        val taskIDChars = prefs.getString("WidgetTaskIDs", null)
+        val tasksJson = prefs.getString("WidgetTasks", null)
 
-        var taskIDs: List<String> = emptyList()
+        if (tasksJson != null) {
+            val tasks = gson.fromJson(tasksJson, Array<Task>::class.java)
 
-        if (taskIDChars != null) {
-            val noBrackets = taskIDChars.substring(1, taskIDChars.length - 1)
-            taskIDs = noBrackets.split(",")
-
-        } else {
-            Log.d("Widget", "There was a problem getting the widget ids")
-        }
-        // For some reason if there are no tasks an array will get created with 1 empty/null entry.
-        if (taskIDs.isNotEmpty() && taskIDs[0].isNotEmpty()) {
-            for (taskId in taskIDs) {
-                val taskJSON = prefs.getString(taskId.trim(), null)
-                val task = gson.fromJson(taskJSON, Task::class.java)
-                if (task.today) {
-                    todayTasks.add(task)
-                } else {
-                    otherTasks.add(task)
+            if (tasks.isNotEmpty()) {
+                for (task in tasks) {
+                    if (task.today) {
+                        todayTasks.add(task)
+                    } else {
+                        otherTasks.add(task)
+                    }
                 }
             }
+        } else {
+            Log.d("Widget", "There was a problem getting the widget ids")
         }
     }
 
@@ -98,8 +92,7 @@ class AppWidget : GlanceAppWidget() {
         val uri = "vikunja-app://completeTask".toUri()
         val taskURI = uri.buildUpon().appendQueryParameter("taskID", taskID).build()
         val backgroundIntent = HomeWidgetBackgroundIntent.getBroadcast(
-            context,
-            taskURI
+            context, taskURI
         )
         backgroundIntent.send()
     }
@@ -118,8 +111,7 @@ class AppWidget : GlanceAppWidget() {
                 LazyColumn(
                     modifier = GlanceModifier.background(
                         ColorProvider(
-                            Color.White,
-                            Color(0xFF1f2937)
+                            Color.White, Color(0xFF1f2937)
                         )
                     ).padding(8.dp)
                 ) {
@@ -166,10 +158,7 @@ class AppWidget : GlanceAppWidget() {
 
     @Composable
     private fun RenderRow(
-        context: Context,
-        task: Task,
-        prefs: SharedPreferences,
-        showDate: Boolean = false
+        context: Context, task: Task, prefs: SharedPreferences, showDate: Boolean = false
     ) {
         Row(
             modifier = GlanceModifier.fillMaxWidth().padding(8.dp)
@@ -186,8 +175,7 @@ class AppWidget : GlanceAppWidget() {
             ) {
                 Text(
                     text = formatDueDate(task.dueDate, showDate), style = TextStyle(
-                        fontSize = 18.sp,
-                        color = ColorProvider(Color.Black, Color.White)
+                        fontSize = 18.sp, color = ColorProvider(Color.Black, Color.White)
                     )
                 )
             }
@@ -196,10 +184,8 @@ class AppWidget : GlanceAppWidget() {
             ) {
                 Text(
                     text = task.title, style = TextStyle(
-                        fontSize = 18.sp,
-                        color = ColorProvider(Color.Black, Color.White)
-                    ),
-                    maxLines = 1
+                        fontSize = 18.sp, color = ColorProvider(Color.Black, Color.White)
+                    ), maxLines = 1
                 )
             }
         }
@@ -214,9 +200,7 @@ class AppWidget : GlanceAppWidget() {
             )
         } else {
             return dueDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime().format(
-                DateTimeFormatter
-                    .ofLocalizedTime(FormatStyle.SHORT)
-                    .withLocale(Locale.getDefault())
+                DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(Locale.getDefault())
             )
         }
     }
@@ -229,11 +213,9 @@ class AppWidget : GlanceAppWidget() {
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                text = "There are no tasks due today",
-                style = TextStyle(
+                text = "There are no tasks due today", style = TextStyle(
                     fontSize = 16.sp, color = ColorProvider(
-                        Color.Black,
-                        Color.White
+                        Color.Black, Color.White
                     )
                 )
             )

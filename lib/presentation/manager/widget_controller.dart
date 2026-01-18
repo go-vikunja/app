@@ -94,17 +94,8 @@ Future<void> updateWidget() async {
 }
 
 void updateWidgetTasks(List<Task> tasklist) async {
-  var widgetTaskIDs = [];
-
-  for (var task in tasklist) {
-    widgetTaskIDs.add(task.id);
-    var wgTask = convertTask(task);
-    await HomeWidget.saveWidgetData(
-      task.id.toString(),
-      jsonEncode(wgTask.toJSON()),
-    );
-  }
-  HomeWidget.saveWidgetData("WidgetTaskIDs", widgetTaskIDs.toString());
+  var data = jsonEncode(tasklist.map((e) => convertTask(e).toJSON()).toList());
+  HomeWidget.saveWidgetData("WidgetTasks", data);
   reRenderWidget();
 }
 
