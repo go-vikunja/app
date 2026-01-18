@@ -207,5 +207,25 @@ final versionRepositoryProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef VersionRepositoryRef = AutoDisposeProviderRef<VersionRepository>;
+String _$taskCommentRepositoryHash() =>
+    r'7160d2803bbee1f5f1af9dadc5f74e0834f597ac';
+
+/// See also [taskCommentRepository].
+@ProviderFor(taskCommentRepository)
+final taskCommentRepositoryProvider =
+    AutoDisposeProvider<TaskCommentRepository>.internal(
+      taskCommentRepository,
+      name: r'taskCommentRepositoryProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$taskCommentRepositoryHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef TaskCommentRepositoryRef =
+    AutoDisposeProviderRef<TaskCommentRepository>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

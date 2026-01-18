@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 const Map<String, String> kLocaleAutonyms = <String, String>{
   'en': 'English',
+  'it': 'Italiano',
   'pl': 'Polski',
 };
 
