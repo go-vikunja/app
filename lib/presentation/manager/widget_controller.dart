@@ -44,14 +44,12 @@ WidgetTask convertTask(Task task) {
   final today = DateTime(now.year, now.month, now.day);
 
   bool wgToday = task.dueDate!.day == today.day ? true : false;
-  bool overdue = task.dueDate!.isBefore(now) ? true : false;
 
   WidgetTask wgTask = WidgetTask(
     id: task.id.toString(),
     title: task.title,
     dueDate: task.dueDate,
     today: wgToday,
-    overdue: overdue,
   );
   return wgTask;
 }
