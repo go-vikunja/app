@@ -9,7 +9,6 @@ import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/entities/task_page_model.dart';
 import 'package:vikunja_app/presentation/manager/task_page_controller.dart';
-import 'package:vikunja_app/presentation/manager/widget_controller.dart';
 import 'package:vikunja_app/presentation/pages/error_widget.dart';
 import 'package:vikunja_app/presentation/pages/loading_widget.dart';
 import 'package:vikunja_app/presentation/pages/task/task_edit_page.dart';
