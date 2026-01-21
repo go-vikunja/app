@@ -1,6 +1,7 @@
 import 'package:vikunja_app/core/theming/theme_mode.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/user.dart';
+import 'package:vikunja_app/domain/entities/version.dart';
 
 class SettingsPageState {
   User user;
@@ -15,7 +16,7 @@ class SettingsPageState {
   FlutterThemeMode themeMode;
   bool dynamicColors;
 
-  String currentVersion;
+  Version? currentVersion;
 
   SettingsPageState(
     this.user,

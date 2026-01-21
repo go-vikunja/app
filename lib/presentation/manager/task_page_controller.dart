@@ -5,7 +5,6 @@ import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/entities/task_page_model.dart';
 import 'package:vikunja_app/presentation/manager/widget_controller.dart';
-import 'package:vikunja_app/presentation/manager/projects_controller.dart';
 
 part 'task_page_controller.g.dart';
 

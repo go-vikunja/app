@@ -1,4 +1,5 @@
 import 'package:vikunja_app/data/data_sources/version_data_source.dart';
+import 'package:vikunja_app/domain/entities/version.dart';
 import 'package:vikunja_app/domain/repositories/version_repository.dart';
 
 class VersionRepositoryImpl extends VersionRepository {
@@ -7,19 +8,17 @@ class VersionRepositoryImpl extends VersionRepository {
   VersionRepositoryImpl(this._dataSource);
 
   @override
-  Future<String?> getLatestVersionTag() async {
-    return _dataSource.getLatestVersionTag();
+  Future<Version?> getLatestVersionTag() async {
+    var latestVersionTag = await _dataSource.getLatestVersionTag();
+
+    return latestVersionTag != null
+        ? Version.fromString(latestVersionTag)
+        : null;
   }
 
   @override
-  Future<String> getCurrentVersionTag() async {
-    return _dataSource.getCurrentVersionTag();
-  }
-
-  @override
-  Future<bool> isUpToDate() async {
-    String? latest = await getLatestVersionTag();
-    String current = await getCurrentVersionTag();
-    return latest == null || latest == current;
+  Future<Version?> getCurrentVersionTag() async {
+    var currentVersionTag = await _dataSource.getCurrentVersionTag();
+    return Version.fromString(currentVersionTag);
   }
 }
