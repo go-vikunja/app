@@ -213,20 +213,20 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
                   } else {
                     setState(() {
                       this.newestVersion = newestVersion;
-                  });
-                }
-              },
-              child: Text(l10n.checkForLatestVersion),
-            ),
-            Text(
-              settings.currentVersion != null
-                  ? l10n.currentVersionPrefix(
-                      settings.currentVersion.toString(),
-                    )
-                  : l10n.currentVersionUnknown,
-            ),
-            Text(
-              this.newestVersion != null
+                    });
+                  }
+                },
+                child: Text(l10n.checkForLatestVersion),
+              ),
+              Text(
+                settings.currentVersion != null
+                    ? l10n.currentVersionPrefix(
+                        settings.currentVersion.toString(),
+                      )
+                    : l10n.currentVersionUnknown,
+              ),
+              Text(
+                this.newestVersion != null
                     ? l10n.latestVersionPrefix(this.newestVersion.toString())
                     : "",
               ),

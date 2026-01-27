@@ -161,8 +161,7 @@
   "removeLimit": "Remove Limit",
   "projectSection": "Projects",
   "tasksSection": "Tasks",
-  "noTasksOrSubproject": "No tasks or sub project in this project"
-  ,
+  "noTasksOrSubproject": "No tasks or sub project in this project",
   "priorityUnset": "Unset",
   "priorityLow": "Low",
   "priorityMedium": "Medium",
@@ -189,13 +188,22 @@
   "sentryDialogMessage": "Would you like to help us improve Vikunja by sending error reports? Enabling this will send automatic error reports to the developers using Sentry.",
   "language": "Language",
   "systemLanguage": "System Language",
-  "connectionError": "Connection error"
-  ,
+  "connectionError": "Connection error",
   "dueOptionNone": "None",
   "dueOptionToday": "Today",
   "dueOptionTomorrow": "Tomorrow",
   "dueOptionNextMonday": "Next Monday",
   "dueOptionThisWeekend": "This Weekend",
   "dueOptionLaterThisWeek": "Later this week",
-  "dueOptionCustom": "Custom"
+  "dueOptionCustom": "Custom",
+  "versionDialogTitle": "Version mismatch",
+  "versionDialogDescription": "The application version is not compatible with the server version.\nUse at you own risk!",
+  "versionDialogSupported": "Supported server version: {versionString}",
+  "@versionDialogSupported": {
+    "placeholders": { "versionString": { "type": "String" } }
+  },
+  "versionDialogUsed": "Your server version: {versionString}",
+  "@versionDialogUsed": {
+    "placeholders": { "versionString": { "type": "String" } }
+  }
 }
