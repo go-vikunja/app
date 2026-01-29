@@ -21,14 +21,13 @@ class TaskBottomSheet extends StatefulWidget {
   });
 
   @override
-  TaskBottomSheetState createState() => TaskBottomSheetState(task);
+  TaskBottomSheetState createState() => TaskBottomSheetState();
 }
 
 class TaskBottomSheetState extends State<TaskBottomSheet> {
-  Task _currentTask;
   final double propertyPadding = 10.0;
 
-  TaskBottomSheetState(this._currentTask);
+  TaskBottomSheetState();
 
   String priorityToStringLocalized(BuildContext context, int? priority) {
     if (priority == null) return AppLocalizations.of(context).priorityUnset;
@@ -72,7 +71,7 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
                     child: Text(
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      _currentTask.title,
+                      widget.task.title,
                       style: theme.textTheme.headlineMedium,
                     ),
                   ),
@@ -88,7 +87,7 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
               SizedBox(height: propertyPadding),
               Wrap(
                 spacing: 10,
-                children: _currentTask.labels.map((Label label) {
+                children: widget.task.labels.map((Label label) {
                   return LabelWidget(label: label);
                 }).toList(),
               ),
@@ -102,8 +101,8 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
               Padding(
                 padding: EdgeInsets.fromLTRB(10, 0, 0, 0),
                 child: HtmlWidget(
-                  _currentTask.description.isNotEmpty
-                      ? _currentTask.description
+                  widget.task.description.isNotEmpty
+                      ? widget.task.description
                       : AppLocalizations.of(context).noDescription,
                 ),
               ),
@@ -114,8 +113,8 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
                   Icon(Icons.access_time),
                   Padding(padding: EdgeInsets.fromLTRB(10, 0, 0, 0)),
                   Text(
-                    _currentTask.hasDueDate
-                        ? _currentTask.dueDate!.toLocal().formatShort()
+                    widget.task.hasDueDate
+                        ? widget.task.dueDate!.toLocal().formatShort()
                         : AppLocalizations.of(context).noDueDate,
                   ),
                 ],
@@ -127,8 +126,8 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
                   Icon(Icons.play_arrow_rounded),
                   Padding(padding: EdgeInsets.fromLTRB(10, 0, 0, 0)),
                   Text(
-                    _currentTask.hasStartDate
-                        ? _currentTask.startDate!.toLocal().formatShort()
+                    widget.task.hasStartDate
+                        ? widget.task.startDate!.toLocal().formatShort()
                         : AppLocalizations.of(context).noStartDate,
                   ),
                 ],
@@ -140,8 +139,8 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
                   Icon(Icons.stop_rounded),
                   Padding(padding: EdgeInsets.fromLTRB(10, 0, 0, 0)),
                   Text(
-                    _currentTask.hasEndDate
-                        ? _currentTask.endDate!.toLocal().formatShort()
+                    widget.task.hasEndDate
+                        ? widget.task.endDate!.toLocal().formatShort()
                         : AppLocalizations.of(context).noEndDate,
                   ),
                 ],
@@ -153,10 +152,10 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
                   Icon(Icons.priority_high),
                   Padding(padding: EdgeInsets.fromLTRB(10, 0, 0, 0)),
                   Text(
-                    _currentTask.priority != null
+                    widget.task.priority != null
                         ? priorityToStringLocalized(
                             context,
-                            _currentTask.priority,
+                            widget.task.priority,
                           )
                         : AppLocalizations.of(context).noPriority,
                   ),
@@ -169,8 +168,8 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
                   Icon(Icons.percent),
                   Padding(padding: EdgeInsets.fromLTRB(10, 0, 0, 0)),
                   Text(
-                    _currentTask.percentDone != null
-                        ? "${(_currentTask.percentDone! * 100).toInt()}%"
+                    widget.task.percentDone != null
+                        ? "${(widget.task.percentDone! * 100).toInt()}%"
                         : AppLocalizations.of(context).percentUnset,
                   ),
                 ],

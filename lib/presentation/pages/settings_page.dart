@@ -31,7 +31,7 @@ class SettingsPage extends ConsumerStatefulWidget {
 class SettingsPageState extends ConsumerState<SettingsPage> {
   final TextEditingController durationTextController = TextEditingController();
 
-  Version? newestVersion = null;
+  Version? newestVersion;
 
   @override
   Widget build(BuildContext context) {
@@ -88,7 +88,7 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Theme.of(
                             context,
-                          ).colorScheme.onSurface.withOpacity(0.6),
+                          ).colorScheme.onSurface.withValues(alpha: 0.6),
                         ),
                       )
                     : null,
@@ -192,7 +192,7 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
                     var status = await Permission.notification.request();
                     if (status.isGranted) {
                       ref.read(notificationProvider)?.sendTestNotification();
-                    } else if (status.isPermanentlyDenied) {
+                    } else if (status.isPermanentlyDenied && context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text(l10n.noNotificationPermission)),
                       );
@@ -206,7 +206,7 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
                   var newestVersion = await ref
                       .read(versionRepositoryProvider)
                       .getLatestVersionTag();
-                  if (newestVersion == null) {
+                  if (newestVersion == null && context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text("Couldn't get latest version!")),
                     );
@@ -226,8 +226,8 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
                     : l10n.currentVersionUnknown,
               ),
               Text(
-                this.newestVersion != null
-                    ? l10n.latestVersionPrefix(this.newestVersion.toString())
+                newestVersion != null
+                    ? l10n.latestVersionPrefix(newestVersion.toString())
                     : "",
               ),
               Divider(),
@@ -308,10 +308,10 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
             value:
                 projects.firstWhereOrNull(
                       (element) =>
-                          element.id == user.settings?.default_project_id,
+                          element.id == user.settings?.defaultProjectId,
                     ) !=
                     null
-                ? user.settings?.default_project_id
+                ? user.settings?.defaultProjectId
                 : 0,
             onChanged: (int? value) {
               if (value != null && user.settings != null) {

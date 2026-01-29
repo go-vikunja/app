@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer' as developer;
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
@@ -34,9 +35,9 @@ void main() {
 
         for (final locale in supportedLocales) {
           final code = locale.languageCode;
-          final file = File('${arbDir.path}/app_${code}.arb');
+          final file = File('${arbDir.path}/app_$code.arb');
           if (!file.existsSync()) {
-            print(
+            developer.log(
               'WARNING: Missing ARB file for supported locale $code (${file.path})',
             );
             continue;
@@ -46,7 +47,6 @@ void main() {
 
           int untranslatedCount = 0;
           for (final key in enKeys) {
-            final enVal = enJson[key];
             final locVal = jsonMap[key];
             final isMissing = locVal == null;
             final isEmpty = locVal is String ? locVal.trim().isEmpty : true;
@@ -58,7 +58,9 @@ void main() {
           }
 
           if (untranslatedCount > 0) {
-            print('Locale $code: $untranslatedCount untranslated strings');
+            developer.log(
+              'Locale $code: $untranslatedCount untranslated strings',
+            );
           }
         }
       },

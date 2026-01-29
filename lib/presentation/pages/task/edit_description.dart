@@ -1,11 +1,12 @@
-import 'package:html_editor_enhanced/html_editor.dart';
-
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
+import 'package:html_editor_enhanced/html_editor.dart';
 
 class EditDescription extends StatefulWidget {
   final String? initialText;
-  EditDescription({required this.initialText});
+
+  const EditDescription({super.key, required this.initialText});
+
   @override
   EditDescriptionState createState() => EditDescriptionState();
 }
@@ -22,7 +23,6 @@ class EditDescriptionState extends State<EditDescription> {
           IconButton(
             icon: Icon(Icons.save),
             onPressed: () {
-              print(controller.getText());
               Navigator.pop(context, controller.getText());
             },
           ),

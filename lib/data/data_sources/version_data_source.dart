@@ -13,7 +13,7 @@ class VersionDataSource {
       dynamic jsonResponse = json.decode(response.body);
       if (jsonResponse[0] == null) return null;
 
-      String? latestVersion = jsonResponse[0]['tag_name'] ?? null;
+      String? latestVersion = jsonResponse[0]['tag_name'];
       if (latestVersion != null && latestVersion.startsWith("v")) {
         latestVersion = latestVersion.replaceFirst("v", "");
       }
@@ -27,7 +27,6 @@ class VersionDataSource {
     if (packageInfo.buildNumber.isNotEmpty) {
       version = '$version+${packageInfo.buildNumber}';
     }
-    print("current: " + version);
     return version;
   }
 }

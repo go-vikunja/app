@@ -38,7 +38,10 @@ class VikunjaDateTimeField extends StatelessWidget {
     );
   }
 
-  Future<DateTime?> _showDatePicker(context, currentValue) async {
+  Future<DateTime?> _showDatePicker(
+    BuildContext context,
+    DateTime currentValue,
+  ) async {
     var selectedDate = await showDialog<DateTime>(
       context: context,
       builder: (_) => DatePickerDialog(
@@ -49,7 +52,7 @@ class VikunjaDateTimeField extends StatelessWidget {
       ),
     );
 
-    if (selectedDate == null) return null;
+    if (selectedDate == null || !context.mounted) return null;
 
     var selectedTime = await showDialog<TimeOfDay>(
       context: context,

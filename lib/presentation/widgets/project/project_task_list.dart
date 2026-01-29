@@ -149,7 +149,7 @@ class ProjectTaskList extends ConsumerWidget {
               newPosition: newPos,
             )
             .then((success) {
-              if (!success) {
+              if (!success && ref.context.mounted) {
                 ScaffoldMessenger.of(ref.context).showSnackBar(
                   const SnackBar(content: Text('Failed to reorder task')),
                 );
@@ -169,7 +169,7 @@ class ProjectTaskList extends ConsumerWidget {
         var success = await ref
             .read(projectControllerProvider(project).notifier)
             .markAsDone(task);
-        if (!success) {
+        if (!success && ref.context.mounted) {
           ScaffoldMessenger.of(ref.context).showSnackBar(
             SnackBar(
               content: Text(AppLocalizations.of(ref.context).failedToMarkDone),

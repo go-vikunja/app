@@ -199,7 +199,7 @@ class ProjectPageState extends ConsumerState<ProjectDetailPage> {
     });
   }
 
-  onNotificationDone() {
+  void onNotificationDone() {
     ref.read(projectControllerProvider(widget.project).notifier).reload();
   }
 }

@@ -1,4 +1,5 @@
 import 'package:vikunja_app/core/utils/validator.dart';
+import 'dart:developer' as developer;
 
 class Version {
   int major;
@@ -68,7 +69,9 @@ class Version {
       } else if (label == null && other.label != null) {
         return true;
       }
-    } catch (e) {}
+    } catch (e) {
+      developer.log("Error $e");
+    }
 
     return false;
   }

@@ -7,12 +7,12 @@ class FancyButton extends StatelessWidget {
   final Widget child;
 
   const FancyButton({
-    Key? key,
+    super.key,
     required this.child,
     this.width = double.infinity,
     this.height = 35,
     this.onPressed,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

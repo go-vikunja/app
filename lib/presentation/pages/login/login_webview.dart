@@ -7,7 +7,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 class LoginWithWebView extends StatefulWidget {
   final String frontEndUrl;
 
-  LoginWithWebView(this.frontEndUrl);
+  const LoginWithWebView(this.frontEndUrl, {super.key});
 
   @override
   State<StatefulWidget> createState() => LoginWithWebViewState();
@@ -50,7 +50,9 @@ class LoginWithWebViewState extends State<LoginWithWebView> {
         if (currentUrl != null) {
           _handlePageFinished(currentUrl);
         } else {
-          Navigator.pop(context);
+          if (context.mounted) {
+            Navigator.pop(context);
+          }
         }
       },
       child: Scaffold(
@@ -76,8 +78,9 @@ class LoginWithWebViewState extends State<LoginWithWebView> {
       apiUrl = apiUrl.replaceAll("\"", "");
       token = token.replaceAll("\"", "");
       if (!apiUrl.startsWith("http")) {
-        if (pageLocation.endsWith("/"))
+        if (pageLocation.endsWith("/")) {
           pageLocation = pageLocation.substring(0, pageLocation.length - 1);
+        }
         apiUrl = pageLocation + apiUrl;
       }
 
@@ -85,8 +88,11 @@ class LoginWithWebViewState extends State<LoginWithWebView> {
         BaseTokenPair baseTokenPair = BaseTokenPair(apiUrl, token);
         if (destroyed) return true;
         destroyed = true;
-        print("pop now");
-        Navigator.pop(context, baseTokenPair);
+
+        var buildContext = context;
+        if (buildContext.mounted) {
+          Navigator.pop(buildContext, baseTokenPair);
+        }
 
         return true;
       }

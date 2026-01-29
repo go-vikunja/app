@@ -8,6 +8,8 @@ import 'package:vikunja_app/core/utils/validator.dart';
 import 'package:vikunja_app/presentation/widgets/button.dart';
 
 class RegisterPage extends ConsumerStatefulWidget {
+  const RegisterPage({super.key});
+
   @override
   RegisterPageState createState() => RegisterPageState();
 }
@@ -118,7 +120,7 @@ class RegisterPageState extends ConsumerState<RegisterPage> {
                               _registerUser(context);
                             }
                           }
-                        : () => null,
+                        : () {},
                     child: _loading
                         ? CircularProgressIndicator()
                         : Text(AppLocalizations.of(context).register),
@@ -141,33 +143,40 @@ class RegisterPageState extends ConsumerState<RegisterPage> {
       var newUserLoggedIn = await ref
           .read(userRepositoryProvider)
           .register(_username!, _email, _password);
-      if (newUserLoggedIn.isSuccessful) {
-        ref
-            .read(settingsRepositoryProvider)
-            .saveUserToken(newUserLoggedIn.toSuccess().body.token);
-        ref.read(settingsRepositoryProvider).saveServer(_server!);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context).registrationFailed),
+
+      if (context.mounted) {
+        if (newUserLoggedIn.isSuccessful) {
+          ref
+              .read(settingsRepositoryProvider)
+              .saveUserToken(newUserLoggedIn.toSuccess().body.token);
+          ref.read(settingsRepositoryProvider).saveServer(_server!);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(AppLocalizations.of(context).registrationFailed),
+            ),
+          );
+        }
+      }
+    } catch (ex) {
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text(
+              AppLocalizations.of(
+                context,
+              ).registrationFailedLong(ex.toString()),
+            ),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(AppLocalizations.of(context).close),
+              ),
+            ],
           ),
         );
       }
-    } catch (ex) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text(
-            AppLocalizations.of(context).registrationFailedLong(ex.toString()),
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(AppLocalizations.of(context).close),
-            ),
-          ],
-        ),
-      );
     } finally {
       setState(() {
         _loading = false;

@@ -2,10 +2,10 @@ enum NewTaskDue {
   none,
   today,
   tomorrow,
-  next_monday,
+  nextMonday,
   weekend,
-  later_this_week,
-  next_week,
+  laterThisWeek,
+  nextWeek,
   custom;
 
   DateTime? calculateDate(DateTime currentDateTime) {
@@ -24,7 +24,7 @@ enum NewTaskDue {
         return newDateTime;
       case NewTaskDue.tomorrow:
         return newDateTime.add(Duration(days: 1));
-      case NewTaskDue.next_monday:
+      case NewTaskDue.nextMonday:
         return newDateTime.add(
           Duration(days: (DateTime.monday - currentDateTime.weekday) % 7),
         );
@@ -37,7 +37,7 @@ enum NewTaskDue {
             Duration(days: (DateTime.saturday - currentDateTime.weekday) % 6),
           );
         }
-      case NewTaskDue.later_this_week:
+      case NewTaskDue.laterThisWeek:
         return newDateTime.add(
           Duration(
             days:
@@ -48,7 +48,7 @@ enum NewTaskDue {
                 : 2,
           ),
         );
-      case NewTaskDue.next_week:
+      case NewTaskDue.nextWeek:
         return newDateTime.add(Duration(days: 7));
       case NewTaskDue.custom:
         return currentDateTime;

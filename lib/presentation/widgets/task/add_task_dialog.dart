@@ -8,7 +8,7 @@ class AddTaskDialog extends StatefulWidget {
   final void Function(String title, DateTime? dueDate) onAddTask;
   final String? title;
 
-  const AddTaskDialog({super.key, required this.onAddTask, this.title = null});
+  const AddTaskDialog({super.key, required this.onAddTask, this.title});
 
   @override
   State<StatefulWidget> createState() => AddTaskDialogState();
@@ -72,7 +72,7 @@ class AddTaskDialogState extends State<AddTaskDialog> {
               ),
               taskDueList(
                 AppLocalizations.of(context).dueOptionNextMonday,
-                NewTaskDue.next_monday,
+                NewTaskDue.nextMonday,
               ),
               if (dateTime.weekday != DateTime.sunday || dateTime.hour < 21)
                 taskDueList(
@@ -81,11 +81,11 @@ class AddTaskDialogState extends State<AddTaskDialog> {
                 ),
               taskDueList(
                 AppLocalizations.of(context).dueOptionLaterThisWeek,
-                NewTaskDue.later_this_week,
+                NewTaskDue.laterThisWeek,
               ),
               taskDueList(
                 AppLocalizations.of(context).dueInOneWeek,
-                NewTaskDue.next_week,
+                NewTaskDue.nextWeek,
               ),
               taskDueList(
                 AppLocalizations.of(context).dueOptionCustom,

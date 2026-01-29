@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'package:background_downloader/background_downloader.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/foundation.dart';
@@ -67,20 +69,20 @@ void main() async {
       );
     }
   } catch (e) {
-    print("Failed to initialize downloader: $e");
+    developer.log("Failed to initialize downloader: $e");
   }
   try {
     if (!kIsWeb) {
       Workmanager().initialize(callbackDispatcher);
     }
   } catch (e) {
-    print("Failed to initialize workmanager: $e");
+    developer.log("Failed to initialize workmanager: $e");
   }
   try {
     await HomeWidget.registerInteractivityCallback(widgetCallback);
-    print('Registered background callback');
+    developer.log('Registered background callback');
   } catch (e) {
-    print('Failed to initialise widget Callback');
+    developer.log('Failed to initialise widget Callback');
   }
 
   var sentryEnabled = await settingsDatasource.getSentryEnabled();
