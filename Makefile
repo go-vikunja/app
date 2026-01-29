@@ -16,30 +16,28 @@ build-all: build-release build-debug build-profile
 
 .PHONY: build-release
 build-release:
-	$(FLUTTER) build apk --release --build-number=$(VERSION) --flavor main
+	$(FLUTTER) build apk --release --build-number=$(VERSION)
 
 .PHONY: build-debug
 build-debug:
-	$(FLUTTER) build apk --debug --build-number=$(VERSION) --flavor unsigned
+	$(FLUTTER) build apk --debug --build-number=$(VERSION)
 
 .PHONY: build-profile
 build-profile:
-	$(FLUTTER) build apk --profile --build-number=$(VERSION) --flavor unsigned
+	$(FLUTTER) build apk --profile --build-number=$(VERSION)
 
 .PHONY: build-ios
 build-ios:
 	$(FLUTTER) build ios --release --build-number=$(VERSION) --no-codesign
 
+.PHONY: build-ios-debug
+build-ios-debug:
+	$(FLUTTER) build ios --debug --build-number=$(VERSION) --no-codesign
+
 .PHONY: format
 format:
-	$(FLUTTER) format lib
+	dart format lib
 
 .PHONY: format-check
 format-check:
-	@diff=$$(flutter format -n lib); \
-	if [ -n "$$diff" ]; then \
-		echo "The following files are not formatted correctly:"; \
-		echo "$${diff}"; \
-		echo "Please run 'make format' and commit the result."; \
-		exit 1; \
-	fi;
+	dart format --set-exit-if-changed .

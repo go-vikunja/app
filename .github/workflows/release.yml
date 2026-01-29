@@ -100,16 +100,16 @@ jobs:
           sed -i "s/^version: .*/version: ${NEW_VERSION}/" pubspec.yaml
 
           echo "Updated version to ${NEW_VERSION}"
-      - run: flutter build appbundle --flavor production
-      - run: flutter build apk --flavor production
+      - run: flutter build appbundle
+      - run: flutter build apk
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: app-release-bundle
           path: |
-            build/app/outputs/bundle/productionRelease/app-production-release.aab
-            build/app/outputs/flutter-apk/app-production-release.apk
+            build/app/outputs/bundle/release/app-release.aab
+            build/app/outputs/flutter-apk/app-release.apk
 
       - name: Deploy to Google Play Beta
         if: github.event_name == 'push'
