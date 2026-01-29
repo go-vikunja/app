@@ -20,7 +20,6 @@ import 'package:vikunja_app/domain/entities/user.dart';
 import 'package:vikunja_app/domain/entities/version.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/main.dart';
-import 'package:vikunja_app/presentation/manager/settings_controller.dart';
 import 'package:vikunja_app/presentation/pages/login/login_webview.dart';
 import 'package:vikunja_app/presentation/pages/login/register_page.dart';
 import 'package:vikunja_app/presentation/widgets/button.dart';
@@ -351,7 +350,9 @@ class LoginPageState extends ConsumerState<LoginPage> {
                     totp: totpController.text,
                   );
 
-              Navigator.pop(context, loginResponse);
+              if (context.mounted) {
+                Navigator.pop(context, loginResponse);
+              }
             },
             child: Text(AppLocalizations.of(context).login),
           ),
@@ -378,7 +379,10 @@ class LoginPageState extends ConsumerState<LoginPage> {
             .read(currentUserProvider.notifier)
             .set(currentUser.toSuccess().body);
       } else {
-        _showGenericError(context);
+        var buildContext = context;
+        if (buildContext.mounted) {
+          _showGenericError(buildContext);
+        }
       }
 
       globalNavigatorKey.currentState?.pushNamed("/home");
@@ -412,11 +416,13 @@ class LoginPageState extends ConsumerState<LoginPage> {
           .read(serverRepositoryProvider)
           .getInfo();
       if (!info.isSuccessful) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context).cannotReachServer),
-          ),
-        );
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(AppLocalizations.of(context).cannotReachServer),
+            ),
+          );
+        }
       } else {
         Sentry.configureScope(
           (scope) => scope.setTag(
@@ -442,30 +448,38 @@ class LoginPageState extends ConsumerState<LoginPage> {
       if (response.isSuccessful) {
         var success = response.toSuccess();
         var userToken = success.body.token;
-        onUserToken(context, server, userToken, serverVersion);
+        if (context.mounted) {
+          onUserToken(context, server, userToken, serverVersion);
+        }
       } else if (response.isError) {
         var error = response.toError();
         if (error.error["code"] == 1017) {
-          var response = await _showOtpDialog(context, username, password);
+          if (context.mounted) {
+            var response = await _showOtpDialog(context, username, password);
 
-          //Otherwise user cancelled
-          if (response != null) {
-            if (response.isSuccessful) {
-              var success = response.toSuccess();
-              var userToken = success.body.token;
-              onUserToken(context, server, userToken, serverVersion);
-            } else {
-              _showGenericError(context);
+            //Otherwise user cancelled
+            if (response != null && context.mounted) {
+              if (response.isSuccessful) {
+                var success = response.toSuccess();
+                var userToken = success.body.token;
+                onUserToken(context, server, userToken, serverVersion);
+              } else {
+                _showGenericError(context);
+              }
             }
           }
         } else if (error.error["code"] > 0) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(error.error["message"])));
+          if (context.mounted) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(error.error["message"])));
+          }
         }
       }
     } catch (ex) {
-      _showGenericError(context);
+      if (context.mounted) {
+        _showGenericError(context);
+      }
     } finally {
       setState(() {
         _loading = false;
@@ -493,9 +507,11 @@ class LoginPageState extends ConsumerState<LoginPage> {
     if (currentUser.isSuccessful) {
       ref.read(currentUserProvider.notifier).set(currentUser.toSuccess().body);
 
-      if (serverVersion != null && serverVersion != supportedServerVersion) {
+      if (serverVersion != null &&
+          serverVersion != supportedServerVersion &&
+          context.mounted) {
         await showDialog<void>(
-          context: ref.context,
+          context: context,
           barrierDismissible: false,
           builder: (BuildContext context) {
             return VersionMismatchDialog(serverVersion: serverVersion);
@@ -503,9 +519,13 @@ class LoginPageState extends ConsumerState<LoginPage> {
         );
       }
 
-      Navigator.pushReplacementNamed(context, "/home");
+      if (context.mounted) {
+        Navigator.pushReplacementNamed(context, "/home");
+      }
     } else {
-      _showGenericError(context);
+      if (context.mounted) {
+        _showGenericError(context);
+      }
     }
   }
 }

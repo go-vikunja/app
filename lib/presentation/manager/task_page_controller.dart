@@ -42,7 +42,7 @@ class TaskPageController extends _$TaskPageController {
 
   Future<TaskPageModel> _createPageModel(List<Task> tasks) async {
     var defaultProjectId =
-        ref.read(currentUserProvider)?.settings?.default_project_id ?? 0;
+        ref.read(currentUserProvider)?.settings?.defaultProjectId ?? 0;
 
     var projectsResponse = await ref.read(projectRepositoryProvider).getAll();
 
@@ -82,7 +82,7 @@ class TaskPageController extends _$TaskPageController {
 
     var user = ref.read(currentUserProvider);
     if (user != null) {
-      Map<String, dynamic>? frontendSettings = user.settings?.frontend_settings;
+      Map<String, dynamic>? frontendSettings = user.settings?.frontendSettings;
       int? filterId = frontendSettings?["filter_id_used_on_overview"];
       if (filterId != null && filterId != 0) {
         var tasksResponse = await ref

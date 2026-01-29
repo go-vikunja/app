@@ -129,6 +129,9 @@ class ProjectEditPageState extends ConsumerState<ProjectEditPage> {
 
   Future<void> _saveProject(WidgetRef ref, Project project) async {
     if (_formKey.currentState?.validate() == true) {
+      var context = ref.context;
+      final loc = AppLocalizations.of(context);
+
       _formKey.currentState?.save();
 
       project.title = title!;
@@ -138,8 +141,6 @@ class ProjectEditPageState extends ConsumerState<ProjectEditPage> {
           .read(projectControllerProvider(project).notifier)
           .updateProject(project);
 
-      var context = ref.context;
-      final loc = AppLocalizations.of(context);
       if (success && context.mounted) {
         ScaffoldMessenger.of(
           context,

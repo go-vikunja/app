@@ -28,5 +28,5 @@ class TaskAttachment {
     DateTime? created,
     required this.createdBy,
     required this.file,
-  }) : this.created = created ?? DateTime.now();
+  }) : created = created ?? DateTime.now();
 }

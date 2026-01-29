@@ -30,8 +30,8 @@ class Project {
     required this.title,
     created,
     updated,
-  }) : this.created = created ?? DateTime.now(),
-       this.updated = updated ?? DateTime.now();
+  }) : created = created ?? DateTime.now(),
+       updated = updated ?? DateTime.now();
 
   Project copyWith({
     int? id,

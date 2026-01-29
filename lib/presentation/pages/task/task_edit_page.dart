@@ -40,7 +40,7 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
   String? _title, _description;
   DateTime? _dueDate, _startDate, _endDate;
   int _repeatAfterValue = 0;
-  RepeatAfterUnit _repeatAfterUnit = RepeatAfterUnit.DAYS;
+  RepeatAfterUnit _repeatAfterUnit = RepeatAfterUnit.days;
   int? _priority;
   List<TaskReminder>? _reminderDates;
   List<Label>? _labels;
@@ -124,17 +124,19 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
                         .read(taskPageControllerProvider.notifier)
                         .deleteTask(widget.task.id);
 
-                    if (success) {
-                      Navigator.of(context).pop();
-                      Navigator.of(context).pop(widget.task);
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            AppLocalizations.of(context).taskDeleteError,
+                    if (context.mounted) {
+                      if (success) {
+                        Navigator.of(context).pop();
+                        Navigator.of(context).pop(widget.task);
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              AppLocalizations.of(context).taskDeleteError,
+                            ),
                           ),
-                        ),
-                      );
+                        );
+                      }
                     }
                   },
                   onCancel: () {
@@ -650,7 +652,7 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
       ),
     );
 
-    if (selectedDate != null) {
+    if (selectedDate != null && context.mounted) {
       var selectedTime = await showDialog<TimeOfDay>(
         context: context,
         builder: (_) =>
@@ -769,7 +771,7 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
           .read(taskLabelBulkRepositoryProvider)
           .update(updatedTask, _labels!);
 
-      if (!updateLabelSuccess.isSuccessful) {
+      if (!updateLabelSuccess.isSuccessful && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(AppLocalizations.of(context).taskSaveError)),
         );
@@ -780,18 +782,21 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
     var saveSuccess = await ref
         .read(taskPageControllerProvider.notifier)
         .updateTask(updatedTask);
-    if (saveSuccess) {
-      Navigator.of(context).pop(updatedTask);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(context).taskUpdatedSuccess),
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context).taskSaveError)),
-      );
+    if (context.mounted) {
+      if (saveSuccess) {
+        Navigator.of(context).pop(updatedTask);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context).taskUpdatedSuccess),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.of(context).taskSaveError)),
+        );
+      }
     }
   }
 }

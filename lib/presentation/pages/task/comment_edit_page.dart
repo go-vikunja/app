@@ -31,11 +31,16 @@ class _CommentEditPageState extends ConsumerState<CommentEditPage> {
     // Check if text is empty after getting it
     if (text.trim().isEmpty) {
       setState(() => _isSaving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(context).commentCannotBeEmpty),
-        ),
-      );
+      var buildContext = context;
+      if (buildContext.mounted) {
+        ScaffoldMessenger.of(buildContext).showSnackBar(
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(buildContext).commentCannotBeEmpty,
+            ),
+          ),
+        );
+      }
       return;
     }
 

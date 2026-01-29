@@ -77,8 +77,9 @@ class _TaskListState extends ConsumerState<TaskList> {
   void _autoScrollStep() {
     if (!_dragActive ||
         _lastGlobalDragPos == null ||
-        !_scrollController.hasClients)
+        !_scrollController.hasClients) {
       return;
+    }
 
     final box = _listKey.currentContext?.findRenderObject() as RenderBox?;
     if (box == null || !box.attached) return;
@@ -171,7 +172,7 @@ class _TaskListState extends ConsumerState<TaskList> {
                   _stopAutoScroll();
                   widget.onAnyDragEnded();
                 },
-                onDraggableCanceled: (_, __) {
+                onDraggableCanceled: (_, _) {
                   _stopAutoScroll();
                   widget.onAnyDragEnded();
                 },

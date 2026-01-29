@@ -1,60 +1,56 @@
 class UserSettings {
-  int default_project_id;
-  final bool discoverable_by_email,
-      discoverable_by_name,
-      email_reminders_enabled;
-  final Map<String, dynamic>? frontend_settings;
+  int defaultProjectId;
+  final bool discoverableByEmail, discoverableByName, emailRemindersEnabled;
+  final Map<String, dynamic>? frontendSettings;
   final String language;
   final String name;
-  final bool overdue_tasks_reminders_enabled;
-  final String overdue_tasks_reminders_time;
+  final bool overdueTasksRemindersEnabled;
+  final String overdueTasksRemindersTime;
   final String timezone;
-  final int week_start;
+  final int weekStart;
 
   UserSettings({
-    this.default_project_id = 0,
-    this.discoverable_by_email = false,
-    this.discoverable_by_name = false,
-    this.email_reminders_enabled = false,
-    this.frontend_settings = null,
+    this.defaultProjectId = 0,
+    this.discoverableByEmail = false,
+    this.discoverableByName = false,
+    this.emailRemindersEnabled = false,
+    this.frontendSettings,
     this.language = '',
     this.name = '',
-    this.overdue_tasks_reminders_enabled = false,
-    this.overdue_tasks_reminders_time = '',
+    this.overdueTasksRemindersEnabled = false,
+    this.overdueTasksRemindersTime = '',
     this.timezone = '',
-    this.week_start = 0,
+    this.weekStart = 0,
   });
 
   UserSettings copyWith({
-    int? default_project_id,
-    bool? discoverable_by_email,
-    bool? discoverable_by_name,
-    bool? email_reminders_enabled,
-    Map<String, dynamic>? frontend_settings,
+    int? defaultProjectId,
+    bool? discoverableByEmail,
+    bool? discoverableByName,
+    bool? emailRemindersEnabled,
+    Map<String, dynamic>? frontendSettings,
     String? language,
     String? name,
-    bool? overdue_tasks_reminders_enabled,
-    String? overdue_tasks_reminders_time,
+    bool? overdueTasksRemindersEnabled,
+    String? overdueTasksRemindersTime,
     String? timezone,
-    int? week_start,
+    int? weekStart,
   }) {
     return UserSettings(
-      default_project_id: default_project_id ?? this.default_project_id,
-      discoverable_by_email:
-          discoverable_by_email ?? this.discoverable_by_email,
-      discoverable_by_name: discoverable_by_name ?? this.discoverable_by_name,
-      email_reminders_enabled:
-          email_reminders_enabled ?? this.email_reminders_enabled,
-      frontend_settings: frontend_settings ?? this.frontend_settings,
+      defaultProjectId: defaultProjectId ?? this.defaultProjectId,
+      discoverableByEmail: discoverableByEmail ?? this.discoverableByEmail,
+      discoverableByName: discoverableByName ?? this.discoverableByName,
+      emailRemindersEnabled:
+          emailRemindersEnabled ?? this.emailRemindersEnabled,
+      frontendSettings: frontendSettings ?? this.frontendSettings,
       language: language ?? this.language,
       name: name ?? this.name,
-      overdue_tasks_reminders_enabled:
-          overdue_tasks_reminders_enabled ??
-          this.overdue_tasks_reminders_enabled,
-      overdue_tasks_reminders_time:
-          overdue_tasks_reminders_time ?? this.overdue_tasks_reminders_time,
+      overdueTasksRemindersEnabled:
+          overdueTasksRemindersEnabled ?? this.overdueTasksRemindersEnabled,
+      overdueTasksRemindersTime:
+          overdueTasksRemindersTime ?? this.overdueTasksRemindersTime,
       timezone: timezone ?? this.timezone,
-      week_start: week_start ?? this.week_start,
+      weekStart: weekStart ?? this.weekStart,
     );
   }
 }
@@ -72,8 +68,8 @@ class User {
     DateTime? created,
     DateTime? updated,
     this.settings,
-  }) : this.created = created ?? DateTime.now(),
-       this.updated = updated ?? DateTime.now();
+  }) : created = created ?? DateTime.now(),
+       updated = updated ?? DateTime.now();
 
   String avatarUrl(String baseUrl) {
     return "$baseUrl/avatar/$username";

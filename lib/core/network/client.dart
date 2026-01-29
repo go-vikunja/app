@@ -199,7 +199,7 @@ class Client {
   }
 
   ExceptionResponse<T> _handleException<T>(Object e, StackTrace s) {
-    if (!(e is FormatException) && !(e is http.ClientException)) {
+    if (e is! FormatException && e is! http.ClientException) {
       Sentry.captureException(e, stackTrace: s);
     }
     return ExceptionResponse<T>(e, s);

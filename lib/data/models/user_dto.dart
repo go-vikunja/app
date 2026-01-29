@@ -55,31 +55,31 @@ class UserSettingsDto extends Dto<UserSettings> {
 
   @override
   UserSettings toDomain() => UserSettings(
-    default_project_id: defaultProjectId,
-    discoverable_by_email: discoverableByEmail,
-    discoverable_by_name: discoverableByName,
-    email_reminders_enabled: emailRemindersEnabled,
-    frontend_settings: frontendSettings,
+    defaultProjectId: defaultProjectId,
+    discoverableByEmail: discoverableByEmail,
+    discoverableByName: discoverableByName,
+    emailRemindersEnabled: emailRemindersEnabled,
+    frontendSettings: frontendSettings,
     language: language,
     name: name,
-    overdue_tasks_reminders_enabled: overdueTasksRemindersEnabled,
-    overdue_tasks_reminders_time: overdueTasksRemindersTime,
+    overdueTasksRemindersEnabled: overdueTasksRemindersEnabled,
+    overdueTasksRemindersTime: overdueTasksRemindersTime,
     timezone: timezone,
-    week_start: weekStart,
+    weekStart: weekStart,
   );
 
   static UserSettingsDto fromDomain(UserSettings u) => UserSettingsDto(
-    defaultProjectId: u.default_project_id,
-    discoverableByEmail: u.discoverable_by_email,
-    discoverableByName: u.discoverable_by_name,
-    emailRemindersEnabled: u.email_reminders_enabled,
-    frontendSettings: u.frontend_settings,
+    defaultProjectId: u.defaultProjectId,
+    discoverableByEmail: u.discoverableByEmail,
+    discoverableByName: u.discoverableByName,
+    emailRemindersEnabled: u.emailRemindersEnabled,
+    frontendSettings: u.frontendSettings,
     language: u.language,
     name: u.name,
-    overdueTasksRemindersEnabled: u.overdue_tasks_reminders_enabled,
-    overdueTasksRemindersTime: u.overdue_tasks_reminders_time,
+    overdueTasksRemindersEnabled: u.overdueTasksRemindersEnabled,
+    overdueTasksRemindersTime: u.overdueTasksRemindersTime,
     timezone: u.timezone,
-    weekStart: u.week_start,
+    weekStart: u.weekStart,
   );
 }
 

@@ -5,7 +5,8 @@ class VikunjaExpansionTile extends StatefulWidget {
   final List<Widget> children;
   final GestureTapCallback? onTitleTap;
 
-  VikunjaExpansionTile({
+  const VikunjaExpansionTile({
+    super.key,
     required this.title,
     required this.children,
     this.onTitleTap,
@@ -27,11 +28,11 @@ class _VikunjaExpansionTileState extends State<VikunjaExpansionTile> {
           horizontalTitleGap: 0,
           contentPadding: EdgeInsets.only(left: 6.0, right: 8.0),
           title: InkWell(
+            onTap: widget.onTitleTap,
             child: Padding(
               padding: const EdgeInsets.all(8.0),
               child: widget.title,
             ),
-            onTap: widget.onTitleTap,
           ),
           leading: IconButton(
             onPressed: () {

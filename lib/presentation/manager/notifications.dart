@@ -33,7 +33,7 @@ void markAsDone(int id) async {
   var base = await datasource.getServer();
 
   if (token == null || base == null) {
-    return Future.value(true);
+    return;
   }
 
   Client client = Client(token: token, base: base);
@@ -64,7 +64,7 @@ void markAsDone(int id) async {
 
 class NotificationHandler {
   final ReceivePort _receivePort = ReceivePort();
-  List<Function()> _taskChangedListener = List.empty(growable: true);
+  final List<Function()> _taskChangedListener = List.empty(growable: true);
 
   FlutterLocalNotificationsPlugin get notificationsPlugin =>
       FlutterLocalNotificationsPlugin();
@@ -142,7 +142,7 @@ class NotificationHandler {
     developer.log("Notifications initialised successfully");
   }
 
-  initBackgroundCommunication() {
+  void initBackgroundCommunication() {
     IsolateNameServer.removePortNameMapping(_actionDonePortName);
 
     final ok = IsolateNameServer.registerPortWithName(
@@ -154,7 +154,9 @@ class NotificationHandler {
     }
 
     _receivePort.listen((dynamic message) {
-      _taskChangedListener.forEach((it) => it.call());
+      for (var it in _taskChangedListener) {
+        it.call();
+      }
     });
   }
 

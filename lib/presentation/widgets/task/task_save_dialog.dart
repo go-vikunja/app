@@ -5,7 +5,11 @@ class TaskSaveDialog extends StatelessWidget {
   final Function onConfirm;
   final Function onCancel;
 
-  TaskSaveDialog({required this.onConfirm, required this.onCancel});
+  const TaskSaveDialog({
+    super.key,
+    required this.onConfirm,
+    required this.onCancel,
+  });
 
   @override
   Widget build(BuildContext context) {
