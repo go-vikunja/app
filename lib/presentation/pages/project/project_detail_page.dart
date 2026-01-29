@@ -2,11 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/core/di/network_provider.dart';
+import 'package:vikunja_app/core/di/notification_provider.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/entities/view_kind.dart';
+import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/presentation/manager/project_controller.dart';
 import 'package:vikunja_app/presentation/pages/error_widget.dart';
 import 'package:vikunja_app/presentation/pages/loading_widget.dart';
@@ -26,6 +27,18 @@ class ProjectDetailPage extends ConsumerStatefulWidget {
 
 class ProjectPageState extends ConsumerState<ProjectDetailPage> {
   int _viewIndex = 0;
+
+  @override
+  void initState() {
+    ref.read(notificationProvider)?.addListener(onNotificationDone);
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    ref.read(notificationProvider)?.removeListener(onNotificationDone);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -181,5 +194,9 @@ class ProjectPageState extends ConsumerState<ProjectDetailPage> {
           .read(projectControllerProvider(widget.project).notifier)
           .loadForView(widget.project, _viewIndex);
     });
+  }
+
+  onNotificationDone() {
+    ref.read(projectControllerProvider(widget.project).notifier).reload();
   }
 }
