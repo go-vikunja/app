@@ -71,13 +71,11 @@ class HomePageState extends ConsumerState<HomePage> {
     tz.initializeTimeZones();
   }
 
-  Future<void> initNotifications() async {
-    var notifGranted = await Permission.notification.isGranted;
-    if (notifGranted) {
-      NotificationHandler notificationClass = NotificationHandler();
-      await notificationClass.initNotifications();
-      ref.read(notificationProvider.notifier).set(notificationClass);
-    }
+  @override
+  void dispose() {
+    ref.read(notificationProvider)?.removeListener(onNotificationDone);
+
+    super.dispose();
   }
 
   @override
@@ -220,5 +218,20 @@ class HomePageState extends ConsumerState<HomePage> {
       );
       globalSnackbarKey.currentState?.showSnackBar(snackBar);
     }
+  }
+
+  Future<void> initNotifications() async {
+    var notifGranted = await Permission.notification.isGranted;
+    if (notifGranted) {
+      NotificationHandler notificationClass = NotificationHandler();
+      await notificationClass.initNotifications();
+      notificationClass.addListener(onNotificationDone);
+
+      ref.read(notificationProvider.notifier).set(notificationClass);
+    }
+  }
+
+  onNotificationDone() {
+    ref.read(taskPageControllerProvider.notifier).reload();
   }
 }

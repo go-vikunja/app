@@ -1,5 +1,7 @@
 import 'dart:developer' as developer;
+import 'dart:isolate';
 import 'dart:math';
+import 'dart:ui';
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -10,6 +12,10 @@ import 'package:vikunja_app/data/data_sources/settings_data_source.dart';
 import 'package:vikunja_app/data/data_sources/task_data_source.dart';
 import 'package:vikunja_app/data/repositories/task_repository_impl.dart';
 import 'package:vikunja_app/domain/repositories/task_repository.dart';
+import 'package:vikunja_app/presentation/manager/widget_controller.dart';
+
+
+const _actionDonePortName = 'action_done_port_name';
 
 @pragma('vm:entry-point')
 void notificationTapBackground(NotificationResponse notificationResponse) {
@@ -44,10 +50,24 @@ void markAsDone(int id) async {
     var task = response.toSuccess().body;
     task.done = true;
     await taskService.update(task);
+
+    updateWidget();
+
+    //Call app if opened to update view
+    final SendPort? sendPort = IsolateNameServer.lookupPortByName(
+      _actionDonePortName,
+    );
+
+    if (sendPort != null) {
+      sendPort.send(task.id);
+    }
   }
 }
 
 class NotificationHandler {
+  final ReceivePort _receivePort = ReceivePort();
+  List<Function()> _taskChangedListener = List.empty(growable: true);
+
   FlutterLocalNotificationsPlugin get notificationsPlugin =>
       FlutterLocalNotificationsPlugin();
 
@@ -88,6 +108,9 @@ class NotificationHandler {
       iOS: iOSSpecifics,
     );
     await _initNotifications();
+
+    initBackgroundCommunication();
+
     requestIOSPermissions();
   }
 
@@ -109,6 +132,22 @@ class NotificationHandler {
       onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
     );
     developer.log("Notifications initialised successfully");
+  }
+
+  initBackgroundCommunication() {
+    IsolateNameServer.removePortNameMapping(_actionDonePortName);
+
+    final ok = IsolateNameServer.registerPortWithName(
+      _receivePort.sendPort,
+      _actionDonePortName,
+    );
+    if (!ok) {
+      developer.log('Failed to register $_actionDonePortName');
+    }
+
+    _receivePort.listen((dynamic message) {
+      _taskChangedListener.forEach((it) => it.call());
+    });
   }
 
   Future<void> scheduleNotification(
@@ -197,5 +236,13 @@ class NotificationHandler {
       }
       developer.log("notifications scheduled successfully");
     }
+  }
+
+  void addListener(Function() listener) {
+    _taskChangedListener.add(listener);
+  }
+
+  void removeListener(Function() listener) {
+    _taskChangedListener.remove(listener);
   }
 }
