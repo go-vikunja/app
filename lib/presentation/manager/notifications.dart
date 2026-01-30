@@ -14,7 +14,6 @@ import 'package:vikunja_app/data/repositories/task_repository_impl.dart';
 import 'package:vikunja_app/domain/repositories/task_repository.dart';
 import 'package:vikunja_app/presentation/manager/widget_controller.dart';
 
-
 const _actionDonePortName = 'action_done_port_name';
 
 @pragma('vm:entry-point')
@@ -98,7 +97,7 @@ class NotificationHandler {
   NotificationHandler();
 
   Future<void> initNotifications() async {
-    iOSSpecifics = DarwinNotificationDetails();
+    iOSSpecifics = DarwinNotificationDetails(categoryIdentifier: 'doneCategory');
     platformChannelSpecificsDueDate = NotificationDetails(
       android: androidSpecificsDueDate,
       iOS: iOSSpecifics,
@@ -122,6 +121,17 @@ class NotificationHandler {
       requestAlertPermission: false,
       requestBadgePermission: false,
       requestSoundPermission: false,
+      notificationCategories: [
+        DarwinNotificationCategory(
+          'doneCategory',
+          actions: <DarwinNotificationAction>[
+            DarwinNotificationAction.plain(
+              'action_done',
+              'Done',
+            ),
+          ],
+        ),
+      ],
     );
     var initializationSettings = InitializationSettings(
       android: initializationSettingsAndroid,
