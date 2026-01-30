@@ -61,6 +61,12 @@ class Version {
           other.label?.startsWith("rc") == true) {
         return int.parse(label?.substring(2) ?? "0") >
             int.parse(other.label?.substring(2) ?? "0");
+      } else if (label != null && other.label != null) {
+        if (label?.startsWith("rc") == true && other.label == "beta") {
+          return true;
+        }
+      } else if (label == null && other.label != null) {
+        return true;
       }
     } catch (e) {}
 

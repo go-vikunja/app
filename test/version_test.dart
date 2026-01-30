@@ -50,6 +50,30 @@ void main() {
       expect(version.isNewerThan(version2), false);
       expect(version2.isNewerThan(version), true);
     });
+
+    test('Test final newer than rc', () {
+      Version version = Version(1, 0, 0);
+      Version version2 = Version(1, 0, 0, "rc2");
+
+      expect(version.isNewerThan(version2), true);
+      expect(version2.isNewerThan(version), false);
+    });
+
+    test('Test final newer than beta', () {
+      Version version = Version(1, 0, 0);
+      Version version2 = Version(1, 0, 0, "beta", "1");
+
+      expect(version.isNewerThan(version2), true);
+      expect(version2.isNewerThan(version), false);
+    });
+
+    test('Test rc newer than beta', () {
+      Version version = Version(1, 0, 0, "rc1");
+      Version version2 = Version(1, 0, 0, "beta", "1");
+
+      expect(version.isNewerThan(version2), true);
+      expect(version2.isNewerThan(version), false);
+    });
   });
 
   group("Server version parsing", () {
@@ -71,6 +95,16 @@ void main() {
       expect(version?.patch, 0);
       expect(version?.label, "rc3");
       expect(version?.label2, null);
+    });
+
+    test('Test beta version', () {
+      Version? version = Version.fromServerString("v1.0.0-beta+4");
+
+      expect(version?.major, 1);
+      expect(version?.minor, 0);
+      expect(version?.patch, 0);
+      expect(version?.label, "beta");
+      expect(version?.label2, "4");
     });
   });
 }
