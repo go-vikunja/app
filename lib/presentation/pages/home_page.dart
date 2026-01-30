@@ -3,7 +3,6 @@ import 'dart:developer' as developer;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:url_launcher/url_launcher.dart';
@@ -12,6 +11,7 @@ import 'package:vikunja_app/core/di/notification_provider.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/core/utils/constants.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
+import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/main.dart';
 import 'package:vikunja_app/presentation/manager/notifications.dart';
 import 'package:vikunja_app/presentation/manager/settings_controller.dart';
@@ -195,27 +195,30 @@ class HomePageState extends ConsumerState<HomePage> {
   }
 
   Future<void> postVersionCheckSnackbar() async {
-    var latestVersionTag =
-        await ref.read(versionRepositoryProvider).getLatestVersionTag() ??
-        "N/A";
-    ref.read(versionRepositoryProvider).isUpToDate().then((value) {
-      if (!value) {
-        // not up to date
-        final ctx = globalSnackbarKey.currentContext ?? context;
-        SnackBar snackBar = SnackBar(
-          content: Text(
-            AppLocalizations.of(ctx).newVersionAvailable(latestVersionTag),
-          ),
-          action: SnackBarAction(
-            label: AppLocalizations.of(ctx).viewOnGithub,
-            onPressed: () => launchUrl(
-              Uri.parse(repo),
-              mode: LaunchMode.externalApplication,
-            ),
-          ),
-        );
-        globalSnackbarKey.currentState?.showSnackBar(snackBar);
-      }
-    });
+    var latestVersionTag = await ref
+        .read(versionRepositoryProvider)
+        .getLatestVersionTag();
+    var currentVersionTag = await ref
+        .read(versionRepositoryProvider)
+        .getCurrentVersionTag();
+
+    if (latestVersionTag != null &&
+        currentVersionTag != null &&
+        latestVersionTag.isNewerThan(currentVersionTag)) {
+      final ctx = globalSnackbarKey.currentContext ?? context;
+      SnackBar snackBar = SnackBar(
+        content: Text(
+          AppLocalizations.of(
+            ctx,
+          ).newVersionAvailable(latestVersionTag.toString()),
+        ),
+        action: SnackBarAction(
+          label: AppLocalizations.of(ctx).viewOnGithub,
+          onPressed: () =>
+              launchUrl(Uri.parse(repo), mode: LaunchMode.externalApplication),
+        ),
+      );
+      globalSnackbarKey.currentState?.showSnackBar(snackBar);
+    }
   }
 }

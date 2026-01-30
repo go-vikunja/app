@@ -1,7 +1,7 @@
+import 'package:vikunja_app/domain/entities/version.dart';
+
 abstract class VersionRepository {
-  Future<String?> getLatestVersionTag();
+  Future<Version?> getLatestVersionTag();
 
-  Future<String> getCurrentVersionTag();
-
-  Future<bool> isUpToDate();
+  Future<Version?> getCurrentVersionTag();
 }

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:vikunja_app/domain/entities/version.dart';
+
+var supportedServerVersion = Version(1, 0, 0);
 
 const vPrimary = Color(0xFF0c86ff);
 const vLabelLight = Color(0xFFf2f2f2);

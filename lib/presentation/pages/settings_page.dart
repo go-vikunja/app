@@ -2,6 +2,7 @@ import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vikunja_app/domain/entities/version.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/core/di/locale_provider.dart';
 import 'package:vikunja_app/core/utils/language_autonyms.dart';
@@ -30,7 +31,7 @@ class SettingsPage extends ConsumerStatefulWidget {
 class SettingsPageState extends ConsumerState<SettingsPage> {
   final TextEditingController durationTextController = TextEditingController();
 
-  String newestVersionTag = "";
+  Version? newestVersion = null;
 
   @override
   Widget build(BuildContext context) {
@@ -211,20 +212,22 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
                     );
                   } else {
                     setState(() {
-                      newestVersionTag = newestVersion;
+                      this.newestVersion = newestVersion;
                     });
                   }
                 },
                 child: Text(l10n.checkForLatestVersion),
               ),
               Text(
-                settings.currentVersion.isNotEmpty
-                    ? l10n.currentVersionPrefix(settings.currentVersion)
+                settings.currentVersion != null
+                    ? l10n.currentVersionPrefix(
+                        settings.currentVersion.toString(),
+                      )
                     : l10n.currentVersionUnknown,
               ),
               Text(
-                newestVersionTag.isNotEmpty
-                    ? l10n.latestVersionPrefix(newestVersionTag)
+                this.newestVersion != null
+                    ? l10n.latestVersionPrefix(this.newestVersion.toString())
                     : "",
               ),
               Divider(),

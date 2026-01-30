@@ -4,6 +4,7 @@ import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vikunja_app/domain/entities/version.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
@@ -23,6 +24,7 @@ import 'package:vikunja_app/presentation/pages/login/login_webview.dart';
 import 'package:vikunja_app/presentation/pages/login/register_page.dart';
 import 'package:vikunja_app/presentation/widgets/button.dart';
 import 'package:vikunja_app/presentation/widgets/sentry_dialog.dart';
+import 'package:vikunja_app/presentation/widgets/version_mismatch_dialog.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -366,6 +368,8 @@ class LoginPageState extends ConsumerState<LoginPage> {
       ref.read(authDataProvider.notifier).set(AuthModel(server, ""));
       ref.read(settingsRepositoryProvider).saveServer(server);
 
+      Version? serverVersion;
+
       Response<Server> info = await ref
           .read(serverRepositoryProvider)
           .getInfo();
@@ -382,6 +386,10 @@ class LoginPageState extends ConsumerState<LoginPage> {
             info.toSuccess().body.version ?? "-",
           ),
         );
+
+        serverVersion = Version.fromServerString(
+          info.toSuccess().body.version ?? "-",
+        );
       }
 
       if (!pastServers.contains(server)) {
@@ -396,7 +404,7 @@ class LoginPageState extends ConsumerState<LoginPage> {
       if (response.isSuccessful) {
         var success = response.toSuccess();
         var userToken = success.body.token;
-        onUserToken(server, userToken, context);
+        onUserToken(context, server, userToken, serverVersion);
       } else if (response.isError) {
         var error = response.toError();
         if (error.error["code"] == 1017) {
@@ -407,7 +415,7 @@ class LoginPageState extends ConsumerState<LoginPage> {
             if (response.isSuccessful) {
               var success = response.toSuccess();
               var userToken = success.body.token;
-              onUserToken(server, userToken, context);
+              onUserToken(context, server, userToken, serverVersion);
             } else {
               _showGenericError(context);
             }
@@ -434,9 +442,10 @@ class LoginPageState extends ConsumerState<LoginPage> {
   }
 
   Future<void> onUserToken(
+    BuildContext context,
     String server,
     String userToken,
-    BuildContext context,
+    Version? serverVersion,
   ) async {
     ref.read(authDataProvider.notifier).set(AuthModel(server, userToken));
     await ref.read(settingsRepositoryProvider).saveUserToken(userToken);
@@ -445,6 +454,16 @@ class LoginPageState extends ConsumerState<LoginPage> {
 
     if (currentUser.isSuccessful) {
       ref.read(currentUserProvider.notifier).set(currentUser.toSuccess().body);
+
+      if (serverVersion != null && serverVersion != supportedServerVersion) {
+        await showDialog<void>(
+          context: ref.context,
+          barrierDismissible: false,
+          builder: (BuildContext context) {
+            return VersionMismatchDialog(serverVersion: serverVersion);
+          },
+        );
+      }
 
       Navigator.pushReplacementNamed(context, "/home");
     } else {
