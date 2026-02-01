@@ -77,7 +77,7 @@ class NotificationHandler {
     icon: 'vikunja_notification_logo',
     importance: Importance.high,
     actions: <AndroidNotificationAction>[
-      AndroidNotificationAction('action_done', 'Done'),
+      AndroidNotificationAction('action_dcd one', 'Done'),
     ],
   );
   var androidSpecificsReminders = AndroidNotificationDetails(
@@ -97,7 +97,9 @@ class NotificationHandler {
   NotificationHandler();
 
   Future<void> initNotifications() async {
-    iOSSpecifics = DarwinNotificationDetails(categoryIdentifier: 'doneCategory');
+    iOSSpecifics = DarwinNotificationDetails(
+      categoryIdentifier: 'doneCategory',
+    );
     platformChannelSpecificsDueDate = NotificationDetails(
       android: androidSpecificsDueDate,
       iOS: iOSSpecifics,
@@ -125,10 +127,7 @@ class NotificationHandler {
         DarwinNotificationCategory(
           'doneCategory',
           actions: <DarwinNotificationAction>[
-            DarwinNotificationAction.plain(
-              'action_done',
-              'Done',
-            ),
+            DarwinNotificationAction.plain('action_done', 'Done'),
           ],
         ),
       ],
