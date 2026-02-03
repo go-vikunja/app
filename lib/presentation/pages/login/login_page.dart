@@ -4,8 +4,7 @@ import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:vikunja_app/domain/entities/version.dart';
-import 'package:vikunja_app/l10n/gen/app_localizations.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:vikunja_app/core/di/network_provider.dart';
@@ -15,9 +14,12 @@ import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/core/utils/constants.dart';
 import 'package:vikunja_app/core/utils/network.dart';
 import 'package:vikunja_app/core/utils/validator.dart';
+import 'package:vikunja_app/data/data_sources/settings_data_source.dart';
 import 'package:vikunja_app/domain/entities/auth_model.dart';
 import 'package:vikunja_app/domain/entities/server.dart';
 import 'package:vikunja_app/domain/entities/user.dart';
+import 'package:vikunja_app/domain/entities/version.dart';
+import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/main.dart';
 import 'package:vikunja_app/presentation/manager/settings_controller.dart';
 import 'package:vikunja_app/presentation/pages/login/login_webview.dart';
@@ -47,6 +49,11 @@ class LoginPageState extends ConsumerState<LoginPage> {
   @override
   void initState() {
     super.initState();
+
+    var settingsDatasource = SettingsDatasource(FlutterSecureStorage());
+    settingsDatasource.saveServer(null);
+    settingsDatasource.saveUserToken(null);
+
     Future.delayed(Duration.zero, () async {
       var pastSevers = await ref
           .read(settingsRepositoryProvider)
