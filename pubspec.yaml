@@ -24,7 +24,6 @@ dependencies:
   flutter_riverpod: ^2.6.1
   flutter_secure_storage: ^10.0.0
   flutter_timezone: ^4.1.0
-  flutter_typeahead: ^5.2.0
   flutter_widget_from_html: ^0.17.1
   home_widget: ^0.8.0
   html_editor_enhanced: ^2.6.0
