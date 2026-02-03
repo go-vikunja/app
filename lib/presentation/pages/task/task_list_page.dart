@@ -4,8 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/core/di/network_provider.dart';
-import 'package:vikunja_app/core/di/notification_provider.dart';
-import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/entities/task_page_model.dart';
 import 'package:vikunja_app/presentation/manager/task_page_controller.dart';
@@ -24,11 +22,6 @@ class TaskListPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     var pageModel = ref.watch(taskPageControllerProvider);
-
-    //TODO find a better place for that
-    ref
-        .read(notificationProvider)
-        ?.scheduleDueNotifications(ref.read(taskRepositoryProvider));
 
     return pageModel.when(
       data: (model) {
