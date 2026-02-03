@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
-import 'package:vikunja_app/core/utils/constants.dart';
-import 'package:vikunja_app/l10n/gen/app_localizations.dart';
+import 'package:vikunja_app/core/utils/date_extensions.dart';
 import 'package:vikunja_app/domain/entities/label.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
+import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/presentation/widgets/label_widget.dart';
 
 class TaskBottomSheet extends StatefulWidget {
@@ -115,9 +115,7 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
                   Padding(padding: EdgeInsets.fromLTRB(10, 0, 0, 0)),
                   Text(
                     _currentTask.hasDueDate
-                        ? vDateFormatShort.format(
-                            _currentTask.dueDate!.toLocal(),
-                          )
+                        ? _currentTask.dueDate!.toLocal().formatShort()
                         : AppLocalizations.of(context).noDueDate,
                   ),
                 ],
@@ -130,9 +128,7 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
                   Padding(padding: EdgeInsets.fromLTRB(10, 0, 0, 0)),
                   Text(
                     _currentTask.hasStartDate
-                        ? vDateFormatShort.format(
-                            _currentTask.startDate!.toLocal(),
-                          )
+                        ? _currentTask.startDate!.toLocal().formatShort()
                         : AppLocalizations.of(context).noStartDate,
                   ),
                 ],
@@ -145,9 +141,7 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
                   Padding(padding: EdgeInsets.fromLTRB(10, 0, 0, 0)),
                   Text(
                     _currentTask.hasEndDate
-                        ? vDateFormatShort.format(
-                            _currentTask.endDate!.toLocal(),
-                          )
+                        ? _currentTask.endDate!.toLocal().formatShort()
                         : AppLocalizations.of(context).noEndDate,
                   ),
                 ],

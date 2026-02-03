@@ -7,6 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart'
     hide ChangeNotifierProvider;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:home_widget/home_widget.dart' show HomeWidget;
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:sentry_logging/sentry_logging.dart';
@@ -145,6 +147,12 @@ class VikunjaApp extends ConsumerWidget {
             '/': (context) => const InitPage(),
             '/login': (context) => const LoginPage(),
             '/home': (context) => const HomePage(),
+          },
+          builder: (context, child) {
+            final locale = Localizations.localeOf(context);
+            Intl.defaultLocale = locale.toString();
+            initializeDateFormatting(locale.toString());
+            return child ?? const SizedBox.shrink();
           },
         );
       },
