@@ -98,6 +98,7 @@ class Client {
       uri = Uri(
         scheme: uri.scheme,
         userInfo: uri.userInfo,
+        query: uri.query,
         host: uri.host,
         port: uri.port,
         path: uri.path,
