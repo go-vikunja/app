@@ -1,6 +1,6 @@
 import 'package:datetime_picker_formfield_new/datetime_picker_formfield.dart';
 import 'package:flutter/material.dart';
-import 'package:vikunja_app/core/utils/constants.dart';
+import 'package:vikunja_app/core/utils/date_extensions.dart';
 
 class VikunjaDateTimeField extends StatelessWidget {
   final String label;
@@ -24,7 +24,7 @@ class VikunjaDateTimeField extends StatelessWidget {
       initialValue: initialValue == null || initialValue!.year <= 1
           ? null
           : initialValue!.toLocal(),
-      format: vDateFormatShort,
+      format: dateFormatShort(),
       decoration: InputDecoration(
         labelText: label,
         border: InputBorder.none,

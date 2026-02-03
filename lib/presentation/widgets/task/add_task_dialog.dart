@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:vikunja_app/core/utils/constants.dart';
+import 'package:vikunja_app/core/utils/date_extensions.dart';
 import 'package:vikunja_app/domain/entities/new_task_due.dart';
 import 'package:vikunja_app/presentation/widgets/date_time_field.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
@@ -116,7 +116,7 @@ class AddTaskDialogState extends State<AddTaskDialog> {
                   Padding(
                     padding: const EdgeInsets.only(left: 16.0),
                     child: Text(
-                      vDateFormatShort.format(dueDate!),
+                      dueDate!.formatShort(),
                       style: Theme.of(context).textTheme.bodyLarge,
                     ),
                   ),
