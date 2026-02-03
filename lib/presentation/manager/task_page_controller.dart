@@ -1,7 +1,9 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_app/core/di/network_provider.dart';
+import 'package:vikunja_app/core/di/notification_provider.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/core/network/response.dart';
+import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/entities/task_page_model.dart';
 import 'package:vikunja_app/presentation/manager/widget_controller.dart';
@@ -12,33 +14,11 @@ part 'task_page_controller.g.dart';
 class TaskPageController extends _$TaskPageController {
   @override
   Future<TaskPageModel> build() async {
-    var showOnlyDueDateTasks = await ref
-        .read(settingsRepositoryProvider)
-        .getLandingPageOnlyDueDateTasks();
-
-    var tasksResponse = await _getAllFiltered(showOnlyDueDateTasks);
-
-    var defaultProjectId =
-        ref.read(currentUserProvider)?.settings?.default_project_id ?? 0;
+    var tasksResponse = await _getAllFiltered();
 
     switch (tasksResponse) {
       case SuccessResponse<List<Task>>():
-        var tasks = tasksResponse.body;
-        var projectsResponse = await ref
-            .read(projectRepositoryProvider)
-            .getAll();
-
-        if (projectsResponse.isSuccessful) {
-          var projectsMap = {
-            for (var v in projectsResponse.toSuccess().body) v.id: v,
-          };
-
-          for (var tasks in tasks) {
-            tasks.project = projectsMap[tasks.projectId];
-          }
-        }
-        updateWidget();
-        return TaskPageModel(tasks, showOnlyDueDateTasks, defaultProjectId);
+        return await _createPageModel(tasksResponse.body);
       case ErrorResponse<List<Task>>():
         throw AsyncError(tasksResponse.error, StackTrace.current);
       case ExceptionResponse<List<Task>>():
@@ -47,41 +27,12 @@ class TaskPageController extends _$TaskPageController {
   }
 
   void reload() async {
-    var showOnlyDueDateTasks = await ref
-        .read(settingsRepositoryProvider)
-        .getLandingPageOnlyDueDateTasks();
-
-    var tasksResponse = await _getAllFiltered(showOnlyDueDateTasks);
-
-    var defaultProjectId =
-        ref.read(currentUserProvider)?.settings?.default_project_id ?? 0;
+    var tasksResponse = await _getAllFiltered();
 
     switch (tasksResponse) {
       case SuccessResponse<List<Task>>():
-        var tasks = tasksResponse.body;
-        var projectsResponse = await ref
-            .read(projectRepositoryProvider)
-            .getAll();
-
-        if (projectsResponse.isSuccessful) {
-          var projectsMap = {
-            for (var v in projectsResponse.toSuccess().body) v.id: v,
-          };
-
-          for (var tasks in tasks) {
-            tasks.project = projectsMap[tasks.projectId];
-          }
-        }
-
-        state = AsyncData(
-          TaskPageModel(
-            tasksResponse.body,
-            showOnlyDueDateTasks,
-            defaultProjectId,
-          ),
-        );
-
-        updateWidget();
+        var pageModel = await _createPageModel(tasksResponse.body);
+        state = AsyncData(pageModel);
       case ErrorResponse<List<Task>>():
         state = AsyncError(tasksResponse.error, StackTrace.current);
       case ExceptionResponse<List<Task>>():
@@ -89,9 +40,46 @@ class TaskPageController extends _$TaskPageController {
     }
   }
 
-  Future<Response<List<Task>>> _getAllFiltered(
-    bool showOnlyDueDateTasks,
-  ) async {
+  Future<TaskPageModel> _createPageModel(List<Task> tasks) async {
+    var defaultProjectId =
+        ref.read(currentUserProvider)?.settings?.default_project_id ?? 0;
+
+    var projectsResponse = await ref.read(projectRepositoryProvider).getAll();
+
+    _setProjectOfTask(projectsResponse, tasks);
+
+    updateWidget();
+    ref
+        .read(notificationProvider)
+        ?.scheduleDueNotifications(ref.read(taskRepositoryProvider));
+
+    var showOnlyDueDateTasks = await ref
+        .read(settingsRepositoryProvider)
+        .getLandingPageOnlyDueDateTasks();
+
+    return TaskPageModel(tasks, showOnlyDueDateTasks, defaultProjectId);
+  }
+
+  void _setProjectOfTask(
+    Response<List<Project>> projectsResponse,
+    List<Task> tasks,
+  ) {
+    if (projectsResponse.isSuccessful) {
+      var projectsMap = {
+        for (var v in projectsResponse.toSuccess().body) v.id: v,
+      };
+
+      for (var tasks in tasks) {
+        tasks.project = projectsMap[tasks.projectId];
+      }
+    }
+  }
+
+  Future<Response<List<Task>>> _getAllFiltered() async {
+    var showOnlyDueDateTasks = await ref
+        .read(settingsRepositoryProvider)
+        .getLandingPageOnlyDueDateTasks();
+
     var user = ref.read(currentUserProvider);
     if (user != null) {
       Map<String, dynamic>? frontendSettings = user.settings?.frontend_settings;
