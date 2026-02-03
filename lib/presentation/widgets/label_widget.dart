@@ -14,9 +14,7 @@ class LabelWidget extends StatelessWidget {
       label: Text(label.title, style: TextStyle(color: getTextColor())),
       backgroundColor:
           label.color ?? Theme.of(context).colorScheme.surfaceBright,
-      iconTheme: IconThemeData(
-        color: getTextColor(),
-      ),
+      iconTheme: IconThemeData(color: getTextColor()),
       onDeleted: onDelete,
     );
   }

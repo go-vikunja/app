@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
@@ -216,40 +215,84 @@ class LoginPageState extends ConsumerState<LoginPage> {
   Padding _buildServerInput() {
     return Padding(
       padding: vStandardVerticalPadding,
-      child: TypeAheadField(
-        controller: _serverController,
-        builder: (context, controller, focusnode) {
-          return TextFormField(
-            controller: controller,
-            focusNode: focusnode,
-            enabled: !_loading,
-            validator: (address) {
-              return isURLValid(address)
-                  ? null
-                  : AppLocalizations.of(context).invalidUrl;
-            },
-            decoration: InputDecoration(
-              border: OutlineInputBorder(),
-              labelText: AppLocalizations.of(context).serverAddress,
-            ),
-          );
+      child: Autocomplete<String>(
+        optionsBuilder: (TextEditingValue textEditingValue) {
+          List<String> matches = <String>[];
+          matches.addAll(pastServers);
+          matches.retainWhere((s) {
+            return s.toLowerCase().contains(
+              textEditingValue.text.toLowerCase(),
+            );
+          });
+          return matches;
         },
-        onSelected: (suggestion) {
-          _serverController.text = suggestion;
-          setState(() => _serverController.text = suggestion);
+        focusNode: FocusNode(),
+        textEditingController: _serverController,
+        onSelected: (String selection) {
+          _serverController.text = selection;
+          setState(() => _serverController.text = selection);
         },
-        itemBuilder: (BuildContext context, Object? itemData) {
-          return Card(
-            child: Container(
-              padding: EdgeInsets.all(10),
+        fieldViewBuilder:
+            (
+              BuildContext context,
+              TextEditingController textEditingController,
+              FocusNode focusNode,
+              VoidCallback onFieldSubmitted,
+            ) =>
+                _buildServerTextView(textEditingController, focusNode, context),
+        optionsViewBuilder:
+            (
+              BuildContext context,
+              AutocompleteOnSelected<String> onSelected,
+              Iterable<String> options,
+            ) => _buildServerOptions(options, onSelected),
+      ),
+    );
+  }
+
+  TextFormField _buildServerTextView(
+    TextEditingController textEditingController,
+    FocusNode focusNode,
+    BuildContext context,
+  ) {
+    return TextFormField(
+      controller: textEditingController,
+      focusNode: focusNode,
+      enabled: !_loading,
+      validator: (address) {
+        return isURLValid(address)
+            ? null
+            : AppLocalizations.of(context).invalidUrl;
+      },
+      decoration: InputDecoration(
+        border: OutlineInputBorder(),
+        labelText: AppLocalizations.of(context).serverAddress,
+      ),
+    );
+  }
+
+  ListView _buildServerOptions(
+    Iterable<String> options,
+    AutocompleteOnSelected<String> onSelected,
+  ) {
+    return ListView(
+      padding: EdgeInsets.zero,
+      children: options.map((item) {
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
+            child: InkWell(
+              onTap: () {
+                onSelected(item);
+              },
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(itemData.toString()),
+                  Text(item),
                   IconButton(
                     onPressed: () {
                       setState(() {
-                        pastServers.remove(itemData.toString());
+                        pastServers.remove(item);
                         ref
                             .read(settingsRepositoryProvider)
                             .setPastServers(pastServers);
@@ -260,17 +303,9 @@ class LoginPageState extends ConsumerState<LoginPage> {
                 ],
               ),
             ),
-          );
-        },
-        suggestionsCallback: (String pattern) {
-          List<String> matches = <String>[];
-          matches.addAll(pastServers);
-          matches.retainWhere((s) {
-            return s.toLowerCase().contains(pattern.toLowerCase());
-          });
-          return matches;
-        },
-      ),
+          ),
+        );
+      }).toList(),
     );
   }
 

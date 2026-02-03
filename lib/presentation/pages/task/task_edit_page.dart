@@ -62,10 +62,12 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
     _startDate = widget.task.startDate;
     _endDate = widget.task.endDate;
 
-    _repeatAfterValue =
-        getRepeatAfterValueFromDuration(widget.task.repeatAfter);
-    _repeatAfterTypeIndex =
-        getRepeatAfterTypeFromDuration(widget.task.repeatAfter);
+    _repeatAfterValue = getRepeatAfterValueFromDuration(
+      widget.task.repeatAfter,
+    );
+    _repeatAfterTypeIndex = getRepeatAfterTypeFromDuration(
+      widget.task.repeatAfter,
+    );
 
     super.initState();
   }
@@ -318,14 +320,14 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
                 }
                 _checkChanged();
               },
-              items: repeatAfterArray.map<DropdownMenuItem<String>>(
-                (String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value),
-                  );
-                },
-              ).toList(),
+              items: repeatAfterArray.map<DropdownMenuItem<String>>((
+                String value,
+              ) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(value),
+                );
+              }).toList(),
             ),
           ),
         ],
@@ -691,10 +693,12 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
 
   void _checkChanged() {
     setState(() {
-      var repeatAfterValue =
-          getRepeatAfterValueFromDuration(widget.task.repeatAfter);
-      var repeatAfterType =
-          getRepeatAfterTypeFromDuration(widget.task.repeatAfter);
+      var repeatAfterValue = getRepeatAfterValueFromDuration(
+        widget.task.repeatAfter,
+      );
+      var repeatAfterType = getRepeatAfterTypeFromDuration(
+        widget.task.repeatAfter,
+      );
 
       var repeatAfter = getDurationFromType(repeatAfterValue, repeatAfterType);
 
