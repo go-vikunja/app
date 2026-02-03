@@ -6,7 +6,6 @@ import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
-import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/core/utils/priority.dart';
@@ -14,6 +13,7 @@ import 'package:vikunja_app/core/utils/repeat_after_parse.dart';
 import 'package:vikunja_app/domain/entities/label.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/entities/task_reminder.dart';
+import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/presentation/manager/task_page_controller.dart';
 import 'package:vikunja_app/presentation/pages/task/edit_description.dart';
 import 'package:vikunja_app/presentation/widgets/date_time_field.dart';
@@ -38,7 +38,7 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
   String? _title, _description;
   DateTime? _dueDate, _startDate, _endDate;
   int _repeatAfterValue = 0;
-  String _repeatAfterType = "Days";
+  int _repeatAfterTypeIndex = 1; //Days
   int? _priority;
   List<TaskReminder>? _reminderDates;
   List<Label>? _labels;
@@ -64,9 +64,9 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
     _endDate = widget.task.endDate;
 
     _repeatAfterValue =
-        getRepeatAfterValueFromDuration(widget.task.repeatAfter) ?? 0;
-    _repeatAfterType =
-        getRepeatAfterTypeFromDuration(widget.task.repeatAfter) ?? "Days";
+        getRepeatAfterValueFromDuration(widget.task.repeatAfter);
+    _repeatAfterTypeIndex =
+        getRepeatAfterTypeFromDuration(widget.task.repeatAfter);
 
     super.initState();
   }
@@ -277,6 +277,9 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
   }
 
   Widget _buildRepeatAfter() {
+    var localizations = AppLocalizations.of(context);
+    var repeatAfterArray = getRepeatAfterArray(context);
+
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
@@ -287,13 +290,13 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
               keyboardType: TextInputType.number,
               initialValue: getRepeatAfterValueFromDuration(
                 widget.task.repeatAfter,
-              )?.toString(),
+              ).toString(),
               onChanged: (newValue) {
                 _repeatAfterValue = int.tryParse(newValue) ?? 0;
                 _checkChanged();
               },
               decoration: InputDecoration(
-                labelText: AppLocalizations.of(context).repeatAfter,
+                labelText: localizations.repeatAfter,
                 border: InputBorder.none,
                 icon: Icon(Icons.repeat),
                 contentPadding: EdgeInsets.fromLTRB(0, 0, 0, 0),
@@ -309,21 +312,21 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
                 contentPadding: EdgeInsets.fromLTRB(0, 0, 0, 0),
               ),
               isExpanded: true,
-              initialValue: _repeatAfterType,
+              initialValue: repeatAfterArray.elementAt(_repeatAfterTypeIndex),
               onChanged: (String? newType) {
                 if (newType != null) {
-                  _repeatAfterType = newType;
+                  _repeatAfterTypeIndex = repeatAfterArray.indexOf(newType);
                 }
                 _checkChanged();
               },
-              items: <String>['Hours', 'Days', 'Weeks', 'Months', 'Years']
-                  .map<DropdownMenuItem<String>>((String value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(value),
-                    );
-                  })
-                  .toList(),
+              items: repeatAfterArray.map<DropdownMenuItem<String>>(
+                (String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(value),
+                  );
+                },
+              ).toList(),
             ),
           ),
         ],
@@ -698,9 +701,9 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
   void _checkChanged() {
     setState(() {
       var repeatAfterValue =
-          getRepeatAfterValueFromDuration(widget.task.repeatAfter) ?? 0;
+          getRepeatAfterValueFromDuration(widget.task.repeatAfter);
       var repeatAfterType =
-          getRepeatAfterTypeFromDuration(widget.task.repeatAfter) ?? "Days";
+          getRepeatAfterTypeFromDuration(widget.task.repeatAfter);
 
       var repeatAfter = getDurationFromType(repeatAfterValue, repeatAfterType);
 
@@ -731,7 +734,7 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
             labels: _labels,
             repeatAfter: getDurationFromType(
               _repeatAfterValue,
-              _repeatAfterType,
+              _repeatAfterTypeIndex,
             ),
           )
           //Need to be here as they can be null
