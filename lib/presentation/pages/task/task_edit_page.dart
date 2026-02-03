@@ -4,7 +4,6 @@ import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
@@ -419,25 +418,17 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
                 MediaQuery.of(context).size.width -
                 80 -
                 ((IconTheme.of(context).size ?? 0) * 2),
-            child: TypeAheadField(
-              //FIXME test compoonent - seems not to work as expected
-              suggestionsCallback: (pattern) => _searchLabel(pattern),
-              debounceDuration: Duration(seconds: 1),
-              builder: (builder, controller, focusnode) {
-                return TextFormField(
-                  controller: _labelTypeAheadController,
-                  focusNode: focusnode,
-                  decoration: InputDecoration(
-                    labelText: AppLocalizations.of(context).addNewLabel,
-                    border: InputBorder.none,
-                  ),
-                );
+            child: Autocomplete<String>(
+              optionsBuilder: (TextEditingValue textEditingValue) async {
+                if (textEditingValue.text == '') {
+                  return const Iterable<String>.empty();
+                }
+                return _searchLabel(textEditingValue.text);
               },
-              itemBuilder: (context, suggestion) {
-                return ListTile(title: Text(suggestion.toString()));
-              },
-              onSelected: (suggestion) {
-                _addLabel(suggestion.toString());
+              focusNode: FocusNode(),
+              textEditingController: _labelTypeAheadController,
+              onSelected: (String selection) {
+                _addLabel(selection);
               },
             ),
           ),
