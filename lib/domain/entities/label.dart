@@ -1,6 +1,5 @@
 import 'dart:ui';
 
-import 'package:vikunja_app/core/utils/constants.dart';
 import 'package:vikunja_app/domain/entities/user.dart';
 
 class Label {
@@ -9,10 +8,6 @@ class Label {
   final DateTime created, updated;
   final User createdBy;
   final Color? color;
-
-  late final Color textColor = color != null && color!.computeLuminance() <= 0.5
-      ? vLabelLight
-      : vLabelDark;
 
   Label({
     this.id = 0,

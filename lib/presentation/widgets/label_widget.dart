@@ -11,22 +11,25 @@ class LabelWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return Chip(
       visualDensity: VisualDensity.compact,
-      label: Text(label.title, style: TextStyle(color: label.textColor)),
-      backgroundColor: label.color,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.all(Radius.circular(4)),
-        side: BorderSide(style: BorderStyle.none),
+      label: Text(label.title, style: TextStyle(color: getTextColor())),
+      backgroundColor:
+          label.color ?? Theme.of(context).colorScheme.surfaceBright,
+      iconTheme: IconThemeData(
+        color: getTextColor(),
       ),
       onDeleted: onDelete,
-      deleteIconColor: label.textColor,
-      deleteIcon: Container(
-        padding: EdgeInsets.all(3),
-        decoration: BoxDecoration(
-          color: Color.fromARGB(50, 0, 0, 0),
-          shape: BoxShape.circle,
-        ),
-        child: Icon(Icons.close, color: label.textColor, size: 15),
-      ),
     );
+  }
+
+  Color? getTextColor() {
+    if (label.color != null) {
+      if (label.color!.computeLuminance() <= 0.5) {
+        return Colors.white;
+      } else {
+        return Colors.black;
+      }
+    }
+
+    return null;
   }
 }
