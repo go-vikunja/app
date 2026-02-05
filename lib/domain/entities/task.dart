@@ -19,7 +19,7 @@ class Task {
   Color? color;
   double? position;
   double? percentDone;
-  User createdBy;
+  User? createdBy;
   Duration? repeatAfter;
   List<Task> subtasks;
   List<Label> labels;
