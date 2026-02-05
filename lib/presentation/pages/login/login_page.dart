@@ -72,12 +72,12 @@ class LoginPageState extends ConsumerState<LoginPage> {
         return SentryDialog(
           onAccepts: () {
             ref
-                .read(settingsControllerProvider.notifier)
+                .read(settingsRepositoryProvider)
                 .setSentryEnabled(true);
           },
           onRefuse: () {
             ref
-                .read(settingsControllerProvider.notifier)
+                .read(settingsRepositoryProvider)
                 .setSentryEnabled(false);
           },
         );
