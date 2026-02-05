@@ -114,7 +114,7 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
 
                     if (success) {
                       Navigator.of(context).pop();
-                      Navigator.of(context).pop();
+                      Navigator.of(context).pop(widget.task);
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
