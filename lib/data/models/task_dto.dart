@@ -19,7 +19,7 @@ class TaskDto extends Dto<Task> {
   Color? color;
   final double? position;
   final double? percentDone;
-  final UserDto createdBy;
+  final UserDto? createdBy;
   Duration? repeatAfter;
   final List<TaskDto> subtasks;
   final List<LabelDto> labels;
@@ -97,7 +97,7 @@ class TaskDto extends Dto<Task> {
       created = DateTime.parse(json['created']),
       projectId = json['project_id'],
       bucketId = json['bucket_id'],
-      createdBy = UserDto.fromJson(json['created_by']);
+      createdBy = json['created_by'] != null ? UserDto.fromJson(json['created_by']) : null;
 
   Map<String, Object?> toJSON() => {
     'id': id,
@@ -125,7 +125,7 @@ class TaskDto extends Dto<Task> {
         .map((attachment) => attachment.toJSON())
         .toList(),
     'bucket_id': bucketId,
-    'created_by': createdBy.toJSON(),
+    'created_by': createdBy?.toJSON(),
     'updated': updated.toUtc().toIso8601String(),
     'created': created.toUtc().toIso8601String(),
   };
@@ -154,7 +154,7 @@ class TaskDto extends Dto<Task> {
     created: created,
     projectId: projectId,
     bucketId: bucketId,
-    createdBy: createdBy.toDomain(),
+    createdBy: createdBy?.toDomain(),
   );
 
   static TaskDto fromDomain(Task b) => TaskDto(
@@ -184,6 +184,6 @@ class TaskDto extends Dto<Task> {
     created: b.created,
     projectId: b.projectId,
     bucketId: b.bucketId,
-    createdBy: UserDto.fromDomain(b.createdBy),
+    createdBy: b.createdBy != null ? UserDto.fromDomain(b.createdBy!) : null,
   );
 }
