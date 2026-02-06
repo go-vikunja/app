@@ -57,7 +57,7 @@ class NotificationHandler {
       android: initializationSettingsAndroid,
       iOS: initializationSettingsIOS,
     );
-    await notificationsPlugin.initialize(initializationSettings);
+    await notificationsPlugin.initialize(settings: initializationSettings);
     developer.log("Notifications initialised successfully");
   }
 
@@ -83,11 +83,11 @@ class NotificationHandler {
     developer.log("scheduled notification for time $time");
 
     await notifsPlugin.zonedSchedule(
-      id,
-      title,
-      description,
-      time,
-      platformChannelSpecifics,
+      id: id,
+      title: title,
+      body: description,
+      scheduledDate: time,
+      notificationDetails: platformChannelSpecifics,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       payload: id.toString(),
     );
@@ -95,10 +95,10 @@ class NotificationHandler {
 
   void sendTestNotification() {
     notificationsPlugin.show(
-      Random().nextInt(10000000),
-      "Test Notification",
-      "This is a test notification",
-      platformChannelSpecificsReminders,
+      id: Random().nextInt(10000000),
+      title: "Test Notification",
+      body: "This is a test notification",
+      notificationDetails: platformChannelSpecificsReminders,
     );
   }
 
