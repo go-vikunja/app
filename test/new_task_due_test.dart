@@ -1,4 +1,4 @@
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_app/domain/entities/new_task_due.dart';
 
 void main() {
