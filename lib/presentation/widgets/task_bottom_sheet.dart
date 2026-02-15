@@ -5,6 +5,7 @@ import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/domain/entities/label.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/presentation/widgets/label_widget.dart';
+import 'package:vikunja_app/presentation/pages/task/task_comments_page.dart';
 
 class TaskBottomSheet extends StatefulWidget {
   final Task task;
@@ -76,12 +77,32 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
                       style: theme.textTheme.headlineMedium,
                     ),
                   ),
-                  IconButton(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      widget.onEdit();
-                    },
-                    icon: Icon(Icons.edit),
+                  Row(
+                    children: [
+                      IconButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => TaskCommentsPage(
+                                taskId: _currentTask.id,
+                                taskTitle: _currentTask.title,
+                              ),
+                            ),
+                          );
+                        },
+                        icon: Icon(Icons.comment),
+                        tooltip: AppLocalizations.of(context).comments,
+                      ),
+                      IconButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          widget.onEdit();
+                        },
+                        icon: Icon(Icons.edit),
+                      ),
+                    ],
                   ),
                 ],
               ),

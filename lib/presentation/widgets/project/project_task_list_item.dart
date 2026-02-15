@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/presentation/widgets/due_date_card.dart';
 import 'package:vikunja_app/presentation/widgets/project/kanban/priority_batch.dart';
+import 'package:vikunja_app/presentation/pages/task/task_comments_page.dart';
 
 class ProjectTaskListItem extends StatefulWidget {
   final Task task;
@@ -49,9 +50,28 @@ class ProjectTaskListItemState extends State<ProjectTaskListItem> {
               }
             },
           ),
-          trailing: IconButton(
-            icon: Icon(Icons.edit),
-            onPressed: () => widget.onEdit(),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: Icon(Icons.comment),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => TaskCommentsPage(
+                        taskId: widget.task.id,
+                        taskTitle: widget.task.title,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              IconButton(
+                icon: Icon(Icons.edit),
+                onPressed: () => widget.onEdit(),
+              ),
+            ],
           ),
         ),
         Container(

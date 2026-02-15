@@ -19,7 +19,7 @@ import 'package:vikunja_app/presentation/pages/task/edit_description.dart';
 import 'package:vikunja_app/presentation/widgets/date_time_field.dart';
 import 'package:vikunja_app/presentation/widgets/label_widget.dart';
 import 'package:vikunja_app/presentation/widgets/task/color_picker_dialog.dart';
-import 'package:vikunja_app/presentation/widgets/task/task_comments.dart';
+
 import 'package:vikunja_app/presentation/widgets/task/task_delete_dialog.dart';
 import 'package:vikunja_app/presentation/widgets/task/task_save_dialog.dart';
 
@@ -156,7 +156,6 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
           _buildLabelList(),
           _buildColor(),
           _buildAttachments(),
-          _buildComments(),
         ],
       ),
     );
@@ -524,13 +523,6 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
           ),
         );
       },
-    );
-  }
-
-  Widget _buildComments() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16.0),
-      child: TaskComments(taskId: widget.task.id),
     );
   }
 
