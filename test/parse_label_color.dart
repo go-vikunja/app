@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:ui';
 
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_app/data/models/label_dto.dart';
 import 'package:vikunja_app/data/models/user_dto.dart';
 

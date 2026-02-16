@@ -1,4 +1,4 @@
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_app/core/utils/repeat_after_parse.dart';
 
 void main() {
