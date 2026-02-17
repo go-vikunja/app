@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:background_downloader/background_downloader.dart'
     show TaskStatus, FileDownloader;
 import 'package:collection/collection.dart';
@@ -47,6 +49,9 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
   List<Label>? _suggestedLabels;
   final _labelTypeAheadController = TextEditingController();
 
+  Timer? _debounce;
+  Completer<Iterable<String>>? _lastCompleter;
+
   bool changed = false;
 
   @override
@@ -70,6 +75,13 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
     );
 
     super.initState();
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _labelTypeAheadController.dispose();
+    super.dispose();
   }
 
   @override
@@ -421,11 +433,27 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
                 80 -
                 ((IconTheme.of(context).size ?? 0) * 2),
             child: Autocomplete<String>(
-              optionsBuilder: (TextEditingValue textEditingValue) async {
+              optionsBuilder: (TextEditingValue textEditingValue) {
                 if (textEditingValue.text == '') {
                   return const Iterable<String>.empty();
                 }
-                return _searchLabel(textEditingValue.text);
+
+                if (_debounce?.isActive ?? false) {
+                  _debounce!.cancel();
+                  _lastCompleter?.complete(const Iterable<String>.empty());
+                }
+
+                final completer = Completer<Iterable<String>>();
+                _lastCompleter = completer;
+
+                _debounce = Timer(const Duration(milliseconds: 500), () async {
+                  var labels = await _searchLabel(textEditingValue.text);
+                  if (!completer.isCompleted) {
+                    completer.complete(labels);
+                  }
+                });
+
+                return completer.future;
               },
               focusNode: FocusNode(),
               textEditingController: _labelTypeAheadController,
