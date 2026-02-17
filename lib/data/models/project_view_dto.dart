@@ -10,7 +10,7 @@ class ProjectViewDto extends Dto<ProjectView> {
   final int projectId;
   final String viewKind;
   final FilterDto? filter;
-  final int position;
+  final double position;
   final String bucketConfigurationMode;
   final List<BucketConfigurationDto>? bucketConfiguration;
   final int defaultBucketId;

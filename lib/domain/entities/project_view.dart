@@ -9,7 +9,7 @@ class ProjectView {
   final int projectId;
   final ViewKind viewKind;
   final Filter? filter;
-  final int position;
+  final double position;
   final String bucketConfigurationMode;
   final List<BucketConfiguration>? bucketConfiguration;
   int defaultBucketId;
