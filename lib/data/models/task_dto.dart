@@ -97,7 +97,9 @@ class TaskDto extends Dto<Task> {
       created = DateTime.parse(json['created']),
       projectId = json['project_id'],
       bucketId = json['bucket_id'],
-      createdBy = json['created_by'] != null ? UserDto.fromJson(json['created_by']) : null;
+      createdBy = json['created_by'] != null
+          ? UserDto.fromJson(json['created_by'])
+          : null;
 
   Map<String, Object?> toJSON() => {
     'id': id,
