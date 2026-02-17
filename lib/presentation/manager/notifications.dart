@@ -22,7 +22,6 @@ void notificationTapBackground(NotificationResponse notificationResponse) {
     var id = notificationResponse.id;
 
     if (id != null) {
-      print("Try mark as done");
       markAsDone(id);
     }
   }
