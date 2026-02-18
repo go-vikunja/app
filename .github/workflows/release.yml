@@ -105,10 +105,15 @@ jobs:
 
       - name: Copy and rename APK for S3
         run: |
-          VERSION="${{ steps.ghd.outputs.describe }}"
-          VERSION=${VERSION#v}
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            VERSION="${{ steps.ghd.outputs.describe }}"
+            VERSION=${VERSION#v}
+            FILENAME="vikunja-${VERSION}.apk"
+          else
+            FILENAME="vikunja-unstable.apk"
+          fi
           cp build/app/outputs/flutter-apk/app-production-release.apk \
-             build/app/outputs/flutter-apk/vikunja-${VERSION}.apk
+             build/app/outputs/flutter-apk/${FILENAME}
 
       - name: Upload APK to S3
         uses: kolaente/s3-action@41963184b524ccac734ea4d8c964ac74b5b1af89 # v1.2.1
