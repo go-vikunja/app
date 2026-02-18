@@ -3,6 +3,8 @@ on:
 
 jobs:
   build:
+    # Skip on main/tags since the release job will build anyway
+    if: ${{ github.ref_name != 'main' && github.ref_type != 'tag' }}
     runs-on: ubuntu-latest
     env:
       GRADLE_OPTS: -Xmx8g
