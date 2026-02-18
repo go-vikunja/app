@@ -11,6 +11,7 @@ import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/core/utils/priority.dart';
 import 'package:vikunja_app/core/utils/repeat_after_parse.dart';
+import 'package:vikunja_app/core/utils/repeat_after_unit.dart';
 import 'package:vikunja_app/domain/entities/label.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/entities/task_reminder.dart';
@@ -39,7 +40,7 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
   String? _title, _description;
   DateTime? _dueDate, _startDate, _endDate;
   int _repeatAfterValue = 0;
-  int _repeatAfterTypeIndex = 1; //Days
+  RepeatAfterUnit _repeatAfterUnit = RepeatAfterUnit.DAYS;
   int? _priority;
   List<TaskReminder>? _reminderDates;
   List<Label>? _labels;
@@ -70,9 +71,7 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
     _repeatAfterValue = getRepeatAfterValueFromDuration(
       widget.task.repeatAfter,
     );
-    _repeatAfterTypeIndex = getRepeatAfterTypeFromDuration(
-      widget.task.repeatAfter,
-    );
+    _repeatAfterUnit = getRepeatAfterTypeFromDuration(widget.task.repeatAfter);
 
     super.initState();
   }
@@ -291,7 +290,6 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
 
   Widget _buildRepeatAfter() {
     var localizations = AppLocalizations.of(context);
-    var repeatAfterArray = getRepeatAfterArray(context);
 
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 8.0),
@@ -319,27 +317,29 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
           Spacer(),
           Flexible(
             flex: 30,
-            child: DropdownButtonFormField<String>(
+            child: DropdownButtonFormField<RepeatAfterUnit>(
               decoration: InputDecoration(
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.fromLTRB(0, 0, 0, 0),
               ),
               isExpanded: true,
-              initialValue: repeatAfterArray.elementAt(_repeatAfterTypeIndex),
-              onChanged: (String? newType) {
+              initialValue: _repeatAfterUnit,
+              onChanged: (RepeatAfterUnit? newType) {
                 if (newType != null) {
-                  _repeatAfterTypeIndex = repeatAfterArray.indexOf(newType);
+                  _repeatAfterUnit = newType;
                 }
                 _checkChanged();
               },
-              items: repeatAfterArray.map<DropdownMenuItem<String>>((
-                String value,
-              ) {
-                return DropdownMenuItem<String>(
-                  value: value,
-                  child: Text(value),
-                );
-              }).toList(),
+              items: RepeatAfterUnit.values
+                  .map<DropdownMenuItem<RepeatAfterUnit>>((
+                    RepeatAfterUnit value,
+                  ) {
+                    return DropdownMenuItem<RepeatAfterUnit>(
+                      value: value,
+                      child: Text(value.toLocalizedString(context)),
+                    );
+                  })
+                  .toList(),
             ),
           ),
         ],
@@ -728,7 +728,7 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
         widget.task.repeatAfter,
       );
 
-      var repeatAfter = getDurationFromType(repeatAfterValue, repeatAfterType);
+      var repeatAfter = repeatAfterType.getDuration(repeatAfterValue);
 
       changed =
           widget.task.title != _title ||
@@ -755,10 +755,7 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
             reminderDates: _reminderDates,
             priority: _priority,
             labels: _labels,
-            repeatAfter: getDurationFromType(
-              _repeatAfterValue,
-              _repeatAfterTypeIndex,
-            ),
+            repeatAfter: _repeatAfterUnit.getDuration(_repeatAfterValue),
           )
           //Need to be here as they can be null
           ..dueDate = _dueDate
