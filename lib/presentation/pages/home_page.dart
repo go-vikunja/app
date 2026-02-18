@@ -33,6 +33,7 @@ class HomePageState extends ConsumerState<HomePage> {
 
   int _selectedDrawerIndex = 0, _previousDrawerIndex = 0;
   Widget? drawerItem;
+  NotificationHandler? _notificationHandler;
 
   List<Widget> widgets = [TaskListPage(), ProjectListPage(), SettingsPage()];
 
@@ -73,7 +74,7 @@ class HomePageState extends ConsumerState<HomePage> {
 
   @override
   void dispose() {
-    ref.read(notificationProvider)?.removeListener(onNotificationDone);
+    _notificationHandler?.removeListener(onNotificationDone);
 
     super.dispose();
   }
@@ -223,11 +224,12 @@ class HomePageState extends ConsumerState<HomePage> {
   Future<void> initNotifications() async {
     var notifGranted = await Permission.notification.isGranted;
     if (notifGranted) {
-      NotificationHandler notificationClass = NotificationHandler();
-      await notificationClass.initNotifications();
-      notificationClass.addListener(onNotificationDone);
+      NotificationHandler notificationHandler = NotificationHandler();
+      await notificationHandler.initNotifications();
+      notificationHandler.addListener(onNotificationDone);
 
-      ref.read(notificationProvider.notifier).set(notificationClass);
+      ref.read(notificationProvider.notifier).set(notificationHandler);
+      _notificationHandler = notificationHandler;
     }
   }
 
