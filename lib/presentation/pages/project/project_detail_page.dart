@@ -8,6 +8,7 @@ import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/entities/view_kind.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
+import 'package:vikunja_app/presentation/manager/notifications.dart';
 import 'package:vikunja_app/presentation/manager/project_controller.dart';
 import 'package:vikunja_app/presentation/pages/error_widget.dart';
 import 'package:vikunja_app/presentation/pages/loading_widget.dart';
@@ -27,16 +28,18 @@ class ProjectDetailPage extends ConsumerStatefulWidget {
 
 class ProjectPageState extends ConsumerState<ProjectDetailPage> {
   int _viewIndex = 0;
+  NotificationHandler? _notificationHandler;
 
   @override
   void initState() {
-    ref.read(notificationProvider)?.addListener(onNotificationDone);
+    _notificationHandler = ref.read(notificationProvider);
+    _notificationHandler?.addListener(onNotificationDone);
     super.initState();
   }
 
   @override
   void dispose() {
-    ref.read(notificationProvider)?.removeListener(onNotificationDone);
+    _notificationHandler?.removeListener(onNotificationDone);
     super.dispose();
   }
 
