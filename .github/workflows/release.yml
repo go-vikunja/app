@@ -103,13 +103,24 @@ jobs:
       - run: flutter build appbundle --flavor production
       - run: flutter build apk --flavor production
 
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+      - name: Copy and rename APK for S3
+        run: |
+          VERSION="${{ steps.ghd.outputs.describe }}"
+          VERSION=${VERSION#v}
+          cp build/app/outputs/flutter-apk/app-production-release.apk \
+             build/app/outputs/flutter-apk/vikunja-${VERSION}.apk
+
+      - name: Upload APK to S3
+        uses: kolaente/s3-action@41963184b524ccac734ea4d8c964ac74b5b1af89 # v1.2.1
         with:
-          name: app-release-bundle
-          path: |
-            build/app/outputs/bundle/productionRelease/app-production-release.aab
-            build/app/outputs/flutter-apk/app-production-release.apk
+          s3-access-key-id: ${{ secrets.S3_ACCESS_KEY }}
+          s3-secret-access-key: ${{ secrets.S3_SECRET_KEY }}
+          s3-endpoint: ${{ secrets.S3_ENDPOINT }}
+          s3-bucket: ${{ secrets.S3_BUCKET }}
+          s3-region: ${{ secrets.S3_REGION }}
+          target-path: /app/${{ github.ref_type == 'tag' && steps.ghd.outputs.describe || 'unstable' }}
+          files: "build/app/outputs/flutter-apk/vikunja-*.apk"
+          strip-path-prefix: build/app/outputs/flutter-apk/
 
       - name: Deploy to Google Play Beta
         if: github.event_name == 'push'
