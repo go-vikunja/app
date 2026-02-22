@@ -7,7 +7,12 @@ class ColorPickerDialog extends StatefulWidget {
   final Function() onCancel;
   final Function(Color) onConfirm;
 
-  ColorPickerDialog(this._pickerColor, this.onConfirm, this.onCancel);
+  const ColorPickerDialog(
+    this._pickerColor,
+    this.onConfirm,
+    this.onCancel, {
+    super.key,
+  });
 
   @override
   State<ColorPickerDialog> createState() => _ColorPickerDialogState();

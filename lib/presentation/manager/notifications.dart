@@ -1,12 +1,71 @@
 import 'dart:developer' as developer;
+import 'dart:isolate';
 import 'dart:math';
+import 'dart:ui';
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/timezone.dart' as tz;
+import 'package:vikunja_app/core/network/client.dart';
+import 'package:vikunja_app/data/data_sources/settings_data_source.dart';
+import 'package:vikunja_app/data/data_sources/task_data_source.dart';
+import 'package:vikunja_app/data/repositories/task_repository_impl.dart';
 import 'package:vikunja_app/domain/repositories/task_repository.dart';
+import 'package:vikunja_app/presentation/manager/widget_controller.dart';
+
+const _actionDonePortName = 'action_done_port_name';
+
+@pragma('vm:entry-point')
+void notificationTapBackground(NotificationResponse notificationResponse) {
+  if (notificationResponse.actionId == "action_done") {
+    var id = notificationResponse.id;
+
+    if (id != null) {
+      markAsDone(id);
+    }
+  }
+}
+
+void markAsDone(int id) async {
+  var datasource = SettingsDatasource(FlutterSecureStorage());
+  var token = await datasource.getUserToken();
+  var base = await datasource.getServer();
+
+  if (token == null || base == null) {
+    return;
+  }
+
+  Client client = Client(token: token, base: base);
+
+  var ignoreCertificates = await datasource.getIgnoreCertificates();
+  client.setIgnoreCerts(ignoreCertificates);
+
+  TaskRepository taskService = TaskRepositoryImpl(TaskDataSource(client));
+  var response = await taskService.getTask(id);
+
+  if (response.isSuccessful) {
+    var task = response.toSuccess().body;
+    task.done = true;
+    await taskService.update(task);
+
+    updateWidget();
+
+    //Call app if opened to update view
+    final SendPort? sendPort = IsolateNameServer.lookupPortByName(
+      _actionDonePortName,
+    );
+
+    if (sendPort != null) {
+      sendPort.send(task.id);
+    }
+  }
+}
 
 class NotificationHandler {
+  final ReceivePort _receivePort = ReceivePort();
+  final List<Function()> _taskChangedListener = List.empty(growable: true);
+
   FlutterLocalNotificationsPlugin get notificationsPlugin =>
       FlutterLocalNotificationsPlugin();
 
@@ -16,6 +75,9 @@ class NotificationHandler {
     channelDescription: "description",
     icon: 'vikunja_notification_logo',
     importance: Importance.high,
+    actions: <AndroidNotificationAction>[
+      AndroidNotificationAction('action_dcd one', 'Done'),
+    ],
   );
   var androidSpecificsReminders = AndroidNotificationDetails(
     "Vikunja2",
@@ -23,6 +85,9 @@ class NotificationHandler {
     channelDescription: "description",
     icon: 'vikunja_notification_logo',
     importance: Importance.high,
+    actions: <AndroidNotificationAction>[
+      AndroidNotificationAction('action_done', 'Done'),
+    ],
   );
   late DarwinNotificationDetails iOSSpecifics;
   late NotificationDetails platformChannelSpecificsDueDate;
@@ -31,7 +96,9 @@ class NotificationHandler {
   NotificationHandler();
 
   Future<void> initNotifications() async {
-    iOSSpecifics = DarwinNotificationDetails();
+    iOSSpecifics = DarwinNotificationDetails(
+      categoryIdentifier: 'doneCategory',
+    );
     platformChannelSpecificsDueDate = NotificationDetails(
       android: androidSpecificsDueDate,
       iOS: iOSSpecifics,
@@ -41,6 +108,9 @@ class NotificationHandler {
       iOS: iOSSpecifics,
     );
     await _initNotifications();
+
+    initBackgroundCommunication();
+
     requestIOSPermissions();
   }
 
@@ -52,13 +122,42 @@ class NotificationHandler {
       requestAlertPermission: false,
       requestBadgePermission: false,
       requestSoundPermission: false,
+      notificationCategories: [
+        DarwinNotificationCategory(
+          'doneCategory',
+          actions: <DarwinNotificationAction>[
+            DarwinNotificationAction.plain('action_done', 'Done'),
+          ],
+        ),
+      ],
     );
     var initializationSettings = InitializationSettings(
       android: initializationSettingsAndroid,
       iOS: initializationSettingsIOS,
     );
-    await notificationsPlugin.initialize(initializationSettings);
+    await notificationsPlugin.initialize(
+      settings: initializationSettings,
+      onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
+    );
     developer.log("Notifications initialised successfully");
+  }
+
+  void initBackgroundCommunication() {
+    IsolateNameServer.removePortNameMapping(_actionDonePortName);
+
+    final ok = IsolateNameServer.registerPortWithName(
+      _receivePort.sendPort,
+      _actionDonePortName,
+    );
+    if (!ok) {
+      developer.log('Failed to register $_actionDonePortName');
+    }
+
+    _receivePort.listen((dynamic message) {
+      for (var it in _taskChangedListener) {
+        it.call();
+      }
+    });
   }
 
   Future<void> scheduleNotification(
@@ -83,11 +182,11 @@ class NotificationHandler {
     developer.log("scheduled notification for time $time");
 
     await notifsPlugin.zonedSchedule(
-      id,
-      title,
-      description,
-      time,
-      platformChannelSpecifics,
+      id: id,
+      title: title,
+      body: description,
+      scheduledDate: time,
+      notificationDetails: platformChannelSpecifics,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       payload: id.toString(),
     );
@@ -95,10 +194,10 @@ class NotificationHandler {
 
   void sendTestNotification() {
     notificationsPlugin.show(
-      Random().nextInt(10000000),
-      "Test Notification",
-      "This is a test notification",
-      platformChannelSpecificsReminders,
+      id: Random().nextInt(10000000),
+      title: "Test Notification",
+      body: "This is a test notification",
+      notificationDetails: platformChannelSpecificsReminders,
     );
   }
 
@@ -147,5 +246,13 @@ class NotificationHandler {
       }
       developer.log("notifications scheduled successfully");
     }
+  }
+
+  void addListener(Function() listener) {
+    _taskChangedListener.add(listener);
+  }
+
+  void removeListener(Function() listener) {
+    _taskChangedListener.remove(listener);
   }
 }

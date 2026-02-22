@@ -1,6 +1,6 @@
 import 'package:datetime_picker_formfield_new/datetime_picker_formfield.dart';
 import 'package:flutter/material.dart';
-import 'package:vikunja_app/core/utils/constants.dart';
+import 'package:vikunja_app/core/utils/date_extensions.dart';
 
 class VikunjaDateTimeField extends StatelessWidget {
   final String label;
@@ -24,7 +24,7 @@ class VikunjaDateTimeField extends StatelessWidget {
       initialValue: initialValue == null || initialValue!.year <= 1
           ? null
           : initialValue!.toLocal(),
-      format: vDateFormatShort,
+      format: dateFormatShort(),
       decoration: InputDecoration(
         labelText: label,
         border: InputBorder.none,
@@ -38,7 +38,10 @@ class VikunjaDateTimeField extends StatelessWidget {
     );
   }
 
-  Future<DateTime?> _showDatePicker(context, currentValue) async {
+  Future<DateTime?> _showDatePicker(
+    BuildContext context,
+    DateTime currentValue,
+  ) async {
     var selectedDate = await showDialog<DateTime>(
       context: context,
       builder: (_) => DatePickerDialog(
@@ -49,7 +52,7 @@ class VikunjaDateTimeField extends StatelessWidget {
       ),
     );
 
-    if (selectedDate == null) return null;
+    if (selectedDate == null || !context.mounted) return null;
 
     var selectedTime = await showDialog<TimeOfDay>(
       context: context,

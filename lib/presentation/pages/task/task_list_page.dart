@@ -4,8 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/core/di/network_provider.dart';
-import 'package:vikunja_app/core/di/notification_provider.dart';
-import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/entities/task_page_model.dart';
 import 'package:vikunja_app/presentation/manager/task_page_controller.dart';
@@ -14,8 +12,8 @@ import 'package:vikunja_app/presentation/pages/loading_widget.dart';
 import 'package:vikunja_app/presentation/pages/task/task_edit_page.dart';
 import 'package:vikunja_app/presentation/widgets/empty_view.dart';
 import 'package:vikunja_app/presentation/widgets/task/add_task_dialog.dart';
-import 'package:vikunja_app/presentation/widgets/task_bottom_sheet.dart';
 import 'package:vikunja_app/presentation/widgets/task/task_list_item.dart';
+import 'package:vikunja_app/presentation/widgets/task_bottom_sheet.dart';
 
 class TaskListPage extends ConsumerWidget {
   const TaskListPage({super.key});
@@ -24,11 +22,6 @@ class TaskListPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     var pageModel = ref.watch(taskPageControllerProvider);
-
-    //TODO find a better place for that
-    ref
-        .read(notificationProvider)
-        ?.scheduleDueNotifications(ref.read(taskRepositoryProvider));
 
     return pageModel.when(
       data: (model) {
@@ -150,16 +143,20 @@ class TaskListPage extends ConsumerWidget {
         .read(taskPageControllerProvider.notifier)
         .addTask(defaultProjectId, task);
 
-    if (success) {
-      ScaffoldMessenger.of(ref.context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(ref.context).taskAddedSuccess),
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(ref.context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(ref.context).taskAddError)),
-      );
+    if (ref.context.mounted) {
+      if (success) {
+        ScaffoldMessenger.of(ref.context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(ref.context).taskAddedSuccess),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(ref.context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(ref.context).taskAddError),
+          ),
+        );
+      }
     }
   }
 
@@ -181,7 +178,7 @@ class TaskListPage extends ConsumerWidget {
               var success = await ref
                   .read(taskPageControllerProvider.notifier)
                   .markAsDone(task);
-              if (!success) {
+              if (!success && context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(

@@ -1,4 +1,4 @@
-final RegExp _emailRegex = new RegExp(
+final RegExp _emailRegex = RegExp(
   r'^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$',
 );
 
@@ -7,7 +7,7 @@ bool isEmail(String? email) {
   return _emailRegex.hasMatch(email);
 }
 
-final RegExp _urlRegex = new RegExp(
+final RegExp _urlRegex = RegExp(
   r'https?:\/\/((([a-zA-Z0-9.\-\_]+)\.[a-zA-Z]+)|(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}))(:[0-9]+)?',
 );
 
@@ -16,7 +16,7 @@ bool isUrl(String? url) {
   return _urlRegex.hasMatch(url);
 }
 
-final RegExp versionRegex = new RegExp(
+final RegExp versionRegex = RegExp(
   r'^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$',
 );
 

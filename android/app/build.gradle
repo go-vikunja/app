@@ -32,13 +32,8 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace 'io.vikunja.flutteringvikunja'
-    //compileSdkVersion flutter.compileSdkVersion
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = "27.0.12077973"
-
-    //sourceSets {
-    //    main.java.srcDirs += 'src/main/kotlin'
-   // }
+    ndkVersion = flutter.ndkVersion
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -105,10 +100,6 @@ android {
         compose true
     }
 
-    composeOptions {
-        kotlinCompilerExtensionVersion "1.5.15"
-    }
-
 }
 
 flutter {
@@ -121,9 +112,3 @@ dependencies {
     implementation "androidx.glance:glance-appwidget:1.1.1"
     implementation 'com.google.code.gson:gson:2.8.5'
 }
-
-//dependencies {
-//    testImplementation 'junit:junit:4.13.2'
-//    androidTestImplementation 'com.android.support.test:runner:1.0.2'
-//    androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
-//}

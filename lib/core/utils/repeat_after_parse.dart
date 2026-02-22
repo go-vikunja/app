@@ -1,39 +1,38 @@
-String? getRepeatAfterTypeFromDuration(Duration? repeatAfter) {
+import 'package:vikunja_app/core/utils/repeat_after_unit.dart';
+
+RepeatAfterUnit getRepeatAfterTypeFromDuration(Duration? repeatAfter) {
   if (repeatAfter == null || repeatAfter.inSeconds == 0) {
-    return null;
+    return RepeatAfterUnit.hours;
   }
 
   // if its dividable by 24, its something with days, otherwise hours
   if (repeatAfter.inHours % 24 == 0) {
     if (repeatAfter.inDays % 365 == 0) {
-      return 'Years';
+      return RepeatAfterUnit.years;
     } else if (repeatAfter.inDays % 30 == 0) {
-      return 'Months';
+      return RepeatAfterUnit.months;
     } else if (repeatAfter.inDays % 7 == 0) {
-      return 'Weeks';
+      return RepeatAfterUnit.weeks;
     } else {
-      return 'Days';
+      return RepeatAfterUnit.days;
     }
   }
-  return 'Hours';
+  return RepeatAfterUnit.hours;
 }
 
-int? getRepeatAfterValueFromDuration(Duration? repeatAfter) {
+int getRepeatAfterValueFromDuration(Duration? repeatAfter) {
   if (repeatAfter == null || repeatAfter.inSeconds == 0) {
-    return null;
+    return 0;
   }
 
   // if its dividable by 24, its something with days, otherwise hours
   if (repeatAfter.inHours % 24 == 0) {
     if (repeatAfter.inDays % 365 == 0) {
-      // Years
-      return (repeatAfter.inDays / 365).round();
+      return (repeatAfter.inDays / 365).round(); // Years
     } else if (repeatAfter.inDays % 30 == 0) {
-      // Months
-      return (repeatAfter.inDays / 30).round();
+      return (repeatAfter.inDays / 30).round(); // Months
     } else if (repeatAfter.inDays % 7 == 0) {
-      // Weeks
-      return (repeatAfter.inDays / 7).round();
+      return (repeatAfter.inDays / 7).round(); // Weeks
     } else {
       return repeatAfter.inDays; // Days
     }
@@ -41,26 +40,4 @@ int? getRepeatAfterValueFromDuration(Duration? repeatAfter) {
 
   // Otherwise Hours
   return repeatAfter.inHours;
-}
-
-Duration? getDurationFromType(int? val, String? type) {
-  // Return an empty duration if either of the values is not set
-  if (val == null || val == '' || type == null || type == '') {
-    return Duration();
-  }
-
-  switch (type) {
-    case 'Hours':
-      return Duration(hours: val);
-    case 'Days':
-      return Duration(days: val);
-    case 'Weeks':
-      return Duration(days: val * 7);
-    case 'Months':
-      return Duration(days: val * 30);
-    case 'Years':
-      return Duration(days: val * 365);
-  }
-
-  return null;
 }

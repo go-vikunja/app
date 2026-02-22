@@ -1,19 +1,21 @@
+import 'dart:async';
+
 import 'package:background_downloader/background_downloader.dart'
     show TaskStatus, FileDownloader;
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
-import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/core/utils/priority.dart';
 import 'package:vikunja_app/core/utils/repeat_after_parse.dart';
+import 'package:vikunja_app/core/utils/repeat_after_unit.dart';
 import 'package:vikunja_app/domain/entities/label.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/entities/task_reminder.dart';
+import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/presentation/manager/task_page_controller.dart';
 import 'package:vikunja_app/presentation/pages/task/edit_description.dart';
 import 'package:vikunja_app/presentation/widgets/date_time_field.dart';
@@ -38,7 +40,7 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
   String? _title, _description;
   DateTime? _dueDate, _startDate, _endDate;
   int _repeatAfterValue = 0;
-  String _repeatAfterType = "Days";
+  RepeatAfterUnit _repeatAfterUnit = RepeatAfterUnit.days;
   int? _priority;
   List<TaskReminder>? _reminderDates;
   List<Label>? _labels;
@@ -47,6 +49,9 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
   // we use this to find the label object after a user taps on the suggestion, because the typeahead only uses strings, not full objects.
   List<Label>? _suggestedLabels;
   final _labelTypeAheadController = TextEditingController();
+
+  Timer? _debounce;
+  Completer<Iterable<String>>? _lastCompleter;
 
   bool changed = false;
 
@@ -63,12 +68,19 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
     _startDate = widget.task.startDate;
     _endDate = widget.task.endDate;
 
-    _repeatAfterValue =
-        getRepeatAfterValueFromDuration(widget.task.repeatAfter) ?? 0;
-    _repeatAfterType =
-        getRepeatAfterTypeFromDuration(widget.task.repeatAfter) ?? "Days";
+    _repeatAfterValue = getRepeatAfterValueFromDuration(
+      widget.task.repeatAfter,
+    );
+    _repeatAfterUnit = getRepeatAfterTypeFromDuration(widget.task.repeatAfter);
 
     super.initState();
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _labelTypeAheadController.dispose();
+    super.dispose();
   }
 
   @override
@@ -112,17 +124,19 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
                         .read(taskPageControllerProvider.notifier)
                         .deleteTask(widget.task.id);
 
-                    if (success) {
-                      Navigator.of(context).pop();
-                      Navigator.of(context).pop();
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            AppLocalizations.of(context).taskDeleteError,
+                    if (context.mounted) {
+                      if (success) {
+                        Navigator.of(context).pop();
+                        Navigator.of(context).pop(widget.task);
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              AppLocalizations.of(context).taskDeleteError,
+                            ),
                           ),
-                        ),
-                      );
+                        );
+                      }
                     }
                   },
                   onCancel: () {
@@ -276,6 +290,8 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
   }
 
   Widget _buildRepeatAfter() {
+    var localizations = AppLocalizations.of(context);
+
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
@@ -286,13 +302,13 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
               keyboardType: TextInputType.number,
               initialValue: getRepeatAfterValueFromDuration(
                 widget.task.repeatAfter,
-              )?.toString(),
+              ).toString(),
               onChanged: (newValue) {
                 _repeatAfterValue = int.tryParse(newValue) ?? 0;
                 _checkChanged();
               },
               decoration: InputDecoration(
-                labelText: AppLocalizations.of(context).repeatAfter,
+                labelText: localizations.repeatAfter,
                 border: InputBorder.none,
                 icon: Icon(Icons.repeat),
                 contentPadding: EdgeInsets.fromLTRB(0, 0, 0, 0),
@@ -302,24 +318,26 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
           Spacer(),
           Flexible(
             flex: 30,
-            child: DropdownButtonFormField<String>(
+            child: DropdownButtonFormField<RepeatAfterUnit>(
               decoration: InputDecoration(
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.fromLTRB(0, 0, 0, 0),
               ),
               isExpanded: true,
-              initialValue: _repeatAfterType,
-              onChanged: (String? newType) {
+              initialValue: _repeatAfterUnit,
+              onChanged: (RepeatAfterUnit? newType) {
                 if (newType != null) {
-                  _repeatAfterType = newType;
+                  _repeatAfterUnit = newType;
                 }
                 _checkChanged();
               },
-              items: <String>['Hours', 'Days', 'Weeks', 'Months', 'Years']
-                  .map<DropdownMenuItem<String>>((String value) {
-                    return DropdownMenuItem<String>(
+              items: RepeatAfterUnit.values
+                  .map<DropdownMenuItem<RepeatAfterUnit>>((
+                    RepeatAfterUnit value,
+                  ) {
+                    return DropdownMenuItem<RepeatAfterUnit>(
                       value: value,
-                      child: Text(value),
+                      child: Text(value.toLocalizedString(context)),
                     );
                   })
                   .toList(),
@@ -415,25 +433,33 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
                 MediaQuery.of(context).size.width -
                 80 -
                 ((IconTheme.of(context).size ?? 0) * 2),
-            child: TypeAheadField(
-              //FIXME test compoonent - seems not to work as expected
-              suggestionsCallback: (pattern) => _searchLabel(pattern),
-              debounceDuration: Duration(seconds: 1),
-              builder: (builder, controller, focusnode) {
-                return TextFormField(
-                  controller: _labelTypeAheadController,
-                  focusNode: focusnode,
-                  decoration: InputDecoration(
-                    labelText: AppLocalizations.of(context).addNewLabel,
-                    border: InputBorder.none,
-                  ),
-                );
+            child: Autocomplete<String>(
+              optionsBuilder: (TextEditingValue textEditingValue) {
+                if (textEditingValue.text == '') {
+                  return const Iterable<String>.empty();
+                }
+
+                if (_debounce?.isActive ?? false) {
+                  _debounce!.cancel();
+                  _lastCompleter?.complete(const Iterable<String>.empty());
+                }
+
+                final completer = Completer<Iterable<String>>();
+                _lastCompleter = completer;
+
+                _debounce = Timer(const Duration(milliseconds: 500), () async {
+                  var labels = await _searchLabel(textEditingValue.text);
+                  if (!completer.isCompleted) {
+                    completer.complete(labels);
+                  }
+                });
+
+                return completer.future;
               },
-              itemBuilder: (context, suggestion) {
-                return ListTile(title: Text(suggestion.toString()));
-              },
-              onSelected: (suggestion) {
-                _addLabel(suggestion.toString());
+              focusNode: FocusNode(),
+              textEditingController: _labelTypeAheadController,
+              onSelected: (String selection) {
+                _addLabel(selection);
               },
             ),
           ),
@@ -618,7 +644,7 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
       ),
     );
 
-    if (selectedDate != null) {
+    if (selectedDate != null && context.mounted) {
       var selectedTime = await showDialog<TimeOfDay>(
         context: context,
         builder: (_) =>
@@ -689,12 +715,14 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
 
   void _checkChanged() {
     setState(() {
-      var repeatAfterValue =
-          getRepeatAfterValueFromDuration(widget.task.repeatAfter) ?? 0;
-      var repeatAfterType =
-          getRepeatAfterTypeFromDuration(widget.task.repeatAfter) ?? "Days";
+      var repeatAfterValue = getRepeatAfterValueFromDuration(
+        widget.task.repeatAfter,
+      );
+      var repeatAfterType = getRepeatAfterTypeFromDuration(
+        widget.task.repeatAfter,
+      );
 
-      var repeatAfter = getDurationFromType(repeatAfterValue, repeatAfterType);
+      var repeatAfter = repeatAfterType.getDuration(repeatAfterValue);
 
       changed =
           widget.task.title != _title ||
@@ -721,10 +749,7 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
             reminderDates: _reminderDates,
             priority: _priority,
             labels: _labels,
-            repeatAfter: getDurationFromType(
-              _repeatAfterValue,
-              _repeatAfterType,
-            ),
+            repeatAfter: _repeatAfterUnit.getDuration(_repeatAfterValue),
           )
           //Need to be here as they can be null
           ..dueDate = _dueDate
@@ -738,7 +763,7 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
           .read(taskLabelBulkRepositoryProvider)
           .update(updatedTask, _labels!);
 
-      if (!updateLabelSuccess.isSuccessful) {
+      if (!updateLabelSuccess.isSuccessful && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(AppLocalizations.of(context).taskSaveError)),
         );
@@ -749,18 +774,21 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
     var saveSuccess = await ref
         .read(taskPageControllerProvider.notifier)
         .updateTask(updatedTask);
-    if (saveSuccess) {
-      Navigator.of(context).pop(updatedTask);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(context).taskUpdatedSuccess),
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context).taskSaveError)),
-      );
+    if (context.mounted) {
+      if (saveSuccess) {
+        Navigator.of(context).pop(updatedTask);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context).taskUpdatedSuccess),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.of(context).taskSaveError)),
+        );
+      }
     }
   }
 }

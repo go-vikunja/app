@@ -28,7 +28,7 @@ void main() {
 
     test('next_monday when today is Monday returns same day', () {
       final monday = DateTime(2025, 11, 10, 7, 0); // Monday 07:00 -> nearest 9
-      final result = NewTaskDue.next_monday.calculateDate(monday);
+      final result = NewTaskDue.nextMonday.calculateDate(monday);
       expect(result!.day, monday.day);
       expect(result.hour, 9);
     });
@@ -41,7 +41,7 @@ void main() {
         13,
         0,
       ); // Wednesday 13:00 -> nearest 15
-      final result = NewTaskDue.next_monday.calculateDate(wednesday);
+      final result = NewTaskDue.nextMonday.calculateDate(wednesday);
       expect(result!.day, wednesday.day + 5); // Wednesday -> next Monday
       expect(result.weekday, DateTime.monday);
       expect(result.hour, 15);
@@ -82,21 +82,21 @@ void main() {
         14,
         59,
       ); // Tuesday 14:59 -> nearest 15
-      final result = NewTaskDue.later_this_week.calculateDate(tuesday);
+      final result = NewTaskDue.laterThisWeek.calculateDate(tuesday);
       expect(result!.day, tuesday.day + 2);
       expect(result.hour, 15);
     });
 
     test('later_this_week on Friday returns same day', () {
       final friday = DateTime(2025, 11, 14, 8, 0); // Friday 08:00 -> nearest 9
-      final result = NewTaskDue.later_this_week.calculateDate(friday);
+      final result = NewTaskDue.laterThisWeek.calculateDate(friday);
       expect(result!.day, friday.day);
       expect(result.hour, 9);
     });
 
     test('next_week adds seven days', () {
       final base = DateTime(2025, 11, 10, 17, 30); // Monday 17:30 -> nearest 18
-      final result = NewTaskDue.next_week.calculateDate(base);
+      final result = NewTaskDue.nextWeek.calculateDate(base);
       expect(result!.day, base.day + 7);
       expect(result.hour, 18);
     });

@@ -9,8 +9,8 @@ void main() {
   test('label color from json', () {
     final String json =
         '{"TaskID": 123,"id": 1,"title": "this","description": "","hex_color": "e8e8e8","created_by":{"id": 1,"username": "user","email": "test@example.com","created": 1537855131,"updated": 1545233325},"created": 1552903790,"updated": 1552903790}';
-    final JsonDecoder _decoder = new JsonDecoder();
-    LabelDto label = LabelDto.fromJson(_decoder.convert(json));
+    final JsonDecoder decoder = JsonDecoder();
+    LabelDto label = LabelDto.fromJson(decoder.convert(json));
 
     expect(label.color, Color(0xFFe8e8e8));
   });

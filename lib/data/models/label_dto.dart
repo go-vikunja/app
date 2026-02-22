@@ -2,7 +2,6 @@ import 'dart:ui';
 
 import 'package:vikunja_app/data/models/dto.dart';
 import 'package:vikunja_app/data/models/user_dto.dart';
-import 'package:vikunja_app/core/utils/constants.dart';
 import 'package:vikunja_app/domain/entities/label.dart';
 
 class LabelDto extends Dto<Label> {
@@ -11,10 +10,6 @@ class LabelDto extends Dto<Label> {
   final DateTime created, updated;
   final UserDto createdBy;
   final Color? color;
-
-  late final Color textColor = color != null && color!.computeLuminance() <= 0.5
-      ? vLabelLight
-      : vLabelDark;
 
   LabelDto({
     this.id = 0,

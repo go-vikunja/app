@@ -10,7 +10,7 @@ class ProjectViewDto extends Dto<ProjectView> {
   final int projectId;
   final String viewKind;
   final FilterDto? filter;
-  final int position;
+  final double position;
   final String bucketConfigurationMode;
   final List<BucketConfigurationDto>? bucketConfiguration;
   final int defaultBucketId;
@@ -41,7 +41,7 @@ class ProjectViewDto extends Dto<ProjectView> {
       filter = json['filter'] != null && json['filter'] is Map<String, dynamic>
           ? FilterDto.fromJson(json['filter'])
           : null,
-      position = json['position'],
+      position = json['position'].toDouble(),
       projectId = json['project_id'],
       title = json['title'],
       viewKind = json['view_kind'],

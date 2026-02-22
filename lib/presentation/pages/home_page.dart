@@ -33,6 +33,7 @@ class HomePageState extends ConsumerState<HomePage> {
 
   int _selectedDrawerIndex = 0, _previousDrawerIndex = 0;
   Widget? drawerItem;
+  NotificationHandler? _notificationHandler;
 
   List<Widget> widgets = [TaskListPage(), ProjectListPage(), SettingsPage()];
 
@@ -71,13 +72,11 @@ class HomePageState extends ConsumerState<HomePage> {
     tz.initializeTimeZones();
   }
 
-  Future<void> initNotifications() async {
-    var notifGranted = await Permission.notification.isGranted;
-    if (notifGranted) {
-      NotificationHandler notificationClass = NotificationHandler();
-      await notificationClass.initNotifications();
-      ref.read(notificationProvider.notifier).set(notificationClass);
-    }
+  @override
+  void dispose() {
+    _notificationHandler?.removeListener(onNotificationDone);
+
+    super.dispose();
   }
 
   @override
@@ -127,20 +126,23 @@ class HomePageState extends ConsumerState<HomePage> {
 
   Future<dynamic> showAddItemDialog(String? title) async {
     var response = await ref.read(userRepositoryProvider).getCurrentUser();
-    if (response.isSuccessful) {
+    var buildContext = context;
+    if (response.isSuccessful && buildContext.mounted) {
       var defaultProjectId = response
           .toSuccess()
           .body
           .settings
-          ?.default_project_id;
+          ?.defaultProjectId;
       if (defaultProjectId == null || defaultProjectId == 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(buildContext).showSnackBar(
           SnackBar(
-            content: Text(AppLocalizations.of(context).selectDefaultProject),
+            content: Text(
+              AppLocalizations.of(buildContext).selectDefaultProject,
+            ),
           ),
         );
       } else {
-        _addItemDialog(context, defaultProjectId, title);
+        _addItemDialog(buildContext, defaultProjectId, title);
         return Future.value();
       }
     }
@@ -149,7 +151,7 @@ class HomePageState extends ConsumerState<HomePage> {
   void _addItemDialog(
     BuildContext context,
     int defaultProjectId, [
-    String? title = null,
+    String? title,
   ]) {
     showDialog(
       context: context,
@@ -183,14 +185,18 @@ class HomePageState extends ConsumerState<HomePage> {
         .read(taskPageControllerProvider.notifier)
         .addTask(defaultProjectId, task);
 
-    if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context).taskAddedSuccess)),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context).taskAddError)),
-      );
+    if (context.mounted) {
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context).taskAddedSuccess),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.of(context).taskAddError)),
+        );
+      }
     }
   }
 
@@ -206,19 +212,40 @@ class HomePageState extends ConsumerState<HomePage> {
         currentVersionTag != null &&
         latestVersionTag.isNewerThan(currentVersionTag)) {
       final ctx = globalSnackbarKey.currentContext ?? context;
-      SnackBar snackBar = SnackBar(
-        content: Text(
-          AppLocalizations.of(
-            ctx,
-          ).newVersionAvailable(latestVersionTag.toString()),
-        ),
-        action: SnackBarAction(
-          label: AppLocalizations.of(ctx).viewOnGithub,
-          onPressed: () =>
-              launchUrl(Uri.parse(repo), mode: LaunchMode.externalApplication),
-        ),
-      );
-      globalSnackbarKey.currentState?.showSnackBar(snackBar);
+
+      if (ctx.mounted) {
+        SnackBar snackBar = SnackBar(
+          content: Text(
+            AppLocalizations.of(
+              ctx,
+            ).newVersionAvailable(latestVersionTag.toString()),
+          ),
+          action: SnackBarAction(
+            label: AppLocalizations.of(ctx).viewOnGithub,
+            onPressed: () => launchUrl(
+              Uri.parse(repo),
+              mode: LaunchMode.externalApplication,
+            ),
+          ),
+        );
+        globalSnackbarKey.currentState?.showSnackBar(snackBar);
+      }
     }
+  }
+
+  Future<void> initNotifications() async {
+    var notifGranted = await Permission.notification.isGranted;
+    if (notifGranted) {
+      NotificationHandler notificationHandler = NotificationHandler();
+      await notificationHandler.initNotifications();
+      notificationHandler.addListener(onNotificationDone);
+
+      ref.read(notificationProvider.notifier).set(notificationHandler);
+      _notificationHandler = notificationHandler;
+    }
+  }
+
+  void onNotificationDone() {
+    ref.read(taskPageControllerProvider.notifier).reload();
   }
 }

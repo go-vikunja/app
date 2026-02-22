@@ -109,11 +109,13 @@ class InitPage extends ConsumerWidget {
     if (userResponse.statusCode == 401) {
       ref.read(settingsRepositoryProvider).saveUserToken(null);
 
-      ScaffoldMessenger.of(ref.context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(ref.context).loginExpiredMessage),
-        ),
-      );
+      if (ref.context.mounted) {
+        ScaffoldMessenger.of(ref.context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(ref.context).loginExpiredMessage),
+          ),
+        );
+      }
 
       globalNavigatorKey.currentState?.pushReplacementNamed("/login");
       return null;

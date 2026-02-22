@@ -5,13 +5,11 @@ import 'dart:io';
 
 import 'package:cronet_http/cronet_http.dart' as cronet_http;
 import 'package:cupertino_http/cupertino_http.dart' as cupertino_http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart' as io_client;
 import 'package:logging/logging.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:vikunja_app/core/network/response.dart';
-import 'package:vikunja_app/data/data_sources/settings_data_source.dart';
 import 'package:vikunja_app/main.dart';
 import 'package:vikunja_app/presentation/widgets/string_extension.dart';
 
@@ -98,6 +96,7 @@ class Client {
       uri = Uri(
         scheme: uri.scheme,
         userInfo: uri.userInfo,
+        query: uri.query,
         host: uri.host,
         port: uri.port,
         path: uri.path,
@@ -170,9 +169,6 @@ class Client {
 
       if (response.statusCode == 401 &&
           globalNavigatorKey.currentContext != null) {
-        //TODO don't do this here - complete when error handling is ready
-        SettingsDatasource(FlutterSecureStorage()).saveServer(null);
-        SettingsDatasource(FlutterSecureStorage()).saveUserToken(null);
         globalNavigatorKey.currentState?.pushNamed("/login");
       }
 
@@ -203,7 +199,7 @@ class Client {
   }
 
   ExceptionResponse<T> _handleException<T>(Object e, StackTrace s) {
-    if (!(e is FormatException) && !(e is http.ClientException)) {
+    if (e is! FormatException && e is! http.ClientException) {
       Sentry.captureException(e, stackTrace: s);
     }
     return ExceptionResponse<T>(e, s);

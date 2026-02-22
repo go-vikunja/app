@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'package:background_downloader/background_downloader.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/foundation.dart';
@@ -7,6 +9,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart'
     hide ChangeNotifierProvider;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:home_widget/home_widget.dart' show HomeWidget;
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:sentry_logging/sentry_logging.dart';
@@ -65,20 +69,20 @@ void main() async {
       );
     }
   } catch (e) {
-    print("Failed to initialize downloader: $e");
+    developer.log("Failed to initialize downloader: $e");
   }
   try {
     if (!kIsWeb) {
       Workmanager().initialize(callbackDispatcher);
     }
   } catch (e) {
-    print("Failed to initialize workmanager: $e");
+    developer.log("Failed to initialize workmanager: $e");
   }
   try {
     await HomeWidget.registerInteractivityCallback(widgetCallback);
-    print('Registered background callback');
+    developer.log('Registered background callback');
   } catch (e) {
-    print('Failed to initialise widget Callback');
+    developer.log('Failed to initialise widget Callback');
   }
 
   var sentryEnabled = await settingsDatasource.getSentryEnabled();
@@ -145,6 +149,12 @@ class VikunjaApp extends ConsumerWidget {
             '/': (context) => const InitPage(),
             '/login': (context) => const LoginPage(),
             '/home': (context) => const HomePage(),
+          },
+          builder: (context, child) {
+            final locale = Localizations.localeOf(context);
+            Intl.defaultLocale = locale.toString();
+            initializeDateFormatting(locale.toString());
+            return child ?? const SizedBox.shrink();
           },
         );
       },

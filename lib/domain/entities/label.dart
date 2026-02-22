@@ -1,6 +1,5 @@
 import 'dart:ui';
 
-import 'package:vikunja_app/core/utils/constants.dart';
 import 'package:vikunja_app/domain/entities/user.dart';
 
 class Label {
@@ -10,10 +9,6 @@ class Label {
   final User createdBy;
   final Color? color;
 
-  late final Color textColor = color != null && color!.computeLuminance() <= 0.5
-      ? vLabelLight
-      : vLabelDark;
-
   Label({
     this.id = 0,
     required this.title,
@@ -22,8 +17,8 @@ class Label {
     DateTime? created,
     DateTime? updated,
     required this.createdBy,
-  }) : this.created = created ?? DateTime.now(),
-       this.updated = updated ?? DateTime.now();
+  }) : created = created ?? DateTime.now(),
+       updated = updated ?? DateTime.now();
 
   @override
   bool operator ==(Object other) =>

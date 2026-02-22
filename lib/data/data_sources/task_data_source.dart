@@ -48,7 +48,7 @@ class TaskDataSource extends RemoteDataSource {
 
   Future<Response<TaskDto>> getTask(int taskId) async {
     return await client.get(
-      url: '/tasks/${taskId}',
+      url: '/tasks/$taskId',
       mapper: (body) {
         return TaskDto.fromJson(body);
       },
@@ -102,10 +102,6 @@ class TaskDataSource extends RemoteDataSource {
       updates: Updates.statusAndProgress,
     );
 
-    return await FileDownloader().download(
-      task,
-      onProgress: (progress) => print('Progress: ${progress * 100}%'),
-      onStatus: (status) => print('Status: $status'),
-    );
+    return await FileDownloader().download(task);
   }
 }

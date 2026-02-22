@@ -348,9 +348,12 @@ class KanbanWidgetState extends ConsumerState<KanbanWidget> {
           .read(projectControllerProvider(project).notifier)
           .moveTask(project, task, toBucket, position);
 
-      if (!success && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppLocalizations.of(context).taskMoveError)),
+      var buildContext = context;
+      if (!success && buildContext.mounted) {
+        ScaffoldMessenger.of(buildContext).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(buildContext).taskMoveError),
+          ),
         );
 
         //We need to update the drag immediately for UX reasons -> if it fails afterwards just reload the project
