@@ -85,8 +85,8 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
                             context,
                             MaterialPageRoute(
                               builder: (context) => TaskCommentsPage(
-                                taskId: _currentTask.id,
-                                taskTitle: _currentTask.title,
+                                taskId: widget.task.id,
+                                taskTitle: widget.task.title,
                               ),
                             ),
                           );

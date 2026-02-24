@@ -12,7 +12,7 @@ dependencies:
   flutter_localizations:
     sdk: flutter
 
-  background_downloader: ^9.2.3
+  background_downloader: 9.2.3
   collection: ^1.18.0
   cronet_http: ^1.2.0
   cupertino_http: ^2.0.2
