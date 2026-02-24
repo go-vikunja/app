@@ -28,10 +28,7 @@ class ProjectTaskListItem extends StatefulWidget {
 class ProjectTaskListItemState extends State<ProjectTaskListItem> {
   ProjectTaskListItemState();
 
-  void _handleMenuAction(
-    BuildContext context,
-    _ProjectTaskMenuAction action,
-  ) {
+  void _handleMenuAction(BuildContext context, _ProjectTaskMenuAction action) {
     switch (action) {
       case _ProjectTaskMenuAction.comments:
         Navigator.push(
