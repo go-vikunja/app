@@ -42,6 +42,16 @@ void main() {
       });
     });
 
+    group('onBeforeRequest', () {
+      test('token setter updates the authorization header', () {
+        final client = Client(base: 'https://example.com', token: 'old');
+        expect(client.headers['Authorization'], 'Bearer old');
+
+        client.token = 'new';
+        expect(client.headers['Authorization'], 'Bearer new');
+      });
+    });
+
     group('Certificate configuration', () {
       test(
         'reloadIgnoreCerts with true should set ignoreCertificates to true',
