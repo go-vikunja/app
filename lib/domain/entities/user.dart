@@ -83,10 +83,3 @@ class UserToken {
 
   UserToken(this.token, {this.error = 0, this.errorString = ""});
 }
-
-class BaseTokenPair {
-  final String base;
-  final String token;
-
-  BaseTokenPair(this.base, this.token);
-}
