@@ -129,8 +129,9 @@ class LoginPageState extends ConsumerState<LoginPage> {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(
-                                  AppLocalizations.of(context)
-                                      .pleaseEnterValidFrontendUrl,
+                                  AppLocalizations.of(
+                                    context,
+                                  ).pleaseEnterValidFrontendUrl,
                                 ),
                               ),
                             );
@@ -291,8 +292,9 @@ class LoginPageState extends ConsumerState<LoginPage> {
       // Generate PKCE pair
       _oauthCodeVerifier = OAuthDataSource.generateCodeVerifier();
       _oauthState = OAuthDataSource.generateState();
-      final codeChallenge =
-          OAuthDataSource.generateCodeChallenge(_oauthCodeVerifier!);
+      final codeChallenge = OAuthDataSource.generateCodeChallenge(
+        _oauthCodeVerifier!,
+      );
 
       // Build and open authorization URL
       final authUrl = OAuthDataSource.buildAuthorizationUrl(
@@ -316,9 +318,9 @@ class LoginPageState extends ConsumerState<LoginPage> {
     // Verify state matches
     if (state != _oauthState) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('OAuth state mismatch')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('OAuth state mismatch')));
       }
       setState(() => _loading = false);
       return;
@@ -365,16 +367,21 @@ class LoginPageState extends ConsumerState<LoginPage> {
           .set(AuthModel(server, tokens.accessToken));
 
       // Set up OAuth token manager for proactive refresh
-      ref.read(oAuthTokenManagerProvider.notifier).setTokens(
-        OAuthTokenState(
-          refreshToken: tokens.refreshToken,
-          expiresAt: DateTime.now().add(Duration(seconds: tokens.expiresIn)),
-        ),
-      );
+      ref
+          .read(oAuthTokenManagerProvider.notifier)
+          .setTokens(
+            OAuthTokenState(
+              refreshToken: tokens.refreshToken,
+              expiresAt: DateTime.now().add(
+                Duration(seconds: tokens.expiresIn),
+              ),
+            ),
+          );
 
       // Fetch current user to validate
-      final currentUser =
-          await ref.read(userRepositoryProvider).getCurrentUser();
+      final currentUser = await ref
+          .read(userRepositoryProvider)
+          .getCurrentUser();
       if (currentUser.isSuccessful) {
         ref
             .read(currentUserProvider.notifier)
@@ -388,9 +395,9 @@ class LoginPageState extends ConsumerState<LoginPage> {
       }
     } on OAuthException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.message)));
       }
     } catch (e) {
       if (mounted) _showGenericError(context);

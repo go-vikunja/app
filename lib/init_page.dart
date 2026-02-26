@@ -71,15 +71,19 @@ class InitPage extends ConsumerWidget {
     }
 
     // Set up OAuth token manager so ClientProvider wires the refresh hook
-    ref.read(oAuthTokenManagerProvider.notifier).setTokens(
-      OAuthTokenState(
-        refreshToken: refreshToken,
-        expiresAt: expiresAt ?? DateTime.now(), // Expired if no expiry stored
-      ),
-    );
+    ref
+        .read(oAuthTokenManagerProvider.notifier)
+        .setTokens(
+          OAuthTokenState(
+            refreshToken: refreshToken,
+            expiresAt:
+                expiresAt ?? DateTime.now(), // Expired if no expiry stored
+          ),
+        );
 
     // If the access token is expired, refresh it now
-    final tokenExpired = expiresAt == null ||
+    final tokenExpired =
+        expiresAt == null ||
         expiresAt.isBefore(DateTime.now().add(const Duration(seconds: 30)));
 
     if (tokenExpired) {
@@ -95,17 +99,20 @@ class InitPage extends ConsumerWidget {
         // Update stored tokens
         await settingsRepo.saveUserToken(tokens.accessToken);
         await settingsRepo.saveRefreshToken(tokens.refreshToken);
-        final newExpiry =
-            DateTime.now().add(Duration(seconds: tokens.expiresIn));
+        final newExpiry = DateTime.now().add(
+          Duration(seconds: tokens.expiresIn),
+        );
         await settingsRepo.saveTokenExpiry(newExpiry);
 
         // Update OAuth manager with new refresh token
-        ref.read(oAuthTokenManagerProvider.notifier).setTokens(
-          OAuthTokenState(
-            refreshToken: tokens.refreshToken,
-            expiresAt: newExpiry,
-          ),
-        );
+        ref
+            .read(oAuthTokenManagerProvider.notifier)
+            .setTokens(
+              OAuthTokenState(
+                refreshToken: tokens.refreshToken,
+                expiresAt: newExpiry,
+              ),
+            );
       } on OAuthException {
         // Refresh failed — session is gone
         await settingsRepo.saveRefreshToken(null);
