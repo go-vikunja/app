@@ -1,14 +1,19 @@
+import 'dart:async';
 import 'dart:core';
 import 'dart:developer';
 
+import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:vikunja_app/core/di/data_source_provider.dart';
 import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/core/network/client.dart';
+import 'package:vikunja_app/data/data_sources/oauth_data_source.dart';
 import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/core/utils/constants.dart';
 import 'package:vikunja_app/core/utils/network.dart';
@@ -44,6 +49,11 @@ class LoginPageState extends ConsumerState<LoginPage> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
 
+  // OAuth flow state
+  StreamSubscription<Uri>? _linkSubscription;
+  String? _oauthCodeVerifier;
+  String? _oauthState;
+
   @override
   void initState() {
     super.initState();
@@ -51,8 +61,13 @@ class LoginPageState extends ConsumerState<LoginPage> {
     var settingsDatasource = SettingsDatasource(FlutterSecureStorage());
     settingsDatasource.saveServer(null);
     settingsDatasource.saveUserToken(null);
+    settingsDatasource.saveRefreshToken(null);
+    settingsDatasource.saveTokenExpiry(null);
+    settingsDatasource.saveAuthType(null);
 
     Future.delayed(Duration.zero, () async {
+      ref.read(oAuthTokenManagerProvider.notifier).clear();
+
       var pastSevers = await ref
           .read(settingsRepositoryProvider)
           .getPastServers();
@@ -67,6 +82,23 @@ class LoginPageState extends ConsumerState<LoginPage> {
         return _showSentryDialog();
       }
     });
+
+    // Listen for OAuth callback deep links
+    final appLinks = AppLinks();
+    _linkSubscription = appLinks.uriLinkStream.listen((Uri uri) {
+      if (uri.scheme == 'vikunja' && uri.host == 'callback') {
+        _handleOAuthCallback(uri);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _linkSubscription?.cancel();
+    _serverController.dispose();
+    _usernameController.dispose();
+    _passwordController.dispose();
+    super.dispose();
   }
 
   Future<void> _showSentryDialog() {
@@ -160,6 +192,27 @@ class LoginPageState extends ConsumerState<LoginPage> {
                   }
                 },
                 child: Text(AppLocalizations.of(context).loginWithFrontend),
+              ),
+              FancyButton(
+                onPressed: !_loading
+                    ? () {
+                        if (_serverController.text.isNotEmpty) {
+                          _startOAuthLogin();
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                AppLocalizations.of(context)
+                                    .pleaseEnterValidFrontendUrl,
+                              ),
+                            ),
+                          );
+                        }
+                      }
+                    : null,
+                child: _loading
+                    ? CircularProgressIndicator()
+                    : Text('Login with OAuth'),
               ),
               CheckboxListTile(
                 title: Text(AppLocalizations.of(context).ignoreCertificates),
@@ -484,6 +537,134 @@ class LoginPageState extends ConsumerState<LoginPage> {
       setState(() {
         _loading = false;
       });
+    }
+  }
+
+  Future<void> _startOAuthLogin() async {
+    final server = normalizeServerURL(_serverController.text);
+    if (server.isEmpty) return;
+
+    setState(() => _loading = true);
+
+    try {
+      // Save server for later use in token exchange
+      ref.read(authDataProvider.notifier).set(AuthModel(server, ""));
+      ref.read(settingsRepositoryProvider).saveServer(server);
+
+      // Add to past servers
+      if (!pastServers.contains(server)) {
+        pastServers.add(server);
+        ref.read(settingsRepositoryProvider).setPastServers(pastServers);
+      }
+
+      // Generate PKCE pair
+      _oauthCodeVerifier = OAuthDataSource.generateCodeVerifier();
+      _oauthState = OAuthDataSource.generateState();
+      final codeChallenge =
+          OAuthDataSource.generateCodeChallenge(_oauthCodeVerifier!);
+
+      // Build and open authorization URL
+      final authUrl = OAuthDataSource.buildAuthorizationUrl(
+        baseUrl: server,
+        codeChallenge: codeChallenge,
+        state: _oauthState!,
+      );
+
+      await launchUrl(authUrl, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      if (mounted) _showGenericError(context);
+      setState(() => _loading = false);
+    }
+    // Note: _loading stays true until the callback arrives or user returns
+  }
+
+  Future<void> _handleOAuthCallback(Uri callbackUri) async {
+    final code = callbackUri.queryParameters['code'];
+    final state = callbackUri.queryParameters['state'];
+
+    // Verify state matches
+    if (state != _oauthState) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('OAuth state mismatch')),
+        );
+      }
+      setState(() => _loading = false);
+      return;
+    }
+
+    if (code == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No authorization code received')),
+        );
+      }
+      setState(() => _loading = false);
+      return;
+    }
+
+    final server = normalizeServerURL(_serverController.text);
+
+    try {
+      final oauthDataSource = ref.read(oAuthDataSourceProvider);
+
+      // Exchange code for tokens
+      final tokens = await oauthDataSource.exchangeCode(
+        baseUrl: server,
+        code: code,
+        codeVerifier: _oauthCodeVerifier!,
+      );
+
+      // Clear PKCE state
+      _oauthCodeVerifier = null;
+      _oauthState = null;
+
+      // Persist tokens
+      final settingsRepo = ref.read(settingsRepositoryProvider);
+      await settingsRepo.saveUserToken(tokens.accessToken);
+      await settingsRepo.saveRefreshToken(tokens.refreshToken);
+      await settingsRepo.saveAuthType('oauth');
+      await settingsRepo.saveTokenExpiry(
+        DateTime.now().add(Duration(seconds: tokens.expiresIn)),
+      );
+
+      // Set up in-memory auth state
+      ref
+          .read(authDataProvider.notifier)
+          .set(AuthModel(server, tokens.accessToken));
+
+      // Set up OAuth token manager for proactive refresh
+      ref.read(oAuthTokenManagerProvider.notifier).setTokens(
+        OAuthTokenState(
+          refreshToken: tokens.refreshToken,
+          expiresAt: DateTime.now().add(Duration(seconds: tokens.expiresIn)),
+        ),
+      );
+
+      // Fetch current user to validate
+      final currentUser =
+          await ref.read(userRepositoryProvider).getCurrentUser();
+      if (currentUser.isSuccessful) {
+        ref
+            .read(currentUserProvider.notifier)
+            .set(currentUser.toSuccess().body);
+
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, "/home");
+        }
+      } else {
+        if (mounted) _showGenericError(context);
+      }
+    } on OAuthException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message)),
+        );
+      }
+    } catch (e) {
+      if (mounted) _showGenericError(context);
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
   }
 
