@@ -136,4 +136,34 @@ class SettingsRepositoryImpl implements SettingsRepository {
   Future<void> setLocaleOverride(String? localeCode) {
     return _datasource.setLocaleOverride(localeCode);
   }
+
+  @override
+  Future<String?> getRefreshToken() {
+    return _datasource.getRefreshToken();
+  }
+
+  @override
+  Future<void> saveRefreshToken(String? token) {
+    return _datasource.saveRefreshToken(token);
+  }
+
+  @override
+  Future<DateTime?> getTokenExpiry() {
+    return _datasource.getTokenExpiry();
+  }
+
+  @override
+  Future<void> saveTokenExpiry(DateTime? expiry) {
+    return _datasource.saveTokenExpiry(expiry);
+  }
+
+  @override
+  Future<String?> getAuthType() {
+    return _datasource.getAuthType();
+  }
+
+  @override
+  Future<void> saveAuthType(String? type) {
+    return _datasource.saveAuthType(type);
+  }
 }

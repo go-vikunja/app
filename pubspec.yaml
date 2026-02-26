@@ -12,8 +12,10 @@ dependencies:
   flutter_localizations:
     sdk: flutter
 
+  app_links: ^6.4.0
   background_downloader: ^9.2.3
   collection: ^1.18.0
+  crypto: ^3.0.7
   cronet_http: ^1.2.0
   cupertino_http: ^2.0.2
   datetime_picker_formfield_new: ^2.1.0

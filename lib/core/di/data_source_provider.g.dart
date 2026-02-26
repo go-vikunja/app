@@ -225,5 +225,22 @@ final taskCommentDataSourceProvider =
 // ignore: unused_element
 typedef TaskCommentDataSourceRef =
     AutoDisposeProviderRef<TaskCommentDataSource>;
+String _$oAuthDataSourceHash() => r'83653fbd6ba747820658230952afcfbf6f86cd1c';
+
+/// See also [oAuthDataSource].
+@ProviderFor(oAuthDataSource)
+final oAuthDataSourceProvider = AutoDisposeProvider<OAuthDataSource>.internal(
+  oAuthDataSource,
+  name: r'oAuthDataSourceProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$oAuthDataSourceHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef OAuthDataSourceRef = AutoDisposeProviderRef<OAuthDataSource>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

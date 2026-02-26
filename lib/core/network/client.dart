@@ -29,6 +29,11 @@ class Client {
 
   String get token => _token;
 
+  set token(String value) => _token = value;
+
+  /// Called before each HTTP request. Used by OAuth to refresh tokens proactively.
+  Future<void> Function(Client client)? onBeforeRequest;
+
   Client({String? token, required String base}) {
     if (token != null) _token = token;
     base = base.replaceAll(" ", "");
@@ -91,6 +96,7 @@ class Client {
     Map<String, List<String>>? queryParameters,
   }) async {
     try {
+      if (onBeforeRequest != null) await onBeforeRequest!(this);
       Uri uri = Uri.tryParse('$base$url')!;
 
       uri = Uri(
@@ -116,6 +122,7 @@ class Client {
     T Function(dynamic body)? mapper,
   }) async {
     try {
+      if (onBeforeRequest != null) await onBeforeRequest!(this);
       var response = await _httpClient.delete(
         '$base$url'.toUri()!,
         headers: _headers,
@@ -132,6 +139,7 @@ class Client {
     dynamic body,
   }) async {
     try {
+      if (onBeforeRequest != null) await onBeforeRequest!(this);
       var response = await _httpClient.post(
         '$base$url'.toUri()!,
         headers: _headers,
@@ -149,6 +157,7 @@ class Client {
     dynamic body,
   }) async {
     try {
+      if (onBeforeRequest != null) await onBeforeRequest!(this);
       var response = await _httpClient.put(
         '$base$url'.toUri()!,
         headers: _headers,

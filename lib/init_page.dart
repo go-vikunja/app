@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
+import 'package:vikunja_app/core/di/data_source_provider.dart';
 import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
+import 'package:vikunja_app/data/data_sources/oauth_data_source.dart';
 import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/core/utils/constants.dart';
 import 'package:vikunja_app/domain/entities/auth_model.dart';
@@ -36,15 +38,94 @@ class InitPage extends ConsumerWidget {
   }
 
   Future<Object?> checkLoginToken(WidgetRef ref) async {
-    var server = await ref.read(settingsRepositoryProvider).getServer();
-    var token = await ref.read(settingsRepositoryProvider).getUserToken();
+    final settingsRepo = ref.read(settingsRepositoryProvider);
+    var server = await settingsRepo.getServer();
+    var token = await settingsRepo.getUserToken();
 
     if (server != null && token != null) {
+      // Check if this is an OAuth session
+      final authType = await settingsRepo.getAuthType();
+      if (authType == 'oauth') {
+        return _restoreOAuthSession(ref, server, token);
+      }
       return checkServer(ref, server, token);
     }
 
     globalNavigatorKey.currentState?.pushReplacementNamed("/login");
     return null;
+  }
+
+  Future<Object?> _restoreOAuthSession(
+    WidgetRef ref,
+    String server,
+    String accessToken,
+  ) async {
+    final settingsRepo = ref.read(settingsRepositoryProvider);
+    final refreshToken = await settingsRepo.getRefreshToken();
+    final expiresAt = await settingsRepo.getTokenExpiry();
+
+    if (refreshToken == null) {
+      // No refresh token — can't restore, go to login
+      globalNavigatorKey.currentState?.pushReplacementNamed("/login");
+      return null;
+    }
+
+    // Set up OAuth token manager so ClientProvider wires the refresh hook
+    ref
+        .read(oAuthTokenManagerProvider.notifier)
+        .setTokens(
+          OAuthTokenState(
+            refreshToken: refreshToken,
+            expiresAt:
+                expiresAt ?? DateTime.now(), // Expired if no expiry stored
+          ),
+        );
+
+    // If the access token is expired, refresh it now
+    final tokenExpired =
+        expiresAt == null ||
+        expiresAt.isBefore(DateTime.now().add(const Duration(seconds: 30)));
+
+    if (tokenExpired) {
+      try {
+        final oauthDataSource = ref.read(oAuthDataSourceProvider);
+        final tokens = await oauthDataSource.refreshToken(
+          baseUrl: server,
+          refreshToken: refreshToken,
+        );
+
+        accessToken = tokens.accessToken;
+
+        // Update stored tokens
+        await settingsRepo.saveUserToken(tokens.accessToken);
+        await settingsRepo.saveRefreshToken(tokens.refreshToken);
+        final newExpiry = DateTime.now().add(
+          Duration(seconds: tokens.expiresIn),
+        );
+        await settingsRepo.saveTokenExpiry(newExpiry);
+
+        // Update OAuth manager with new refresh token
+        ref
+            .read(oAuthTokenManagerProvider.notifier)
+            .setTokens(
+              OAuthTokenState(
+                refreshToken: tokens.refreshToken,
+                expiresAt: newExpiry,
+              ),
+            );
+      } on OAuthException {
+        // Refresh failed — session is gone
+        await settingsRepo.saveRefreshToken(null);
+        await settingsRepo.saveTokenExpiry(null);
+        await settingsRepo.saveAuthType(null);
+        await settingsRepo.saveUserToken(null);
+        globalNavigatorKey.currentState?.pushReplacementNamed("/login");
+        return null;
+      }
+    }
+
+    // Now proceed with normal server/user check using the (possibly refreshed) access token
+    return checkServer(ref, server, accessToken);
   }
 
   Future<Object?> checkServer(
