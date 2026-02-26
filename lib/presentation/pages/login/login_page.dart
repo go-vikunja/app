@@ -417,6 +417,7 @@ class LoginPageState extends ConsumerState<LoginPage> {
   Future<void> _loginUserByClientToken(BaseTokenPair baseTokenPair) async {
     ref.read(settingsRepositoryProvider).saveUserToken(baseTokenPair.token);
     ref.read(settingsRepositoryProvider).saveServer(baseTokenPair.base);
+    ref.read(settingsRepositoryProvider).saveAuthType('password');
     ref
         .read(authDataProvider.notifier)
         .set(AuthModel(baseTokenPair.base, baseTokenPair.token));
@@ -682,6 +683,7 @@ class LoginPageState extends ConsumerState<LoginPage> {
   ) async {
     ref.read(authDataProvider.notifier).set(AuthModel(server, userToken));
     await ref.read(settingsRepositoryProvider).saveUserToken(userToken);
+    await ref.read(settingsRepositoryProvider).saveAuthType('password');
 
     var currentUser = await ref.read(userRepositoryProvider).getCurrentUser();
 
