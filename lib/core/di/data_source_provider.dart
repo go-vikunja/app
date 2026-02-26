@@ -4,6 +4,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/data/data_sources/bucket_data_source.dart';
 import 'package:vikunja_app/data/data_sources/label_data_source.dart';
+import 'package:vikunja_app/data/data_sources/oauth_data_source.dart';
 import 'package:vikunja_app/data/data_sources/project_data_source.dart';
 import 'package:vikunja_app/data/data_sources/project_view_data_source.dart';
 import 'package:vikunja_app/data/data_sources/server_data_source.dart';
@@ -85,4 +86,9 @@ VersionDataSource versionDataSource(Ref ref) {
 TaskCommentDataSource taskCommentDataSource(Ref ref) {
   final client = ref.watch(clientProviderProvider);
   return TaskCommentDataSource(client);
+}
+
+@riverpod
+OAuthDataSource oAuthDataSource(Ref ref) {
+  return OAuthDataSource();
 }

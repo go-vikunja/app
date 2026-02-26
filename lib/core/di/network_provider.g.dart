@@ -6,7 +6,7 @@ part of 'network_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$authDataHash() => r'321e34c6d952287a0371852203f99572aa89a741';
+String _$authDataHash() => r'492567824201ecdff8f74abd481d5d07f5cf2faf';
 
 /// See also [AuthData].
 @ProviderFor(AuthData)
@@ -36,7 +36,23 @@ final currentUserProvider = NotifierProvider<CurrentUser, User?>.internal(
 );
 
 typedef _$CurrentUser = Notifier<User?>;
-String _$clientProviderHash() => r'8eb84a87b52debe94e19875bcfe8ebea0727168c';
+String _$oAuthTokenManagerHash() => r'9bd01017465812faa75c36febf391bb716f49e6e';
+
+/// See also [OAuthTokenManager].
+@ProviderFor(OAuthTokenManager)
+final oAuthTokenManagerProvider =
+    NotifierProvider<OAuthTokenManager, OAuthTokenState?>.internal(
+      OAuthTokenManager.new,
+      name: r'oAuthTokenManagerProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$oAuthTokenManagerHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+typedef _$OAuthTokenManager = Notifier<OAuthTokenState?>;
+String _$clientProviderHash() => r'1e1930706bc0689f0082bd42e9dcdd8bac3e7fb1';
 
 /// See also [ClientProvider].
 @ProviderFor(ClientProvider)
