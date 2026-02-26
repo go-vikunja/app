@@ -156,4 +156,35 @@ class SettingsDatasource {
   Future<void> setLocaleOverride(String? localeCode) async {
     await _storage.write(key: "locale_override", value: localeCode);
   }
+
+  // OAuth token storage
+
+  Future<String?> getRefreshToken() {
+    return _storage.read(key: "oauth-refresh-token");
+  }
+
+  Future<void> saveRefreshToken(String? token) {
+    return _storage.write(key: "oauth-refresh-token", value: token);
+  }
+
+  Future<DateTime?> getTokenExpiry() async {
+    final value = await _storage.read(key: "oauth-token-expiry");
+    if (value == null) return null;
+    return DateTime.tryParse(value);
+  }
+
+  Future<void> saveTokenExpiry(DateTime? expiry) {
+    return _storage.write(
+      key: "oauth-token-expiry",
+      value: expiry?.toUtc().toIso8601String(),
+    );
+  }
+
+  Future<String?> getAuthType() {
+    return _storage.read(key: "auth-type");
+  }
+
+  Future<void> saveAuthType(String? type) {
+    return _storage.write(key: "auth-type", value: type);
+  }
 }

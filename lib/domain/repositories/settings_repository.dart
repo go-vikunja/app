@@ -52,4 +52,12 @@ abstract class SettingsRepository {
   // Locale override (null -> system default)
   Future<String?> getLocaleOverride();
   Future<void> setLocaleOverride(String? localeCode);
+
+  // OAuth token storage
+  Future<String?> getRefreshToken();
+  Future<void> saveRefreshToken(String? token);
+  Future<DateTime?> getTokenExpiry();
+  Future<void> saveTokenExpiry(DateTime? expiry);
+  Future<String?> getAuthType();
+  Future<void> saveAuthType(String? type);
 }
