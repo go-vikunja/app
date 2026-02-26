@@ -15,6 +15,7 @@
   "logout": "Logout",
   "register": "Register",
   "login": "Login",
+  "loginOrSignUp": "Login or sign up",
   "system": "System",
   "file": "File",
   "light": "Light",
