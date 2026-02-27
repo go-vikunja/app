@@ -51,6 +51,7 @@ class LoginPageState extends ConsumerState<LoginPage> {
     var settingsDatasource = SettingsDatasource(FlutterSecureStorage());
     settingsDatasource.saveServer(null);
     settingsDatasource.saveUserToken(null);
+    settingsDatasource.saveRefreshCookie(null);
 
     Future.delayed(Duration.zero, () async {
       var pastSevers = await ref
@@ -364,6 +365,8 @@ class LoginPageState extends ConsumerState<LoginPage> {
   Future<void> _loginUserByClientToken(BaseTokenPair baseTokenPair) async {
     ref.read(settingsRepositoryProvider).saveUserToken(baseTokenPair.token);
     ref.read(settingsRepositoryProvider).saveServer(baseTokenPair.base);
+    // Webview login does not provide a refresh cookie
+    ref.read(settingsRepositoryProvider).saveRefreshCookie(null);
     ref
         .read(authDataProvider.notifier)
         .set(AuthModel(baseTokenPair.base, baseTokenPair.token));
@@ -448,8 +451,15 @@ class LoginPageState extends ConsumerState<LoginPage> {
       if (response.isSuccessful) {
         var success = response.toSuccess();
         var userToken = success.body.token;
+        var refreshCookie = success.body.refreshCookie;
         if (context.mounted) {
-          onUserToken(context, server, userToken, serverVersion);
+          onUserToken(
+            context,
+            server,
+            userToken,
+            serverVersion,
+            refreshCookie: refreshCookie,
+          );
         }
       } else if (response.isError) {
         var error = response.toError();
@@ -462,7 +472,14 @@ class LoginPageState extends ConsumerState<LoginPage> {
               if (response.isSuccessful) {
                 var success = response.toSuccess();
                 var userToken = success.body.token;
-                onUserToken(context, server, userToken, serverVersion);
+                var refreshCookie = success.body.refreshCookie;
+                onUserToken(
+                  context,
+                  server,
+                  userToken,
+                  serverVersion,
+                  refreshCookie: refreshCookie,
+                );
               } else {
                 _showGenericError(context);
               }
@@ -497,10 +514,14 @@ class LoginPageState extends ConsumerState<LoginPage> {
     BuildContext context,
     String server,
     String userToken,
-    Version? serverVersion,
-  ) async {
-    ref.read(authDataProvider.notifier).set(AuthModel(server, userToken));
+    Version? serverVersion, {
+    String? refreshCookie,
+  }) async {
+    ref
+        .read(authDataProvider.notifier)
+        .set(AuthModel(server, userToken, refreshCookie: refreshCookie));
     await ref.read(settingsRepositoryProvider).saveUserToken(userToken);
+    await ref.read(settingsRepositoryProvider).saveRefreshCookie(refreshCookie);
 
     var currentUser = await ref.read(userRepositoryProvider).getCurrentUser();
 

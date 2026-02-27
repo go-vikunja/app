@@ -22,7 +22,13 @@ void completeTask(String taskID) async {
   var base = await datasource.getServer();
 
   if (token != null && base != null) {
-    Client client = Client(token: token, base: base);
+    var refreshCookie = await datasource.getRefreshCookie();
+    Client client = Client(
+      token: token,
+      base: base,
+      refreshCookie: refreshCookie,
+      settingsDatasource: datasource,
+    );
     tz.initializeTimeZones();
 
     var ignoreCertificates = await datasource.getIgnoreCertificates();
@@ -73,7 +79,13 @@ Future<void> updateWidget() async {
   var base = await datasource.getServer();
 
   if (token != null && base != null) {
-    Client client = Client(token: token, base: base);
+    var refreshCookie = await datasource.getRefreshCookie();
+    Client client = Client(
+      token: token,
+      base: base,
+      refreshCookie: refreshCookie,
+      settingsDatasource: datasource,
+    );
     tz.initializeTimeZones();
 
     var ignoreCertificates = await datasource.getIgnoreCertificates();

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:core';
 import 'dart:developer' as developer;
@@ -10,6 +11,7 @@ import 'package:http/io_client.dart' as io_client;
 import 'package:logging/logging.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:vikunja_app/core/network/response.dart';
+import 'package:vikunja_app/data/data_sources/settings_data_source.dart';
 import 'package:vikunja_app/main.dart';
 import 'package:vikunja_app/presentation/widgets/string_extension.dart';
 
@@ -21,7 +23,12 @@ class Client {
 
   String _token = '';
   String _base = '';
+  String? refreshCookie;
   bool ignoreCertificates = false;
+
+  SettingsDatasource? settingsDatasource;
+
+  Completer<bool>? _refreshCompleter;
 
   late http.Client _httpClient;
 
@@ -29,7 +36,12 @@ class Client {
 
   String get token => _token;
 
-  Client({String? token, required String base}) {
+  Client({
+    String? token,
+    required String base,
+    this.refreshCookie,
+    this.settingsDatasource,
+  }) {
     if (token != null) _token = token;
     base = base.replaceAll(" ", "");
     if (base.endsWith("/")) {
@@ -71,13 +83,20 @@ class Client {
     HttpOverrides.global = IgnoreCertHttpOverrides(ignoreCertificates);
   }
 
-  Map<String, String> get _headers => {
-    'Authorization': _token != '' ? 'Bearer $_token' : '',
-    'Content-Type': 'application/json',
-    'User-Agent': 'Vikunja Mobile App',
-  };
+  Map<String, String> getHeaders([bool? refresh = false]) {
+    var headers = {
+      'Content-Type': 'application/json',
+      'User-Agent': 'Vikunja Mobile App',
+    };
 
-  Map<String, String> get headers => _headers;
+    if (refresh == true) {
+      headers['Cookie'] = 'vikunja_refresh_token=$refreshCookie';
+    } else {
+      headers['Authorization'] = _token != '' ? 'Bearer $_token' : '';
+    }
+
+    return headers;
+  }
 
   bool get authenticated => _token.isNotEmpty;
 
@@ -104,8 +123,10 @@ class Client {
         fragment: uri.fragment,
       );
 
-      var response = await _httpClient.get(uri, headers: _headers);
-      return _handleResponse(response, mapper);
+      var response = await _httpClient.get(uri, headers: getHeaders());
+      return _handleResponseWithRefresh(response, mapper, () {
+        return _httpClient.get(uri, headers: getHeaders());
+      });
     } catch (e, s) {
       return _handleException(e, s);
     }
@@ -118,9 +139,11 @@ class Client {
     try {
       var response = await _httpClient.delete(
         '$base$url'.toUri()!,
-        headers: _headers,
+        headers: getHeaders(),
       );
-      return _handleResponse(response, mapper);
+      return _handleResponseWithRefresh(response, mapper, () {
+        return _httpClient.delete('$base$url'.toUri()!, headers: getHeaders());
+      });
     } catch (e, s) {
       return _handleException(e, s);
     }
@@ -132,12 +155,19 @@ class Client {
     dynamic body,
   }) async {
     try {
+      var encodedBody = _encoder.convert(body);
       var response = await _httpClient.post(
         '$base$url'.toUri()!,
-        headers: _headers,
-        body: _encoder.convert(body),
+        headers: getHeaders(),
+        body: encodedBody,
       );
-      return _handleResponse(response, mapper);
+      return _handleResponseWithRefresh(response, mapper, () {
+        return _httpClient.post(
+          '$base$url'.toUri()!,
+          headers: getHeaders(),
+          body: encodedBody,
+        );
+      });
     } catch (e, s) {
       return _handleException(e, s);
     }
@@ -149,14 +179,49 @@ class Client {
     dynamic body,
   }) async {
     try {
+      var encodedBody = _encoder.convert(body);
       var response = await _httpClient.put(
         '$base$url'.toUri()!,
-        headers: _headers,
+        headers: getHeaders(),
+        body: encodedBody,
+      );
+      return _handleResponseWithRefresh(response, mapper, () {
+        return _httpClient.put(
+          '$base$url'.toUri()!,
+          headers: getHeaders(),
+          body: encodedBody,
+        );
+      });
+    } catch (e, s) {
+      return _handleException(e, s);
+    }
+  }
+
+  io_client.IOClient _createIOClient() {
+    final httpClient = HttpClient();
+    if (ignoreCertificates) {
+      httpClient.badCertificateCallback = (_, _, _) => true;
+    }
+    return io_client.IOClient(httpClient);
+  }
+
+  Future<Response<T>> postWithCookies<T>({
+    required String url,
+    T Function(dynamic body)? mapper,
+    dynamic body,
+  }) async {
+    final cookieClient = _createIOClient();
+    try {
+      var response = await cookieClient.post(
+        '$base$url'.toUri()!,
+        headers: getHeaders(),
         body: _encoder.convert(body),
       );
       return _handleResponse(response, mapper);
     } catch (e, s) {
       return _handleException(e, s);
+    } finally {
+      cookieClient.close();
     }
   }
 
@@ -164,6 +229,8 @@ class Client {
     http.Response response,
     T Function(dynamic body)? mapper,
   ) {
+    _extractRefreshCookie(response.headers);
+
     if (response.statusCode < 200 || response.statusCode >= 400) {
       Map<String, dynamic> error = _decoder.convert(response.body);
 
@@ -172,7 +239,7 @@ class Client {
         globalNavigatorKey.currentState?.pushNamed("/login");
       }
 
-      return ErrorResponse<T>(response.statusCode, headers, error);
+      return ErrorResponse<T>(response.statusCode, getHeaders(), error);
     }
 
     var decode = utf8.decode(response.bodyBytes);
@@ -196,6 +263,95 @@ class Client {
     }
 
     return VoidResponse<T>();
+  }
+
+  Future<bool> tryRefreshToken() => _tryRefreshToken();
+
+  Future<bool> _tryRefreshToken() async {
+    if (refreshCookie == null || refreshCookie!.isEmpty) {
+      return false;
+    }
+
+    // Prevent multiple concurrent refresh attempts
+    if (_refreshCompleter != null) {
+      return _refreshCompleter!.future;
+    }
+
+    _refreshCompleter = Completer<bool>();
+
+    try {
+      final refreshClient = _createIOClient();
+      try {
+        var response = await refreshClient.post(
+          '$base/user/token/refresh'.toUri()!,
+          headers: getHeaders(true),
+        );
+
+        if (response.statusCode >= 200 && response.statusCode < 400) {
+          var body = _decoder.convert(utf8.decode(response.bodyBytes));
+          var newToken = body['token'] as String?;
+
+          if (newToken != null && newToken.isNotEmpty) {
+            _token = newToken;
+
+            _extractRefreshCookie(response.headers);
+
+            if (settingsDatasource != null) {
+              await settingsDatasource?.saveUserToken(_token);
+              await settingsDatasource?.saveRefreshCookie(refreshCookie);
+            }
+
+            _refreshCompleter!.complete(true);
+            _refreshCompleter = null;
+            return true;
+          }
+        }
+      } finally {
+        refreshClient.close();
+      }
+
+      _refreshCompleter!.complete(false);
+      _refreshCompleter = null;
+      return false;
+    } catch (e) {
+      developer.log("Error refreshing token: $e");
+      if (_refreshCompleter != null && !_refreshCompleter!.isCompleted) {
+        _refreshCompleter!.complete(false);
+      }
+      _refreshCompleter = null;
+      return false;
+    }
+  }
+
+  void _extractRefreshCookie(Map<String, String> responseHeaders) {
+    var setCookie = responseHeaders['set-cookie'];
+    if (setCookie == null) return;
+
+    var match = RegExp(r'vikunja_refresh_token=([^;]+)').firstMatch(setCookie);
+    if (match != null) {
+      refreshCookie = match.group(1);
+    }
+  }
+
+  Future<Response<T>> _handleResponseWithRefresh<T>(
+    http.Response response,
+    T Function(dynamic body)? mapper,
+    Future<http.Response> Function() retryRequest,
+  ) async {
+    _extractRefreshCookie(response.headers);
+
+    if (response.statusCode == 401 && refreshCookie != null) {
+      Map<String, dynamic> error = _decoder.convert(response.body);
+      if (error.containsKey('code') && error['code'] == 11) {
+        bool refreshed = await _tryRefreshToken();
+        if (refreshed) {
+          var retryResponse = await retryRequest();
+          return _handleResponse(retryResponse, mapper);
+        }
+      }
+    }
+
+    return _handleResponse(response, mapper);
   }
 
   ExceptionResponse<T> _handleException<T>(Object e, StackTrace s) {

@@ -148,7 +148,14 @@ class SettingsDatasource {
     return _storage.write(key: "user-token", value: token);
   }
 
-  // Locale override (if null or empty -> use system locale)
+  Future<String?> getRefreshCookie() {
+    return _storage.read(key: "refresh-cookie");
+  }
+
+  Future<void> saveRefreshCookie(String? cookie) {
+    return _storage.write(key: "refresh-cookie", value: cookie);
+  }
+
   Future<String?> getLocaleOverride() async {
     return _storage.read(key: "locale_override");
   }
