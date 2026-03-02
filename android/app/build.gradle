@@ -71,6 +71,9 @@ android {
         production {
             signingConfig signingConfigs.release
         }
+        fdroid {
+            signingConfig signingConfigs.release
+        }
     }
 
     flavorDimensions "deploy"
