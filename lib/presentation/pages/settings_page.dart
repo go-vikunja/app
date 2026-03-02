@@ -235,6 +235,7 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
                 onPressed: () {
                   ref.read(settingsRepositoryProvider).saveServer(null);
                   ref.read(settingsRepositoryProvider).saveUserToken(null);
+                  ref.read(settingsRepositoryProvider).saveRefreshCookie(null);
 
                   Navigator.of(context).popUntil((route) => route.isFirst);
                   Navigator.pushReplacement(
@@ -278,7 +279,7 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
             backgroundImage: user.username != ""
                 ? NetworkImage(
                     user.avatarUrl(ref.read(clientProviderProvider).base),
-                    headers: ref.read(clientProviderProvider).headers,
+                    headers: ref.read(clientProviderProvider).getHeaders(),
                   )
                 : null,
           ),

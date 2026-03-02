@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
+import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/core/utils/constants.dart';
 import 'package:vikunja_app/core/utils/network.dart';
 import 'package:vikunja_app/core/utils/validator.dart';
+import 'package:vikunja_app/domain/entities/auth_model.dart';
 import 'package:vikunja_app/presentation/widgets/button.dart';
 
 class RegisterPage extends ConsumerStatefulWidget {
@@ -146,10 +148,21 @@ class RegisterPageState extends ConsumerState<RegisterPage> {
 
       if (context.mounted) {
         if (newUserLoggedIn.isSuccessful) {
+          var body = newUserLoggedIn.toSuccess().body;
+          ref.read(settingsRepositoryProvider).saveUserToken(body.token);
           ref
               .read(settingsRepositoryProvider)
-              .saveUserToken(newUserLoggedIn.toSuccess().body.token);
+              .saveRefreshCookie(body.refreshCookie);
           ref.read(settingsRepositoryProvider).saveServer(_server!);
+          ref
+              .read(authDataProvider.notifier)
+              .set(
+                AuthModel(
+                  _server!,
+                  body.token,
+                  refreshCookie: body.refreshCookie,
+                ),
+              );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(

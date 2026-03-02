@@ -22,7 +22,7 @@ class UserDataSource extends RemoteDataSource {
       body['totp_passcode'] = totp;
     }
 
-    return client.post(
+    var response = await client.postWithCookies(
       url: '/login',
       mapper: (body) {
         var token = body["token"];
@@ -30,6 +30,28 @@ class UserDataSource extends RemoteDataSource {
       },
       body: body,
     );
+
+    if (response.isSuccessful) {
+      var success = response.toSuccess();
+      var refreshCookie = _extractRefreshCookie(success.headers);
+      if (refreshCookie != null) {
+        return SuccessResponse<UserTokenDto>(
+          UserTokenDto(success.body.token, refreshCookie: refreshCookie),
+          success.statusCode,
+          success.headers,
+        );
+      }
+    }
+
+    return response;
+  }
+
+  String? _extractRefreshCookie(Map<String, String> headers) {
+    var setCookie = headers['set-cookie'];
+    if (setCookie == null) return null;
+
+    var match = RegExp(r'vikunja_refresh_token=([^;]+)').firstMatch(setCookie);
+    return match?.group(1);
   }
 
   Future<Response<UserTokenDto>> register(
@@ -79,15 +101,6 @@ class UserDataSource extends RemoteDataSource {
         return userSettings;
       },
       body: userSettings.toJson(),
-    );
-  }
-
-  Future<Response<String>> getToken() {
-    return client.post(
-      url: '/user/token',
-      mapper: (body) {
-        return body["token"];
-      },
     );
   }
 }

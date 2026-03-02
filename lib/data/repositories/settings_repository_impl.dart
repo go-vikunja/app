@@ -128,6 +128,16 @@ class SettingsRepositoryImpl implements SettingsRepository {
   }
 
   @override
+  Future<String?> getRefreshCookie() {
+    return _datasource.getRefreshCookie();
+  }
+
+  @override
+  Future<void> saveRefreshCookie(String? cookie) {
+    return _datasource.saveRefreshCookie(cookie);
+  }
+
+  @override
   Future<String?> getLocaleOverride() {
     return _datasource.getLocaleOverride();
   }

@@ -127,17 +127,6 @@ class SettingsController extends _$SettingsController {
           initialDelay: Duration(seconds: 15),
         );
       }
-
-      Workmanager().registerPeriodicTask(
-        "refresh-token",
-        "refresh-token",
-        frequency: Duration(hours: 12),
-        constraints: Constraints(
-          networkType: NetworkType.connected,
-          requiresDeviceIdle: true,
-        ),
-        initialDelay: Duration(seconds: 15),
-      );
     });
   }
 

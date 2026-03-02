@@ -36,7 +36,13 @@ void markAsDone(int id) async {
     return;
   }
 
-  Client client = Client(token: token, base: base);
+  var refreshCookie = await datasource.getRefreshCookie();
+  Client client = Client(
+    token: token,
+    base: base,
+    refreshCookie: refreshCookie,
+    settingsDatasource: datasource,
+  );
 
   var ignoreCertificates = await datasource.getIgnoreCertificates();
   client.setIgnoreCerts(ignoreCertificates);
