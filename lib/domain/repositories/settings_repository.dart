@@ -45,6 +45,10 @@ abstract class SettingsRepository {
 
   Future<String?> getUserToken();
 
+  Future<void> saveRefreshCookie(String? cookie);
+
+  Future<String?> getRefreshCookie();
+
   Future<void> saveServer(String? server);
 
   Future<String?> getServer();

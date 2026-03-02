@@ -7,7 +7,7 @@ part of 'task_comments_controller.dart';
 // **************************************************************************
 
 String _$taskCommentsControllerHash() =>
-    r'5f40e7435c3351c9b8c787912a0468b5374caf8d';
+    r'e5127e8da1ffb404a33031d1026ce9626a7047e6';
 
 /// Copied from Dart SDK
 class _SystemHash {

@@ -143,11 +143,12 @@ class UserDto extends Dto<User> {
 
 class UserTokenDto extends Dto<UserToken> {
   final String token;
+  final String? refreshCookie;
 
-  UserTokenDto(this.token);
+  UserTokenDto(this.token, {this.refreshCookie});
 
   @override
   UserToken toDomain() {
-    return UserToken(token);
+    return UserToken(token, refreshCookie: refreshCookie);
   }
 }
