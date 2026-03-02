@@ -5,8 +5,14 @@ import 'package:http/http.dart';
 class VikunjaErrorWidget extends StatelessWidget {
   final Function()? onRetry;
   final Object error;
+  final bool isRetrying;
 
-  const VikunjaErrorWidget({required this.error, this.onRetry, super.key});
+  const VikunjaErrorWidget({
+    required this.error,
+    this.onRetry,
+    this.isRetrying = false,
+    super.key,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -26,11 +32,20 @@ class VikunjaErrorWidget extends StatelessWidget {
             SizedBox(height: 32),
             if (onRetry != null)
               ElevatedButton(
-                onPressed: () {
-                  onRetry?.call();
-                },
+                onPressed: isRetrying
+                    ? null
+                    : () {
+                        onRetry?.call();
+                      },
                 child: Text(AppLocalizations.of(context).retry),
               ),
+            SizedBox(height: 16),
+            SizedBox(
+              height: 48,
+              child: isRetrying
+                  ? CircularProgressIndicator()
+                  : SizedBox.shrink(),
+            ),
           ],
         ),
       ),

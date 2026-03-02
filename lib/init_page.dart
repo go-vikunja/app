@@ -15,18 +15,71 @@ import 'package:vikunja_app/presentation/pages/error_widget.dart';
 import 'package:vikunja_app/presentation/pages/loading_widget.dart';
 import 'package:vikunja_app/presentation/widgets/version_mismatch_dialog.dart';
 
-class InitPage extends ConsumerWidget {
+class InitPage extends ConsumerStatefulWidget {
   const InitPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<InitPage> createState() => _InitPageState();
+}
+
+class _InitPageState extends ConsumerState<InitPage> {
+  int _retryCount = 0;
+  bool _isRetrying = false;
+  bool _shouldShowSnackbar = false;
+
+  void _handleRetry() async {
+    if (_isRetrying) return;
+
+    setState(() {
+      _isRetrying = true;
+      _shouldShowSnackbar = false;
+      _retryCount++;
+    });
+
+    // Keep button disabled for at least 3 seconds
+    await Future.delayed(Duration(seconds: 3));
+
+    if (mounted) {
+      setState(() {
+        _isRetrying = false;
+        _shouldShowSnackbar = true;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return FutureBuilder(
-      future: checkLoginToken(ref),
+      key: ValueKey(_retryCount),
+      future: checkLoginToken(ref).timeout(
+        Duration(seconds: 3),
+        onTimeout: () {
+          return AppLocalizations.of(context).connectionTimeout;
+        },
+      ),
       builder: (context, asyncSnapshot) {
         if (asyncSnapshot.connectionState == ConnectionState.done &&
             asyncSnapshot.data != null) {
+          if (_shouldShowSnackbar && !_isRetrying) {
+            _shouldShowSnackbar = false;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      AppLocalizations.of(context).connectionTimeout,
+                    ),
+                    backgroundColor: Colors.red,
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              }
+            });
+          }
           return VikunjaErrorWidget(
             error: asyncSnapshot.data ?? "Unknown error occurred.",
+            onRetry: _handleRetry,
+            isRetrying: _isRetrying,
           );
         } else {
           return Scaffold(body: LoadingWidget());
