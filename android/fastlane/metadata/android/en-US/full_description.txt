@@ -1,0 +1,36 @@
+Vikunja is an open-source, self-hostable to-do app designed to help you organize tasks, collaborate with teams, and view projects in multiple formats.
+
+Features:
+• Multiple project views: List, Gantt chart, Table, and Kanban board
+• Full task management: Create, organize, and assign tasks with priorities, labels, and due dates
+• Team collaboration: Share projects and collaborate with other users in real-time
+• Self-hosted: Run Vikunja on your own server and keep full control of your data
+• Open Source: Community-driven development with transparency and privacy-first design
+• Cross-platform: Available on Android, iOS, and web browsers
+
+Privacy First:
+Vikunja is designed with privacy in mind. You can self-host the entire application on your own infrastructure or use Vikunja Cloud. Either way, your data remains yours.
+
+Project Management:
+• Create unlimited projects and tasks
+• Organize with customizable labels and filters
+• Track progress with task status and priorities
+• Set deadlines and reminders
+• Add comments and attachments to tasks
+
+Collaboration:
+• Share projects with team members
+• Assign tasks to users
+• Real-time updates and synchronization
+• User roles and permissions
+
+Requirements:
+• Access to a Vikunja server (self-hosted or Vikunja Cloud)
+• Android 7.0 or higher
+• Internet connection
+
+Learn More:
+Visit https://vikunja.io to learn more about Vikunja and how to set up your own instance.
+
+Note:
+This app requires a Vikunja server to function. If you don't have one already, you can self-host it or use Vikunja Cloud.

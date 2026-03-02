@@ -102,6 +102,7 @@ jobs:
           echo "Updated version to ${NEW_VERSION}"
       - run: flutter build appbundle --flavor production
       - run: flutter build apk --flavor production
+      - run: flutter build apk --flavor fdroid
 
       - name: Copy and rename artifacts for S3
         run: |
@@ -117,6 +118,8 @@ jobs:
              build/s3/${FILENAME}.apk
           cp build/app/outputs/bundle/productionRelease/app-production-release.aab \
              build/s3/${FILENAME}.aab
+          cp build/app/outputs/flutter-apk/app-fdroid-release.apk \
+             build/s3/${FILENAME}-fdroid.apk
 
       - name: Upload artifacts to S3
         uses: kolaente/s3-action@41963184b524ccac734ea4d8c964ac74b5b1af89 # v1.2.1
