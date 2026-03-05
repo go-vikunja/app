@@ -29,16 +29,6 @@ class MainActivity : FlutterActivity() {
     private var launchMethod: String? = null
     private val CHANNEL = "vikunja"
 
-//    override fun getInitialRoute(): String {
-//        Log.d("BROKOLI", "GETINITIALROUTE")
-//        return if (intent?.getBooleanExtra("openAddTask", false) == true) {
-//            Log.d("BROKOLI", "ADDTASK")
-//            "/addTask"
-//        } else {
-//            "/"
-//        }
-//    }
-
     override fun onNewIntent(intent: Intent) {
         callFlutterCode(intent, flutterEngine!!);
         super.onNewIntent(intent)
