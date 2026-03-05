@@ -6,6 +6,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.net.Uri
 import android.text.format.DateFormat
 import android.util.Log
 import androidx.compose.runtime.Composable
@@ -53,24 +54,24 @@ import androidx.glance.appwidget.components.CircleIconButton
 import io.vikunja.flutteringvikunja.MainActivity
 import io.vikunja.flutteringvikunja.R
 import androidx.glance.appwidget.action.ActionCallback
+import io.vikunja.flutteringvikunja.INTENT_TYPE_ADD_TASK
 
 class InteractiveAction : ActionCallback {
-    override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
-        val addIntent = Intent(context,MainActivity::class.java)
-        addIntent.action = "ACTION_INSERT"
-        addIntent.type = "ADD_NEW_TASK"
-        addIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        PendingIntent.getActivity(
-            context,
-            0,
-            addIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        context.startActivity(addIntent)
-//        val intent = Intent(context, MainActivity::class.java).apply {
-//            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-//        }
+    override suspend fun onAction(
+        context: Context,
+        glanceId: GlanceId,
+        parameters: ActionParameters
+    ) {
 
+        val intent = Intent(context, MainActivity::class.java).apply {
+            putExtra("openAddTask", true)
+            action = Intent.ACTION_INSERT
+            type = INTENT_TYPE_ADD_TASK
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        Log.d("BROKOLI", "LAUNCHING INTENT")
+
+        context.startActivity(intent)
     }
 }
 
