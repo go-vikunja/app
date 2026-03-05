@@ -2,8 +2,11 @@ package io.vikunja.flutteringvikunja.widget
 
 import HomeWidgetGlanceState
 import HomeWidgetGlanceStateDefinition
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
+import android.net.Uri
 import android.text.format.DateFormat
 import android.util.Log
 import androidx.compose.runtime.Composable
@@ -17,6 +20,7 @@ import androidx.glance.GlanceModifier
 import androidx.glance.appwidget.CheckBox
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.SizeMode
+import androidx.glance.appwidget.components.TitleBar
 import androidx.glance.appwidget.lazy.LazyColumn
 import androidx.glance.appwidget.lazy.items
 import androidx.glance.appwidget.provideContent
@@ -42,7 +46,33 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Date
 import java.util.Locale
+import androidx.glance.appwidget.components.TitleBar
+import androidx.glance.ImageProvider
+import androidx.glance.action.ActionParameters
+import androidx.glance.appwidget.action.actionRunCallback
+import androidx.glance.appwidget.components.CircleIconButton
+import io.vikunja.flutteringvikunja.MainActivity
+import io.vikunja.flutteringvikunja.R
+import androidx.glance.appwidget.action.ActionCallback
+import io.vikunja.flutteringvikunja.INTENT_TYPE_ADD_TASK
 
+class InteractiveAction : ActionCallback {
+    override suspend fun onAction(
+        context: Context,
+        glanceId: GlanceId,
+        parameters: ActionParameters
+    ) {
+
+        val intent = Intent(context, MainActivity::class.java).apply {
+            putExtra("openAddTask", true)
+            action = Intent.ACTION_INSERT
+            type = INTENT_TYPE_ADD_TASK
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        
+        context.startActivity(intent)
+    }
+}
 
 class AppWidget : GlanceAppWidget() {
     override val sizeMode = SizeMode.Single
@@ -149,9 +179,18 @@ class AppWidget : GlanceAppWidget() {
                 .background(ColorProvider(Color(0xFF126cfd), Color(0xFF013992))),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                text = "Today",
-                style = TextStyle(fontSize = 20.sp, color = ColorProvider(Color.White, Color.White))
+            TitleBar(
+                title = "Vikunja",
+                startIcon = ImageProvider(R.drawable.vikunja_logo),
+                iconColor = null,
+                actions = {
+                    CircleIconButton(
+                        enabled = true,
+                        onClick = actionRunCallback<InteractiveAction>(),
+                        imageProvider = ImageProvider(R.drawable.add),
+                        contentDescription = "Add a Task",
+                    )
+                },
             )
         }
     }
