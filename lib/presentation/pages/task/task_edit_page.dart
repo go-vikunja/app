@@ -198,7 +198,7 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
       padding: EdgeInsets.symmetric(vertical: 8.0),
       child: InkWell(
         onTap: () async {
-          var description = await Navigator.push(
+          var description = await Navigator.push<String>(
             context,
             MaterialPageRoute(
               builder: (buildContext) =>
