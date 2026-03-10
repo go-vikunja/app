@@ -50,6 +50,8 @@ dev_dependencies:
   flutter_launcher_icons: ^0.14.3
   riverpod_generator: ^2.6.5
   riverpod_lint: ^2.6.5
+  path_provider_platform_interface: ^2.1.2
+  plugin_platform_interface: ^2.1.8
 
 flutter_icons:
   image_path: "assets/vikunja_logo.png"

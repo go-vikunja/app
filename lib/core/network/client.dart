@@ -11,6 +11,7 @@ import 'package:http/io_client.dart' as io_client;
 import 'package:logging/logging.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:vikunja_app/core/network/response.dart';
+import 'package:vikunja_app/core/network/token_lock.dart';
 import 'package:vikunja_app/data/data_sources/settings_data_source.dart';
 import 'package:vikunja_app/main.dart';
 import 'package:vikunja_app/presentation/widgets/string_extension.dart';
@@ -284,39 +285,54 @@ class Client {
     _refreshCompleter = Completer<bool>();
 
     try {
-      final refreshClient = _createIOClient();
-      try {
-        var response = await refreshClient.post(
-          '$base/user/token/refresh'.toUri()!,
-          headers: getHeaders(true),
-        );
-
-        if (response.statusCode >= 200 && response.statusCode < 400) {
-          var body = _decoder.convert(utf8.decode(response.bodyBytes));
-          var newToken = body['token'] as String?;
-
-          if (newToken != null && newToken.isNotEmpty) {
-            _token = newToken;
-
-            _extractRefreshCookie(response.headers);
-
-            if (settingsDatasource != null) {
-              await settingsDatasource?.saveUserToken(_token);
-              await settingsDatasource?.saveRefreshCookie(refreshCookie);
+      final result = await TokenLock.synchronized(() async {
+        // Check if the token was already refreshed by another isolate
+        if (settingsDatasource != null) {
+          final storedCookie = await settingsDatasource!.getRefreshCookie();
+          if (storedCookie != null && storedCookie != refreshCookie) {
+            final storedToken = await settingsDatasource!.getUserToken();
+            if (storedToken != null && storedToken.isNotEmpty) {
+              _token = storedToken;
+              refreshCookie = storedCookie;
+              return true;
             }
-
-            _refreshCompleter!.complete(true);
-            _refreshCompleter = null;
-            return true;
           }
         }
-      } finally {
-        refreshClient.close();
-      }
 
-      _refreshCompleter!.complete(false);
+        final refreshClient = _createIOClient();
+        try {
+          var response = await refreshClient.post(
+            '$base/user/token/refresh'.toUri()!,
+            headers: getHeaders(true),
+          );
+
+          if (response.statusCode >= 200 && response.statusCode < 400) {
+            var body = _decoder.convert(utf8.decode(response.bodyBytes));
+            var newToken = body['token'] as String?;
+
+            if (newToken != null && newToken.isNotEmpty) {
+              _token = newToken;
+
+              _extractRefreshCookie(response.headers);
+
+              if (settingsDatasource != null) {
+                await settingsDatasource?.saveUserToken(_token);
+                await settingsDatasource?.saveRefreshCookie(refreshCookie);
+              }
+
+              return true;
+            }
+          }
+        } finally {
+          refreshClient.close();
+        }
+
+        return false;
+      });
+
+      _refreshCompleter!.complete(result);
       _refreshCompleter = null;
-      return false;
+      return result;
     } catch (e) {
       developer.log("Error refreshing token: $e");
       if (_refreshCompleter != null && !_refreshCompleter!.isCompleted) {
