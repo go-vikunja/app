@@ -232,14 +232,18 @@ class Client {
     _extractRefreshCookie(response.headers);
 
     if (response.statusCode < 200 || response.statusCode >= 400) {
-      Map<String, dynamic> error = _decoder.convert(response.body);
+      try {
+        Map<String, dynamic> error = _decoder.convert(response.body);
 
-      if (response.statusCode == 401 &&
-          globalNavigatorKey.currentContext != null) {
-        globalNavigatorKey.currentState?.pushNamed("/login");
+        if (response.statusCode == 401 &&
+            globalNavigatorKey.currentContext != null) {
+          globalNavigatorKey.currentState?.pushNamed("/login");
+        }
+
+        return ErrorResponse<T>(response.statusCode, getHeaders(), error);
+      } on FormatException catch (e, s) {
+        return ExceptionResponse(e, s);
       }
-
-      return ErrorResponse<T>(response.statusCode, getHeaders(), error);
     }
 
     var decode = utf8.decode(response.bodyBytes);
