@@ -367,9 +367,7 @@ class LoginPageState extends ConsumerState<LoginPage> {
     ref.read(settingsRepositoryProvider).saveServer(baseTokenPair.base);
     // Webview login does not provide a refresh cookie
     ref.read(settingsRepositoryProvider).saveRefreshCookie(null);
-    ref
-        .read(authDataProvider.notifier)
-        .set(AuthModel(baseTokenPair.base, baseTokenPair.token));
+    ref.read(authDataProvider.notifier).set(AuthModel(baseTokenPair.base));
 
     setState(() {
       _loading = true;
@@ -410,7 +408,7 @@ class LoginPageState extends ConsumerState<LoginPage> {
     });
 
     try {
-      ref.read(authDataProvider.notifier).set(AuthModel(server, ""));
+      ref.read(authDataProvider.notifier).set(AuthModel(server));
       ref.read(settingsRepositoryProvider).saveServer(server);
 
       Version? serverVersion;
@@ -517,9 +515,7 @@ class LoginPageState extends ConsumerState<LoginPage> {
     Version? serverVersion, {
     String? refreshCookie,
   }) async {
-    ref
-        .read(authDataProvider.notifier)
-        .set(AuthModel(server, userToken, refreshCookie: refreshCookie));
+    ref.read(authDataProvider.notifier).set(AuthModel(server));
     await ref.read(settingsRepositoryProvider).saveUserToken(userToken);
     await ref.read(settingsRepositoryProvider).saveRefreshCookie(refreshCookie);
 

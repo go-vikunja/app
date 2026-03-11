@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 import 'dart:core';
 import 'dart:developer' as developer;
@@ -6,6 +5,7 @@ import 'dart:io';
 
 import 'package:cronet_http/cronet_http.dart' as cronet_http;
 import 'package:cupertino_http/cupertino_http.dart' as cupertino_http;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart' as io_client;
 import 'package:logging/logging.dart';
@@ -22,28 +22,18 @@ class Client {
   final JsonDecoder _decoder = JsonDecoder();
   final JsonEncoder _encoder = JsonEncoder();
 
-  String _token = '';
   String _base = '';
-  String? refreshCookie;
   bool ignoreCertificates = false;
 
-  SettingsDatasource? settingsDatasource;
-
-  Completer<bool>? _refreshCompleter;
+  SettingsDatasource settingsDatasource = SettingsDatasource(
+    FlutterSecureStorage(),
+  );
 
   late http.Client _httpClient;
 
   String get base => _base;
 
-  String get token => _token;
-
-  Client({
-    String? token,
-    required String base,
-    this.refreshCookie,
-    this.settingsDatasource,
-  }) {
-    if (token != null) _token = token;
+  Client({required String base}) {
     base = base.replaceAll(" ", "");
     if (base.endsWith("/")) {
       base = base.substring(0, base.length - 1);
@@ -84,25 +74,21 @@ class Client {
     HttpOverrides.global = IgnoreCertHttpOverrides(ignoreCertificates);
   }
 
-  Map<String, String> getHeaders([bool? refresh = false]) {
+  Future<Map<String, String>> getHeaders([bool? refresh = false]) async {
     var headers = {
       'Content-Type': 'application/json',
       'User-Agent': 'Vikunja Mobile App',
     };
 
     if (refresh == true) {
+      var refreshCookie = await settingsDatasource.getRefreshCookie();
       headers['Cookie'] = 'vikunja_refresh_token=$refreshCookie';
     } else {
-      headers['Authorization'] = _token != '' ? 'Bearer $_token' : '';
+      var token = await settingsDatasource.getUserToken();
+      headers['Authorization'] = token != '' ? 'Bearer $token' : '';
     }
 
     return headers;
-  }
-
-  bool get authenticated => _token.isNotEmpty;
-
-  void reset() {
-    _token = '';
   }
 
   Future<Response<T>> get<T>({
@@ -124,9 +110,8 @@ class Client {
         fragment: uri.fragment,
       );
 
-      var response = await _httpClient.get(uri, headers: getHeaders());
-      return _handleResponseWithRefresh(response, mapper, () {
-        return _httpClient.get(uri, headers: getHeaders());
+      return _handleResponseWithRefresh(mapper, () async {
+        return _httpClient.get(uri, headers: await getHeaders());
       });
     } catch (e, s) {
       return _handleException(e, s);
@@ -138,12 +123,11 @@ class Client {
     T Function(dynamic body)? mapper,
   }) async {
     try {
-      var response = await _httpClient.delete(
-        '$base$url'.toUri()!,
-        headers: getHeaders(),
-      );
-      return _handleResponseWithRefresh(response, mapper, () {
-        return _httpClient.delete('$base$url'.toUri()!, headers: getHeaders());
+      return _handleResponseWithRefresh(mapper, () async {
+        return _httpClient.delete(
+          '$base$url'.toUri()!,
+          headers: await getHeaders(),
+        );
       });
     } catch (e, s) {
       return _handleException(e, s);
@@ -157,15 +141,10 @@ class Client {
   }) async {
     try {
       var encodedBody = _encoder.convert(body);
-      var response = await _httpClient.post(
-        '$base$url'.toUri()!,
-        headers: getHeaders(),
-        body: encodedBody,
-      );
-      return _handleResponseWithRefresh(response, mapper, () {
+      return _handleResponseWithRefresh(mapper, () async {
         return _httpClient.post(
           '$base$url'.toUri()!,
-          headers: getHeaders(),
+          headers: await getHeaders(),
           body: encodedBody,
         );
       });
@@ -181,15 +160,10 @@ class Client {
   }) async {
     try {
       var encodedBody = _encoder.convert(body);
-      var response = await _httpClient.put(
-        '$base$url'.toUri()!,
-        headers: getHeaders(),
-        body: encodedBody,
-      );
-      return _handleResponseWithRefresh(response, mapper, () {
+      return _handleResponseWithRefresh(mapper, () async {
         return _httpClient.put(
           '$base$url'.toUri()!,
-          headers: getHeaders(),
+          headers: await getHeaders(),
           body: encodedBody,
         );
       });
@@ -215,7 +189,7 @@ class Client {
     try {
       var response = await cookieClient.post(
         '$base$url'.toUri()!,
-        headers: getHeaders(),
+        headers: await getHeaders(),
         body: _encoder.convert(body),
       );
       return _handleResponse(response, mapper);
@@ -226,11 +200,14 @@ class Client {
     }
   }
 
-  Response<T> _handleResponse<T>(
+  Future<Response<T>> _handleResponse<T>(
     http.Response response,
     T Function(dynamic body)? mapper,
-  ) {
-    _extractRefreshCookie(response.headers);
+  ) async {
+    var newRefreshCookie = _extractRefreshCookie(response.headers);
+    if (newRefreshCookie != null) {
+      await settingsDatasource.saveRefreshCookie(newRefreshCookie);
+    }
 
     if (response.statusCode < 200 || response.statusCode >= 400) {
       Map<String, dynamic> error = _decoder.convert(response.body);
@@ -240,7 +217,7 @@ class Client {
         globalNavigatorKey.currentState?.pushNamed("/login");
       }
 
-      return ErrorResponse<T>(response.statusCode, getHeaders(), error);
+      return ErrorResponse<T>(response.statusCode, await getHeaders(), error);
     }
 
     var decode = utf8.decode(response.bodyBytes);
@@ -266,40 +243,14 @@ class Client {
     return VoidResponse<T>();
   }
 
-  Future<bool> tryRefreshToken() => _tryRefreshToken();
-
-  Future<bool> _tryRefreshToken() async {
-    if (refreshCookie == null || refreshCookie!.isEmpty) {
-      return false;
-    }
-
-    // Prevent multiple concurrent refresh attempts
-    if (_refreshCompleter != null) {
-      return _refreshCompleter!.future;
-    }
-
-    _refreshCompleter = Completer<bool>();
-
+  Future<bool> tryRefreshToken() async {
     try {
-      final result = await TokenLock.synchronized(() async {
-        // Check if the token was already refreshed by another isolate
-        if (settingsDatasource != null) {
-          final storedCookie = await settingsDatasource!.getRefreshCookie();
-          if (storedCookie != null && storedCookie != refreshCookie) {
-            final storedToken = await settingsDatasource!.getUserToken();
-            if (storedToken != null && storedToken.isNotEmpty) {
-              _token = storedToken;
-              refreshCookie = storedCookie;
-              return true;
-            }
-          }
-        }
-
+      return await TokenLock.synchronized(() async {
         final refreshClient = _createIOClient();
         try {
           var response = await refreshClient.post(
             '$base/user/token/refresh'.toUri()!,
-            headers: getHeaders(true),
+            headers: await getHeaders(true),
           );
 
           if (response.statusCode >= 200 && response.statusCode < 400) {
@@ -307,61 +258,49 @@ class Client {
             var newToken = body['token'] as String?;
 
             if (newToken != null && newToken.isNotEmpty) {
-              _token = newToken;
+              var newRefreshCookie = _extractRefreshCookie(response.headers);
 
-              _extractRefreshCookie(response.headers);
-
-              if (settingsDatasource != null) {
-                await settingsDatasource?.saveUserToken(_token);
-                await settingsDatasource?.saveRefreshCookie(refreshCookie);
-              }
+              await settingsDatasource.saveUserToken(newToken);
+              await settingsDatasource.saveRefreshCookie(newRefreshCookie);
 
               return true;
             }
-          }
+          } else {}
         } finally {
           refreshClient.close();
         }
 
         return false;
       });
-
-      _refreshCompleter!.complete(result);
-      _refreshCompleter = null;
-      return result;
     } catch (e) {
       developer.log("Error refreshing token: $e");
-      if (_refreshCompleter != null && !_refreshCompleter!.isCompleted) {
-        _refreshCompleter!.complete(false);
-      }
-      _refreshCompleter = null;
       return false;
     }
   }
 
-  void _extractRefreshCookie(Map<String, String> responseHeaders) {
+  String? _extractRefreshCookie(Map<String, String> responseHeaders) {
     var setCookie = responseHeaders['set-cookie'];
-    if (setCookie == null) return;
+    if (setCookie == null) return null;
 
     var match = RegExp(r'vikunja_refresh_token=([^;]+)').firstMatch(setCookie);
     if (match != null) {
-      refreshCookie = match.group(1);
+      return match.group(1);
     }
+    return null;
   }
 
   Future<Response<T>> _handleResponseWithRefresh<T>(
-    http.Response response,
     T Function(dynamic body)? mapper,
-    Future<http.Response> Function() retryRequest,
+    Future<http.Response> Function() executeRequest,
   ) async {
-    _extractRefreshCookie(response.headers);
+    var response = await executeRequest();
 
-    if (response.statusCode == 401 && refreshCookie != null) {
+    if (response.statusCode == 401) {
       Map<String, dynamic> error = _decoder.convert(response.body);
       if (error.containsKey('code') && error['code'] == 11) {
-        bool refreshed = await _tryRefreshToken();
+        bool refreshed = await tryRefreshToken();
         if (refreshed) {
-          var retryResponse = await retryRequest();
+          var retryResponse = await executeRequest();
           return _handleResponse(retryResponse, mapper);
         }
       }
@@ -376,15 +315,6 @@ class Client {
     }
     return ExceptionResponse<T>(e, s);
   }
-
-  @override
-  bool operator ==(Object other) {
-    if (other is! Client) return false;
-    return other._token == _token;
-  }
-
-  @override
-  int get hashCode => _token.hashCode;
 }
 
 class IgnoreCertHttpOverrides extends HttpOverrides {

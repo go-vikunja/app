@@ -6,14 +6,22 @@
       "request": "launch",
       "program": "lib/main.dart",
       "args": ["-d", "chrome", "--flavor", "main"],
-      "deviceId": "chrome",
+      "deviceId": "chrome"
     },
     {
       "name": "Flutter",
       "request": "launch",
       "type": "dart",
       "flutterMode": "debug",
-      "args": ["--flavor", "unsigend"]
+      "args": ["--flavor", "unsigned"]
+    },
+    {
+      "name": "Integration Test: Concurrent Refresh",
+      "request": "launch",
+      "type": "dart",
+      "program": "integration_test/concurrent_refresh_test.dart",
+      "flutterMode": "debug",
+      "args": ["--flavor", "unsigned"]
     }
   ]
 }

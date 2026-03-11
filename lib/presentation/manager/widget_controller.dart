@@ -18,17 +18,11 @@ void completeTask(String taskID) async {
   }
 
   var datasource = SettingsDatasource(FlutterSecureStorage());
-  var token = await datasource.getUserToken();
   var base = await datasource.getServer();
+  var refreshCookie = await datasource.getRefreshCookie();
 
-  if (token != null && base != null) {
-    var refreshCookie = await datasource.getRefreshCookie();
-    Client client = Client(
-      token: token,
-      base: base,
-      refreshCookie: refreshCookie,
-      settingsDatasource: datasource,
-    );
+  if (refreshCookie != null && base != null) {
+    Client client = Client(base: base);
     tz.initializeTimeZones();
 
     var ignoreCertificates = await datasource.getIgnoreCertificates();
@@ -75,17 +69,11 @@ List<Task> filterForDueTasks(List<Task> tasks) {
 
 Future<void> updateWidget() async {
   var datasource = SettingsDatasource(FlutterSecureStorage());
-  var token = await datasource.getUserToken();
+  var refreshCookie = await datasource.getRefreshCookie();
   var base = await datasource.getServer();
 
-  if (token != null && base != null) {
-    var refreshCookie = await datasource.getRefreshCookie();
-    Client client = Client(
-      token: token,
-      base: base,
-      refreshCookie: refreshCookie,
-      settingsDatasource: datasource,
-    );
+  if (refreshCookie != null && base != null) {
+    Client client = Client(base: base);
     tz.initializeTimeZones();
 
     var ignoreCertificates = await datasource.getIgnoreCertificates();

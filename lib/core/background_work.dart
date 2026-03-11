@@ -48,20 +48,14 @@ void callbackDispatcher() {
 /// and were not yet loaded in the app
 Future<bool> updateTasks() async {
   var datasource = SettingsDatasource(FlutterSecureStorage());
-  var token = await datasource.getUserToken();
   var base = await datasource.getServer();
   var refreshCookie = await datasource.getRefreshCookie();
 
-  if (token == null || base == null) {
+  if (refreshCookie != null || base == null) {
     return Future.value(true);
   }
 
-  Client client = Client(
-    token: token,
-    base: base,
-    refreshCookie: refreshCookie,
-    settingsDatasource: datasource,
-  );
+  Client client = Client(base: base);
   tz.initializeTimeZones();
 
   var ignoreCertificates = await datasource.getIgnoreCertificates();
