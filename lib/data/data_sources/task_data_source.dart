@@ -98,7 +98,7 @@ class TaskDataSource extends RemoteDataSource {
       url: url,
       baseDirectory: BaseDirectory.applicationSupport,
       filename: attachment.file.name,
-      headers: client.getHeaders(),
+      headers: await client.getHeaders(),
       updates: Updates.statusAndProgress,
     );
 

@@ -37,28 +37,20 @@ class InitPage extends ConsumerWidget {
 
   Future<Object?> checkLoginToken(WidgetRef ref) async {
     var server = await ref.read(settingsRepositoryProvider).getServer();
-    var token = await ref.read(settingsRepositoryProvider).getUserToken();
     var refreshCookie = await ref
         .read(settingsRepositoryProvider)
         .getRefreshCookie();
 
-    if (server != null && token != null) {
-      return checkServer(ref, server, token, refreshCookie);
+    if (server != null && refreshCookie != null) {
+      return checkServer(ref, server);
     }
 
     globalNavigatorKey.currentState?.pushReplacementNamed("/login");
     return null;
   }
 
-  Future<Object?> checkServer(
-    WidgetRef ref,
-    String server,
-    String token,
-    String? refreshCookie,
-  ) async {
-    ref
-        .read(authDataProvider.notifier)
-        .set(AuthModel(server, token, refreshCookie: refreshCookie));
+  Future<Object?> checkServer(WidgetRef ref, String server) async {
+    ref.read(authDataProvider.notifier).set(AuthModel(server));
 
     Version? serverVersion;
 

@@ -29,20 +29,14 @@ void notificationTapBackground(NotificationResponse notificationResponse) {
 
 void markAsDone(int id) async {
   var datasource = SettingsDatasource(FlutterSecureStorage());
-  var token = await datasource.getUserToken();
+  var refreshCookie = await datasource.getRefreshCookie();
   var base = await datasource.getServer();
 
-  if (token == null || base == null) {
+  if (refreshCookie == null || base == null) {
     return;
   }
 
-  var refreshCookie = await datasource.getRefreshCookie();
-  Client client = Client(
-    token: token,
-    base: base,
-    refreshCookie: refreshCookie,
-    settingsDatasource: datasource,
-  );
+  Client client = Client(base: base);
 
   var ignoreCertificates = await datasource.getIgnoreCertificates();
   client.setIgnoreCerts(ignoreCertificates);
