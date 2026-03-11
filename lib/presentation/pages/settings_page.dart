@@ -279,7 +279,7 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
             backgroundImage: user.username != ""
                 ? NetworkImage(
                     user.avatarUrl(ref.read(clientProviderProvider).base),
-                    headers: ref.read(clientProviderProvider).getHeaders(),
+                    // headers: ref.read(clientProviderProvider).getHeaders(),
                   )
                 : null,
           ),
