@@ -12,23 +12,17 @@ import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/entities/widget_task.dart';
 import 'package:vikunja_app/domain/repositories/task_repository.dart';
 
-void completeTask(String taskID) async {
+Future<void> completeTask(String taskID) async {
   if (taskID == "null") {
     developer.log("Tried to complete an empty task");
   }
 
   var datasource = SettingsDatasource(FlutterSecureStorage());
-  var token = await datasource.getUserToken();
   var base = await datasource.getServer();
+  var refreshCookie = await datasource.getRefreshCookie();
 
-  if (token != null && base != null) {
-    var refreshCookie = await datasource.getRefreshCookie();
-    Client client = Client(
-      token: token,
-      base: base,
-      refreshCookie: refreshCookie,
-      settingsDatasource: datasource,
-    );
+  if (refreshCookie != null && base != null) {
+    Client client = Client(base: base);
     tz.initializeTimeZones();
 
     var ignoreCertificates = await datasource.getIgnoreCertificates();
@@ -38,7 +32,7 @@ void completeTask(String taskID) async {
     var taskResponse = await taskService.getTask(int.parse(taskID));
     var task = taskResponse.toSuccess().body;
     await taskService.update(task.copyWith(done: true));
-    updateWidget();
+    await updateWidget();
   } else {
     developer.log("There was an error initialising the client");
   }
@@ -75,29 +69,24 @@ List<Task> filterForDueTasks(List<Task> tasks) {
 
 Future<void> updateWidget() async {
   var datasource = SettingsDatasource(FlutterSecureStorage());
-  var token = await datasource.getUserToken();
+  var refreshCookie = await datasource.getRefreshCookie();
   var base = await datasource.getServer();
 
-  if (token != null && base != null) {
-    var refreshCookie = await datasource.getRefreshCookie();
-    Client client = Client(
-      token: token,
-      base: base,
-      refreshCookie: refreshCookie,
-      settingsDatasource: datasource,
-    );
-    tz.initializeTimeZones();
-
-    var ignoreCertificates = await datasource.getIgnoreCertificates();
-    client.setIgnoreCerts(ignoreCertificates);
-
+  if (refreshCookie != null && base != null) {
     try {
+      Client client = Client(base: base);
+      tz.initializeTimeZones();
+
+      var ignoreCertificates = await datasource.getIgnoreCertificates();
+      client.setIgnoreCerts(ignoreCertificates);
+
       TaskRepository taskService = TaskRepositoryImpl(TaskDataSource(client));
       var widgetTasks = await taskService.getByFilterString(
         "done = false && due_date < now/d+1d",
       );
+
       if (widgetTasks.isSuccessful) {
-        updateWidgetTasks(widgetTasks.toSuccess().body);
+        await updateWidgetTasks(widgetTasks.toSuccess().body);
       }
     } catch (e, s) {
       developer.log("Update widget error:", error: e, stackTrace: s);
@@ -105,14 +94,14 @@ Future<void> updateWidget() async {
   }
 }
 
-void updateWidgetTasks(List<Task> tasklist) async {
+Future<void> updateWidgetTasks(List<Task> tasklist) async {
   var data = jsonEncode(tasklist.map((e) => convertTask(e).toJSON()).toList());
-  HomeWidget.saveWidgetData("WidgetTasks", data);
-  reRenderWidget();
+  await HomeWidget.saveWidgetData("WidgetTasks", data);
+  await reRenderWidget();
 }
 
-void reRenderWidget() {
-  HomeWidget.updateWidget(
+Future<void> reRenderWidget() async {
+  await HomeWidget.updateWidget(
     name: 'AppWidget',
     qualifiedAndroidName:
         'io.vikunja.flutteringvikunja.widget.AppWidgetReciever',
