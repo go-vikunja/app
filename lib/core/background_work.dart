@@ -51,7 +51,7 @@ Future<bool> updateTasks() async {
   var base = await datasource.getServer();
   var refreshCookie = await datasource.getRefreshCookie();
 
-  if (refreshCookie != null || base == null) {
+  if (refreshCookie == null || base == null) {
     return Future.value(true);
   }
 
