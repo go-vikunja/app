@@ -17,7 +17,7 @@ Future<void> widgetCallback(Uri? uri) async {
   if (uri?.host == "completetask") {
     String? taskID = uri?.queryParameters['taskID'];
     if (taskID != null) {
-      completeTask(taskID);
+      await completeTask(taskID);
     } else {
       developer.log("No TaskID provided for widget");
     }
@@ -63,7 +63,7 @@ Future<bool> updateTasks() async {
 
   TaskRepository taskService = TaskRepositoryImpl(TaskDataSource(client));
 
-  updateWidget();
+  await updateWidget();
 
   NotificationHandler notificationHandler = NotificationHandler();
   await notificationHandler.initNotifications();
