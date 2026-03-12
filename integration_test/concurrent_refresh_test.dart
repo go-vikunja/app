@@ -258,7 +258,11 @@ class TestHttpOverrides extends HttpOverrides {
 
 // -- Helpers --
 
-Client _createClient(SettingsDatasource settings) => Client(base: _baseUrl);
+Client _createClient(SettingsDatasource settings) {
+  final client = Client(base: _baseUrl);
+  client.settingsDatasource = settings;
+  return client;
+}
 
 Future<void> _isolateEntryPoint(List<dynamic> args) async {
   final sendPort = args[0] as SendPort;
@@ -320,11 +324,18 @@ void main() {
       expect(results[0], isTrue, reason: 'First refresh should succeed');
       expect(results[1], isTrue, reason: 'Second refresh should succeed');
 
-      // At least one actual network call was made.
+      // Both calls go through the lock, so each makes its own network call.
       expect(
         _RefreshLog.callCount,
-        greaterThanOrEqualTo(1),
-        reason: 'At least one network refresh must occur',
+        equals(2),
+        reason: 'Both refreshes should hit the network (serialized by lock)',
+      );
+
+      // The in-process mutex serializes them, so they must NOT overlap.
+      expect(
+        _RefreshLog.hadOverlap,
+        isFalse,
+        reason: 'In-process lock should serialize concurrent refresh calls',
       );
     });
 
@@ -402,18 +413,29 @@ void main() {
           reason: 'Background isolate refresh should succeed',
         );
 
-        // Together they made at least one (and at most two) network calls.
+        // Together they should each make exactly one network call.
         final bgCallCount = bgData['callCount'] as int;
         final totalCalls = _RefreshLog.callCount + bgCallCount;
         expect(
           totalCalls,
-          greaterThanOrEqualTo(1),
-          reason: 'At least one network refresh must occur across isolates',
+          equals(2),
+          reason: 'Both isolates should each make one network refresh call',
         );
+
+        // The filesystem lock serializes them, so they must NOT overlap.
+        final bgEvents = (bgData['events'] as List).cast<Map>();
+        for (final e in bgEvents) {
+          _RefreshLog.record(
+            e['id'] as int,
+            DateTime.fromMicrosecondsSinceEpoch(e['startMicros'] as int),
+            DateTime.fromMicrosecondsSinceEpoch(e['endMicros'] as int),
+          );
+        }
         expect(
-          totalCalls,
-          lessThanOrEqualTo(2),
-          reason: 'At most two network refreshes should occur',
+          _RefreshLog.hadOverlap,
+          isFalse,
+          reason:
+              'Cross-isolate filesystem lock should serialize refresh calls',
         );
 
         // Cleanup
