@@ -76,6 +76,8 @@ class Version {
     return false;
   }
 
+  bool isOlderThanOrEqual(Version other) => !isNewerThan(other);
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||

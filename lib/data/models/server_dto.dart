@@ -14,6 +14,7 @@ class ServerDto extends Dto<Server> {
   bool? totpEnabled;
   bool? userDeletion;
   String? version;
+  String? apiMinCompatible;
 
   ServerDto(
     this.caldavEnabled,
@@ -28,6 +29,7 @@ class ServerDto extends Dto<Server> {
     this.totpEnabled,
     this.userDeletion,
     this.version,
+    this.apiMinCompatible,
   );
 
   ServerDto.fromJson(Map<String, dynamic> json)
@@ -42,7 +44,8 @@ class ServerDto extends Dto<Server> {
       taskCommentsEnabled = json['task_comments_enabled'],
       totpEnabled = json['totp_enabled'],
       userDeletion = json['user_deletion'],
-      version = json['version'];
+      version = json['version'],
+      apiMinCompatible = json['api_min_compatible'];
 
   @override
   Server toDomain() => Server(
@@ -58,6 +61,7 @@ class ServerDto extends Dto<Server> {
     totpEnabled,
     userDeletion,
     version,
+    apiMinCompatible,
   );
 
   static ServerDto fromDomain(Server b) => ServerDto(
@@ -73,5 +77,6 @@ class ServerDto extends Dto<Server> {
     b.totpEnabled,
     b.userDeletion,
     b.version,
+    b.apiMinCompatible,
   );
 }

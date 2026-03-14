@@ -24,6 +24,7 @@ import 'package:vikunja_app/presentation/pages/login/login_webview.dart';
 import 'package:vikunja_app/presentation/pages/login/register_page.dart';
 import 'package:vikunja_app/presentation/widgets/button.dart';
 import 'package:vikunja_app/presentation/widgets/sentry_dialog.dart';
+import 'package:vikunja_app/init_page.dart';
 import 'package:vikunja_app/presentation/widgets/version_mismatch_dialog.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
@@ -414,6 +415,7 @@ class LoginPageState extends ConsumerState<LoginPage> {
       ref.read(settingsRepositoryProvider).saveServer(server);
 
       Version? serverVersion;
+      Version? apiMinCompatible;
 
       Response<Server> info = await ref
           .read(serverRepositoryProvider)
@@ -427,16 +429,15 @@ class LoginPageState extends ConsumerState<LoginPage> {
           );
         }
       } else {
+        final serverInfo = info.toSuccess().body;
         Sentry.configureScope(
-          (scope) => scope.setTag(
-            'server.version',
-            info.toSuccess().body.version ?? "-",
-          ),
+          (scope) => scope.setTag('server.version', serverInfo.version ?? "-"),
         );
 
-        serverVersion = Version.fromServerString(
-          info.toSuccess().body.version ?? "-",
-        );
+        serverVersion = Version.fromServerString(serverInfo.version ?? "-");
+        if (serverInfo.apiMinCompatible != null) {
+          apiMinCompatible = Version.fromString(serverInfo.apiMinCompatible!);
+        }
       }
 
       if (!pastServers.contains(server)) {
@@ -458,6 +459,7 @@ class LoginPageState extends ConsumerState<LoginPage> {
             server,
             userToken,
             serverVersion,
+            apiMinCompatible: apiMinCompatible,
             refreshCookie: refreshCookie,
           );
         }
@@ -515,6 +517,7 @@ class LoginPageState extends ConsumerState<LoginPage> {
     String server,
     String userToken,
     Version? serverVersion, {
+    Version? apiMinCompatible,
     String? refreshCookie,
   }) async {
     ref
@@ -528,16 +531,23 @@ class LoginPageState extends ConsumerState<LoginPage> {
     if (currentUser.isSuccessful) {
       ref.read(currentUserProvider.notifier).set(currentUser.toSuccess().body);
 
-      if (serverVersion != null &&
-          serverVersion != supportedServerVersion &&
-          context.mounted) {
-        await showDialog<void>(
-          context: context,
-          barrierDismissible: false,
-          builder: (BuildContext context) {
-            return VersionMismatchDialog(serverVersion: serverVersion);
-          },
+      if (serverVersion != null && context.mounted) {
+        final mismatchType = checkVersionCompatibility(
+          serverVersion,
+          apiMinCompatible,
         );
+        if (mismatchType != null) {
+          await showDialog<void>(
+            context: context,
+            barrierDismissible: false,
+            builder: (BuildContext context) {
+              return VersionMismatchDialog(
+                serverVersion: serverVersion,
+                mismatchType: mismatchType,
+              );
+            },
+          );
+        }
       }
 
       if (context.mounted) {
