@@ -197,9 +197,11 @@
   "dueOptionLaterThisWeek": "Later this week",
   "dueOptionCustom": "Custom",
   "versionDialogTitle": "Version mismatch",
-  "versionDialogDescription": "The application version is not compatible with the server version.\nUse at you own risk!",
-  "versionDialogSupported": "Supported server version: {versionString}",
-  "@versionDialogSupported": {
+  "versionDialogDescription": "The application version is not compatible with the server version.\nUse at your own risk!",
+  "versionDialogAppTooOld": "Your app is outdated and may not work correctly with this server. Please update the app.",
+  "versionDialogServerTooOld": "Your server is outdated for this app version. Please update your server.",
+  "versionDialogAppVersion": "App built for version: {versionString}",
+  "@versionDialogAppVersion": {
     "placeholders": { "versionString": { "type": "String" } }
   },
   "versionDialogUsed": "Your server version: {versionString}",

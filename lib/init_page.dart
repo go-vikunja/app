@@ -15,6 +15,27 @@ import 'package:vikunja_app/presentation/pages/error_widget.dart';
 import 'package:vikunja_app/presentation/pages/loading_widget.dart';
 import 'package:vikunja_app/presentation/widgets/version_mismatch_dialog.dart';
 
+VersionMismatchType? checkVersionCompatibility(
+  Version serverVersion,
+  Version? apiMinCompatible,
+) {
+  if (apiMinCompatible != null) {
+    if (appBuiltForVersion.isOlderThanOrEqual(serverVersion) &&
+        apiMinCompatible.isOlderThanOrEqual(appBuiltForVersion)) {
+      return null;
+    }
+    if (serverVersion.isOlderThanOrEqual(appBuiltForVersion)) {
+      return VersionMismatchType.serverTooOld;
+    }
+    return VersionMismatchType.appTooOld;
+  }
+
+  if (serverVersion != appBuiltForVersion) {
+    return VersionMismatchType.unknown;
+  }
+  return null;
+}
+
 class InitPage extends ConsumerWidget {
   const InitPage({super.key});
 
@@ -61,30 +82,34 @@ class InitPage extends ConsumerWidget {
         .set(AuthModel(server, token, refreshCookie: refreshCookie));
 
     Version? serverVersion;
+    Version? apiMinCompatible;
 
     Response<Server> info = await ref.read(serverRepositoryProvider).getInfo();
     if (info.isSuccessful) {
+      final serverInfo = info.toSuccess().body;
       Sentry.configureScope(
-        (scope) => scope.setTag(
-          'server.version',
-          info.toSuccess().body.version ?? "-",
-        ),
+        (scope) => scope.setTag('server.version', serverInfo.version ?? "-"),
       );
 
-      serverVersion = Version.fromServerString(
-        info.toSuccess().body.version ?? "-",
-      );
+      serverVersion = Version.fromServerString(serverInfo.version ?? "-");
+      if (serverInfo.apiMinCompatible != null) {
+        apiMinCompatible = Version.fromString(serverInfo.apiMinCompatible!);
+      }
     }
 
-    return checkUser(ref, serverVersion);
+    return checkUser(ref, serverVersion, apiMinCompatible);
   }
 
-  Future<Object?> checkUser(WidgetRef ref, Version? serverVersion) async {
+  Future<Object?> checkUser(
+    WidgetRef ref,
+    Version? serverVersion,
+    Version? apiMinCompatible,
+  ) async {
     var userResponse = await ref.read(userRepositoryProvider).getCurrentUser();
     if (userResponse.isSuccessful) {
       ref.read(currentUserProvider.notifier).set(userResponse.toSuccess().body);
 
-      onLoginSuccess(ref, serverVersion);
+      onLoginSuccess(ref, serverVersion, apiMinCompatible);
     } else if (userResponse.isError) {
       onLoginError(ref, userResponse.toError());
     } else {
@@ -94,15 +119,28 @@ class InitPage extends ConsumerWidget {
     return null;
   }
 
-  Future<void> onLoginSuccess(WidgetRef ref, Version? serverVersion) async {
-    if (serverVersion != null && serverVersion != supportedServerVersion) {
-      await showDialog<void>(
-        context: ref.context,
-        barrierDismissible: false,
-        builder: (BuildContext context) {
-          return VersionMismatchDialog(serverVersion: serverVersion);
-        },
+  Future<void> onLoginSuccess(
+    WidgetRef ref,
+    Version? serverVersion,
+    Version? apiMinCompatible,
+  ) async {
+    if (serverVersion != null) {
+      final mismatchType = checkVersionCompatibility(
+        serverVersion,
+        apiMinCompatible,
       );
+      if (mismatchType != null) {
+        await showDialog<void>(
+          context: ref.context,
+          barrierDismissible: false,
+          builder: (BuildContext context) {
+            return VersionMismatchDialog(
+              serverVersion: serverVersion,
+              mismatchType: mismatchType,
+            );
+          },
+        );
+      }
     }
 
     globalNavigatorKey.currentState?.pushReplacementNamed("/home");

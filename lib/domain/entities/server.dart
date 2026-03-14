@@ -11,6 +11,7 @@ class Server {
   bool? totpEnabled;
   bool? userDeletion;
   String? version;
+  String? apiMinCompatible;
 
   Server(
     this.caldavEnabled,
@@ -25,5 +26,6 @@ class Server {
     this.totpEnabled,
     this.userDeletion,
     this.version,
+    this.apiMinCompatible,
   );
 }
