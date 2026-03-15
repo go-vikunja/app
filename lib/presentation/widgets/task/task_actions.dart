@@ -26,10 +26,8 @@ class TaskActions extends StatelessWidget {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => TaskCommentsPage(
-          taskId: task.id,
-          taskTitle: task.title,
-        ),
+        builder: (context) =>
+            TaskCommentsPage(taskId: task.id, taskTitle: task.title),
       ),
     );
   }
@@ -57,10 +55,7 @@ class TaskActions extends StatelessWidget {
         value: _TaskAction.comments,
         child: Text(localizations.comments),
       ),
-      PopupMenuItem(
-        value: _TaskAction.edit,
-        child: Text(localizations.edit),
-      ),
+      PopupMenuItem(value: _TaskAction.edit, child: Text(localizations.edit)),
     ];
   }
 
@@ -82,10 +77,7 @@ class TaskActions extends StatelessWidget {
               icon: const Icon(Icons.comment),
               tooltip: AppLocalizations.of(context).comments,
             ),
-            IconButton(
-              onPressed: _edit,
-              icon: const Icon(Icons.edit),
-            ),
+            IconButton(onPressed: _edit, icon: const Icon(Icons.edit)),
           ],
         );
     }
