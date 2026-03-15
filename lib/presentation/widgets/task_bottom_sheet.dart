@@ -5,7 +5,7 @@ import 'package:vikunja_app/domain/entities/label.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/presentation/widgets/label_widget.dart';
-import 'package:vikunja_app/presentation/pages/task/task_comments_page.dart';
+import 'package:vikunja_app/presentation/widgets/task/task_actions.dart';
 
 class TaskBottomSheet extends StatefulWidget {
   final Task task;
@@ -77,28 +77,11 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      IconButton(
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => TaskCommentsPage(
-                                taskId: widget.task.id,
-                                taskTitle: widget.task.title,
-                              ),
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.comment),
-                        tooltip: AppLocalizations.of(context).comments,
-                      ),
-                      IconButton(
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                          widget.onEdit();
-                        },
-                        icon: const Icon(Icons.edit),
+                      TaskActions(
+                        task: widget.task,
+                        onEdit: () => widget.onEdit(),
+                        variant: TaskActionsVariant.icons,
+                        onBeforeAction: () => Navigator.of(context).pop(),
                       ),
                     ],
                   ),

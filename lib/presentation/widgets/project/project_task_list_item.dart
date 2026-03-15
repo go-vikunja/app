@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
-import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/presentation/widgets/due_date_card.dart';
 import 'package:vikunja_app/presentation/widgets/project/kanban/priority_batch.dart';
-import 'package:vikunja_app/presentation/pages/task/task_comments_page.dart';
-
-enum _ProjectTaskMenuAction { comments, edit }
+import 'package:vikunja_app/presentation/widgets/task/task_actions.dart';
 
 class ProjectTaskListItem extends StatefulWidget {
   final Task task;
@@ -27,41 +24,6 @@ class ProjectTaskListItem extends StatefulWidget {
 
 class ProjectTaskListItemState extends State<ProjectTaskListItem> {
   ProjectTaskListItemState();
-
-  void _handleMenuAction(BuildContext context, _ProjectTaskMenuAction action) {
-    switch (action) {
-      case _ProjectTaskMenuAction.comments:
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => TaskCommentsPage(
-              taskId: widget.task.id,
-              taskTitle: widget.task.title,
-            ),
-          ),
-        );
-        break;
-      case _ProjectTaskMenuAction.edit:
-        widget.onEdit();
-        break;
-    }
-  }
-
-  List<PopupMenuEntry<_ProjectTaskMenuAction>> _menuItems(
-    BuildContext context,
-  ) {
-    final localizations = AppLocalizations.of(context);
-    return [
-      PopupMenuItem(
-        value: _ProjectTaskMenuAction.comments,
-        child: Text(localizations.comments),
-      ),
-      PopupMenuItem(
-        value: _ProjectTaskMenuAction.edit,
-        child: Text(localizations.edit),
-      ),
-    ];
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -95,10 +57,10 @@ class ProjectTaskListItemState extends State<ProjectTaskListItem> {
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              PopupMenuButton<_ProjectTaskMenuAction>(
-                icon: const Icon(Icons.more_vert),
-                onSelected: (action) => _handleMenuAction(context, action),
-                itemBuilder: _menuItems,
+              TaskActions(
+                task: widget.task,
+                onEdit: () => widget.onEdit(),
+                variant: TaskActionsVariant.menu,
               ),
             ],
           ),

@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
-import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/presentation/widgets/due_date_card.dart';
 import 'package:vikunja_app/presentation/widgets/project/kanban/priority_batch.dart';
-import 'package:vikunja_app/presentation/pages/task/task_comments_page.dart';
-
-enum _TaskMenuAction { comments, edit }
+import 'package:vikunja_app/presentation/widgets/task/task_actions.dart';
 
 class TaskListItem extends StatefulWidget {
   final Task task;
@@ -27,39 +24,6 @@ class TaskListItem extends StatefulWidget {
 
 class TaskListItemState extends State<TaskListItem> {
   TaskListItemState();
-
-  void _handleMenuAction(BuildContext context, _TaskMenuAction action) {
-    switch (action) {
-      case _TaskMenuAction.comments:
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => TaskCommentsPage(
-              taskId: widget.task.id,
-              taskTitle: widget.task.title,
-            ),
-          ),
-        );
-        break;
-      case _TaskMenuAction.edit:
-        widget.onEdit();
-        break;
-    }
-  }
-
-  List<PopupMenuEntry<_TaskMenuAction>> _menuItems(BuildContext context) {
-    final localizations = AppLocalizations.of(context);
-    return [
-      PopupMenuItem(
-        value: _TaskMenuAction.comments,
-        child: Text(localizations.comments),
-      ),
-      PopupMenuItem(
-        value: _TaskMenuAction.edit,
-        child: Text(localizations.edit),
-      ),
-    ];
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -95,10 +59,10 @@ class TaskListItemState extends State<TaskListItem> {
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              PopupMenuButton<_TaskMenuAction>(
-                icon: const Icon(Icons.more_vert),
-                onSelected: (action) => _handleMenuAction(context, action),
-                itemBuilder: _menuItems,
+              TaskActions(
+                task: widget.task,
+                onEdit: () => widget.onEdit(),
+                variant: TaskActionsVariant.menu,
               ),
             ],
           ),
