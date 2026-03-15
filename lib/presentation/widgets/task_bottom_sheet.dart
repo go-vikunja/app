@@ -64,11 +64,9 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SizedBox(
-                    width: MediaQuery.of(context).size.width * 0.7,
+                  Expanded(
                     child: Text(
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -77,6 +75,7 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
                     ),
                   ),
                   Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
                         onPressed: () {
@@ -91,7 +90,7 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
                             ),
                           );
                         },
-                        icon: Icon(Icons.comment),
+                        icon: const Icon(Icons.comment),
                         tooltip: AppLocalizations.of(context).comments,
                       ),
                       IconButton(
@@ -99,7 +98,7 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
                           Navigator.of(context).pop();
                           widget.onEdit();
                         },
-                        icon: Icon(Icons.edit),
+                        icon: const Icon(Icons.edit),
                       ),
                     ],
                   ),

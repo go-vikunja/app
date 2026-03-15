@@ -61,26 +61,6 @@ class TaskListItemState extends State<TaskListItem> {
     ];
   }
 
-  void _openTaskMenuAt(BuildContext context, Offset globalPosition) {
-    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
-    final position = RelativeRect.fromLTRB(
-      globalPosition.dx,
-      globalPosition.dy,
-      overlay.size.width - globalPosition.dx,
-      overlay.size.height - globalPosition.dy,
-    );
-
-    showMenu<_TaskMenuAction>(
-      context: context,
-      position: position,
-      items: _menuItems(context),
-    ).then((action) {
-      if (action != null) {
-        _handleMenuAction(context, action);
-      }
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     var isThreeLine =
@@ -90,41 +70,37 @@ class TaskListItemState extends State<TaskListItem> {
     return Stack(
       fit: StackFit.loose,
       children: [
-        GestureDetector(
-          onLongPressStart: (details) =>
-              _openTaskMenuAt(context, details.globalPosition),
-          child: ListTile(
-            onTap: () {
-              widget.onTap();
+        ListTile(
+          onTap: () {
+            widget.onTap();
+          },
+          contentPadding: const EdgeInsetsDirectional.only(
+            start: 16.0,
+            end: 8.0,
+          ),
+          title: Text(
+            widget.task.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          subtitle: _buildTaskSubtitle(widget.task, context),
+          leading: Checkbox(
+            value: widget.task.done,
+            onChanged: (bool? newValue) {
+              if (newValue != null) {
+                widget.onCheckedChanged(newValue);
+              }
             },
-            contentPadding: const EdgeInsetsDirectional.only(
-              start: 16.0,
-              end: 8.0,
-            ),
-            title: Text(
-              widget.task.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            subtitle: _buildTaskSubtitle(widget.task, context),
-            leading: Checkbox(
-              value: widget.task.done,
-              onChanged: (bool? newValue) {
-                if (newValue != null) {
-                  widget.onCheckedChanged(newValue);
-                }
-              },
-            ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                PopupMenuButton<_TaskMenuAction>(
-                  icon: const Icon(Icons.more_vert),
-                  onSelected: (action) => _handleMenuAction(context, action),
-                  itemBuilder: _menuItems,
-                ),
-              ],
-            ),
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              PopupMenuButton<_TaskMenuAction>(
+                icon: const Icon(Icons.more_vert),
+                onSelected: (action) => _handleMenuAction(context, action),
+                itemBuilder: _menuItems,
+              ),
+            ],
           ),
         ),
         Container(
