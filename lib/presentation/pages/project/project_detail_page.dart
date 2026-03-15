@@ -65,7 +65,12 @@ class ProjectPageState extends ConsumerState<ProjectDetailPage> {
           bottomNavigationBar: _buildBottomNavigation(data.project),
         );
       },
-      error: (err, _) => VikunjaErrorWidget(error: err),
+      error: (err, _) => VikunjaErrorWidget(
+        error: err,
+        onRetry: () => ref
+            .read(projectControllerProvider(widget.project).notifier)
+            .loadForView(widget.project, _viewIndex),
+      ),
       loading: () => const LoadingWidget(),
     );
   }

@@ -47,7 +47,10 @@ class TaskListPage extends ConsumerWidget {
           ),
         );
       },
-      error: (err, _) => VikunjaErrorWidget(error: err),
+      error: (err, _) => VikunjaErrorWidget(
+        error: err,
+        onRetry: () => ref.invalidate(taskPageControllerProvider),
+      ),
       loading: () => const LoadingWidget(),
     );
   }

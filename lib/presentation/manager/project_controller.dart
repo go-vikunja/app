@@ -52,8 +52,10 @@ class ProjectController extends _$ProjectController {
         tasks = tasksResponse.body;
       case ErrorResponse<List<Task>>():
         state = AsyncError(tasksResponse.error, StackTrace.current);
+        return;
       case ExceptionResponse<List<Task>>():
         state = AsyncError(tasksResponse.message, StackTrace.current);
+        return;
     }
 
     var buckets = <Bucket>[];
@@ -68,8 +70,10 @@ class ProjectController extends _$ProjectController {
           buckets = bucketsResponse.body;
         case ErrorResponse<List<Bucket>>():
           state = AsyncError(bucketsResponse.error, StackTrace.current);
+          return;
         case ExceptionResponse<List<Bucket>>():
           state = AsyncError(bucketsResponse.message, StackTrace.current);
+          return;
       }
     }
 

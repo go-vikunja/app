@@ -248,7 +248,10 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
             ],
           );
         },
-        error: (err, _) => VikunjaErrorWidget(error: err),
+        error: (err, _) => VikunjaErrorWidget(
+          error: err,
+          onRetry: () => ref.invalidate(settingsControllerProvider),
+        ),
         loading: () => const LoadingWidget(),
       ),
     );

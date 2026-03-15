@@ -1,18 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:http/http.dart';
 
 class VikunjaErrorWidget extends StatelessWidget {
-  final Function()? onRetry;
+  final VoidCallback? onRetry;
   final Object error;
-  final bool isRetrying;
 
-  const VikunjaErrorWidget({
-    required this.error,
-    this.onRetry,
-    this.isRetrying = false,
-    super.key,
-  });
+  const VikunjaErrorWidget({required this.error, this.onRetry, super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -32,20 +29,9 @@ class VikunjaErrorWidget extends StatelessWidget {
             SizedBox(height: 32),
             if (onRetry != null)
               ElevatedButton(
-                onPressed: isRetrying
-                    ? null
-                    : () {
-                        onRetry?.call();
-                      },
+                onPressed: onRetry,
                 child: Text(AppLocalizations.of(context).retry),
               ),
-            SizedBox(height: 16),
-            SizedBox(
-              height: 48,
-              child: isRetrying
-                  ? CircularProgressIndicator()
-                  : SizedBox.shrink(),
-            ),
           ],
         ),
       ),
@@ -53,9 +39,18 @@ class VikunjaErrorWidget extends StatelessWidget {
   }
 
   Widget getErrorWidget(BuildContext context, Object error) {
+    if (error is AsyncError) {
+      return getErrorWidget(context, error.error);
+    }
+
     if (error is ClientException) {
       return Text(
         AppLocalizations.of(context).connectionError,
+        style: Theme.of(context).textTheme.titleLarge,
+      );
+    } else if (error is TimeoutException) {
+      return Text(
+        AppLocalizations.of(context).connectionTimeout,
         style: Theme.of(context).textTheme.titleLarge,
       );
     } else if (error is String) {
