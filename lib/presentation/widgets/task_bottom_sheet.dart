@@ -5,6 +5,7 @@ import 'package:vikunja_app/domain/entities/label.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/presentation/widgets/label_widget.dart';
+import 'package:vikunja_app/presentation/widgets/task/task_actions.dart';
 
 class TaskBottomSheet extends StatefulWidget {
   final Task task;
@@ -63,11 +64,9 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SizedBox(
-                    width: MediaQuery.of(context).size.width * 0.7,
+                  Expanded(
                     child: Text(
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -75,12 +74,16 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
                       style: theme.textTheme.headlineMedium,
                     ),
                   ),
-                  IconButton(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      widget.onEdit();
-                    },
-                    icon: Icon(Icons.edit),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TaskActions(
+                        task: widget.task,
+                        onEdit: () => widget.onEdit(),
+                        variant: TaskActionsVariant.icons,
+                        onBeforeAction: () => Navigator.of(context).pop(),
+                      ),
+                    ],
                   ),
                 ],
               ),
