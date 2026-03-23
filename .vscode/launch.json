@@ -13,15 +13,7 @@
       "request": "launch",
       "type": "dart",
       "flutterMode": "debug",
-      "args": ["--flavor", "unsigned"]
-    },
-    {
-      "name": "Integration Test: Concurrent Refresh",
-      "request": "launch",
-      "type": "dart",
-      "program": "integration_test/concurrent_refresh_test.dart",
-      "flutterMode": "debug",
-      "args": ["--flavor", "unsigned"]
+      "args": ["--flavor", "unsigend"]
     }
   ]
 }
