@@ -95,7 +95,8 @@ class InitPage extends ConsumerWidget {
   }
 
   Future<void> onLoginSuccess(WidgetRef ref, Version? serverVersion) async {
-    if (serverVersion != null && !serverVersion.isCompatibleWith(minimumServerVersion)) {
+    if (serverVersion != null &&
+        !serverVersion.isCompatibleWith(minimumServerVersion)) {
       await showDialog<void>(
         context: ref.context,
         barrierDismissible: false,
