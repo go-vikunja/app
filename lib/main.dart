@@ -74,6 +74,8 @@ void main() async {
   try {
     if (!kIsWeb) {
       Workmanager().initialize(callbackDispatcher);
+      final refreshInterval = await settingsDatasource.getRefreshInterval();
+      await registerBackgroundRefresh(refreshInterval);
     }
   } catch (e) {
     developer.log("Failed to initialize workmanager: $e");
