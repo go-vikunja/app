@@ -12,6 +12,7 @@ import 'package:logging/logging.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/core/network/token_lock.dart';
+import 'package:vikunja_app/core/utils/network.dart';
 import 'package:vikunja_app/data/data_sources/settings_data_source.dart';
 import 'package:vikunja_app/main.dart';
 import 'package:vikunja_app/presentation/widgets/string_extension.dart';
@@ -204,11 +205,6 @@ class Client {
     http.Response response,
     T Function(dynamic body)? mapper,
   ) async {
-    var newRefreshCookie = _extractRefreshCookie(response.headers);
-    if (newRefreshCookie != null) {
-      await settingsDatasource.saveRefreshCookie(newRefreshCookie);
-    }
-
     if (response.statusCode < 200 || response.statusCode >= 400) {
       try {
         Map<String, dynamic> error = _decoder.convert(response.body);
@@ -262,7 +258,7 @@ class Client {
             var newToken = body['token'] as String?;
 
             if (newToken != null && newToken.isNotEmpty) {
-              var newRefreshCookie = _extractRefreshCookie(response.headers);
+              var newRefreshCookie = extractRefreshCookie(response.headers);
 
               await settingsDatasource.saveUserToken(newToken);
               await settingsDatasource.saveRefreshCookie(newRefreshCookie);
@@ -280,17 +276,6 @@ class Client {
       developer.log("Error refreshing token: $e");
       return false;
     }
-  }
-
-  String? _extractRefreshCookie(Map<String, String> responseHeaders) {
-    var setCookie = responseHeaders['set-cookie'];
-    if (setCookie == null) return null;
-
-    var match = RegExp(r'vikunja_refresh_token=([^;]+)').firstMatch(setCookie);
-    if (match != null) {
-      return match.group(1);
-    }
-    return null;
   }
 
   Future<Response<T>> _handleResponseWithRefresh<T>(
