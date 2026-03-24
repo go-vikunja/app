@@ -45,7 +45,10 @@ class ProjectListPage extends ConsumerWidget {
           ),
         );
       },
-      error: (err, _) => VikunjaErrorWidget(error: err),
+      error: (err, _) => VikunjaErrorWidget(
+        error: err,
+        onRetry: () => ref.invalidate(projectsControllerProvider),
+      ),
       loading: () => const LoadingWidget(),
     );
   }
