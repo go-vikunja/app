@@ -76,6 +76,62 @@ void main() {
     });
   });
 
+  group("Semver compatibility", () {
+    test('Exact match is compatible', () {
+      var server = Version(2, 1, 0);
+      var minimum = Version(2, 1, 0);
+      expect(server.isCompatibleWith(minimum), true);
+    });
+
+    test('Higher minor is compatible', () {
+      var server = Version(2, 2, 0);
+      var minimum = Version(2, 1, 0);
+      expect(server.isCompatibleWith(minimum), true);
+    });
+
+    test('Higher patch is compatible', () {
+      var server = Version(2, 1, 5);
+      var minimum = Version(2, 1, 0);
+      expect(server.isCompatibleWith(minimum), true);
+    });
+
+    test('Higher major is incompatible', () {
+      var server = Version(3, 0, 0);
+      var minimum = Version(2, 1, 0);
+      expect(server.isCompatibleWith(minimum), false);
+    });
+
+    test('Lower major is incompatible', () {
+      var server = Version(1, 9, 0);
+      var minimum = Version(2, 1, 0);
+      expect(server.isCompatibleWith(minimum), false);
+    });
+
+    test('Same major, lower minor is incompatible', () {
+      var server = Version(2, 0, 0);
+      var minimum = Version(2, 1, 0);
+      expect(server.isCompatibleWith(minimum), false);
+    });
+
+    test('Same major and minor, lower patch is incompatible', () {
+      var server = Version(2, 1, 0);
+      var minimum = Version(2, 1, 3);
+      expect(server.isCompatibleWith(minimum), false);
+    });
+
+    test('Pre-release of minimum version is incompatible', () {
+      var server = Version(2, 1, 0, "beta", "1");
+      var minimum = Version(2, 1, 0);
+      expect(server.isCompatibleWith(minimum), false);
+    });
+
+    test('Pre-release of higher version is compatible', () {
+      var server = Version(2, 2, 0, "rc1");
+      var minimum = Version(2, 1, 0);
+      expect(server.isCompatibleWith(minimum), true);
+    });
+  });
+
   group("Server version parsing", () {
     test('Test regular version', () {
       Version? version = Version.fromServerString("v1.2.3");

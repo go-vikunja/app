@@ -529,7 +529,7 @@ class LoginPageState extends ConsumerState<LoginPage> {
       ref.read(currentUserProvider.notifier).set(currentUser.toSuccess().body);
 
       if (serverVersion != null &&
-          serverVersion != supportedServerVersion &&
+          !serverVersion.isCompatibleWith(minimumServerVersion) &&
           context.mounted) {
         await showDialog<void>(
           context: context,
