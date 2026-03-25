@@ -2,11 +2,9 @@ package io.vikunja.flutteringvikunja.widget
 
 import HomeWidgetGlanceState
 import HomeWidgetGlanceStateDefinition
-import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
-import android.net.Uri
 import android.text.format.DateFormat
 import android.util.Log
 import androidx.compose.runtime.Composable
@@ -46,7 +44,6 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Date
 import java.util.Locale
-import androidx.glance.appwidget.components.TitleBar
 import androidx.glance.ImageProvider
 import androidx.glance.action.ActionParameters
 import androidx.glance.appwidget.action.actionRunCallback
