@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:vikunja_app/core/network/remote_data_source.dart';
 import 'package:vikunja_app/core/network/response.dart';
+import 'package:vikunja_app/core/utils/network.dart';
 import 'package:vikunja_app/data/models/user_dto.dart';
 
 class UserDataSource extends RemoteDataSource {
@@ -33,7 +34,7 @@ class UserDataSource extends RemoteDataSource {
 
     if (response.isSuccessful) {
       var success = response.toSuccess();
-      var refreshCookie = _extractRefreshCookie(success.headers);
+      var refreshCookie = extractRefreshCookie(success.headers);
       if (refreshCookie != null) {
         return SuccessResponse<UserTokenDto>(
           UserTokenDto(success.body.token, refreshCookie: refreshCookie),
@@ -44,14 +45,6 @@ class UserDataSource extends RemoteDataSource {
     }
 
     return response;
-  }
-
-  String? _extractRefreshCookie(Map<String, String> headers) {
-    var setCookie = headers['set-cookie'];
-    if (setCookie == null) return null;
-
-    var match = RegExp(r'vikunja_refresh_token=([^;]+)').firstMatch(setCookie);
-    return match?.group(1);
   }
 
   Future<Response<UserTokenDto>> register(

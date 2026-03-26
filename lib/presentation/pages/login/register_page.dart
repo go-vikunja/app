@@ -154,15 +154,7 @@ class RegisterPageState extends ConsumerState<RegisterPage> {
               .read(settingsRepositoryProvider)
               .saveRefreshCookie(body.refreshCookie);
           ref.read(settingsRepositoryProvider).saveServer(_server!);
-          ref
-              .read(authDataProvider.notifier)
-              .set(
-                AuthModel(
-                  _server!,
-                  body.token,
-                  refreshCookie: body.refreshCookie,
-                ),
-              );
+          ref.read(authDataProvider.notifier).set(AuthModel(_server!));
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(

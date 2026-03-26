@@ -197,8 +197,8 @@
   "dueOptionLaterThisWeek": "Later this week",
   "dueOptionCustom": "Custom",
   "versionDialogTitle": "Version mismatch",
-  "versionDialogDescription": "The application version is not compatible with the server version.\nUse at you own risk!",
-  "versionDialogSupported": "Supported server version: {versionString}",
+  "versionDialogDescription": "The server version is not compatible with this version of the app.\nUse at your own risk!",
+  "versionDialogSupported": "Minimum required server version: {versionString}",
   "@versionDialogSupported": {
     "placeholders": { "versionString": { "type": "String" } }
   },

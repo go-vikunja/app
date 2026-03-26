@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/presentation/widgets/due_date_card.dart';
 import 'package:vikunja_app/presentation/widgets/project/kanban/priority_batch.dart';
+import 'package:vikunja_app/presentation/widgets/task/task_actions.dart';
 
 class ProjectTaskListItem extends StatefulWidget {
   final Task task;
@@ -35,6 +36,10 @@ class ProjectTaskListItemState extends State<ProjectTaskListItem> {
           onTap: () {
             widget.onTap();
           },
+          contentPadding: const EdgeInsetsDirectional.only(
+            start: 16.0,
+            end: 8.0,
+          ),
           title: Text(
             widget.task.title,
             maxLines: 1,
@@ -49,9 +54,15 @@ class ProjectTaskListItemState extends State<ProjectTaskListItem> {
               }
             },
           ),
-          trailing: IconButton(
-            icon: Icon(Icons.edit),
-            onPressed: () => widget.onEdit(),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TaskActions(
+                task: widget.task,
+                onEdit: () => widget.onEdit(),
+                variant: TaskActionsVariant.menu,
+              ),
+            ],
           ),
         ),
         Container(

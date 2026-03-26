@@ -17,32 +17,28 @@ import 'package:vikunja_app/presentation/manager/widget_controller.dart';
 const _actionDonePortName = 'action_done_port_name';
 
 @pragma('vm:entry-point')
-void notificationTapBackground(NotificationResponse notificationResponse) {
+Future<void> notificationTapBackground(
+  NotificationResponse notificationResponse,
+) async {
   if (notificationResponse.actionId == "action_done") {
     var id = notificationResponse.id;
 
     if (id != null) {
-      markAsDone(id);
+      await markAsDone(id);
     }
   }
 }
 
-void markAsDone(int id) async {
+Future<void> markAsDone(int id) async {
   var datasource = SettingsDatasource(FlutterSecureStorage());
-  var token = await datasource.getUserToken();
+  var refreshCookie = await datasource.getRefreshCookie();
   var base = await datasource.getServer();
 
-  if (token == null || base == null) {
+  if (refreshCookie == null || base == null) {
     return;
   }
 
-  var refreshCookie = await datasource.getRefreshCookie();
-  Client client = Client(
-    token: token,
-    base: base,
-    refreshCookie: refreshCookie,
-    settingsDatasource: datasource,
-  );
+  Client client = Client(base: base);
 
   var ignoreCertificates = await datasource.getIgnoreCertificates();
   client.setIgnoreCerts(ignoreCertificates);
@@ -55,7 +51,7 @@ void markAsDone(int id) async {
     task.done = true;
     await taskService.update(task);
 
-    updateWidget();
+    await updateWidget();
 
     //Call app if opened to update view
     final SendPort? sendPort = IsolateNameServer.lookupPortByName(
@@ -228,7 +224,7 @@ class NotificationHandler {
       for (final task in taskResponse.toSuccess().body) {
         if (task.done) continue;
         for (final reminder in task.reminderDates) {
-          scheduleNotification(
+          await scheduleNotification(
             (reminder.reminder.millisecondsSinceEpoch / 1000).floor(),
             "Reminder",
             "This is your reminder for '${task.title}'",
@@ -239,7 +235,7 @@ class NotificationHandler {
           );
         }
         if (task.hasDueDate) {
-          scheduleNotification(
+          await scheduleNotification(
             task.id,
             "Due Reminder",
             "The task '${task.title}' is due.",

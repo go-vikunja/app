@@ -1,5 +1,4 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:vikunja_app/core/di/data_source_provider.dart';
 import 'package:vikunja_app/core/network/client.dart';
 import 'package:vikunja_app/domain/entities/auth_model.dart';
 import 'package:vikunja_app/domain/entities/user.dart';
@@ -31,11 +30,6 @@ class ClientProvider extends _$ClientProvider {
   Client build() {
     final authData = ref.read(authDataProvider);
 
-    return Client(
-      base: authData?.address ?? '',
-      token: authData?.token,
-      refreshCookie: authData?.refreshCookie,
-      settingsDatasource: ref.read(settingsDataSourceProvider),
-    );
+    return Client(base: authData?.address ?? '');
   }
 }
