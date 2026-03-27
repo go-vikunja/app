@@ -1,8 +1,6 @@
-import 'dart:core';
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
@@ -10,18 +8,15 @@ import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/core/network/client.dart';
 import 'package:vikunja_app/core/network/response.dart';
+import 'package:vikunja_app/core/oauth/oauth_service.dart';
 import 'package:vikunja_app/core/utils/constants.dart';
 import 'package:vikunja_app/core/utils/network.dart';
 import 'package:vikunja_app/core/utils/validator.dart';
 import 'package:vikunja_app/data/data_sources/settings_data_source.dart';
 import 'package:vikunja_app/domain/entities/auth_model.dart';
 import 'package:vikunja_app/domain/entities/server.dart';
-import 'package:vikunja_app/domain/entities/user.dart';
 import 'package:vikunja_app/domain/entities/version.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
-import 'package:vikunja_app/main.dart';
-import 'package:vikunja_app/presentation/pages/login/login_webview.dart';
-import 'package:vikunja_app/presentation/pages/login/register_page.dart';
 import 'package:vikunja_app/presentation/widgets/button.dart';
 import 'package:vikunja_app/presentation/widgets/sentry_dialog.dart';
 import 'package:vikunja_app/presentation/widgets/version_mismatch_dialog.dart';
@@ -36,22 +31,17 @@ class LoginPage extends ConsumerStatefulWidget {
 class LoginPageState extends ConsumerState<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   bool _loading = false;
-  bool _rememberMe = false;
-  bool init = false;
   List<String> pastServers = [];
 
   final _serverController = TextEditingController();
-  final _usernameController = TextEditingController();
-  final _passwordController = TextEditingController();
+  final _oauthService = OAuthService();
 
   @override
   void initState() {
     super.initState();
 
     var settingsDatasource = SettingsDatasource(FlutterSecureStorage());
-    settingsDatasource.saveServer(null);
-    settingsDatasource.saveUserToken(null);
-    settingsDatasource.saveRefreshCookie(null);
+    settingsDatasource.clearAuthData();
 
     Future.delayed(Duration.zero, () async {
       var pastSevers = await ref
@@ -103,64 +93,24 @@ class LoginPageState extends ConsumerState<LoginPage> {
             children: <Widget>[
               _buildLogo(),
               _buildServerInput(),
-              _buildUserInput(),
-              _buildPasswordInput(),
               Padding(
                 padding: vStandardVerticalPadding,
-                child: CheckboxListTile(
-                  value: _rememberMe,
-                  onChanged: (value) =>
-                      setState(() => _rememberMe = value ?? false),
-                  title: Text(AppLocalizations.of(context).rememberMe),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: FancyButton(
+                    onPressed: !_loading
+                        ? () {
+                            if (_formKey.currentState!.validate()) {
+                              _formKey.currentState?.save();
+                              _connectAndLogin(context);
+                            }
+                          }
+                        : null,
+                    child: _loading
+                        ? CircularProgressIndicator()
+                        : Text(AppLocalizations.of(context).login),
+                  ),
                 ),
-              ),
-              FancyButton(
-                onPressed: !_loading
-                    ? () {
-                        if (_formKey.currentState!.validate()) {
-                          _formKey.currentState?.save();
-                          _loginUser(context);
-                        }
-                      }
-                    : null,
-                child: _loading
-                    ? CircularProgressIndicator()
-                    : Text(AppLocalizations.of(context).login),
-              ),
-              FancyButton(
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => RegisterPage()),
-                ),
-                child: Text(AppLocalizations.of(context).register),
-              ),
-              FancyButton(
-                onPressed: () {
-                  if (_formKey.currentState?.validate() == true &&
-                      _serverController.text.isNotEmpty) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => LoginWithWebView(
-                          normalizeServerURL(_serverController.text),
-                        ),
-                      ),
-                    ).then((btp) {
-                      if (btp != null) _loginUserByClientToken(btp);
-                    });
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          AppLocalizations.of(
-                            context,
-                          ).pleaseEnterValidFrontendUrl,
-                        ),
-                      ),
-                    );
-                  }
-                },
-                child: Text(AppLocalizations.of(context).loginWithFrontend),
               ),
               CheckboxListTile(
                 title: Text(AppLocalizations.of(context).ignoreCertificates),
@@ -176,37 +126,6 @@ class LoginPageState extends ConsumerState<LoginPage> {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Padding _buildPasswordInput() {
-    return Padding(
-      padding: vStandardVerticalPadding,
-      child: TextFormField(
-        enabled: !_loading,
-        controller: _passwordController,
-        autofillHints: [AutofillHints.password],
-        decoration: InputDecoration(
-          border: OutlineInputBorder(),
-          labelText: AppLocalizations.of(context).password,
-        ),
-        obscureText: true,
-      ),
-    );
-  }
-
-  Padding _buildUserInput() {
-    return Padding(
-      padding: vStandardVerticalPadding,
-      child: TextFormField(
-        enabled: !_loading,
-        controller: _usernameController,
-        autofillHints: [AutofillHints.username],
-        decoration: InputDecoration(
-          border: OutlineInputBorder(),
-          labelText: AppLocalizations.of(context).username,
         ),
       ),
     );
@@ -322,100 +241,22 @@ class LoginPageState extends ConsumerState<LoginPage> {
     );
   }
 
-  Future<Response<UserToken>?> _showOtpDialog(
-    BuildContext context,
-    String username,
-    String password,
-  ) async {
-    TextEditingController totpController = TextEditingController();
-    return showDialog<Response<UserToken>>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(AppLocalizations.of(context).enterOneTimePasscode),
-        content: TextField(
-          controller: totpController,
-          keyboardType: TextInputType.number,
-          inputFormatters: <TextInputFormatter>[
-            FilteringTextInputFormatter.digitsOnly,
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () async {
-              var loginResponse = await ref
-                  .read(userRepositoryProvider)
-                  .login(
-                    username,
-                    password,
-                    rememberMe: _rememberMe,
-                    totp: totpController.text,
-                  );
-
-              if (context.mounted) {
-                Navigator.pop(context, loginResponse);
-              }
-            },
-            child: Text(AppLocalizations.of(context).login),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _loginUserByClientToken(BaseTokenPair baseTokenPair) async {
-    ref.read(settingsRepositoryProvider).saveUserToken(baseTokenPair.token);
-    ref.read(settingsRepositoryProvider).saveServer(baseTokenPair.base);
-    // Webview login does not provide a refresh cookie
-    ref.read(settingsRepositoryProvider).saveRefreshCookie(null);
-    ref.read(authDataProvider.notifier).set(AuthModel(baseTokenPair.base));
-
-    setState(() {
-      _loading = true;
-    });
-
-    try {
-      var currentUser = await ref.read(userRepositoryProvider).getCurrentUser();
-      if (currentUser.isSuccessful) {
-        ref
-            .read(currentUserProvider.notifier)
-            .set(currentUser.toSuccess().body);
-      } else {
-        var buildContext = context;
-        if (buildContext.mounted) {
-          _showGenericError(buildContext);
-        }
-      }
-
-      globalNavigatorKey.currentState?.pushNamed("/home");
-    } catch (e) {
-      log("failed to change to user by client token");
-      log(e.toString());
-    }
-
-    setState(() {
-      _loading = false;
-    });
-  }
-
-  Future<void> _loginUser(BuildContext context) async {
+  Future<void> _connectAndLogin(BuildContext context) async {
     String server = normalizeServerURL(_serverController.text);
-    String username = _usernameController.text;
-    String password = _passwordController.text;
     if (server.isEmpty) return;
 
-    setState(() {
-      _loading = true;
-    });
+    setState(() => _loading = true);
 
     try {
+      // Step 1: Set up the client so we can call the API
       ref.read(authDataProvider.notifier).set(AuthModel(server));
       ref.read(settingsRepositoryProvider).saveServer(server);
 
-      Version? serverVersion;
-
+      // Step 2: Validate via /api/v1/info
       Response<Server> info = await ref
           .read(serverRepositoryProvider)
           .getInfo();
+
       if (!info.isSuccessful) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -424,81 +265,82 @@ class LoginPageState extends ConsumerState<LoginPage> {
             ),
           );
         }
-      } else {
-        Sentry.configureScope(
-          (scope) => scope.setTag(
-            'server.version',
-            info.toSuccess().body.version ?? "-",
-          ),
-        );
-
-        serverVersion = Version.fromServerString(
-          info.toSuccess().body.version ?? "-",
-        );
+        return;
       }
 
+      Sentry.configureScope(
+        (scope) => scope.setTag(
+          'server.version',
+          info.toSuccess().body.version ?? "-",
+        ),
+      );
+
+      Version? serverVersion = Version.fromServerString(
+        info.toSuccess().body.version ?? "-",
+      );
+
+      // Save to past servers
       if (!pastServers.contains(server)) {
         pastServers.add(server);
         ref.read(settingsRepositoryProvider).setPastServers(pastServers);
       }
 
-      Response<UserToken> response = await ref
-          .read(userRepositoryProvider)
-          .login(username, password, rememberMe: _rememberMe);
+      // Step 3: Launch OAuth PKCE flow
+      String code = await _oauthService.authorize(server);
 
-      if (response.isSuccessful) {
-        var success = response.toSuccess();
-        var userToken = success.body.token;
-        var refreshCookie = success.body.refreshCookie;
-        if (context.mounted) {
-          onUserToken(
-            context,
-            server,
-            userToken,
-            serverVersion,
-            refreshCookie: refreshCookie,
+      // Step 4: Exchange code for tokens
+      OAuthTokenResponse tokens = await _oauthService.exchangeCode(
+        server,
+        code,
+      );
+
+      // Step 5: Store tokens and navigate
+      await ref
+          .read(settingsRepositoryProvider)
+          .saveUserToken(tokens.accessToken);
+      await ref
+          .read(settingsRepositoryProvider)
+          .saveRefreshToken(tokens.refreshToken);
+
+      // Re-set auth data so the client picks up the new token
+      ref.read(authDataProvider.notifier).set(AuthModel(server));
+
+      // Step 6: Fetch current user
+      var currentUser = await ref.read(userRepositoryProvider).getCurrentUser();
+      if (currentUser.isSuccessful) {
+        ref
+            .read(currentUserProvider.notifier)
+            .set(currentUser.toSuccess().body);
+
+        if (serverVersion != null &&
+            !serverVersion.isCompatibleWith(minimumServerVersion) &&
+            context.mounted) {
+          await showDialog<void>(
+            context: context,
+            barrierDismissible: false,
+            builder: (BuildContext context) {
+              return VersionMismatchDialog(serverVersion: serverVersion);
+            },
           );
         }
-      } else if (response.isError) {
-        var error = response.toError();
-        if (error.error["code"] == 1017) {
-          if (context.mounted) {
-            var response = await _showOtpDialog(context, username, password);
 
-            //Otherwise user cancelled
-            if (response != null && context.mounted) {
-              if (response.isSuccessful) {
-                var success = response.toSuccess();
-                var userToken = success.body.token;
-                var refreshCookie = success.body.refreshCookie;
-                onUserToken(
-                  context,
-                  server,
-                  userToken,
-                  serverVersion,
-                  refreshCookie: refreshCookie,
-                );
-              } else {
-                _showGenericError(context);
-              }
-            }
-          }
-        } else if (error.error["code"] > 0) {
-          if (context.mounted) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text(error.error["message"])));
-          }
+        if (context.mounted) {
+          Navigator.pushReplacementNamed(context, "/home");
+        }
+      } else {
+        if (context.mounted) {
+          _showGenericError(context);
         }
       }
-    } catch (ex) {
+    } catch (e) {
+      log("Login failed: $e");
       if (context.mounted) {
-        _showGenericError(context);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
       }
     } finally {
-      setState(() {
-        _loading = false;
-      });
+      setState(() => _loading = false);
     }
   }
 
@@ -506,43 +348,5 @@ class LoginPageState extends ConsumerState<LoginPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(AppLocalizations.of(context).somethingWentWrong)),
     );
-  }
-
-  Future<void> onUserToken(
-    BuildContext context,
-    String server,
-    String userToken,
-    Version? serverVersion, {
-    String? refreshCookie,
-  }) async {
-    ref.read(authDataProvider.notifier).set(AuthModel(server));
-    await ref.read(settingsRepositoryProvider).saveUserToken(userToken);
-    await ref.read(settingsRepositoryProvider).saveRefreshCookie(refreshCookie);
-
-    var currentUser = await ref.read(userRepositoryProvider).getCurrentUser();
-
-    if (currentUser.isSuccessful) {
-      ref.read(currentUserProvider.notifier).set(currentUser.toSuccess().body);
-
-      if (serverVersion != null &&
-          !serverVersion.isCompatibleWith(minimumServerVersion) &&
-          context.mounted) {
-        await showDialog<void>(
-          context: context,
-          barrierDismissible: false,
-          builder: (BuildContext context) {
-            return VersionMismatchDialog(serverVersion: serverVersion);
-          },
-        );
-      }
-
-      if (context.mounted) {
-        Navigator.pushReplacementNamed(context, "/home");
-      }
-    } else {
-      if (context.mounted) {
-        _showGenericError(context);
-      }
-    }
   }
 }

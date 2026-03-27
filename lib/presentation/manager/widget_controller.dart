@@ -69,10 +69,10 @@ List<Task> filterForDueTasks(List<Task> tasks) {
 
 Future<void> updateWidget() async {
   var datasource = SettingsDatasource(FlutterSecureStorage());
-  var refreshCookie = await datasource.getRefreshCookie();
+  var refreshToken = await datasource.getRefreshToken();
   var base = await datasource.getServer();
 
-  if (refreshCookie != null && base != null) {
+  if (refreshToken != null && base != null) {
     try {
       Client client = Client(base: base);
       tz.initializeTimeZones();
