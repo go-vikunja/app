@@ -24,7 +24,6 @@ class Client {
   final JsonEncoder _encoder = JsonEncoder();
 
   String _base = '';
-  String _baseUrl = '';
   bool ignoreCertificates = false;
 
   SettingsDatasource settingsDatasource = SettingsDatasource(
@@ -34,14 +33,17 @@ class Client {
   late http.Client _httpClient;
 
   String get base => _base;
+  String get apiBase => '$_base/api/v1';
 
   Client({required String base}) {
     base = base.replaceAll(" ", "");
     if (base.endsWith("/")) {
       base = base.substring(0, base.length - 1);
     }
-    _baseUrl = base;
-    _base = base.endsWith('/api/v1') ? base : '$base/api/v1';
+    if (base.endsWith('/api/v1')) {
+      base = base.substring(0, base.length - '/api/v1'.length);
+    }
+    _base = base;
 
     _httpClient = createClient();
   }
@@ -92,7 +94,7 @@ class Client {
     Map<String, List<String>>? queryParameters,
   }) async {
     try {
-      Uri uri = Uri.tryParse('$base$url')!;
+      Uri uri = Uri.tryParse('$apiBase$url')!;
 
       uri = Uri(
         scheme: uri.scheme,
@@ -120,7 +122,7 @@ class Client {
     try {
       return _handleResponseWithRefresh(mapper, () async {
         return _httpClient.delete(
-          '$base$url'.toUri()!,
+          '$apiBase$url'.toUri()!,
           headers: await getHeaders(),
         );
       });
@@ -138,7 +140,7 @@ class Client {
       var encodedBody = _encoder.convert(body);
       return _handleResponseWithRefresh(mapper, () async {
         return _httpClient.post(
-          '$base$url'.toUri()!,
+          '$apiBase$url'.toUri()!,
           headers: await getHeaders(),
           body: encodedBody,
         );
@@ -157,7 +159,7 @@ class Client {
       var encodedBody = _encoder.convert(body);
       return _handleResponseWithRefresh(mapper, () async {
         return _httpClient.put(
-          '$base$url'.toUri()!,
+          '$apiBase$url'.toUri()!,
           headers: await getHeaders(),
           body: encodedBody,
         );
@@ -172,7 +174,7 @@ class Client {
     dynamic body,
   }) async {
     return _httpClient.post(
-      '$base$url'.toUri()!,
+      '$apiBase$url'.toUri()!,
       headers: {'Content-Type': 'application/json', 'User-Agent': userAgent},
       body: _encoder.convert(body),
     );
@@ -239,7 +241,7 @@ class Client {
           }
 
           var response = await refreshClient.post(
-            '$_baseUrl/api/v1/oauth/token'.toUri()!,
+            '$apiBase/oauth/token'.toUri()!,
             headers: {
               'Content-Type': 'application/json',
               'User-Agent': userAgent,

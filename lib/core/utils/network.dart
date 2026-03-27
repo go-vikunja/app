@@ -1,8 +1,14 @@
 String normalizeServerURL(String input) {
-  final trimmed = input.trim();
-  if (trimmed.isEmpty) return trimmed;
-  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-    return trimmed;
+  var url = input.trim();
+  if (url.isEmpty) return url;
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    url = 'https://$url';
   }
-  return 'https://$trimmed';
+  if (url.endsWith('/')) {
+    url = url.substring(0, url.length - 1);
+  }
+  if (url.endsWith('/api/v1')) {
+    url = url.substring(0, url.length - '/api/v1'.length);
+  }
+  return url;
 }

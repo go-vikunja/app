@@ -282,7 +282,9 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
                 return CircleAvatar(
                   backgroundImage: user.username != ""
                       ? NetworkImage(
-                          user.avatarUrl(ref.read(clientProviderProvider).base),
+                          user.avatarUrl(
+                            ref.read(clientProviderProvider).apiBase,
+                          ),
                           headers: asyncSnapshot.data,
                         )
                       : null,
