@@ -6,7 +6,6 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
-import 'package:vikunja_app/core/network/client.dart';
 import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/core/oauth/oauth_service.dart';
 import 'package:vikunja_app/core/utils/constants.dart';
@@ -79,7 +78,7 @@ class LoginPageState extends ConsumerState<LoginPage> {
 
   @override
   Widget build(BuildContext ctx) {
-    Client client = ref.read(clientProviderProvider);
+    var client = ref.read(clientProviderProvider);
 
     return Scaffold(
       body: SingleChildScrollView(
@@ -289,8 +288,9 @@ class LoginPageState extends ConsumerState<LoginPage> {
       String code = await _oauthService.authorize(server);
 
       // Step 4: Exchange code for tokens
+      var client = ref.read(clientProviderProvider);
       OAuthTokenResponse tokens = await _oauthService.exchangeCode(
-        server,
+        client,
         code,
       );
 
@@ -332,12 +332,25 @@ class LoginPageState extends ConsumerState<LoginPage> {
           _showGenericError(context);
         }
       }
+    } on OAuthException catch (e) {
+      log("OAuth error: ${e.error}");
+      if (context.mounted) {
+        final l10n = AppLocalizations.of(context);
+        final message = switch (e.error) {
+          OAuthError.browserLaunchFailed => l10n.oauthBrowserLaunchFailed,
+          OAuthError.stateMismatch => l10n.oauthStateMismatch,
+          OAuthError.noAuthorizationCode => l10n.oauthNoAuthorizationCode,
+          OAuthError.tokenExchangeFailed =>
+            e.serverMessage ?? l10n.oauthTokenExchangeFailed,
+        };
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
+      }
     } catch (e) {
       log("Login failed: $e");
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.toString())));
+        _showGenericError(context);
       }
     } finally {
       setState(() => _loading = false);

@@ -12,6 +12,7 @@ import 'package:logging/logging.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/core/network/token_lock.dart';
+import 'package:vikunja_app/core/utils/constants.dart';
 import 'package:vikunja_app/data/data_sources/settings_data_source.dart';
 import 'package:vikunja_app/main.dart';
 import 'package:vikunja_app/presentation/widgets/string_extension.dart';
@@ -77,10 +78,7 @@ class Client {
   }
 
   Future<Map<String, String>> getHeaders() async {
-    var headers = {
-      'Content-Type': 'application/json',
-      'User-Agent': 'Vikunja Mobile App',
-    };
+    var headers = {'Content-Type': 'application/json', 'User-Agent': userAgent};
 
     var token = await settingsDatasource.getUserToken();
     headers['Authorization'] = token != '' ? 'Bearer $token' : '';
@@ -169,6 +167,17 @@ class Client {
     }
   }
 
+  Future<http.Response> postUnauthenticated({
+    required String url,
+    dynamic body,
+  }) async {
+    return _httpClient.post(
+      '$base$url'.toUri()!,
+      headers: {'Content-Type': 'application/json', 'User-Agent': userAgent},
+      body: _encoder.convert(body),
+    );
+  }
+
   io_client.IOClient _createIOClient() {
     final httpClient = HttpClient();
     if (ignoreCertificates) {
@@ -233,7 +242,7 @@ class Client {
             '$_baseUrl/api/v1/oauth/token'.toUri()!,
             headers: {
               'Content-Type': 'application/json',
-              'User-Agent': 'Vikunja Mobile App',
+              'User-Agent': userAgent,
             },
             body: _encoder.convert({
               'grant_type': 'refresh_token',
