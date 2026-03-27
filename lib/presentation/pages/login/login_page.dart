@@ -39,10 +39,10 @@ class LoginPageState extends ConsumerState<LoginPage> {
   void initState() {
     super.initState();
 
-    var settingsDatasource = SettingsDatasource(FlutterSecureStorage());
-    settingsDatasource.clearAuthData();
-
     Future.delayed(Duration.zero, () async {
+      var settingsDatasource = SettingsDatasource(FlutterSecureStorage());
+      await settingsDatasource.clearAuthData();
+
       var pastSevers = await ref
           .read(settingsRepositoryProvider)
           .getPastServers();
@@ -247,9 +247,8 @@ class LoginPageState extends ConsumerState<LoginPage> {
     setState(() => _loading = true);
 
     try {
-      // Step 1: Set up the client so we can call the API
+      // Step 1: Set up the client so we can validate the server
       ref.read(authDataProvider.notifier).set(AuthModel(server));
-      ref.read(settingsRepositoryProvider).saveServer(server);
 
       // Step 2: Validate via /api/v1/info
       Response<Server> info = await ref
@@ -266,6 +265,9 @@ class LoginPageState extends ConsumerState<LoginPage> {
         }
         return;
       }
+
+      // Server validated — persist it
+      ref.read(settingsRepositoryProvider).saveServer(server);
 
       Sentry.configureScope(
         (scope) => scope.setTag(

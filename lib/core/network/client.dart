@@ -83,7 +83,9 @@ class Client {
     var headers = {'Content-Type': 'application/json', 'User-Agent': userAgent};
 
     var token = await settingsDatasource.getUserToken();
-    headers['Authorization'] = token != '' ? 'Bearer $token' : '';
+    if (token != null && token.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $token';
+    }
 
     return headers;
   }
