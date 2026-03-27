@@ -55,17 +55,21 @@ class _RefreshEvent {
 
 class MockSettingsDatasource implements SettingsDatasource {
   String? _token;
-  String? _refreshCookie;
+  String? _refreshToken;
 
   @override
   Future<String?> getUserToken() async => _token;
   @override
-  Future<String?> getRefreshCookie() async => _refreshCookie;
+  Future<String?> getRefreshToken() async => _refreshToken;
   @override
   Future<void> saveUserToken(String? token) async => _token = token;
   @override
-  Future<void> saveRefreshCookie(String? cookie) async =>
-      _refreshCookie = cookie;
+  Future<void> saveRefreshToken(String? token) async => _refreshToken = token;
+  @override
+  Future<void> clearAuthData() async {
+    _token = null;
+    _refreshToken = null;
+  }
 
   @override
   noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -91,7 +95,7 @@ class FileMockSettingsDatasource implements SettingsDatasource {
   @override
   Future<String?> getUserToken() async => (await _read())['token'];
   @override
-  Future<String?> getRefreshCookie() async => (await _read())['cookie'];
+  Future<String?> getRefreshToken() async => (await _read())['refreshToken'];
 
   @override
   Future<void> saveUserToken(String? token) async {
@@ -101,10 +105,15 @@ class FileMockSettingsDatasource implements SettingsDatasource {
   }
 
   @override
-  Future<void> saveRefreshCookie(String? cookie) async {
+  Future<void> saveRefreshToken(String? token) async {
     final data = await _read();
-    data['cookie'] = cookie;
+    data['refreshToken'] = token;
     await _write(data);
+  }
+
+  @override
+  Future<void> clearAuthData() async {
+    await _write({});
   }
 
   @override
@@ -304,7 +313,7 @@ void main() {
       HttpOverrides.global = TestHttpOverrides();
       settings = MockSettingsDatasource()
         .._token = _oldToken
-        .._refreshCookie = _oldCookie;
+        .._refreshToken = _oldCookie;
     });
 
     tearDown(() => HttpOverrides.global = null);
@@ -372,7 +381,7 @@ void main() {
 
         final fileSettings = FileMockSettingsDatasource(settingsFile);
         await fileSettings.saveUserToken(_oldToken);
-        await fileSettings.saveRefreshCookie(_oldCookie);
+        await fileSettings.saveRefreshToken(_oldCookie);
 
         final client = _createClient(fileSettings);
 
