@@ -12,7 +12,6 @@ import 'package:logging/logging.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/core/network/token_lock.dart';
-import 'package:vikunja_app/core/utils/network.dart';
 import 'package:vikunja_app/data/data_sources/settings_data_source.dart';
 import 'package:vikunja_app/main.dart';
 import 'package:vikunja_app/presentation/widgets/string_extension.dart';
@@ -24,6 +23,7 @@ class Client {
   final JsonEncoder _encoder = JsonEncoder();
 
   String _base = '';
+  String _baseUrl = '';
   bool ignoreCertificates = false;
 
   SettingsDatasource settingsDatasource = SettingsDatasource(
@@ -39,6 +39,7 @@ class Client {
     if (base.endsWith("/")) {
       base = base.substring(0, base.length - 1);
     }
+    _baseUrl = base;
     _base = base.endsWith('/api/v1') ? base : '$base/api/v1';
 
     _httpClient = createClient();
@@ -75,19 +76,14 @@ class Client {
     HttpOverrides.global = IgnoreCertHttpOverrides(ignoreCertificates);
   }
 
-  Future<Map<String, String>> getHeaders([bool? refresh = false]) async {
+  Future<Map<String, String>> getHeaders() async {
     var headers = {
       'Content-Type': 'application/json',
       'User-Agent': 'Vikunja Mobile App',
     };
 
-    if (refresh == true) {
-      var refreshCookie = await settingsDatasource.getRefreshCookie();
-      headers['Cookie'] = 'vikunja_refresh_token=$refreshCookie';
-    } else {
-      var token = await settingsDatasource.getUserToken();
-      headers['Authorization'] = token != '' ? 'Bearer $token' : '';
-    }
+    var token = await settingsDatasource.getUserToken();
+    headers['Authorization'] = token != '' ? 'Bearer $token' : '';
 
     return headers;
   }
@@ -181,26 +177,6 @@ class Client {
     return io_client.IOClient(httpClient);
   }
 
-  Future<Response<T>> postWithCookies<T>({
-    required String url,
-    T Function(dynamic body)? mapper,
-    dynamic body,
-  }) async {
-    final cookieClient = _createIOClient();
-    try {
-      var response = await cookieClient.post(
-        '$base$url'.toUri()!,
-        headers: await getHeaders(),
-        body: _encoder.convert(body),
-      );
-      return _handleResponse(response, mapper);
-    } catch (e, s) {
-      return _handleException(e, s);
-    } finally {
-      cookieClient.close();
-    }
-  }
-
   Future<Response<T>> _handleResponse<T>(
     http.Response response,
     T Function(dynamic body)? mapper,
@@ -248,24 +224,36 @@ class Client {
       return await TokenLock.synchronized(() async {
         final refreshClient = _createIOClient();
         try {
+          var refreshToken = await settingsDatasource.getRefreshToken();
+          if (refreshToken == null || refreshToken.isEmpty) {
+            return false;
+          }
+
           var response = await refreshClient.post(
-            '$base/user/token/refresh'.toUri()!,
-            headers: await getHeaders(true),
+            '$_baseUrl/api/v1/oauth/token'.toUri()!,
+            headers: {
+              'Content-Type': 'application/json',
+              'User-Agent': 'Vikunja Mobile App',
+            },
+            body: _encoder.convert({
+              'grant_type': 'refresh_token',
+              'refresh_token': refreshToken,
+            }),
           );
 
           if (response.statusCode >= 200 && response.statusCode < 400) {
             var body = _decoder.convert(utf8.decode(response.bodyBytes));
-            var newToken = body['token'] as String?;
+            var newAccessToken = body['access_token'] as String?;
+            var newRefreshToken = body['refresh_token'] as String?;
 
-            if (newToken != null && newToken.isNotEmpty) {
-              var newRefreshCookie = extractRefreshCookie(response.headers);
-
-              await settingsDatasource.saveUserToken(newToken);
-              await settingsDatasource.saveRefreshCookie(newRefreshCookie);
-
+            if (newAccessToken != null && newAccessToken.isNotEmpty) {
+              await settingsDatasource.saveUserToken(newAccessToken);
+              if (newRefreshToken != null && newRefreshToken.isNotEmpty) {
+                await settingsDatasource.saveRefreshToken(newRefreshToken);
+              }
               return true;
             }
-          } else {}
+          }
         } finally {
           refreshClient.close();
         }
