@@ -1,10 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
-import 'dart:math';
 
 import 'package:app_links/app_links.dart';
-import 'package:crypto/crypto.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:vikunja_app/core/network/client.dart';
+import 'package:vikunja_app/core/oauth/pkce.dart';
 
 class OAuthTokenResponse {
   final String accessToken;
@@ -31,6 +31,7 @@ enum OAuthError {
   stateMismatch,
   noAuthorizationCode,
   tokenExchangeFailed,
+  cancelled,
 }
 
 class OAuthException implements Exception {
@@ -43,44 +44,34 @@ class OAuthException implements Exception {
 class OAuthService {
   static const String _clientId = 'vikunja-flutter';
   static const String _redirectUri = 'vikunja-flutter://callback';
-  static const String _charset =
-      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
 
   String _codeVerifier = '';
   String _state = '';
+  StreamSubscription<Uri>? _linkSubscription;
+  Completer<Uri>? _callbackCompleter;
 
-  /// Generates a cryptographically random code verifier for PKCE (43-128 chars).
-  String _generateCodeVerifier() {
-    final random = Random.secure();
-    return List.generate(
-      128,
-      (_) => _charset[random.nextInt(_charset.length)],
-    ).join();
-  }
+  bool get isWaitingForCallback =>
+      _callbackCompleter != null && !_callbackCompleter!.isCompleted;
 
-  /// Generates the S256 code challenge from the code verifier.
-  String _generateCodeChallenge(String verifier) {
-    final bytes = utf8.encode(verifier);
-    final digest = sha256.convert(bytes);
-    return base64Url.encode(digest.bytes).replaceAll('=', '');
-  }
-
-  /// Generates a random state parameter for CSRF protection.
-  String _generateState() {
-    final random = Random.secure();
-    return List.generate(
-      32,
-      (_) => _charset[random.nextInt(_charset.length)],
-    ).join();
+  /// Cancels a pending authorization flow.
+  void cancelAuthorize() {
+    _linkSubscription?.cancel();
+    _linkSubscription = null;
+    if (_callbackCompleter != null && !_callbackCompleter!.isCompleted) {
+      _callbackCompleter!.completeError(OAuthException(OAuthError.cancelled));
+    }
+    _callbackCompleter = null;
   }
 
   /// Launches the OAuth authorization flow in the system browser.
   /// Returns a Future that completes with the authorization code
   /// when the app receives the callback deep link.
   Future<String> authorize(String serverUrl) async {
-    _codeVerifier = _generateCodeVerifier();
-    _state = _generateState();
-    final codeChallenge = _generateCodeChallenge(_codeVerifier);
+    cancelAuthorize();
+
+    _codeVerifier = generateRandomString(128);
+    _state = generateRandomString(32);
+    final codeChallenge = generateCodeChallenge(_codeVerifier);
 
     final authorizeUrl = Uri.parse('$serverUrl/oauth/authorize').replace(
       queryParameters: {
@@ -102,19 +93,27 @@ class OAuthService {
       throw OAuthException(OAuthError.browserLaunchFailed);
     }
 
-    // Listen for the callback deep link with a 10-minute timeout
-    // (matches the server-side authorization code expiry)
+    _callbackCompleter = Completer<Uri>();
     final appLinks = AppLinks();
-    final callbackUri = await appLinks.uriLinkStream
-        .firstWhere(
-          (uri) => uri.scheme == 'vikunja-flutter' && uri.host == 'callback',
-        )
-        .timeout(
-          const Duration(minutes: 10),
-          onTimeout: () {
-            throw OAuthException(OAuthError.noAuthorizationCode);
-          },
-        );
+    _linkSubscription = appLinks.uriLinkStream.listen((uri) {
+      if (uri.scheme == 'vikunja-flutter' && uri.host == 'callback') {
+        if (!_callbackCompleter!.isCompleted) {
+          _callbackCompleter!.complete(uri);
+        }
+      }
+    });
+
+    final callbackUri = await _callbackCompleter!.future.timeout(
+      const Duration(minutes: 10),
+      onTimeout: () {
+        cancelAuthorize();
+        throw OAuthException(OAuthError.noAuthorizationCode);
+      },
+    );
+
+    _linkSubscription?.cancel();
+    _linkSubscription = null;
+    _callbackCompleter = null;
 
     final returnedState = callbackUri.queryParameters['state'];
     if (returnedState != _state) {

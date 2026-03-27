@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
@@ -8,15 +9,14 @@ import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/core/oauth/oauth_service.dart';
-import 'package:vikunja_app/core/utils/constants.dart';
+import 'package:vikunja_app/core/utils/constants.dart'
+    show minimumServerVersion;
 import 'package:vikunja_app/core/utils/network.dart';
-import 'package:vikunja_app/core/utils/validator.dart';
 import 'package:vikunja_app/data/data_sources/settings_data_source.dart';
 import 'package:vikunja_app/domain/entities/auth_model.dart';
 import 'package:vikunja_app/domain/entities/server.dart';
 import 'package:vikunja_app/domain/entities/version.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
-import 'package:vikunja_app/presentation/widgets/button.dart';
 import 'package:vikunja_app/presentation/widgets/sentry_dialog.dart';
 import 'package:vikunja_app/presentation/widgets/version_mismatch_dialog.dart';
 
@@ -34,6 +34,12 @@ class LoginPageState extends ConsumerState<LoginPage> {
 
   final _serverController = TextEditingController();
   final _oauthService = OAuthService();
+  String? _serverError;
+  bool _showCustomUrl = false;
+  bool _showCancel = false;
+  bool _cancelled = false;
+  String? _loadingServer;
+  Timer? _cancelTimer;
 
   @override
   void initState() {
@@ -59,6 +65,14 @@ class LoginPageState extends ConsumerState<LoginPage> {
     });
   }
 
+  @override
+  void dispose() {
+    _cancelTimer?.cancel();
+    _oauthService.cancelAuthorize();
+    _serverController.dispose();
+    super.dispose();
+  }
+
   Future<void> _showSentryDialog() {
     return showDialog<void>(
       context: context,
@@ -81,90 +95,237 @@ class LoginPageState extends ConsumerState<LoginPage> {
     var client = ref.read(clientProviderProvider);
 
     return Scaffold(
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          autovalidateMode: AutovalidateMode.always,
-          key: _formKey,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: <Widget>[
-              _buildLogo(),
-              _buildServerInput(),
-              Padding(
-                padding: vStandardVerticalPadding,
-                child: SizedBox(
-                  width: double.infinity,
-                  child: FancyButton(
-                    onPressed: !_loading
-                        ? () {
-                            if (_formKey.currentState!.validate()) {
-                              _formKey.currentState?.save();
-                              _connectAndLogin(context);
-                            }
-                          }
-                        : null,
-                    child: _loading
-                        ? CircularProgressIndicator()
-                        : Text(AppLocalizations.of(context).login),
+      body: SafeArea(
+        child: Stack(
+          children: [
+            Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32.0,
+                  vertical: 48.0,
+                ),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 400),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildLogo(),
+                      const SizedBox(height: 48),
+                      IndexedStack(
+                        index: _showCustomUrl ? 1 : 0,
+                        children: [
+                          // Preset buttons view
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _buildPresetButton(
+                                url: 'https://app.vikunja.cloud',
+                                label: AppLocalizations.of(
+                                  context,
+                                ).vikunjaCloud,
+                                filled: true,
+                              ),
+                              const SizedBox(height: 12),
+                              _buildPresetButton(
+                                url: 'https://try.vikunja.io',
+                                label: AppLocalizations.of(context).tryDemo,
+                              ),
+                              const SizedBox(height: 12),
+                              OutlinedButton(
+                                onPressed: !_loading
+                                    ? () =>
+                                          setState(() => _showCustomUrl = true)
+                                    : null,
+                                style: OutlinedButton.styleFrom(
+                                  minimumSize: const Size(double.infinity, 52),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                child: Text(
+                                  AppLocalizations.of(context).customServerUrl,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              Visibility(
+                                visible: _showCancel,
+                                maintainSize: true,
+                                maintainAnimation: true,
+                                maintainState: true,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(top: 12),
+                                  child: TextButton(
+                                    onPressed: _showCancel
+                                        ? () {
+                                            _cancelled = true;
+                                            _oauthService.cancelAuthorize();
+                                            setState(() => _loading = false);
+                                          }
+                                        : null,
+                                    child: Text(
+                                      AppLocalizations.of(context).cancel,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          // Custom URL view
+                          Form(
+                            autovalidateMode: AutovalidateMode.disabled,
+                            key: _formKey,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Text(
+                                  AppLocalizations.of(
+                                    context,
+                                  ).loginServerExplanation,
+                                  style: Theme.of(context).textTheme.bodyMedium
+                                      ?.copyWith(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
+                                      ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 24),
+                                _buildServerInput(),
+                                const SizedBox(height: 24),
+                                FilledButton(
+                                  onPressed: !_loading
+                                      ? () => _connectAndLogin(context)
+                                      : null,
+                                  style: FilledButton.styleFrom(
+                                    minimumSize: const Size(
+                                      double.infinity,
+                                      52,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  child: AnimatedSwitcher(
+                                    duration: const Duration(milliseconds: 200),
+                                    child: _loading
+                                        ? const SizedBox(
+                                            key: ValueKey('loading'),
+                                            height: 20,
+                                            width: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.white,
+                                            ),
+                                          )
+                                        : Text(
+                                            AppLocalizations.of(context).login,
+                                            key: const ValueKey('text'),
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                if (_showCancel)
+                                  TextButton(
+                                    onPressed: () {
+                                      _cancelled = true;
+                                      _oauthService.cancelAuthorize();
+                                      setState(() => _loading = false);
+                                    },
+                                    child: Text(
+                                      AppLocalizations.of(context).cancel,
+                                    ),
+                                  )
+                                else
+                                  TextButton(
+                                    onPressed: !_loading
+                                        ? () => setState(
+                                            () => _showCustomUrl = false,
+                                          )
+                                        : null,
+                                    child: Text(
+                                      AppLocalizations.of(context).cancel,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ),
-              CheckboxListTile(
-                title: Text(AppLocalizations.of(context).ignoreCertificates),
-                value: client.ignoreCertificates,
-                onChanged: (value) {
-                  ref
-                      .read(settingsRepositoryProvider)
-                      .setIgnoreCertificates(value ?? false);
-                  setState(() {
-                    client.setIgnoreCerts(value ?? false);
-                  });
-                },
+            ),
+            if (_showCustomUrl)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 20,
+                child: GestureDetector(
+                  onTap: () {
+                    final newValue = !client.ignoreCertificates;
+                    ref
+                        .read(settingsRepositoryProvider)
+                        .setIgnoreCertificates(newValue);
+                    setState(() {
+                      client.setIgnoreCerts(newValue);
+                    });
+                  },
+                  child: Center(
+                    child: Text(
+                      AppLocalizations.of(context).ignoreCertificates,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: client.ignoreCertificates
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ),
               ),
-            ],
-          ),
+          ],
         ),
       ),
     );
   }
 
-  Padding _buildServerInput() {
-    return Padding(
-      padding: vStandardVerticalPadding,
-      child: Autocomplete<String>(
-        optionsBuilder: (TextEditingValue textEditingValue) {
-          List<String> matches = <String>[];
-          matches.addAll(pastServers);
-          matches.retainWhere((s) {
-            return s.toLowerCase().contains(
-              textEditingValue.text.toLowerCase(),
-            );
-          });
-          return matches;
-        },
-        focusNode: FocusNode(),
-        textEditingController: _serverController,
-        onSelected: (String selection) {
-          _serverController.text = selection;
-          setState(() => _serverController.text = selection);
-        },
-        fieldViewBuilder:
-            (
-              BuildContext context,
-              TextEditingController textEditingController,
-              FocusNode focusNode,
-              VoidCallback onFieldSubmitted,
-            ) =>
-                _buildServerTextView(textEditingController, focusNode, context),
-        optionsViewBuilder:
-            (
-              BuildContext context,
-              AutocompleteOnSelected<String> onSelected,
-              Iterable<String> options,
-            ) => _buildServerOptions(options, onSelected),
-      ),
+  Widget _buildServerInput() {
+    return Autocomplete<String>(
+      key: ValueKey(pastServers.length),
+      optionsBuilder: (TextEditingValue textEditingValue) {
+        List<String> matches = <String>[];
+        matches.addAll(pastServers);
+        matches.retainWhere((s) {
+          return s.toLowerCase().contains(textEditingValue.text.toLowerCase());
+        });
+        return matches;
+      },
+      focusNode: FocusNode(),
+      textEditingController: _serverController,
+      onSelected: (String selection) {
+        _serverController.text = selection;
+        setState(() => _serverController.text = selection);
+      },
+      fieldViewBuilder:
+          (
+            BuildContext context,
+            TextEditingController textEditingController,
+            FocusNode focusNode,
+            VoidCallback onFieldSubmitted,
+          ) => _buildServerTextView(textEditingController, focusNode, context),
+      optionsViewBuilder:
+          (
+            BuildContext context,
+            AutocompleteOnSelected<String> onSelected,
+            Iterable<String> options,
+          ) => _buildServerOptions(options, onSelected),
     );
   }
 
@@ -177,14 +338,21 @@ class LoginPageState extends ConsumerState<LoginPage> {
       controller: textEditingController,
       focusNode: focusNode,
       enabled: !_loading,
-      validator: (address) {
-        return isURLValid(address)
-            ? null
-            : AppLocalizations.of(context).invalidUrl;
+      onChanged: (_) {
+        if (_serverError != null) {
+          setState(() => _serverError = null);
+          _formKey.currentState?.validate();
+        }
       },
+      validator: (_) => _serverError,
       decoration: InputDecoration(
-        border: OutlineInputBorder(),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         labelText: AppLocalizations.of(context).serverAddress,
+        hintText: AppLocalizations.of(
+          context,
+        ).serverAddressHint('https://try.vikunja.io'),
+        prefixIcon: const Icon(Icons.dns_outlined),
+        errorMaxLines: 3,
       ),
     );
   }
@@ -227,16 +395,59 @@ class LoginPageState extends ConsumerState<LoginPage> {
     );
   }
 
-  Padding _buildLogo() {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 30),
-      child: Image(
-        image: Theme.of(context).brightness == Brightness.dark
-            ? AssetImage('assets/vikunja_logo_full_white.png')
-            : AssetImage('assets/vikunja_logo_full.png'),
-        height: 85.0,
-        semanticLabel: AppLocalizations.of(context).vikunjaLogoAlt,
+  Widget _buildPresetButton({
+    required String url,
+    required String label,
+    bool filled = false,
+  }) {
+    final isThis = _loadingServer == url;
+    final style = ButtonStyle(
+      minimumSize: WidgetStatePropertyAll(Size(double.infinity, 52)),
+      shape: WidgetStatePropertyAll(
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
+    );
+    final child = isThis
+        ? SizedBox(
+            height: 20,
+            width: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: filled ? Colors.white : null,
+            ),
+          )
+        : Text(
+            label,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          );
+
+    if (filled) {
+      return FilledButton(
+        onPressed: !_loading ? () => _connectWithServer(url) : null,
+        style: style,
+        child: child,
+      );
+    }
+    return OutlinedButton(
+      onPressed: !_loading ? () => _connectWithServer(url) : null,
+      style: style,
+      child: child,
+    );
+  }
+
+  void _connectWithServer(String serverUrl) {
+    _serverController.text = serverUrl;
+    setState(() => _loadingServer = serverUrl);
+    _connectAndLogin(context);
+  }
+
+  Widget _buildLogo() {
+    return Image(
+      image: Theme.of(context).brightness == Brightness.dark
+          ? AssetImage('assets/vikunja_logo_full_white.png')
+          : AssetImage('assets/vikunja_logo_full.png'),
+      height: 85.0,
+      semanticLabel: AppLocalizations.of(context).vikunjaLogoAlt,
     );
   }
 
@@ -244,7 +455,19 @@ class LoginPageState extends ConsumerState<LoginPage> {
     String server = normalizeServerURL(_serverController.text);
     if (server.isEmpty) return;
 
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _showCancel = false;
+      _serverError = null;
+      _cancelled = false;
+    });
+    _formKey.currentState?.validate();
+    _cancelTimer?.cancel();
+    _cancelTimer = Timer(const Duration(seconds: 5), () {
+      if (_loading && mounted) {
+        setState(() => _showCancel = true);
+      }
+    });
 
     try {
       // Step 1: Set up the client so we can validate the server
@@ -256,13 +479,10 @@ class LoginPageState extends ConsumerState<LoginPage> {
           .getInfo();
 
       if (!info.isSuccessful) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(AppLocalizations.of(context).cannotReachServer),
-            ),
-          );
-        }
+        setState(() {
+          _serverError = AppLocalizations.of(context).cannotReachServer;
+        });
+        _formKey.currentState?.validate();
         return;
       }
 
@@ -331,10 +551,14 @@ class LoginPageState extends ConsumerState<LoginPage> {
         }
       } else {
         if (context.mounted) {
-          _showGenericError(context);
+          _showErrorSnackBar(
+            context,
+            AppLocalizations.of(context).somethingWentWrong,
+          );
         }
       }
     } on OAuthException catch (e) {
+      if (_cancelled) return;
       log("OAuth error: ${e.error}");
       if (context.mounted) {
         final l10n = AppLocalizations.of(context);
@@ -344,24 +568,38 @@ class LoginPageState extends ConsumerState<LoginPage> {
           OAuthError.noAuthorizationCode => l10n.oauthNoAuthorizationCode,
           OAuthError.tokenExchangeFailed =>
             e.serverMessage ?? l10n.oauthTokenExchangeFailed,
+          OAuthError.cancelled => '', // unreachable
         };
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(message)));
+        _showErrorSnackBar(context, message);
       }
     } catch (e) {
+      if (_cancelled) return;
       log("Login failed: $e");
       if (context.mounted) {
-        _showGenericError(context);
+        setState(() {
+          _serverError = AppLocalizations.of(context).cannotReachServer;
+        });
+        _formKey.currentState?.validate();
       }
     } finally {
-      setState(() => _loading = false);
+      _cancelTimer?.cancel();
+      setState(() {
+        _loading = false;
+        _showCancel = false;
+        _loadingServer = null;
+      });
     }
   }
 
-  void _showGenericError(BuildContext context) {
+  void _showErrorSnackBar(BuildContext context, String message) {
+    final colors = Theme.of(context).colorScheme;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(AppLocalizations.of(context).somethingWentWrong)),
+      SnackBar(
+        content: Text(message),
+        backgroundColor: colors.error,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
     );
   }
 }
