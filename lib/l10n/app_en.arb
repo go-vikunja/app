@@ -15,6 +15,11 @@
   "logout": "Logout",
   "register": "Register",
   "login": "Login",
+  "loginServerExplanation": "Enter the URL of your Vikunja server to get started.",
+  "vikunjaCloud": "Vikunja Cloud",
+  "tryDemo": "Try the Demo",
+  "orEnterServerUrl": "or enter your server URL",
+  "customServerUrl": "Custom Server URL",
   "system": "System",
   "file": "File",
   "light": "Light",
@@ -38,6 +43,14 @@
   "password": "Password",
   "username": "Username",
   "serverAddress": "Server Address",
+  "serverAddressHint": "e.g. {exampleUrl}",
+  "@serverAddressHint": {
+    "placeholders": {
+      "exampleUrl": {
+        "type": "String"
+      }
+    }
+  },
   "invalidUrl": "Invalid URL",
   "pleaseSpecifyUsername": "Please specify a username",
   "emailAddress": "Email Address",
@@ -138,7 +151,7 @@
   "vikunjaLogoAlt": "Vikunja Logo",
   "pleaseEnterValidFrontendUrl": "Please enter a valid frontend url",
   "enterOtpTitle": "Enter One Time Passcode",
-  "cannotReachServer": "Cannot reach server",
+  "cannotReachServer": "Could not connect to this server. Make sure a Vikunja server is running under that instance.",
   "somethingWentWrong": "Something went wrong",
   "registrationFailed": "Registration failed!",
   "registrationFailedLong": "Registration failed! Please check your server url and credentials. {error}",
