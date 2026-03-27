@@ -102,11 +102,19 @@ class OAuthService {
       throw OAuthException(OAuthError.browserLaunchFailed);
     }
 
-    // Listen for the callback deep link
+    // Listen for the callback deep link with a 10-minute timeout
+    // (matches the server-side authorization code expiry)
     final appLinks = AppLinks();
-    final callbackUri = await appLinks.uriLinkStream.firstWhere(
-      (uri) => uri.scheme == 'vikunja-flutter' && uri.host == 'callback',
-    );
+    final callbackUri = await appLinks.uriLinkStream
+        .firstWhere(
+          (uri) => uri.scheme == 'vikunja-flutter' && uri.host == 'callback',
+        )
+        .timeout(
+          const Duration(minutes: 10),
+          onTimeout: () {
+            throw OAuthException(OAuthError.noAuthorizationCode);
+          },
+        );
 
     final returnedState = callbackUri.queryParameters['state'];
     if (returnedState != _state) {
