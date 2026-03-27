@@ -31,10 +31,10 @@ Future<void> notificationTapBackground(
 
 Future<void> markAsDone(int id) async {
   var datasource = SettingsDatasource(FlutterSecureStorage());
-  var refreshCookie = await datasource.getRefreshCookie();
+  var refreshToken = await datasource.getRefreshToken();
   var base = await datasource.getServer();
 
-  if (refreshCookie == null || base == null) {
+  if (refreshToken == null || base == null) {
     return;
   }
 

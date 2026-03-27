@@ -235,7 +235,7 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
                 onPressed: () {
                   ref.read(settingsRepositoryProvider).saveServer(null);
                   ref.read(settingsRepositoryProvider).saveUserToken(null);
-                  ref.read(settingsRepositoryProvider).saveRefreshCookie(null);
+                  ref.read(settingsRepositoryProvider).saveRefreshToken(null);
 
                   Navigator.of(context).popUntil((route) => route.isFirst);
                   Navigator.pushReplacement(

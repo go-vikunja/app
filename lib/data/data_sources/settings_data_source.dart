@@ -148,12 +148,18 @@ class SettingsDatasource {
     return _storage.write(key: "user-token", value: token);
   }
 
-  Future<String?> getRefreshCookie() {
-    return _storage.read(key: "refresh-cookie");
+  Future<String?> getRefreshToken() {
+    return _storage.read(key: "refresh-token");
   }
 
-  Future<void> saveRefreshCookie(String? cookie) {
-    return _storage.write(key: "refresh-cookie", value: cookie);
+  Future<void> saveRefreshToken(String? token) {
+    return _storage.write(key: "refresh-token", value: token);
+  }
+
+  Future<void> clearAuthData() async {
+    await saveUserToken(null);
+    await saveRefreshToken(null);
+    await saveServer(null);
   }
 
   Future<String?> getLocaleOverride() async {

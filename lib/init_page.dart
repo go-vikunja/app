@@ -37,11 +37,11 @@ class InitPage extends ConsumerWidget {
 
   Future<Object?> checkLoginToken(WidgetRef ref) async {
     var server = await ref.read(settingsRepositoryProvider).getServer();
-    var refreshCookie = await ref
+    var refreshToken = await ref
         .read(settingsRepositoryProvider)
-        .getRefreshCookie();
+        .getRefreshToken();
 
-    if (server != null && refreshCookie != null) {
+    if (server != null && refreshToken != null) {
       return checkServer(ref, server);
     }
 
@@ -107,7 +107,7 @@ class InitPage extends ConsumerWidget {
   ) async {
     if (userResponse.statusCode == 401) {
       ref.read(settingsRepositoryProvider).saveUserToken(null);
-      ref.read(settingsRepositoryProvider).saveRefreshCookie(null);
+      ref.read(settingsRepositoryProvider).saveRefreshToken(null);
 
       if (ref.context.mounted) {
         ScaffoldMessenger.of(ref.context).showSnackBar(
