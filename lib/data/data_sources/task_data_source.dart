@@ -91,7 +91,7 @@ class TaskDataSource extends RemoteDataSource {
     int taskId,
     TaskAttachmentDto attachment,
   ) async {
-    String url = client.base;
+    String url = client.apiBase;
     url += '/tasks/$taskId/attachments/${attachment.id}';
 
     final task = DownloadTask(
