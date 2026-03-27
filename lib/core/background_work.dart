@@ -49,9 +49,9 @@ void callbackDispatcher() {
 Future<bool> updateTasks() async {
   var datasource = SettingsDatasource(FlutterSecureStorage());
   var base = await datasource.getServer();
-  var refreshCookie = await datasource.getRefreshCookie();
+  var refreshToken = await datasource.getRefreshToken();
 
-  if (refreshCookie == null || base == null) {
+  if (refreshToken == null || base == null) {
     return Future.value(true);
   }
 
