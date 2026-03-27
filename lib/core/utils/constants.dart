@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/domain/entities/version.dart';
 
-var minimumServerVersion = Version(2, 1, 0);
+var minimumServerVersion = Version(2, 3, 0);
 
 const vStandardVerticalPadding = EdgeInsets.symmetric(vertical: 5.0);
 
