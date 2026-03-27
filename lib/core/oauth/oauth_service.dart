@@ -3,8 +3,8 @@ import 'dart:math';
 
 import 'package:app_links/app_links.dart';
 import 'package:crypto/crypto.dart';
-import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
+import 'package:vikunja_app/core/network/client.dart';
 
 class OAuthTokenResponse {
   final String accessToken;
@@ -24,6 +24,20 @@ class OAuthTokenResponse {
       expiresIn: json['expires_in'] as int,
     );
   }
+}
+
+enum OAuthError {
+  browserLaunchFailed,
+  stateMismatch,
+  noAuthorizationCode,
+  tokenExchangeFailed,
+}
+
+class OAuthException implements Exception {
+  final OAuthError error;
+  final String? serverMessage;
+
+  OAuthException(this.error, {this.serverMessage});
 }
 
 class OAuthService {
@@ -85,7 +99,7 @@ class OAuthService {
     );
 
     if (!launched) {
-      throw Exception('Could not launch browser for OAuth authorization');
+      throw OAuthException(OAuthError.browserLaunchFailed);
     }
 
     // Listen for the callback deep link
@@ -96,38 +110,35 @@ class OAuthService {
 
     final returnedState = callbackUri.queryParameters['state'];
     if (returnedState != _state) {
-      throw Exception('OAuth state mismatch - possible CSRF attack');
+      throw OAuthException(OAuthError.stateMismatch);
     }
 
     final code = callbackUri.queryParameters['code'];
     if (code == null || code.isEmpty) {
-      throw Exception('No authorization code received from OAuth callback');
+      throw OAuthException(OAuthError.noAuthorizationCode);
     }
 
     return code;
   }
 
   /// Exchanges the authorization code for access and refresh tokens.
-  Future<OAuthTokenResponse> exchangeCode(String serverUrl, String code) async {
-    final response = await http.post(
-      Uri.parse('$serverUrl/api/v1/oauth/token'),
-      headers: {
-        'Content-Type': 'application/json',
-        'User-Agent': 'Vikunja Mobile App',
-      },
-      body: jsonEncode({
+  Future<OAuthTokenResponse> exchangeCode(Client client, String code) async {
+    final response = await client.postUnauthenticated(
+      url: '/oauth/token',
+      body: {
         'grant_type': 'authorization_code',
         'code': code,
         'client_id': _clientId,
         'redirect_uri': _redirectUri,
         'code_verifier': _codeVerifier,
-      }),
+      },
     );
 
     if (response.statusCode != 200) {
       final error = jsonDecode(response.body);
-      throw Exception(
-        'Token exchange failed: ${error['message'] ?? response.body}',
+      throw OAuthException(
+        OAuthError.tokenExchangeFailed,
+        serverMessage: error['message'] as String?,
       );
     }
 
