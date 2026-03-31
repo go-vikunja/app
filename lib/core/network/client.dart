@@ -32,7 +32,6 @@ class Client {
 
   late http.Client _httpClient;
 
-  String get base => _base;
   String get apiBase => '$_base/api/v1';
 
   Client({required String base}) {
