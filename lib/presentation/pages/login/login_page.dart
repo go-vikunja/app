@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
@@ -39,7 +38,6 @@ class LoginPageState extends ConsumerState<LoginPage> {
   bool _showCancel = false;
   bool _cancelled = false;
   String? _loadingServer;
-  Timer? _cancelTimer;
 
   @override
   void initState() {
@@ -67,7 +65,6 @@ class LoginPageState extends ConsumerState<LoginPage> {
 
   @override
   void dispose() {
-    _cancelTimer?.cancel();
     _oauthService.cancelAuthorize();
     _serverController.dispose();
     super.dispose();
@@ -94,56 +91,66 @@ class LoginPageState extends ConsumerState<LoginPage> {
   Widget build(BuildContext ctx) {
     var client = ref.read(clientProviderProvider);
 
-    return Scaffold(
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 32.0,
-                  vertical: 48.0,
-                ),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 400),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _buildLogo(),
-                      const SizedBox(height: 48),
-                      IndexedStack(
-                        index: _showCustomUrl ? 1 : 0,
-                        children: [_buildPresetView(), _buildCustomUrlView()],
-                      ),
-                    ],
+    return PopScope(
+      canPop: !_loading,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && _loading) {
+          _cancelled = true;
+          _oauthService.cancelAuthorize();
+          setState(() => _loading = false);
+        }
+      },
+      child: Scaffold(
+        body: SafeArea(
+          child: Stack(
+            children: [
+              Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32.0,
+                    vertical: 48.0,
+                  ),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 400),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _buildLogo(),
+                        const SizedBox(height: 48),
+                        IndexedStack(
+                          index: _showCustomUrl ? 1 : 0,
+                          children: [_buildPresetView(), _buildCustomUrlView()],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-            if (_showCustomUrl)
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 20,
-                child: CheckboxListTile(
-                  value: client.ignoreCertificates,
-                  onChanged: (value) {
-                    ref
-                        .read(settingsRepositoryProvider)
-                        .setIgnoreCertificates(value ?? false);
-                    setState(() {
-                      client.setIgnoreCerts(value ?? false);
-                    });
-                  },
-                  title: Text(
-                    AppLocalizations.of(context).ignoreCertificates,
-                    style: Theme.of(context).textTheme.bodySmall,
+              if (_showCustomUrl)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 20,
+                  child: CheckboxListTile(
+                    value: client.ignoreCertificates,
+                    onChanged: (value) {
+                      ref
+                          .read(settingsRepositoryProvider)
+                          .setIgnoreCertificates(value ?? false);
+                      setState(() {
+                        client.setIgnoreCerts(value ?? false);
+                      });
+                    },
+                    title: Text(
+                      AppLocalizations.of(context).ignoreCertificates,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    controlAffinity: ListTileControlAffinity.leading,
+                    dense: true,
                   ),
-                  controlAffinity: ListTileControlAffinity.leading,
-                  dense: true,
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -437,12 +444,6 @@ class LoginPageState extends ConsumerState<LoginPage> {
       _cancelled = false;
     });
     _formKey.currentState?.validate();
-    _cancelTimer?.cancel();
-    _cancelTimer = Timer(const Duration(seconds: 5), () {
-      if (_loading && mounted) {
-        setState(() => _showCancel = true);
-      }
-    });
 
     try {
       // Step 1: Set up the client so we can validate the server
@@ -482,6 +483,7 @@ class LoginPageState extends ConsumerState<LoginPage> {
       }
 
       // Step 3: Launch OAuth PKCE flow
+      setState(() => _showCancel = true);
       String code = await _oauthService.authorize(server);
 
       // Step 4: Exchange code for tokens
@@ -557,7 +559,6 @@ class LoginPageState extends ConsumerState<LoginPage> {
         _formKey.currentState?.validate();
       }
     } finally {
-      _cancelTimer?.cancel();
       setState(() {
         _loading = false;
         _showCancel = false;
