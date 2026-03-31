@@ -113,150 +113,7 @@ class LoginPageState extends ConsumerState<LoginPage> {
                       const SizedBox(height: 48),
                       IndexedStack(
                         index: _showCustomUrl ? 1 : 0,
-                        children: [
-                          // Preset buttons view
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              _buildPresetButton(
-                                url: 'https://app.vikunja.cloud',
-                                label: AppLocalizations.of(
-                                  context,
-                                ).vikunjaCloud,
-                                filled: true,
-                              ),
-                              const SizedBox(height: 12),
-                              _buildPresetButton(
-                                url: 'https://try.vikunja.io',
-                                label: AppLocalizations.of(context).tryDemo,
-                              ),
-                              const SizedBox(height: 12),
-                              OutlinedButton(
-                                onPressed: !_loading
-                                    ? () =>
-                                          setState(() => _showCustomUrl = true)
-                                    : null,
-                                style: OutlinedButton.styleFrom(
-                                  minimumSize: const Size(double.infinity, 52),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                child: Text(
-                                  AppLocalizations.of(context).customServerUrl,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                              Visibility(
-                                visible: _showCancel,
-                                maintainSize: true,
-                                maintainAnimation: true,
-                                maintainState: true,
-                                child: Padding(
-                                  padding: const EdgeInsets.only(top: 12),
-                                  child: TextButton(
-                                    onPressed: _showCancel
-                                        ? () {
-                                            _cancelled = true;
-                                            _oauthService.cancelAuthorize();
-                                            setState(() => _loading = false);
-                                          }
-                                        : null,
-                                    child: Text(
-                                      AppLocalizations.of(context).cancel,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          // Custom URL view
-                          Form(
-                            autovalidateMode: AutovalidateMode.disabled,
-                            key: _formKey,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                Text(
-                                  AppLocalizations.of(
-                                    context,
-                                  ).loginServerExplanation,
-                                  style: Theme.of(context).textTheme.bodyMedium
-                                      ?.copyWith(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.onSurfaceVariant,
-                                      ),
-                                  textAlign: TextAlign.center,
-                                ),
-                                const SizedBox(height: 24),
-                                _buildServerInput(),
-                                const SizedBox(height: 24),
-                                FilledButton(
-                                  onPressed: !_loading
-                                      ? () => _connectAndLogin(context)
-                                      : null,
-                                  style: FilledButton.styleFrom(
-                                    minimumSize: const Size(
-                                      double.infinity,
-                                      52,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                  child: AnimatedSwitcher(
-                                    duration: const Duration(milliseconds: 200),
-                                    child: _loading
-                                        ? const SizedBox(
-                                            key: ValueKey('loading'),
-                                            height: 20,
-                                            width: 20,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              color: Colors.white,
-                                            ),
-                                          )
-                                        : Text(
-                                            AppLocalizations.of(context).login,
-                                            key: const ValueKey('text'),
-                                            style: const TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                if (_showCancel)
-                                  TextButton(
-                                    onPressed: () {
-                                      _cancelled = true;
-                                      _oauthService.cancelAuthorize();
-                                      setState(() => _loading = false);
-                                    },
-                                    child: Text(
-                                      AppLocalizations.of(context).cancel,
-                                    ),
-                                  )
-                                else
-                                  TextButton(
-                                    onPressed: !_loading
-                                        ? () => setState(
-                                            () => _showCustomUrl = false,
-                                          )
-                                        : null,
-                                    child: Text(
-                                      AppLocalizations.of(context).cancel,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ],
+                        children: [_buildPresetView(), _buildCustomUrlView()],
                       ),
                     ],
                   ),
@@ -292,6 +149,128 @@ class LoginPageState extends ConsumerState<LoginPage> {
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildPresetView() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildPresetButton(
+          url: 'https://app.vikunja.cloud',
+          label: AppLocalizations.of(context).vikunjaCloud,
+          filled: true,
+        ),
+        const SizedBox(height: 12),
+        _buildPresetButton(
+          url: 'https://try.vikunja.io',
+          label: AppLocalizations.of(context).tryDemo,
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton(
+          onPressed: !_loading
+              ? () => setState(() => _showCustomUrl = true)
+              : null,
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(double.infinity, 52),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          child: Text(
+            AppLocalizations.of(context).customServerUrl,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          ),
+        ),
+        Visibility(
+          visible: _showCancel,
+          maintainSize: true,
+          maintainAnimation: true,
+          maintainState: true,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: TextButton(
+              onPressed: _showCancel
+                  ? () {
+                      _cancelled = true;
+                      _oauthService.cancelAuthorize();
+                      setState(() => _loading = false);
+                    }
+                  : null,
+              child: Text(AppLocalizations.of(context).cancel),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCustomUrlView() {
+    return Form(
+      autovalidateMode: AutovalidateMode.disabled,
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            AppLocalizations.of(context).loginServerExplanation,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          _buildServerInput(),
+          const SizedBox(height: 24),
+          FilledButton(
+            onPressed: !_loading ? () => _connectAndLogin(context) : null,
+            style: FilledButton.styleFrom(
+              minimumSize: const Size(double.infinity, 52),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              child: _loading
+                  ? const SizedBox(
+                      key: ValueKey('loading'),
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text(
+                      AppLocalizations.of(context).login,
+                      key: const ValueKey('text'),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (_showCancel)
+            TextButton(
+              onPressed: () {
+                _cancelled = true;
+                _oauthService.cancelAuthorize();
+                setState(() => _loading = false);
+              },
+              child: Text(AppLocalizations.of(context).cancel),
+            )
+          else
+            TextButton(
+              onPressed: !_loading
+                  ? () => setState(() => _showCustomUrl = false)
+                  : null,
+              child: Text(AppLocalizations.of(context).cancel),
+            ),
+        ],
       ),
     );
   }
