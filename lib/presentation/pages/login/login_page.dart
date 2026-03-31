@@ -125,26 +125,22 @@ class LoginPageState extends ConsumerState<LoginPage> {
                 left: 0,
                 right: 0,
                 bottom: 20,
-                child: GestureDetector(
-                  onTap: () {
-                    final newValue = !client.ignoreCertificates;
+                child: CheckboxListTile(
+                  value: client.ignoreCertificates,
+                  onChanged: (value) {
                     ref
                         .read(settingsRepositoryProvider)
-                        .setIgnoreCertificates(newValue);
+                        .setIgnoreCertificates(value ?? false);
                     setState(() {
-                      client.setIgnoreCerts(newValue);
+                      client.setIgnoreCerts(value ?? false);
                     });
                   },
-                  child: Center(
-                    child: Text(
-                      AppLocalizations.of(context).ignoreCertificates,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: client.ignoreCertificates
-                            ? Theme.of(context).colorScheme.primary
-                            : Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
+                  title: Text(
+                    AppLocalizations.of(context).ignoreCertificates,
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
+                  controlAffinity: ListTileControlAffinity.leading,
+                  dense: true,
                 ),
               ),
           ],
