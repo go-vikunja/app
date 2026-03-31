@@ -138,11 +138,6 @@ class SettingsRepositoryImpl implements SettingsRepository {
   }
 
   @override
-  Future<void> clearAuthData() {
-    return _datasource.clearAuthData();
-  }
-
-  @override
   Future<String?> getLocaleOverride() {
     return _datasource.getLocaleOverride();
   }

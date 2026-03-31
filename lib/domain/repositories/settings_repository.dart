@@ -49,8 +49,6 @@ abstract class SettingsRepository {
 
   Future<String?> getRefreshToken();
 
-  Future<void> clearAuthData();
-
   Future<void> saveServer(String? server);
 
   Future<String?> getServer();
