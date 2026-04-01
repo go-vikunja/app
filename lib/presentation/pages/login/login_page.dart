@@ -131,22 +131,32 @@ class LoginPageState extends ConsumerState<LoginPage> {
                   left: 0,
                   right: 0,
                   bottom: 20,
-                  child: CheckboxListTile(
-                    value: client.ignoreCertificates,
-                    onChanged: (value) {
-                      ref
-                          .read(settingsRepositoryProvider)
-                          .setIgnoreCertificates(value ?? false);
-                      setState(() {
-                        client.setIgnoreCerts(value ?? false);
-                      });
-                    },
-                    title: Text(
-                      AppLocalizations.of(context).ignoreCertificates,
-                      style: Theme.of(context).textTheme.bodySmall,
+                  child: Center(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: Checkbox(
+                            value: client.ignoreCertificates,
+                            onChanged: (value) {
+                              ref
+                                  .read(settingsRepositoryProvider)
+                                  .setIgnoreCertificates(value ?? false);
+                              setState(() {
+                                client.setIgnoreCerts(value ?? false);
+                              });
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          AppLocalizations.of(context).ignoreCertificates,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
                     ),
-                    controlAffinity: ListTileControlAffinity.leading,
-                    dense: true,
                   ),
                 ),
             ],
