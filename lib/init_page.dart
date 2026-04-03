@@ -66,17 +66,29 @@ class InitPage extends ConsumerWidget {
       serverVersion = Version.fromServerString(
         info.toSuccess().body.version ?? "-",
       );
+
+      if (serverVersion != null &&
+          !serverVersion.isCompatibleWith(minimumServerVersion)) {
+        final sv = serverVersion;
+        await showDialog<void>(
+          context: ref.context,
+          barrierDismissible: false,
+          builder: (BuildContext context) {
+            return VersionMismatchDialog(serverVersion: sv);
+          },
+        );
+      }
     }
 
-    return checkUser(ref, serverVersion);
+    return checkUser(ref);
   }
 
-  Future<Object?> checkUser(WidgetRef ref, Version? serverVersion) async {
+  Future<Object?> checkUser(WidgetRef ref) async {
     var userResponse = await ref.read(userRepositoryProvider).getCurrentUser();
     if (userResponse.isSuccessful) {
       ref.read(currentUserProvider.notifier).set(userResponse.toSuccess().body);
 
-      onLoginSuccess(ref, serverVersion);
+      onLoginSuccess(ref);
     } else if (userResponse.isError) {
       onLoginError(ref, userResponse.toError());
     } else {
@@ -86,18 +98,7 @@ class InitPage extends ConsumerWidget {
     return null;
   }
 
-  Future<void> onLoginSuccess(WidgetRef ref, Version? serverVersion) async {
-    if (serverVersion != null &&
-        !serverVersion.isCompatibleWith(minimumServerVersion)) {
-      await showDialog<void>(
-        context: ref.context,
-        barrierDismissible: false,
-        builder: (BuildContext context) {
-          return VersionMismatchDialog(serverVersion: serverVersion);
-        },
-      );
-    }
-
+  Future<void> onLoginSuccess(WidgetRef ref) async {
     globalNavigatorKey.currentState?.pushReplacementNamed("/home");
   }
 
