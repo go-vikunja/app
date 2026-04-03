@@ -486,6 +486,19 @@ class LoginPageState extends ConsumerState<LoginPage> {
         info.toSuccess().body.version ?? "-",
       );
 
+      // Check server version compatibility before proceeding with login
+      if (serverVersion != null &&
+          !serverVersion.isCompatibleWith(minimumServerVersion) &&
+          context.mounted) {
+        await showDialog<void>(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) {
+            return VersionMismatchDialog(serverVersion: serverVersion);
+          },
+        );
+      }
+
       // Save to past servers
       if (!pastServers.contains(server)) {
         pastServers.add(server);
@@ -520,18 +533,6 @@ class LoginPageState extends ConsumerState<LoginPage> {
         ref
             .read(currentUserProvider.notifier)
             .set(currentUser.toSuccess().body);
-
-        if (serverVersion != null &&
-            !serverVersion.isCompatibleWith(minimumServerVersion) &&
-            context.mounted) {
-          await showDialog<void>(
-            context: context,
-            barrierDismissible: false,
-            builder: (BuildContext context) {
-              return VersionMismatchDialog(serverVersion: serverVersion);
-            },
-          );
-        }
 
         if (context.mounted) {
           Navigator.pushReplacementNamed(context, "/home");
