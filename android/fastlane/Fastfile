@@ -13,6 +13,10 @@
 # Uncomment the line if you want fastlane to automatically update itself
 # update_fastlane
 
+# Note: F-Droid builds are handled separately in CI/CD (.github/workflows/release.yml)
+# and use the 'fdroid' flavor with SENTRY_ENABLED=false. The lanes below are for
+# Google Play Store deployment only.
+
 default_platform(:android)
 
 platform :android do
