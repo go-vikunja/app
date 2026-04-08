@@ -16,8 +16,8 @@ class ProjectRepositoryImpl extends ProjectRepository {
   }
 
   @override
-  Future<Response<List<Project>>> getAll() async {
-    Response<List<Project>> projectsResponse = (await _dataSource.getAll())
+  Future<Response<List<Project>>> getAll({int page = 1}) async {
+    Response<List<Project>> projectsResponse = (await _dataSource.getAll(page: page))
         .toDomain();
 
     if (projectsResponse.isSuccessful) {

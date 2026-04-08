@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
+import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/presentation/manager/projects_controller.dart';
 import 'package:vikunja_app/presentation/pages/error_widget.dart';
 import 'package:vikunja_app/presentation/pages/loading_widget.dart';
 import 'package:vikunja_app/presentation/pages/project/expansion_title.dart';
 import 'package:vikunja_app/presentation/pages/project/project_detail_page.dart';
 import 'package:vikunja_app/presentation/widgets/project/add_project_dialog.dart';
-import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 
 class ProjectListPage extends ConsumerWidget {
   const ProjectListPage({super.key});
@@ -20,19 +20,27 @@ class ProjectListPage extends ConsumerWidget {
     return controller.when(
       data: (projects) {
         return Scaffold(
-          body: RefreshIndicator(
-            child: ListView(
-              padding: EdgeInsets.zero,
-              children: ListTile.divideTiles(
-                context: context,
-                tiles: projects.map<Widget>((e) {
-                  return _buildListItem(ref, e);
-                }),
-              ).toList(),
-            ),
-            onRefresh: () async {
-              ref.watch(projectsControllerProvider.notifier).reload();
+          body: NotificationListener<ScrollNotification>(
+            onNotification: (ScrollNotification scrollInfo) {
+              if (scrollInfo.metrics.pixels ==
+                  scrollInfo.metrics.maxScrollExtent) {
+                ref.read(projectsControllerProvider.notifier).loadNextPage();
+              }
+              return false;
             },
+            child: RefreshIndicator(
+              child: ListView.separated(
+                itemCount: projects.length,
+                separatorBuilder: (BuildContext context, int index) =>
+                    const Divider(height: 8),
+                itemBuilder: (context, index) {
+                  return _buildListItem(ref, projects[index]);
+                },
+              ),
+              onRefresh: () async {
+                ref.read(projectsControllerProvider.notifier).reload();
+              },
+            ),
           ),
           appBar: AppBar(
             title: Text(AppLocalizations.of(context).projectsTitle),

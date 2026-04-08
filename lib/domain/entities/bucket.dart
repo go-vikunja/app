@@ -8,7 +8,7 @@ class Bucket {
   double? position;
   final DateTime created, updated;
   User createdBy;
-  final List<Task> tasks;
+  List<Task> tasks;
 
   Bucket({
     this.id = 0,

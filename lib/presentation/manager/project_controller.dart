@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/core/network/response.dart';
@@ -6,37 +7,93 @@ import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/project_page_model.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/entities/view_kind.dart';
+import 'package:vikunja_app/presentation/manager/pagination_mixin.dart';
 import 'package:vikunja_app/presentation/manager/projects_controller.dart';
 
 part 'project_controller.g.dart';
 
 @riverpod
-class ProjectController extends _$ProjectController {
+class ProjectController extends _$ProjectController with PaginationMixin<Task> {
   @override
   Future<ProjectPageModel> build(Project project) async {
+    resetPagination();
+
     var displayDoneTask = await ref
         .read(settingsRepositoryProvider)
         .getDisplayDoneTasks(project.id);
     int? viewId = _getFirstListViewIdFromProject(project);
-    var tasksResponse = await _loadTasks(project.id, displayDoneTask, viewId);
 
-    switch (tasksResponse) {
-      case SuccessResponse<List<Task>>():
-        return ProjectPageModel(
-          project,
-          0,
-          tasksResponse.body,
-          [],
-          displayDoneTask,
-        );
-      case ExceptionResponse<List<Task>>():
-        throw Exception(tasksResponse.message);
-      case ErrorResponse<List<Task>>():
-        throw Exception(tasksResponse.error.toString());
+    var tasksResponse = await _loadTasks(
+      project.id,
+      displayDoneTask,
+      viewId,
+      1,
+    );
+
+    if (tasksResponse.isSuccessful) {
+      updateTotalPages(tasksResponse.toSuccess().headers);
+      final tasks = tasksResponse.toSuccess().body;
+      return ProjectPageModel(project, 0, tasks, [], displayDoneTask);
+    } else if (tasksResponse.isException) {
+      throw Exception(tasksResponse.toException().message);
+    } else {
+      throw Exception(tasksResponse.toError().error.toString());
+    }
+  }
+
+  Future<void> loadNextPage() async {
+    if (state.isLoading || state.hasError) return;
+    final currentState = state.value;
+    if (currentState == null) return;
+
+    if (currentState.project.views.isEmpty) return;
+
+    final currentView = currentState.project.views[currentState.viewIndex];
+    if (currentView.viewKind == ViewKind.list) {
+      final viewId = currentView.id;
+
+      await loadMoreItems(
+        fetcher: (page) => _loadTasks(
+          currentState.project.id,
+          currentState.displayDoneTask,
+          viewId,
+          page,
+        ),
+        stateUpdater: (newTasks) {
+          final updatedTasks = [
+            ...currentState.tasks,
+            ...newTasks as List<Task>,
+          ];
+          state = AsyncData(currentState.copyWith(tasks: updatedTasks));
+        },
+      );
+    } else if (currentView.viewKind == ViewKind.kanban) {
+      final viewId = currentView.id;
+
+      await loadMoreItems(
+        fetcher: (page) => _loadBuckets(
+          projectId: currentState.project.id,
+          viewId: viewId,
+          page: page,
+        ),
+        stateUpdater: (newTasks) {
+          for (int i = 0; i < newTasks.length; i++) {
+            var firstWhere = currentState.buckets.firstWhereOrNull(
+              (e) => e.id == (newTasks[i] as Bucket).id,
+            );
+            if (firstWhere != null) {
+              currentState.buckets[i].tasks.addAll((newTasks[i] as Bucket).tasks);
+            }
+          }
+          state = AsyncData(currentState.copyWith(buckets: currentState.buckets));
+        },
+      );
     }
   }
 
   Future<void> loadForView(Project project, int viewIndex) async {
+    resetPagination();
+
     var displayDoneTask = await ref
         .read(settingsRepositoryProvider)
         .getDisplayDoneTasks(project.id);
@@ -45,17 +102,26 @@ class ProjectController extends _$ProjectController {
     int? viewId = viewIndex == 0
         ? project.views.firstWhere((view) => view.viewKind == ViewKind.list).id
         : null;
-    var tasksResponse = await _loadTasks(project.id, displayDoneTask, viewId);
 
-    switch (tasksResponse) {
-      case SuccessResponse<List<Task>>():
-        tasks = tasksResponse.body;
-      case ErrorResponse<List<Task>>():
-        state = AsyncError(tasksResponse.error, StackTrace.current);
-        return;
-      case ExceptionResponse<List<Task>>():
-        state = AsyncError(tasksResponse.message, StackTrace.current);
-        return;
+    var tasksResponse = await _loadTasks(
+      project.id,
+      displayDoneTask,
+      viewId,
+      1,
+    );
+
+    if (tasksResponse.isSuccessful) {
+      updateTotalPages(tasksResponse.toSuccess().headers);
+      tasks = tasksResponse.toSuccess().body;
+    } else if (tasksResponse.isError) {
+      state = AsyncError(tasksResponse.toError().error, StackTrace.current);
+      return;
+    } else if (tasksResponse.isException) {
+      state = AsyncError(
+        tasksResponse.toException().message,
+        StackTrace.current,
+      );
+      return;
     }
 
     var buckets = <Bucket>[];
@@ -94,6 +160,7 @@ class ProjectController extends _$ProjectController {
     int projectId,
     bool displayDoneTasks, [
     int? view,
+    int page = 1,
   ]) async {
     var repo = ref.read(taskRepositoryProvider);
 
@@ -101,12 +168,12 @@ class ProjectController extends _$ProjectController {
         ? {
             "sort_by": ["done", "id"],
             "order_by": ["asc", "desc"],
-            "page": ["1"],
+            "page": ["$page"],
           }
         : {
             "sort_by": ["position"],
             "order_by": ["asc"],
-            "page": ["1"],
+            "page": ["$page"],
           };
 
     if (!displayDoneTasks) {

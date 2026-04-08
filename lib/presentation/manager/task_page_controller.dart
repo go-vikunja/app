@@ -6,18 +6,23 @@ import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/entities/task_page_model.dart';
+import 'package:vikunja_app/presentation/manager/pagination_mixin.dart';
 import 'package:vikunja_app/presentation/manager/widget_controller.dart';
 
 part 'task_page_controller.g.dart';
 
 @riverpod
-class TaskPageController extends _$TaskPageController {
+class TaskPageController extends _$TaskPageController with PaginationMixin<Task> {
+
   @override
   Future<TaskPageModel> build() async {
+    resetPagination();
+
     var tasksResponse = await _getAllFiltered();
 
     switch (tasksResponse) {
       case SuccessResponse<List<Task>>():
+        updateTotalPages(tasksResponse.headers);
         return await _createPageModel(tasksResponse.body);
       case ErrorResponse<List<Task>>():
         throw AsyncError(tasksResponse.error, StackTrace.current);
@@ -27,10 +32,14 @@ class TaskPageController extends _$TaskPageController {
   }
 
   void reload() async {
+    state = const AsyncLoading();
+    resetPagination();
+    
     var tasksResponse = await _getAllFiltered();
 
     switch (tasksResponse) {
       case SuccessResponse<List<Task>>():
+        updateTotalPages(tasksResponse.headers);
         var pageModel = await _createPageModel(tasksResponse.body);
         state = AsyncData(pageModel);
       case ErrorResponse<List<Task>>():
@@ -38,6 +47,24 @@ class TaskPageController extends _$TaskPageController {
       case ExceptionResponse<List<Task>>():
         state = AsyncError(tasksResponse.message, StackTrace.current);
     }
+  }
+  
+  Future<void> loadNextPage() async {
+    if (state.isLoading || state.hasError) return;
+
+    await loadMoreItems(
+      fetcher: (page) => _getAllFiltered(page: page),
+      stateUpdater: (newTasks) async {
+        var projectsResponse = await ref.read(projectRepositoryProvider).getAll();
+        _setProjectOfTask(projectsResponse, newTasks as List<Task>);
+
+        final currentModel = state.value;
+        if (currentModel != null) {
+          final updatedTasks = [...currentModel.tasks, ...newTasks];
+          state = AsyncData(currentModel.copyWith(tasks: updatedTasks));
+        }
+      },
+    );
   }
 
   Future<TaskPageModel> _createPageModel(List<Task> tasks) async {
@@ -75,7 +102,7 @@ class TaskPageController extends _$TaskPageController {
     }
   }
 
-  Future<Response<List<Task>>> _getAllFiltered() async {
+  Future<Response<List<Task>>> _getAllFiltered({int page = 1}) async {
     var showOnlyDueDateTasks = await ref
         .read(settingsRepositoryProvider)
         .getLandingPageOnlyDueDateTasks();
@@ -90,6 +117,7 @@ class TaskPageController extends _$TaskPageController {
             .getAllByProject(filterId, {
               "sort_by": ["due_date", "id"],
               "order_by": ["asc", "desc"],
+              "page": ["$page"],
             });
 
         return tasksResponse;
@@ -107,6 +135,7 @@ class TaskPageController extends _$TaskPageController {
           "sort_by": ["due_date", "id"],
           "order_by": ["asc", "desc"],
           "filter_include_nulls": ["false"],
+          "page": ["$page"],
         });
 
     return tasksResponse;
