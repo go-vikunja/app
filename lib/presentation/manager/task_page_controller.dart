@@ -51,6 +51,12 @@ class TaskPageController extends _$TaskPageController with PaginationMixin<Task>
   
   Future<void> loadNextPage() async {
     if (state.isLoading || state.hasError) return;
+    if (!canLoadNextPage) return;
+
+    final currentModel = state.value;
+    if (currentModel == null) return;
+
+    state = AsyncData(currentModel.copyWith(isLoadingNextPage: true));
 
     await loadMoreItems(
       fetcher: (page) => _getAllFiltered(page: page),
@@ -58,13 +64,21 @@ class TaskPageController extends _$TaskPageController with PaginationMixin<Task>
         var projectsResponse = await ref.read(projectRepositoryProvider).getAll();
         _setProjectOfTask(projectsResponse, newTasks as List<Task>);
 
-        final currentModel = state.value;
-        if (currentModel != null) {
-          final updatedTasks = [...currentModel.tasks, ...newTasks];
-          state = AsyncData(currentModel.copyWith(tasks: updatedTasks));
+        final latestModel = state.value;
+        if (latestModel != null) {
+          final updatedTasks = [...latestModel.tasks, ...newTasks];
+          state = AsyncData(latestModel.copyWith(
+            tasks: updatedTasks,
+            isLoadingNextPage: false,
+          ));
         }
       },
     );
+
+    // Fallback
+    if (state.value?.isLoadingNextPage == true) {
+      state = AsyncData(state.value!.copyWith(isLoadingNextPage: false));
+    }
   }
 
   Future<TaskPageModel> _createPageModel(List<Task> tasks) async {
@@ -84,7 +98,7 @@ class TaskPageController extends _$TaskPageController with PaginationMixin<Task>
         .read(settingsRepositoryProvider)
         .getLandingPageOnlyDueDateTasks();
 
-    return TaskPageModel(tasks, showOnlyDueDateTasks, defaultProjectId);
+    return TaskPageModel(tasks, showOnlyDueDateTasks, defaultProjectId, false);
   }
 
   void _setProjectOfTask(

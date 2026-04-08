@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
@@ -18,7 +19,9 @@ class ProjectListPage extends ConsumerWidget {
     final controller = ref.watch(projectsControllerProvider);
 
     return controller.when(
-      data: (projects) {
+      data: (model) {
+        final projects = model.projects;
+        final itemCount = projects.length + (model.isLoadingNextPage ? 1 : 0);
         return Scaffold(
           body: NotificationListener<ScrollNotification>(
             onNotification: (ScrollNotification scrollInfo) {
@@ -30,10 +33,21 @@ class ProjectListPage extends ConsumerWidget {
             },
             child: RefreshIndicator(
               child: ListView.separated(
-                itemCount: projects.length,
+                itemCount: itemCount,
                 separatorBuilder: (BuildContext context, int index) =>
                     const Divider(height: 8),
                 itemBuilder: (context, index) {
+                  if (index == projects.length) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16.0),
+                      child: Center(
+                        child: SpinKitThreeBounce(
+                          color: Theme.of(context).primaryColor,
+                          size: 16,
+                        ),
+                      ),
+                    );
+                  }
                   return _buildListItem(ref, projects[index]);
                 },
               ),

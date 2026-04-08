@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:vikunja_app/domain/entities/bucket.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
@@ -127,6 +128,9 @@ class _TaskListState extends ConsumerState<TaskList> {
   @override
   Widget build(BuildContext context) {
     final tasks = widget.bucket.tasks;
+    final projectState = ref.watch(projectControllerProvider(widget.project));
+    final isLoadingNextPage =
+        projectState.valueOrNull?.isLoadingNextPage ?? false;
 
     return Scrollbar(
       controller: _scrollController,
@@ -216,6 +220,16 @@ class _TaskListState extends ConsumerState<TaskList> {
                   },
                 ),
               ],
+              if (isLoadingNextPage)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16.0),
+                  child: Center(
+                    child: SpinKitThreeBounce(
+                      color: Theme.of(context).primaryColor,
+                      size: 16,
+                    ),
+                  ),
+                ),
             ],
           ),
         ),

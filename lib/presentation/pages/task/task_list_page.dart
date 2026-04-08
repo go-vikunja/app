@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/entities/task_page_model.dart';
@@ -68,10 +69,23 @@ class TaskListPage extends ConsumerWidget {
     if (model.tasks.isEmpty) {
       return EmptyView(Icons.list, AppLocalizations.of(context).noTasks);
     } else {
+      final itemCount = model.tasks.length + (model.isLoadingNextPage ? 1 : 0);
       return ListView.separated(
-        itemCount: model.tasks.length,
-        separatorBuilder: (BuildContext context, int index) => const Divider(height: 8,),
+        itemCount: itemCount,
+        separatorBuilder: (BuildContext context, int index) =>
+            const Divider(height: 8),
         itemBuilder: (context, index) {
+          if (index == model.tasks.length) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16.0),
+              child: Center(
+                child: SpinKitThreeBounce(
+                  color: Theme.of(context).primaryColor,
+                  size: 16,
+                ),
+              ),
+            );
+          }
           return _createListItem(ref, context, model.tasks[index]);
         },
       );
