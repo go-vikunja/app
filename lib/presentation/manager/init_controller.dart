@@ -15,8 +15,9 @@ sealed class InitOutcome {
 
 class InitGoLogin extends InitOutcome {
   final bool loginExpired;
+  final Version? serverVersion;
 
-  const InitGoLogin({this.loginExpired = false});
+  const InitGoLogin({this.loginExpired = false, this.serverVersion});
 }
 
 class InitGoHome extends InitOutcome {
@@ -33,16 +34,11 @@ Future<InitOutcome> _runInit(Ref ref) async {
   final settingsRepo = ref.read(settingsRepositoryProvider);
 
   final server = await settingsRepo.getServer();
-  final token = await settingsRepo.getUserToken();
-  final refreshCookie = await settingsRepo.getRefreshCookie();
-
-  if (server == null || token == null) {
+  if (server == null) {
     return const InitGoLogin();
   }
 
-  ref
-      .read(authDataProvider.notifier)
-      .set(AuthModel(server, token, refreshCookie: refreshCookie));
+  ref.read(authDataProvider.notifier).set(AuthModel(server));
 
   Version? serverVersion;
   final Response<Server> info = await ref
@@ -59,6 +55,13 @@ Future<InitOutcome> _runInit(Ref ref) async {
     );
   }
 
+  final token = await settingsRepo.getUserToken();
+  if (token == null) {
+    return InitGoLogin(serverVersion: serverVersion);
+  }
+
+  await settingsRepo.getRefreshToken();
+
   final userResponse = await ref.read(userRepositoryProvider).getCurrentUser();
 
   if (userResponse.isSuccessful) {
@@ -70,8 +73,8 @@ Future<InitOutcome> _runInit(Ref ref) async {
     final err = userResponse.toError();
     if (err.statusCode == 401) {
       await settingsRepo.saveUserToken(null);
-      await settingsRepo.saveRefreshCookie(null);
-      return const InitGoLogin(loginExpired: true);
+      await settingsRepo.saveRefreshToken(null);
+      return InitGoLogin(loginExpired: true, serverVersion: serverVersion);
     }
 
     throw err.error['message'] ?? err.error;
