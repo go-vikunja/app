@@ -202,6 +202,7 @@
   "language": "Language",
   "systemLanguage": "System Language",
   "connectionError": "Connection error",
+  "connectionTimeout": "Connection timeout. Please check your network and try again.",
   "dueOptionNone": "None",
   "dueOptionToday": "Today",
   "dueOptionTomorrow": "Tomorrow",
