@@ -39,27 +39,26 @@ class VikunjaErrorWidget extends StatelessWidget {
   }
 
   Widget getErrorWidget(BuildContext context, Object error) {
-    if (error is AsyncError) {
-      return getErrorWidget(context, error.error);
+    switch (error) {
+      case AsyncError(:final error):
+        return getErrorWidget(context, error);
+      case ClientException():
+        return Text(
+          AppLocalizations.of(context).connectionError,
+          style: Theme.of(context).textTheme.titleLarge,
+        );
+      case TimeoutException():
+        return Text(
+          AppLocalizations.of(context).connectionTimeout,
+          style: Theme.of(context).textTheme.titleLarge,
+        );
+      case String():
+        return Text(error, style: Theme.of(context).textTheme.titleLarge);
+      default:
+        return Text(
+          error.toString(),
+          style: Theme.of(context).textTheme.titleLarge,
+        );
     }
-
-    if (error is ClientException) {
-      return Text(
-        AppLocalizations.of(context).connectionError,
-        style: Theme.of(context).textTheme.titleLarge,
-      );
-    } else if (error is TimeoutException) {
-      return Text(
-        AppLocalizations.of(context).connectionTimeout,
-        style: Theme.of(context).textTheme.titleLarge,
-      );
-    } else if (error is String) {
-      return Text(error, style: Theme.of(context).textTheme.titleLarge);
-    }
-
-    return Text(
-      error.toString(),
-      style: Theme.of(context).textTheme.titleLarge,
-    );
   }
 }
