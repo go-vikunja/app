@@ -13,8 +13,11 @@ mixin PaginationMixin<T> {
   }
 
   void updateTotalPages(Map<String, String> headers) {
-    var checkHeaders = headers.map((key, value) => MapEntry(key.toLowerCase(), value));
-    _totalPages = int.tryParse(checkHeaders['x-pagination-total-pages'] ?? '1') ?? 1;
+    var checkHeaders = headers.map(
+      (key, value) => MapEntry(key.toLowerCase(), value),
+    );
+    _totalPages =
+        int.tryParse(checkHeaders['x-pagination-total-pages'] ?? '1') ?? 1;
   }
 
   Future<void> loadMoreItems({
@@ -27,7 +30,7 @@ mixin PaginationMixin<T> {
     final nextPage = _currentPage + 1;
 
     await Future.delayed(Duration(seconds: 3));
-    
+
     try {
       final response = await fetcher(nextPage);
       if (response.isSuccessful) {
@@ -44,7 +47,5 @@ mixin PaginationMixin<T> {
   }
 
   bool get hasMorePages => _currentPage < _totalPages;
-  bool get canLoadNextPage =>hasMorePages && !loadingNextPage;
+  bool get canLoadNextPage => hasMorePages && !loadingNextPage;
 }
-
-

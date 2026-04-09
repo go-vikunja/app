@@ -12,8 +12,8 @@ import 'package:vikunja_app/presentation/manager/widget_controller.dart';
 part 'task_page_controller.g.dart';
 
 @riverpod
-class TaskPageController extends _$TaskPageController with PaginationMixin<Task> {
-
+class TaskPageController extends _$TaskPageController
+    with PaginationMixin<Task> {
   @override
   Future<TaskPageModel> build() async {
     resetPagination();
@@ -34,7 +34,7 @@ class TaskPageController extends _$TaskPageController with PaginationMixin<Task>
   void reload() async {
     state = const AsyncLoading();
     resetPagination();
-    
+
     var tasksResponse = await _getAllFiltered();
 
     switch (tasksResponse) {
@@ -48,7 +48,7 @@ class TaskPageController extends _$TaskPageController with PaginationMixin<Task>
         state = AsyncError(tasksResponse.message, StackTrace.current);
     }
   }
-  
+
   Future<void> loadNextPage() async {
     if (state.isLoading || state.hasError) return;
     if (!canLoadNextPage) return;
@@ -61,16 +61,17 @@ class TaskPageController extends _$TaskPageController with PaginationMixin<Task>
     await loadMoreItems(
       fetcher: (page) => _getAllFiltered(page: page),
       stateUpdater: (newTasks) async {
-        var projectsResponse = await ref.read(projectRepositoryProvider).getAll();
+        var projectsResponse = await ref
+            .read(projectRepositoryProvider)
+            .getAll();
         _setProjectOfTask(projectsResponse, newTasks as List<Task>);
 
         final latestModel = state.value;
         if (latestModel != null) {
           final updatedTasks = [...latestModel.tasks, ...newTasks];
-          state = AsyncData(latestModel.copyWith(
-            tasks: updatedTasks,
-            isLoadingNextPage: false,
-          ));
+          state = AsyncData(
+            latestModel.copyWith(tasks: updatedTasks, isLoadingNextPage: false),
+          );
         }
       },
     );

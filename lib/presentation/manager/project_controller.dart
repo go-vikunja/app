@@ -66,10 +66,12 @@ class ProjectController extends _$ProjectController with PaginationMixin<Task> {
             ...currentState.tasks,
             ...newTasks as List<Task>,
           ];
-          state = AsyncData(currentState.copyWith(
-            tasks: updatedTasks,
-            isLoadingNextPage: false,
-          ));
+          state = AsyncData(
+            currentState.copyWith(
+              tasks: updatedTasks,
+              isLoadingNextPage: false,
+            ),
+          );
         },
       );
     } else if (currentView.viewKind == ViewKind.kanban) {
@@ -87,13 +89,17 @@ class ProjectController extends _$ProjectController with PaginationMixin<Task> {
               (e) => e.id == (newTasks[i] as Bucket).id,
             );
             if (firstWhere != null) {
-              currentState.buckets[i].tasks.addAll((newTasks[i] as Bucket).tasks);
+              currentState.buckets[i].tasks.addAll(
+                (newTasks[i] as Bucket).tasks,
+              );
             }
           }
-          state = AsyncData(currentState.copyWith(
-            buckets: currentState.buckets,
-            isLoadingNextPage: false,
-          ));
+          state = AsyncData(
+            currentState.copyWith(
+              buckets: currentState.buckets,
+              isLoadingNextPage: false,
+            ),
+          );
         },
       );
     }
@@ -157,7 +163,14 @@ class ProjectController extends _$ProjectController with PaginationMixin<Task> {
     }
 
     state = AsyncData(
-      ProjectPageModel(project, viewIndex, tasks, buckets, displayDoneTask, false),
+      ProjectPageModel(
+        project,
+        viewIndex,
+        tasks,
+        buckets,
+        displayDoneTask,
+        false,
+      ),
     );
   }
 

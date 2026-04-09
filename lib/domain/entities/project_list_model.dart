@@ -4,10 +4,7 @@ class ProjectListModel {
   List<Project> projects;
   bool isLoadingNextPage;
 
-  ProjectListModel(
-    this.projects, {
-    this.isLoadingNextPage = false,
-  });
+  ProjectListModel(this.projects, {this.isLoadingNextPage = false});
 
   ProjectListModel copyWith({
     List<Project>? projects,
@@ -19,4 +16,3 @@ class ProjectListModel {
     );
   }
 }
-

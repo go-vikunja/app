@@ -7,14 +7,14 @@ import 'package:vikunja_app/presentation/manager/pagination_mixin.dart';
 part 'projects_controller.g.dart';
 
 @riverpod
-class ProjectsController extends _$ProjectsController with PaginationMixin<Project> {
-
+class ProjectsController extends _$ProjectsController
+    with PaginationMixin<Project> {
   @override
   Future<ProjectListModel> build() async {
     resetPagination();
 
     var response = await ref.read(projectRepositoryProvider).getAll(page: 1);
-    
+
     if (response.isSuccessful) {
       updateTotalPages(response.toSuccess().headers);
       return ProjectListModel(response.toSuccess().body);
@@ -28,7 +28,7 @@ class ProjectsController extends _$ProjectsController with PaginationMixin<Proje
   void reload() async {
     state = const AsyncLoading();
     resetPagination();
-    
+
     var response = await ref.read(projectRepositoryProvider).getAll(page: 1);
     if (response.isSuccessful) {
       updateTotalPages(response.toSuccess().headers);
@@ -57,10 +57,15 @@ class ProjectsController extends _$ProjectsController with PaginationMixin<Proje
       stateUpdater: (newProjects) {
         final latestModel = state.value;
         if (latestModel != null) {
-          state = AsyncData(latestModel.copyWith(
-            projects: [...latestModel.projects, ...newProjects as List<Project>],
-            isLoadingNextPage: false,
-          ));
+          state = AsyncData(
+            latestModel.copyWith(
+              projects: [
+                ...latestModel.projects,
+                ...newProjects as List<Project>,
+              ],
+              isLoadingNextPage: false,
+            ),
+          );
         }
       },
     );
