@@ -6,7 +6,7 @@
       "request": "launch",
       "program": "lib/main.dart",
       "args": ["-d", "chrome", "--flavor", "main"],
-      "deviceId": "chrome",
+      "deviceId": "chrome"
     },
     {
       "name": "Flutter",

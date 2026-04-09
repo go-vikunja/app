@@ -22,8 +22,10 @@ class EditDescriptionState extends State<EditDescription> {
         actions: <Widget>[
           IconButton(
             icon: Icon(Icons.save),
-            onPressed: () {
-              Navigator.pop(context, controller.getText());
+            onPressed: () async {
+              var txt = await controller.getText();
+              if (!context.mounted) return;
+              Navigator.pop(context, txt);
             },
           ),
         ],

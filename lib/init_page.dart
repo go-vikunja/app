@@ -19,7 +19,17 @@ class InitPage extends ConsumerWidget {
           if (!context.mounted) return;
 
           switch (outcome) {
-            case InitGoLogin(:final loginExpired):
+            case InitGoLogin(:final loginExpired, :final serverVersion):
+              if (serverVersion != null &&
+                  !serverVersion.isCompatibleWith(minimumServerVersion)) {
+                await showDialog<void>(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (BuildContext context) {
+                    return VersionMismatchDialog(serverVersion: serverVersion);
+                  },
+                );
+              }
               if (loginExpired) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -32,7 +42,7 @@ class InitPage extends ConsumerWidget {
               globalNavigatorKey.currentState?.pushReplacementNamed('/login');
             case InitGoHome(:final serverVersion):
               if (serverVersion != null &&
-                  serverVersion != supportedServerVersion) {
+                  !serverVersion.isCompatibleWith(minimumServerVersion)) {
                 await showDialog<void>(
                   context: context,
                   barrierDismissible: false,

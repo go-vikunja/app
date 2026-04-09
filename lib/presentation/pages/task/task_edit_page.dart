@@ -53,6 +53,7 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
   Completer<Iterable<String>>? _lastCompleter;
 
   bool changed = false;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -93,15 +94,27 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
       },
       child: Scaffold(
         appBar: _buildAppBar(),
-        body: _buildForm(context),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {
-            if (_formKey.currentState?.validate() == true) {
-              _saveTask(ctx);
-            }
-          },
-          child: Icon(Icons.save),
+        body: Stack(
+          children: [
+            _buildForm(context),
+            if (_isLoading)
+              const Opacity(
+                opacity: 0.5,
+                child: ModalBarrier(dismissible: false, color: Colors.black),
+              ),
+            if (_isLoading) const Center(child: CircularProgressIndicator()),
+          ],
         ),
+        floatingActionButton: _isLoading
+            ? null
+            : FloatingActionButton(
+                onPressed: () {
+                  if (_formKey.currentState?.validate() == true) {
+                    _saveTask(ctx);
+                  }
+                },
+                child: Icon(Icons.save),
+              ),
       ),
     );
   }
@@ -112,41 +125,41 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
       actions: [
         IconButton(
           icon: Icon(Icons.delete),
-          onPressed: () {
-            showDialog(
-              context: context,
-              builder: (BuildContext context) {
-                return TaskDeleteDialog(
-                  widget.task.id,
-                  onConfirm: () async {
-                    var success = await ref
-                        .read(taskPageControllerProvider.notifier)
-                        .deleteTask(widget.task.id);
-
-                    if (context.mounted) {
-                      if (success) {
-                        Navigator.of(context).pop();
-                        Navigator.of(context).pop(widget.task);
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              AppLocalizations.of(context).taskDeleteError,
-                            ),
-                          ),
-                        );
-                      }
-                    }
-                  },
-                  onCancel: () {
-                    Navigator.of(context).pop();
-                  },
-                );
-              },
-            );
-          },
+          onPressed: _isLoading ? null : showDeleteConfirmDialog,
         ),
       ],
+    );
+  }
+
+  void showDeleteConfirmDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return TaskDeleteDialog(
+          widget.task.id,
+          onConfirm: () async {
+            var success = await ref
+                .read(taskPageControllerProvider.notifier)
+                .deleteTask(widget.task.id);
+
+            if (context.mounted) {
+              if (success) {
+                Navigator.of(context).pop();
+                Navigator.of(context).pop(widget.task);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(AppLocalizations.of(context).taskDeleteError),
+                  ),
+                );
+              }
+            }
+          },
+          onCancel: () {
+            Navigator.of(context).pop();
+          },
+        );
+      },
     );
   }
 
@@ -198,7 +211,7 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
       padding: EdgeInsets.symmetric(vertical: 8.0),
       child: InkWell(
         onTap: () async {
-          var description = await Navigator.push(
+          var description = await Navigator.push<String>(
             context,
             MaterialPageRoute(
               builder: (buildContext) =>
@@ -738,55 +751,69 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
   }
 
   Future<void> _saveTask(BuildContext context) async {
-    // Removes all reminders with no value set.
-    _reminderDates?.removeWhere((d) => d.reminder == DateTime(0));
+    setState(() {
+      _isLoading = true;
+    });
 
-    final updatedTask =
-        widget.task.copyWith(
-            title: _title,
-            description: _description,
-            reminderDates: _reminderDates,
-            priority: _priority,
-            labels: _labels,
-            repeatAfter: _repeatAfterUnit.getDuration(_repeatAfterValue),
-          )
-          //Need to be here as they can be null
-          ..dueDate = _dueDate
-          ..startDate = _startDate
-          ..endDate = _endDate
-          ..color = _color;
+    try {
+      // Removes all reminders with no value set.
+      _reminderDates?.removeWhere((d) => d.reminder == DateTime(0));
 
-    // update the labels
-    if (_labels != null) {
-      var updateLabelSuccess = await ref
-          .read(taskLabelBulkRepositoryProvider)
-          .update(updatedTask, _labels!);
+      final updatedTask =
+          widget.task.copyWith(
+              title: _title,
+              description: _description,
+              reminderDates: _reminderDates,
+              priority: _priority,
+              labels: _labels,
+              repeatAfter: _repeatAfterUnit.getDuration(_repeatAfterValue),
+            )
+            //Need to be here as they can be null
+            ..dueDate = _dueDate
+            ..startDate = _startDate
+            ..endDate = _endDate
+            ..color = _color;
 
-      if (!updateLabelSuccess.isSuccessful && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppLocalizations.of(context).taskSaveError)),
-        );
-        return;
+      // update the labels
+      if (_labels != null) {
+        var updateLabelSuccess = await ref
+            .read(taskLabelBulkRepositoryProvider)
+            .update(updatedTask, _labels!);
+
+        if (!updateLabelSuccess.isSuccessful && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(AppLocalizations.of(context).taskSaveError)),
+          );
+          return;
+        }
       }
-    }
 
-    var saveSuccess = await ref
-        .read(taskPageControllerProvider.notifier)
-        .updateTask(updatedTask);
+      var saveSuccess = await ref
+          .read(taskPageControllerProvider.notifier)
+          .updateTask(updatedTask);
 
-    if (context.mounted) {
-      if (saveSuccess) {
-        Navigator.of(context).pop(updatedTask);
+      if (context.mounted) {
+        if (saveSuccess) {
+          if (ModalRoute.of(context)?.isCurrent == true) {
+            Navigator.of(context).pop(updatedTask);
+          }
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context).taskUpdatedSuccess),
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppLocalizations.of(context).taskSaveError)),
-        );
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(AppLocalizations.of(context).taskUpdatedSuccess),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(AppLocalizations.of(context).taskSaveError)),
+          );
+        }
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
       }
     }
   }

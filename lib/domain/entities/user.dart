@@ -75,24 +75,3 @@ class User {
     return "$baseUrl/avatar/$username";
   }
 }
-
-class UserToken {
-  final String token;
-  final String? refreshCookie;
-  final int error;
-  final String errorString;
-
-  UserToken(
-    this.token, {
-    this.refreshCookie,
-    this.error = 0,
-    this.errorString = "",
-  });
-}
-
-class BaseTokenPair {
-  final String base;
-  final String token;
-
-  BaseTokenPair(this.base, this.token);
-}

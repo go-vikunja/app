@@ -23,7 +23,7 @@ class VersionMismatchDialog extends StatelessWidget {
               child: Text(
                 AppLocalizations.of(
                   context,
-                ).versionDialogSupported(supportedServerVersion.toString()),
+                ).versionDialogSupported(minimumServerVersion.toString()),
               ),
             ),
             Padding(
