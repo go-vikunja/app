@@ -1,4 +1,4 @@
-package io.vikunja.flutteringvikunja.widget
+package io.vikunja.app.widget
 
 import es.antonborri.home_widget.HomeWidgetGlanceState
 import es.antonborri.home_widget.HomeWidgetGlanceStateDefinition
@@ -47,10 +47,10 @@ import androidx.glance.ImageProvider
 import androidx.glance.action.ActionParameters
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.components.CircleIconButton
-import io.vikunja.flutteringvikunja.MainActivity
-import io.vikunja.flutteringvikunja.R
+import io.vikunja.app.MainActivity
+import io.vikunja.app.R
 import androidx.glance.appwidget.action.ActionCallback
-import io.vikunja.flutteringvikunja.INTENT_TYPE_ADD_TASK
+import io.vikunja.app.INTENT_TYPE_ADD_TASK
 
 class InteractiveAction : ActionCallback {
     override suspend fun onAction(
