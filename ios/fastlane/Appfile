@@ -1,4 +1,4 @@
-app_identifier("io.vikunja.flutteringVikunja") # The bundle identifier of your app
+app_identifier("io.vikunja.app") # The bundle identifier of your app
 apple_id("email@jfdev.de") # Your Apple email address
 
 itc_team_id("117734679") # App Store Connect Team ID

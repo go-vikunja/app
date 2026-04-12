@@ -31,7 +31,7 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace 'io.vikunja.flutteringvikunja'
+    namespace 'io.vikunja.app'
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 

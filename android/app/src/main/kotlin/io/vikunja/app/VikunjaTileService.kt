@@ -1,4 +1,4 @@
-package io.vikunja.flutteringvikunja
+package io.vikunja.app
 
 
 import android.content.Intent
