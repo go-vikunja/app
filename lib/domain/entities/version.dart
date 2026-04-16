@@ -76,6 +76,14 @@ class Version {
     return false;
   }
 
+  /// Returns true if this version is semver-compatible with [minimum].
+  /// Compatible means: same major version, and this version >= minimum
+  /// (considering minor, patch, and pre-release labels).
+  bool isCompatibleWith(Version minimum) {
+    if (major != minimum.major) return false;
+    return isNewerThan(minimum) || this == minimum;
+  }
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||

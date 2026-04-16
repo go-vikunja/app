@@ -17,7 +17,7 @@ Future<void> widgetCallback(Uri? uri) async {
   if (uri?.host == "completetask") {
     String? taskID = uri?.queryParameters['taskID'];
     if (taskID != null) {
-      completeTask(taskID);
+      await completeTask(taskID);
     } else {
       developer.log("No TaskID provided for widget");
     }
@@ -48,20 +48,14 @@ void callbackDispatcher() {
 /// and were not yet loaded in the app
 Future<bool> updateTasks() async {
   var datasource = SettingsDatasource(FlutterSecureStorage());
-  var token = await datasource.getUserToken();
   var base = await datasource.getServer();
-  var refreshCookie = await datasource.getRefreshCookie();
+  var refreshToken = await datasource.getRefreshToken();
 
-  if (token == null || base == null) {
+  if (refreshToken == null || base == null) {
     return Future.value(true);
   }
 
-  Client client = Client(
-    token: token,
-    base: base,
-    refreshCookie: refreshCookie,
-    settingsDatasource: datasource,
-  );
+  Client client = Client(base: base);
   tz.initializeTimeZones();
 
   var ignoreCertificates = await datasource.getIgnoreCertificates();
@@ -69,7 +63,7 @@ Future<bool> updateTasks() async {
 
   TaskRepository taskService = TaskRepositoryImpl(TaskDataSource(client));
 
-  updateWidget();
+  await updateWidget();
 
   NotificationHandler notificationHandler = NotificationHandler();
   await notificationHandler.initNotifications();

@@ -2,18 +2,18 @@ import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:vikunja_app/domain/entities/version.dart';
-import 'package:vikunja_app/l10n/gen/app_localizations.dart';
-import 'package:vikunja_app/core/di/locale_provider.dart';
-import 'package:vikunja_app/core/utils/language_autonyms.dart';
-import 'package:vikunja_app/core/utils/user_extensions.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:vikunja_app/core/di/locale_provider.dart';
 import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/core/di/notification_provider.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/core/theming/theme_mode.dart';
+import 'package:vikunja_app/core/utils/language_autonyms.dart';
+import 'package:vikunja_app/core/utils/user_extensions.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/user.dart';
+import 'package:vikunja_app/domain/entities/version.dart';
+import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/presentation/manager/settings_controller.dart';
 import 'package:vikunja_app/presentation/pages/error_widget.dart';
 import 'package:vikunja_app/presentation/pages/loading_widget.dart';
@@ -235,7 +235,7 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
                 onPressed: () {
                   ref.read(settingsRepositoryProvider).saveServer(null);
                   ref.read(settingsRepositoryProvider).saveUserToken(null);
-                  ref.read(settingsRepositoryProvider).saveRefreshCookie(null);
+                  ref.read(settingsRepositoryProvider).saveRefreshToken(null);
 
                   Navigator.of(context).popUntil((route) => route.isFirst);
                   Navigator.pushReplacement(
@@ -248,7 +248,10 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
             ],
           );
         },
-        error: (err, _) => VikunjaErrorWidget(error: err),
+        error: (err, _) => VikunjaErrorWidget(
+          error: err,
+          onRetry: () => ref.invalidate(settingsControllerProvider),
+        ),
         loading: () => const LoadingWidget(),
       ),
     );
@@ -275,13 +278,24 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
               color: Theme.of(context).colorScheme.onSecondaryContainer,
             ),
           ),
-          currentAccountPicture: CircleAvatar(
-            backgroundImage: user.username != ""
-                ? NetworkImage(
-                    user.avatarUrl(ref.read(clientProviderProvider).base),
-                    headers: ref.read(clientProviderProvider).getHeaders(),
-                  )
-                : null,
+          currentAccountPicture: FutureBuilder(
+            future: ref.read(clientProviderProvider).getHeaders(),
+            builder: (context, asyncSnapshot) {
+              if (asyncSnapshot.hasData && asyncSnapshot.data != null) {
+                return CircleAvatar(
+                  backgroundImage: user.username != ""
+                      ? NetworkImage(
+                          user.avatarUrl(
+                            ref.read(clientProviderProvider).apiBase,
+                          ),
+                          headers: asyncSnapshot.data,
+                        )
+                      : null,
+                );
+              } else {
+                return CircleAvatar();
+              }
+            },
           ),
           decoration: BoxDecoration(
             image: DecorationImage(
