@@ -179,9 +179,13 @@ class Client {
     required String url,
     dynamic body,
   }) async {
-    return _httpClient.post(
+    return _httpClient
+        .post(
           '$apiBase$url'.toUri()!,
-          headers: {'Content-Type': 'application/json', 'User-Agent': userAgent},
+          headers: {
+            'Content-Type': 'application/json',
+            'User-Agent': userAgent,
+          },
           body: _encoder.convert(body),
         )
         .timeout(_requestTimeout);
@@ -247,7 +251,8 @@ class Client {
             return false;
           }
 
-          var response = await refreshClient.post(
+          var response = await refreshClient
+              .post(
                 '$apiBase/oauth/token'.toUri()!,
                 headers: {
                   'Content-Type': 'application/json',
