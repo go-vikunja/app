@@ -71,6 +71,12 @@ android {
         production {
             signingConfig signingConfigs.release
         }
+        fdroid {
+            // Official F-Droid builds won't have our private release keystore.
+            // If key.properties is present (CI / local release signing), sign like production.
+            // Otherwise fall back to debug signing (F-Droid will re-sign anyway).
+            signingConfig keystorePropertiesFile.exists() ? signingConfigs.release : signingConfigs.debug
+        }
     }
 
     flavorDimensions "deploy"
