@@ -1,1 +1,0 @@
-Open-source, self-hosted to-do app with task management and collaboration features

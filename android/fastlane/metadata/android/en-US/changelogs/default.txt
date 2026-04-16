@@ -1,2 +1,0 @@
-For detailed changelog information, please visit:
-https://github.com/go-vikunja/app/releases
