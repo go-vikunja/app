@@ -6,6 +6,7 @@ import 'package:vikunja_app/main.dart';
 import 'package:vikunja_app/presentation/pages/error_widget.dart';
 import 'package:vikunja_app/presentation/pages/loading_widget.dart';
 import 'package:vikunja_app/presentation/manager/init_controller.dart';
+import 'package:vikunja_app/presentation/manager/init_controller.dart';
 import 'package:vikunja_app/presentation/widgets/version_mismatch_dialog.dart';
 
 class InitPage extends ConsumerStatefulWidget {

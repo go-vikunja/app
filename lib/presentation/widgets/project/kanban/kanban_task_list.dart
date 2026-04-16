@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:vikunja_app/domain/entities/bucket.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
@@ -127,70 +128,30 @@ class _TaskListState extends ConsumerState<TaskList> {
   @override
   Widget build(BuildContext context) {
     final tasks = widget.bucket.tasks;
+    final projectState = ref.watch(projectControllerProvider(widget.project));
+    final isLoadingNextPage =
+        projectState.valueOrNull?.isLoadingNextPage ?? false;
 
     return Scrollbar(
       controller: _scrollController,
       child: Container(
         key: _listKey,
-        child: ListView(
-          controller: _scrollController,
-          primary: false,
-          shrinkWrap: false,
-          physics: const ClampingScrollPhysics(),
-          children: [
-            TaskDragTarget(
-              onAccept: (drag) => widget.onMoveTask(
-                project: widget.project,
-                buckets: widget.buckets,
-                fromBucketId: drag.fromBucketId,
-                fromIndex: drag.fromIndex,
-                toBucketId: widget.bucket.id,
-                toIndex: 0,
-              ),
-              stopAutoScroll: () {
-                _stopAutoScroll();
-                widget.onAnyDragEnded();
-              },
-            ),
-            for (int i = 0; i < tasks.length; i++) ...[
-              LongPressDraggable<TaskDrag>(
-                data: TaskDrag(
-                  taskId: tasks[i].id,
-                  fromBucketId: widget.bucket.id,
-                  fromIndex: i,
-                ),
-                feedback: TaskFeedback(title: tasks[i].title),
-                onDragStarted: () {
-                  widget.onAnyDragStarted(); // horizontal
-                  _startAutoScroll(); // vertical
-                },
-                onDragUpdate: (details) {
-                  widget.onAnyDragUpdate(details.globalPosition);
-                  _onDragUpdate(details.globalPosition);
-                },
-                onDragCompleted: () {
-                  _stopAutoScroll();
-                  widget.onAnyDragEnded();
-                },
-                onDraggableCanceled: (_, _) {
-                  _stopAutoScroll();
-                  widget.onAnyDragEnded();
-                },
-                onDragEnd: (_) {
-                  _stopAutoScroll();
-                  widget.onAnyDragEnded();
-                },
-                childWhenDragging: Opacity(
-                  opacity: 0.3,
-                  child: TaskTile(task: tasks[i]),
-                ),
-                child: InkWell(
-                  child: TaskTile(task: tasks[i]),
-                  onTap: () {
-                    _navigateToTask(context, tasks, i);
-                  },
-                ),
-              ),
+        child: NotificationListener<ScrollNotification>(
+          onNotification: (ScrollNotification scrollInfo) {
+            if (scrollInfo.metrics.pixels ==
+                scrollInfo.metrics.maxScrollExtent) {
+              ref
+                  .read(projectControllerProvider(widget.project).notifier)
+                  .loadNextPage();
+            }
+            return false;
+          },
+          child: ListView(
+            controller: _scrollController,
+            primary: false,
+            shrinkWrap: false,
+            physics: const ClampingScrollPhysics(),
+            children: [
               TaskDragTarget(
                 onAccept: (drag) => widget.onMoveTask(
                   project: widget.project,
@@ -198,15 +159,79 @@ class _TaskListState extends ConsumerState<TaskList> {
                   fromBucketId: drag.fromBucketId,
                   fromIndex: drag.fromIndex,
                   toBucketId: widget.bucket.id,
-                  toIndex: i + 1,
+                  toIndex: 0,
                 ),
                 stopAutoScroll: () {
                   _stopAutoScroll();
                   widget.onAnyDragEnded();
                 },
               ),
+              for (int i = 0; i < tasks.length; i++) ...[
+                LongPressDraggable<TaskDrag>(
+                  data: TaskDrag(
+                    taskId: tasks[i].id,
+                    fromBucketId: widget.bucket.id,
+                    fromIndex: i,
+                  ),
+                  feedback: TaskFeedback(title: tasks[i].title),
+                  onDragStarted: () {
+                    widget.onAnyDragStarted(); // horizontal
+                    _startAutoScroll(); // vertical
+                  },
+                  onDragUpdate: (details) {
+                    widget.onAnyDragUpdate(details.globalPosition);
+                    _onDragUpdate(details.globalPosition);
+                  },
+                  onDragCompleted: () {
+                    _stopAutoScroll();
+                    widget.onAnyDragEnded();
+                  },
+                  onDraggableCanceled: (_, _) {
+                    _stopAutoScroll();
+                    widget.onAnyDragEnded();
+                  },
+                  onDragEnd: (_) {
+                    _stopAutoScroll();
+                    widget.onAnyDragEnded();
+                  },
+                  childWhenDragging: Opacity(
+                    opacity: 0.3,
+                    child: TaskTile(task: tasks[i]),
+                  ),
+                  child: InkWell(
+                    child: TaskTile(task: tasks[i]),
+                    onTap: () {
+                      _navigateToTask(context, tasks, i);
+                    },
+                  ),
+                ),
+                TaskDragTarget(
+                  onAccept: (drag) => widget.onMoveTask(
+                    project: widget.project,
+                    buckets: widget.buckets,
+                    fromBucketId: drag.fromBucketId,
+                    fromIndex: drag.fromIndex,
+                    toBucketId: widget.bucket.id,
+                    toIndex: i + 1,
+                  ),
+                  stopAutoScroll: () {
+                    _stopAutoScroll();
+                    widget.onAnyDragEnded();
+                  },
+                ),
+              ],
+              if (isLoadingNextPage)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16.0),
+                  child: Center(
+                    child: SpinKitThreeBounce(
+                      color: Theme.of(context).primaryColor,
+                      size: 16,
+                    ),
+                  ),
+                ),
             ],
-          ],
+          ),
         ),
       ),
     );

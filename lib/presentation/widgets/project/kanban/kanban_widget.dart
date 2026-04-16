@@ -14,7 +14,7 @@ import 'package:vikunja_app/presentation/pages/loading_widget.dart';
 import 'package:vikunja_app/presentation/widgets/project/kanban/add_bucket_dialog.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/presentation/widgets/project/kanban/bucket_drag_target.dart';
-import 'package:vikunja_app/presentation/widgets/project/kanban/bucket_item.dart';
+import 'package:vikunja_app/presentation/widgets/project/kanban/bucket_column.dart';
 
 class TaskDrag {
   final int taskId;

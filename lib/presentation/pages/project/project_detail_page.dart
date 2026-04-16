@@ -53,13 +53,24 @@ class ProjectPageState extends ConsumerState<ProjectDetailPage> {
       data: (data) {
         return Scaffold(
           appBar: _buildAppBar(context, data.project, data.displayDoneTask),
-          body: RefreshIndicator(
-            onRefresh: () {
-              return ref
-                  .read(projectControllerProvider(widget.project).notifier)
-                  .loadForView(data.project, _viewIndex);
+          body: NotificationListener<ScrollNotification>(
+            onNotification: (ScrollNotification scrollInfo) {
+              if (scrollInfo.metrics.pixels ==
+                  scrollInfo.metrics.maxScrollExtent) {
+                ref
+                    .read(projectControllerProvider(widget.project).notifier)
+                    .loadNextPage();
+              }
+              return false;
             },
-            child: getBody(data.project),
+            child: RefreshIndicator(
+              onRefresh: () {
+                return ref
+                    .read(projectControllerProvider(widget.project).notifier)
+                    .loadForView(data.project, _viewIndex);
+              },
+              child: getBody(data.project),
+            ),
           ),
           floatingActionButton: _buildFab(data.project),
           bottomNavigationBar: _buildBottomNavigation(data.project),
