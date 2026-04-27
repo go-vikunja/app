@@ -32,7 +32,6 @@ import androidx.glance.layout.Row
 import androidx.glance.layout.fillMaxHeight
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
-import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.state.GlanceStateDefinition
 import androidx.glance.text.Text
@@ -61,7 +60,6 @@ class InteractiveAction : ActionCallback {
     ) {
 
         val intent = Intent(context, MainActivity::class.java).apply {
-            putExtra("openAddTask", true)
             action = Intent.ACTION_INSERT
             type = INTENT_TYPE_ADD_TASK
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
@@ -172,7 +170,7 @@ class AppWidget : GlanceAppWidget() {
     @Composable
     private fun WidgetTitleBar() {
         Box(
-            modifier = GlanceModifier.fillMaxWidth().height(50.dp)
+            modifier = GlanceModifier
                 .background(ColorProvider(Color(0xFF126cfd), Color(0xFF013992))),
             contentAlignment = Alignment.Center,
         ) {
@@ -181,12 +179,17 @@ class AppWidget : GlanceAppWidget() {
                 startIcon = ImageProvider(R.drawable.vikunja_logo),
                 iconColor = null,
                 actions = {
-                    CircleIconButton(
-                        enabled = true,
-                        onClick = actionRunCallback<InteractiveAction>(),
-                        imageProvider = ImageProvider(R.drawable.add),
-                        contentDescription = "Add a Task",
-                    )
+                    Box(
+                        modifier = GlanceModifier.padding(end = 8.dp, top = 4.dp, bottom = 4.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircleIconButton(
+                            enabled = true,
+                            onClick = actionRunCallback<InteractiveAction>(),
+                            imageProvider = ImageProvider(R.drawable.add),
+                            contentDescription = "Add a Task",
+                        )
+                    }
                 },
             )
         }
