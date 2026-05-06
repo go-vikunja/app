@@ -57,6 +57,7 @@ class ProjectTaskList extends ConsumerWidget {
             ref,
             pageModel.tasks,
             hierarchical,
+            pageModel.displayDoneTask,
           ));
         }
 
@@ -123,10 +124,14 @@ class ProjectTaskList extends ConsumerWidget {
     WidgetRef ref,
     List<Task> tasks,
     bool hierarchical,
+    bool displayDoneTask,
   ) {
     // Flat mode: show all tasks as individual draggable items.
     if (!hierarchical) {
       return SliverReorderableList(
+        // Force list recreation when "Show done tasks" setting changes so
+        // the sliver's internal state does not lag behind the new item count.
+        key: ValueKey('flat_$displayDoneTask'),
         itemCount: tasks.length,
         itemBuilder: (context, index) {
           final task = tasks[index];
@@ -142,6 +147,20 @@ class ProjectTaskList extends ConsumerWidget {
                   depth: 0,
                   subtaskMap: const {},
                   dragIndex: index,
+                  onCheckedChanged: (t) async {
+                    final success = await ref
+                        .read(projectControllerProvider(project).notifier)
+                        .markAsDone(t);
+                    if (!success && ref.context.mounted) {
+                      ScaffoldMessenger.of(ref.context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            AppLocalizations.of(ref.context).failedToMarkDone,
+                          ),
+                        ),
+                      );
+                    }
+                  },
                 ),
                 if (index < tasks.length - 1) const Divider(height: 1),
               ],
@@ -208,6 +227,8 @@ class ProjectTaskList extends ConsumerWidget {
     }
 
     return SliverReorderableList(
+      // Force list recreation when "Show done tasks" setting changes.
+      key: ValueKey('hier_$displayDoneTask'),
       itemBuilder: (context, index) {
         final task = topLevel[index];
         return Material(
@@ -221,6 +242,20 @@ class ProjectTaskList extends ConsumerWidget {
                 depth: 0,
                 subtaskMap: subtaskMap,
                 dragIndex: index,
+                onCheckedChanged: (t) async {
+                  final success = await ref
+                      .read(projectControllerProvider(project).notifier)
+                      .markAsDone(t);
+                  if (!success && ref.context.mounted) {
+                    ScaffoldMessenger.of(ref.context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          AppLocalizations.of(ref.context).failedToMarkDone,
+                        ),
+                      ),
+                    );
+                  }
+                },
                 onSubtaskReorder: viewId != null ? reorderSubtask : null,
               ),
               if (index < topLevel.length - 1) const Divider(height: 1),
