@@ -56,4 +56,8 @@ abstract class SettingsRepository {
   // Locale override (null -> system default)
   Future<String?> getLocaleOverride();
   Future<void> setLocaleOverride(String? localeCode);
+
+  // Hierarchical task display (group subtasks under parents)
+  Future<bool> getHierarchicalTaskDisplay();
+  Future<void> setHierarchicalTaskDisplay(bool value);
 }

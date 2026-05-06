@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:vikunja_app/core/di/hierarchical_display_provider.dart';
+import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/core/utils/calculate_item_position.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
+import 'package:vikunja_app/domain/entities/view_kind.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/presentation/manager/project_controller.dart';
 import 'package:vikunja_app/presentation/pages/error_widget.dart';
 import 'package:vikunja_app/presentation/pages/loading_widget.dart';
 import 'package:vikunja_app/presentation/pages/project/project_detail_page.dart';
-import 'package:vikunja_app/presentation/pages/task/task_edit_page.dart';
 import 'package:vikunja_app/presentation/widgets/empty_view.dart';
-import 'package:vikunja_app/presentation/widgets/project/project_task_list_item.dart';
-import 'package:vikunja_app/presentation/widgets/task_bottom_sheet.dart';
+import 'package:vikunja_app/presentation/widgets/task/task_tree_item.dart';
 
 class ProjectTaskList extends ConsumerWidget {
   final Project project;
@@ -50,7 +51,13 @@ class ProjectTaskList extends ConsumerWidget {
             );
             children.add(SliverToBoxAdapter(child: Divider()));
           }
-          children.add(_buildTaskList(ref, pageModel.tasks));
+          final hierarchical =
+              ref.watch(hierarchicalDisplayProvider).valueOrNull ?? false;
+          children.add(_buildTaskList(
+            ref,
+            pageModel.tasks,
+            hierarchical,
+          ));
         }
 
         if (pageModel.isLoadingNextPage) {
@@ -112,43 +119,129 @@ class ProjectTaskList extends ConsumerWidget {
     ];
   }
 
-  Widget _buildTaskList(WidgetRef ref, List<Task> tasks) {
-    return SliverReorderableList(
-      itemBuilder: (context, index) {
-        final task = tasks[index];
-        return ReorderableDelayedDragStartListener(
-          key: Key('task_${task.id}'),
-          index: index,
-          child: Material(
+  Widget _buildTaskList(
+    WidgetRef ref,
+    List<Task> tasks,
+    bool hierarchical,
+  ) {
+    // Flat mode: show all tasks as individual draggable items.
+    if (!hierarchical) {
+      return SliverReorderableList(
+        itemCount: tasks.length,
+        itemBuilder: (context, index) {
+          final task = tasks[index];
+          return Material(
+            key: Key('flat_${task.id}'),
             color: Colors.transparent,
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                _buildTile(ref, task),
-                if (index < tasks.length - 1) Divider(height: 1),
+                TaskTreeItem(
+                  key: Key('flat_tree_${task.id}'),
+                  task: task,
+                  depth: 0,
+                  subtaskMap: const {},
+                  dragIndex: index,
+                ),
+                if (index < tasks.length - 1) const Divider(height: 1),
               ],
             ),
+          );
+        },
+        onReorder: (oldIndex, newIndex) {
+          // Flat reorder: persist position via view endpoint.
+          if (newIndex > oldIndex) newIndex--;
+          final list = List<Task>.from(tasks);
+          final moved = list.removeAt(oldIndex);
+          list.insert(newIndex, moved);
+          final viewId = project.views
+              .where((v) => v.viewKind == ViewKind.list)
+              .map((v) => v.id)
+              .firstOrNull;
+          if (viewId == null) return;
+          final before = newIndex == 0 ? null : list[newIndex - 1].position;
+          final after = newIndex >= list.length - 1
+              ? null
+              : list[newIndex + 1].position;
+          final newPos = calculateItemPosition(
+            positionBefore: before,
+            positionAfter: after,
+          );
+          ref
+              .read(bucketRepositoryProvider)
+              .updateTaskPosition(moved.id, viewId, newPos);
+        },
+      );
+    }
+
+    // Build subtask map from each parent's .subtasks list so that a task
+    // with multiple parents appears under all of them.
+    final taskById = {for (final t in tasks) t.id: t};
+    final Map<int, List<Task>> subtaskMap = {};
+    final subtaskIds = <int>{};
+    for (final task in tasks) {
+      if (task.subtasks.isNotEmpty) {
+        subtaskMap[task.id] =
+            task.subtasks.map((s) => taskById[s.id] ?? s).toList();
+        for (final s in task.subtasks) {
+          subtaskIds.add(s.id);
+        }
+      }
+    }
+
+    // Only top-level tasks appear in the reorderable list.
+    final topLevel =
+        tasks.where((t) => !subtaskIds.contains(t.id)).toList();
+
+    // Get the list-view ID needed to persist task positions.
+    final int? viewId = project.views
+        .where((v) => v.viewKind == ViewKind.list)
+        .map((v) => v.id)
+        .firstOrNull;
+
+    Future<bool> reorderSubtask(Task movedTask, double newPosition) async {
+      if (viewId == null) return false;
+      final res = await ref
+          .read(bucketRepositoryProvider)
+          .updateTaskPosition(movedTask.id, viewId, newPosition);
+      return res.isSuccessful;
+    }
+
+    return SliverReorderableList(
+      itemBuilder: (context, index) {
+        final task = topLevel[index];
+        return Material(
+          key: Key('task_${task.id}'),
+          color: Colors.transparent,
+          child: Column(
+            children: [
+              TaskTreeItem(
+                key: Key('tree_${task.id}'),
+                task: task,
+                depth: 0,
+                subtaskMap: subtaskMap,
+                dragIndex: index,
+                onSubtaskReorder: viewId != null ? reorderSubtask : null,
+              ),
+              if (index < topLevel.length - 1) const Divider(height: 1),
+            ],
           ),
         );
       },
-      itemCount: tasks.length,
+      itemCount: topLevel.length,
       onReorder: (oldIndex, newIndexRaw) {
         int newIndex = newIndexRaw;
-        if (newIndex > oldIndex) {
-          newIndex -= 1;
-        }
-
+        if (newIndex > oldIndex) newIndex -= 1;
         if (newIndex < -1) newIndex = -1;
 
-        final taskList = List<Task>.from(tasks);
+        final taskList = List<Task>.from(topLevel);
         final moved = taskList.removeAt(oldIndex);
-        final insertIndex = newIndex == -1
-            ? 0
-            : newIndex.clamp(0, taskList.length);
+        final insertIndex =
+            newIndex == -1 ? 0 : newIndex.clamp(0, taskList.length);
         taskList.insert(insertIndex, moved);
 
-        final before = insertIndex == 0
-            ? null
-            : taskList[insertIndex - 1].position;
+        final before =
+            insertIndex == 0 ? null : taskList[insertIndex - 1].position;
         final after = insertIndex == taskList.length - 1
             ? null
             : taskList[insertIndex + 1].position;
@@ -157,67 +250,29 @@ class ProjectTaskList extends ConsumerWidget {
           positionAfter: after,
         );
 
+        // Rebuild the full task list preserving subtasks: reordered top-level
+        // items first, then any subtasks that were in the original task list.
+        final subtasks =
+            tasks.where((t) => subtaskIds.contains(t.id)).toList();
+        final fullOrderedTasks = [...taskList, ...subtasks];
+
         ref
             .read(projectControllerProvider(project).notifier)
             .reorderTasks(
               project: project,
-              newOrderedTasks: taskList,
+              newOrderedTasks: fullOrderedTasks,
               movedTaskId: moved.id,
               newPosition: newPos,
             )
             .then((success) {
-              if (!success && ref.context.mounted) {
-                ScaffoldMessenger.of(ref.context).showSnackBar(
-                  const SnackBar(content: Text('Failed to reorder task')),
-                );
-              }
-            });
+          if (!success && ref.context.mounted) {
+            ScaffoldMessenger.of(ref.context).showSnackBar(
+              const SnackBar(content: Text('Failed to reorder task')),
+            );
+          }
+        });
       },
     );
-  }
-
-  Widget _buildTile(WidgetRef ref, Task task) {
-    return ProjectTaskListItem(
-      key: Key(task.id.toString()),
-      task: task,
-      onTap: () => _showTaskBottomSheet(ref, task),
-      onEdit: () => _onEdit(ref, task),
-      onCheckedChanged: (value) async {
-        var success = await ref
-            .read(projectControllerProvider(project).notifier)
-            .markAsDone(task);
-        if (!success && ref.context.mounted) {
-          ScaffoldMessenger.of(ref.context).showSnackBar(
-            SnackBar(
-              content: Text(AppLocalizations.of(ref.context).failedToMarkDone),
-            ),
-          );
-        }
-      },
-    );
-  }
-
-  void _showTaskBottomSheet(WidgetRef ref, Task task) {
-    showModalBottomSheet<void>(
-      context: ref.context,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(10.0)),
-      ),
-      builder: (BuildContext context) {
-        return TaskBottomSheet(task: task, onEdit: () => _onEdit(ref, task));
-      },
-    );
-  }
-
-  void _onEdit(WidgetRef ref, Task task) async {
-    var editedTask = await Navigator.push<Task?>(
-      ref.context,
-      MaterialPageRoute(builder: (buildContext) => TaskEditPage(task: task)),
-    );
-
-    if (editedTask != null) {
-      ref.read(projectControllerProvider(project).notifier).reload();
-    }
   }
 
   void _navigateToDetail(BuildContext context, Project project) {
