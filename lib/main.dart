@@ -44,8 +44,11 @@ void main() async {
   SentryWidgetsFlutterBinding.ensureInitialized();
 
   var notifDenies = await Permission.notification.isDenied;
-  if (notifDenies) {
-    Permission.notification.request();
+  if (Platform.isAndroid || Platform.isIOS) {
+    var notifDenies = await Permission.notification.isDenied;
+    if (notifDenies) {
+      Permission.notification.request();
+    }
   }
 
   // Shared settings datasource for reading app settings
@@ -72,7 +75,7 @@ void main() async {
     developer.log("Failed to initialize downloader: $e");
   }
   try {
-    if (!kIsWeb) {
+    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
       Workmanager().initialize(callbackDispatcher);
     }
   } catch (e) {
