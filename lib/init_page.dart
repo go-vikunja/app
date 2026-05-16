@@ -17,37 +17,30 @@ class InitPage extends ConsumerStatefulWidget {
 }
 
 class _InitPageState extends ConsumerState<InitPage> {
-  bool _handledOutcome = false;
-
   @override
   Widget build(BuildContext context) {
+    ref.listen(initControllerProvider, (_, next) {
+      next.whenData((outcome) => _handleOutcome(context, outcome));
+    });
+
     final initState = ref.watch(initControllerProvider);
 
     return initState.when(
       loading: () => const LoadingWidget(),
       error: (err, _) => VikunjaErrorWidget(
         error: err,
-        onRetry: () {
-          setState(() => _handledOutcome = false);
-          ref.invalidate(initControllerProvider);
-        },
+        onRetry: () => ref.invalidate(initControllerProvider),
         onSecondaryAction: () {
           // LoginPage clears any saved auth (and server address) in initState.
           globalNavigatorKey.currentState?.pushReplacementNamed('/login');
         },
         secondaryActionLabel: AppLocalizations.of(context).logout,
       ),
-      data: (outcome) {
-        _maybeHandleOutcome(context, outcome);
-        return const LoadingWidget();
-      },
+      data: (_) => const LoadingWidget(),
     );
   }
 
-  void _maybeHandleOutcome(BuildContext context, InitOutcome outcome) {
-    if (_handledOutcome) return;
-    _handledOutcome = true;
-
+  void _handleOutcome(BuildContext context, InitOutcome outcome) {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!context.mounted) return;
 
