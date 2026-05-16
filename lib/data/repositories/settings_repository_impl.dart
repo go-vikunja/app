@@ -146,4 +146,14 @@ class SettingsRepositoryImpl implements SettingsRepository {
   Future<void> setLocaleOverride(String? localeCode) {
     return _datasource.setLocaleOverride(localeCode);
   }
+
+  @override
+  Future<bool> getHierarchicalTaskDisplay() {
+    return _datasource.getHierarchicalTaskDisplay();
+  }
+
+  @override
+  Future<void> setHierarchicalTaskDisplay(bool value) {
+    return _datasource.setHierarchicalTaskDisplay(value);
+  }
 }

@@ -190,7 +190,13 @@ class ProjectController extends _$ProjectController with PaginationMixin<Task> {
   ]) async {
     var repo = ref.read(taskRepositoryProvider);
 
-    Map<String, List<String>> queryParams = view == null
+    // When showing done tasks we bypass the view endpoint: Vikunja list views
+    // carry a server-side "done=false" filter that cannot be overridden by
+    // query params, so done tasks would never be returned even without a
+    // client-side filter.  The project endpoint has no such built-in filter.
+    final effectiveView = displayDoneTasks ? null : view;
+
+    Map<String, List<String>> queryParams = effectiveView == null
         ? {
             "sort_by": ["done", "id"],
             "order_by": ["asc", "desc"],
@@ -208,9 +214,9 @@ class ProjectController extends _$ProjectController with PaginationMixin<Task> {
       });
     }
 
-    return view == null
+    return effectiveView == null
         ? await repo.getAllByProject(projectId, queryParams)
-        : await repo.getAllByProjectView(projectId, view, queryParams);
+        : await repo.getAllByProjectView(projectId, effectiveView, queryParams);
   }
 
   Future<Response<List<Bucket>>> _loadBuckets({
