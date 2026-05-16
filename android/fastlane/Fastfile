@@ -13,6 +13,9 @@
 # Uncomment the line if you want fastlane to automatically update itself
 # update_fastlane
 
+# Note: The 'fdroid' flavor is built in CI (.github/workflows/release.yml).
+# The lanes below deploy the 'production' flavor to Google Play only.
+
 default_platform(:android)
 
 platform :android do
