@@ -8,6 +8,7 @@ class ProjectPageModel {
   List<Task> tasks;
   List<Bucket> buckets;
   bool displayDoneTask;
+  bool isLoadingNextPage;
 
   ProjectPageModel(
     this.project,
@@ -15,6 +16,7 @@ class ProjectPageModel {
     this.tasks,
     this.buckets,
     this.displayDoneTask,
+    this.isLoadingNextPage,
   );
 
   ProjectPageModel copyWith({
@@ -23,6 +25,7 @@ class ProjectPageModel {
     List<Task>? tasks,
     List<Bucket>? buckets,
     bool? displayDoneTask,
+    bool? isLoadingNextPage,
   }) {
     return ProjectPageModel(
       project ?? this.project,
@@ -30,6 +33,7 @@ class ProjectPageModel {
       tasks ?? this.tasks,
       buckets ?? this.buckets,
       displayDoneTask ?? this.displayDoneTask,
+      isLoadingNextPage ?? this.isLoadingNextPage,
     );
   }
 }

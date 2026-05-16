@@ -12,7 +12,7 @@ import 'package:logging/logging.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/core/network/token_lock.dart';
-import 'package:vikunja_app/core/utils/network.dart';
+import 'package:vikunja_app/core/utils/constants.dart';
 import 'package:vikunja_app/data/data_sources/settings_data_source.dart';
 import 'package:vikunja_app/main.dart';
 import 'package:vikunja_app/presentation/widgets/string_extension.dart';
@@ -32,14 +32,17 @@ class Client {
 
   late http.Client _httpClient;
 
-  String get base => _base;
+  String get apiBase => '$_base/api/v1';
 
   Client({required String base}) {
     base = base.replaceAll(" ", "");
     if (base.endsWith("/")) {
       base = base.substring(0, base.length - 1);
     }
-    _base = base.endsWith('/api/v1') ? base : '$base/api/v1';
+    if (base.endsWith('/api/v1')) {
+      base = base.substring(0, base.length - '/api/v1'.length);
+    }
+    _base = base;
 
     _httpClient = createClient();
   }
@@ -75,18 +78,12 @@ class Client {
     HttpOverrides.global = IgnoreCertHttpOverrides(ignoreCertificates);
   }
 
-  Future<Map<String, String>> getHeaders([bool? refresh = false]) async {
-    var headers = {
-      'Content-Type': 'application/json',
-      'User-Agent': 'Vikunja Mobile App',
-    };
+  Future<Map<String, String>> getHeaders() async {
+    var headers = {'Content-Type': 'application/json', 'User-Agent': userAgent};
 
-    if (refresh == true) {
-      var refreshCookie = await settingsDatasource.getRefreshCookie();
-      headers['Cookie'] = 'vikunja_refresh_token=$refreshCookie';
-    } else {
-      var token = await settingsDatasource.getUserToken();
-      headers['Authorization'] = token != '' ? 'Bearer $token' : '';
+    var token = await settingsDatasource.getUserToken();
+    if (token != null && token.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $token';
     }
 
     return headers;
@@ -98,7 +95,7 @@ class Client {
     Map<String, List<String>>? queryParameters,
   }) async {
     try {
-      Uri uri = Uri.tryParse('$base$url')!;
+      Uri uri = Uri.tryParse('$apiBase$url')!;
 
       uri = Uri(
         scheme: uri.scheme,
@@ -126,7 +123,7 @@ class Client {
     try {
       return _handleResponseWithRefresh(mapper, () async {
         return _httpClient.delete(
-          '$base$url'.toUri()!,
+          '$apiBase$url'.toUri()!,
           headers: await getHeaders(),
         );
       });
@@ -144,7 +141,7 @@ class Client {
       var encodedBody = _encoder.convert(body);
       return _handleResponseWithRefresh(mapper, () async {
         return _httpClient.post(
-          '$base$url'.toUri()!,
+          '$apiBase$url'.toUri()!,
           headers: await getHeaders(),
           body: encodedBody,
         );
@@ -163,7 +160,7 @@ class Client {
       var encodedBody = _encoder.convert(body);
       return _handleResponseWithRefresh(mapper, () async {
         return _httpClient.put(
-          '$base$url'.toUri()!,
+          '$apiBase$url'.toUri()!,
           headers: await getHeaders(),
           body: encodedBody,
         );
@@ -173,32 +170,23 @@ class Client {
     }
   }
 
+  Future<http.Response> postUnauthenticated({
+    required String url,
+    dynamic body,
+  }) async {
+    return _httpClient.post(
+      '$apiBase$url'.toUri()!,
+      headers: {'Content-Type': 'application/json', 'User-Agent': userAgent},
+      body: _encoder.convert(body),
+    );
+  }
+
   io_client.IOClient _createIOClient() {
     final httpClient = HttpClient();
     if (ignoreCertificates) {
       httpClient.badCertificateCallback = (_, _, _) => true;
     }
     return io_client.IOClient(httpClient);
-  }
-
-  Future<Response<T>> postWithCookies<T>({
-    required String url,
-    T Function(dynamic body)? mapper,
-    dynamic body,
-  }) async {
-    final cookieClient = _createIOClient();
-    try {
-      var response = await cookieClient.post(
-        '$base$url'.toUri()!,
-        headers: await getHeaders(),
-        body: _encoder.convert(body),
-      );
-      return _handleResponse(response, mapper);
-    } catch (e, s) {
-      return _handleException(e, s);
-    } finally {
-      cookieClient.close();
-    }
   }
 
   Future<Response<T>> _handleResponse<T>(
@@ -248,24 +236,36 @@ class Client {
       return await TokenLock.synchronized(() async {
         final refreshClient = _createIOClient();
         try {
+          var refreshToken = await settingsDatasource.getRefreshToken();
+          if (refreshToken == null || refreshToken.isEmpty) {
+            return false;
+          }
+
           var response = await refreshClient.post(
-            '$base/user/token/refresh'.toUri()!,
-            headers: await getHeaders(true),
+            '$apiBase/oauth/token'.toUri()!,
+            headers: {
+              'Content-Type': 'application/json',
+              'User-Agent': userAgent,
+            },
+            body: _encoder.convert({
+              'grant_type': 'refresh_token',
+              'refresh_token': refreshToken,
+            }),
           );
 
           if (response.statusCode >= 200 && response.statusCode < 400) {
             var body = _decoder.convert(utf8.decode(response.bodyBytes));
-            var newToken = body['token'] as String?;
+            var newAccessToken = body['access_token'] as String?;
+            var newRefreshToken = body['refresh_token'] as String?;
 
-            if (newToken != null && newToken.isNotEmpty) {
-              var newRefreshCookie = extractRefreshCookie(response.headers);
-
-              await settingsDatasource.saveUserToken(newToken);
-              await settingsDatasource.saveRefreshCookie(newRefreshCookie);
-
+            if (newAccessToken != null && newAccessToken.isNotEmpty) {
+              await settingsDatasource.saveUserToken(newAccessToken);
+              if (newRefreshToken != null && newRefreshToken.isNotEmpty) {
+                await settingsDatasource.saveRefreshToken(newRefreshToken);
+              }
               return true;
             }
-          } else {}
+          }
         } finally {
           refreshClient.close();
         }

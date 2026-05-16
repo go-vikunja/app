@@ -24,9 +24,12 @@ class ProjectDataSource extends RemoteDataSource {
     );
   }
 
-  Future<Response<List<ProjectDto>>> getAll() {
+  Future<Response<List<ProjectDto>>> getAll({int page = 1}) {
     return client.get(
       url: '/projects',
+      queryParameters: {
+        'page': [page.toString()],
+      },
       mapper: (body) {
         return convertList(body, (result) => ProjectDto.fromJson(result));
       },

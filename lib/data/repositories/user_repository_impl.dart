@@ -13,26 +13,6 @@ class UserRepositoryImpl extends UserRepository {
   UserRepositoryImpl(this._dataSource);
 
   @override
-  Future<Response<UserToken>> login(
-    String username,
-    password, {
-    bool rememberMe = false,
-    String? totp,
-  }) async {
-    return (await _dataSource.login(
-      username,
-      password,
-      rememberMe: rememberMe,
-      totp: totp,
-    )).toDomain();
-  }
-
-  @override
-  Future<Response<UserToken>> register(String username, email, password) async {
-    return (await _dataSource.register(username, email, password)).toDomain();
-  }
-
-  @override
   Future<Response<User>> getCurrentUser() async {
     return (await _dataSource.getCurrentUser()).toDomain();
   }

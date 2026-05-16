@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:http/http.dart';
 
 class VikunjaErrorWidget extends StatelessWidget {
-  final Function()? onRetry;
+  final VoidCallback? onRetry;
   final Object error;
 
   const VikunjaErrorWidget({required this.error, this.onRetry, super.key});
@@ -26,9 +29,7 @@ class VikunjaErrorWidget extends StatelessWidget {
             SizedBox(height: 32),
             if (onRetry != null)
               ElevatedButton(
-                onPressed: () {
-                  onRetry?.call();
-                },
+                onPressed: onRetry,
                 child: Text(AppLocalizations.of(context).retry),
               ),
           ],
@@ -38,18 +39,26 @@ class VikunjaErrorWidget extends StatelessWidget {
   }
 
   Widget getErrorWidget(BuildContext context, Object error) {
-    if (error is ClientException) {
-      return Text(
-        AppLocalizations.of(context).connectionError,
-        style: Theme.of(context).textTheme.titleLarge,
-      );
-    } else if (error is String) {
-      return Text(error, style: Theme.of(context).textTheme.titleLarge);
+    switch (error) {
+      case AsyncError(:final error):
+        return getErrorWidget(context, error);
+      case ClientException():
+        return Text(
+          AppLocalizations.of(context).connectionError,
+          style: Theme.of(context).textTheme.titleLarge,
+        );
+      case TimeoutException():
+        return Text(
+          AppLocalizations.of(context).connectionTimeout,
+          style: Theme.of(context).textTheme.titleLarge,
+        );
+      case String():
+        return Text(error, style: Theme.of(context).textTheme.titleLarge);
+      default:
+        return Text(
+          error.toString(),
+          style: Theme.of(context).textTheme.titleLarge,
+        );
     }
-
-    return Text(
-      error.toString(),
-      style: Theme.of(context).textTheme.titleLarge,
-    );
   }
 }

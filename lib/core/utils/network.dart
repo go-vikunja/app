@@ -1,16 +1,14 @@
 String normalizeServerURL(String input) {
-  final trimmed = input.trim();
-  if (trimmed.isEmpty) return trimmed;
-  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-    return trimmed;
+  var url = input.trim();
+  if (url.isEmpty) return url;
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    url = 'https://$url';
   }
-  return 'https://$trimmed';
-}
-
-String? extractRefreshCookie(Map<String, String> headers) {
-  var setCookie = headers['set-cookie'];
-  if (setCookie == null) return null;
-
-  var match = RegExp(r'vikunja_refresh_token=([^;]+)').firstMatch(setCookie);
-  return match?.group(1);
+  if (url.endsWith('/')) {
+    url = url.substring(0, url.length - 1);
+  }
+  if (url.endsWith('/api/v1')) {
+    url = url.substring(0, url.length - '/api/v1'.length);
+  }
+  return url;
 }

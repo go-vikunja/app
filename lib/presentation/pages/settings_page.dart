@@ -235,7 +235,7 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
                 onPressed: () {
                   ref.read(settingsRepositoryProvider).saveServer(null);
                   ref.read(settingsRepositoryProvider).saveUserToken(null);
-                  ref.read(settingsRepositoryProvider).saveRefreshCookie(null);
+                  ref.read(settingsRepositoryProvider).saveRefreshToken(null);
 
                   Navigator.of(context).popUntil((route) => route.isFirst);
                   Navigator.pushReplacement(
@@ -248,7 +248,10 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
             ],
           );
         },
-        error: (err, _) => VikunjaErrorWidget(error: err),
+        error: (err, _) => VikunjaErrorWidget(
+          error: err,
+          onRetry: () => ref.invalidate(settingsControllerProvider),
+        ),
         loading: () => const LoadingWidget(),
       ),
     );
@@ -282,7 +285,9 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
                 return CircleAvatar(
                   backgroundImage: user.username != ""
                       ? NetworkImage(
-                          user.avatarUrl(ref.read(clientProviderProvider).base),
+                          user.avatarUrl(
+                            ref.read(clientProviderProvider).apiBase,
+                          ),
                           headers: asyncSnapshot.data,
                         )
                       : null,

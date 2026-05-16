@@ -1,28 +1,21 @@
-import 'dart:core';
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
-import 'package:vikunja_app/core/network/client.dart';
 import 'package:vikunja_app/core/network/response.dart';
-import 'package:vikunja_app/core/utils/constants.dart';
+import 'package:vikunja_app/core/oauth/oauth_service.dart';
+import 'package:vikunja_app/core/utils/constants.dart'
+    show minimumServerVersion;
 import 'package:vikunja_app/core/utils/network.dart';
-import 'package:vikunja_app/core/utils/validator.dart';
 import 'package:vikunja_app/data/data_sources/settings_data_source.dart';
 import 'package:vikunja_app/domain/entities/auth_model.dart';
 import 'package:vikunja_app/domain/entities/server.dart';
-import 'package:vikunja_app/domain/entities/user.dart';
 import 'package:vikunja_app/domain/entities/version.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
-import 'package:vikunja_app/main.dart';
-import 'package:vikunja_app/presentation/pages/login/login_webview.dart';
-import 'package:vikunja_app/presentation/pages/login/register_page.dart';
-import 'package:vikunja_app/presentation/widgets/button.dart';
 import 'package:vikunja_app/presentation/widgets/sentry_dialog.dart';
 import 'package:vikunja_app/presentation/widgets/version_mismatch_dialog.dart';
 
@@ -36,24 +29,24 @@ class LoginPage extends ConsumerStatefulWidget {
 class LoginPageState extends ConsumerState<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   bool _loading = false;
-  bool _rememberMe = false;
-  bool init = false;
   List<String> pastServers = [];
 
   final _serverController = TextEditingController();
-  final _usernameController = TextEditingController();
-  final _passwordController = TextEditingController();
+  final _oauthService = OAuthService();
+  String? _serverError;
+  bool _showCustomUrl = false;
+  bool _showCancel = false;
+  bool _cancelled = false;
+  String? _loadingServer;
 
   @override
   void initState() {
     super.initState();
 
-    var settingsDatasource = SettingsDatasource(FlutterSecureStorage());
-    settingsDatasource.saveServer(null);
-    settingsDatasource.saveUserToken(null);
-    settingsDatasource.saveRefreshCookie(null);
-
     Future.delayed(Duration.zero, () async {
+      var settingsDatasource = SettingsDatasource(FlutterSecureStorage());
+      await settingsDatasource.clearAuthData();
+
       var pastSevers = await ref
           .read(settingsRepositoryProvider)
           .getPastServers();
@@ -68,6 +61,13 @@ class LoginPageState extends ConsumerState<LoginPage> {
         return _showSentryDialog();
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _oauthService.cancelAuthorize();
+    _serverController.dispose();
+    super.dispose();
   }
 
   Future<void> _showSentryDialog() {
@@ -89,91 +89,76 @@ class LoginPageState extends ConsumerState<LoginPage> {
 
   @override
   Widget build(BuildContext ctx) {
-    Client client = ref.read(clientProviderProvider);
+    var client = ref.read(clientProviderProvider);
 
-    return Scaffold(
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          autovalidateMode: AutovalidateMode.always,
-          key: _formKey,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: <Widget>[
-              _buildLogo(),
-              _buildServerInput(),
-              _buildUserInput(),
-              _buildPasswordInput(),
-              Padding(
-                padding: vStandardVerticalPadding,
-                child: CheckboxListTile(
-                  value: _rememberMe,
-                  onChanged: (value) =>
-                      setState(() => _rememberMe = value ?? false),
-                  title: Text(AppLocalizations.of(context).rememberMe),
+    return PopScope(
+      canPop: !_loading,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && _loading) {
+          _cancelled = true;
+          _oauthService.cancelAuthorize();
+          setState(() => _loading = false);
+        }
+      },
+      child: Scaffold(
+        body: SafeArea(
+          child: Stack(
+            children: [
+              Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32.0,
+                    vertical: 48.0,
+                  ),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 400),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _buildLogo(),
+                        const SizedBox(height: 48),
+                        IndexedStack(
+                          index: _showCustomUrl ? 1 : 0,
+                          children: [_buildPresetView(), _buildCustomUrlView()],
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-              FancyButton(
-                onPressed: !_loading
-                    ? () {
-                        if (_formKey.currentState!.validate()) {
-                          _formKey.currentState?.save();
-                          _loginUser(context);
-                        }
-                      }
-                    : null,
-                child: _loading
-                    ? CircularProgressIndicator()
-                    : Text(AppLocalizations.of(context).login),
-              ),
-              FancyButton(
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => RegisterPage()),
+              if (_showCustomUrl)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 20,
+                  child: Center(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: Checkbox(
+                            value: client.ignoreCertificates,
+                            onChanged: (value) {
+                              ref
+                                  .read(settingsRepositoryProvider)
+                                  .setIgnoreCertificates(value ?? false);
+                              setState(() {
+                                client.setIgnoreCerts(value ?? false);
+                              });
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          AppLocalizations.of(context).ignoreCertificates,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-                child: Text(AppLocalizations.of(context).register),
-              ),
-              FancyButton(
-                onPressed: () {
-                  if (_formKey.currentState?.validate() == true &&
-                      _serverController.text.isNotEmpty) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => LoginWithWebView(
-                          normalizeServerURL(_serverController.text),
-                        ),
-                      ),
-                    ).then((btp) {
-                      if (btp != null) _loginUserByClientToken(btp);
-                    });
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          AppLocalizations.of(
-                            context,
-                          ).pleaseEnterValidFrontendUrl,
-                        ),
-                      ),
-                    );
-                  }
-                },
-                child: Text(AppLocalizations.of(context).loginWithFrontend),
-              ),
-              CheckboxListTile(
-                title: Text(AppLocalizations.of(context).ignoreCertificates),
-                value: client.ignoreCertificates,
-                onChanged: (value) {
-                  ref
-                      .read(settingsRepositoryProvider)
-                      .setIgnoreCertificates(value ?? false);
-                  setState(() {
-                    client.setIgnoreCerts(value ?? false);
-                  });
-                },
-              ),
             ],
           ),
         ),
@@ -181,72 +166,158 @@ class LoginPageState extends ConsumerState<LoginPage> {
     );
   }
 
-  Padding _buildPasswordInput() {
-    return Padding(
-      padding: vStandardVerticalPadding,
-      child: TextFormField(
-        enabled: !_loading,
-        controller: _passwordController,
-        autofillHints: [AutofillHints.password],
-        decoration: InputDecoration(
-          border: OutlineInputBorder(),
-          labelText: AppLocalizations.of(context).password,
+  Widget _buildPresetView() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildPresetButton(
+          url: 'https://app.vikunja.cloud',
+          label: AppLocalizations.of(context).vikunjaCloud,
+          filled: true,
         ),
-        obscureText: true,
+        const SizedBox(height: 12),
+        _buildPresetButton(
+          url: 'https://try.vikunja.io',
+          label: AppLocalizations.of(context).tryDemo,
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton(
+          onPressed: !_loading
+              ? () => setState(() => _showCustomUrl = true)
+              : null,
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(double.infinity, 52),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          child: Text(
+            AppLocalizations.of(context).customServerUrl,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          ),
+        ),
+        Visibility(
+          visible: _showCancel,
+          maintainSize: true,
+          maintainAnimation: true,
+          maintainState: true,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: TextButton(
+              onPressed: _showCancel
+                  ? () {
+                      _cancelled = true;
+                      _oauthService.cancelAuthorize();
+                      setState(() => _loading = false);
+                    }
+                  : null,
+              child: Text(AppLocalizations.of(context).cancel),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCustomUrlView() {
+    return Form(
+      autovalidateMode: AutovalidateMode.disabled,
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            AppLocalizations.of(context).loginServerExplanation,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          _buildServerInput(),
+          const SizedBox(height: 24),
+          FilledButton(
+            onPressed: !_loading ? () => _connectAndLogin(context) : null,
+            style: FilledButton.styleFrom(
+              minimumSize: const Size(double.infinity, 52),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              child: _loading
+                  ? const SizedBox(
+                      key: ValueKey('loading'),
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text(
+                      AppLocalizations.of(context).login,
+                      key: const ValueKey('text'),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (_showCancel)
+            TextButton(
+              onPressed: () {
+                _cancelled = true;
+                _oauthService.cancelAuthorize();
+                setState(() => _loading = false);
+              },
+              child: Text(AppLocalizations.of(context).cancel),
+            )
+          else
+            TextButton(
+              onPressed: !_loading
+                  ? () => setState(() => _showCustomUrl = false)
+                  : null,
+              child: Text(AppLocalizations.of(context).cancel),
+            ),
+        ],
       ),
     );
   }
 
-  Padding _buildUserInput() {
-    return Padding(
-      padding: vStandardVerticalPadding,
-      child: TextFormField(
-        enabled: !_loading,
-        controller: _usernameController,
-        autofillHints: [AutofillHints.username],
-        decoration: InputDecoration(
-          border: OutlineInputBorder(),
-          labelText: AppLocalizations.of(context).username,
-        ),
-      ),
-    );
-  }
-
-  Padding _buildServerInput() {
-    return Padding(
-      padding: vStandardVerticalPadding,
-      child: Autocomplete<String>(
-        optionsBuilder: (TextEditingValue textEditingValue) {
-          List<String> matches = <String>[];
-          matches.addAll(pastServers);
-          matches.retainWhere((s) {
-            return s.toLowerCase().contains(
-              textEditingValue.text.toLowerCase(),
-            );
-          });
-          return matches;
-        },
-        focusNode: FocusNode(),
-        textEditingController: _serverController,
-        onSelected: (String selection) {
-          _serverController.text = selection;
-          setState(() => _serverController.text = selection);
-        },
-        fieldViewBuilder:
-            (
-              BuildContext context,
-              TextEditingController textEditingController,
-              FocusNode focusNode,
-              VoidCallback onFieldSubmitted,
-            ) =>
-                _buildServerTextView(textEditingController, focusNode, context),
-        optionsViewBuilder:
-            (
-              BuildContext context,
-              AutocompleteOnSelected<String> onSelected,
-              Iterable<String> options,
-            ) => _buildServerOptions(options, onSelected),
-      ),
+  Widget _buildServerInput() {
+    return Autocomplete<String>(
+      key: ValueKey(pastServers.length),
+      optionsBuilder: (TextEditingValue textEditingValue) {
+        List<String> matches = <String>[];
+        matches.addAll(pastServers);
+        matches.retainWhere((s) {
+          return s.toLowerCase().contains(textEditingValue.text.toLowerCase());
+        });
+        return matches;
+      },
+      focusNode: FocusNode(),
+      textEditingController: _serverController,
+      onSelected: (String selection) {
+        _serverController.text = selection;
+        setState(() => _serverController.text = selection);
+      },
+      fieldViewBuilder:
+          (
+            BuildContext context,
+            TextEditingController textEditingController,
+            FocusNode focusNode,
+            VoidCallback onFieldSubmitted,
+          ) => _buildServerTextView(textEditingController, focusNode, context),
+      optionsViewBuilder:
+          (
+            BuildContext context,
+            AutocompleteOnSelected<String> onSelected,
+            Iterable<String> options,
+          ) => _buildServerOptions(options, onSelected),
     );
   }
 
@@ -259,14 +330,21 @@ class LoginPageState extends ConsumerState<LoginPage> {
       controller: textEditingController,
       focusNode: focusNode,
       enabled: !_loading,
-      validator: (address) {
-        return isURLValid(address)
-            ? null
-            : AppLocalizations.of(context).invalidUrl;
+      onChanged: (_) {
+        if (_serverError != null) {
+          setState(() => _serverError = null);
+          _formKey.currentState?.validate();
+        }
       },
+      validator: (_) => _serverError,
       decoration: InputDecoration(
-        border: OutlineInputBorder(),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         labelText: AppLocalizations.of(context).serverAddress,
+        hintText: AppLocalizations.of(
+          context,
+        ).serverAddressHint('https://try.vikunja.io'),
+        prefixIcon: const Icon(Icons.dns_outlined),
+        errorMaxLines: 3,
       ),
     );
   }
@@ -309,221 +387,106 @@ class LoginPageState extends ConsumerState<LoginPage> {
     );
   }
 
-  Padding _buildLogo() {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 30),
-      child: Image(
-        image: Theme.of(context).brightness == Brightness.dark
-            ? AssetImage('assets/vikunja_logo_full_white.png')
-            : AssetImage('assets/vikunja_logo_full.png'),
-        height: 85.0,
-        semanticLabel: AppLocalizations.of(context).vikunjaLogoAlt,
+  Widget _buildPresetButton({
+    required String url,
+    required String label,
+    bool filled = false,
+  }) {
+    final isThis = _loadingServer == url;
+    final style = ButtonStyle(
+      minimumSize: WidgetStatePropertyAll(Size(double.infinity, 52)),
+      shape: WidgetStatePropertyAll(
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
-  }
+    final child = isThis
+        ? SizedBox(
+            height: 20,
+            width: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: filled ? Colors.white : null,
+            ),
+          )
+        : Text(
+            label,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          );
 
-  Future<Response<UserToken>?> _showOtpDialog(
-    BuildContext context,
-    String username,
-    String password,
-  ) async {
-    TextEditingController totpController = TextEditingController();
-    return showDialog<Response<UserToken>>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(AppLocalizations.of(context).enterOneTimePasscode),
-        content: TextField(
-          controller: totpController,
-          keyboardType: TextInputType.number,
-          inputFormatters: <TextInputFormatter>[
-            FilteringTextInputFormatter.digitsOnly,
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () async {
-              var loginResponse = await ref
-                  .read(userRepositoryProvider)
-                  .login(
-                    username,
-                    password,
-                    rememberMe: _rememberMe,
-                    totp: totpController.text,
-                  );
-
-              if (context.mounted) {
-                Navigator.pop(context, loginResponse);
-              }
-            },
-            child: Text(AppLocalizations.of(context).login),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _loginUserByClientToken(BaseTokenPair baseTokenPair) async {
-    ref.read(settingsRepositoryProvider).saveUserToken(baseTokenPair.token);
-    ref.read(settingsRepositoryProvider).saveServer(baseTokenPair.base);
-    // Webview login does not provide a refresh cookie
-    ref.read(settingsRepositoryProvider).saveRefreshCookie(null);
-    ref.read(authDataProvider.notifier).set(AuthModel(baseTokenPair.base));
-
-    setState(() {
-      _loading = true;
-    });
-
-    try {
-      var currentUser = await ref.read(userRepositoryProvider).getCurrentUser();
-      if (currentUser.isSuccessful) {
-        ref
-            .read(currentUserProvider.notifier)
-            .set(currentUser.toSuccess().body);
-      } else {
-        var buildContext = context;
-        if (buildContext.mounted) {
-          _showGenericError(buildContext);
-        }
-      }
-
-      globalNavigatorKey.currentState?.pushNamed("/home");
-    } catch (e) {
-      log("failed to change to user by client token");
-      log(e.toString());
+    if (filled) {
+      return FilledButton(
+        onPressed: !_loading ? () => _connectWithServer(url) : null,
+        style: style,
+        child: child,
+      );
     }
-
-    setState(() {
-      _loading = false;
-    });
+    return OutlinedButton(
+      onPressed: !_loading ? () => _connectWithServer(url) : null,
+      style: style,
+      child: child,
+    );
   }
 
-  Future<void> _loginUser(BuildContext context) async {
+  void _connectWithServer(String serverUrl) {
+    _serverController.text = serverUrl;
+    setState(() => _loadingServer = serverUrl);
+    _connectAndLogin(context);
+  }
+
+  Widget _buildLogo() {
+    return Image(
+      image: Theme.of(context).brightness == Brightness.dark
+          ? AssetImage('assets/vikunja_logo_full_white.png')
+          : AssetImage('assets/vikunja_logo_full.png'),
+      height: 85.0,
+      semanticLabel: AppLocalizations.of(context).vikunjaLogoAlt,
+    );
+  }
+
+  Future<void> _connectAndLogin(BuildContext context) async {
     String server = normalizeServerURL(_serverController.text);
-    String username = _usernameController.text;
-    String password = _passwordController.text;
     if (server.isEmpty) return;
 
     setState(() {
       _loading = true;
+      _showCancel = false;
+      _serverError = null;
+      _cancelled = false;
     });
+    _formKey.currentState?.validate();
 
     try {
+      // Step 1: Set up the client so we can validate the server
       ref.read(authDataProvider.notifier).set(AuthModel(server));
-      ref.read(settingsRepositoryProvider).saveServer(server);
 
-      Version? serverVersion;
-
+      // Step 2: Validate via /api/v1/info
       Response<Server> info = await ref
           .read(serverRepositoryProvider)
           .getInfo();
+
       if (!info.isSuccessful) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(AppLocalizations.of(context).cannotReachServer),
-            ),
-          );
-        }
-      } else {
-        Sentry.configureScope(
-          (scope) => scope.setTag(
-            'server.version',
-            info.toSuccess().body.version ?? "-",
-          ),
-        );
+        setState(() {
+          _serverError = AppLocalizations.of(context).cannotReachServer;
+        });
+        _formKey.currentState?.validate();
+        return;
+      }
 
-        serverVersion = Version.fromServerString(
+      // Server validated — persist it
+      ref.read(settingsRepositoryProvider).saveServer(server);
+
+      Sentry.configureScope(
+        (scope) => scope.setTag(
+          'server.version',
           info.toSuccess().body.version ?? "-",
-        );
-      }
+        ),
+      );
 
-      if (!pastServers.contains(server)) {
-        pastServers.add(server);
-        ref.read(settingsRepositoryProvider).setPastServers(pastServers);
-      }
+      Version? serverVersion = Version.fromServerString(
+        info.toSuccess().body.version ?? "-",
+      );
 
-      Response<UserToken> response = await ref
-          .read(userRepositoryProvider)
-          .login(username, password, rememberMe: _rememberMe);
-
-      if (response.isSuccessful) {
-        var success = response.toSuccess();
-        var userToken = success.body.token;
-        var refreshCookie = success.body.refreshCookie;
-        if (context.mounted) {
-          onUserToken(
-            context,
-            server,
-            userToken,
-            serverVersion,
-            refreshCookie: refreshCookie,
-          );
-        }
-      } else if (response.isError) {
-        var error = response.toError();
-        if (error.error["code"] == 1017) {
-          if (context.mounted) {
-            var response = await _showOtpDialog(context, username, password);
-
-            //Otherwise user cancelled
-            if (response != null && context.mounted) {
-              if (response.isSuccessful) {
-                var success = response.toSuccess();
-                var userToken = success.body.token;
-                var refreshCookie = success.body.refreshCookie;
-                onUserToken(
-                  context,
-                  server,
-                  userToken,
-                  serverVersion,
-                  refreshCookie: refreshCookie,
-                );
-              } else {
-                _showGenericError(context);
-              }
-            }
-          }
-        } else if (error.error["code"] > 0) {
-          if (context.mounted) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text(error.error["message"])));
-          }
-        }
-      }
-    } catch (ex) {
-      if (context.mounted) {
-        _showGenericError(context);
-      }
-    } finally {
-      setState(() {
-        _loading = false;
-      });
-    }
-  }
-
-  void _showGenericError(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(AppLocalizations.of(context).somethingWentWrong)),
-    );
-  }
-
-  Future<void> onUserToken(
-    BuildContext context,
-    String server,
-    String userToken,
-    Version? serverVersion, {
-    String? refreshCookie,
-  }) async {
-    ref.read(authDataProvider.notifier).set(AuthModel(server));
-    await ref.read(settingsRepositoryProvider).saveUserToken(userToken);
-    await ref.read(settingsRepositoryProvider).saveRefreshCookie(refreshCookie);
-
-    var currentUser = await ref.read(userRepositoryProvider).getCurrentUser();
-
-    if (currentUser.isSuccessful) {
-      ref.read(currentUserProvider.notifier).set(currentUser.toSuccess().body);
-
+      // Check server version compatibility before proceeding with login
       if (serverVersion != null &&
           !serverVersion.isCompatibleWith(minimumServerVersion) &&
           context.mounted) {
@@ -536,13 +499,94 @@ class LoginPageState extends ConsumerState<LoginPage> {
         );
       }
 
-      if (context.mounted) {
-        Navigator.pushReplacementNamed(context, "/home");
+      // Save to past servers
+      if (!pastServers.contains(server)) {
+        pastServers.add(server);
+        ref.read(settingsRepositoryProvider).setPastServers(pastServers);
       }
-    } else {
-      if (context.mounted) {
-        _showGenericError(context);
+
+      // Step 3: Launch OAuth PKCE flow
+      setState(() => _showCancel = true);
+      String code = await _oauthService.authorize(server);
+
+      // Step 4: Exchange code for tokens
+      var client = ref.read(clientProviderProvider);
+      OAuthTokenResponse tokens = await _oauthService.exchangeCode(
+        client,
+        code,
+      );
+
+      // Step 5: Store tokens and navigate
+      await ref
+          .read(settingsRepositoryProvider)
+          .saveUserToken(tokens.accessToken);
+      await ref
+          .read(settingsRepositoryProvider)
+          .saveRefreshToken(tokens.refreshToken);
+
+      // Re-set auth data so the client picks up the new token
+      ref.read(authDataProvider.notifier).set(AuthModel(server));
+
+      // Step 6: Fetch current user
+      var currentUser = await ref.read(userRepositoryProvider).getCurrentUser();
+      if (currentUser.isSuccessful) {
+        ref
+            .read(currentUserProvider.notifier)
+            .set(currentUser.toSuccess().body);
+
+        if (context.mounted) {
+          Navigator.pushReplacementNamed(context, "/home");
+        }
+      } else {
+        if (context.mounted) {
+          _showErrorSnackBar(
+            context,
+            AppLocalizations.of(context).somethingWentWrong,
+          );
+        }
       }
+    } on OAuthException catch (e) {
+      if (_cancelled) return;
+      log("OAuth error: ${e.error}");
+      if (context.mounted) {
+        final l10n = AppLocalizations.of(context);
+        final message = switch (e.error) {
+          OAuthError.browserLaunchFailed => l10n.oauthBrowserLaunchFailed,
+          OAuthError.stateMismatch => l10n.oauthStateMismatch,
+          OAuthError.noAuthorizationCode => l10n.oauthNoAuthorizationCode,
+          OAuthError.tokenExchangeFailed =>
+            e.serverMessage ?? l10n.oauthTokenExchangeFailed,
+          OAuthError.cancelled => '', // unreachable
+        };
+        _showErrorSnackBar(context, message);
+      }
+    } catch (e) {
+      if (_cancelled) return;
+      log("Login failed: $e");
+      if (context.mounted) {
+        setState(() {
+          _serverError = AppLocalizations.of(context).cannotReachServer;
+        });
+        _formKey.currentState?.validate();
+      }
+    } finally {
+      setState(() {
+        _loading = false;
+        _showCancel = false;
+        _loadingServer = null;
+      });
     }
+  }
+
+  void _showErrorSnackBar(BuildContext context, String message) {
+    final colors = Theme.of(context).colorScheme;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: colors.error,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
   }
 }
