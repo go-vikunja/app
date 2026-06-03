@@ -1,7 +1,7 @@
 package io.vikunja.flutteringvikunja.widget
 
-import HomeWidgetGlanceState
-import HomeWidgetGlanceStateDefinition
+import es.antonborri.home_widget.HomeWidgetGlanceState
+import es.antonborri.home_widget.HomeWidgetGlanceStateDefinition
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -74,7 +74,7 @@ class AppWidget : GlanceAppWidget() {
     private var todayTasks: MutableList<Task> = ArrayList()
     private var otherTasks: MutableList<Task> = ArrayList()
 
-    override val stateDefinition: GlanceStateDefinition<*>?
+    override val stateDefinition: GlanceStateDefinition<*>
         get() = HomeWidgetGlanceStateDefinition()
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
