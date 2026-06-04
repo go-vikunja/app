@@ -9,7 +9,16 @@ class VikunjaErrorWidget extends StatelessWidget {
   final VoidCallback? onRetry;
   final Object error;
 
-  const VikunjaErrorWidget({required this.error, this.onRetry, super.key});
+  final VoidCallback? onSecondaryAction;
+  final String? secondaryActionLabel;
+
+  const VikunjaErrorWidget({
+    required this.error,
+    this.onRetry,
+    this.onSecondaryAction,
+    this.secondaryActionLabel,
+    super.key,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -32,6 +41,15 @@ class VikunjaErrorWidget extends StatelessWidget {
                 onPressed: onRetry,
                 child: Text(AppLocalizations.of(context).retry),
               ),
+            if (onSecondaryAction != null) ...[
+              const SizedBox(height: 12),
+              OutlinedButton(
+                onPressed: onSecondaryAction,
+                child: Text(
+                  secondaryActionLabel ?? AppLocalizations.of(context).login,
+                ),
+              ),
+            ],
           ],
         ),
       ),

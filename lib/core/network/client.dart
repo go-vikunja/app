@@ -20,6 +20,11 @@ import 'package:vikunja_app/presentation/widgets/string_extension.dart';
 class Client {
   final log = Logger('Client logger');
 
+  // If the server is reachable but does not respond (e.g. container paused),
+  // Cronet/URLSession can hang for a long time. Enforce a sane client-side
+  // timeout so the UI can surface an error and allow recovery.
+  static const Duration _requestTimeout = Duration(seconds: 10);
+
   final JsonDecoder _decoder = JsonDecoder();
   final JsonEncoder _encoder = JsonEncoder();
 
@@ -174,11 +179,16 @@ class Client {
     required String url,
     dynamic body,
   }) async {
-    return _httpClient.post(
-      '$apiBase$url'.toUri()!,
-      headers: {'Content-Type': 'application/json', 'User-Agent': userAgent},
-      body: _encoder.convert(body),
-    );
+    return _httpClient
+        .post(
+          '$apiBase$url'.toUri()!,
+          headers: {
+            'Content-Type': 'application/json',
+            'User-Agent': userAgent,
+          },
+          body: _encoder.convert(body),
+        )
+        .timeout(_requestTimeout);
   }
 
   io_client.IOClient _createIOClient() {
@@ -241,17 +251,19 @@ class Client {
             return false;
           }
 
-          var response = await refreshClient.post(
-            '$apiBase/oauth/token'.toUri()!,
-            headers: {
-              'Content-Type': 'application/json',
-              'User-Agent': userAgent,
-            },
-            body: _encoder.convert({
-              'grant_type': 'refresh_token',
-              'refresh_token': refreshToken,
-            }),
-          );
+          var response = await refreshClient
+              .post(
+                '$apiBase/oauth/token'.toUri()!,
+                headers: {
+                  'Content-Type': 'application/json',
+                  'User-Agent': userAgent,
+                },
+                body: _encoder.convert({
+                  'grant_type': 'refresh_token',
+                  'refresh_token': refreshToken,
+                }),
+              )
+              .timeout(_requestTimeout);
 
           if (response.statusCode >= 200 && response.statusCode < 400) {
             var body = _decoder.convert(utf8.decode(response.bodyBytes));
@@ -282,14 +294,14 @@ class Client {
     T Function(dynamic body)? mapper,
     Future<http.Response> Function() executeRequest,
   ) async {
-    var response = await executeRequest();
+    var response = await executeRequest().timeout(_requestTimeout);
 
     if (response.statusCode == 401) {
       Map<String, dynamic> error = _decoder.convert(response.body);
       if (error.containsKey('code') && error['code'] == 11) {
         bool refreshed = await tryRefreshToken();
         if (refreshed) {
-          var retryResponse = await executeRequest();
+          var retryResponse = await executeRequest().timeout(_requestTimeout);
           return _handleResponse(retryResponse, mapper);
         }
       }
