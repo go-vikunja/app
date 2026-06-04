@@ -15,12 +15,13 @@ import 'package:vikunja_app/domain/repositories/task_repository.dart';
 import 'package:vikunja_app/presentation/manager/widget_controller.dart';
 
 const _actionDonePortName = 'action_done_port_name';
+const _notificationActionDone = 'action_done';
 
 @pragma('vm:entry-point')
 Future<void> notificationTapBackground(
   NotificationResponse notificationResponse,
 ) async {
-  if (notificationResponse.actionId == "action_done") {
+  if (notificationResponse.actionId == _notificationActionDone) {
     var id = notificationResponse.id;
 
     if (id != null) {
@@ -78,7 +79,7 @@ class NotificationHandler {
     icon: 'vikunja_notification_logo',
     importance: Importance.high,
     actions: <AndroidNotificationAction>[
-      AndroidNotificationAction('action_dcd one', 'Done'),
+      AndroidNotificationAction(_notificationActionDone, 'Done'),
     ],
   );
   var androidSpecificsReminders = AndroidNotificationDetails(
@@ -88,7 +89,7 @@ class NotificationHandler {
     icon: 'vikunja_notification_logo',
     importance: Importance.high,
     actions: <AndroidNotificationAction>[
-      AndroidNotificationAction('action_done', 'Done'),
+      AndroidNotificationAction(_notificationActionDone, 'Done'),
     ],
   );
   late DarwinNotificationDetails iOSSpecifics;
@@ -114,6 +115,20 @@ class NotificationHandler {
     initBackgroundCommunication();
 
     requestIOSPermissions();
+    await _requestAndroidExactAlarmPermission();
+  }
+
+  Future<void> _requestAndroidExactAlarmPermission() async {
+    final androidPlugin = notificationsPlugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+    if (androidPlugin == null) return;
+
+    final canSchedule = await androidPlugin.canScheduleExactNotifications();
+    if (canSchedule != true) {
+      await androidPlugin.requestExactAlarmsPermission();
+    }
   }
 
   Future<void> _initNotifications() async {
@@ -128,7 +143,7 @@ class NotificationHandler {
         DarwinNotificationCategory(
           'doneCategory',
           actions: <DarwinNotificationAction>[
-            DarwinNotificationAction.plain('action_done', 'Done'),
+            DarwinNotificationAction.plain(_notificationActionDone, 'Done'),
           ],
         ),
       ],
