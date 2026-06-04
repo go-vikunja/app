@@ -4,7 +4,7 @@
 [![Beta Release on Google Play](https://img.shields.io/badge/Google_Play-Beta-blue)](https://play.google.com/store/apps/details?id=io.vikunja.app)
 [![Talk on Matrix](https://img.shields.io/matrix/vikunja%3Amatrix.org)](https://matrix.to/#/#vikunja:matrix.org)
 
-This repo contains the Cross-Platform app for Vikunja, the fluffy, open-source, self-hostable to-do app. 
+This repo contains the Cross-Platform app for Vikunja, the fluffy, open-source, self-hostable to-do app.
 Vikunja helps you organize tasks, collaborate with teams, and view projects in multiple formats including list, Gantt, table, and Kanban views. Built with privacy in mind, Vikunja gives you complete control over your data whether you self-host or use Vikunja Cloud. Learn more at the [main Vikunja repository](https://github.com/go-vikunja/vikunja/).
 
 ## Translations
@@ -13,7 +13,7 @@ Vikunja helps you organize tasks, collaborate with teams, and view projects in m
 
 ## Disclaimer
 
-This app is in alpha pre-release. You must absolutely expect things to not work, and sometimes even break something in the backend. Using this app on important production backends is possible but discouraged. However, as we rely on your feedback about missing features and bugs, we do encourage you to try it out and give us feedback here on GitHub. This app requires the latest **unstable** build of Vikunja (see [here](https://vikunja.io/docs/versions/)) to run. We are not responsible for lost data and similar destruction.
+This app is in alpha pre-release. You must absolutely expect things to not work, and sometimes even break something in the backend. Using this app on important production backends is possible but discouraged. However, as we rely on your feedback about missing features and bugs, we do encourage you to try it out and give us feedback here on GitHub. This app requires the latest **stable** build of Vikunja (see [here](https://vikunja.io/docs/versions/)) to run. We are not responsible for lost data and similar destruction.
 
 If you have anything to contribute, please open a PR. It is encouraged to let us know before you start developing, so we can discuss possible overlap with features other people might already be working on. This avoids unnecessary waste of time for either party.
 
