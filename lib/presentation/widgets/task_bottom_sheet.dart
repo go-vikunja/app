@@ -3,6 +3,7 @@ import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:vikunja_app/core/utils/date_extensions.dart';
 import 'package:vikunja_app/domain/entities/label.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
+import 'package:vikunja_app/domain/entities/task_reminder.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/presentation/widgets/label_widget.dart';
 import 'package:vikunja_app/presentation/widgets/task/task_actions.dart';
@@ -71,7 +72,7 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       widget.task.title,
-                      style: theme.textTheme.headlineMedium,
+                      style: theme.textTheme.headlineSmall,
                     ),
                   ),
                   Row(
@@ -98,7 +99,7 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
               // description with html rendering
               Text(
                 AppLocalizations.of(context).description,
-                style: theme.textTheme.titleLarge,
+                style: theme.textTheme.titleMedium,
               ),
               SizedBox(height: propertyPadding),
               Padding(
@@ -122,6 +123,19 @@ class TaskBottomSheetState extends State<TaskBottomSheet> {
                   ),
                 ],
               ),
+              //Reminders
+              ...widget.task.reminderDates.map((TaskReminder reminder) {
+                return Padding(
+                  padding: EdgeInsets.only(top: propertyPadding),
+                  child: Row(
+                    children: [
+                      Icon(Icons.share_arrival_time_outlined),
+                      Padding(padding: EdgeInsets.fromLTRB(10, 0, 0, 0)),
+                      Text(reminder.reminder.toLocal().formatShort()),
+                    ],
+                  ),
+                );
+              }),
               SizedBox(height: propertyPadding),
               // start date
               Row(
