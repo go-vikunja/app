@@ -1,5 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
+import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/project_list_model.dart';
 import 'package:vikunja_app/presentation/manager/pagination_mixin.dart';
@@ -13,7 +14,7 @@ class ProjectsController extends _$ProjectsController
   Future<ProjectListModel> build() async {
     resetPagination();
 
-    var response = await ref.read(projectRepositoryProvider).getAll(page: 1);
+    var response = await loadProjects();
 
     if (response.isSuccessful) {
       updateTotalPages(response.toSuccess().headers);
@@ -29,7 +30,7 @@ class ProjectsController extends _$ProjectsController
     state = const AsyncLoading();
     resetPagination();
 
-    var response = await ref.read(projectRepositoryProvider).getAll(page: 1);
+    var response = await loadProjects();
     if (response.isSuccessful) {
       updateTotalPages(response.toSuccess().headers);
       state = AsyncData(ProjectListModel(response.toSuccess().body));
@@ -79,5 +80,36 @@ class ProjectsController extends _$ProjectsController
   void create(Project project) async {
     await ref.read(projectRepositoryProvider).create(project);
     reload();
+  }
+
+  Future<Response<List<Project>>> loadProjects() async {
+    var response = await ref.read(projectRepositoryProvider).getAll(page: 1);
+
+    if (response.isSuccessful) {
+      var successResponse = (response as SuccessResponse);
+      List<Project> topLevelProjects = successResponse.body
+          .where((e) => e.parentProjectId == 0)
+          .toList();
+      for (var topLevelProject in topLevelProjects) {
+        _findSubproject(topLevelProject, successResponse.body);
+      }
+
+      return SuccessResponse(
+        topLevelProjects,
+        successResponse.statusCode,
+        successResponse.headers,
+      );
+    }
+
+    return response;
+  }
+
+  void _findSubproject(Project project, List<Project> projects) {
+    project.subprojects = projects
+        .where((e) => e.parentProjectId == project.id)
+        .toList();
+    for (var e in project.subprojects) {
+      _findSubproject(e, projects);
+    }
   }
 }
