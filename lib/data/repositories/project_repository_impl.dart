@@ -23,29 +23,14 @@ class ProjectRepositoryImpl extends ProjectRepository {
 
     if (projectsResponse.isSuccessful) {
       var successResponse = (projectsResponse as SuccessResponse);
-      List<Project> topLevelProjects = successResponse.body
-          .where((e) => e.parentProjectId == 0)
-          .toList();
-      for (var topLevelProject in topLevelProjects) {
-        _findSubproject(topLevelProject, successResponse.body);
-      }
 
       return SuccessResponse(
-        topLevelProjects,
+        successResponse.body,
         successResponse.statusCode,
         successResponse.headers,
       );
     } else {
       return projectsResponse;
-    }
-  }
-
-  void _findSubproject(Project project, List<Project> projects) {
-    project.subprojects = projects
-        .where((e) => e.parentProjectId == project.id)
-        .toList();
-    for (var e in project.subprojects) {
-      _findSubproject(e, projects);
     }
   }
 
