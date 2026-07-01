@@ -42,7 +42,7 @@ class SettingsDatasource {
   Future<int> getRefreshInterval() {
     return _storage
         .read(key: "workmanager-duration")
-        .then((value) => int.tryParse(value ?? "0") ?? 0);
+        .then((value) => int.tryParse(value ?? "60") ?? 60);
   }
 
   Future<void> setRefreshInterval(int minutes) {

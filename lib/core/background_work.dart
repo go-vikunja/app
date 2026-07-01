@@ -71,3 +71,22 @@ Future<bool> updateTasks() async {
 
   return Future.value(true);
 }
+
+/// Registers (or cancels) the periodic background refresh task with the OS.
+///
+/// Call this at app startup and whenever the user changes the interval.
+/// If [minutes] is 0, all existing tasks are cancelled and nothing is registered.
+Future<void> registerBackgroundRefresh(int minutes) async {
+  if (kIsWeb) return;
+
+  await Workmanager().cancelAll();
+  if (minutes > 0) {
+    await Workmanager().registerPeriodicTask(
+      "update-tasks",
+      "update-tasks",
+      frequency: Duration(minutes: minutes),
+      constraints: Constraints(networkType: NetworkType.connected),
+      initialDelay: Duration(seconds: 15),
+    );
+  }
+}
