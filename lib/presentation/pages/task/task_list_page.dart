@@ -1,26 +1,32 @@
-import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:vikunja_app/core/di/hierarchical_display_provider.dart';
 import 'package:vikunja_app/core/di/network_provider.dart';
+import 'package:vikunja_app/core/di/repository_provider.dart';
+import 'package:vikunja_app/core/utils/calculate_item_position.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/entities/task_page_model.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/presentation/manager/task_page_controller.dart';
 import 'package:vikunja_app/presentation/pages/error_widget.dart';
 import 'package:vikunja_app/presentation/pages/loading_widget.dart';
-import 'package:vikunja_app/presentation/pages/task/task_edit_page.dart';
 import 'package:vikunja_app/presentation/widgets/empty_view.dart';
 import 'package:vikunja_app/presentation/widgets/task/add_task_dialog.dart';
 import 'package:vikunja_app/presentation/widgets/task/task_list_item.dart';
-import 'package:vikunja_app/presentation/widgets/task_bottom_sheet.dart';
+import 'package:vikunja_app/presentation/widgets/task/task_tree_item.dart';
 
-class TaskListPage extends ConsumerWidget {
+class TaskListPage extends ConsumerStatefulWidget {
   const TaskListPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TaskListPage> createState() => _TaskListPageState();
+}
+
+class _TaskListPageState extends ConsumerState<TaskListPage> {
+  @override
+  Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     var pageModel = ref.watch(taskPageControllerProvider);
 
@@ -68,28 +74,111 @@ class TaskListPage extends ConsumerWidget {
   Widget _buildList(WidgetRef ref, BuildContext context, TaskPageModel model) {
     if (model.tasks.isEmpty) {
       return EmptyView(Icons.list, AppLocalizations.of(context).noTasks);
-    } else {
-      final itemCount = model.tasks.length + (model.isLoadingNextPage ? 1 : 0);
-      return ListView.separated(
-        itemCount: itemCount,
-        separatorBuilder: (BuildContext context, int index) =>
-            const Divider(height: 8),
-        itemBuilder: (context, index) {
-          if (index == model.tasks.length) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16.0),
-              child: Center(
-                child: SpinKitThreeBounce(
-                  color: Theme.of(context).primaryColor,
-                  size: 16,
-                ),
-              ),
-            );
-          }
-          return _createListItem(ref, context, model.tasks[index]);
-        },
-      );
     }
+
+    final hierarchical =
+        ref.watch(hierarchicalDisplayProvider).valueOrNull ?? false;
+
+    if (!hierarchical) {
+      return _buildFlatList(context, model);
+    }
+    return _buildHierarchicalList(ref, context, model);
+  }
+
+  Widget _buildFlatList(BuildContext context, TaskPageModel model) {
+    final tasks = model.tasks;
+    final itemCount = tasks.length + (model.isLoadingNextPage ? 1 : 0);
+    return ListView.separated(
+      itemCount: itemCount,
+      separatorBuilder: (_, __) => const Divider(height: 8),
+      itemBuilder: (context, index) {
+        if (index == tasks.length) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16.0),
+            child: Center(
+              child: SpinKitThreeBounce(
+                color: Theme.of(context).primaryColor,
+                size: 16,
+              ),
+            ),
+          );
+        }
+        // Use TaskTreeItem with empty subtaskMap so it renders as a flat item
+        // but retains all tap/edit/mark-done interactions.
+        return TaskTreeItem(
+          key: Key('flat_${tasks[index].id}'),
+          task: tasks[index],
+          depth: 0,
+          subtaskMap: const {},
+        );
+      },
+    );
+  }
+
+  Widget _buildHierarchicalList(
+    WidgetRef ref,
+    BuildContext context,
+    TaskPageModel model,
+  ) {
+    // Build subtask map from each parent's .subtasks list so that a task
+    // with multiple parents appears under all of them.
+    final taskById = {for (final t in model.tasks) t.id: t};
+    final Map<int, List<Task>> subtaskMap = {};
+    final subtaskIds = <int>{};
+    for (final task in model.tasks) {
+      if (task.subtasks.isNotEmpty) {
+        subtaskMap[task.id] =
+            task.subtasks.map((s) => taskById[s.id] ?? s).toList();
+        for (final s in task.subtasks) {
+          subtaskIds.add(s.id);
+        }
+      }
+    }
+
+    final topLevelTasks =
+        model.tasks.where((t) => !subtaskIds.contains(t.id)).toList();
+
+    Future<bool> reorderSubtask(Task movedTask, double newPosition) async {
+      final res = await ref
+          .read(taskRepositoryProvider)
+          .update(movedTask.copyWith(position: newPosition));
+      return res.isSuccessful;
+    }
+
+    return ReorderableListView.builder(
+      buildDefaultDragHandles: false,
+      onReorder: (_, __) {},
+      itemCount: topLevelTasks.length + (model.isLoadingNextPage ? 1 : 0),
+      itemBuilder: (context, index) {
+        if (index == topLevelTasks.length) {
+          return Padding(
+            key: const Key('loading_indicator'),
+            padding: const EdgeInsets.symmetric(vertical: 16.0),
+            child: Center(
+              child: SpinKitThreeBounce(
+                color: Theme.of(context).primaryColor,
+                size: 16,
+              ),
+            ),
+          );
+        }
+        final task = topLevelTasks[index];
+        return Column(
+          key: Key('top_${task.id}'),
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TaskTreeItem(
+              key: Key('tree_${task.id}'),
+              task: task,
+              depth: 0,
+              subtaskMap: subtaskMap,
+              onSubtaskReorder: reorderSubtask,
+            ),
+            if (index < topLevelTasks.length - 1) const Divider(height: 8),
+          ],
+        );
+      },
+    );
   }
 
   AppBar _buildAppBar(WidgetRef ref, BuildContext context, bool onlyDueDate) {
@@ -187,48 +276,4 @@ class TaskListPage extends ConsumerWidget {
     }
   }
 
-  Widget _createListItem(WidgetRef ref, BuildContext context, Task task) {
-    return TaskListItem(
-      key: Key(task.id.toString()),
-      task: task,
-      onTap: () {
-        _showTaskBottomSheet(context, task);
-      },
-      onEdit: () => _onEdit(context, task),
-      onCheckedChanged: (value) async {
-        var success = await ref
-            .read(taskPageControllerProvider.notifier)
-            .markAsDone(task);
-        if (!success && context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(AppLocalizations.of(context).taskMarkDoneError),
-            ),
-          );
-        }
-      },
-    );
-  }
-
-  void _showTaskBottomSheet(BuildContext context, Task task) {
-    showModalBottomSheet<void>(
-      context: context,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(10.0)),
-      ),
-      builder: (BuildContext context) {
-        return TaskBottomSheet(
-          task: task,
-          onEdit: () => _onEdit(context, task),
-        );
-      },
-    );
-  }
-
-  void _onEdit(BuildContext context, Task task) {
-    Navigator.push<Task?>(
-      context,
-      MaterialPageRoute(builder: (buildContext) => TaskEditPage(task: task)),
-    );
-  }
 }

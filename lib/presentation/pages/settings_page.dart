@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:vikunja_app/core/di/hierarchical_display_provider.dart';
 import 'package:vikunja_app/core/di/locale_provider.dart';
 import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/core/di/notification_provider.dart';
@@ -118,6 +119,21 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
                   ref
                       .read(settingsControllerProvider.notifier)
                       .setDynamicColors(value ?? false);
+                },
+              ),
+              Divider(),
+              SwitchListTile(
+                title: const Text('Hierarchical task display'),
+                subtitle: const Text(
+                  'Group subtasks under their parent task',
+                ),
+                value: ref
+                    .watch(hierarchicalDisplayProvider)
+                    .valueOrNull ?? false,
+                onChanged: (bool value) {
+                  ref
+                      .read(hierarchicalDisplayProvider.notifier)
+                      .set(value);
                 },
               ),
               Divider(),
