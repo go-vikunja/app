@@ -14,7 +14,7 @@ class WidgetTask {
   Map<String, Object?> toJSON() => {
     'id': id,
     'title': title,
-    'dueDate': dueDate?.toUtc().toIso8601String(),
+    'dueDate': dueDate?.toUtc().millisecondsSinceEpoch,
     'today': today,
   };
 }

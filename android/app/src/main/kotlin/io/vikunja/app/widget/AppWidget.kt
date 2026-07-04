@@ -2,6 +2,7 @@ package io.vikunja.app.widget
 
 import es.antonborri.home_widget.HomeWidgetGlanceState
 import es.antonborri.home_widget.HomeWidgetGlanceStateDefinition
+import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -17,6 +18,7 @@ import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.appwidget.CheckBox
 import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.components.TitleBar
 import androidx.glance.appwidget.lazy.LazyColumn
@@ -58,13 +60,26 @@ class InteractiveAction : ActionCallback {
         glanceId: GlanceId,
         parameters: ActionParameters
     ) {
-
         val intent = Intent(context, MainActivity::class.java).apply {
             action = Intent.ACTION_INSERT
             type = INTENT_TYPE_ADD_TASK
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
-        
+        context.startActivity(intent)
+    }
+}
+
+class ConfigureWidgetAction : ActionCallback {
+    override suspend fun onAction(
+        context: Context,
+        glanceId: GlanceId,
+        parameters: ActionParameters,
+    ) {
+        val appWidgetId = GlanceAppWidgetManager(context).getAppWidgetId(glanceId)
+        val intent = Intent(context, WidgetConfigureActivity::class.java).apply {
+            putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
         context.startActivity(intent)
     }
 }
@@ -78,23 +93,29 @@ class AppWidget : GlanceAppWidget() {
         get() = HomeWidgetGlanceStateDefinition()
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
+        val appWidgetId = GlanceAppWidgetManager(context).getAppWidgetId(id)
         provideContent {
-            GlanceContent(context, currentState())
+            GlanceContent(context, currentState(), appWidgetId)
         }
     }
 
     // This function cannot be composable otherwise it wont run sometimes when shared prefs isn't changed
-    private fun getTasks(prefs: SharedPreferences) {
+    private fun getTasks(prefs: SharedPreferences, appWidgetId: Int) {
         // These need to be cleared in case this gets run multiple times
         todayTasks.clear()
         otherTasks.clear()
         val gson = Gson()
-        val tasksJson = prefs.getString("WidgetTasks", null)
+        val tasksJson = prefs.getString("WidgetTasks_$appWidgetId", null)
 
         if (tasksJson != null) {
-            val tasks = gson.fromJson(tasksJson, Array<Task>::class.java)
+            val tasks = try {
+                gson.fromJson(tasksJson, Array<Task>::class.java)
+            } catch (e: Exception) {
+                Log.d("Widget", "Failed to parse cached tasks for widget $appWidgetId", e)
+                null
+            }
 
-            if (tasks.isNotEmpty()) {
+            if (tasks != null && tasks.isNotEmpty()) {
                 for (task in tasks) {
                     if (task.today) {
                         todayTasks.add(task)
@@ -104,10 +125,9 @@ class AppWidget : GlanceAppWidget() {
                 }
             }
         } else {
-            Log.d("Widget", "There was a problem getting the widget ids")
+            Log.d("Widget", "No tasks found for widget $appWidgetId")
         }
     }
-
 
     private fun doneTask(context: Context, prefs: SharedPreferences, taskID: String) {
         prefs.edit {
@@ -123,18 +143,31 @@ class AppWidget : GlanceAppWidget() {
     }
 
     @Composable
-    private fun GlanceContent(context: Context, currentState: HomeWidgetGlanceState) {
+    private fun GlanceContent(
+        context: Context,
+        currentState: HomeWidgetGlanceState,
+        appWidgetId: Int,
+    ) {
         val prefs = currentState.preferences
-        getTasks(prefs)
+        getTasks(prefs, appWidgetId)
+
+        val viewType = prefs.getString("widget_view_$appWidgetId", "today") ?: "today"
+        val widgetTitle = prefs.getString("widget_title_$appWidgetId", "Vikunja") ?: "Vikunja"
+        val otherSectionLabel = when (viewType) {
+            "upcoming" -> "This Week:"
+            "inbox", "project" -> "Tasks:"
+            else -> "Overdue:"
+        }
+
         Column(
             modifier = GlanceModifier.fillMaxHeight(), verticalAlignment = Alignment.Top
         ) {
-            WidgetTitleBar()
+            WidgetTitleBar(widgetTitle)
             if (todayTasks.isEmpty() and otherTasks.isEmpty()) {
                 EmptyView()
             } else {
                 LazyColumn(
-                    modifier = GlanceModifier.background(
+                    modifier = GlanceModifier.fillMaxHeight().background(
                         ColorProvider(
                             Color.White, Color(0xFF1f2937)
                         )
@@ -147,18 +180,18 @@ class AppWidget : GlanceAppWidget() {
                                 style = TextStyle(color = ColorProvider(Color.Black, Color.White))
                             )
                         }
-                        items(todayTasks.sortedBy { it.dueDate }) { task ->
+                        items(todayTasks.sortedBy { it.dueDate ?: Long.MAX_VALUE }) { task ->
                             RenderRow(context, task, prefs)
                         }
                     }
                     if (otherTasks.isNotEmpty()) {
                         item {
                             Text(
-                                "Overdue:",
+                                otherSectionLabel,
                                 style = TextStyle(color = ColorProvider(Color.Black, Color.White))
                             )
                         }
-                        items(otherTasks.sortedBy { it.dueDate }) { task ->
+                        items(otherTasks.sortedBy { it.dueDate ?: Long.MAX_VALUE }) { task ->
                             RenderRow(context, task, prefs, showDate = true)
                         }
                     }
@@ -168,17 +201,28 @@ class AppWidget : GlanceAppWidget() {
     }
 
     @Composable
-    private fun WidgetTitleBar() {
+    private fun WidgetTitleBar(title: String = "Vikunja") {
         Box(
             modifier = GlanceModifier
                 .background(ColorProvider(Color(0xFF126cfd), Color(0xFF013992))),
             contentAlignment = Alignment.Center,
         ) {
             TitleBar(
-                title = "Vikunja",
+                title = title,
                 startIcon = ImageProvider(R.drawable.vikunja_logo),
                 iconColor = null,
                 actions = {
+                    Box(
+                        modifier = GlanceModifier.padding(end = 4.dp, top = 4.dp, bottom = 4.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircleIconButton(
+                            enabled = true,
+                            onClick = actionRunCallback<ConfigureWidgetAction>(),
+                            imageProvider = ImageProvider(R.drawable.settings),
+                            contentDescription = "Configure widget",
+                        )
+                    }
                     Box(
                         modifier = GlanceModifier.padding(end = 8.dp, top = 4.dp, bottom = 4.dp),
                         contentAlignment = Alignment.Center
@@ -209,14 +253,17 @@ class AppWidget : GlanceAppWidget() {
                 onCheckedChange = { doneTask(context, prefs, task.id) },
                 modifier = GlanceModifier.padding(start = 0.dp)
             )
-            Box(
-                modifier = GlanceModifier.padding(start = 8.dp)
-            ) {
-                Text(
-                    text = formatDueDate(task.dueDate, showDate), style = TextStyle(
-                        fontSize = 18.sp, color = ColorProvider(Color.Black, Color.White)
+            val taskDueDate = task.dueDateAsDate()
+            if (taskDueDate != null) {
+                Box(
+                    modifier = GlanceModifier.padding(start = 8.dp)
+                ) {
+                    Text(
+                        text = formatDueDate(taskDueDate, showDate), style = TextStyle(
+                            fontSize = 18.sp, color = ColorProvider(Color.Black, Color.White)
+                        )
                     )
-                )
+                }
             }
             Box(
                 modifier = GlanceModifier.padding(start = 8.dp)
@@ -252,7 +299,7 @@ class AppWidget : GlanceAppWidget() {
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                text = "There are no tasks due today", style = TextStyle(
+                text = "No tasks", style = TextStyle(
                     fontSize = 16.sp, color = ColorProvider(
                         Color.Black, Color.White
                     )
