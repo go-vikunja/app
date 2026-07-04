@@ -39,6 +39,15 @@
                     android:name="android.appwidget.provider"
                     android:resource="@xml/widget" />
         </receiver>
+        <activity
+            android:name=".widget.WidgetConfigureActivity"
+            android:exported="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.DeviceDefault">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
         <meta-data android:name="io.flutter.network-policy" android:resource="@xml/network_security_config"/>
         <activity
             android:name=".MainActivity"
