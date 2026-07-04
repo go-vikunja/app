@@ -21,6 +21,11 @@ Future<void> widgetCallback(Uri? uri) async {
     } else {
       developer.log("No TaskID provided for widget");
     }
+  } else if (uri?.host == "updatewidget") {
+    String? widgetId = uri?.queryParameters['widgetId'];
+    await updateWidgetForId(widgetId);
+  } else {
+    developer.log('widgetCallback: unrecognised host=${uri?.host}');
   }
 }
 
