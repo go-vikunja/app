@@ -1,10 +1,11 @@
 import 'dart:convert';
 import 'dart:developer' as developer;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:home_widget/home_widget.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:vikunja_app/core/network/client.dart';
+import 'package:vikunja_app/core/wrappers/home_widget_wrapper.dart';
 import 'package:vikunja_app/data/data_sources/settings_data_source.dart';
 import 'package:vikunja_app/data/data_sources/task_data_source.dart';
 import 'package:vikunja_app/data/repositories/task_repository_impl.dart';
@@ -95,13 +96,15 @@ Future<void> updateWidget() async {
 }
 
 Future<void> updateWidgetTasks(List<Task> tasklist) async {
+  if (kIsWeb) return;
   var data = jsonEncode(tasklist.map((e) => convertTask(e).toJSON()).toList());
-  await HomeWidget.saveWidgetData("WidgetTasks", data);
+  await saveHomeWidgetData("WidgetTasks", data);
   await reRenderWidget();
 }
 
 Future<void> reRenderWidget() async {
-  await HomeWidget.updateWidget(
+  if (kIsWeb) return;
+  await updateHomeWidget(
     name: 'AppWidget',
     qualifiedAndroidName: 'io.vikunja.app.widget.AppWidgetReciever',
   );

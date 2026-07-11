@@ -4,9 +4,9 @@ import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/core/di/theme_provider.dart';
 import 'package:vikunja_app/core/theming/theme_mode.dart';
+import 'package:vikunja_app/core/wrappers/workmanager_wrapper.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/settings_page_state.dart';
-import 'package:workmanager/workmanager.dart';
 
 part 'settings_controller.g.dart';
 
@@ -116,18 +116,17 @@ class SettingsController extends _$SettingsController {
     }
 
     var settings = await getAll();
-    Workmanager().cancelAll().then((value) {
-      var duration = Duration(minutes: settings.refreshInterval);
-      if (duration.inMinutes > 0) {
-        Workmanager().registerPeriodicTask(
-          "update-tasks",
-          "update-tasks",
-          frequency: duration,
-          constraints: Constraints(networkType: NetworkType.connected),
-          initialDelay: Duration(seconds: 15),
-        );
-      }
-    });
+    cancelAllWorkmanagerTasks();
+    final duration = Duration(minutes: settings.refreshInterval);
+    if (duration.inMinutes > 0) {
+      registerPeriodicWorkmanagerTask(
+        uniqueName: "update-tasks",
+        taskName: "update-tasks",
+        frequency: duration,
+        initialDelay: Duration(seconds: 15),
+        constraints: null,
+      );
+    }
   }
 
   void setDefaultProject(int value) {

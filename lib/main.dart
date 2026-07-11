@@ -8,7 +8,6 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart'
     hide ChangeNotifierProvider;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:home_widget/home_widget.dart' show HomeWidget;
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -17,11 +16,12 @@ import 'package:sentry_logging/sentry_logging.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/core/di/theme_provider.dart';
 import 'package:vikunja_app/core/di/locale_provider.dart';
+import 'package:vikunja_app/core/wrappers/home_widget_wrapper.dart';
+import 'package:vikunja_app/core/wrappers/workmanager_wrapper.dart';
 import 'package:vikunja_app/data/data_sources/settings_data_source.dart';
 import 'package:vikunja_app/init_page.dart';
 import 'package:vikunja_app/presentation/pages/home_page.dart';
 import 'package:vikunja_app/presentation/pages/login/login_page.dart';
-import 'package:workmanager/workmanager.dart';
 
 import 'core/background_work.dart';
 
@@ -73,14 +73,16 @@ void main() async {
   }
   try {
     if (!kIsWeb) {
-      Workmanager().initialize(callbackDispatcher);
+      initializeWorkmanager(callbackDispatcher);
     }
   } catch (e) {
     developer.log("Failed to initialize workmanager: $e");
   }
   try {
-    await HomeWidget.registerInteractivityCallback(widgetCallback);
-    developer.log('Registered background callback');
+    if (!kIsWeb) {
+      await registerHomeWidgetCallback(widgetCallback);
+      developer.log('Registered background callback');
+    }
   } catch (e) {
     developer.log('Failed to initialise widget Callback');
   }

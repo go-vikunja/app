@@ -1,15 +1,13 @@
 import 'dart:convert';
 import 'dart:core';
 import 'dart:developer' as developer;
-import 'dart:io';
 
-import 'package:cronet_http/cronet_http.dart' as cronet_http;
-import 'package:cupertino_http/cupertino_http.dart' as cupertino_http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
-import 'package:http/io_client.dart' as io_client;
 import 'package:logging/logging.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
+import 'package:vikunja_app/core/network/client_io_stub.dart'
+    if (dart.library.io) 'package:vikunja_app/core/network/client_io_native.dart';
 import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/core/network/token_lock.dart';
 import 'package:vikunja_app/core/utils/constants.dart';
@@ -54,33 +52,19 @@ class Client {
 
   http.Client createClient() {
     try {
-      if (Platform.isAndroid) {
-        final engine = cronet_http.CronetEngine.build(
-          cacheMode: cronet_http.CacheMode.memory,
-          cacheMaxSize: 1000000,
-        );
-        return cronet_http.CronetClient.fromCronetEngine(engine);
-      } else if (Platform.isIOS || Platform.isMacOS) {
-        final config =
-            cupertino_http
-                  .URLSessionConfiguration.ephemeralSessionConfiguration()
-              ..cache = cupertino_http.URLCache.withCapacity(
-                memoryCapacity: 1000000,
-              );
-        return cupertino_http.CupertinoClient.fromSessionConfiguration(config);
-      }
+      return createPlatformClient();
     } catch (e) {
       developer.log(
         "Error creating http client: $e. Falling back to default client.",
       );
     }
 
-    return io_client.IOClient();
+    return http.Client();
   }
 
   void setIgnoreCerts(bool val) {
     ignoreCertificates = val;
-    HttpOverrides.global = IgnoreCertHttpOverrides(ignoreCertificates);
+    setPlatformIgnoreCerts(ignoreCertificates);
   }
 
   Future<Map<String, String>> getHeaders() async {
@@ -191,12 +175,8 @@ class Client {
         .timeout(_requestTimeout);
   }
 
-  io_client.IOClient _createIOClient() {
-    final httpClient = HttpClient();
-    if (ignoreCertificates) {
-      httpClient.badCertificateCallback = (_, _, _) => true;
-    }
-    return io_client.IOClient(httpClient);
+  http.Client _createIOClient() {
+    return createPlatformIOClient(ignoreCertificates: ignoreCertificates);
   }
 
   Future<Response<T>> _handleResponse<T>(
@@ -315,19 +295,5 @@ class Client {
       Sentry.captureException(e, stackTrace: s);
     }
     return ExceptionResponse<T>(e, s);
-  }
-}
-
-class IgnoreCertHttpOverrides extends HttpOverrides {
-  bool ignoreCerts = false;
-
-  IgnoreCertHttpOverrides(bool ignore) {
-    ignoreCerts = ignore;
-  }
-
-  @override
-  HttpClient createHttpClient(SecurityContext? context) {
-    return super.createHttpClient(context)
-      ..badCertificateCallback = (_, _, _) => ignoreCerts;
   }
 }

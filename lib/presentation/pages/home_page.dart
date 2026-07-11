@@ -1,5 +1,6 @@
 import 'dart:developer' as developer;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -29,7 +30,7 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 class HomePageState extends ConsumerState<HomePage> {
-  static const platform = MethodChannel('vikunja');
+  static const platform = kIsWeb ? null : MethodChannel('vikunja');
 
   int _selectedDrawerIndex = 0, _previousDrawerIndex = 0;
   Widget? drawerItem;
@@ -112,11 +113,12 @@ class HomePageState extends ConsumerState<HomePage> {
 
   void scheduleIntent() async {
     try {
-      platform.setMethodCallHandler((call) async {
+      if (platform == null) return;
+      platform!.setMethodCallHandler((call) async {
         return showAddItemDialog(call.arguments as String);
       });
 
-      String? argument = await platform.invokeMethod<String>("isQuickTile", "");
+      String? argument = await platform!.invokeMethod<String>("isQuickTile", "");
       return showAddItemDialog(argument);
     } catch (e) {
       developer.log("Error $e");

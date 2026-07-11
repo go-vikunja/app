@@ -1,7 +1,5 @@
 import 'dart:developer' as developer;
-import 'dart:isolate';
 import 'dart:math';
-import 'dart:ui';
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -12,6 +10,9 @@ import 'package:vikunja_app/data/data_sources/settings_data_source.dart';
 import 'package:vikunja_app/data/data_sources/task_data_source.dart';
 import 'package:vikunja_app/data/repositories/task_repository_impl.dart';
 import 'package:vikunja_app/domain/repositories/task_repository.dart';
+import 'package:vikunja_app/presentation/manager/notifications_platform_stub.dart'
+    if (dart.library.io)
+      'package:vikunja_app/presentation/manager/notifications_platform_native.dart';
 import 'package:vikunja_app/presentation/manager/widget_controller.dart';
 
 const _actionDonePortName = 'action_done_port_name';
@@ -55,7 +56,7 @@ Future<void> markAsDone(int id) async {
     await updateWidget();
 
     //Call app if opened to update view
-    final SendPort? sendPort = IsolateNameServer.lookupPortByName(
+    final sendPort = BackgroundPort.lookupPortByName(
       _actionDonePortName,
     );
 
@@ -66,7 +67,7 @@ Future<void> markAsDone(int id) async {
 }
 
 class NotificationHandler {
-  final ReceivePort _receivePort = ReceivePort();
+  final BackgroundPort _receivePort = BackgroundPort();
   final List<Function()> _taskChangedListener = List.empty(growable: true);
 
   FlutterLocalNotificationsPlugin get notificationsPlugin =>
@@ -160,9 +161,9 @@ class NotificationHandler {
   }
 
   void initBackgroundCommunication() {
-    IsolateNameServer.removePortNameMapping(_actionDonePortName);
+    BackgroundPort.removePortNameMapping(_actionDonePortName);
 
-    final ok = IsolateNameServer.registerPortWithName(
+    final ok = BackgroundPort.registerPortWithName(
       _receivePort.sendPort,
       _actionDonePortName,
     );
