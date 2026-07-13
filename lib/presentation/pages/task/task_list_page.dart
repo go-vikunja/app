@@ -13,6 +13,7 @@ import 'package:vikunja_app/presentation/pages/loading_widget.dart';
 import 'package:vikunja_app/presentation/pages/task/task_edit_page.dart';
 import 'package:vikunja_app/presentation/widgets/empty_view.dart';
 import 'package:vikunja_app/presentation/widgets/task/add_task_dialog.dart';
+import 'package:vikunja_app/core/utils/task_flatten.dart';
 import 'package:vikunja_app/presentation/widgets/task/task_list_item.dart';
 import 'package:vikunja_app/presentation/widgets/task_bottom_sheet.dart';
 
@@ -66,16 +67,17 @@ class TaskListPage extends ConsumerWidget {
   }
 
   Widget _buildList(WidgetRef ref, BuildContext context, TaskPageModel model) {
-    if (model.tasks.isEmpty) {
+    final flatTasks = flattenTasks(deduplicateSubtasks(model.tasks));
+    if (flatTasks.isEmpty) {
       return EmptyView(Icons.list, AppLocalizations.of(context).noTasks);
     } else {
-      final itemCount = model.tasks.length + (model.isLoadingNextPage ? 1 : 0);
+      final itemCount = flatTasks.length + (model.isLoadingNextPage ? 1 : 0);
       return ListView.separated(
         itemCount: itemCount,
         separatorBuilder: (BuildContext context, int index) =>
             const Divider(height: 8),
         itemBuilder: (context, index) {
-          if (index == model.tasks.length) {
+          if (index == flatTasks.length) {
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 16.0),
               child: Center(
@@ -86,7 +88,8 @@ class TaskListPage extends ConsumerWidget {
               ),
             );
           }
-          return _createListItem(ref, context, model.tasks[index]);
+          final entry = flatTasks[index];
+          return _createListItem(ref, context, entry.task, entry.depth);
         },
       );
     }
@@ -187,10 +190,11 @@ class TaskListPage extends ConsumerWidget {
     }
   }
 
-  Widget _createListItem(WidgetRef ref, BuildContext context, Task task) {
+  Widget _createListItem(WidgetRef ref, BuildContext context, Task task, int depth) {
     return TaskListItem(
       key: Key(task.id.toString()),
       task: task,
+      indent: depth,
       onTap: () {
         _showTaskBottomSheet(context, task);
       },
