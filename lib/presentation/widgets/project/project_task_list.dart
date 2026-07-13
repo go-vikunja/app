@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:vikunja_app/core/utils/calculate_item_position.dart';
+import 'package:vikunja_app/core/utils/task_flatten.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
@@ -113,24 +114,25 @@ class ProjectTaskList extends ConsumerWidget {
   }
 
   Widget _buildTaskList(WidgetRef ref, List<Task> tasks) {
+    final flatTasks = flattenTasks(deduplicateSubtasks(tasks));
     return SliverReorderableList(
       itemBuilder: (context, index) {
-        final task = tasks[index];
+        final entry = flatTasks[index];
         return ReorderableDelayedDragStartListener(
-          key: Key('task_${task.id}'),
+          key: Key('task_${entry.task.id}'),
           index: index,
           child: Material(
             color: Colors.transparent,
             child: Column(
               children: [
-                _buildTile(ref, task),
-                if (index < tasks.length - 1) Divider(height: 1),
+                _buildTile(ref, entry.task, entry.depth),
+                if (index < flatTasks.length - 1) Divider(height: 1),
               ],
             ),
           ),
         );
       },
-      itemCount: tasks.length,
+      itemCount: flatTasks.length,
       onReorder: (oldIndex, newIndexRaw) {
         int newIndex = newIndexRaw;
         if (newIndex > oldIndex) {
@@ -139,7 +141,7 @@ class ProjectTaskList extends ConsumerWidget {
 
         if (newIndex < -1) newIndex = -1;
 
-        final taskList = List<Task>.from(tasks);
+        final taskList = List<Task>.from(flatTasks.map((e) => e.task));
         final moved = taskList.removeAt(oldIndex);
         final insertIndex = newIndex == -1
             ? 0
@@ -176,10 +178,11 @@ class ProjectTaskList extends ConsumerWidget {
     );
   }
 
-  Widget _buildTile(WidgetRef ref, Task task) {
+  Widget _buildTile(WidgetRef ref, Task task, int depth) {
     return ProjectTaskListItem(
       key: Key(task.id.toString()),
       task: task,
+      indent: depth,
       onTap: () => _showTaskBottomSheet(ref, task),
       onEdit: () => _onEdit(ref, task),
       onCheckedChanged: (value) async {
