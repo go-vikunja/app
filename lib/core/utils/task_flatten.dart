@@ -17,6 +17,7 @@ List<FlattenedTaskEntry> flattenTasks(List<Task> tasks) {
       }
     }
   }
+
   walk(tasks, 0);
   return result;
 }

@@ -190,7 +190,12 @@ class TaskListPage extends ConsumerWidget {
     }
   }
 
-  Widget _createListItem(WidgetRef ref, BuildContext context, Task task, int depth) {
+  Widget _createListItem(
+    WidgetRef ref,
+    BuildContext context,
+    Task task,
+    int depth,
+  ) {
     return TaskListItem(
       key: Key(task.id.toString()),
       task: task,

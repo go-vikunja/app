@@ -94,11 +94,10 @@ class ProjectController extends _$ProjectController with PaginationMixin<Task> {
           page,
         ),
         stateUpdater: (newTasks) {
-          final filteredNewTasks = flattenAndRemoveSubtasks(newTasks as List<Task>);
-          final updatedTasks = [
-            ...currentState.tasks,
-            ...filteredNewTasks,
-          ];
+          final filteredNewTasks = flattenAndRemoveSubtasks(
+            newTasks as List<Task>,
+          );
+          final updatedTasks = [...currentState.tasks, ...filteredNewTasks];
           state = AsyncData(
             currentState.copyWith(
               tasks: updatedTasks,
