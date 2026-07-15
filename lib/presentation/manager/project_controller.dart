@@ -12,6 +12,38 @@ import 'package:vikunja_app/presentation/manager/projects_controller.dart';
 
 part 'project_controller.g.dart';
 
+List<Task> flattenAndRemoveSubtasks(List<Task> tasks) {
+  final Map<int, Task> taskMap = {};
+  final Set<int> subtaskIds = {};
+
+  for (final task in tasks) {
+    taskMap[task.id] = task;
+  }
+
+  for (final task in tasks) {
+    for (final subtask in task.subtasks) {
+      subtaskIds.add(subtask.id);
+      if (!taskMap.containsKey(subtask.id)) {
+        taskMap[subtask.id] = subtask;
+      }
+    }
+  }
+
+  for (final subtaskId in subtaskIds) {
+    final subtask = taskMap[subtaskId];
+    if (subtask != null && subtask.parentTaskId != null) {
+      final parent = taskMap[subtask.parentTaskId];
+      if (parent != null) {
+        if (!parent.subtasks.any((s) => s.id == subtask.id)) {
+          parent.subtasks.add(subtask);
+        }
+      }
+    }
+  }
+
+  return tasks.where((t) => t.parentTaskId == null).toList();
+}
+
 @riverpod
 class ProjectController extends _$ProjectController with PaginationMixin<Task> {
   @override
@@ -32,7 +64,7 @@ class ProjectController extends _$ProjectController with PaginationMixin<Task> {
 
     if (tasksResponse.isSuccessful) {
       updateTotalPages(tasksResponse.toSuccess().headers);
-      final tasks = tasksResponse.toSuccess().body;
+      final tasks = flattenAndRemoveSubtasks(tasksResponse.toSuccess().body);
       return ProjectPageModel(project, 0, tasks, [], displayDoneTask, false);
     } else if (tasksResponse.isException) {
       throw Exception(tasksResponse.toException().message);
@@ -62,9 +94,10 @@ class ProjectController extends _$ProjectController with PaginationMixin<Task> {
           page,
         ),
         stateUpdater: (newTasks) {
+          final filteredNewTasks = flattenAndRemoveSubtasks(newTasks as List<Task>);
           final updatedTasks = [
             ...currentState.tasks,
-            ...newTasks as List<Task>,
+            ...filteredNewTasks,
           ];
           state = AsyncData(
             currentState.copyWith(
@@ -131,7 +164,7 @@ class ProjectController extends _$ProjectController with PaginationMixin<Task> {
 
     if (tasksResponse.isSuccessful) {
       updateTotalPages(tasksResponse.toSuccess().headers);
-      tasks = tasksResponse.toSuccess().body;
+      tasks = flattenAndRemoveSubtasks(tasksResponse.toSuccess().body);
     } else if (tasksResponse.isError) {
       state = AsyncError(tasksResponse.toError().error, StackTrace.current);
       return;
@@ -432,7 +465,7 @@ class ProjectController extends _$ProjectController with PaginationMixin<Task> {
         viewId,
       );
       if (tasksResponse.isSuccessful) {
-        var tasks = tasksResponse.toSuccess().body;
+        var tasks = flattenAndRemoveSubtasks(tasksResponse.toSuccess().body);
         state = AsyncData(
           value.copyWith(tasks: tasks, displayDoneTask: displayDoneTasks),
         );
