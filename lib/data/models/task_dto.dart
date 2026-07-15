@@ -66,7 +66,7 @@ class TaskDto extends Dto<Task> {
       dueDate = DateTime.parse(json['due_date']),
       startDate = DateTime.parse(json['start_date']),
       endDate = DateTime.parse(json['end_date']),
-      parentTaskId = json['parent_task_id'],
+      parentTaskId = json['parent_task_id'] ?? _extractParentTaskId(json),
       priority = json['priority'],
       repeatAfter = Duration(seconds: json['repeat_after']),
       color = json['hex_color'] != ''
@@ -83,11 +83,7 @@ class TaskDto extends Dto<Task> {
                 .map((label) => LabelDto.fromJson(label))
                 .toList()
           : [],
-      subtasks = json['subtasks'] != null
-          ? (json['subtasks'] as List<dynamic>)
-                .map((subtask) => TaskDto.fromJson(subtask))
-                .toList()
-          : [],
+      subtasks = _extractSubtasks(json),
       attachments = json['attachments'] != null
           ? (json['attachments'] as List<dynamic>)
                 .map((attachment) => TaskAttachmentDto.fromJSON(attachment))
@@ -188,4 +184,32 @@ class TaskDto extends Dto<Task> {
     bucketId: b.bucketId,
     createdBy: b.createdBy != null ? UserDto.fromDomain(b.createdBy!) : null,
   );
+
+  static int? _extractParentTaskId(Map<String, dynamic> json) {
+    final parentTask = json['parent_task_id'];
+    if (parentTask != null) return parentTask as int?;
+    final related = json['related_tasks'];
+    if (related is Map) {
+      final parents = related['parenttask'];
+      if (parents is List && parents.isNotEmpty) {
+        return (parents.first as Map<String, dynamic>)['id'] as int?;
+      }
+    }
+    return null;
+  }
+
+  static List<TaskDto> _extractSubtasks(Map<String, dynamic> json) {
+    final direct = json['subtasks'];
+    if (direct is List) {
+      return direct.map((s) => TaskDto.fromJson(s)).toList();
+    }
+    final related = json['related_tasks'];
+    if (related is Map) {
+      final subtaskList = related['subtask'];
+      if (subtaskList is List) {
+        return subtaskList.map((s) => TaskDto.fromJson(s)).toList();
+      }
+    }
+    return [];
+  }
 }
