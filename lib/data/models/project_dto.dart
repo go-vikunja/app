@@ -41,7 +41,7 @@ class ProjectDto extends Dto<Project> {
       position = json['position'].toDouble(),
       isArchived = json['is_archived'],
       isFavourite = json['is_archived'],
-      parentProjectId = json['parent_project_id'],
+      parentProjectId = json['parent_project_id'] ?? 0,
       views = (json['views'] is List)
           ? (json['views'] as List)
                 .map<ProjectViewDto>((view) => ProjectViewDto.fromJson(view))
