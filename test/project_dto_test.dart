@@ -36,6 +36,7 @@ void main() {
       expect(project.title, 'Inbox');
       expect(project.parentProjectId, 0);
       expect(project.isArchived, false);
+      expect(project.isFavourite, true);
       expect(project.owner?.username, 'demo');
     });
 
@@ -85,8 +86,17 @@ void main() {
       expect(project.id, -1);
       expect(project.title, 'Favorites');
       expect(project.parentProjectId, 0);
+      expect(project.isFavourite, true);
       expect(project.owner, isNull);
       expect(project.views.length, 1);
+    });
+  });
+
+  group('ProjectDto.toJSON', () {
+    test('serializes is_favorite with the field name the api uses', () {
+      final project = ProjectDto(title: 'Test', isFavourite: true);
+
+      expect(project.toJSON()['is_favorite'], true);
     });
   });
 }
