@@ -100,8 +100,8 @@ class UserDto extends Dto<User> {
        updated = updated ?? DateTime.now();
 
   UserDto.fromJson(Map<String, dynamic> json)
-    : id = json.containsKey('id') ? json['id'] : 0,
-      name = json.containsKey('name') ? json['name'] : '',
+    : id = json['id'] ?? 0,
+      name = json['name'] ?? '',
       username = json['username'],
       created = DateTime.parse(json['created']),
       updated = DateTime.parse(json['updated']) {
