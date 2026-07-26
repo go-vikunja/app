@@ -66,7 +66,8 @@ WidgetTask convertTask(Task task) {
   final today = DateTime(now.year, now.month, now.day);
   final effectiveDueDate = task.hasDueDate ? task.dueDate : null;
   final dueLocal = effectiveDueDate?.toLocal();
-  bool wgToday = dueLocal != null &&
+  bool wgToday =
+      dueLocal != null &&
       dueLocal.year == today.year &&
       dueLocal.month == today.month &&
       dueLocal.day == today.day;
@@ -138,7 +139,9 @@ Future<void> _updateWidgetId(
   String widgetId,
   TaskRepositoryImpl taskService,
 ) async {
-  final rawViewStr = await HomeWidget.getWidgetData<String>('widget_view_$widgetId');
+  final rawViewStr = await HomeWidget.getWidgetData<String>(
+    'widget_view_$widgetId',
+  );
   final viewStr = rawViewStr ?? 'today';
   final view = WidgetView.fromString(viewStr);
 
@@ -162,7 +165,9 @@ Future<void> _updateWidgetId(
     case WidgetView.upcoming:
       final result = await taskService.getByFilterString(
         'done = false && due_date >= now/d && due_date < now/d+7d',
-        {'filter_include_nulls': ['false']},
+        {
+          'filter_include_nulls': ['false'],
+        },
       );
       success = result.isSuccessful;
       if (success) tasks = result.toSuccess().body;
@@ -176,8 +181,9 @@ Future<void> _updateWidgetId(
                 '0',
           ) ??
           0;
-      final projectName =
-          await HomeWidget.getWidgetData<String>('widget_project_name_$widgetId');
+      final projectName = await HomeWidget.getWidgetData<String>(
+        'widget_project_name_$widgetId',
+      );
       if (projectId != 0) {
         final result = await taskService.getAllByProject(projectId);
         success = result.isSuccessful;
