@@ -5,6 +5,10 @@ abstract class SettingsRepository {
 
   Future<void> setIgnoreCertificates(bool value);
 
+  Future<String?> getClientCertAlias(String server);
+
+  Future<void> setClientCertAlias(String server, String? alias);
+
   Future<bool> getSentryEnabled();
 
   Future<void> setSentryEnabled(bool value);

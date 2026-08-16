@@ -16,6 +16,7 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:sentry_logging/sentry_logging.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/core/di/theme_provider.dart';
+import 'package:vikunja_app/core/network/sentry_network_filter.dart';
 import 'package:vikunja_app/core/di/locale_provider.dart';
 import 'package:vikunja_app/data/data_sources/settings_data_source.dart';
 import 'package:vikunja_app/init_page.dart';
@@ -27,18 +28,6 @@ import 'core/background_work.dart';
 
 final globalSnackbarKey = GlobalKey<ScaffoldMessengerState>();
 final globalNavigatorKey = GlobalKey<NavigatorState>();
-
-// Network error codes to ignore in Sentry reporting (Cronet exceptions)
-const _ignoredNetworkErrors = [
-  'ERR_ADDRESS_UNREACHABLE',
-  'ERR_NETWORK_CHANGED',
-  'ERR_INTERNET_DISCONNECTED',
-  'ERR_CONNECTION_REFUSED',
-  'ERR_CONNECTION_RESET',
-  'ERR_CONNECTION_CLOSED',
-  'ERR_CONNECTION_TIMED_OUT',
-  'ERR_NAME_NOT_RESOLVED',
-];
 
 void main() async {
   SentryWidgetsFlutterBinding.ensureInitialized();
@@ -93,21 +82,14 @@ void main() async {
       options.addIntegration(LoggingIntegration());
       options.enableLogs = true;
       options.tracesSampleRate = 1.0;
+      // ignore: experimental_member_use
       options.profilesSampleRate = 1.0;
+      // Drop expected transient network-connectivity failures (device offline,
+      // host unreachable, DNS/timeout/connection-reset). ok_http surfaces these
+      // as ClientExceptions wrapping OkHttp/Java IOExceptions; this restores the
+      // noise filtering the cronet_http client had for Chromium net::ERR_ codes.
       options.beforeSend = (event, hint) {
-        // Filter out network unreachability errors (Cronet exceptions)
-        // These are Chromium/Cronet network errors that appear in format: "net::ERR_..."
-        final exceptionMessage = event.throwable?.toString() ?? '';
-
-        // Only filter Cronet-specific exceptions
-        if (exceptionMessage.contains('Cronet exception') ||
-            exceptionMessage.contains('CronetUrlRequest')) {
-          for (final error in _ignoredNetworkErrors) {
-            if (exceptionMessage.contains('net::$error')) {
-              return null; // Don't send to Sentry
-            }
-          }
-        }
+        if (isIgnoredNetworkError(event.throwable)) return null;
         return event;
       };
     }, appRunner: () => runApp(ProviderScope(child: VikunjaApp())));

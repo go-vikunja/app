@@ -3,6 +3,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/core/di/theme_provider.dart';
+import 'package:vikunja_app/core/network/keychain_alias.dart' as keychain;
 import 'package:vikunja_app/core/theming/theme_mode.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/settings_page_state.dart';
@@ -39,6 +40,11 @@ class SettingsController extends _$SettingsController {
     var dynamicColor = await ref
         .read(settingsRepositoryProvider)
         .getDynamicColors();
+    final settingsRepository = ref.read(settingsRepositoryProvider);
+    final server = await settingsRepository.getServer();
+    var clientCertAlias = server == null
+        ? null
+        : await settingsRepository.getClientCertAlias(server);
 
     var version = await ref
         .read(versionRepositoryProvider)
@@ -61,6 +67,7 @@ class SettingsController extends _$SettingsController {
       themeMode,
       dynamicColor,
       version,
+      clientCertAlias,
     );
   }
 
@@ -91,11 +98,30 @@ class SettingsController extends _$SettingsController {
   }
 
   Future<void> setIgnoreCertificates(bool value) async {
-    ref.read(settingsRepositoryProvider).setIgnoreCertificates(value);
+    await ref.read(settingsRepositoryProvider).setIgnoreCertificates(value);
 
-    ref.read(clientProviderProvider).setIgnoreCerts(value);
+    await ref.read(clientProviderProvider).setIgnoreCerts(value);
 
     state = AsyncData(await getAll());
+  }
+
+  Future<void> setClientCertificateAlias(String? alias) async {
+    final settingsRepository = ref.read(settingsRepositoryProvider);
+    final server = await settingsRepository.getServer();
+    if (server != null) {
+      await settingsRepository.setClientCertAlias(server, alias);
+    }
+
+    await ref.read(clientProviderProvider).setClientCertificateAlias(alias);
+
+    state = AsyncData(await getAll());
+  }
+
+  Future<void> chooseClientCertificate() async {
+    final alias = await keychain.choosePrivateKeyAlias();
+    if (alias != null) {
+      await setClientCertificateAlias(alias);
+    }
   }
 
   Future<void> setRefreshInterval(int minutes) async {

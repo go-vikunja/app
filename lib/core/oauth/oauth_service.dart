@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:app_links/app_links.dart';
+import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:vikunja_app/core/network/client.dart';
 import 'package:vikunja_app/core/oauth/pkce.dart';
@@ -47,26 +48,41 @@ class OAuthService {
 
   String _codeVerifier = '';
   String _state = '';
+  final Future<bool> Function(Uri uri) _launchAuthorizeUrl;
+  final Stream<Uri> Function() _callbackUris;
   StreamSubscription<Uri>? _linkSubscription;
   Completer<Uri>? _callbackCompleter;
+
+  OAuthService({
+    Future<bool> Function(Uri uri)? launchAuthorizeUrl,
+    Stream<Uri> Function()? callbackUris,
+  }) : _launchAuthorizeUrl =
+           launchAuthorizeUrl ??
+           ((uri) => launchUrl(uri, mode: LaunchMode.externalApplication)),
+       _callbackUris = callbackUris ?? (() => AppLinks().uriLinkStream);
 
   bool get isWaitingForCallback =>
       _callbackCompleter != null && !_callbackCompleter!.isCompleted;
 
-  /// Cancels a pending authorization flow.
+  /// Cancels either a browser or client-transport authorization flow.
   void cancelAuthorize() {
-    _linkSubscription?.cancel();
+    unawaited(_linkSubscription?.cancel());
     _linkSubscription = null;
-    if (_callbackCompleter != null && !_callbackCompleter!.isCompleted) {
-      _callbackCompleter!.completeError(OAuthException(OAuthError.cancelled));
-    }
+    final completer = _callbackCompleter;
     _callbackCompleter = null;
+    if (completer != null && !completer.isCompleted) {
+      completer.completeError(OAuthException(OAuthError.cancelled));
+    }
   }
 
-  /// Launches the OAuth authorization flow in the system browser.
-  /// Returns a Future that completes with the authorization code
-  /// when the app receives the callback deep link.
-  Future<String> authorize(String serverUrl) async {
+  /// Uses the normal browser flow unless [useClientTransport] selects the
+  /// certificate-gated federator flow, whose immediate callback redirect must
+  /// travel over [client].
+  Future<String> authorize(
+    Client client,
+    String serverUrl, {
+    bool useClientTransport = false,
+  }) async {
     cancelAuthorize();
 
     _codeVerifier = generateRandomString(128);
@@ -84,36 +100,55 @@ class OAuthService {
       },
     );
 
-    final launched = await launchUrl(
-      authorizeUrl,
-      mode: LaunchMode.externalApplication,
-    );
+    final completer = Completer<Uri>();
+    _callbackCompleter = completer;
+    final Uri callbackUri;
 
-    if (!launched) {
-      throw OAuthException(OAuthError.browserLaunchFailed);
-    }
-
-    _callbackCompleter = Completer<Uri>();
-    final appLinks = AppLinks();
-    _linkSubscription = appLinks.uriLinkStream.listen((uri) {
-      if (uri.scheme == 'vikunja-flutter' && uri.host == 'callback') {
-        if (!_callbackCompleter!.isCompleted) {
-          _callbackCompleter!.complete(uri);
+    try {
+      if (useClientTransport) {
+        unawaited(
+          _resolveCallback(client, authorizeUrl).then(
+            (uri) {
+              if (!completer.isCompleted) completer.complete(uri);
+            },
+            onError: (Object e, StackTrace s) {
+              if (!completer.isCompleted) completer.completeError(e, s);
+            },
+          ),
+        );
+      } else {
+        _linkSubscription = _callbackUris().listen(
+          (uri) {
+            if (uri.scheme == 'vikunja-flutter' &&
+                uri.host == 'callback' &&
+                !completer.isCompleted) {
+              completer.complete(uri);
+            }
+          },
+          onError: (Object error, StackTrace stackTrace) {
+            if (!completer.isCompleted) {
+              completer.completeError(error, stackTrace);
+            }
+          },
+        );
+        if (!await _launchAuthorizeUrl(authorizeUrl)) {
+          if (!completer.isCompleted) {
+            completer.completeError(
+              OAuthException(OAuthError.browserLaunchFailed),
+            );
+          }
         }
       }
-    });
 
-    final callbackUri = await _callbackCompleter!.future.timeout(
-      const Duration(minutes: 10),
-      onTimeout: () {
-        cancelAuthorize();
-        throw OAuthException(OAuthError.noAuthorizationCode);
-      },
-    );
-
-    _linkSubscription?.cancel();
-    _linkSubscription = null;
-    _callbackCompleter = null;
+      callbackUri = await completer.future.timeout(
+        const Duration(minutes: 10),
+        onTimeout: () => throw OAuthException(OAuthError.noAuthorizationCode),
+      );
+    } finally {
+      await _linkSubscription?.cancel();
+      _linkSubscription = null;
+      if (identical(_callbackCompleter, completer)) _callbackCompleter = null;
+    }
 
     final returnedState = callbackUri.queryParameters['state'];
     if (returnedState != _state) {
@@ -126,6 +161,33 @@ class OAuthService {
     }
 
     return code;
+  }
+
+  /// Issues the authorize GET over the mTLS transport and resolves the
+  /// `vikunja-flutter://callback` redirect target. Throws [OAuthException] when
+  /// the server does not answer with that redirect — which, for this
+  /// certificate-gated leg, is almost always the ext_authz `Unauthorized` deny
+  /// of a missing or rejected client certificate.
+  Future<Uri> _resolveCallback(Client client, Uri authorizeUrl) async {
+    final http.Response response = await client.getWithoutRedirect(
+      authorizeUrl,
+    );
+
+    final location = response.headers['location'];
+    if (response.statusCode < 300 ||
+        response.statusCode >= 400 ||
+        location == null ||
+        location.isEmpty) {
+      throw OAuthException(OAuthError.noAuthorizationCode);
+    }
+
+    final callbackUri = Uri.parse(location);
+    if (callbackUri.scheme != 'vikunja-flutter' ||
+        callbackUri.host != 'callback') {
+      throw OAuthException(OAuthError.noAuthorizationCode);
+    }
+
+    return callbackUri;
   }
 
   /// Exchanges the authorization code for access and refresh tokens.

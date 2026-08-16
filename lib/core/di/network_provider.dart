@@ -30,6 +30,8 @@ class ClientProvider extends _$ClientProvider {
   Client build() {
     final authData = ref.read(authDataProvider);
 
-    return Client(base: authData?.address ?? '');
+    final client = Client(base: authData?.address ?? '');
+    ref.onDispose(client.close);
+    return client;
   }
 }

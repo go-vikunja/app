@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -18,6 +20,7 @@ import 'package:vikunja_app/presentation/manager/settings_controller.dart';
 import 'package:vikunja_app/presentation/pages/error_widget.dart';
 import 'package:vikunja_app/presentation/pages/loading_widget.dart';
 import 'package:vikunja_app/presentation/pages/login/login_page.dart';
+import 'package:vikunja_app/presentation/widgets/authenticated_avatar.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -131,6 +134,33 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
                 },
               ),
               Divider(),
+              if (Platform.isAndroid) ...[
+                ListTile(
+                  title: Text(l10n.clientCertificate),
+                  subtitle: Text(
+                    settings.clientCertAlias ?? l10n.clientCertificateNone,
+                  ),
+                  trailing: settings.clientCertAlias == null
+                      ? TextButton(
+                          onPressed: () {
+                            ref
+                                .read(settingsControllerProvider.notifier)
+                                .chooseClientCertificate();
+                          },
+                          child: Text(l10n.clientCertificateChoose),
+                        )
+                      : IconButton(
+                          icon: const Icon(Icons.clear),
+                          tooltip: l10n.clientCertificateClear,
+                          onPressed: () async {
+                            await ref
+                                .read(settingsControllerProvider.notifier)
+                                .setClientCertificateAlias(null);
+                          },
+                        ),
+                ),
+                Divider(),
+              ],
               CheckboxListTile(
                 title: Text(l10n.enableSentry),
                 subtitle: Text(l10n.sentryHelp),
@@ -278,24 +308,9 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
               color: Theme.of(context).colorScheme.onSecondaryContainer,
             ),
           ),
-          currentAccountPicture: FutureBuilder(
-            future: ref.read(clientProviderProvider).getHeaders(),
-            builder: (context, asyncSnapshot) {
-              if (asyncSnapshot.hasData && asyncSnapshot.data != null) {
-                return CircleAvatar(
-                  backgroundImage: user.username != ""
-                      ? NetworkImage(
-                          user.avatarUrl(
-                            ref.read(clientProviderProvider).apiBase,
-                          ),
-                          headers: asyncSnapshot.data,
-                        )
-                      : null,
-                );
-              } else {
-                return CircleAvatar();
-              }
-            },
+          currentAccountPicture: AuthenticatedAvatar(
+            client: ref.read(clientProviderProvider),
+            username: user.username,
           ),
           decoration: BoxDecoration(
             image: DecorationImage(

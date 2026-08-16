@@ -1,5 +1,6 @@
 name: vikunja_app
 description: Vikunja as Flutter cross platform app
+publish_to: none
 
 version: 0.1.8-beta
 
@@ -14,8 +15,13 @@ dependencies:
 
   background_downloader: ^9.2.3
   collection: ^1.18.0
-  cronet_http: ^1.2.0
   cupertino_http: ^2.0.2
+  jni: ^0.14.2
+  ok_http:
+    git:
+      url: https://github.com/dart-lang/http.git
+      ref: 49ddf11a1879e5eca84cef6ee0d7df07f6af2302
+      path: pkgs/ok_http
   datetime_picker_formfield_new: ^2.1.0
   dynamic_color: ^1.7.0
   flutter_colorpicker: ^1.1.0
@@ -54,6 +60,7 @@ dev_dependencies:
   flutter_launcher_icons: ^0.14.3
   riverpod_generator: ^2.6.5
   riverpod_lint: ^2.6.5
+  flutter_secure_storage_platform_interface: ^2.0.1
 
 flutter_icons:
   image_path: "assets/vikunja_logo.png"

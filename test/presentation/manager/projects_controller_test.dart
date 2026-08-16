@@ -60,7 +60,7 @@ void main() {
     final response = await controller.loadProjects();
 
     expect(response.isSuccessful, isTrue);
-    final topLevelProjects = response.toSuccess().body as List<Project>;
+    final topLevelProjects = response.toSuccess().body;
 
     expect(topLevelProjects.length, 2);
     expect(topLevelProjects[0].id, 1);

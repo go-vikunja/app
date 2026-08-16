@@ -40,6 +40,15 @@ Future<InitOutcome> _runInit(Ref ref) async {
 
   ref.read(authDataProvider.notifier).set(AuthModel(server));
 
+  final ignoreCertificates = await settingsRepo.getIgnoreCertificates();
+  final clientCertAlias = await settingsRepo.getClientCertAlias(server);
+  await ref
+      .read(clientProviderProvider)
+      .setSecurityConfiguration(
+        ignoreCertificates: ignoreCertificates,
+        clientCertificateAlias: clientCertAlias,
+      );
+
   Version? serverVersion;
   final Response<Server> info = await ref
       .read(serverRepositoryProvider)

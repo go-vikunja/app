@@ -8,6 +8,7 @@ class ServerDataSource extends RemoteDataSource {
   Future<Response<ServerDto>> getInfo() {
     return client.get(
       url: '/info',
+      redirectOnUnauthorized: false,
       mapper: (body) {
         return ServerDto.fromJson(body);
       },

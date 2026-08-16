@@ -1,11 +1,14 @@
 import 'dart:developer';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
+import 'package:vikunja_app/core/network/client.dart' show reportSwallowedError;
+import 'package:vikunja_app/core/network/keychain_alias.dart' as keychain;
 import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/core/oauth/oauth_service.dart';
 import 'package:vikunja_app/core/utils/constants.dart'
@@ -16,11 +19,15 @@ import 'package:vikunja_app/domain/entities/auth_model.dart';
 import 'package:vikunja_app/domain/entities/server.dart';
 import 'package:vikunja_app/domain/entities/version.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
+import 'package:vikunja_app/presentation/widgets/client_cert_required_dialog.dart';
 import 'package:vikunja_app/presentation/widgets/sentry_dialog.dart';
 import 'package:vikunja_app/presentation/widgets/version_mismatch_dialog.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
-  const LoginPage({super.key});
+  final Future<String?> Function()? chooseClientCertificate;
+  final OAuthService? oauthService;
+
+  const LoginPage({super.key, this.chooseClientCertificate, this.oauthService});
 
   @override
   LoginPageState createState() => LoginPageState();
@@ -32,16 +39,23 @@ class LoginPageState extends ConsumerState<LoginPage> {
   List<String> pastServers = [];
 
   final _serverController = TextEditingController();
-  final _oauthService = OAuthService();
+  late final OAuthService _oauthService;
   String? _serverError;
   bool _showCustomUrl = false;
   bool _showCancel = false;
   bool _cancelled = false;
   String? _loadingServer;
+  int _certPromptAttempts = 0;
+  String? _pendingClientCertAlias;
+  String? _pendingClientCertServer;
+
+  bool get _supportsClientCertificates =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
   @override
   void initState() {
     super.initState();
+    _oauthService = widget.oauthService ?? OAuthService();
 
     Future.delayed(Duration.zero, () async {
       var settingsDatasource = SettingsDatasource(FlutterSecureStorage());
@@ -140,13 +154,13 @@ class LoginPageState extends ConsumerState<LoginPage> {
                           height: 24,
                           child: Checkbox(
                             value: client.ignoreCertificates,
-                            onChanged: (value) {
-                              ref
+                            onChanged: (value) async {
+                              final ignoreCertificates = value ?? false;
+                              await ref
                                   .read(settingsRepositoryProvider)
-                                  .setIgnoreCertificates(value ?? false);
-                              setState(() {
-                                client.setIgnoreCerts(value ?? false);
-                              });
+                                  .setIgnoreCertificates(ignoreCertificates);
+                              await client.setIgnoreCerts(ignoreCertificates);
+                              if (mounted) setState(() {});
                             },
                           ),
                         ),
@@ -236,6 +250,28 @@ class LoginPageState extends ConsumerState<LoginPage> {
           const SizedBox(height: 24),
           _buildServerInput(),
           const SizedBox(height: 24),
+          if (_supportsClientCertificates) ...[
+            OutlinedButton.icon(
+              key: const ValueKey('login-client-certificate'),
+              onPressed:
+                  !_loading &&
+                      normalizeServerURL(_serverController.text).isNotEmpty
+                  ? _chooseClientCertificate
+                  : null,
+              icon: const Icon(Icons.badge_outlined),
+              label: Text(
+                _pendingClientCertServer ==
+                            normalizeServerURL(_serverController.text) &&
+                        _pendingClientCertAlias != null
+                    ? '${AppLocalizations.of(context).clientCertificate}: '
+                          '$_pendingClientCertAlias'
+                    : AppLocalizations.of(
+                        context,
+                      ).clientCertRequiredDialogSelect,
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
           FilledButton(
             onPressed: !_loading ? () => _connectAndLogin(context) : null,
             style: FilledButton.styleFrom(
@@ -331,8 +367,12 @@ class LoginPageState extends ConsumerState<LoginPage> {
       focusNode: focusNode,
       enabled: !_loading,
       onChanged: (_) {
-        if (_serverError != null) {
-          setState(() => _serverError = null);
+        final hadServerError = _serverError != null;
+        setState(() {
+          _serverError = null;
+          _certPromptAttempts = 0;
+        });
+        if (hadServerError) {
           _formKey.currentState?.validate();
         }
       },
@@ -433,6 +473,23 @@ class LoginPageState extends ConsumerState<LoginPage> {
     _connectAndLogin(context);
   }
 
+  Future<void> _chooseClientCertificate() async {
+    final server = normalizeServerURL(_serverController.text);
+    if (server.isEmpty) return;
+
+    final alias =
+        await (widget.chooseClientCertificate?.call() ??
+            keychain.choosePrivateKeyAlias());
+    if (alias == null || !mounted) return;
+
+    setState(() {
+      _pendingClientCertAlias = alias;
+      _pendingClientCertServer = server;
+      _certPromptAttempts = 0;
+      _serverError = null;
+    });
+  }
+
   Widget _buildLogo() {
     return Image(
       image: Theme.of(context).brightness == Brightness.dark
@@ -459,12 +516,59 @@ class LoginPageState extends ConsumerState<LoginPage> {
       // Step 1: Set up the client so we can validate the server
       ref.read(authDataProvider.notifier).set(AuthModel(server));
 
+      // AuthData.set() invalidates clientProviderProvider, rebuilding a
+      // certless Client — re-apply any previously configured certificate for
+      // the same reason every other client-construction site in this app
+      // does (see init_controller.dart, notifications.dart,
+      // background_work.dart, widget_controller.dart).
+      final persistedCertAlias = await ref
+          .read(settingsRepositoryProvider)
+          .getClientCertAlias(server);
+      final ignoreCertificates = await ref
+          .read(settingsRepositoryProvider)
+          .getIgnoreCertificates();
+      final clientCertAlias = _pendingClientCertServer == server
+          ? _pendingClientCertAlias
+          : persistedCertAlias;
+      await ref
+          .read(clientProviderProvider)
+          .setSecurityConfiguration(
+            ignoreCertificates: ignoreCertificates,
+            clientCertificateAlias: clientCertAlias,
+          );
+
       // Step 2: Validate via /api/v1/info
       Response<Server> info = await ref
           .read(serverRepositoryProvider)
           .getInfo();
 
       if (!info.isSuccessful) {
+        if (_supportsClientCertificates &&
+            _certPromptAttempts < 3 &&
+            serverInfoRequiresClientCertificate(info)) {
+          _certPromptAttempts++;
+          if (!context.mounted) return;
+          final alias = await showDialog<String?>(
+            context: context,
+            barrierDismissible: true,
+            builder: (context) => ClientCertRequiredDialog(
+              chooseClientCertificate: widget.chooseClientCertificate,
+            ),
+          );
+
+          if (alias != null) {
+            _pendingClientCertAlias = alias;
+            _pendingClientCertServer = server;
+            await ref
+                .read(clientProviderProvider)
+                .setClientCertificateAlias(alias);
+            if (context.mounted) {
+              await _connectAndLogin(context);
+            }
+            return;
+          }
+        }
+
         setState(() {
           _serverError = AppLocalizations.of(context).cannotReachServer;
         });
@@ -472,8 +576,17 @@ class LoginPageState extends ConsumerState<LoginPage> {
         return;
       }
 
+      // A certificate chosen for this server is only durable after /info
+      // succeeds. A rejected or unrelated alias must not poison later starts.
+      if (_pendingClientCertServer == server &&
+          _pendingClientCertAlias != null) {
+        await ref
+            .read(settingsRepositoryProvider)
+            .setClientCertAlias(server, _pendingClientCertAlias);
+      }
+
       // Server validated — persist it
-      ref.read(settingsRepositoryProvider).saveServer(server);
+      await ref.read(settingsRepositoryProvider).saveServer(server);
 
       Sentry.configureScope(
         (scope) => scope.setTag(
@@ -505,14 +618,22 @@ class LoginPageState extends ConsumerState<LoginPage> {
         ref.read(settingsRepositoryProvider).setPastServers(pastServers);
       }
 
-      // Step 3: Launch OAuth PKCE flow
+      // Step 3: Run the OAuth PKCE authorize leg over the mTLS transport. It is
+      // client-certificate gated (see python-envoy-authz federator/app_oauth.py),
+      // so it must use the same certificate-bearing client that just validated
+      // /info — an external browser cannot present the app-private Keystore
+      // certificate and the edge would answer Unauthorized.
       setState(() => _showCancel = true);
-      String code = await _oauthService.authorize(server);
+      final oauthClient = ref.read(clientProviderProvider);
+      String code = await _oauthService.authorize(
+        oauthClient,
+        server,
+        useClientTransport: clientCertAlias != null,
+      );
 
       // Step 4: Exchange code for tokens
-      var client = ref.read(clientProviderProvider);
       OAuthTokenResponse tokens = await _oauthService.exchangeCode(
-        client,
+        oauthClient,
         code,
       );
 
@@ -526,6 +647,20 @@ class LoginPageState extends ConsumerState<LoginPage> {
 
       // Re-set auth data so the client picks up the new token
       ref.read(authDataProvider.notifier).set(AuthModel(server));
+
+      // set() invalidates clientProviderProvider, rebuilding a certless Client
+      // (same reason as Step 1). Re-apply the certificate before the first
+      // authenticated call, or getCurrentUser reaches the mTLS edge without a
+      // client certificate and the TLS handshake fails.
+      final certAlias = await ref
+          .read(settingsRepositoryProvider)
+          .getClientCertAlias(server);
+      await ref
+          .read(clientProviderProvider)
+          .setSecurityConfiguration(
+            ignoreCertificates: ignoreCertificates,
+            clientCertificateAlias: certAlias,
+          );
 
       // Step 6: Fetch current user
       var currentUser = await ref.read(userRepositoryProvider).getCurrentUser();
@@ -560,9 +695,9 @@ class LoginPageState extends ConsumerState<LoginPage> {
         };
         _showErrorSnackBar(context, message);
       }
-    } catch (e) {
+    } catch (e, s) {
       if (_cancelled) return;
-      log("Login failed: $e");
+      reportSwallowedError('Login failed', e, s);
       if (context.mounted) {
         setState(() {
           _serverError = AppLocalizations.of(context).cannotReachServer;

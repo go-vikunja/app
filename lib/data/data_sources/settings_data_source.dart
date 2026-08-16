@@ -18,6 +18,32 @@ class SettingsDatasource {
     return _storage.write(key: "ignore-certificates", value: value ? "1" : "0");
   }
 
+  Future<String?> getClientCertAlias(String server) async {
+    final aliases = await _getClientCertAliases();
+    return aliases[server];
+  }
+
+  Future<void> setClientCertAlias(String server, String? alias) async {
+    final aliases = await _getClientCertAliases();
+    if (alias == null) {
+      aliases.remove(server);
+    } else {
+      aliases[server] = alias;
+    }
+    await _storage.write(
+      key: "client-cert-aliases",
+      value: jsonEncode(aliases),
+    );
+  }
+
+  Future<Map<String, String>> _getClientCertAliases() async {
+    final encoded = await _storage.read(key: "client-cert-aliases");
+    if (encoded == null || encoded.isEmpty) return {};
+
+    final decoded = jsonDecode(encoded) as Map<String, dynamic>;
+    return decoded.map((server, alias) => MapEntry(server, alias as String));
+  }
+
   Future<bool> getSentryEnabled() {
     return _storage.read(key: "sentry-enabled").then((value) => value == "1");
   }

@@ -56,18 +56,26 @@ Future<bool> updateTasks() async {
   }
 
   Client client = Client(base: base);
-  tz.initializeTimeZones();
+  try {
+    tz.initializeTimeZones();
 
-  var ignoreCertificates = await datasource.getIgnoreCertificates();
-  client.setIgnoreCerts(ignoreCertificates);
+    var ignoreCertificates = await datasource.getIgnoreCertificates();
+    var clientCertAlias = await datasource.getClientCertAlias(base);
+    await client.setSecurityConfiguration(
+      ignoreCertificates: ignoreCertificates,
+      clientCertificateAlias: clientCertAlias,
+    );
 
-  TaskRepository taskService = TaskRepositoryImpl(TaskDataSource(client));
+    TaskRepository taskService = TaskRepositoryImpl(TaskDataSource(client));
 
-  await updateWidget();
+    await updateWidget();
 
-  NotificationHandler notificationHandler = NotificationHandler();
-  await notificationHandler.initNotifications();
-  await notificationHandler.scheduleDueNotifications(taskService);
+    NotificationHandler notificationHandler = NotificationHandler();
+    await notificationHandler.initNotifications();
+    await notificationHandler.scheduleDueNotifications(taskService);
 
-  return Future.value(true);
+    return Future.value(true);
+  } finally {
+    client.close();
+  }
 }

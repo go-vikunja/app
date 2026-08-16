@@ -40,28 +40,35 @@ Future<void> markAsDone(int id) async {
   }
 
   Client client = Client(base: base);
-
-  var ignoreCertificates = await datasource.getIgnoreCertificates();
-  client.setIgnoreCerts(ignoreCertificates);
-
-  TaskRepository taskService = TaskRepositoryImpl(TaskDataSource(client));
-  var response = await taskService.getTask(id);
-
-  if (response.isSuccessful) {
-    var task = response.toSuccess().body;
-    task.done = true;
-    await taskService.update(task);
-
-    await updateWidget();
-
-    //Call app if opened to update view
-    final SendPort? sendPort = IsolateNameServer.lookupPortByName(
-      _actionDonePortName,
+  try {
+    var ignoreCertificates = await datasource.getIgnoreCertificates();
+    var clientCertAlias = await datasource.getClientCertAlias(base);
+    await client.setSecurityConfiguration(
+      ignoreCertificates: ignoreCertificates,
+      clientCertificateAlias: clientCertAlias,
     );
 
-    if (sendPort != null) {
-      sendPort.send(task.id);
+    TaskRepository taskService = TaskRepositoryImpl(TaskDataSource(client));
+    var response = await taskService.getTask(id);
+
+    if (response.isSuccessful) {
+      var task = response.toSuccess().body;
+      task.done = true;
+      await taskService.update(task);
+
+      await updateWidget();
+
+      //Call app if opened to update view
+      final SendPort? sendPort = IsolateNameServer.lookupPortByName(
+        _actionDonePortName,
+      );
+
+      if (sendPort != null) {
+        sendPort.send(task.id);
+      }
     }
+  } finally {
+    client.close();
   }
 }
 

@@ -18,6 +18,8 @@ class SettingsPageState {
 
   Version? currentVersion;
 
+  String? clientCertAlias;
+
   SettingsPageState(
     this.user,
     this.projects,
@@ -28,5 +30,6 @@ class SettingsPageState {
     this.themeMode,
     this.dynamicColors,
     this.currentVersion,
+    this.clientCertAlias,
   );
 }

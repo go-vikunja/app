@@ -2,12 +2,15 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart' as http_testing;
 import 'package:vikunja_app/core/network/client.dart';
 import 'package:vikunja_app/core/network/token_lock.dart';
 import 'package:vikunja_app/data/data_sources/settings_data_source.dart';
+import 'package:vikunja_app/data/data_sources/server_data_source.dart';
+import 'package:vikunja_app/main.dart' show globalNavigatorKey;
 
 const _baseUrl = 'https://vikunja.example.com';
 
@@ -54,156 +57,109 @@ TestableClient _createClient(
   return client;
 }
 
-// Mock for IOClient used by tryRefreshToken
-class MockHttpClientIo extends Fake implements HttpClient {
-  final http.Response Function(
-    Uri url,
-    Map<String, String> headers,
-    String body,
-  )
-  handler;
-
-  MockHttpClientIo(this.handler);
+class CloseTrackingClient extends http.BaseClient {
+  bool closed = false;
 
   @override
-  bool Function(X509Certificate, String, int)? badCertificateCallback;
-  @override
-  bool autoUncompress = true;
-  @override
-  Duration? connectionTimeout;
-  @override
-  Duration idleTimeout = const Duration(seconds: 15);
-  @override
-  int? maxConnectionsPerHost;
-  @override
-  String? userAgent;
-  @override
-  void close({bool force = false}) {}
-
-  @override
-  Future<HttpClientRequest> postUrl(Uri url) async {
-    return _MockHttpClientRequest(url, handler);
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    return http.StreamedResponse(const Stream<List<int>>.empty(), 200);
   }
 
   @override
-  Future<HttpClientRequest> openUrl(String method, Uri url) async {
-    if (method == 'POST') return postUrl(url);
-    throw UnimplementedError('$method not mocked');
+  void close() {
+    closed = true;
   }
-}
-
-class _MockHttpHeaders extends Fake implements HttpHeaders {
-  @override
-  void set(String name, Object value, {bool preserveHeaderCase = false}) {}
-  @override
-  void add(String name, Object value, {bool preserveHeaderCase = false}) {}
-}
-
-class _MockHttpClientRequest extends Fake implements HttpClientRequest {
-  final Uri _url;
-  final http.Response Function(Uri, Map<String, String>, String) _handler;
-  final List<int> _body = [];
-
-  _MockHttpClientRequest(this._url, this._handler);
-
-  @override
-  HttpHeaders get headers => _MockHttpHeaders();
-  @override
-  Encoding encoding = utf8;
-  @override
-  bool followRedirects = true;
-  @override
-  int maxRedirects = 5;
-  @override
-  bool persistentConnection = true;
-  @override
-  String method = 'POST';
-  @override
-  Uri get uri => _url;
-  @override
-  set contentLength(int value) {}
-  @override
-  int get contentLength => 0;
-
-  @override
-  void add(List<int> data) => _body.addAll(data);
-  @override
-  void write(Object? object) {
-    if (object != null) _body.addAll(utf8.encode(object.toString()));
-  }
-
-  @override
-  Future addStream(Stream<List<int>> stream) async {
-    await for (final chunk in stream) {
-      _body.addAll(chunk);
-    }
-  }
-
-  @override
-  Future<HttpClientResponse> close() async {
-    final response = _handler(_url, {}, utf8.decode(_body));
-    return _MockHttpClientResponse(response);
-  }
-
-  @override
-  Future<HttpClientResponse> get done => close();
-}
-
-class _MockHttpClientResponse extends Fake implements HttpClientResponse {
-  final http.Response _response;
-  _MockHttpClientResponse(this._response);
-
-  @override
-  int get statusCode => _response.statusCode;
-  @override
-  HttpHeaders get headers => _MockResponseHeaders();
-  @override
-  int get contentLength => _response.bodyBytes.length;
-  @override
-  bool get isRedirect => false;
-  @override
-  List<RedirectInfo> get redirects => [];
-  @override
-  bool get persistentConnection => true;
-  @override
-  String get reasonPhrase => 'OK';
-
-  @override
-  StreamSubscription<List<int>> listen(
-    void Function(List<int>)? onData, {
-    Function? onError,
-    void Function()? onDone,
-    bool? cancelOnError,
-  }) {
-    return Stream.value(_response.bodyBytes).listen(
-      onData,
-      onError: onError,
-      onDone: onDone,
-      cancelOnError: cancelOnError,
-    );
-  }
-}
-
-class _MockResponseHeaders extends Fake implements HttpHeaders {
-  @override
-  List<String>? operator [](String name) => null;
-  @override
-  String? value(String name) => null;
-  @override
-  void forEach(void Function(String, List<String>) action) {}
-}
-
-class _TestHttpOverrides extends HttpOverrides {
-  final HttpClient Function() _factory;
-  _TestHttpOverrides(this._factory);
-  @override
-  HttpClient createHttpClient(SecurityContext? context) => _factory();
 }
 
 // -- Tests --
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  group('buildOkHttpConfiguration', () {
+    test('returns a plain configuration when alias is null', () async {
+      var loaderCalled = false;
+      final config = await buildOkHttpConfiguration(
+        null,
+        loadFromAlias: (alias) async {
+          loaderCalled = true;
+          throw StateError('should not be called');
+        },
+      );
+
+      expect(loaderCalled, isFalse);
+      expect(config.clientPrivateKey, isNull);
+      expect(config.clientCertificateChain, isNull);
+      expect(config.validateServerCertificates, isTrue);
+    });
+
+    test('can disable server certificate validation', () async {
+      final config = await buildOkHttpConfiguration(
+        null,
+        validateServerCertificates: false,
+      );
+
+      expect(config.validateServerCertificates, isFalse);
+    });
+
+    test(
+      'falls back to a plain configuration when the alias fails to load',
+      () async {
+        final config = await buildOkHttpConfiguration(
+          'missing-alias',
+          loadFromAlias: (alias) async {
+            throw Exception('alias not found in Keystore');
+          },
+        );
+
+        expect(config.clientPrivateKey, isNull);
+        expect(config.clientCertificateChain, isNull);
+      },
+    );
+
+    // Regression test: this catch used to report only via `developer.log`,
+    // which never reaches logcat, so a certificate that failed to load looked
+    // exactly like one that loaded fine. Recovering from an error is allowed;
+    // recovering silently is not.
+    test('logs the error when the alias fails to load', () async {
+      final printed = <String>[];
+      final original = debugPrint;
+      debugPrint = (String? message, {int? wrapWidth}) =>
+          printed.add(message ?? '');
+      addTearDown(() => debugPrint = original);
+
+      await buildOkHttpConfiguration(
+        'missing-alias',
+        loadFromAlias: (alias) async {
+          throw Exception('alias not found in Keystore');
+        },
+      );
+
+      expect(printed, isNotEmpty);
+      expect(printed.single, contains('missing-alias'));
+      expect(printed.single, contains('alias not found in Keystore'));
+    });
+
+    // Regression test: the loader used to be synchronous, which forced the
+    // Keystore read onto the platform thread, where `KeyChain.getPrivateKey`
+    // throws "calling this from your main thread can lead to deadlock". The
+    // failure was swallowed by the fallback above, so a selected certificate
+    // silently never got presented. An async loader is what lets the read run
+    // on another isolate — and therefore another thread.
+    test('awaits a loader that completes asynchronously', () async {
+      var loaded = false;
+      await buildOkHttpConfiguration(
+        'slow-alias',
+        loadFromAlias: (alias) async {
+          await Future<void>.delayed(Duration.zero);
+          loaded = true;
+          throw Exception('no Keystore in a unit test');
+        },
+      );
+
+      expect(loaded, isTrue);
+    });
+  });
 
   group('Client.getHeaders', () {
     late MockSettingsDatasource settings;
@@ -246,10 +202,18 @@ void main() {
   group('Client._handleResponseWithRefresh', () {
     late MockSettingsDatasource settings;
     late int requestCount;
+    late Directory tempDir;
 
-    setUp(() {
+    setUp(() async {
       settings = MockSettingsDatasource();
       requestCount = 0;
+      tempDir = await Directory.systemTemp.createTemp('refresh_retry_test_');
+      TokenLock.setLockDirectory(tempDir);
+    });
+
+    tearDown(() async {
+      TokenLock.setLockDirectory(null);
+      if (await tempDir.exists()) await tempDir.delete(recursive: true);
     });
 
     test('returns success response directly on 200', () async {
@@ -275,25 +239,21 @@ void main() {
       settings.token = 'old-token';
       settings.refreshToken = 'valid-refresh';
 
-      final tempDir = await Directory.systemTemp.createTemp('refresh_test_');
-      TokenLock.setLockDirectory(tempDir);
-
-      // Set up HttpOverrides so tryRefreshToken's _createIOClient works
-      HttpOverrides.global = _TestHttpOverrides(() {
-        return MockHttpClientIo((url, headers, body) {
-          return http.Response(
-            jsonEncode({
-              'access_token': 'new-token',
-              'refresh_token': 'new-refresh',
-            }),
-            200,
-          );
-        });
-      });
-
       final client = _createClient(
         settings,
-        http_testing.MockClient((_) async {
+        http_testing.MockClient((request) async {
+          if (request.url.path.endsWith('/oauth/token')) {
+            expect(request.method, 'POST');
+            expect(request.body, contains('valid-refresh'));
+            return http.Response(
+              jsonEncode({
+                'access_token': 'new-token',
+                'refresh_token': 'new-refresh',
+              }),
+              200,
+            );
+          }
+
           requestCount++;
           if (requestCount == 1) {
             return http.Response(
@@ -315,10 +275,6 @@ void main() {
       expect(requestCount, 2);
       expect(settings.token, 'new-token');
       expect(settings.refreshToken, 'new-refresh');
-
-      TokenLock.setLockDirectory(null);
-      HttpOverrides.global = null;
-      if (await tempDir.exists()) await tempDir.delete(recursive: true);
     });
 
     test('does not retry on 401 without code 11', () async {
@@ -362,41 +318,44 @@ void main() {
 
   group('Client.tryRefreshToken', () {
     late MockSettingsDatasource settings;
-    late TestableClient client;
     late Directory tempDir;
 
     setUp(() async {
       settings = MockSettingsDatasource();
-      client = _createClient(
-        settings,
-        http_testing.MockClient((_) async => http.Response('', 200)),
-      );
       tempDir = await Directory.systemTemp.createTemp('client_test_');
       TokenLock.setLockDirectory(tempDir);
     });
 
     tearDown(() async {
-      HttpOverrides.global = null;
       TokenLock.setLockDirectory(null);
       if (await tempDir.exists()) await tempDir.delete(recursive: true);
     });
 
     test('returns false when refresh token is null', () async {
       settings.refreshToken = null;
+      final client = _createClient(
+        settings,
+        http_testing.MockClient((_) async => http.Response('', 500)),
+      );
       expect(await client.tryRefreshToken(), isFalse);
     });
 
     test('returns false when refresh token is empty', () async {
       settings.refreshToken = '';
+      final client = _createClient(
+        settings,
+        http_testing.MockClient((_) async => http.Response('', 500)),
+      );
       expect(await client.tryRefreshToken(), isFalse);
     });
 
-    test('saves new tokens on successful refresh', () async {
+    test('uses the configured client and saves tokens on refresh', () async {
       settings.refreshToken = 'old-refresh';
 
-      HttpOverrides.global = _TestHttpOverrides(() {
-        return MockHttpClientIo((url, headers, body) {
-          expect(url.path, contains('/oauth/token'));
+      final client = _createClient(
+        settings,
+        http_testing.MockClient((request) async {
+          expect(request.url.path, contains('/oauth/token'));
           return http.Response(
             jsonEncode({
               'access_token': 'fresh-access',
@@ -404,8 +363,8 @@ void main() {
             }),
             200,
           );
-        });
-      });
+        }),
+      );
 
       final result = await client.tryRefreshToken();
 
@@ -417,14 +376,15 @@ void main() {
     test('returns false on non-200 response', () async {
       settings.refreshToken = 'old-refresh';
 
-      HttpOverrides.global = _TestHttpOverrides(() {
-        return MockHttpClientIo((url, headers, body) {
+      final client = _createClient(
+        settings,
+        http_testing.MockClient((request) async {
           return http.Response(
             jsonEncode({'code': 17004, 'message': 'invalid token'}),
             400,
           );
-        });
-      });
+        }),
+      );
 
       final result = await client.tryRefreshToken();
 
@@ -436,14 +396,15 @@ void main() {
     test('returns false when response has empty access_token', () async {
       settings.refreshToken = 'old-refresh';
 
-      HttpOverrides.global = _TestHttpOverrides(() {
-        return MockHttpClientIo((url, headers, body) {
+      final client = _createClient(
+        settings,
+        http_testing.MockClient((request) async {
           return http.Response(
             jsonEncode({'access_token': '', 'refresh_token': 'new-refresh'}),
             200,
           );
-        });
-      });
+        }),
+      );
 
       final result = await client.tryRefreshToken();
 
@@ -454,15 +415,16 @@ void main() {
       settings.refreshToken = 'my-refresh-token';
       String? capturedBody;
 
-      HttpOverrides.global = _TestHttpOverrides(() {
-        return MockHttpClientIo((url, headers, body) {
-          capturedBody = body;
+      final client = _createClient(
+        settings,
+        http_testing.MockClient((request) async {
+          capturedBody = request.body;
           return http.Response(
             jsonEncode({'access_token': 'new', 'refresh_token': 'new-refresh'}),
             200,
           );
-        });
-      });
+        }),
+      );
 
       await client.tryRefreshToken();
 
@@ -471,6 +433,61 @@ void main() {
       expect(parsed['grant_type'], 'refresh_token');
       expect(parsed['refresh_token'], 'my-refresh-token');
     });
+  });
+
+  group('Client.getRaw', () {
+    test(
+      'uses the configured client with authentication for binary data',
+      () async {
+        final settings = MockSettingsDatasource()..token = 'binary-token';
+        final expectedBytes = <int>[0, 1, 2, 255];
+        final client = _createClient(
+          settings,
+          http_testing.MockClient((request) async {
+            expect(request.method, 'GET');
+            expect(request.url.path, '/api/v1/tasks/1/attachments/2');
+            expect(request.headers['Authorization'], 'Bearer binary-token');
+            return http.Response.bytes(expectedBytes, 200);
+          }),
+        );
+
+        final response = await client.getRaw(url: '/tasks/1/attachments/2');
+
+        expect(response.bodyBytes, expectedBytes);
+      },
+    );
+  });
+
+  testWidgets('server info 401 does not push another login route', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        navigatorKey: globalNavigatorKey,
+        home: const SizedBox(),
+        routes: {'/login': (_) => const SizedBox(key: ValueKey('login-route'))},
+      ),
+    );
+    final client = _createClient(
+      MockSettingsDatasource(),
+      http_testing.MockClient((_) async => http.Response('Unauthorized', 401)),
+    );
+
+    final response = await ServerDataSource(client).getInfo();
+    await tester.pumpAndSettle();
+
+    expect(response.toError().statusCode, 401);
+    expect(response.toError().error, {'message': 'Unauthorized'});
+    expect(find.byKey(const ValueKey('login-route')), findsNothing);
+  });
+
+  test('Client.close closes its configured transport', () {
+    final transport = CloseTrackingClient();
+    final client = _createClient(MockSettingsDatasource(), transport);
+
+    client.close();
+
+    expect(transport.closed, isTrue);
   });
 
   group('Client.postUnauthenticated', () {

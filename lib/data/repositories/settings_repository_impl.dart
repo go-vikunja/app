@@ -18,6 +18,16 @@ class SettingsRepositoryImpl implements SettingsRepository {
   }
 
   @override
+  Future<String?> getClientCertAlias(String server) {
+    return _datasource.getClientCertAlias(server);
+  }
+
+  @override
+  Future<void> setClientCertAlias(String server, String? alias) {
+    return _datasource.setClientCertAlias(server, alias);
+  }
+
+  @override
   Future<bool> getSentryEnabled() {
     return _datasource.getSentryEnabled();
   }

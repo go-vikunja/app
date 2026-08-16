@@ -131,12 +131,7 @@ class ProjectTaskList extends ConsumerWidget {
         );
       },
       itemCount: tasks.length,
-      onReorder: (oldIndex, newIndexRaw) {
-        int newIndex = newIndexRaw;
-        if (newIndex > oldIndex) {
-          newIndex -= 1;
-        }
-
+      onReorderItem: (oldIndex, newIndex) {
         if (newIndex < -1) newIndex = -1;
 
         final taskList = List<Task>.from(tasks);

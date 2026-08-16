@@ -23,16 +23,24 @@ Future<void> completeTask(String taskID) async {
 
   if (refreshToken != null && base != null) {
     Client client = Client(base: base);
-    tz.initializeTimeZones();
+    try {
+      tz.initializeTimeZones();
 
-    var ignoreCertificates = await datasource.getIgnoreCertificates();
-    client.setIgnoreCerts(ignoreCertificates);
+      var ignoreCertificates = await datasource.getIgnoreCertificates();
+      var clientCertAlias = await datasource.getClientCertAlias(base);
+      await client.setSecurityConfiguration(
+        ignoreCertificates: ignoreCertificates,
+        clientCertificateAlias: clientCertAlias,
+      );
 
-    TaskRepository taskService = TaskRepositoryImpl(TaskDataSource(client));
-    var taskResponse = await taskService.getTask(int.parse(taskID));
-    var task = taskResponse.toSuccess().body;
-    await taskService.update(task.copyWith(done: true));
-    await updateWidget();
+      TaskRepository taskService = TaskRepositoryImpl(TaskDataSource(client));
+      var taskResponse = await taskService.getTask(int.parse(taskID));
+      var task = taskResponse.toSuccess().body;
+      await taskService.update(task.copyWith(done: true));
+      await updateWidget();
+    } finally {
+      client.close();
+    }
   } else {
     developer.log("There was an error initialising the client");
   }
@@ -73,12 +81,17 @@ Future<void> updateWidget() async {
   var base = await datasource.getServer();
 
   if (refreshToken != null && base != null) {
+    Client? client;
     try {
-      Client client = Client(base: base);
+      client = Client(base: base);
       tz.initializeTimeZones();
 
       var ignoreCertificates = await datasource.getIgnoreCertificates();
-      client.setIgnoreCerts(ignoreCertificates);
+      var clientCertAlias = await datasource.getClientCertAlias(base);
+      await client.setSecurityConfiguration(
+        ignoreCertificates: ignoreCertificates,
+        clientCertificateAlias: clientCertAlias,
+      );
 
       TaskRepository taskService = TaskRepositoryImpl(TaskDataSource(client));
       var widgetTasks = await taskService.getByFilterString(
@@ -90,6 +103,8 @@ Future<void> updateWidget() async {
       }
     } catch (e, s) {
       developer.log("Update widget error:", error: e, stackTrace: s);
+    } finally {
+      client?.close();
     }
   }
 }
