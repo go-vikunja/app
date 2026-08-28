@@ -17,6 +17,7 @@ class SettingsPageState {
   bool dynamicColors;
 
   Version? currentVersion;
+  int widgetLookaheadDays;
 
   SettingsPageState(
     this.user,
@@ -28,5 +29,6 @@ class SettingsPageState {
     this.themeMode,
     this.dynamicColors,
     this.currentVersion,
+    this.widgetLookaheadDays,
   );
 }

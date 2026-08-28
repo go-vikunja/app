@@ -169,4 +169,17 @@ class SettingsDatasource {
   Future<void> setLocaleOverride(String? localeCode) async {
     await _storage.write(key: "locale_override", value: localeCode);
   }
+
+  Future<int> getWidgetLookaheadDays() {
+    return _storage
+        .read(key: "widget-lookahead-days")
+        .then((value) => int.tryParse(value ?? "1") ?? 1);
+  }
+
+  Future<void> setWidgetLookaheadDays(int days) {
+    return _storage.write(
+      key: "widget-lookahead-days",
+      value: days.toString(),
+    );
+  }
 }

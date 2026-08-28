@@ -121,6 +121,30 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
                 },
               ),
               Divider(),
+              ListTile(
+                title: Text('Widget lookahead days'),
+                subtitle: Text(
+                  'Show tasks due today + ${settings.widgetLookaheadDays} day(s) ahead',
+                ),
+                trailing: DropdownButton<int>(
+                  items: [
+                    DropdownMenuItem(value: 1, child: Text('Today only')),
+                    DropdownMenuItem(value: 2, child: Text('Today + 1 day')),
+                    DropdownMenuItem(value: 3, child: Text('Today + 2 days')),
+                    DropdownMenuItem(value: 7, child: Text('Today + 6 days')),
+                    DropdownMenuItem(value: 14, child: Text('Today + 13 days')),
+                  ],
+                  value: settings.widgetLookaheadDays,
+                  onChanged: (int? value) {
+                    if (value != null) {
+                      ref
+                          .read(settingsControllerProvider.notifier)
+                          .setWidgetLookaheadDays(value);
+                    }
+                  },
+                ),
+              ),
+              Divider(),
               CheckboxListTile(
                 title: Text(l10n.ignoreCertificates),
                 value: settings.ignoreCertificates,

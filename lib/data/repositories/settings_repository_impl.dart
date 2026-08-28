@@ -146,4 +146,14 @@ class SettingsRepositoryImpl implements SettingsRepository {
   Future<void> setLocaleOverride(String? localeCode) {
     return _datasource.setLocaleOverride(localeCode);
   }
+
+  @override
+  Future<int> getWidgetLookaheadDays() {
+    return _datasource.getWidgetLookaheadDays();
+  }
+
+  @override
+  Future<void> setWidgetLookaheadDays(int days) {
+    return _datasource.setWidgetLookaheadDays(days);
+  }
 }

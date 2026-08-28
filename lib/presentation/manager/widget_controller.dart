@@ -32,18 +32,38 @@ Future<void> completeTask(String taskID) async {
     var taskResponse = await taskService.getTask(int.parse(taskID));
     var task = taskResponse.toSuccess().body;
     await taskService.update(task.copyWith(done: true));
-    await updateWidget();
+
+    // Local refresh: remove completed task from cached widget data immediately
+    await _removeCompletedTaskFromWidget(taskID);
+    // Then do a full server sync in the background
+    updateWidget();
   } else {
     developer.log("There was an error initialising the client");
   }
 }
 
+/// Remove a completed task from the local widget data and re-render
+Future<void> _removeCompletedTaskFromWidget(String taskID) async {
+  try {
+    String? data = await HomeWidget.getWidgetData<String>("WidgetTasks");
+    if (data != null) {
+      List<dynamic> tasks = jsonDecode(data);
+      tasks.removeWhere((t) => t['id'].toString() == taskID);
+      await HomeWidget.saveWidgetData("WidgetTasks", jsonEncode(tasks));
+      await reRenderWidget();
+    }
+  } catch (e) {
+    developer.log("Error removing task from widget: $e");
+  }
+}
+
 WidgetTask convertTask(Task task) {
-  // Check if task is for today
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
 
-  bool wgToday = task.dueDate!.day == today.day ? true : false;
+  // Task is "today" if due date is within today (same day)
+  bool wgToday = task.dueDate!.isAfter(today.subtract(Duration(days: 1))) &&
+      task.dueDate!.isBefore(today.add(Duration(days: 1)));
 
   WidgetTask wgTask = WidgetTask(
     id: task.id.toString(),
@@ -56,11 +76,11 @@ WidgetTask convertTask(Task task) {
 
 List<Task> filterForDueTasks(List<Task> tasks) {
   var todayTasks = <Task>[];
-
   for (var task in tasks) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    if (task.dueDate!.day == today.day) {
+    if (task.dueDate!.isAfter(today.subtract(Duration(days: 1))) &&
+        task.dueDate!.isBefore(today.add(Duration(days: 1)))) {
       todayTasks.add(task);
     }
   }
@@ -81,8 +101,10 @@ Future<void> updateWidget() async {
       client.setIgnoreCerts(ignoreCertificates);
 
       TaskRepository taskService = TaskRepositoryImpl(TaskDataSource(client));
+
+      var lookaheadDays = await datasource.getWidgetLookaheadDays();
       var widgetTasks = await taskService.getByFilterString(
-        "done = false && due_date < now/d+1d",
+        "done = false && due_date < now/d+${lookaheadDays}d",
       );
 
       if (widgetTasks.isSuccessful) {

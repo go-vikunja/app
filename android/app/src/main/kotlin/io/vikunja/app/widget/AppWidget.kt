@@ -297,7 +297,7 @@ class AppWidget : GlanceAppWidget() {
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                text = "There are no tasks due today", style = TextStyle(
+                text = "No upcoming tasks", style = TextStyle(
                     fontSize = 16.sp, color = ColorProvider(
                         Color.Black, Color.White
                     )

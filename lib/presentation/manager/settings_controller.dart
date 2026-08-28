@@ -39,6 +39,9 @@ class SettingsController extends _$SettingsController {
     var dynamicColor = await ref
         .read(settingsRepositoryProvider)
         .getDynamicColors();
+    var widgetLookaheadDays = await ref
+        .read(settingsRepositoryProvider)
+        .getWidgetLookaheadDays();
 
     var version = await ref
         .read(versionRepositoryProvider)
@@ -61,6 +64,7 @@ class SettingsController extends _$SettingsController {
       themeMode,
       dynamicColor,
       version,
+      widgetLookaheadDays,
     );
   }
 
@@ -138,5 +142,10 @@ class SettingsController extends _$SettingsController {
     ref.read(currentUserProvider.notifier).set(user);
 
     refresh();
+  }
+
+  Future<void> setWidgetLookaheadDays(int days) async {
+    ref.read(settingsRepositoryProvider).setWidgetLookaheadDays(days);
+    state = AsyncData(await getAll());
   }
 }

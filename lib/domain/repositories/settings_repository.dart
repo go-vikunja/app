@@ -56,4 +56,7 @@ abstract class SettingsRepository {
   // Locale override (null -> system default)
   Future<String?> getLocaleOverride();
   Future<void> setLocaleOverride(String? localeCode);
+
+  Future<int> getWidgetLookaheadDays();
+  Future<void> setWidgetLookaheadDays(int days);
 }
