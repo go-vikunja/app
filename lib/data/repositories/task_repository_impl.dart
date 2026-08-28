@@ -88,4 +88,29 @@ class TaskRepositoryImpl extends TaskRepository {
       TaskAttachmentDto.fromDomain(attachment),
     );
   }
+
+  @override
+  Future<String?> getAttachmentFilePath(
+    int taskId,
+    TaskAttachment attachment,
+  ) async {
+    return _dataSource.getAttachmentFilePath(
+      taskId,
+      TaskAttachmentDto.fromDomain(attachment),
+    );
+  }
+
+  @override
+  Future<Response<TaskAttachment>> uploadAttachment(
+    int taskId,
+    String filePath, {
+    String? filename,
+  }) async {
+    var response = await _dataSource.uploadAttachment(
+      taskId,
+      filePath,
+      filename: filename,
+    );
+    return response.toDomain();
+  }
 }

@@ -175,6 +175,43 @@ class Client {
     }
   }
 
+  /// Uploads a file as multipart/form-data (Vikunja uses PUT for attachment
+  /// uploads on v2.5.0). Reuses the token refresh/error handling of the other
+  /// verbs, and rebuilds the request on 401-retry so the file is re-sent.
+  Future<Response<T>> uploadMultipart<T>({
+    required String url,
+    required String fieldName,
+    required String filePath,
+    String? filename,
+    T Function(dynamic body)? mapper,
+  }) async {
+    try {
+      return _handleResponseWithRefresh(mapper, () async {
+        var token = await settingsDatasource.getUserToken();
+        var headers = {'User-Agent': userAgent};
+        if (token != null && token.isNotEmpty) {
+          headers['Authorization'] = 'Bearer $token';
+        }
+        var request = http.MultipartRequest('PUT', '$apiBase$url'.toUri()!)
+          ..headers.addAll(headers);
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            fieldName,
+            filePath,
+            filename: filename,
+          ),
+        );
+        var streamed = await _httpClient.send(request).timeout(_requestTimeout);
+        var response = await http.Response.fromStream(
+          streamed,
+        ).timeout(_requestTimeout);
+        return response;
+      });
+    } catch (e, s) {
+      return _handleException(e, s);
+    }
+  }
+
   Future<http.Response> postUnauthenticated({
     required String url,
     dynamic body,

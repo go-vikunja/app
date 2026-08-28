@@ -83,13 +83,21 @@
   "currentVersionPrefix": "Current version: {version}",
   "@currentVersionPrefix": {
     "description": "Label showing the current app version.",
-    "placeholders": { "version": { "type": "String" } }
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
   },
   "currentVersionUnknown": "Current version: -",
   "latestVersionPrefix": "Latest version: {version}",
   "@latestVersionPrefix": {
     "description": "Label showing the latest available version.",
-    "placeholders": { "version": { "type": "String" } }
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
   },
   "noNotificationPermission": "No notification permission!",
   "onlyShowTasksWithDueDate": "Only show tasks with due date",
@@ -103,7 +111,11 @@
   "newVersionAvailable": "New version available: {version}",
   "@newVersionAvailable": {
     "description": "Snackbar text notifying the user about a new version.",
-    "placeholders": { "version": { "type": "String" } }
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
   },
   "unsavedChangesTitle": "You have unsaved changes!",
   "unsavedChangesMessage": "Would you like to dismiss those changes?",
@@ -157,19 +169,31 @@
   "registrationFailedLong": "Registration failed! Please check your server url and credentials. {error}",
   "@registrationFailedLong": {
     "description": "Registration dialog title including an error message",
-    "placeholders": { "error": { "type": "String" } }
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
   },
   "downloading": "Downloading",
   "downloadFinished": "Download finished",
   "changeBucketTitle": "Change the title of '{title}'",
   "@changeBucketTitle": {
     "description": "Dialog title for changing a Kanban bucket title.",
-    "placeholders": { "title": { "type": "String" } }
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
   },
   "bucketLimitTitle": "Limit for '{title}'",
   "@bucketLimitTitle": {
     "description": "Dialog title for setting Kanban bucket limit.",
-    "placeholders": { "title": { "type": "String" } }
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
   },
   "removeLimit": "Remove Limit",
   "projectSection": "Projects",
@@ -218,10 +242,26 @@
   "versionDialogDescription": "The server version is not compatible with this version of the app.\nUse at your own risk!",
   "versionDialogSupported": "Minimum required server version: {versionString}",
   "@versionDialogSupported": {
-    "placeholders": { "versionString": { "type": "String" } }
+    "placeholders": {
+      "versionString": {
+        "type": "String"
+      }
+    }
   },
   "versionDialogUsed": "Your server version: {versionString}",
   "@versionDialogUsed": {
-    "placeholders": { "versionString": { "type": "String" } }
-  }
+    "placeholders": {
+      "versionString": {
+        "type": "String"
+      }
+    }
+  },
+  "attachments": "Attachments",
+  "noAttachments": "No attachments",
+  "uploadAttachment": "Upload attachment",
+  "attachmentUploaded": "Attachment uploaded",
+  "attachmentUploadFailed": "Could not upload the attachment",
+  "attachmentFailed": "Could not open the attachment",
+    "openLinkFailed": "Could not open the link",
+    "openInBrowser": "Open in browser"
 }

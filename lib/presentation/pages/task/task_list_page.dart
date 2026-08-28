@@ -10,11 +10,11 @@ import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/presentation/manager/task_page_controller.dart';
 import 'package:vikunja_app/presentation/pages/error_widget.dart';
 import 'package:vikunja_app/presentation/pages/loading_widget.dart';
+import 'package:vikunja_app/presentation/pages/task/task_detail_page.dart';
 import 'package:vikunja_app/presentation/pages/task/task_edit_page.dart';
 import 'package:vikunja_app/presentation/widgets/empty_view.dart';
 import 'package:vikunja_app/presentation/widgets/task/add_task_dialog.dart';
 import 'package:vikunja_app/presentation/widgets/task/task_list_item.dart';
-import 'package:vikunja_app/presentation/widgets/task_bottom_sheet.dart';
 
 class TaskListPage extends ConsumerWidget {
   const TaskListPage({super.key});
@@ -192,7 +192,7 @@ class TaskListPage extends ConsumerWidget {
       key: Key(task.id.toString()),
       task: task,
       onTap: () {
-        _showTaskBottomSheet(context, task);
+        _onOpen(context, task);
       },
       onEdit: () => _onEdit(context, task),
       onCheckedChanged: (value) async {
@@ -210,18 +210,10 @@ class TaskListPage extends ConsumerWidget {
     );
   }
 
-  void _showTaskBottomSheet(BuildContext context, Task task) {
-    showModalBottomSheet<void>(
-      context: context,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(10.0)),
-      ),
-      builder: (BuildContext context) {
-        return TaskBottomSheet(
-          task: task,
-          onEdit: () => _onEdit(context, task),
-        );
-      },
+  void _onOpen(BuildContext context, Task task) {
+    Navigator.push<Task?>(
+      context,
+      MaterialPageRoute(builder: (buildContext) => TaskDetailPage(task: task)),
     );
   }
 

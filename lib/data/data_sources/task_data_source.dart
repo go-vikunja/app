@@ -91,17 +91,50 @@ class TaskDataSource extends RemoteDataSource {
     int taskId,
     TaskAttachmentDto attachment,
   ) async {
+    final task = await _buildDownloadTask(taskId, attachment);
+
+    return await FileDownloader().download(task);
+  }
+
+  /// Resolves the local file path an attachment would be downloaded to,
+  /// without downloading. Use with File.existsSync() to skip re-downloads.
+  Future<String?> getAttachmentFilePath(
+    int taskId,
+    TaskAttachmentDto attachment,
+  ) async {
+    final task = await _buildDownloadTask(taskId, attachment);
+    return task.filePath();
+  }
+
+  Future<DownloadTask> _buildDownloadTask(
+    int taskId,
+    TaskAttachmentDto attachment,
+  ) async {
     String url = client.apiBase;
     url += '/tasks/$taskId/attachments/${attachment.id}';
 
-    final task = DownloadTask(
+    return DownloadTask(
       url: url,
       baseDirectory: BaseDirectory.applicationSupport,
       filename: attachment.file.name,
       headers: await client.getHeaders(),
       updates: Updates.statusAndProgress,
     );
+  }
 
-    return await FileDownloader().download(task);
+  Future<Response<TaskAttachmentDto>> uploadAttachment(
+    int taskId,
+    String filePath, {
+    String? filename,
+  }) {
+    return client.uploadMultipart(
+      url: '/tasks/$taskId/attachments',
+      fieldName: 'files',
+      filePath: filePath,
+      filename: filename,
+      mapper: (body) {
+        return TaskAttachmentDto.fromJSON(body);
+      },
+    );
   }
 }
