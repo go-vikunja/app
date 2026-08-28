@@ -18,6 +18,7 @@ import 'package:vikunja_app/presentation/manager/settings_controller.dart';
 import 'package:vikunja_app/presentation/manager/task_page_controller.dart';
 import 'package:vikunja_app/presentation/pages/project/project_list_page.dart';
 import 'package:vikunja_app/presentation/pages/settings_page.dart';
+import 'package:vikunja_app/presentation/pages/task/task_edit_page.dart';
 import 'package:vikunja_app/presentation/pages/task/task_list_page.dart';
 import 'package:vikunja_app/presentation/widgets/task/add_task_dialog.dart';
 
@@ -113,13 +114,52 @@ class HomePageState extends ConsumerState<HomePage> {
   void scheduleIntent() async {
     try {
       platform.setMethodCallHandler((call) async {
-        return showAddItemDialog(call.arguments as String);
+        switch (call.method) {
+          case 'open_add_task':
+            return showAddItemDialog(call.arguments as String);
+          case 'open_task':
+            final taskId = call.arguments as String;
+            return openTask(int.parse(taskId));
+          default:
+            return null;
+        }
       });
 
       String? argument = await platform.invokeMethod<String>("isQuickTile", "");
-      return showAddItemDialog(argument);
+      if (argument != null && argument.isNotEmpty) {
+        if (argument.startsWith("open_task:")) {
+          final taskId = argument.substringAfter("open_task:");
+          return openTask(int.parse(taskId));
+        }
+        return showAddItemDialog(argument);
+      }
     } catch (e) {
       developer.log("Error $e");
+    }
+  }
+
+  Future<dynamic> openTask(int taskId) async {
+    // Fetch the task from the repository and show it
+    try {
+      final taskRepository = ref.read(taskRepositoryProvider);
+      final response = await taskRepository.getTask(taskId);
+      if (response.isSuccessful && mounted) {
+        final task = response.toSuccess().body;
+        // Navigate to task edit page
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => TaskEditPage(task: task),
+          ),
+        );
+      }
+    } catch (e) {
+      developer.log("Error opening task: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error opening task")),
+        );
+      }
     }
   }
 
