@@ -124,13 +124,34 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
                 title: Text(l10n.weekStart),
                 trailing: DropdownButton<int>(
                   items: [
-                    DropdownMenuItem(value: 0, child: Text(l10n.weekStartSunday)),
-                    DropdownMenuItem(value: 1, child: Text(l10n.weekStartMonday)),
-                    DropdownMenuItem(value: 2, child: Text(l10n.weekStartTuesday)),
-                    DropdownMenuItem(value: 3, child: Text(l10n.weekStartWednesday)),
-                    DropdownMenuItem(value: 4, child: Text(l10n.weekStartThursday)),
-                    DropdownMenuItem(value: 5, child: Text(l10n.weekStartFriday)),
-                    DropdownMenuItem(value: 6, child: Text(l10n.weekStartSaturday)),
+                    DropdownMenuItem(
+                      value: 0,
+                      child: Text(l10n.weekStartSunday),
+                    ),
+                    DropdownMenuItem(
+                      value: 1,
+                      child: Text(l10n.weekStartMonday),
+                    ),
+                    DropdownMenuItem(
+                      value: 2,
+                      child: Text(l10n.weekStartTuesday),
+                    ),
+                    DropdownMenuItem(
+                      value: 3,
+                      child: Text(l10n.weekStartWednesday),
+                    ),
+                    DropdownMenuItem(
+                      value: 4,
+                      child: Text(l10n.weekStartThursday),
+                    ),
+                    DropdownMenuItem(
+                      value: 5,
+                      child: Text(l10n.weekStartFriday),
+                    ),
+                    DropdownMenuItem(
+                      value: 6,
+                      child: Text(l10n.weekStartSaturday),
+                    ),
                   ],
                   value: settings.user.settings?.weekStart ?? 0,
                   onChanged: (int? value) {
@@ -331,32 +352,54 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
           ),
         ),
         ListTile(
-          title: Text(AppLocalizations.of(context).defaultProject),
-          trailing: DropdownButton<int>(
-            items: [
-              DropdownMenuItem(
-                value: 0,
-                child: Text(AppLocalizations.of(context).none),
-              ),
-              ...projects.map(
-                (e) => DropdownMenuItem(value: e.id, child: Text(e.title)),
-              ),
-            ],
-            value:
-                projects.firstWhereOrNull(
-                      (element) =>
-                          element.id == user.settings?.defaultProjectId,
-                    ) !=
-                    null
-                ? user.settings?.defaultProjectId
-                : 0,
-            onChanged: (int? value) {
-              if (value != null && user.settings != null) {
-                ref
-                    .read(settingsControllerProvider.notifier)
-                    .setDefaultProject(value);
-              }
-            },
+          title: Text(
+            AppLocalizations.of(context).defaultProject,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          // Bound the dropdown width: project titles can be long, and an
+          // unconstrained trailing would squeeze the title to zero width
+          // (rendering it one letter per line).
+          trailing: SizedBox(
+            width: 160,
+            child: DropdownButton<int>(
+              isExpanded: true,
+              items: [
+                DropdownMenuItem(
+                  value: 0,
+                  child: Text(
+                    AppLocalizations.of(context).none,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                ...projects.map(
+                  (e) => DropdownMenuItem(
+                    value: e.id,
+                    child: Text(
+                      e.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+              ],
+              value:
+                  projects.firstWhereOrNull(
+                        (element) =>
+                            element.id == user.settings?.defaultProjectId,
+                      ) !=
+                      null
+                  ? user.settings?.defaultProjectId
+                  : 0,
+              onChanged: (int? value) {
+                if (value != null && user.settings != null) {
+                  ref
+                      .read(settingsControllerProvider.notifier)
+                      .setDefaultProject(value);
+                }
+              },
+            ),
           ),
         ),
       ],
