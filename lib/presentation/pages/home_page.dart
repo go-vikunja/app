@@ -128,7 +128,7 @@ class HomePageState extends ConsumerState<HomePage> {
       String? argument = await platform.invokeMethod<String>("isQuickTile", "");
       if (argument != null && argument.isNotEmpty) {
         if (argument.startsWith("open_task:")) {
-          final taskId = argument.substringAfter("open_task:");
+          final taskId = argument.split("open_task:").last;
           return openTask(int.parse(taskId));
         }
         return showAddItemDialog(argument);
