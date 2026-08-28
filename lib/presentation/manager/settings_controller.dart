@@ -134,9 +134,17 @@ class SettingsController extends _$SettingsController {
     final user = ref.read(currentUserProvider);
     user!.settings!.defaultProjectId = value;
     ref.read(userRepositoryProvider).setCurrentUserSettings(user.settings!);
-
     ref.read(currentUserProvider.notifier).set(user);
-
     refresh();
+  }
+
+  Future<void> setWeekStart(int value) async {
+    final user = ref.read(currentUserProvider);
+    user!.settings = user.settings!.copyWith(weekStart: value);
+    await ref
+        .read(userRepositoryProvider)
+        .setCurrentUserSettings(user.settings!);
+    ref.read(currentUserProvider.notifier).set(user);
+    state = AsyncData(await getAll());
   }
 }

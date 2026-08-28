@@ -120,6 +120,28 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
                       .setDynamicColors(value ?? false);
                 },
               ),
+              ListTile(
+                title: Text(l10n.weekStart),
+                trailing: DropdownButton<int>(
+                  items: [
+                    DropdownMenuItem(value: 1, child: Text(l10n.weekStartMonday)),
+                    DropdownMenuItem(value: 2, child: Text(l10n.weekStartTuesday)),
+                    DropdownMenuItem(value: 3, child: Text(l10n.weekStartWednesday)),
+                    DropdownMenuItem(value: 4, child: Text(l10n.weekStartThursday)),
+                    DropdownMenuItem(value: 5, child: Text(l10n.weekStartFriday)),
+                    DropdownMenuItem(value: 6, child: Text(l10n.weekStartSaturday)),
+                    DropdownMenuItem(value: 7, child: Text(l10n.weekStartSunday)),
+                  ],
+                  value: settings.user.settings?.weekStart ?? 1,
+                  onChanged: (int? value) {
+                    if (value != null) {
+                      ref
+                          .read(settingsControllerProvider.notifier)
+                          .setWeekStart(value);
+                    }
+                  },
+                ),
+              ),
               Divider(),
               CheckboxListTile(
                 title: Text(l10n.ignoreCertificates),
