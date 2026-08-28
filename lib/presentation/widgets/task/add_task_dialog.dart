@@ -7,7 +7,8 @@ import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 class AddTaskDialog extends StatefulWidget {
   final void Function(String title, DateTime? dueDate) onAddTask;
   final String? title;
-
+  final int weekStart;
+  const AddTaskDialog({super.key, required this.onAddTask, this.title, this.weekStart = 1});
   const AddTaskDialog({super.key, required this.onAddTask, this.title});
 
   @override
@@ -154,7 +155,7 @@ class AddTaskDialogState extends State<AddTaskDialog> {
               newTaskDue == NewTaskDue.none) {
             dueDate = null;
           } else {
-            dueDate = newTaskDue.calculateDate(DateTime.now());
+            dueDate = newTaskDue.calculateDate(DateTime.now(), weekStart: widget.weekStart);
           }
         });
       },

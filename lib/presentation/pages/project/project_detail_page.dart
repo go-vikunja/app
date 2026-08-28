@@ -162,11 +162,14 @@ class ProjectPageState extends ConsumerState<ProjectDetailPage> {
   }
 
   Future<void> _addITaskDialog(BuildContext context, Project project) {
+    final currentUser = ref.read(currentUserProvider);
+    final weekStart = currentUser?.settings?.weekStart ?? 1;
     return showDialog(
       context: context,
       builder: (_) => AddTaskDialog(
         onAddTask: (title, dueDate) =>
             _addItem(context, project, title, dueDate),
+        weekStart: weekStart,
       ),
     );
   }

@@ -152,12 +152,15 @@ class HomePageState extends ConsumerState<HomePage> {
     int defaultProjectId, [
     String? title,
   ]) {
+    final user = ref.read(currentUserProvider);
+    final weekStart = user?.settings?.weekStart ?? 1;
     showDialog(
       context: context,
       builder: (_) => AddTaskDialog(
         onAddTask: (title, dueDate) =>
             _addTask(title, dueDate, defaultProjectId, context),
         title: title,
+        weekStart: weekStart,
       ),
     );
   }
