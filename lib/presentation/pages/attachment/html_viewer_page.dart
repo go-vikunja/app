@@ -1,14 +1,14 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
-import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/entities/task_attachment.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/presentation/utils/attachment_utils.dart';
 
+/// Renders an HTML attachment in a full in-app WebView (real browser engine),
+/// so styles, scripts (e.g. Tailwind CDN) and RTL Hebrew render correctly.
 class HtmlViewerPage extends ConsumerStatefulWidget {
   final Task task;
   final TaskAttachment attachment;
@@ -24,8 +24,9 @@ class HtmlViewerPage extends ConsumerStatefulWidget {
 }
 
 class _HtmlViewerPageState extends ConsumerState<HtmlViewerPage> {
-  String? _html;
+  WebViewController? _controller;
   String? _error;
+  bool _loading = true;
 
   @override
   void initState() {
@@ -47,16 +48,33 @@ class _HtmlViewerPageState extends ConsumerState<HtmlViewerPage> {
       return;
     }
 
-    try {
-      final html = await File(path).readAsString();
-      if (!mounted) return;
-      setState(() => _html = html);
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _error = AppLocalizations.of(context).attachmentFailed;
-      });
-    }
+    final controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      // DOM storage is enabled by default in webview_flutter 4.13.
+      ..setBackgroundColor(Colors.white)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onPageStarted: (_) {
+            if (mounted) {
+              setState(() => _loading = true);
+            }
+          },
+          onPageFinished: (_) {
+            if (mounted) {
+              setState(() => _loading = false);
+            }
+          },
+        ),
+      );
+
+    // file:// prefix so both the new and legacy Android loaders get a URL.
+    await controller.loadFile('file://$path');
+
+    if (!mounted) return;
+    setState(() {
+      _controller = controller;
+      _loading = false;
+    });
   }
 
   Future<void> _openExternally() async {
@@ -78,7 +96,7 @@ class _HtmlViewerPageState extends ConsumerState<HtmlViewerPage> {
           overflow: TextOverflow.ellipsis,
         ),
         actions: [
-          if (_html != null)
+          if (_controller != null)
             IconButton(
               icon: const Icon(Icons.open_in_new),
               tooltip: AppLocalizations.of(context).openInBrowser,
@@ -86,7 +104,15 @@ class _HtmlViewerPageState extends ConsumerState<HtmlViewerPage> {
             ),
         ],
       ),
-      body: _buildBody(),
+      body: Stack(
+        children: [
+          _buildBody(),
+          if (_loading)
+            const Center(
+              child: SpinKitThreeBounce(color: Colors.blueGrey, size: 24),
+            ),
+        ],
+      ),
     );
   }
 
@@ -111,23 +137,11 @@ class _HtmlViewerPageState extends ConsumerState<HtmlViewerPage> {
       );
     }
 
-    if (_html == null) {
-      return const Center(
-        child: SpinKitThreeBounce(color: Colors.blueGrey, size: 24),
-      );
+    final controller = _controller;
+    if (controller == null) {
+      return const SizedBox.shrink();
     }
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-      child: HtmlWidget(
-        _html!,
-        key: const Key('html-viewer'),
-        textStyle: TextStyle(
-          fontSize: 15,
-          height: 1.5,
-          color: Theme.of(context).colorScheme.onSurface,
-        ),
-      ),
-    );
+    return WebViewWidget(controller: controller);
   }
 }
