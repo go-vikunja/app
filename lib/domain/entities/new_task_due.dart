@@ -8,9 +8,7 @@ enum NewTaskDue {
   nextWeek,
   custom;
 
-  DateTime? calculateDate(DateTime currentDateTime) {
-    int hour = calculateNearestHours(currentDateTime);
-    DateTime? calculateDate(DateTime currentDateTime, {int weekStart = 1}) {
+  DateTime? calculateDate(DateTime currentDateTime, {int weekStart = 1}) {
       int hour = calculateNearestHours(currentDateTime);
       var newDateTime = currentDateTime.copyWith(
         hour: hour,

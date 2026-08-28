@@ -9,7 +9,6 @@ class AddTaskDialog extends StatefulWidget {
   final String? title;
   final int weekStart;
   const AddTaskDialog({super.key, required this.onAddTask, this.title, this.weekStart = 1});
-  const AddTaskDialog({super.key, required this.onAddTask, this.title});
 
   @override
   State<StatefulWidget> createState() => AddTaskDialogState();
