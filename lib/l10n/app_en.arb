@@ -262,5 +262,6 @@
   "attachmentUploaded": "Attachment uploaded",
   "attachmentUploadFailed": "Could not upload the attachment",
   "attachmentFailed": "Could not open the attachment",
-  "openInBrowser": "Open in browser"
+    "openLinkFailed": "Could not open the link",
+    "openInBrowser": "Open in browser"
 }

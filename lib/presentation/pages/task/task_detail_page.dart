@@ -2,6 +2,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/core/utils/date_extensions.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
@@ -10,6 +11,7 @@ import 'package:vikunja_app/domain/entities/task_reminder.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/presentation/pages/task/task_edit_page.dart';
 import 'package:vikunja_app/presentation/utils/attachment_utils.dart';
+import 'package:vikunja_app/presentation/utils/html_linkify.dart';
 import 'package:vikunja_app/presentation/widgets/label_widget.dart';
 import 'package:vikunja_app/presentation/widgets/task/task_actions.dart';
 
@@ -84,6 +86,18 @@ class _TaskDetailPageState extends ConsumerState<TaskDetailPage> {
     ).then((_) => _refresh());
   }
 
+  Future<bool> _onLinkTap(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null || !uri.hasScheme) return false;
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context).openLinkFailed)),
+      );
+    }
+    return opened;
+  }
+
   String priorityToStringLocalized(BuildContext context, int? priority) {
     final l10n = AppLocalizations.of(context);
     if (priority == null || priority == 0) return l10n.priorityUnset;
@@ -141,9 +155,12 @@ class _TaskDetailPageState extends ConsumerState<TaskDetailPage> {
             Text(l10n.description, style: theme.textTheme.titleMedium),
             const SizedBox(height: 8),
             HtmlWidget(
-              task.description.isNotEmpty
-                  ? task.description
-                  : l10n.noDescription,
+              linkifyHtml(
+                task.description.isNotEmpty
+                    ? task.description
+                    : l10n.noDescription,
+              ),
+              onTapUrl: _onLinkTap,
             ),
             const SizedBox(height: 16),
             // Due date
