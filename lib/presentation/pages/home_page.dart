@@ -153,7 +153,7 @@ class HomePageState extends ConsumerState<HomePage> {
     String? title,
   ]) {
     final user = ref.read(currentUserProvider);
-    final weekStart = user?.settings?.weekStart ?? 1;
+    final weekStart = user?.settings?.weekStart ?? 0;
     showDialog(
       context: context,
       builder: (_) => AddTaskDialog(

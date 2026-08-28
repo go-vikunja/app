@@ -8,10 +8,16 @@ class AddTaskDialog extends StatefulWidget {
   final void Function(String title, DateTime? dueDate) onAddTask;
   final String? title;
   final int weekStart;
-  const AddTaskDialog({super.key, required this.onAddTask, this.title, this.weekStart = 1});
+  const AddTaskDialog({super.key, required this.onAddTask, this.title, this.weekStart = 0});
 
   @override
   State<StatefulWidget> createState() => AddTaskDialogState();
+}
+
+/// Maps API weekStart (0=Sun..6=Sat) to a display name
+String _dayName(int apiWeekStart) {
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  return days[apiWeekStart.clamp(0, 6)];
 }
 
 class AddTaskDialogState extends State<AddTaskDialog> {
@@ -22,7 +28,6 @@ class AddTaskDialogState extends State<AddTaskDialog> {
   @override
   void initState() {
     super.initState();
-
     var title = widget.title;
     if (title != null) {
       textController.text = title;
@@ -32,6 +37,15 @@ class AddTaskDialogState extends State<AddTaskDialog> {
   @override
   Widget build(BuildContext context) {
     var dateTime = DateTime.now();
+    final l10n = AppLocalizations.of(context);
+    final firstDayName = _dayName(widget.weekStart);
+
+    // Compute the "end of week" day for weekend visibility check
+    // API: 0=Sun, end of week = Fri(5)+Sat(6) relative to start
+    // Dart weekday: Mon=1..Sun=7
+    int firstDayDart = widget.weekStart == 0 ? 7 : widget.weekStart;
+    int lastDay = (firstDayDart + 5) % 7;
+    if (lastDay == 0) lastDay = 7;
 
     return AlertDialog(
       scrollable: true,
@@ -45,59 +59,36 @@ class AddTaskDialogState extends State<AddTaskDialog> {
             maxLines: null,
             autofocus: true,
             decoration: InputDecoration(
-              labelText: AppLocalizations.of(context).newTaskName,
-              hintText: AppLocalizations.of(context).newTaskExample,
+              labelText: l10n.newTaskName,
+              hintText: l10n.newTaskExample,
             ),
             controller: textController,
           ),
           Padding(
             padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
-            child: Text(AppLocalizations.of(context).dueDate),
+            child: Text(l10n.dueDate),
           ),
           Wrap(
             spacing: 8,
             children: [
-              taskDueList(
-                AppLocalizations.of(context).dueOptionNone,
-                NewTaskDue.none,
-              ),
+              taskDueList(l10n.dueOptionNone, NewTaskDue.none),
               if (dateTime.hour < 21)
-                taskDueList(
-                  AppLocalizations.of(context).dueOptionToday,
-                  NewTaskDue.today,
-                ),
-              taskDueList(
-                AppLocalizations.of(context).dueOptionTomorrow,
-                NewTaskDue.tomorrow,
-              ),
-              taskDueList(
-                AppLocalizations.of(context).dueOptionNextMonday,
-                NewTaskDue.nextMonday,
-              ),
-              if (dateTime.weekday != DateTime.sunday || dateTime.hour < 21)
-                taskDueList(
-                  AppLocalizations.of(context).dueOptionThisWeekend,
-                  NewTaskDue.weekend,
-                ),
-              taskDueList(
-                AppLocalizations.of(context).dueOptionLaterThisWeek,
-                NewTaskDue.laterThisWeek,
-              ),
-              taskDueList(
-                AppLocalizations.of(context).dueInOneWeek,
-                NewTaskDue.nextWeek,
-              ),
-              taskDueList(
-                AppLocalizations.of(context).dueOptionCustom,
-                NewTaskDue.custom,
-              ),
+                taskDueList(l10n.dueOptionToday, NewTaskDue.today),
+              taskDueList(l10n.dueOptionTomorrow, NewTaskDue.tomorrow),
+              // Dynamic label: "Next Sunday" / "Next Monday" etc
+              taskDueList('Next $firstDayName', NewTaskDue.nextMonday),
+              if (dateTime.weekday != lastDay || dateTime.hour < 21)
+                taskDueList(l10n.dueOptionThisWeekend, NewTaskDue.weekend),
+              taskDueList(l10n.dueOptionLaterThisWeek, NewTaskDue.laterThisWeek),
+              taskDueList(l10n.dueInOneWeek, NewTaskDue.nextWeek),
+              taskDueList(l10n.dueOptionCustom, NewTaskDue.custom),
             ],
           ),
           if (newTaskDue == NewTaskDue.custom)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8.0),
               child: VikunjaDateTimeField(
-                label: AppLocalizations.of(context).enterExactTime,
+                label: l10n.enterExactTime,
                 onChanged: (value) {
                   setState(() => newTaskDue = NewTaskDue.custom);
                   dueDate = value;
@@ -127,11 +118,11 @@ class AddTaskDialogState extends State<AddTaskDialog> {
       ),
       actions: <Widget>[
         TextButton(
-          child: Text(AppLocalizations.of(context).cancel),
+          child: Text(l10n.cancel),
           onPressed: () => Navigator.pop(context),
         ),
         TextButton(
-          child: Text(AppLocalizations.of(context).add),
+          child: Text(l10n.add),
           onPressed: () {
             if (textController.text.isNotEmpty) {
               widget.onAddTask(textController.text, dueDate);

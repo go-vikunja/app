@@ -132,12 +132,12 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
                     DropdownMenuItem(value: 6, child: Text(l10n.weekStartSaturday)),
                     DropdownMenuItem(value: 7, child: Text(l10n.weekStartSunday)),
                   ],
-                  value: settings.user.settings?.weekStart ?? 1,
+                  value: (settings.user.settings?.weekStart ?? 0) + 1,
                   onChanged: (int? value) {
                     if (value != null) {
                       ref
                           .read(settingsControllerProvider.notifier)
-                          .setWeekStart(value);
+                          .setWeekStart(value - 1);
                     }
                   },
                 ),

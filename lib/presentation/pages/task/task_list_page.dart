@@ -140,7 +140,7 @@ class TaskListPage extends ConsumerWidget {
     int defaultProjectId,
   ) {
     final currentUser = ref.read(currentUserProvider);
-    final weekStart = currentUser?.settings?.weekStart ?? 1;
+    final weekStart = currentUser?.settings?.weekStart ?? 0;
     showDialog(
       context: context,
       builder: (_) => AddTaskDialog(
