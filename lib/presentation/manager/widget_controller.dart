@@ -15,6 +15,7 @@ import 'package:vikunja_app/domain/repositories/task_repository.dart';
 Future<void> completeTask(String taskID) async {
   if (taskID == "null") {
     developer.log("Tried to complete an empty task");
+    return;
   }
 
   var datasource = SettingsDatasource(FlutterSecureStorage());
@@ -57,18 +58,25 @@ Future<void> _removeCompletedTaskFromWidget(String taskID) async {
   }
 }
 
-WidgetTask convertTask(Task task) {
+WidgetTask? convertTask(Task task) {
+  final dueDate = task.dueDate;
+  if (dueDate == null) {
+    // Tasks without a due date aren't shown in the widget
+    return null;
+  }
+
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
 
   // Task is "today" if due date is within today (same day)
-  bool wgToday = task.dueDate!.isAfter(today.subtract(Duration(days: 1))) &&
-      task.dueDate!.isBefore(today.add(Duration(days: 1)));
+  bool wgToday =
+      dueDate.isAfter(today.subtract(Duration(days: 1))) &&
+      dueDate.isBefore(today.add(Duration(days: 1)));
 
   WidgetTask wgTask = WidgetTask(
     id: task.id.toString(),
     title: task.title,
-    dueDate: task.dueDate,
+    dueDate: dueDate,
     today: wgToday,
   );
   return wgTask;
@@ -77,10 +85,13 @@ WidgetTask convertTask(Task task) {
 List<Task> filterForDueTasks(List<Task> tasks) {
   var todayTasks = <Task>[];
   for (var task in tasks) {
+    final dueDate = task.dueDate;
+    if (dueDate == null) continue;
+
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    if (task.dueDate!.isAfter(today.subtract(Duration(days: 1))) &&
-        task.dueDate!.isBefore(today.add(Duration(days: 1)))) {
+    if (dueDate.isAfter(today.subtract(Duration(days: 1))) &&
+        dueDate.isBefore(today.add(Duration(days: 1)))) {
       todayTasks.add(task);
     }
   }
@@ -117,7 +128,11 @@ Future<void> updateWidget() async {
 }
 
 Future<void> updateWidgetTasks(List<Task> tasklist) async {
-  var data = jsonEncode(tasklist.map((e) => convertTask(e).toJSON()).toList());
+  var widgetTasks = tasklist
+      .map((e) => convertTask(e))
+      .whereType<WidgetTask>()
+      .toList();
+  var data = jsonEncode(widgetTasks.map((e) => e.toJSON()).toList());
   await HomeWidget.saveWidgetData("WidgetTasks", data);
   await reRenderWidget();
 }

@@ -185,6 +185,9 @@ class TaskPageController extends _$TaskPageController
         state = AsyncData(value.copyWith(tasks: tasks));
       }
 
+      // Keep the home screen widget in sync with the deletion
+      updateWidget();
+
       return true;
     }
 
@@ -212,6 +215,9 @@ class TaskPageController extends _$TaskPageController
         tasks.removeWhere((element) => element.id == task.id);
         state = AsyncData(value.copyWith(tasks: tasks));
       }
+
+      // Keep the home screen widget in sync with the completion
+      updateWidget();
 
       return true;
     }
