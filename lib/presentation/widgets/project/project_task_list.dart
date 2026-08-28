@@ -9,10 +9,10 @@ import 'package:vikunja_app/presentation/manager/project_controller.dart';
 import 'package:vikunja_app/presentation/pages/error_widget.dart';
 import 'package:vikunja_app/presentation/pages/loading_widget.dart';
 import 'package:vikunja_app/presentation/pages/project/project_detail_page.dart';
+import 'package:vikunja_app/presentation/pages/task/task_detail_page.dart';
 import 'package:vikunja_app/presentation/pages/task/task_edit_page.dart';
 import 'package:vikunja_app/presentation/widgets/empty_view.dart';
 import 'package:vikunja_app/presentation/widgets/project/project_task_list_item.dart';
-import 'package:vikunja_app/presentation/widgets/task_bottom_sheet.dart';
 
 class ProjectTaskList extends ConsumerWidget {
   final Project project;
@@ -180,7 +180,7 @@ class ProjectTaskList extends ConsumerWidget {
     return ProjectTaskListItem(
       key: Key(task.id.toString()),
       task: task,
-      onTap: () => _showTaskBottomSheet(ref, task),
+      onTap: () => _onOpen(ref, task),
       onEdit: () => _onEdit(ref, task),
       onCheckedChanged: (value) async {
         var success = await ref
@@ -197,15 +197,10 @@ class ProjectTaskList extends ConsumerWidget {
     );
   }
 
-  void _showTaskBottomSheet(WidgetRef ref, Task task) {
-    showModalBottomSheet<void>(
-      context: ref.context,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(10.0)),
-      ),
-      builder: (BuildContext context) {
-        return TaskBottomSheet(task: task, onEdit: () => _onEdit(ref, task));
-      },
+  void _onOpen(WidgetRef ref, Task task) {
+    Navigator.push<Task?>(
+      ref.context,
+      MaterialPageRoute(builder: (buildContext) => TaskDetailPage(task: task)),
     );
   }
 

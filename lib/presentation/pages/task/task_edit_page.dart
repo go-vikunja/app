@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:background_downloader/background_downloader.dart'
     show TaskStatus, FileDownloader;
 import 'package:collection/collection.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,6 +19,7 @@ import 'package:vikunja_app/domain/entities/task_reminder.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/presentation/manager/task_page_controller.dart';
 import 'package:vikunja_app/presentation/pages/task/edit_description.dart';
+import 'package:vikunja_app/presentation/utils/attachment_utils.dart';
 import 'package:vikunja_app/presentation/widgets/date_time_field.dart';
 import 'package:vikunja_app/presentation/widgets/label_widget.dart';
 import 'package:vikunja_app/presentation/widgets/task/color_picker_dialog.dart';
@@ -541,10 +543,22 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
       separatorBuilder: (context, index) => Divider(),
       padding: const EdgeInsets.all(16.0),
       shrinkWrap: true,
-      itemCount: widget.task.attachments.length,
+      itemCount: widget.task.attachments.length + 1,
       itemBuilder: (context, index) {
+        // Last row is the "upload a new attachment" action.
+        if (index == widget.task.attachments.length) {
+          return ListTile(
+            leading: const Icon(Icons.attach_file),
+            title: Text(AppLocalizations.of(context).uploadAttachment),
+            onTap: _uploadAttachment,
+          );
+        }
+        final attachment = widget.task.attachments[index];
         return ListTile(
-          title: Text(widget.task.attachments[index].file.name),
+          leading: Icon(attachmentIcon(attachment)),
+          title: Text(attachment.file.name),
+          subtitle: Text(attachmentSizeLabel(attachment)),
+          onTap: () => openAttachment(context, ref, widget.task, attachment),
           trailing: IconButton(
             icon: Icon(Icons.download),
             onPressed: () async {
@@ -562,6 +576,43 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
         );
       },
     );
+  }
+
+  Future<void> _uploadAttachment() async {
+    final result = await FilePicker.platform.pickFiles();
+    if (result == null || result.files.isEmpty) return;
+    final file = result.files.single;
+    final path = file.path;
+    if (path == null) return;
+
+    final response = await ref
+        .read(taskRepositoryProvider)
+        .uploadAttachment(widget.task.id, path, filename: file.name);
+
+    if (!mounted) return;
+    if (response.isSuccessful) {
+      // Refresh the task so the new attachment shows up in the list.
+      final fresh = await ref
+          .read(taskRepositoryProvider)
+          .getTask(widget.task.id);
+      if (!mounted) return;
+      if (fresh.isSuccessful) {
+        setState(() {
+          widget.task.attachments = fresh.toSuccess().body.attachments;
+        });
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context).attachmentUploaded),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context).attachmentUploadFailed),
+        ),
+      );
+    }
   }
 
   Widget _buildLabelList() {

@@ -35,4 +35,15 @@ abstract class TaskRepository {
     int taskId,
     TaskAttachment attachment,
   );
+
+  /// Resolves the local path an attachment is/would be stored at (no network
+  /// I/O). Returns null if the path could not be resolved.
+  Future<String?> getAttachmentFilePath(int taskId, TaskAttachment attachment);
+
+  /// Uploads a local file as a new attachment for the task.
+  Future<Response<TaskAttachment>> uploadAttachment(
+    int taskId,
+    String filePath, {
+    String? filename,
+  });
 }
