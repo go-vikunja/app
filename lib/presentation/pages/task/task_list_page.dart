@@ -139,11 +139,14 @@ class TaskListPage extends ConsumerWidget {
     BuildContext context,
     int defaultProjectId,
   ) {
+    final currentUser = ref.read(currentUserProvider);
+    final weekStart = currentUser?.settings?.weekStart ?? 0;
     showDialog(
       context: context,
       builder: (_) => AddTaskDialog(
         onAddTask: (title, dueDate) =>
             _addTask(ref, title, dueDate, defaultProjectId),
+        weekStart: weekStart,
       ),
     );
   }

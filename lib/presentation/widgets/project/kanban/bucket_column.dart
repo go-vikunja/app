@@ -328,10 +328,13 @@ class _BucketColumnState extends ConsumerState<BucketColumn> {
   }
 
   Future<void> _addItemDialog(BuildContext context) {
+    final currentUser = ref.read(currentUserProvider);
+    final weekStart = currentUser?.settings?.weekStart ?? 0;
     return showDialog(
       context: context,
       builder: (_) => AddTaskDialog(
         onAddTask: (title, dueDate) => _addItem(title, context),
+        weekStart: weekStart,
       ),
     );
   }
