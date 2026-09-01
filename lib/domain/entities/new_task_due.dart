@@ -58,7 +58,8 @@ enum NewTaskDue {
         if (secondLast == 0) secondLast = 7;
         int thirdLast = (firstDayDart + 4) % 7;
         if (thirdLast == 0) thirdLast = 7;
-        bool isEndOfWeek = currentDateTime.weekday == lastDay ||
+        bool isEndOfWeek =
+            currentDateTime.weekday == lastDay ||
             currentDateTime.weekday == secondLast ||
             currentDateTime.weekday == thirdLast;
         return newDateTime.add(Duration(days: isEndOfWeek ? 0 : 2));

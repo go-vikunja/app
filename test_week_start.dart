@@ -42,7 +42,9 @@ Future<void> main() async {
     settingsBody['week_start'] = testVal;
 
     // Save
-    final saveReq = await client.postUrl(Uri.parse('$server/api/v1/user/settings/general'));
+    final saveReq = await client.postUrl(
+      Uri.parse('$server/api/v1/user/settings/general'),
+    );
     saveReq.headers.set('Content-Type', 'application/json');
     saveReq.headers.set('Authorization', 'Bearer $token');
     saveReq.write(jsonEncode(settingsBody));
@@ -54,7 +56,9 @@ Future<void> main() async {
     final verifyReq = await client.getUrl(Uri.parse('$server/api/v1/user'));
     verifyReq.headers.set('Authorization', 'Bearer $token');
     final verifyResp = await verifyReq.close();
-    final verifyBody = jsonDecode(await verifyResp.transform(utf8.decoder).join());
+    final verifyBody = jsonDecode(
+      await verifyResp.transform(utf8.decoder).join(),
+    );
     final saved = verifyBody['settings']['week_start'] as int;
     final pass = saved == testVal;
     results['$testVal (${dayNames[testVal]})'] = pass;
@@ -65,7 +69,9 @@ Future<void> main() async {
   print('\n=== Restore original: $originalWeekStart ===');
   final restoreBody = Map<String, dynamic>.from(userBody['settings']);
   restoreBody['week_start'] = originalWeekStart;
-  final restoreReq = await client.postUrl(Uri.parse('$server/api/v1/user/settings/general'));
+  final restoreReq = await client.postUrl(
+    Uri.parse('$server/api/v1/user/settings/general'),
+  );
   restoreReq.headers.set('Content-Type', 'application/json');
   restoreReq.headers.set('Authorization', 'Bearer $token');
   restoreReq.write(jsonEncode(restoreBody));

@@ -8,7 +8,12 @@ class AddTaskDialog extends StatefulWidget {
   final void Function(String title, DateTime? dueDate) onAddTask;
   final String? title;
   final int weekStart;
-  const AddTaskDialog({super.key, required this.onAddTask, this.title, this.weekStart = 0});
+  const AddTaskDialog({
+    super.key,
+    required this.onAddTask,
+    this.title,
+    this.weekStart = 0,
+  });
 
   @override
   State<StatefulWidget> createState() => AddTaskDialogState();
@@ -16,7 +21,15 @@ class AddTaskDialog extends StatefulWidget {
 
 /// Maps API weekStart (0=Sun..6=Sat) to a display name
 String _dayName(int apiWeekStart) {
-  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const days = [
+    'Sunday',
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+  ];
   return days[apiWeekStart.clamp(0, 6)];
 }
 
@@ -79,7 +92,10 @@ class AddTaskDialogState extends State<AddTaskDialog> {
               taskDueList('Next $firstDayName', NewTaskDue.nextMonday),
               if (dateTime.weekday != lastDay || dateTime.hour < 21)
                 taskDueList(l10n.dueOptionThisWeekend, NewTaskDue.weekend),
-              taskDueList(l10n.dueOptionLaterThisWeek, NewTaskDue.laterThisWeek),
+              taskDueList(
+                l10n.dueOptionLaterThisWeek,
+                NewTaskDue.laterThisWeek,
+              ),
               taskDueList(l10n.dueInOneWeek, NewTaskDue.nextWeek),
               taskDueList(l10n.dueOptionCustom, NewTaskDue.custom),
             ],
@@ -145,7 +161,10 @@ class AddTaskDialogState extends State<AddTaskDialog> {
               newTaskDue == NewTaskDue.none) {
             dueDate = null;
           } else {
-            dueDate = newTaskDue.calculateDate(DateTime.now(), weekStart: widget.weekStart);
+            dueDate = newTaskDue.calculateDate(
+              DateTime.now(),
+              weekStart: widget.weekStart,
+            );
           }
         });
       },
