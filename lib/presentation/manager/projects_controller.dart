@@ -10,6 +10,9 @@ part 'projects_controller.g.dart';
 @riverpod
 class ProjectsController extends _$ProjectsController
     with PaginationMixin<Project> {
+  int _searchEpoch = 0;
+  String _searchQuery = '';
+
   @override
   Future<ProjectListModel> build() async {
     resetPagination();
@@ -18,7 +21,10 @@ class ProjectsController extends _$ProjectsController
 
     if (response.isSuccessful) {
       updateTotalPages(response.toSuccess().headers);
-      return ProjectListModel(response.toSuccess().body);
+      return ProjectListModel(
+        response.toSuccess().body,
+        searchQuery: _searchQuery,
+      );
     } else if (response.isException) {
       throw Exception(response.toException().message);
     } else {
@@ -33,7 +39,45 @@ class ProjectsController extends _$ProjectsController
     var response = await loadProjects();
     if (response.isSuccessful) {
       updateTotalPages(response.toSuccess().headers);
-      state = AsyncData(ProjectListModel(response.toSuccess().body));
+      state = AsyncData(
+        ProjectListModel(response.toSuccess().body, searchQuery: _searchQuery),
+      );
+    } else if (response.isException) {
+      state = AsyncError(
+        response.toException().message,
+        response.toException().stackTrace,
+      );
+    } else {
+      state = AsyncError(response.toError().error, StackTrace.empty);
+    }
+  }
+
+  Future<void> setSearchQuery(String query) async {
+    final trimmed = query.trim();
+    if (trimmed == _searchQuery) {
+      return;
+    }
+
+    _searchQuery = trimmed;
+    final epoch = ++_searchEpoch;
+    final current = state.value;
+    if (current != null) {
+      state = AsyncData(
+        current.copyWith(searchQuery: trimmed, isSearching: true),
+      );
+    }
+
+    resetPagination();
+    var response = await loadProjects();
+    if (epoch != _searchEpoch) {
+      return;
+    }
+
+    if (response.isSuccessful) {
+      updateTotalPages(response.toSuccess().headers);
+      state = AsyncData(
+        ProjectListModel(response.toSuccess().body, searchQuery: _searchQuery),
+      );
     } else if (response.isException) {
       state = AsyncError(
         response.toException().message,
@@ -54,7 +98,12 @@ class ProjectsController extends _$ProjectsController
     state = AsyncData(currentModel.copyWith(isLoadingNextPage: true));
 
     await loadMoreItems(
-      fetcher: (page) => ref.read(projectRepositoryProvider).getAll(page: page),
+      fetcher: (page) => ref
+          .read(projectRepositoryProvider)
+          .getAll(
+            page: page,
+            search: _searchQuery.isEmpty ? null : _searchQuery,
+          ),
       stateUpdater: (newProjects) {
         final latestModel = state.value;
         if (latestModel != null) {
@@ -83,25 +132,41 @@ class ProjectsController extends _$ProjectsController
   }
 
   Future<Response<List<Project>>> loadProjects() async {
-    var response = await ref.read(projectRepositoryProvider).getAll(page: 1);
+    var response = await ref
+        .read(projectRepositoryProvider)
+        .getAll(page: 1, search: _searchQuery.isEmpty ? null : _searchQuery);
 
     if (response.isSuccessful) {
-      var successResponse = (response as SuccessResponse);
-      List<Project> topLevelProjects = successResponse.body
-          .where((e) => e.parentProjectId == 0)
-          .toList();
-      for (var topLevelProject in topLevelProjects) {
-        _findSubproject(topLevelProject, successResponse.body);
+      var successResponse = (response as SuccessResponse<List<Project>>);
+      if (_searchQuery.isNotEmpty) {
+        return SuccessResponse(
+          successResponse.body,
+          successResponse.statusCode,
+          successResponse.headers,
+        );
       }
 
       return SuccessResponse(
-        topLevelProjects,
+        _asTopLevelTree(successResponse.body, successResponse.body),
         successResponse.statusCode,
         successResponse.headers,
       );
     }
 
     return response;
+  }
+
+  List<Project> _asTopLevelTree(
+    List<Project> candidates,
+    List<Project> allProjects,
+  ) {
+    final topLevelProjects = candidates
+        .where((e) => e.parentProjectId == 0)
+        .toList();
+    for (var topLevelProject in topLevelProjects) {
+      _findSubproject(topLevelProject, allProjects);
+    }
+    return topLevelProjects;
   }
 
   void _findSubproject(Project project, List<Project> projects) {

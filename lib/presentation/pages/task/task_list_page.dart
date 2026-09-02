@@ -12,6 +12,7 @@ import 'package:vikunja_app/presentation/pages/error_widget.dart';
 import 'package:vikunja_app/presentation/pages/loading_widget.dart';
 import 'package:vikunja_app/presentation/pages/task/task_edit_page.dart';
 import 'package:vikunja_app/presentation/widgets/empty_view.dart';
+import 'package:vikunja_app/presentation/widgets/searchable_app_bar.dart';
 import 'package:vikunja_app/presentation/widgets/task/add_task_dialog.dart';
 import 'package:vikunja_app/presentation/widgets/task/task_list_item.dart';
 import 'package:vikunja_app/presentation/widgets/task_bottom_sheet.dart';
@@ -27,7 +28,7 @@ class TaskListPage extends ConsumerWidget {
     return pageModel.when(
       data: (model) {
         return Scaffold(
-          appBar: _buildAppBar(ref, context, model.onlyDueDate),
+          appBar: _buildAppBar(ref, context, model),
           body: RefreshIndicator(
             onRefresh: () async {
               ref.read(taskPageControllerProvider.notifier).reload();
@@ -67,7 +68,12 @@ class TaskListPage extends ConsumerWidget {
 
   Widget _buildList(WidgetRef ref, BuildContext context, TaskPageModel model) {
     if (model.tasks.isEmpty) {
-      return EmptyView(Icons.list, AppLocalizations.of(context).noTasks);
+      return EmptyView(
+        Icons.list,
+        model.searchQuery.isEmpty
+            ? AppLocalizations.of(context).noTasks
+            : AppLocalizations.of(context).noSearchResults,
+      );
     } else {
       final itemCount = model.tasks.length + (model.isLoadingNextPage ? 1 : 0);
       return ListView.separated(
@@ -92,9 +98,19 @@ class TaskListPage extends ConsumerWidget {
     }
   }
 
-  AppBar _buildAppBar(WidgetRef ref, BuildContext context, bool onlyDueDate) {
-    return AppBar(
-      title: Text("Vikunja"),
+  SearchableAppBar _buildAppBar(
+    WidgetRef ref,
+    BuildContext context,
+    TaskPageModel model,
+  ) {
+    return SearchableAppBar(
+      title: 'Vikunja',
+      searchHint: AppLocalizations.of(context).searchTasksHint,
+      searchQuery: model.searchQuery,
+      showProgress: model.isSearching,
+      onSearchChanged: (query) {
+        ref.read(taskPageControllerProvider.notifier).setSearchQuery(query);
+      },
       actions: [
         PopupMenuButton(
           itemBuilder: (BuildContext context) {
@@ -102,7 +118,7 @@ class TaskListPage extends ConsumerWidget {
               PopupMenuItem(
                 child: InkWell(
                   onTap: () {
-                    _onlyDueDateChanged(ref, context, !onlyDueDate);
+                    _onlyDueDateChanged(ref, context, !model.onlyDueDate);
                   },
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.end,
@@ -111,9 +127,9 @@ class TaskListPage extends ConsumerWidget {
                         AppLocalizations.of(context).onlyShowTasksWithDueDate,
                       ),
                       Checkbox(
-                        value: onlyDueDate,
+                        value: model.onlyDueDate,
                         onChanged: (bool? value) {
-                          _onlyDueDateChanged(ref, context, !onlyDueDate);
+                          _onlyDueDateChanged(ref, context, !model.onlyDueDate);
                         },
                       ),
                     ],

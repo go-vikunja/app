@@ -9,7 +9,9 @@ import 'package:vikunja_app/presentation/pages/error_widget.dart';
 import 'package:vikunja_app/presentation/pages/loading_widget.dart';
 import 'package:vikunja_app/presentation/pages/project/expansion_title.dart';
 import 'package:vikunja_app/presentation/pages/project/project_detail_page.dart';
+import 'package:vikunja_app/presentation/widgets/empty_view.dart';
 import 'package:vikunja_app/presentation/widgets/project/add_project_dialog.dart';
+import 'package:vikunja_app/presentation/widgets/searchable_app_bar.dart';
 
 class ProjectListPage extends ConsumerWidget {
   const ProjectListPage({super.key});
@@ -32,35 +34,53 @@ class ProjectListPage extends ConsumerWidget {
               return false;
             },
             child: RefreshIndicator(
-              child: ListView.separated(
-                itemCount: itemCount,
-                separatorBuilder: (BuildContext context, int index) =>
-                    const Divider(height: 8),
-                itemBuilder: (context, index) {
-                  if (index == projects.length) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 16.0),
-                      child: Center(
-                        child: SpinKitThreeBounce(
-                          color: Theme.of(context).primaryColor,
-                          size: 16,
-                        ),
-                      ),
-                    );
-                  }
-                  return _buildListItem(ref, projects[index]);
-                },
-              ),
+              child: projects.isEmpty && model.searchQuery.isNotEmpty
+                  ? EmptyView(
+                      Icons.search_off,
+                      AppLocalizations.of(context).noSearchResults,
+                    )
+                  : ListView.separated(
+                      itemCount: itemCount,
+                      separatorBuilder: (BuildContext context, int index) =>
+                          const Divider(height: 8),
+                      itemBuilder: (context, index) {
+                        if (index == projects.length) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 16.0),
+                            child: Center(
+                              child: SpinKitThreeBounce(
+                                color: Theme.of(context).primaryColor,
+                                size: 16,
+                              ),
+                            ),
+                          );
+                        }
+                        return _buildListItem(
+                          ref,
+                          projects[index],
+                          flattenSubprojects: model.searchQuery.isNotEmpty,
+                        );
+                      },
+                    ),
               onRefresh: () async {
                 ref.read(projectsControllerProvider.notifier).reload();
               },
             ),
           ),
-          appBar: AppBar(
-            title: Text(AppLocalizations.of(context).projectsTitle),
+          appBar: SearchableAppBar(
+            title: AppLocalizations.of(context).projectsTitle,
+            searchHint: AppLocalizations.of(context).searchProjectsHint,
+            searchQuery: model.searchQuery,
+            showProgress: model.isSearching,
+            onSearchChanged: (query) {
+              ref
+                  .read(projectsControllerProvider.notifier)
+                  .setSearchQuery(query);
+            },
             actions: [
               IconButton(
-                icon: Icon(Icons.add),
+                icon: const Icon(Icons.add),
+                tooltip: AppLocalizations.of(context).add,
                 onPressed: () => _addProjectDialog(ref),
               ),
             ],
@@ -75,8 +95,12 @@ class ProjectListPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildListItem(WidgetRef ref, Project project) {
-    if (project.subprojects.isEmpty == true) {
+  Widget _buildListItem(
+    WidgetRef ref,
+    Project project, {
+    bool flattenSubprojects = false,
+  }) {
+    if (flattenSubprojects || project.subprojects.isEmpty == true) {
       return ListTile(
         leading: Icon(Icons.list),
         title: Text(project.title),

@@ -26,7 +26,9 @@ class ProjectTaskList extends ConsumerWidget {
     return projectController.when(
       data: (pageModel) {
         List<Widget> children = [];
-        if (project.subprojects.isNotEmpty) {
+        final showSubprojects =
+            project.subprojects.isNotEmpty && pageModel.searchQuery.isEmpty;
+        if (showSubprojects) {
           if (pageModel.tasks.isNotEmpty) {
             children.add(
               SliverToBoxAdapter(
@@ -40,7 +42,7 @@ class ProjectTaskList extends ConsumerWidget {
           children.addAll(_buildProjectList(context));
         }
         if (pageModel.tasks.isNotEmpty) {
-          if (project.subprojects.isNotEmpty) {
+          if (showSubprojects) {
             children.add(
               SliverToBoxAdapter(
                 child: _buildSectionHeader(
@@ -50,7 +52,13 @@ class ProjectTaskList extends ConsumerWidget {
             );
             children.add(SliverToBoxAdapter(child: Divider()));
           }
-          children.add(_buildTaskList(ref, pageModel.tasks));
+          children.add(
+            _buildTaskList(
+              ref,
+              pageModel.tasks,
+              enableReorder: pageModel.searchQuery.isEmpty,
+            ),
+          );
         }
 
         if (pageModel.isLoadingNextPage) {
@@ -74,7 +82,9 @@ class ProjectTaskList extends ConsumerWidget {
         } else {
           return EmptyView(
             Icons.list,
-            AppLocalizations.of(context).noTasksOrSubproject,
+            pageModel.searchQuery.isEmpty
+                ? AppLocalizations.of(context).noTasksOrSubproject
+                : AppLocalizations.of(context).noSearchResults,
           );
         }
       },
@@ -112,13 +122,18 @@ class ProjectTaskList extends ConsumerWidget {
     ];
   }
 
-  Widget _buildTaskList(WidgetRef ref, List<Task> tasks) {
+  Widget _buildTaskList(
+    WidgetRef ref,
+    List<Task> tasks, {
+    bool enableReorder = true,
+  }) {
     return SliverReorderableList(
       itemBuilder: (context, index) {
         final task = tasks[index];
         return ReorderableDelayedDragStartListener(
           key: Key('task_${task.id}'),
           index: index,
+          enabled: enableReorder,
           child: Material(
             color: Colors.transparent,
             child: Column(

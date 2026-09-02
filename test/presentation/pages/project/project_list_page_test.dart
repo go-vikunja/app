@@ -65,5 +65,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('Subproject 1'), findsOneWidget);
+
+    expect(find.byIcon(Icons.search), findsOneWidget);
   });
 }

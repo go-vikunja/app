@@ -3,6 +3,7 @@ import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/core/di/notification_provider.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/core/network/response.dart';
+import 'package:vikunja_app/core/utils/search_filter.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/entities/task_page_model.dart';
@@ -14,6 +15,9 @@ part 'task_page_controller.g.dart';
 @riverpod
 class TaskPageController extends _$TaskPageController
     with PaginationMixin<Task> {
+  int _searchEpoch = 0;
+  String _searchQuery = '';
+
   @override
   Future<TaskPageModel> build() async {
     resetPagination();
@@ -99,7 +103,46 @@ class TaskPageController extends _$TaskPageController
         .read(settingsRepositoryProvider)
         .getLandingPageOnlyDueDateTasks();
 
-    return TaskPageModel(tasks, showOnlyDueDateTasks, defaultProjectId, false);
+    return TaskPageModel(
+      tasks,
+      showOnlyDueDateTasks,
+      defaultProjectId,
+      false,
+      searchQuery: _searchQuery,
+    );
+  }
+
+  Future<void> setSearchQuery(String query) async {
+    final trimmed = query.trim();
+    if (trimmed == _searchQuery) {
+      return;
+    }
+
+    _searchQuery = trimmed;
+    final epoch = ++_searchEpoch;
+    final current = state.value;
+    if (current != null) {
+      state = AsyncData(
+        current.copyWith(searchQuery: trimmed, isSearching: true),
+      );
+    }
+
+    resetPagination();
+    var tasksResponse = await _getAllFiltered();
+    if (epoch != _searchEpoch) {
+      return;
+    }
+
+    switch (tasksResponse) {
+      case SuccessResponse<List<Task>>():
+        updateTotalPages(tasksResponse.headers);
+        var pageModel = await _createPageModel(tasksResponse.body);
+        state = AsyncData(pageModel.copyWith(isSearching: false));
+      case ErrorResponse<List<Task>>():
+        state = AsyncError(tasksResponse.error, StackTrace.current);
+      case ExceptionResponse<List<Task>>():
+        state = AsyncError(tasksResponse.message, StackTrace.current);
+    }
   }
 
   void _setProjectOfTask(
@@ -127,13 +170,19 @@ class TaskPageController extends _$TaskPageController
       Map<String, dynamic>? frontendSettings = user.settings?.frontendSettings;
       int? filterId = frontendSettings?["filter_id_used_on_overview"];
       if (filterId != null && filterId != 0) {
+        final queryParameters = <String, List<String>>{
+          "sort_by": ["due_date", "id"],
+          "order_by": ["asc", "desc"],
+          "page": ["$page"],
+        };
+        final searchClause = searchLikeClause(_searchQuery);
+        if (searchClause != null) {
+          queryParameters["filter"] = [searchClause];
+        }
+
         var tasksResponse = await ref
             .read(taskRepositoryProvider)
-            .getAllByProject(filterId, {
-              "sort_by": ["due_date", "id"],
-              "order_by": ["asc", "desc"],
-              "page": ["$page"],
-            });
+            .getAllByProject(filterId, queryParameters);
 
         return tasksResponse;
       }
@@ -143,10 +192,14 @@ class TaskPageController extends _$TaskPageController
     if (showOnlyDueDateTasks) {
       filterStrings.add("due_date > 0001-01-01 00:00");
     }
+    final searchClause = searchLikeClause(_searchQuery);
+    if (searchClause != null) {
+      filterStrings.add(searchClause);
+    }
 
     var tasksResponse = await ref
         .read(taskRepositoryProvider)
-        .getByFilterString(filterStrings.join(" && "), {
+        .getByFilterString(combineFilterClauses(filterStrings), {
           "sort_by": ["due_date", "id"],
           "order_by": ["asc", "desc"],
           "filter_include_nulls": ["false"],

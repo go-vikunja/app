@@ -2,6 +2,7 @@ import 'package:collection/collection.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/core/network/response.dart';
+import 'package:vikunja_app/core/utils/search_filter.dart';
 import 'package:vikunja_app/domain/entities/bucket.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/project_page_model.dart';
@@ -14,6 +15,9 @@ part 'project_controller.g.dart';
 
 @riverpod
 class ProjectController extends _$ProjectController with PaginationMixin<Task> {
+  int _searchEpoch = 0;
+  String _searchQuery = '';
+
   @override
   Future<ProjectPageModel> build(Project project) async {
     resetPagination();
@@ -33,7 +37,15 @@ class ProjectController extends _$ProjectController with PaginationMixin<Task> {
     if (tasksResponse.isSuccessful) {
       updateTotalPages(tasksResponse.toSuccess().headers);
       final tasks = tasksResponse.toSuccess().body;
-      return ProjectPageModel(project, 0, tasks, [], displayDoneTask, false);
+      return ProjectPageModel(
+        project,
+        0,
+        tasks,
+        [],
+        displayDoneTask,
+        false,
+        searchQuery: _searchQuery,
+      );
     } else if (tasksResponse.isException) {
       throw Exception(tasksResponse.toException().message);
     } else {
@@ -170,8 +182,58 @@ class ProjectController extends _$ProjectController with PaginationMixin<Task> {
         buckets,
         displayDoneTask,
         false,
+        searchQuery: _searchQuery,
       ),
     );
+  }
+
+  Future<void> setSearchQuery(String query) async {
+    final trimmed = query.trim();
+    if (trimmed == _searchQuery) {
+      return;
+    }
+
+    _searchQuery = trimmed;
+    final epoch = ++_searchEpoch;
+    final current = state.value;
+    if (current == null) {
+      return;
+    }
+
+    state = AsyncData(
+      current.copyWith(searchQuery: trimmed, isSearching: true),
+    );
+
+    resetPagination();
+    int? viewId = _getFirstListViewIdFromProject(current.project);
+    var tasksResponse = await _loadTasks(
+      current.project.id,
+      current.displayDoneTask,
+      viewId,
+      1,
+    );
+    if (epoch != _searchEpoch) {
+      return;
+    }
+
+    if (tasksResponse.isSuccessful) {
+      updateTotalPages(tasksResponse.toSuccess().headers);
+      state = AsyncData(
+        current.copyWith(
+          tasks: tasksResponse.toSuccess().body,
+          searchQuery: _searchQuery,
+          isSearching: false,
+          isLoadingNextPage: false,
+        ),
+      );
+    } else if (tasksResponse.isError) {
+      state = AsyncError(tasksResponse.toError().error, StackTrace.current);
+    } else if (tasksResponse.isException) {
+      state = AsyncError(
+        tasksResponse.toException().message,
+        StackTrace.current,
+      );
+    }
   }
 
   int? _getFirstListViewIdFromProject(Project project) {
@@ -202,10 +264,16 @@ class ProjectController extends _$ProjectController with PaginationMixin<Task> {
             "page": ["$page"],
           };
 
+    final filterParts = <String>[];
     if (!displayDoneTasks) {
-      queryParams.addAll({
-        "filter": ["done=false"],
-      });
+      filterParts.add('done=false');
+    }
+    final searchClause = searchLikeClause(_searchQuery);
+    if (searchClause != null) {
+      filterParts.add(searchClause);
+    }
+    if (filterParts.isNotEmpty) {
+      queryParams['filter'] = [combineFilterClauses(filterParts)];
     }
 
     return view == null
