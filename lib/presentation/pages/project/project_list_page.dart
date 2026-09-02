@@ -35,11 +35,24 @@ class ProjectListPage extends ConsumerWidget {
             },
             child: RefreshIndicator(
               child: projects.isEmpty && model.searchQuery.isNotEmpty
-                  ? EmptyView(
-                      Icons.search_off,
-                      AppLocalizations.of(context).noSearchResults,
+                  ? ListView(
+                      keyboardDismissBehavior:
+                          ScrollViewKeyboardDismissBehavior.manual,
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: [
+                        SizedBox(
+                          height: MediaQuery.sizeOf(context).height * 0.5,
+                          child: EmptyView(
+                            Icons.search_off,
+                            AppLocalizations.of(context).noSearchResults,
+                          ),
+                        ),
+                      ],
                     )
                   : ListView.separated(
+                      keyboardDismissBehavior:
+                          ScrollViewKeyboardDismissBehavior.manual,
+                      physics: const AlwaysScrollableScrollPhysics(),
                       itemCount: itemCount,
                       separatorBuilder: (BuildContext context, int index) =>
                           const Divider(height: 8),

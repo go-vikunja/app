@@ -67,35 +67,42 @@ class TaskListPage extends ConsumerWidget {
   }
 
   Widget _buildList(WidgetRef ref, BuildContext context, TaskPageModel model) {
-    if (model.tasks.isEmpty) {
-      return EmptyView(
-        Icons.list,
-        model.searchQuery.isEmpty
-            ? AppLocalizations.of(context).noTasks
-            : AppLocalizations.of(context).noSearchResults,
-      );
-    } else {
-      final itemCount = model.tasks.length + (model.isLoadingNextPage ? 1 : 0);
-      return ListView.separated(
-        itemCount: itemCount,
-        separatorBuilder: (BuildContext context, int index) =>
-            const Divider(height: 8),
-        itemBuilder: (context, index) {
-          if (index == model.tasks.length) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16.0),
-              child: Center(
-                child: SpinKitThreeBounce(
-                  color: Theme.of(context).primaryColor,
-                  size: 16,
-                ),
+    final isEmpty = model.tasks.isEmpty;
+    final itemCount = isEmpty
+        ? 1
+        : model.tasks.length + (model.isLoadingNextPage ? 1 : 0);
+    return ListView.separated(
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
+      physics: const AlwaysScrollableScrollPhysics(),
+      itemCount: itemCount,
+      separatorBuilder: (BuildContext context, int index) =>
+          isEmpty ? const SizedBox.shrink() : const Divider(height: 8),
+      itemBuilder: (context, index) {
+        if (isEmpty) {
+          return SizedBox(
+            height: MediaQuery.sizeOf(context).height * 0.5,
+            child: EmptyView(
+              Icons.list,
+              model.searchQuery.isEmpty
+                  ? AppLocalizations.of(context).noTasks
+                  : AppLocalizations.of(context).noSearchResults,
+            ),
+          );
+        }
+        if (index == model.tasks.length) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16.0),
+            child: Center(
+              child: SpinKitThreeBounce(
+                color: Theme.of(context).primaryColor,
+                size: 16,
               ),
-            );
-          }
-          return _createListItem(ref, context, model.tasks[index]);
-        },
-      );
-    }
+            ),
+          );
+        }
+        return _createListItem(ref, context, model.tasks[index]);
+      },
+    );
   }
 
   SearchableAppBar _buildAppBar(

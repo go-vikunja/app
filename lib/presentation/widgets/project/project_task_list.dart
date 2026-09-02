@@ -78,7 +78,10 @@ class ProjectTaskList extends ConsumerWidget {
         }
 
         if (children.isNotEmpty) {
-          return CustomScrollView(slivers: children);
+          return CustomScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
+            slivers: children,
+          );
         } else {
           return EmptyView(
             Icons.list,

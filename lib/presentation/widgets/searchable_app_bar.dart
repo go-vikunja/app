@@ -22,8 +22,7 @@ class SearchableAppBar extends StatefulWidget implements PreferredSizeWidget {
   });
 
   @override
-  Size get preferredSize =>
-      Size.fromHeight(kToolbarHeight + (showProgress ? 4.0 : 0));
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight + 4.0);
 
   @override
   State<SearchableAppBar> createState() => _SearchableAppBarState();
@@ -46,6 +45,9 @@ class _SearchableAppBarState extends State<SearchableAppBar> {
   @override
   void didUpdateWidget(covariant SearchableAppBar oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (_focusNode.hasFocus) {
+      return;
+    }
     if (widget.searchQuery != oldWidget.searchQuery &&
         widget.searchQuery != _controller.text.trim()) {
       _controller.text = widget.searchQuery;
@@ -72,9 +74,18 @@ class _SearchableAppBarState extends State<SearchableAppBar> {
     });
   }
 
+  void _clearQuery() {
+    _controller.clear();
+    _debounce?.cancel();
+    widget.onSearchChanged('');
+    setState(() {});
+    _focusNode.requestFocus();
+  }
+
   void _closeSearch() {
     _debounce?.cancel();
     _controller.clear();
+    _focusNode.unfocus();
     setState(() => _searching = false);
     if (widget.searchQuery.isNotEmpty) {
       widget.onSearchChanged('');
@@ -88,56 +99,126 @@ class _SearchableAppBarState extends State<SearchableAppBar> {
     });
   }
 
+  void _onTapOutside(PointerDownEvent _) {
+    if (!_searching) {
+      return;
+    }
+
+    _focusNode.unfocus();
+    if (_controller.text.trim().isEmpty) {
+      _closeSearch();
+    }
+  }
+
+  void _onSystemBack() {
+    if (_focusNode.hasFocus) {
+      _focusNode.unfocus();
+      return;
+    }
+    _closeSearch();
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
 
-    return AppBar(
-      title: _searching
-          ? TextField(
-              controller: _controller,
-              focusNode: _focusNode,
-              autofocus: true,
-              textInputAction: TextInputAction.search,
-              decoration: InputDecoration(
-                hintText: widget.searchHint,
-                border: InputBorder.none,
-              ),
-              onChanged: (value) {
-                setState(() {});
-                _onQueryChanged(value);
-              },
-              onSubmitted: (value) {
-                _debounce?.cancel();
-                widget.onSearchChanged(value.trim());
-              },
-            )
-          : Text(widget.title),
-      actions: [
-        if (_searching && _controller.text.isNotEmpty)
-          IconButton(
-            icon: const Icon(Icons.clear),
-            tooltip: l10n.clearSearch,
-            onPressed: () {
-              _controller.clear();
-              _debounce?.cancel();
-              widget.onSearchChanged('');
-              setState(() {});
-            },
-          ),
-        IconButton(
-          icon: Icon(_searching ? Icons.close : Icons.search),
-          tooltip: _searching ? l10n.closeSearch : l10n.search,
-          onPressed: _searching ? _closeSearch : _openSearch,
+    return PopScope(
+      canPop: !_searching,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && _searching) {
+          _onSystemBack();
+        }
+      },
+      child: AppBar(
+        leading: _searching
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back),
+                tooltip: l10n.closeSearch,
+                onPressed: _closeSearch,
+              )
+            : null,
+        title: _searching
+            ? Builder(
+                builder: (context) {
+                  final titleColor = DefaultTextStyle.of(context).style.color;
+                  final inputStyle = theme.textTheme.bodyLarge?.copyWith(
+                    color: titleColor,
+                    fontWeight: FontWeight.w400,
+                    height: 1.2,
+                  );
+                  const strutStyle = StrutStyle(
+                    fontSize: 16,
+                    height: 1.2,
+                    forceStrutHeight: true,
+                  );
+                  return TextField(
+                    controller: _controller,
+                    focusNode: _focusNode,
+                    textInputAction: TextInputAction.search,
+                    style: inputStyle,
+                    strutStyle: strutStyle,
+                    cursorColor: titleColor,
+                    textAlignVertical: TextAlignVertical.center,
+                    keyboardAppearance: theme.brightness,
+                    onTapOutside: _onTapOutside,
+                    decoration: InputDecoration(
+                      hintText: widget.searchHint,
+                      hintStyle: inputStyle?.copyWith(
+                        color: titleColor?.withValues(alpha: 0.55),
+                        height: 1.2,
+                      ),
+                      border: InputBorder.none,
+                      isCollapsed: true,
+                      filled: false,
+                      contentPadding: EdgeInsets.zero,
+                      suffixIconColor: titleColor,
+                      suffixIcon: _controller.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              tooltip: l10n.clearSearch,
+                              visualDensity: VisualDensity.compact,
+                              color: titleColor,
+                              onPressed: _clearQuery,
+                            )
+                          : const SizedBox.shrink(),
+                      suffixIconConstraints: const BoxConstraints(
+                        minWidth: 32,
+                        minHeight: 24,
+                      ),
+                    ),
+                    onChanged: (value) {
+                      setState(() {});
+                      _onQueryChanged(value);
+                    },
+                    onSubmitted: (value) {
+                      _debounce?.cancel();
+                      _focusNode.unfocus();
+                      widget.onSearchChanged(value.trim());
+                    },
+                  );
+                },
+              )
+            : Text(widget.title),
+        actions: [
+          if (!_searching)
+            IconButton(
+              icon: const Icon(Icons.search),
+              tooltip: l10n.search,
+              onPressed: _openSearch,
+            ),
+          if (!_searching) ...?widget.actions,
+        ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(4),
+          child: widget.showProgress
+              ? LinearProgressIndicator(
+                  minHeight: 2,
+                  color: theme.colorScheme.primary,
+                )
+              : const SizedBox(height: 2),
         ),
-        if (!_searching) ...?widget.actions,
-      ],
-      bottom: widget.showProgress
-          ? const PreferredSize(
-              preferredSize: Size.fromHeight(4),
-              child: LinearProgressIndicator(minHeight: 2),
-            )
-          : null,
+      ),
     );
   }
 }
