@@ -15,8 +15,14 @@ part 'project_controller.g.dart';
 
 @riverpod
 class ProjectController extends _$ProjectController with PaginationMixin<Task> {
-  int _searchEpoch = 0;
-  String _searchQuery = '';
+  String get _currentSearchQuery => state.value?.searchQuery ?? '';
+
+  bool _isCurrentSearch(String searchQuery) {
+    final current = state.value;
+    return current != null &&
+        current.searchQuery == searchQuery &&
+        !current.isSearching;
+  }
 
   @override
   Future<ProjectPageModel> build(Project project) async {
@@ -44,7 +50,7 @@ class ProjectController extends _$ProjectController with PaginationMixin<Task> {
         [],
         displayDoneTask,
         false,
-        searchQuery: _searchQuery,
+        searchQuery: _currentSearchQuery,
       );
     } else if (tasksResponse.isException) {
       throw Exception(tasksResponse.toException().message);
@@ -59,7 +65,9 @@ class ProjectController extends _$ProjectController with PaginationMixin<Task> {
 
     final currentState = state.value;
     if (currentState == null || currentState.project.views.isEmpty) return;
+    if (currentState.isSearching) return;
 
+    final requestedSearchQuery = currentState.searchQuery;
     state = AsyncData(currentState.copyWith(isLoadingNextPage: true));
 
     final currentView = currentState.project.views[currentState.viewIndex];
@@ -72,17 +80,17 @@ class ProjectController extends _$ProjectController with PaginationMixin<Task> {
           currentState.displayDoneTask,
           viewId,
           page,
+          requestedSearchQuery,
         ),
+        shouldApply: () => _isCurrentSearch(requestedSearchQuery),
         stateUpdater: (newTasks) {
-          final updatedTasks = [
-            ...currentState.tasks,
-            ...newTasks as List<Task>,
-          ];
+          final latest = state.value;
+          if (latest == null || !_isCurrentSearch(requestedSearchQuery)) {
+            return;
+          }
+          final updatedTasks = [...latest.tasks, ...newTasks as List<Task>];
           state = AsyncData(
-            currentState.copyWith(
-              tasks: updatedTasks,
-              isLoadingNextPage: false,
-            ),
+            latest.copyWith(tasks: updatedTasks, isLoadingNextPage: false),
           );
         },
       );
@@ -95,30 +103,31 @@ class ProjectController extends _$ProjectController with PaginationMixin<Task> {
           viewId: viewId,
           page: page,
         ),
+        shouldApply: () => _isCurrentSearch(requestedSearchQuery),
         stateUpdater: (newTasks) {
+          final latest = state.value;
+          if (latest == null || !_isCurrentSearch(requestedSearchQuery)) {
+            return;
+          }
           for (int i = 0; i < newTasks.length; i++) {
-            var firstWhere = currentState.buckets.firstWhereOrNull(
+            var firstWhere = latest.buckets.firstWhereOrNull(
               (e) => e.id == (newTasks[i] as Bucket).id,
             );
             if (firstWhere != null) {
-              currentState.buckets[i].tasks.addAll(
-                (newTasks[i] as Bucket).tasks,
-              );
+              latest.buckets[i].tasks.addAll((newTasks[i] as Bucket).tasks);
             }
           }
           state = AsyncData(
-            currentState.copyWith(
-              buckets: currentState.buckets,
-              isLoadingNextPage: false,
-            ),
+            latest.copyWith(buckets: latest.buckets, isLoadingNextPage: false),
           );
         },
       );
     }
 
-    //Fallback
-    if (state.value?.isLoadingNextPage == true) {
-      state = AsyncData(state.value!.copyWith(isLoadingNextPage: false));
+    final latest = state.value;
+    if (latest?.isLoadingNextPage == true &&
+        latest?.searchQuery == requestedSearchQuery) {
+      state = AsyncData(latest!.copyWith(isLoadingNextPage: false));
     }
   }
 
@@ -182,21 +191,15 @@ class ProjectController extends _$ProjectController with PaginationMixin<Task> {
         buckets,
         displayDoneTask,
         false,
-        searchQuery: _searchQuery,
+        searchQuery: _currentSearchQuery,
       ),
     );
   }
 
   Future<void> setSearchQuery(String query) async {
     final trimmed = query.trim();
-    if (trimmed == _searchQuery) {
-      return;
-    }
-
-    _searchQuery = trimmed;
-    final epoch = ++_searchEpoch;
     final current = state.value;
-    if (current == null) {
+    if (current == null || trimmed == current.searchQuery) {
       return;
     }
 
@@ -211,17 +214,19 @@ class ProjectController extends _$ProjectController with PaginationMixin<Task> {
       current.displayDoneTask,
       viewId,
       1,
+      trimmed,
     );
-    if (epoch != _searchEpoch) {
+    if (!_matchesSearchRequest(trimmed)) {
       return;
     }
 
     if (tasksResponse.isSuccessful) {
       updateTotalPages(tasksResponse.toSuccess().headers);
+      final latest = state.value ?? current;
       state = AsyncData(
-        current.copyWith(
+        latest.copyWith(
           tasks: tasksResponse.toSuccess().body,
-          searchQuery: _searchQuery,
+          searchQuery: trimmed,
           isSearching: false,
           isLoadingNextPage: false,
         ),
@@ -244,13 +249,20 @@ class ProjectController extends _$ProjectController with PaginationMixin<Task> {
         : null;
   }
 
+  bool _matchesSearchRequest(String searchQuery) {
+    final latest = state.value;
+    return latest != null && latest.searchQuery == searchQuery;
+  }
+
   Future<Response<List<Task>>> _loadTasks(
     int projectId,
     bool displayDoneTasks, [
     int? view,
     int page = 1,
+    String? searchQuery,
   ]) async {
     var repo = ref.read(taskRepositoryProvider);
+    final query = searchQuery ?? _currentSearchQuery;
 
     Map<String, List<String>> queryParams = view == null
         ? {
@@ -268,7 +280,7 @@ class ProjectController extends _$ProjectController with PaginationMixin<Task> {
     if (!displayDoneTasks) {
       filterParts.add('done=false');
     }
-    final searchClause = searchLikeClause(_searchQuery);
+    final searchClause = searchLikeClause(query);
     if (searchClause != null) {
       filterParts.add(searchClause);
     }

@@ -15,8 +15,14 @@ part 'task_page_controller.g.dart';
 @riverpod
 class TaskPageController extends _$TaskPageController
     with PaginationMixin<Task> {
-  int _searchEpoch = 0;
-  String _searchQuery = '';
+  String get _currentSearchQuery => state.value?.searchQuery ?? '';
+
+  bool _isCurrentSearch(String searchQuery) {
+    final current = state.value;
+    return current != null &&
+        current.searchQuery == searchQuery &&
+        !current.isSearching;
+  }
 
   @override
   Future<TaskPageModel> build() async {
@@ -58,20 +64,27 @@ class TaskPageController extends _$TaskPageController
     if (!canLoadNextPage) return;
 
     final currentModel = state.value;
-    if (currentModel == null) return;
+    if (currentModel == null || currentModel.isSearching) return;
 
+    final requestedSearchQuery = currentModel.searchQuery;
     state = AsyncData(currentModel.copyWith(isLoadingNextPage: true));
 
     await loadMoreItems(
-      fetcher: (page) => _getAllFiltered(page: page),
+      fetcher: (page) =>
+          _getAllFiltered(page: page, searchQuery: requestedSearchQuery),
+      shouldApply: () => _isCurrentSearch(requestedSearchQuery),
       stateUpdater: (newTasks) async {
+        if (!_isCurrentSearch(requestedSearchQuery)) {
+          return;
+        }
+
         var projectsResponse = await ref
             .read(projectRepositoryProvider)
             .getAll();
         _setProjectOfTask(projectsResponse, newTasks as List<Task>);
 
         final latestModel = state.value;
-        if (latestModel != null) {
+        if (latestModel != null && _isCurrentSearch(requestedSearchQuery)) {
           final updatedTasks = [...latestModel.tasks, ...newTasks];
           state = AsyncData(
             latestModel.copyWith(tasks: updatedTasks, isLoadingNextPage: false),
@@ -80,9 +93,10 @@ class TaskPageController extends _$TaskPageController
       },
     );
 
-    // Fallback
-    if (state.value?.isLoadingNextPage == true) {
-      state = AsyncData(state.value!.copyWith(isLoadingNextPage: false));
+    final latest = state.value;
+    if (latest?.isLoadingNextPage == true &&
+        latest?.searchQuery == requestedSearchQuery) {
+      state = AsyncData(latest!.copyWith(isLoadingNextPage: false));
     }
   }
 
@@ -108,28 +122,24 @@ class TaskPageController extends _$TaskPageController
       showOnlyDueDateTasks,
       defaultProjectId,
       false,
-      searchQuery: _searchQuery,
+      searchQuery: _currentSearchQuery,
     );
   }
 
   Future<void> setSearchQuery(String query) async {
     final trimmed = query.trim();
-    if (trimmed == _searchQuery) {
+    final current = state.value;
+    if (current == null || trimmed == current.searchQuery) {
       return;
     }
 
-    _searchQuery = trimmed;
-    final epoch = ++_searchEpoch;
-    final current = state.value;
-    if (current != null) {
-      state = AsyncData(
-        current.copyWith(searchQuery: trimmed, isSearching: true),
-      );
-    }
+    state = AsyncData(
+      current.copyWith(searchQuery: trimmed, isSearching: true),
+    );
 
     resetPagination();
-    var tasksResponse = await _getAllFiltered();
-    if (epoch != _searchEpoch) {
+    var tasksResponse = await _getAllFiltered(searchQuery: trimmed);
+    if (state.value?.searchQuery != trimmed) {
       return;
     }
 
@@ -160,7 +170,11 @@ class TaskPageController extends _$TaskPageController
     }
   }
 
-  Future<Response<List<Task>>> _getAllFiltered({int page = 1}) async {
+  Future<Response<List<Task>>> _getAllFiltered({
+    int page = 1,
+    String? searchQuery,
+  }) async {
+    final query = searchQuery ?? _currentSearchQuery;
     var showOnlyDueDateTasks = await ref
         .read(settingsRepositoryProvider)
         .getLandingPageOnlyDueDateTasks();
@@ -175,7 +189,7 @@ class TaskPageController extends _$TaskPageController
           "order_by": ["asc", "desc"],
           "page": ["$page"],
         };
-        final searchClause = searchLikeClause(_searchQuery);
+        final searchClause = searchLikeClause(query);
         if (searchClause != null) {
           queryParameters["filter"] = [searchClause];
         }
@@ -192,7 +206,7 @@ class TaskPageController extends _$TaskPageController
     if (showOnlyDueDateTasks) {
       filterStrings.add("due_date > 0001-01-01 00:00");
     }
-    final searchClause = searchLikeClause(_searchQuery);
+    final searchClause = searchLikeClause(query);
     if (searchClause != null) {
       filterStrings.add(searchClause);
     }

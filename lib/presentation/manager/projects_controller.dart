@@ -10,8 +10,14 @@ part 'projects_controller.g.dart';
 @riverpod
 class ProjectsController extends _$ProjectsController
     with PaginationMixin<Project> {
-  int _searchEpoch = 0;
-  String _searchQuery = '';
+  String get _currentSearchQuery => state.value?.searchQuery ?? '';
+
+  bool _isCurrentSearch(String searchQuery) {
+    final current = state.value;
+    return current != null &&
+        current.searchQuery == searchQuery &&
+        !current.isSearching;
+  }
 
   @override
   Future<ProjectListModel> build() async {
@@ -23,7 +29,7 @@ class ProjectsController extends _$ProjectsController
       updateTotalPages(response.toSuccess().headers);
       return ProjectListModel(
         response.toSuccess().body,
-        searchQuery: _searchQuery,
+        searchQuery: _currentSearchQuery,
       );
     } else if (response.isException) {
       throw Exception(response.toException().message);
@@ -33,14 +39,15 @@ class ProjectsController extends _$ProjectsController
   }
 
   void reload() async {
+    final searchQuery = _currentSearchQuery;
     state = const AsyncLoading();
     resetPagination();
 
-    var response = await loadProjects();
+    var response = await loadProjects(searchQuery: searchQuery);
     if (response.isSuccessful) {
       updateTotalPages(response.toSuccess().headers);
       state = AsyncData(
-        ProjectListModel(response.toSuccess().body, searchQuery: _searchQuery),
+        ProjectListModel(response.toSuccess().body, searchQuery: searchQuery),
       );
     } else if (response.isException) {
       state = AsyncError(
@@ -54,29 +61,25 @@ class ProjectsController extends _$ProjectsController
 
   Future<void> setSearchQuery(String query) async {
     final trimmed = query.trim();
-    if (trimmed == _searchQuery) {
+    final current = state.value;
+    if (current == null || trimmed == current.searchQuery) {
       return;
     }
 
-    _searchQuery = trimmed;
-    final epoch = ++_searchEpoch;
-    final current = state.value;
-    if (current != null) {
-      state = AsyncData(
-        current.copyWith(searchQuery: trimmed, isSearching: true),
-      );
-    }
+    state = AsyncData(
+      current.copyWith(searchQuery: trimmed, isSearching: true),
+    );
 
     resetPagination();
-    var response = await loadProjects();
-    if (epoch != _searchEpoch) {
+    var response = await loadProjects(searchQuery: trimmed);
+    if (state.value?.searchQuery != trimmed) {
       return;
     }
 
     if (response.isSuccessful) {
       updateTotalPages(response.toSuccess().headers);
       state = AsyncData(
-        ProjectListModel(response.toSuccess().body, searchQuery: _searchQuery),
+        ProjectListModel(response.toSuccess().body, searchQuery: trimmed),
       );
     } else if (response.isException) {
       state = AsyncError(
@@ -93,8 +96,9 @@ class ProjectsController extends _$ProjectsController
     if (!canLoadNextPage) return;
 
     final currentModel = state.value;
-    if (currentModel == null) return;
+    if (currentModel == null || currentModel.isSearching) return;
 
+    final requestedSearchQuery = currentModel.searchQuery;
     state = AsyncData(currentModel.copyWith(isLoadingNextPage: true));
 
     await loadMoreItems(
@@ -102,11 +106,12 @@ class ProjectsController extends _$ProjectsController
           .read(projectRepositoryProvider)
           .getAll(
             page: page,
-            search: _searchQuery.isEmpty ? null : _searchQuery,
+            search: requestedSearchQuery.isEmpty ? null : requestedSearchQuery,
           ),
+      shouldApply: () => _isCurrentSearch(requestedSearchQuery),
       stateUpdater: (newProjects) {
         final latestModel = state.value;
-        if (latestModel != null) {
+        if (latestModel != null && _isCurrentSearch(requestedSearchQuery)) {
           state = AsyncData(
             latestModel.copyWith(
               projects: [
@@ -120,9 +125,10 @@ class ProjectsController extends _$ProjectsController
       },
     );
 
-    // Fallback
-    if (state.value?.isLoadingNextPage == true) {
-      state = AsyncData(state.value!.copyWith(isLoadingNextPage: false));
+    final latest = state.value;
+    if (latest?.isLoadingNextPage == true &&
+        latest?.searchQuery == requestedSearchQuery) {
+      state = AsyncData(latest!.copyWith(isLoadingNextPage: false));
     }
   }
 
@@ -131,14 +137,15 @@ class ProjectsController extends _$ProjectsController
     reload();
   }
 
-  Future<Response<List<Project>>> loadProjects() async {
+  Future<Response<List<Project>>> loadProjects({String? searchQuery}) async {
+    final query = searchQuery ?? _currentSearchQuery;
     var response = await ref
         .read(projectRepositoryProvider)
-        .getAll(page: 1, search: _searchQuery.isEmpty ? null : _searchQuery);
+        .getAll(page: 1, search: query.isEmpty ? null : query);
 
     if (response.isSuccessful) {
       var successResponse = (response as SuccessResponse<List<Project>>);
-      if (_searchQuery.isNotEmpty) {
+      if (query.isNotEmpty) {
         return SuccessResponse(
           successResponse.body,
           successResponse.statusCode,
