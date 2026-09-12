@@ -1,12 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:vikunja_app/core/background_work.dart';
 import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/core/di/theme_provider.dart';
 import 'package:vikunja_app/core/theming/theme_mode.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/settings_page_state.dart';
-import 'package:workmanager/workmanager.dart';
 
 part 'settings_controller.g.dart';
 
@@ -39,6 +39,9 @@ class SettingsController extends _$SettingsController {
     var dynamicColor = await ref
         .read(settingsRepositoryProvider)
         .getDynamicColors();
+    var widgetLookaheadDays = await ref
+        .read(settingsRepositoryProvider)
+        .getWidgetLookaheadDays();
 
     var version = await ref
         .read(versionRepositoryProvider)
@@ -61,6 +64,7 @@ class SettingsController extends _$SettingsController {
       themeMode,
       dynamicColor,
       version,
+      widgetLookaheadDays,
     );
   }
 
@@ -110,24 +114,12 @@ class SettingsController extends _$SettingsController {
     state = AsyncData(await getAll());
   }
 
-  void updateWorkManagerDuration() async {
+  Future<void> updateWorkManagerDuration() async {
     if (kIsWeb) {
       return;
     }
 
-    var settings = await getAll();
-    Workmanager().cancelAll().then((value) {
-      var duration = Duration(minutes: settings.refreshInterval);
-      if (duration.inMinutes > 0) {
-        Workmanager().registerPeriodicTask(
-          "update-tasks",
-          "update-tasks",
-          frequency: duration,
-          constraints: Constraints(networkType: NetworkType.connected),
-          initialDelay: Duration(seconds: 15),
-        );
-      }
-    });
+    await registerWidgetRefreshTask();
   }
 
   void setDefaultProject(int value) {
@@ -138,5 +130,10 @@ class SettingsController extends _$SettingsController {
     ref.read(currentUserProvider.notifier).set(user);
 
     refresh();
+  }
+
+  Future<void> setWidgetLookaheadDays(int days) async {
+    ref.read(settingsRepositoryProvider).setWidgetLookaheadDays(days);
+    state = AsyncData(await getAll());
   }
 }

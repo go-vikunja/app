@@ -15,6 +15,7 @@ import 'package:vikunja_app/domain/repositories/task_repository.dart';
 Future<void> completeTask(String taskID) async {
   if (taskID == "null") {
     developer.log("Tried to complete an empty task");
+    return;
   }
 
   var datasource = SettingsDatasource(FlutterSecureStorage());
@@ -32,23 +33,50 @@ Future<void> completeTask(String taskID) async {
     var taskResponse = await taskService.getTask(int.parse(taskID));
     var task = taskResponse.toSuccess().body;
     await taskService.update(task.copyWith(done: true));
-    await updateWidget();
+
+    // Local refresh: remove completed task from cached widget data immediately
+    await _removeCompletedTaskFromWidget(taskID);
+    // Then do a full server sync in the background
+    updateWidget();
   } else {
     developer.log("There was an error initialising the client");
   }
 }
 
-WidgetTask convertTask(Task task) {
-  // Check if task is for today
+/// Remove a completed task from the local widget data and re-render
+Future<void> _removeCompletedTaskFromWidget(String taskID) async {
+  try {
+    String? data = await HomeWidget.getWidgetData<String>("WidgetTasks");
+    if (data != null) {
+      List<dynamic> tasks = jsonDecode(data);
+      tasks.removeWhere((t) => t['id'].toString() == taskID);
+      await HomeWidget.saveWidgetData("WidgetTasks", jsonEncode(tasks));
+      await reRenderWidget();
+    }
+  } catch (e) {
+    developer.log("Error removing task from widget: $e");
+  }
+}
+
+WidgetTask? convertTask(Task task) {
+  final dueDate = task.dueDate;
+  if (dueDate == null) {
+    // Tasks without a due date aren't shown in the widget
+    return null;
+  }
+
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
 
-  bool wgToday = task.dueDate!.day == today.day ? true : false;
+  // Task is "today" if due date is within today (same day)
+  bool wgToday =
+      dueDate.isAfter(today.subtract(Duration(days: 1))) &&
+      dueDate.isBefore(today.add(Duration(days: 1)));
 
   WidgetTask wgTask = WidgetTask(
     id: task.id.toString(),
     title: task.title,
-    dueDate: task.dueDate,
+    dueDate: dueDate,
     today: wgToday,
   );
   return wgTask;
@@ -56,11 +84,14 @@ WidgetTask convertTask(Task task) {
 
 List<Task> filterForDueTasks(List<Task> tasks) {
   var todayTasks = <Task>[];
-
   for (var task in tasks) {
+    final dueDate = task.dueDate;
+    if (dueDate == null) continue;
+
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    if (task.dueDate!.day == today.day) {
+    if (dueDate.isAfter(today.subtract(Duration(days: 1))) &&
+        dueDate.isBefore(today.add(Duration(days: 1)))) {
       todayTasks.add(task);
     }
   }
@@ -81,8 +112,10 @@ Future<void> updateWidget() async {
       client.setIgnoreCerts(ignoreCertificates);
 
       TaskRepository taskService = TaskRepositoryImpl(TaskDataSource(client));
+
+      var lookaheadDays = await datasource.getWidgetLookaheadDays();
       var widgetTasks = await taskService.getByFilterString(
-        "done = false && due_date < now/d+1d",
+        "done = false && due_date < now/d+${lookaheadDays}d",
       );
 
       if (widgetTasks.isSuccessful) {
@@ -95,7 +128,11 @@ Future<void> updateWidget() async {
 }
 
 Future<void> updateWidgetTasks(List<Task> tasklist) async {
-  var data = jsonEncode(tasklist.map((e) => convertTask(e).toJSON()).toList());
+  var widgetTasks = tasklist
+      .map((e) => convertTask(e))
+      .whereType<WidgetTask>()
+      .toList();
+  var data = jsonEncode(widgetTasks.map((e) => e.toJSON()).toList());
   await HomeWidget.saveWidgetData("WidgetTasks", data);
   await reRenderWidget();
 }

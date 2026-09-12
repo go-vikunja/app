@@ -48,6 +48,13 @@ class MainActivity : FlutterActivity() {
                 channel.invokeMethod("open_add_task", intent.getStringExtra(Intent.EXTRA_TEXT))
             }
 
+            "OPEN_TASK" -> {
+                val taskId = intent.getStringExtra("task_id")
+                if (taskId != null) {
+                    channel.invokeMethod("open_task", taskId)
+                }
+            }
+
             else -> {
             }
         }
@@ -77,6 +84,13 @@ class MainActivity : FlutterActivity() {
                 launchMethod = "open_add_task"
             }
 
+            "OPEN_TASK" -> {
+                val taskId = intent.getStringExtra("task_id")
+                if (taskId != null) {
+                    launchMethod = "open_task:$taskId"
+                }
+            }
+
             else -> {
             }
         }
@@ -89,6 +103,9 @@ class MainActivity : FlutterActivity() {
             if (call.method?.contentEquals("isQuickTile") == true) {
                 if (launchMethod == "open_add_task") {
                     result.success(intent.getStringExtra(Intent.EXTRA_TEXT))
+                } else if (launchMethod?.startsWith("open_task:") == true) {
+                    val taskId = launchMethod?.substringAfter("open_task:")
+                    result.success(taskId)
                 } else {
                     result.error("1", null, null)
                 }

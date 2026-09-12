@@ -9,6 +9,7 @@ import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/entities/view_kind.dart';
 import 'package:vikunja_app/presentation/manager/pagination_mixin.dart';
 import 'package:vikunja_app/presentation/manager/projects_controller.dart';
+import 'package:vikunja_app/presentation/manager/widget_controller.dart';
 
 part 'project_controller.g.dart';
 
@@ -473,9 +474,12 @@ class ProjectController extends _$ProjectController with PaginationMixin<Task> {
         var tasks = value.tasks;
         tasks.removeWhere((element) => element.id == task.id);
         state = AsyncData(value.copyWith(tasks: tasks));
-
-        return true;
       }
+
+      // Keep the home screen widget in sync with the completion
+      updateWidget();
+
+      return true;
     }
 
     return false;

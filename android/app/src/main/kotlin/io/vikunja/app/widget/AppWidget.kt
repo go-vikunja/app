@@ -45,6 +45,8 @@ import java.util.Date
 import java.util.Locale
 import androidx.glance.ImageProvider
 import androidx.glance.action.ActionParameters
+import androidx.glance.action.actionParametersOf
+import androidx.glance.action.clickable
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.components.CircleIconButton
 import io.vikunja.app.MainActivity
@@ -52,13 +54,48 @@ import io.vikunja.app.R
 import androidx.glance.appwidget.action.ActionCallback
 import io.vikunja.app.INTENT_TYPE_ADD_TASK
 
+// Action callback for opening the app's main screen
+class OpenAppAction : ActionCallback {
+    override suspend fun onAction(
+        context: Context,
+        glanceId: GlanceId,
+        parameters: ActionParameters
+    ) {
+        val intent = Intent(context, MainActivity::class.java).apply {
+            action = Intent.ACTION_MAIN
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        context.startActivity(intent)
+    }
+}
+
+// Action callback for opening a specific task
+class OpenTaskAction : ActionCallback {
+    companion object {
+        val TASK_ID = ActionParameters.Key<String>("task_id")
+    }
+
+    override suspend fun onAction(
+        context: Context,
+        glanceId: GlanceId,
+        parameters: ActionParameters
+    ) {
+        val taskId = parameters[TASK_ID] ?: return
+        val intent = Intent(context, MainActivity::class.java).apply {
+            action = "OPEN_TASK"
+            putExtra("task_id", taskId)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        context.startActivity(intent)
+    }
+}
+
 class InteractiveAction : ActionCallback {
     override suspend fun onAction(
         context: Context,
         glanceId: GlanceId,
         parameters: ActionParameters
     ) {
-
         val intent = Intent(context, MainActivity::class.java).apply {
             action = Intent.ACTION_INSERT
             type = INTENT_TYPE_ADD_TASK
@@ -171,7 +208,8 @@ class AppWidget : GlanceAppWidget() {
     private fun WidgetTitleBar() {
         Box(
             modifier = GlanceModifier
-                .background(ColorProvider(Color(0xFF126cfd), Color(0xFF013992))),
+                .background(ColorProvider(Color(0xFF126cfd), Color(0xFF013992)))
+                .clickable(actionRunCallback<OpenAppAction>()),
             contentAlignment = Alignment.Center,
         ) {
             TitleBar(
@@ -220,6 +258,13 @@ class AppWidget : GlanceAppWidget() {
             }
             Box(
                 modifier = GlanceModifier.padding(start = 8.dp)
+                    .clickable(
+                        actionRunCallback<OpenTaskAction>(
+                            parameters = actionParametersOf(
+                                OpenTaskAction.TASK_ID to task.id
+                            )
+                        )
+                    )
             ) {
                 Text(
                     text = task.title, style = TextStyle(
@@ -252,7 +297,7 @@ class AppWidget : GlanceAppWidget() {
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                text = "There are no tasks due today", style = TextStyle(
+                text = "No upcoming tasks", style = TextStyle(
                     fontSize = 16.sp, color = ColorProvider(
                         Color.Black, Color.White
                     )
