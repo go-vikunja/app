@@ -2,6 +2,7 @@
 
 let
   pkgs-unstable = import inputs.nixpkgs-unstable { system = pkgs.stdenv.system; };
+  abi = if pkgs.stdenv.hostPlatform.isAarch64 then "arm64-v8a" else "x86_64";
 in
 {
   enterShell = ''
@@ -9,7 +10,13 @@ in
   '';
 
   scripts = {
-    create-emulator.exec = "avdmanager create avd --force --name android-32 --package 'system-images;android-32;google_apis_playstore;x86_64'";
+    create-emulator.exec = "avdmanager create avd --force --name android-36 --package 'system-images;android-36;google_apis_playstore;${abi}'";
+    # adb must create its key before an AVD's first boot, or the device stays unauthorized.
+    # Without its bundled libs the nixpkgs emulator picks up the wrong libc++.
+    start-emulator.exec = ''
+      adb start-server
+      LD_LIBRARY_PATH="$ANDROID_HOME/emulator/lib64" exec emulator -avd android-36 "$@"
+    '';
     run-app.exec = "flutter run";
     build-apk-unsigned.exec = "flutter build apk";
     lint.exec = "dart format --set-exit-if-changed .";
@@ -23,18 +30,17 @@ in
       package = pkgs-unstable.flutter;
     };
 
-    platforms.version = [ "31" "33" "34" "35" ];
-    buildTools.version = [ "34.0.0" ];
+    # Each platform also pulls a ~3G system image; keep to what plugins compile against.
+    platforms.version = [ "31" "34" "35" "36" ];
+    abis = [ abi ];
+    buildTools.version = [ "35.0.0" ];
     cmake.version = [ "3.18.1" "3.22.1" ];
     googleTVAddOns.enable = false;
     ndk = {
       enable = true;
-      version = [ "23.1.7779620" "26.3.11579264" "27.0.12077973" ];
+      version = [ "28.2.13676358" ];
     };
     extras = [ ];
-    emulator = {
-      enable = true;
-      version = "34.1.9";
-    };
+    emulator.enable = true;
   };
 }
