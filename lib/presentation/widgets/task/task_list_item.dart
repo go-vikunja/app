@@ -3,6 +3,7 @@ import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/presentation/widgets/due_date_card.dart';
 import 'package:vikunja_app/presentation/widgets/project/kanban/priority_batch.dart';
 import 'package:vikunja_app/presentation/widgets/task/task_actions.dart';
+import 'package:vikunja_app/presentation/widgets/task/task_done_checkbox.dart';
 
 class TaskListItem extends StatefulWidget {
   final Task task;
@@ -35,9 +36,11 @@ class TaskListItemState extends State<TaskListItem> {
       fit: StackFit.loose,
       children: [
         ListTile(
-          onTap: () {
-            widget.onTap();
-          },
+          onTap: widget.task.loading
+              ? null
+              : () {
+                  widget.onTap();
+                },
           contentPadding: const EdgeInsetsDirectional.only(
             start: 16.0,
             end: 8.0,
@@ -48,13 +51,9 @@ class TaskListItemState extends State<TaskListItem> {
             overflow: TextOverflow.ellipsis,
           ),
           subtitle: _buildTaskSubtitle(widget.task, context),
-          leading: Checkbox(
-            value: widget.task.done,
-            onChanged: (bool? newValue) {
-              if (newValue != null) {
-                widget.onCheckedChanged(newValue);
-              }
-            },
+          leading: TaskDoneCheckbox(
+            task: widget.task,
+            onChanged: widget.onCheckedChanged,
           ),
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
