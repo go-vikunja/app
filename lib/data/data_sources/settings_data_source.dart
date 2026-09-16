@@ -169,4 +169,17 @@ class SettingsDatasource {
   Future<void> setLocaleOverride(String? localeCode) async {
     await _storage.write(key: "locale_override", value: localeCode);
   }
+
+  Future<bool> getHierarchicalTaskDisplay() async {
+    return _storage
+        .read(key: "hierarchical_task_display")
+        .then((v) => v == "1");
+  }
+
+  Future<void> setHierarchicalTaskDisplay(bool value) async {
+    await _storage.write(
+      key: "hierarchical_task_display",
+      value: value ? "1" : "0",
+    );
+  }
 }
