@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/core/di/notification_provider.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
+import 'package:vikunja_app/domain/entities/project_page_model.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/entities/view_kind.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
@@ -15,6 +16,7 @@ import 'package:vikunja_app/presentation/pages/loading_widget.dart';
 import 'package:vikunja_app/presentation/pages/project/project_edit.dart';
 import 'package:vikunja_app/presentation/widgets/project/kanban/kanban_widget.dart';
 import 'package:vikunja_app/presentation/widgets/project/project_task_list.dart';
+import 'package:vikunja_app/presentation/widgets/searchable_app_bar.dart';
 import 'package:vikunja_app/presentation/widgets/task/add_task_dialog.dart';
 
 class ProjectDetailPage extends ConsumerStatefulWidget {
@@ -52,7 +54,7 @@ class ProjectPageState extends ConsumerState<ProjectDetailPage> {
     return projectController.when(
       data: (data) {
         return Scaffold(
-          appBar: _buildAppBar(context, data.project, data.displayDoneTask),
+          appBar: _buildAppBar(context, data),
           body: NotificationListener<ScrollNotification>(
             onNotification: (ScrollNotification scrollInfo) {
               if (scrollInfo.metrics.pixels ==
@@ -101,27 +103,43 @@ class ProjectPageState extends ConsumerState<ProjectDetailPage> {
     }
   }
 
-  AppBar _buildAppBar(
+  PreferredSizeWidget _buildAppBar(
     BuildContext context,
-    Project project,
-    bool displayDoneTask,
+    ProjectPageModel data,
   ) {
-    return AppBar(
-      title: Text(project.title),
-      actions: <Widget>[
-        IconButton(
-          icon: Icon(Icons.edit),
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ProjectEditPage(
-                project: project,
-                displayDoneTask: displayDoneTask,
-              ),
-            ),
+    final isListView =
+        data.project.views.isNotEmpty &&
+        data.project.views[data.viewIndex].viewKind == ViewKind.list;
+
+    final editAction = IconButton(
+      icon: const Icon(Icons.edit),
+      tooltip: AppLocalizations.of(context).edit,
+      onPressed: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ProjectEditPage(
+            project: data.project,
+            displayDoneTask: data.displayDoneTask,
           ),
         ),
-      ],
+      ),
+    );
+
+    if (!isListView) {
+      return AppBar(title: Text(data.project.title), actions: [editAction]);
+    }
+
+    return SearchableAppBar(
+      title: data.project.title,
+      searchHint: AppLocalizations.of(context).searchTasksHint,
+      searchQuery: data.searchQuery,
+      showProgress: data.isSearching,
+      onSearchChanged: (query) {
+        ref
+            .read(projectControllerProvider(widget.project).notifier)
+            .setSearchQuery(query);
+      },
+      actions: [editAction],
     );
   }
 

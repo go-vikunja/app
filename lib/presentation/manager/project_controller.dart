@@ -2,6 +2,7 @@ import 'package:collection/collection.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/core/network/response.dart';
+import 'package:vikunja_app/core/utils/search_filter.dart';
 import 'package:vikunja_app/domain/entities/bucket.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/project_page_model.dart';
@@ -14,6 +15,15 @@ part 'project_controller.g.dart';
 
 @riverpod
 class ProjectController extends _$ProjectController with PaginationMixin<Task> {
+  String get _currentSearchQuery => state.value?.searchQuery ?? '';
+
+  bool _isCurrentSearch(String searchQuery) {
+    final current = state.value;
+    return current != null &&
+        current.searchQuery == searchQuery &&
+        !current.isSearching;
+  }
+
   @override
   Future<ProjectPageModel> build(Project project) async {
     resetPagination();
@@ -33,7 +43,15 @@ class ProjectController extends _$ProjectController with PaginationMixin<Task> {
     if (tasksResponse.isSuccessful) {
       updateTotalPages(tasksResponse.toSuccess().headers);
       final tasks = tasksResponse.toSuccess().body;
-      return ProjectPageModel(project, 0, tasks, [], displayDoneTask, false);
+      return ProjectPageModel(
+        project,
+        0,
+        tasks,
+        [],
+        displayDoneTask,
+        false,
+        searchQuery: _currentSearchQuery,
+      );
     } else if (tasksResponse.isException) {
       throw Exception(tasksResponse.toException().message);
     } else {
@@ -47,7 +65,9 @@ class ProjectController extends _$ProjectController with PaginationMixin<Task> {
 
     final currentState = state.value;
     if (currentState == null || currentState.project.views.isEmpty) return;
+    if (currentState.isSearching) return;
 
+    final requestedSearchQuery = currentState.searchQuery;
     state = AsyncData(currentState.copyWith(isLoadingNextPage: true));
 
     final currentView = currentState.project.views[currentState.viewIndex];
@@ -60,17 +80,17 @@ class ProjectController extends _$ProjectController with PaginationMixin<Task> {
           currentState.displayDoneTask,
           viewId,
           page,
+          requestedSearchQuery,
         ),
+        shouldApply: () => _isCurrentSearch(requestedSearchQuery),
         stateUpdater: (newTasks) {
-          final updatedTasks = [
-            ...currentState.tasks,
-            ...newTasks as List<Task>,
-          ];
+          final latest = state.value;
+          if (latest == null || !_isCurrentSearch(requestedSearchQuery)) {
+            return;
+          }
+          final updatedTasks = [...latest.tasks, ...newTasks as List<Task>];
           state = AsyncData(
-            currentState.copyWith(
-              tasks: updatedTasks,
-              isLoadingNextPage: false,
-            ),
+            latest.copyWith(tasks: updatedTasks, isLoadingNextPage: false),
           );
         },
       );
@@ -83,30 +103,31 @@ class ProjectController extends _$ProjectController with PaginationMixin<Task> {
           viewId: viewId,
           page: page,
         ),
+        shouldApply: () => _isCurrentSearch(requestedSearchQuery),
         stateUpdater: (newTasks) {
+          final latest = state.value;
+          if (latest == null || !_isCurrentSearch(requestedSearchQuery)) {
+            return;
+          }
           for (int i = 0; i < newTasks.length; i++) {
-            var firstWhere = currentState.buckets.firstWhereOrNull(
+            var firstWhere = latest.buckets.firstWhereOrNull(
               (e) => e.id == (newTasks[i] as Bucket).id,
             );
             if (firstWhere != null) {
-              currentState.buckets[i].tasks.addAll(
-                (newTasks[i] as Bucket).tasks,
-              );
+              latest.buckets[i].tasks.addAll((newTasks[i] as Bucket).tasks);
             }
           }
           state = AsyncData(
-            currentState.copyWith(
-              buckets: currentState.buckets,
-              isLoadingNextPage: false,
-            ),
+            latest.copyWith(buckets: latest.buckets, isLoadingNextPage: false),
           );
         },
       );
     }
 
-    //Fallback
-    if (state.value?.isLoadingNextPage == true) {
-      state = AsyncData(state.value!.copyWith(isLoadingNextPage: false));
+    final latest = state.value;
+    if (latest?.isLoadingNextPage == true &&
+        latest?.searchQuery == requestedSearchQuery) {
+      state = AsyncData(latest!.copyWith(isLoadingNextPage: false));
     }
   }
 
@@ -170,8 +191,54 @@ class ProjectController extends _$ProjectController with PaginationMixin<Task> {
         buckets,
         displayDoneTask,
         false,
+        searchQuery: _currentSearchQuery,
       ),
     );
+  }
+
+  Future<void> setSearchQuery(String query) async {
+    final trimmed = query.trim();
+    final current = state.value;
+    if (current == null || trimmed == current.searchQuery) {
+      return;
+    }
+
+    state = AsyncData(
+      current.copyWith(searchQuery: trimmed, isSearching: true),
+    );
+
+    resetPagination();
+    int? viewId = _getFirstListViewIdFromProject(current.project);
+    var tasksResponse = await _loadTasks(
+      current.project.id,
+      current.displayDoneTask,
+      viewId,
+      1,
+      trimmed,
+    );
+    if (!_matchesSearchRequest(trimmed)) {
+      return;
+    }
+
+    if (tasksResponse.isSuccessful) {
+      updateTotalPages(tasksResponse.toSuccess().headers);
+      final latest = state.value ?? current;
+      state = AsyncData(
+        latest.copyWith(
+          tasks: tasksResponse.toSuccess().body,
+          searchQuery: trimmed,
+          isSearching: false,
+          isLoadingNextPage: false,
+        ),
+      );
+    } else if (tasksResponse.isError) {
+      state = AsyncError(tasksResponse.toError().error, StackTrace.current);
+    } else if (tasksResponse.isException) {
+      state = AsyncError(
+        tasksResponse.toException().message,
+        StackTrace.current,
+      );
+    }
   }
 
   int? _getFirstListViewIdFromProject(Project project) {
@@ -182,13 +249,20 @@ class ProjectController extends _$ProjectController with PaginationMixin<Task> {
         : null;
   }
 
+  bool _matchesSearchRequest(String searchQuery) {
+    final latest = state.value;
+    return latest != null && latest.searchQuery == searchQuery;
+  }
+
   Future<Response<List<Task>>> _loadTasks(
     int projectId,
     bool displayDoneTasks, [
     int? view,
     int page = 1,
+    String? searchQuery,
   ]) async {
     var repo = ref.read(taskRepositoryProvider);
+    final query = searchQuery ?? _currentSearchQuery;
 
     Map<String, List<String>> queryParams = view == null
         ? {
@@ -202,10 +276,16 @@ class ProjectController extends _$ProjectController with PaginationMixin<Task> {
             "page": ["$page"],
           };
 
+    final filterParts = <String>[];
     if (!displayDoneTasks) {
-      queryParams.addAll({
-        "filter": ["done=false"],
-      });
+      filterParts.add('done=false');
+    }
+    final searchClause = searchLikeClause(query);
+    if (searchClause != null) {
+      filterParts.add(searchClause);
+    }
+    if (filterParts.isNotEmpty) {
+      queryParams['filter'] = [combineFilterClauses(filterParts)];
     }
 
     return view == null
