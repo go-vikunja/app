@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/core/utils/date_extensions.dart';
 import 'package:vikunja_app/domain/entities/new_task_due.dart';
@@ -31,7 +32,7 @@ class AddTaskDialogState extends State<AddTaskDialog> {
 
   @override
   Widget build(BuildContext context) {
-    var dateTime = DateTime.now();
+    var dateTime = clock.now();
 
     return AlertDialog(
       scrollable: true,
@@ -154,7 +155,7 @@ class AddTaskDialogState extends State<AddTaskDialog> {
               newTaskDue == NewTaskDue.none) {
             dueDate = null;
           } else {
-            dueDate = newTaskDue.calculateDate(DateTime.now());
+            dueDate = newTaskDue.calculateDate(clock.now());
           }
         });
       },
