@@ -53,7 +53,9 @@ jobs:
       - name: Run Flutter tests
         run: |
           flutter pub get
-          flutter test
+          flutter test --coverage
+      - name: Enforce coverage threshold
+        run: dart run tool/coverage_report.dart
 
   lint:
     runs-on: ubuntu-latest

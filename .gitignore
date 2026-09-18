@@ -116,3 +116,6 @@ local.properties
 
 # pre-commit
 .pre-commit-config.yaml
+
+# Test coverage output
+/coverage/
