@@ -62,4 +62,38 @@ void main() {
     // Verify subproject title is displayed in the subtitle
     expect(find.text('Subproject A'), findsOneWidget);
   });
+
+  testWidgets(
+    'FAB shows hint instead of add dialog when default project is a saved filter',
+    (WidgetTester tester) async {
+      final model = TaskPageModel([], false, -5, false);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            taskPageControllerProvider.overrideWith(
+              () => MockTaskPageController(model),
+            ),
+          ],
+          child: MaterialApp(
+            home: const TaskListPage(),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            locale: const Locale('en'),
+          ),
+        ),
+      );
+
+      await tester.pump();
+
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+
+      expect(
+        find.text('Please select a default project in the settings'),
+        findsOneWidget,
+      );
+      expect(find.byType(Dialog), findsNothing);
+    },
+  );
 }

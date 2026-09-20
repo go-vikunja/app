@@ -316,13 +316,16 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
                 value: 0,
                 child: Text(AppLocalizations.of(context).none),
               ),
-              ...projects.map(
-                (e) => DropdownMenuItem(value: e.id, child: Text(e.title)),
-              ),
+              ...projects
+                  .where((e) => e.id > 0)
+                  .map(
+                    (e) => DropdownMenuItem(value: e.id, child: Text(e.title)),
+                  ),
             ],
             value:
                 projects.firstWhereOrNull(
                       (element) =>
+                          element.id > 0 &&
                           element.id == user.settings?.defaultProjectId,
                     ) !=
                     null
