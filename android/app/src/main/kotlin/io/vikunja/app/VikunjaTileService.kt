@@ -8,6 +8,8 @@ import android.service.quicksettings.TileService
 import androidx.annotation.RequiresApi
 
 const val INTENT_TYPE_ADD_TASK = "ADD_NEW_TASK"
+const val INTENT_TYPE_OPEN_TASK = "OPEN_TASK"
+const val EXTRA_TASK_ID = "taskID"
 
 @RequiresApi(Build.VERSION_CODES.N)
 class VikunjaTileService : TileService(){

@@ -124,6 +124,7 @@
   "taskAddError": "Error adding the task!",
   "taskMarkDoneError": "Error marking task as done",
   "failedToMarkDone": "Failed to mark as done",
+  "failedToOpenTask": "Failed to open the task",
   "selectDefaultProject": "Please select a default project in the settings",
   "editTaskTitle": "Edit Task",
   "taskDeleteError": "Error deleting the task!",

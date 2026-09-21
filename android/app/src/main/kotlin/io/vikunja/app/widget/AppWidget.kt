@@ -48,11 +48,15 @@ import java.util.Locale
 import androidx.glance.ImageProvider
 import androidx.glance.action.ActionParameters
 import androidx.glance.appwidget.action.actionRunCallback
+import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.components.CircleIconButton
+import androidx.glance.action.clickable
 import io.vikunja.app.MainActivity
 import io.vikunja.app.R
 import androidx.glance.appwidget.action.ActionCallback
+import io.vikunja.app.EXTRA_TASK_ID
 import io.vikunja.app.INTENT_TYPE_ADD_TASK
+import io.vikunja.app.INTENT_TYPE_OPEN_TASK
 
 class InteractiveAction : ActionCallback {
     override suspend fun onAction(
@@ -128,6 +132,18 @@ class AppWidget : GlanceAppWidget() {
             Log.d("Widget", "No tasks found for widget $appWidgetId")
         }
     }
+
+    private fun openTaskIntent(context: Context, taskId: String): Intent =
+        Intent(context, MainActivity::class.java).apply {
+            action = Intent.ACTION_INSERT
+            type = INTENT_TYPE_OPEN_TASK
+            // The id travels both as an extra and in the data URI: the URI
+            // survives PendingIntent round-trips by design and keeps every
+            // row's PendingIntent unique, mirroring the completeTask action.
+            data = "vikunja-app://openTask".toUri().buildUpon()
+                .appendQueryParameter("taskID", taskId).build()
+            putExtra(EXTRA_TASK_ID, taskId)
+        }
 
     private fun doneTask(context: Context, prefs: SharedPreferences, taskID: String) {
         prefs.edit {
@@ -245,7 +261,8 @@ class AppWidget : GlanceAppWidget() {
     ) {
         Row(
             modifier = GlanceModifier.fillMaxWidth().padding(8.dp)
-                .background(ColorProvider(Color.White, Color(0xFF1f2937))),
+                .background(ColorProvider(Color.White, Color(0xFF1f2937)))
+                .clickable(actionStartActivity(openTaskIntent(context, task.id))),
             verticalAlignment = Alignment.CenterVertically
         ) {
             CheckBox(
