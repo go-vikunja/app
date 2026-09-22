@@ -7,10 +7,13 @@ import android.os.Bundle
 import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.Button
+import android.widget.CheckBox
 import android.widget.RadioButton
 import android.widget.RadioGroup
+import android.widget.SeekBar
 import android.widget.ScrollView
 import android.widget.Spinner
+import android.widget.TextView
 import android.widget.Toast
 import androidx.core.net.toUri
 import com.google.gson.Gson
@@ -56,12 +59,20 @@ class WidgetConfigureActivity : Activity() {
 
         val currentView = prefs.getString("widget_view_$appWidgetId", "today") ?: "today"
         val currentProjectId = prefs.getString("widget_project_id_$appWidgetId", "0")?.toIntOrNull() ?: 0
+        val currentTheme = WidgetTheme.fromPref(prefs.getString("widget_theme_$appWidgetId", null))
+        val currentOpacity = WidgetOpacity.fromPref(prefs.getString("widget_opacity_$appWidgetId", null))
+        val currentDynamicColor =
+            WidgetDynamicColor.fromPref(prefs.getString("widget_dynamic_color_$appWidgetId", null))
 
         val scrollView = findViewById<ScrollView>(R.id.scroll_view)
         val radioGroup = findViewById<RadioGroup>(R.id.view_radio_group)
+        val themeRadioGroup = findViewById<RadioGroup>(R.id.theme_radio_group)
         val projectSpinner = findViewById<Spinner>(R.id.project_spinner)
         val projectLayout = findViewById<View>(R.id.project_layout)
         val saveButton = findViewById<Button>(R.id.save_button)
+        val opacitySeekbar = findViewById<SeekBar>(R.id.opacity_seekbar)
+        val opacityValue = findViewById<TextView>(R.id.opacity_value)
+        val dynamicColorCheckbox = findViewById<CheckBox>(R.id.dynamic_color_checkbox)
 
         val projectNames = projects.map { it.title }
         val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, projectNames)
@@ -82,6 +93,30 @@ class WidgetConfigureActivity : Activity() {
             }
             else -> radioGroup.check(R.id.radio_today)
         }
+
+        when (currentTheme) {
+            WidgetTheme.LIGHT -> themeRadioGroup.check(R.id.radio_theme_light)
+            WidgetTheme.DARK -> themeRadioGroup.check(R.id.radio_theme_dark)
+            WidgetTheme.AUTO -> themeRadioGroup.check(R.id.radio_theme_auto)
+        }
+
+        if (WidgetDynamicColors.isSupported()) {
+            dynamicColorCheckbox.isChecked = currentDynamicColor
+        } else {
+            dynamicColorCheckbox.visibility = View.GONE
+        }
+
+        opacitySeekbar.progress = currentOpacity
+        opacityValue.text = "$currentOpacity%"
+        opacitySeekbar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                opacityValue.text = "$progress%"
+            }
+
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
 
         // Reset scroll to top after layout pass (prevents auto-scroll to checked radio)
         scrollView.post { scrollView.scrollTo(0, 0) }
@@ -108,8 +143,17 @@ class WidgetConfigureActivity : Activity() {
                 return@setOnClickListener
             }
 
+            val selectedTheme = when (themeRadioGroup.checkedRadioButtonId) {
+                R.id.radio_theme_light -> WidgetTheme.LIGHT
+                R.id.radio_theme_dark -> WidgetTheme.DARK
+                else -> WidgetTheme.AUTO
+            }
+
             val editor = prefs.edit()
             editor.putString("widget_view_$appWidgetId", viewName)
+            editor.putString("widget_theme_$appWidgetId", selectedTheme.prefName)
+            editor.putString("widget_opacity_$appWidgetId", opacitySeekbar.progress.toString())
+            editor.putString("widget_dynamic_color_$appWidgetId", dynamicColorCheckbox.isChecked.toString())
 
             if (viewName == "project") {
                 val project = projects[projectSpinner.selectedItemPosition]
