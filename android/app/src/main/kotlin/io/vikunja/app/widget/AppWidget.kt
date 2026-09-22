@@ -9,7 +9,6 @@ import android.content.SharedPreferences
 import android.text.format.DateFormat
 import android.util.Log
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.edit
@@ -25,7 +24,6 @@ import androidx.glance.appwidget.lazy.LazyColumn
 import androidx.glance.appwidget.lazy.items
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
-import androidx.glance.color.ColorProvider
 import androidx.glance.currentState
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
@@ -153,6 +151,9 @@ class AppWidget : GlanceAppWidget() {
 
         val viewType = prefs.getString("widget_view_$appWidgetId", "today") ?: "today"
         val widgetTitle = prefs.getString("widget_title_$appWidgetId", "Vikunja") ?: "Vikunja"
+        val widgetTheme =
+            WidgetTheme.fromPref(prefs.getString("widget_theme_$appWidgetId", null))
+        val colors = WidgetColors.forTheme(widgetTheme)
         val otherSectionLabel = when (viewType) {
             "upcoming" -> "This Week:"
             "inbox", "project" -> "Tasks:"
@@ -162,37 +163,33 @@ class AppWidget : GlanceAppWidget() {
         Column(
             modifier = GlanceModifier.fillMaxHeight(), verticalAlignment = Alignment.Top
         ) {
-            WidgetTitleBar(widgetTitle)
+            WidgetTitleBar(widgetTitle, colors)
             if (todayTasks.isEmpty() and otherTasks.isEmpty()) {
-                EmptyView()
+                EmptyView(colors)
             } else {
                 LazyColumn(
-                    modifier = GlanceModifier.fillMaxHeight().background(
-                        ColorProvider(
-                            Color.White, Color(0xFF1f2937)
-                        )
-                    ).padding(8.dp)
+                    modifier = GlanceModifier.fillMaxHeight().background(colors.surface).padding(8.dp)
                 ) {
                     if (todayTasks.isNotEmpty()) {
                         item {
                             Text(
                                 "Today:",
-                                style = TextStyle(color = ColorProvider(Color.Black, Color.White))
+                                style = TextStyle(color = colors.text)
                             )
                         }
                         items(todayTasks.sortedBy { it.dueDate ?: Long.MAX_VALUE }) { task ->
-                            RenderRow(context, task, prefs)
+                            RenderRow(context, task, prefs, colors)
                         }
                     }
                     if (otherTasks.isNotEmpty()) {
                         item {
                             Text(
                                 otherSectionLabel,
-                                style = TextStyle(color = ColorProvider(Color.Black, Color.White))
+                                style = TextStyle(color = colors.text)
                             )
                         }
                         items(otherTasks.sortedBy { it.dueDate ?: Long.MAX_VALUE }) { task ->
-                            RenderRow(context, task, prefs, showDate = true)
+                            RenderRow(context, task, prefs, colors, showDate = true)
                         }
                     }
                 }
@@ -201,16 +198,17 @@ class AppWidget : GlanceAppWidget() {
     }
 
     @Composable
-    private fun WidgetTitleBar(title: String = "Vikunja") {
+    private fun WidgetTitleBar(title: String = "Vikunja", colors: WidgetColors) {
         Box(
             modifier = GlanceModifier
-                .background(ColorProvider(Color(0xFF126cfd), Color(0xFF013992))),
+                .background(colors.titleBarBackground),
             contentAlignment = Alignment.Center,
         ) {
             TitleBar(
                 title = title,
                 startIcon = ImageProvider(R.drawable.vikunja_logo),
                 iconColor = null,
+                textColor = colors.titleBarText,
                 actions = {
                     Box(
                         modifier = GlanceModifier.padding(end = 4.dp, top = 4.dp, bottom = 4.dp),
@@ -241,11 +239,15 @@ class AppWidget : GlanceAppWidget() {
 
     @Composable
     private fun RenderRow(
-        context: Context, task: Task, prefs: SharedPreferences, showDate: Boolean = false
+        context: Context,
+        task: Task,
+        prefs: SharedPreferences,
+        colors: WidgetColors,
+        showDate: Boolean = false
     ) {
         Row(
             modifier = GlanceModifier.fillMaxWidth().padding(8.dp)
-                .background(ColorProvider(Color.White, Color(0xFF1f2937))),
+                .background(colors.surface),
             verticalAlignment = Alignment.CenterVertically
         ) {
             CheckBox(
@@ -260,7 +262,7 @@ class AppWidget : GlanceAppWidget() {
                 ) {
                     Text(
                         text = formatDueDate(taskDueDate, showDate), style = TextStyle(
-                            fontSize = 18.sp, color = ColorProvider(Color.Black, Color.White)
+                            fontSize = 18.sp, color = colors.text
                         )
                     )
                 }
@@ -270,7 +272,7 @@ class AppWidget : GlanceAppWidget() {
             ) {
                 Text(
                     text = task.title, style = TextStyle(
-                        fontSize = 18.sp, color = ColorProvider(Color.Black, Color.White)
+                        fontSize = 18.sp, color = colors.text
                     ), maxLines = 1
                 )
             }
@@ -292,17 +294,15 @@ class AppWidget : GlanceAppWidget() {
     }
 
     @Composable
-    private fun EmptyView() {
+    private fun EmptyView(colors: WidgetColors) {
         Box(
             modifier = GlanceModifier.fillMaxSize()
-                .background(ColorProvider(Color.White, Color(0xFF1f2937))),
+                .background(colors.surface),
             contentAlignment = Alignment.Center,
         ) {
             Text(
                 text = "No tasks", style = TextStyle(
-                    fontSize = 16.sp, color = ColorProvider(
-                        Color.Black, Color.White
-                    )
+                    fontSize = 16.sp, color = colors.text
                 )
             )
         }
