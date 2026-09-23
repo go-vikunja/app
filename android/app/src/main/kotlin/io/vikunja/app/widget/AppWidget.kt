@@ -16,6 +16,7 @@ import androidx.core.content.edit
 import androidx.core.net.toUri
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
+import androidx.glance.LocalSize
 import androidx.glance.appwidget.CheckBox
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetManager
@@ -85,7 +86,7 @@ class ConfigureWidgetAction : ActionCallback {
 }
 
 class AppWidget : GlanceAppWidget() {
-    override val sizeMode = SizeMode.Single
+    override val sizeMode = SizeMode.Responsive(WidgetLayouts.sizeCandidates)
     private var todayTasks: MutableList<Task> = ArrayList()
     private var otherTasks: MutableList<Task> = ArrayList()
 
@@ -151,6 +152,18 @@ class AppWidget : GlanceAppWidget() {
         val prefs = currentState.preferences
         getTasks(prefs, appWidgetId)
 
+        val size = LocalSize.current
+        val sectionCount = listOf(todayTasks, otherTasks).count { it.isNotEmpty() }
+        val layout = WidgetLayouts.forSize(
+            widthDp = size.width.value.toInt(),
+            heightDp = size.height.value.toInt(),
+            sectionCount = sectionCount,
+        )
+        Log.d(
+            "Widget",
+            "layout ${size.width.value.toInt()}x${size.height.value.toInt()} " +
+                "of widget $appWidgetId: $layout",
+        )
         val viewType = prefs.getString("widget_view_$appWidgetId", "today") ?: "today"
         val widgetTitle = prefs.getString("widget_title_$appWidgetId", "Vikunja") ?: "Vikunja"
         val otherSectionLabel = when (viewType) {
@@ -163,41 +176,64 @@ class AppWidget : GlanceAppWidget() {
             modifier = GlanceModifier.fillMaxHeight(), verticalAlignment = Alignment.Top
         ) {
             WidgetTitleBar(widgetTitle)
-            if (todayTasks.isEmpty() and otherTasks.isEmpty()) {
-                EmptyView()
-            } else {
-                LazyColumn(
-                    modifier = GlanceModifier.fillMaxHeight().background(
-                        ColorProvider(
-                            Color.White, Color(0xFF1f2937)
-                        )
-                    ).padding(8.dp)
-                ) {
-                    if (todayTasks.isNotEmpty()) {
-                        item {
-                            Text(
-                                "Today:",
-                                style = TextStyle(color = ColorProvider(Color.Black, Color.White))
-                            )
-                        }
-                        items(todayTasks.sortedBy { it.dueDate ?: Long.MAX_VALUE }) { task ->
-                            RenderRow(context, task, prefs)
-                        }
-                    }
-                    if (otherTasks.isNotEmpty()) {
-                        item {
-                            Text(
-                                otherSectionLabel,
-                                style = TextStyle(color = ColorProvider(Color.Black, Color.White))
-                            )
-                        }
-                        items(otherTasks.sortedBy { it.dueDate ?: Long.MAX_VALUE }) { task ->
-                            RenderRow(context, task, prefs, showDate = true)
-                        }
-                    }
+            // Sizes too short for a task row render the title bar alone
+            // instead of squeezing a clipped half row into the instance.
+            if (!layout.isHeaderOnly) {
+                if (todayTasks.isEmpty() and otherTasks.isEmpty()) {
+                    EmptyView()
+                } else {
+                    TaskList(context, prefs, layout, otherSectionLabel)
                 }
             }
         }
+    }
+
+    @Composable
+    private fun TaskList(
+        context: Context,
+        prefs: SharedPreferences,
+        layout: WidgetLayout,
+        otherSectionLabel: String,
+    ) {
+        LazyColumn(
+            modifier = GlanceModifier.fillMaxHeight().background(
+                ColorProvider(
+                    Color.White, Color(0xFF1f2937)
+                )
+            ).padding(8.dp)
+        ) {
+            if (todayTasks.isNotEmpty()) {
+                if (layout.showSectionLabels) {
+                    item {
+                        SectionLabel("Today:", layout)
+                    }
+                }
+                items(todayTasks.sortedBy { it.dueDate ?: Long.MAX_VALUE }) { task ->
+                    RenderRow(context, task, prefs, layout)
+                }
+            }
+            if (otherTasks.isNotEmpty()) {
+                if (layout.showSectionLabels) {
+                    item {
+                        SectionLabel(otherSectionLabel, layout)
+                    }
+                }
+                items(otherTasks.sortedBy { it.dueDate ?: Long.MAX_VALUE }) { task ->
+                    RenderRow(context, task, prefs, layout, showDate = true)
+                }
+            }
+        }
+    }
+
+    @Composable
+    private fun SectionLabel(label: String, layout: WidgetLayout) {
+        Text(
+            label,
+            style = TextStyle(
+                fontSize = layout.sectionLabelFontSizeSp.sp,
+                color = ColorProvider(Color.Black, Color.White),
+            ),
+        )
     }
 
     @Composable
@@ -241,10 +277,14 @@ class AppWidget : GlanceAppWidget() {
 
     @Composable
     private fun RenderRow(
-        context: Context, task: Task, prefs: SharedPreferences, showDate: Boolean = false
+        context: Context,
+        task: Task,
+        prefs: SharedPreferences,
+        layout: WidgetLayout,
+        showDate: Boolean = false
     ) {
         Row(
-            modifier = GlanceModifier.fillMaxWidth().padding(8.dp)
+            modifier = GlanceModifier.fillMaxWidth().padding(layout.rowPaddingDp.dp)
                 .background(ColorProvider(Color.White, Color(0xFF1f2937))),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -254,13 +294,14 @@ class AppWidget : GlanceAppWidget() {
                 modifier = GlanceModifier.padding(start = 0.dp)
             )
             val taskDueDate = task.dueDateAsDate()
-            if (taskDueDate != null) {
+            if (taskDueDate != null && layout.showDueDates) {
                 Box(
                     modifier = GlanceModifier.padding(start = 8.dp)
                 ) {
                     Text(
                         text = formatDueDate(taskDueDate, showDate), style = TextStyle(
-                            fontSize = 18.sp, color = ColorProvider(Color.Black, Color.White)
+                            fontSize = layout.taskFontSizeSp.sp,
+                            color = ColorProvider(Color.Black, Color.White)
                         )
                     )
                 }
@@ -270,7 +311,8 @@ class AppWidget : GlanceAppWidget() {
             ) {
                 Text(
                     text = task.title, style = TextStyle(
-                        fontSize = 18.sp, color = ColorProvider(Color.Black, Color.White)
+                        fontSize = layout.taskFontSizeSp.sp,
+                        color = ColorProvider(Color.Black, Color.White)
                     ), maxLines = 1
                 )
             }
