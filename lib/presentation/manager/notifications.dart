@@ -11,6 +11,7 @@ import 'package:vikunja_app/core/network/client.dart';
 import 'package:vikunja_app/data/data_sources/settings_data_source.dart';
 import 'package:vikunja_app/data/data_sources/task_data_source.dart';
 import 'package:vikunja_app/data/repositories/task_repository_impl.dart';
+import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/domain/repositories/task_repository.dart';
 import 'package:vikunja_app/presentation/manager/widget_controller.dart';
 
@@ -227,14 +228,25 @@ class NotificationHandler {
   }
 
   Future<void> scheduleDueNotifications(TaskRepository taskService) async {
-    var taskResponse = await taskService.getByFilterString(
-      "done=false && (due_date > now || reminders > now)",
-      {
-        "filter_include_nulls": ["false"],
-      },
-    );
+    try {
+      var taskResponse = await taskService.getByFilterString(
+        "done = false && (due_date > now || reminders > now)",
+        {
+          "filter_include_nulls": ["false"],
+        },
+      );
 
-    if (taskResponse.isSuccessful) {
+      if (!taskResponse.isSuccessful) {
+        final detail = switch (taskResponse) {
+          ErrorResponse(:final statusCode, :final error) =>
+            '$statusCode $error',
+          ExceptionResponse(:final message) => message,
+          _ => taskResponse.toString(),
+        };
+        developer.log('Failed to load tasks for notifications: $detail');
+        return;
+      }
+
       await notificationsPlugin.cancelAll();
       for (final task in taskResponse.toSuccess().body) {
         if (task.done) continue;
@@ -262,6 +274,12 @@ class NotificationHandler {
         }
       }
       developer.log("notifications scheduled successfully");
+    } catch (e, s) {
+      developer.log(
+        "Failed to schedule due notifications",
+        error: e,
+        stackTrace: s,
+      );
     }
   }
 
