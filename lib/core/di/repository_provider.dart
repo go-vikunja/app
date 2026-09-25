@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_app/core/di/data_source_provider.dart';
+import 'package:vikunja_app/core/offline/offline_controller.dart';
 import 'package:vikunja_app/data/repositories/bucket_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/label_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/project_repository_impl.dart';
@@ -29,7 +30,13 @@ part 'repository_provider.g.dart';
 @riverpod
 ProjectRepository projectRepository(Ref ref) {
   var projectDataSource = ref.watch(projectDataSourceProvider);
-  return ProjectRepositoryImpl(projectDataSource);
+  return ProjectRepositoryImpl(
+    projectDataSource,
+    offline: ref.watch(offlineDatabaseProvider),
+    isOffline: ref.watch(offlineIsOfflineProvider),
+    onQueued: () =>
+        ref.read(offlineControllerProvider.notifier).refreshPendingCount(),
+  );
 }
 
 @riverpod
@@ -47,7 +54,13 @@ BucketRepository bucketRepository(Ref ref) {
 @riverpod
 TaskRepository taskRepository(Ref ref) {
   var taskDataSource = ref.watch(taskDataSourceProvider);
-  return TaskRepositoryImpl(taskDataSource);
+  return TaskRepositoryImpl(
+    taskDataSource,
+    offline: ref.watch(offlineDatabaseProvider),
+    isOffline: ref.watch(offlineIsOfflineProvider),
+    onQueued: () =>
+        ref.read(offlineControllerProvider.notifier).refreshPendingCount(),
+  );
 }
 
 @riverpod
@@ -71,7 +84,11 @@ LabelRepositoryImpl labelRepository(Ref ref) {
 @riverpod
 UserRepository userRepository(Ref ref) {
   var userDataSource = ref.watch(userDataSourceProvider);
-  return UserRepositoryImpl(userDataSource);
+  return UserRepositoryImpl(
+    userDataSource,
+    offline: ref.watch(offlineDatabaseProvider),
+    isOffline: ref.watch(offlineIsOfflineProvider),
+  );
 }
 
 @riverpod
