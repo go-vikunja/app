@@ -153,6 +153,10 @@ class AppWidget : GlanceAppWidget() {
 
         val viewType = prefs.getString("widget_view_$appWidgetId", "today") ?: "today"
         val widgetTitle = prefs.getString("widget_title_$appWidgetId", "Vikunja") ?: "Vikunja"
+        // Written by the Dart update pipeline: 'error' means the configured
+        // project or saved filter is gone for good (403/404) — show an
+        // explicit error instead of the stale cached list or "No tasks".
+        val isViewStateError = prefs.getString("widget_state_$appWidgetId", "ok") == "error"
         val otherSectionLabel = when (viewType) {
             "upcoming" -> "This Week:"
             "inbox", "project" -> "Tasks:"
@@ -163,7 +167,9 @@ class AppWidget : GlanceAppWidget() {
             modifier = GlanceModifier.fillMaxHeight(), verticalAlignment = Alignment.Top
         ) {
             WidgetTitleBar(widgetTitle)
-            if (todayTasks.isEmpty() and otherTasks.isEmpty()) {
+            if (isViewStateError) {
+                ErrorView()
+            } else if (todayTasks.isEmpty() and otherTasks.isEmpty()) {
                 EmptyView()
             } else {
                 LazyColumn(
@@ -305,6 +311,34 @@ class AppWidget : GlanceAppWidget() {
                     )
                 )
             )
+        }
+    }
+
+    @Composable
+    private fun ErrorView() {
+        Box(
+            modifier = GlanceModifier.fillMaxSize()
+                .background(ColorProvider(Color.White, Color(0xFF1f2937))).padding(12.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Column {
+                Text(
+                    text = "Couldn't load this view", style = TextStyle(
+                        fontSize = 16.sp, color = ColorProvider(
+                            Color.Black, Color.White
+                        )
+                    )
+                )
+                Text(
+                    text = "It may have been deleted. Tap ⚙ to pick another.",
+                    style = TextStyle(
+                        fontSize = 13.sp, color = ColorProvider(
+                            Color.Black, Color.White
+                        )
+                    ),
+                    maxLines = 2,
+                )
+            }
         }
     }
 }
