@@ -153,11 +153,10 @@ Future<void> updateWidgetForId(String? widgetId) async {
 
   try {
     final store = HomeWidgetPluginStore();
-    await syncWidgetProjectOptions(
-      projectService: ProjectRepositoryImpl(ProjectDataSource(client)),
-      store: store,
-    );
-
+    // Deliberately no project-catalog sync here: this path serves a view
+    // switch or a configure save, where the chosen view's tasks should be
+    // fetched as fast as possible. The catalog (which feeds the pickers)
+    // is refreshed by the full update on app opens and the periodic sync.
     final taskService = TaskRepositoryImpl(TaskDataSource(client));
     await updateWidgetInstance(
       widgetId,
@@ -256,6 +255,16 @@ Future<void> updateWidgetInstance(
     // The native side renders an explicit error state instead of the
     // (stale) cached task list; the cache itself is kept untouched.
     await store.write('widget_state_$widgetId', 'error');
+  } else {
+    // A transient failure keeps the last good cache and state — unless the
+    // view was just switched: the picker publishes a loading state and
+    // drops the previous view's cache, so sitting on it forever would
+    // leave the widget stuck. Surface the explicit error state instead;
+    // the next successful refresh clears it.
+    final state = await store.read<String>('widget_state_$widgetId');
+    if (state == 'loading') {
+      await store.write('widget_state_$widgetId', 'error');
+    }
   }
 }
 

@@ -84,6 +84,40 @@ class ConfigureWidgetAction : ActionCallback {
     }
 }
 
+class SwitchViewAction : ActionCallback {
+    override suspend fun onAction(
+        context: Context,
+        glanceId: GlanceId,
+        parameters: ActionParameters,
+    ) {
+        val appWidgetId = GlanceAppWidgetManager(context).getAppWidgetId(glanceId)
+        val intent = Intent(context, WidgetViewPickerActivity::class.java).apply {
+            putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        context.startActivity(intent)
+    }
+}
+
+/**
+ * Refreshes one widget instance's Glance state straight from the home-widget
+ * preferences and recomposes it — the same sequence home_widget's receiver
+ * runs when Dart calls updateWidget, usable without waiting for the
+ * background isolate.
+ */
+internal suspend fun recomposeWidgetInstance(context: Context, appWidgetId: Int) {
+    val glanceId = GlanceAppWidgetManager(context).getGlanceIdBy(appWidgetId)
+    AppWidget().apply {
+        val stateDefinition = stateDefinition as HomeWidgetGlanceStateDefinition
+        updateAppWidgetState<HomeWidgetGlanceState>(
+            context,
+            stateDefinition,
+            glanceId,
+        ) { currentState -> currentState }
+        update(context, glanceId)
+    }
+}
+
 class AppWidget : GlanceAppWidget() {
     override val sizeMode = SizeMode.Single
     private var todayTasks: MutableList<Task> = ArrayList()
@@ -156,7 +190,10 @@ class AppWidget : GlanceAppWidget() {
         // Written by the Dart update pipeline: 'error' means the configured
         // project or saved filter is gone for good (403/404) — show an
         // explicit error instead of the stale cached list or "No tasks".
+        // 'loading' is written by the view picker while the freshly chosen
+        // view's tasks are being fetched.
         val isViewStateError = prefs.getString("widget_state_$appWidgetId", "ok") == "error"
+        val isLoadingView = prefs.getString("widget_state_$appWidgetId", "ok") == "loading"
         val otherSectionLabel = when (viewType) {
             "upcoming" -> "This Week:"
             "inbox", "project" -> "Tasks:"
@@ -169,6 +206,8 @@ class AppWidget : GlanceAppWidget() {
             WidgetTitleBar(widgetTitle)
             if (isViewStateError) {
                 ErrorView()
+            } else if (isLoadingView) {
+                LoadingView()
             } else if (todayTasks.isEmpty() and otherTasks.isEmpty()) {
                 EmptyView()
             } else {
@@ -218,6 +257,17 @@ class AppWidget : GlanceAppWidget() {
                 startIcon = ImageProvider(R.drawable.vikunja_logo),
                 iconColor = null,
                 actions = {
+                    Box(
+                        modifier = GlanceModifier.padding(end = 4.dp, top = 4.dp, bottom = 4.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircleIconButton(
+                            enabled = true,
+                            onClick = actionRunCallback<SwitchViewAction>(),
+                            imageProvider = ImageProvider(R.drawable.expand_more),
+                            contentDescription = "Switch view",
+                        )
+                    }
                     Box(
                         modifier = GlanceModifier.padding(end = 4.dp, top = 4.dp, bottom = 4.dp),
                         contentAlignment = Alignment.Center
@@ -306,6 +356,23 @@ class AppWidget : GlanceAppWidget() {
         ) {
             Text(
                 text = "No tasks", style = TextStyle(
+                    fontSize = 16.sp, color = ColorProvider(
+                        Color.Black, Color.White
+                    )
+                )
+            )
+        }
+    }
+
+    @Composable
+    private fun LoadingView() {
+        Box(
+            modifier = GlanceModifier.fillMaxSize()
+                .background(ColorProvider(Color.White, Color(0xFF1f2937))),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = "Loading…", style = TextStyle(
                     fontSize = 16.sp, color = ColorProvider(
                         Color.Black, Color.White
                     )

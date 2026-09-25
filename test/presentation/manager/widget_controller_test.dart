@@ -189,6 +189,120 @@ void main() {
       expect(stored.single['today'], isTrue);
     });
 
+    test(
+      'a view switch from the widget surface re-renders only that instance',
+      () async {
+        // Two instances, both on today, both already rendered.
+        final store = FakeHomeWidgetStore()
+          ..data['widget_view_4'] = 'today'
+          ..data['widget_view_9'] = 'today';
+        final taskService = MockTaskRepository()
+          ..getByFilterStringStub = (filterString, _) async {
+            return SuccessResponse([_task(1, 'Today Task')], 200, {});
+          }
+          ..getAllByProjectStub = (projectId, _) async {
+            return SuccessResponse([_task(21, 'Work Task')], 200, {});
+          };
+
+        await updateWidgetInstance('4', store: store, taskService: taskService);
+        await updateWidgetInstance('9', store: store, taskService: taskService);
+
+        // The native view picker switches instance 9 to a project by
+        // writing the same preference keys the configuration screen
+        // writes (plus an optimistic loading state and title), then
+        // asking for a per-instance update.
+        store.data['widget_view_9'] = 'project';
+        store.data['widget_project_id_9'] = '5';
+        store.data['widget_project_name_9'] = 'Work';
+        store.data['widget_title_9'] = 'Work';
+        store.data['widget_state_9'] = 'loading';
+        store.data.remove('WidgetTasks_9');
+
+        await updateWidgetInstance('9', store: store, taskService: taskService);
+
+        expect(store.data['widget_state_9'], 'ok');
+        expect(store.data['widget_title_9'], 'Work');
+        expect(_storedTasks(store, '9').single['title'], 'Work Task');
+        // The other instance keeps its own view and rendered data.
+        expect(store.data['widget_title_4'], 'Today');
+        expect(_storedTasks(store, '4').single['title'], 'Today Task');
+      },
+    );
+
+    test('retries a timed-out fetch before resolving the view', () async {
+      final store = FakeHomeWidgetStore()
+        ..data['widget_view_7'] = 'project'
+        ..data['widget_project_id_7'] = '-2'
+        ..data['widget_project_name_7'] = 'My Open Tasks'
+        ..data['widget_state_7'] = 'loading';
+      var calls = 0;
+      final taskService = MockTaskRepository()
+        ..getAllByProjectStub = (projectId, _) async {
+          calls++;
+          if (calls == 1) {
+            return ExceptionResponse<List<Task>>(
+              TimeoutException('request timed out'),
+              StackTrace.current,
+            );
+          }
+          return SuccessResponse<List<Task>>(
+            [_task(5, 'Filter Task')],
+            200,
+            {},
+          );
+        };
+
+      await updateWidgetInstance('7', store: store, taskService: taskService);
+
+      expect(calls, 2);
+      expect(store.data['widget_state_7'], 'ok');
+      expect(_storedTasks(store, '7').single['title'], 'Filter Task');
+    });
+
+    test('a fetch that keeps timing out surfaces the error state', () async {
+      final store = FakeHomeWidgetStore()
+        ..data['widget_view_7'] = 'project'
+        ..data['widget_project_id_7'] = '-2'
+        ..data['widget_project_name_7'] = 'My Open Tasks'
+        ..data['widget_state_7'] = 'loading';
+      var calls = 0;
+      final taskService = MockTaskRepository()
+        ..getAllByProjectStub = (projectId, _) async {
+          calls++;
+          return ExceptionResponse<List<Task>>(
+            TimeoutException('request timed out'),
+            StackTrace.current,
+          );
+        };
+
+      await updateWidgetInstance('7', store: store, taskService: taskService);
+
+      expect(calls, 2);
+      // The picker dropped the previous view's cache when switching, so a
+      // persistent failure must not leave the widget on the loading state.
+      expect(store.data['widget_state_7'], 'error');
+      expect(store.data.containsKey('WidgetTasks_7'), isFalse);
+    });
+
+    test('a definitive server error is not retried', () async {
+      final store = FakeHomeWidgetStore()
+        ..data['widget_view_7'] = 'project'
+        ..data['widget_project_id_7'] = '5'
+        ..data['widget_project_name_7'] = 'Work'
+        ..data['WidgetTasks_7'] = '[{"id":"1","title":"cached"}]';
+      var calls = 0;
+      final taskService = MockTaskRepository()
+        ..getAllByProjectStub = (projectId, _) async {
+          calls++;
+          return ErrorResponse<List<Task>>(500, {}, {'message': 'boom'});
+        };
+
+      await updateWidgetInstance('7', store: store, taskService: taskService);
+
+      expect(calls, 1);
+      expect(store.data['WidgetTasks_7'], '[{"id":"1","title":"cached"}]');
+    });
+
     test('defaults to the today view when none is stored', () async {
       final store = FakeHomeWidgetStore();
       final requestedFilters = <String>[];
