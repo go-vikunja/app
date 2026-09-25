@@ -11,6 +11,27 @@
   "close": "Close",
   "reset": "Reset",
   "retry": "Retry",
+  "continueOffline": "Continue offline",
+  "offlineMode": "Offline",
+  "tryOnline": "Try online",
+  "flushChanges": "Flush",
+  "flushingChanges": "Flushing…",
+  "pendingChanges": "{count} pending",
+  "@pendingChanges": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "flushFailed": "Flush failed: {error}",
+  "@flushFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "loading": "Loading...",
   "logout": "Logout",
   "register": "Register",

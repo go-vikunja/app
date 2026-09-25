@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vikunja_app/core/di/network_provider.dart';
+import 'package:vikunja_app/core/offline/offline_controller.dart';
 import 'package:vikunja_app/core/utils/constants.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/main.dart';
@@ -26,15 +28,36 @@ class _InitPageState extends ConsumerState<InitPage> {
 
     return initState.when(
       loading: () => const LoadingWidget(),
-      error: (err, _) => VikunjaErrorWidget(
-        error: err,
-        onRetry: () => ref.invalidate(initControllerProvider),
-        onSecondaryAction: () {
-          // LoginPage clears any saved auth (and server address) in initState.
-          globalNavigatorKey.currentState?.pushReplacementNamed('/login');
-        },
-        secondaryActionLabel: AppLocalizations.of(context).logout,
-      ),
+      error: (err, _) {
+        final hasCache =
+            ref.watch(hasOfflineCacheProvider).valueOrNull ?? false;
+        return VikunjaErrorWidget(
+          error: err,
+          onRetry: () => ref.invalidate(initControllerProvider),
+          onContinueOffline: hasCache
+              ? () async {
+                  await ref
+                      .read(offlineControllerProvider.notifier)
+                      .enterOffline();
+                  final user = await ref
+                      .read(offlineDatabaseProvider)
+                      .loadUser();
+                  if (user != null) {
+                    ref.read(currentUserProvider.notifier).set(user);
+                  }
+                  if (context.mounted) {
+                    globalNavigatorKey.currentState?.pushReplacementNamed(
+                      '/home',
+                    );
+                  }
+                }
+              : null,
+          onSecondaryAction: () {
+            globalNavigatorKey.currentState?.pushReplacementNamed('/login');
+          },
+          secondaryActionLabel: AppLocalizations.of(context).logout,
+        );
+      },
       data: (_) => const LoadingWidget(),
     );
   }
