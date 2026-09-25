@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_app/data/models/task_dto.dart';
+import 'package:vikunja_app/domain/entities/task_relation.dart';
 
 void main() {
   test('Check encoding with all values set', () {
@@ -33,6 +34,17 @@ void main() {
     expect(task.subtasks, []);
     expect(task.created, DateTime.parse('2018-11-17T14:56:58Z'));
     expect(task.updated, DateTime.parse('2019-03-16T17:25:27Z'));
+  });
+  test('parses related_tasks grouped by kind', () {
+    const related =
+        '{"id": 2,"title": "other","description": "","identifier": "task-2","done": false,"due_date": "2018-12-03T07:00:00Z","reminders": null,"repeat_after": 0,"parent_task_id": 0,"priority": 0,"start_date": "2018-12-03T07:00:00Z","end_date": "2018-12-03T07:03:20Z","hex_color": "","position": 0,"percent_done": 0,"assignees": null,"labels": null,"subtasks": null,"attachments": null,"project_id": 1,"bucket_id": null,"created": "2018-11-17T14:56:58Z","updated": "2019-03-16T17:25:27Z","created_by": {"id": 1,"username": "user","email": "test@example.com","created": "2018-09-24T20:58:51Z","updated": "2018-12-19T19:15:25Z"}}';
+    final String json =
+        '{"id": 1,"title": "test","description": "Lorem Ipsum","identifier": "task-1","done": true,"due_date": "2018-12-03T07:00:00Z","reminders": null,"repeat_after": 3600,"parent_task_id": 0,"priority": 100,"start_date": "2018-12-03T07:00:00Z","end_date": "2018-12-03T07:03:20Z","hex_color": "","position": 0,"percent_done": 0,"assignees": null,"labels": null,"subtasks": null,"attachments": null,"related_tasks": {"blocking": [$related], "subtask": [$related]},"project_id": 1,"bucket_id": null,"created": "2018-11-17T14:56:58Z","updated": "2019-03-16T17:25:27Z","created_by": {"id": 1,"username": "user","email": "test@example.com","created": "2018-09-24T20:58:51Z","updated": "2018-12-19T19:15:25Z"}}';
+    final task = TaskDto.fromJson(JsonDecoder().convert(json)).toDomain();
+
+    expect(task.relatedTasks.length, 2);
+    expect(task.relatedTasks[RelationKind.blocking]!.single.title, 'other');
+    expect(task.relatedTasks[RelationKind.subtask]!.single.id, 2);
   });
   test('Check encoding with reminder dates as null', () {
     final String json =

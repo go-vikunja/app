@@ -244,5 +244,24 @@
   "versionDialogUsed": "Your server version: {versionString}",
   "@versionDialogUsed": {
     "placeholders": { "versionString": { "type": "String" } }
-  }
+  },
+  "relatedTasks": "Related tasks",
+  "relationSearch": "Search for a task",
+  "relationSelectKind": "Select a relation kind",
+  "relationNoneYet": "No related tasks yet",
+  "relationDelete": "Remove relation",
+  "relationTaskRequired": "Pick a task first",
+  "relationAddError": "Could not update relation",
+  "relationsOnlineOnly": "Adding relations requires an online connection.",
+  "relationKindCopiedTo": "Copied To",
+  "relationKindCopiedFrom": "Copied From",
+  "relationKindFollows": "Follows",
+  "relationKindPrecedes": "Precedes",
+  "relationKindBlocked": "Blocked By",
+  "relationKindBlocking": "Blocking",
+  "relationKindDuplicates": "Duplicates",
+  "relationKindDuplicateOf": "Duplicate Of",
+  "relationKindRelated": "Related Task",
+  "relationKindParent": "Parent Task",
+  "relationKindSubtask": "Subtask"
 }

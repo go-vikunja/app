@@ -12,6 +12,7 @@ import 'package:vikunja_app/data/models/task_attachment_dto.dart';
 import 'package:vikunja_app/data/models/task_dto.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/entities/task_attachment.dart';
+import 'package:vikunja_app/domain/entities/task_relation.dart';
 import 'package:vikunja_app/domain/repositories/task_repository.dart';
 
 class TaskRepositoryImpl extends TaskRepository {
@@ -172,6 +173,61 @@ class TaskRepositoryImpl extends TaskRepository {
       await _offline?.upsertTasks(mapped.toSuccess().body);
     }
     return mapped;
+  }
+
+  @override
+  Future<Response<List<Task>>> search(String query) async {
+    if (isOffline && _offline != null) {
+      final needle = query.toLowerCase();
+      final matches = (await _offline.allTasks())
+          .where(
+            (task) =>
+                task.title.toLowerCase().contains(needle) ||
+                task.identifier.toLowerCase().contains(needle),
+          )
+          .toList();
+      return offlineSuccess<List<Task>>(matches);
+    }
+
+    return (await _dataSource.search(query)).toDomain<Task>();
+  }
+
+  @override
+  Future<Response<Object>> addRelation({
+    required int taskId,
+    required int otherTaskId,
+    required RelationKind kind,
+  }) async {
+    if (isOffline) {
+      return ExceptionResponse<Object>(
+        StateError('Relations require an online connection'),
+        StackTrace.current,
+      );
+    }
+    return _dataSource.addRelation(
+      taskId: taskId,
+      otherTaskId: otherTaskId,
+      relationKind: kind.apiValue,
+    );
+  }
+
+  @override
+  Future<Response<Object>> deleteRelation({
+    required int taskId,
+    required int otherTaskId,
+    required RelationKind kind,
+  }) async {
+    if (isOffline) {
+      return ExceptionResponse<Object>(
+        StateError('Relations require an online connection'),
+        StackTrace.current,
+      );
+    }
+    return _dataSource.deleteRelation(
+      taskId: taskId,
+      otherTaskId: otherTaskId,
+      relationKind: kind.apiValue,
+    );
   }
 
   @override
