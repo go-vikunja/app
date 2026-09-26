@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:vikunja_app/core/di/network_provider.dart';
+import 'package:vikunja_app/core/offline/offline_controller.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/entities/task_page_model.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
@@ -57,10 +58,22 @@ class TaskListPage extends ConsumerWidget {
           ),
         );
       },
-      error: (err, _) => VikunjaErrorWidget(
-        error: err,
-        onRetry: () => ref.invalidate(taskPageControllerProvider),
-      ),
+      error: (err, _) {
+        final hasCache =
+            ref.watch(hasOfflineCacheProvider).valueOrNull ?? false;
+        return VikunjaErrorWidget(
+          error: err,
+          onRetry: () => ref.invalidate(taskPageControllerProvider),
+          onContinueOffline: hasCache
+              ? () async {
+                  await ref
+                      .read(offlineControllerProvider.notifier)
+                      .enterOffline();
+                  ref.invalidate(taskPageControllerProvider);
+                }
+              : null,
+        );
+      },
       loading: () => const LoadingWidget(),
     );
   }

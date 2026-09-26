@@ -11,12 +11,14 @@ class VikunjaErrorWidget extends StatelessWidget {
 
   final VoidCallback? onSecondaryAction;
   final String? secondaryActionLabel;
+  final VoidCallback? onContinueOffline;
 
   const VikunjaErrorWidget({
     required this.error,
     this.onRetry,
     this.onSecondaryAction,
     this.secondaryActionLabel,
+    this.onContinueOffline,
     super.key,
   });
 
@@ -41,6 +43,13 @@ class VikunjaErrorWidget extends StatelessWidget {
                 onPressed: onRetry,
                 child: Text(AppLocalizations.of(context).retry),
               ),
+            if (onContinueOffline != null) ...[
+              const SizedBox(height: 12),
+              FilledButton.tonal(
+                onPressed: onContinueOffline,
+                child: Text(AppLocalizations.of(context).continueOffline),
+              ),
+            ],
             if (onSecondaryAction != null) ...[
               const SizedBox(height: 12),
               OutlinedButton(

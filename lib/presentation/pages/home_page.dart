@@ -19,6 +19,7 @@ import 'package:vikunja_app/presentation/manager/task_page_controller.dart';
 import 'package:vikunja_app/presentation/pages/project/project_list_page.dart';
 import 'package:vikunja_app/presentation/pages/settings_page.dart';
 import 'package:vikunja_app/presentation/pages/task/task_list_page.dart';
+import 'package:vikunja_app/presentation/widgets/offline_banner.dart';
 import 'package:vikunja_app/presentation/widgets/task/add_task_dialog.dart';
 
 class HomePage extends ConsumerStatefulWidget {
@@ -101,7 +102,12 @@ class HomePageState extends ConsumerState<HomePage> {
           },
         ),
       ),
-      body: drawerItem,
+      body: Column(
+        children: [
+          const OfflineBanner(),
+          Expanded(child: drawerItem ?? const SizedBox.shrink()),
+        ],
+      ),
     );
   }
 

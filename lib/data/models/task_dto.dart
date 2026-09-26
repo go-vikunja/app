@@ -5,6 +5,7 @@ import 'package:vikunja_app/data/models/task_attachment_dto.dart';
 import 'package:vikunja_app/data/models/task_reminder_dto.dart';
 import 'package:vikunja_app/data/models/user_dto.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
+import 'package:vikunja_app/domain/entities/task_relation.dart';
 
 class TaskDto extends Dto<Task> {
   final int id;
@@ -24,6 +25,7 @@ class TaskDto extends Dto<Task> {
   final List<TaskDto> subtasks;
   final List<LabelDto> labels;
   final List<TaskAttachmentDto> attachments;
+  final Map<RelationKind, List<TaskDto>> relatedTasks;
 
   TaskDto({
     this.id = 0,
@@ -44,6 +46,7 @@ class TaskDto extends Dto<Task> {
     this.subtasks = const [],
     this.labels = const [],
     this.attachments = const [],
+    this.relatedTasks = const {},
     DateTime? created,
     DateTime? updated,
     required this.createdBy,
@@ -93,6 +96,7 @@ class TaskDto extends Dto<Task> {
                 .map((attachment) => TaskAttachmentDto.fromJSON(attachment))
                 .toList()
           : [],
+      relatedTasks = parseRelatedTaskDtos(json['related_tasks']),
       updated = DateTime.parse(json['updated']),
       created = DateTime.parse(json['created']),
       projectId = json['project_id'],
@@ -152,6 +156,10 @@ class TaskDto extends Dto<Task> {
     labels: labels.map((e) => e.toDomain()).toList(),
     subtasks: subtasks.map((e) => e.toDomain()).toList(),
     attachments: attachments.map((e) => e.toDomain()).toList(),
+    relatedTasks: relatedTasks.map(
+      (kind, tasks) =>
+          MapEntry(kind, tasks.map((task) => task.toDomain()).toList()),
+    ),
     updated: updated,
     created: created,
     projectId: projectId,
@@ -182,10 +190,31 @@ class TaskDto extends Dto<Task> {
     attachments: b.attachments
         .map((e) => TaskAttachmentDto.fromDomain(e))
         .toList(),
+    relatedTasks: b.relatedTasks.map(
+      (kind, tasks) => MapEntry(
+        kind,
+        tasks.map((task) => TaskDto.fromDomain(task)).toList(),
+      ),
+    ),
     updated: b.updated,
     created: b.created,
     projectId: b.projectId,
     bucketId: b.bucketId,
     createdBy: b.createdBy != null ? UserDto.fromDomain(b.createdBy!) : null,
   );
+}
+
+Map<RelationKind, List<TaskDto>> parseRelatedTaskDtos(dynamic raw) {
+  if (raw is! Map) return {};
+  final result = <RelationKind, List<TaskDto>>{};
+  for (final entry in raw.entries) {
+    final kind = RelationKind.tryParse(entry.key.toString());
+    if (kind == null || entry.value is! List) continue;
+    result[kind] = (entry.value as List).map((item) {
+      final map = Map<String, dynamic>.from(item as Map);
+      map['related_tasks'] = <String, dynamic>{};
+      return TaskDto.fromJson(map);
+    }).toList();
+  }
+  return result;
 }
