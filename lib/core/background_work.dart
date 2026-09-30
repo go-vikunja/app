@@ -46,6 +46,28 @@ void callbackDispatcher() {
   });
 }
 
+/// Registers (or cancels) the periodic background task that keeps the home
+/// screen widget in sync with the server.
+///
+/// Called at app startup and whenever the user changes the refresh interval
+/// in settings. Without this the widget only updates when the task page is
+/// reopened, which is why completed/deleted tasks stayed visible.
+Future<void> registerWidgetRefreshTask() async {
+  var datasource = SettingsDatasource(FlutterSecureStorage());
+  var minutes = await datasource.getRefreshInterval();
+
+  await Workmanager().cancelAll();
+  if (minutes > 0) {
+    await Workmanager().registerPeriodicTask(
+      "update-tasks",
+      "update-tasks",
+      frequency: Duration(minutes: minutes),
+      constraints: Constraints(networkType: NetworkType.connected),
+      initialDelay: Duration(seconds: 15),
+    );
+  }
+}
+
 /// Loads all tasks from the server to update the widget
 /// and schedule notifications for due tasks
 ///

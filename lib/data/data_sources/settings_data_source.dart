@@ -6,6 +6,10 @@ import 'package:vikunja_app/core/theming/theme_mode.dart';
 class SettingsDatasource {
   final FlutterSecureStorage _storage;
 
+  /// Sync interval used when the user never configured one. Keeps the
+  /// widget's periodic background sync always on (0 still disables it).
+  static const int defaultRefreshInterval = 15;
+
   SettingsDatasource(this._storage);
 
   Future<bool> getIgnoreCertificates() {
@@ -42,7 +46,11 @@ class SettingsDatasource {
   Future<int> getRefreshInterval() {
     return _storage
         .read(key: "workmanager-duration")
-        .then((value) => int.tryParse(value ?? "0") ?? 0);
+        .then(
+          (value) =>
+              int.tryParse(value ?? '') ??
+              SettingsDatasource.defaultRefreshInterval,
+        );
   }
 
   Future<void> setRefreshInterval(int minutes) {
