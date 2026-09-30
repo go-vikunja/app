@@ -14,13 +14,9 @@ import android.widget.ListView
 import android.widget.TextView
 import androidx.core.content.edit
 import androidx.core.net.toUri
-import androidx.glance.appwidget.GlanceAppWidgetManager
-import androidx.glance.appwidget.state.updateAppWidgetState
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import es.antonborri.home_widget.HomeWidgetBackgroundIntent
-import es.antonborri.home_widget.HomeWidgetGlanceState
-import es.antonborri.home_widget.HomeWidgetGlanceStateDefinition
 import es.antonborri.home_widget.HomeWidgetPlugin
 import io.vikunja.app.R
 import kotlinx.coroutines.CoroutineScope

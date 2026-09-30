@@ -47,12 +47,50 @@ import java.util.Date
 import java.util.Locale
 import androidx.glance.ImageProvider
 import androidx.glance.action.ActionParameters
+import androidx.glance.action.actionParametersOf
 import androidx.glance.appwidget.action.actionRunCallback
+import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.components.CircleIconButton
+import androidx.glance.appwidget.state.updateAppWidgetState
+import es.antonborri.home_widget.HomeWidgetPlugin
 import io.vikunja.app.MainActivity
 import io.vikunja.app.R
-import androidx.glance.appwidget.action.ActionCallback
 import io.vikunja.app.INTENT_TYPE_ADD_TASK
+import java.util.concurrent.ConcurrentHashMap
+
+class CompleteTaskAction : ActionCallback {
+    override suspend fun onAction(
+        context: Context,
+        glanceId: GlanceId,
+        parameters: ActionParameters
+    ) {
+        val taskID = parameters[taskId] ?: return
+        if (taskID == "null") return
+
+        // Optimistic completion: mark the row ticked and recompose right
+        // away, so the tick doesn't revert while the server round-trip and
+        // the background refresh are still in flight.
+        AppWidget.markCompleting(taskID)
+        val appWidgetId = GlanceAppWidgetManager(context).getAppWidgetId(glanceId)
+        recomposeWidgetInstance(context, appWidgetId)
+
+        val prefs = HomeWidgetPlugin.getData(context)
+        prefs.edit {
+            putString("completeTask", taskID)
+            commit()
+        }
+        val uri = "vikunja-app://completeTask".toUri()
+        val taskURI = uri.buildUpon().appendQueryParameter("taskID", taskID).build()
+        val backgroundIntent = HomeWidgetBackgroundIntent.getBroadcast(
+            context, taskURI
+        )
+        backgroundIntent.send()
+    }
+
+    companion object {
+        val taskId = ActionParameters.Key<String>("task_id")
+    }
+}
 
 class InteractiveAction : ActionCallback {
     override suspend fun onAction(
@@ -123,6 +161,38 @@ class AppWidget : GlanceAppWidget() {
     private var todayTasks: MutableList<Task> = ArrayList()
     private var otherTasks: MutableList<Task> = ArrayList()
 
+    companion object {
+        private const val COMPLETING_TTL_MS = 2 * 60 * 1000L
+
+        /**
+         * Task ids ticked on the widget surface whose server round-trip hasn't
+         * been reflected in the cached task list yet. Process-wide on purpose:
+         * the task is as good as done on every instance showing it. Rows in
+         * this set render ticked and struck through immediately; entries are
+         * dropped once the cached list no longer contains the task (the
+         * completion landed) or when they outlive [COMPLETING_TTL_MS] (the
+         * completion presumably failed — show the task as open again).
+         */
+        private val completingTasks = ConcurrentHashMap<String, Long>()
+
+        fun isCompleting(taskId: String) = completingTasks.containsKey(taskId)
+
+        fun markCompleting(taskId: String) {
+            completingTasks[taskId] = System.currentTimeMillis()
+        }
+
+        /** Forgets completions that landed or expired, judged against the
+         * ids currently present in one instance's cached task list. */
+        private fun pruneCompletions(cachedIds: Set<String>) {
+            val now = System.currentTimeMillis()
+            for (taskId in completingTasks.keys.toList()) {
+                val landed = taskId !in cachedIds
+                val expired = now - (completingTasks[taskId] ?: 0L) > COMPLETING_TTL_MS
+                if (landed || expired) completingTasks.remove(taskId)
+            }
+        }
+    }
+
     override val stateDefinition: GlanceStateDefinition<*>
         get() = HomeWidgetGlanceStateDefinition()
 
@@ -150,6 +220,7 @@ class AppWidget : GlanceAppWidget() {
             }
 
             if (tasks != null && tasks.isNotEmpty()) {
+                pruneCompletions(tasks.map { it.id }.toSet())
                 for (task in tasks) {
                     if (task.today) {
                         todayTasks.add(task)
@@ -161,19 +232,6 @@ class AppWidget : GlanceAppWidget() {
         } else {
             Log.d("Widget", "No tasks found for widget $appWidgetId")
         }
-    }
-
-    private fun doneTask(context: Context, prefs: SharedPreferences, taskID: String) {
-        prefs.edit {
-            putString("completeTask", taskID)
-            commit()
-        }
-        val uri = "vikunja-app://completeTask".toUri()
-        val taskURI = uri.buildUpon().appendQueryParameter("taskID", taskID).build()
-        val backgroundIntent = HomeWidgetBackgroundIntent.getBroadcast(
-            context, taskURI
-        )
-        backgroundIntent.send()
     }
 
     @Composable
@@ -299,14 +357,20 @@ class AppWidget : GlanceAppWidget() {
     private fun RenderRow(
         context: Context, task: Task, prefs: SharedPreferences, showDate: Boolean = false
     ) {
+        // Ticked on this surface but the completion hasn't been reflected in
+        // the cached list yet: keep the row visibly done instead of letting
+        // the checkbox revert while the background refresh is in flight.
+        val completing = isCompleting(task.id)
         Row(
             modifier = GlanceModifier.fillMaxWidth().padding(8.dp)
                 .background(ColorProvider(Color.White, Color(0xFF1f2937))),
             verticalAlignment = Alignment.CenterVertically
         ) {
             CheckBox(
-                checked = false,
-                onCheckedChange = { doneTask(context, prefs, task.id) },
+                checked = completing,
+                onCheckedChange = actionRunCallback<CompleteTaskAction>(
+                    parameters = actionParametersOf(CompleteTaskAction.taskId to task.id)
+                ),
                 modifier = GlanceModifier.padding(start = 0.dp)
             )
             val taskDueDate = task.dueDateAsDate()

@@ -99,7 +99,10 @@ Future<void> completeTask(String taskID) async {
   var taskResponse = await taskService.getTask(int.parse(taskID));
   var task = taskResponse.toSuccess().body;
   await taskService.update(task.copyWith(done: true));
-  await updateWidget();
+  // Skip the project-catalog sync here: completions want the visible list
+  // refreshed as fast as possible, and the catalog is refreshed by app
+  // opens and the periodic sync anyway.
+  await updateWidget(syncProjects: false);
 }
 
 WidgetTask convertTask(Task task) {
@@ -129,17 +132,19 @@ List<Task> filterForDueTasks(List<Task> tasks) {
       .toList();
 }
 
-Future<void> updateWidget() async {
+Future<void> updateWidget({bool syncProjects = true}) async {
   var datasource = SettingsDatasource(FlutterSecureStorage());
   final client = await _initWidgetClient(datasource);
   if (client == null) return;
 
   try {
     final store = HomeWidgetPluginStore();
-    await syncWidgetProjectOptions(
-      projectService: ProjectRepositoryImpl(ProjectDataSource(client)),
-      store: store,
-    );
+    if (syncProjects) {
+      await syncWidgetProjectOptions(
+        projectService: ProjectRepositoryImpl(ProjectDataSource(client)),
+        store: store,
+      );
+    }
 
     final widgetIdsJson = await store.read<String>('WidgetIds') ?? '[]';
     final widgetIds = (jsonDecode(widgetIdsJson) as List).cast<String>();
