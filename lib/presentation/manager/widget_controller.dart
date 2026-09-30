@@ -5,6 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:vikunja_app/core/home_widget_store.dart';
 import 'package:vikunja_app/core/network/client.dart';
+import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/data/data_sources/project_data_source.dart';
 import 'package:vikunja_app/data/data_sources/settings_data_source.dart';
 import 'package:vikunja_app/data/data_sources/task_data_source.dart';
@@ -17,17 +18,35 @@ import 'package:vikunja_app/domain/entities/widget_view.dart';
 import 'package:vikunja_app/domain/repositories/project_repository.dart';
 import 'package:vikunja_app/domain/repositories/task_repository.dart';
 
+/// Widget updates are patient background work — nobody is staring at a
+/// spinner — and saved-filter queries in particular can be slow on large
+/// accounts. The foreground UI keeps its short timeout; background clients
+/// wait far longer.
+const widgetRequestTimeout = Duration(seconds: 60);
+
 Future<Client?> _initWidgetClient(SettingsDatasource datasource) async {
   var base = await datasource.getServer();
   var refreshToken = await datasource.getRefreshToken();
   if (refreshToken == null || base == null) return null;
 
-  Client client = Client(base: base);
+  Client client = Client(base: base, requestTimeout: widgetRequestTimeout);
   tz.initializeTimeZones();
 
   var ignoreCertificates = await datasource.getIgnoreCertificates();
   client.setIgnoreCerts(ignoreCertificates);
   return client;
+}
+
+/// Widget fetches run where nothing waits on them, so a failure that isn't a
+/// definitive server answer (timeout, dropped connection) gets one automatic
+/// retry before the previous state is kept. Server responses — success or
+/// HTTP error — are returned as-is.
+Future<Response<T>> _retryOnException<T>(
+  Future<Response<T>> Function() fetch,
+) async {
+  final first = await fetch();
+  if (!first.isException) return first;
+  return fetch();
 }
 
 /// Saves every page of the signed-in account's projects — including saved
@@ -41,7 +60,9 @@ Future<void> syncWidgetProjectOptions({
 }) async {
   final projects = <Project>[];
   for (var page = 1; ; page++) {
-    final response = await projectService.getAll(page: page);
+    final response = await _retryOnException(
+      () => projectService.getAll(page: page),
+    );
     if (!response.isSuccessful) return;
 
     final success = response.toSuccess();
@@ -197,23 +218,29 @@ Future<void> updateWidgetInstance(
 
   switch (view) {
     case WidgetView.inbox:
-      final result = await taskService.getByFilterString('done = false');
+      final result = await _retryOnException(
+        () => taskService.getByFilterString('done = false'),
+      );
       success = result.isSuccessful;
       if (success) tasks = result.toSuccess().body;
 
     case WidgetView.today:
-      final result = await taskService.getByFilterString(
-        'done = false && due_date < now/d+1d',
+      final result = await _retryOnException(
+        () => taskService.getByFilterString(
+          'done = false && due_date < now/d+1d',
+        ),
       );
       success = result.isSuccessful;
       if (success) tasks = result.toSuccess().body;
 
     case WidgetView.upcoming:
-      final result = await taskService.getByFilterString(
-        'done = false && due_date >= now/d && due_date < now/d+7d',
-        {
-          'filter_include_nulls': ['false'],
-        },
+      final result = await _retryOnException(
+        () => taskService.getByFilterString(
+          'done = false && due_date >= now/d && due_date < now/d+7d',
+          {
+            'filter_include_nulls': ['false'],
+          },
+        ),
       );
       success = result.isSuccessful;
       if (success) tasks = result.toSuccess().body;
@@ -230,7 +257,9 @@ Future<void> updateWidgetInstance(
       if (projectId != 0) {
         // A negative id is a saved filter; the server resolves it to the
         // filter expression, so the fetch is shared with real projects.
-        final result = await taskService.getAllByProject(projectId);
+        final result = await _retryOnException(
+          () => taskService.getAllByProject(projectId),
+        );
         success = result.isSuccessful;
         if (success) {
           tasks = result.toSuccess().body.where((t) => !t.done).toList();
