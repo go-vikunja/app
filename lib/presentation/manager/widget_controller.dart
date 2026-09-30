@@ -5,6 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:vikunja_app/core/network/client.dart';
+import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/data/data_sources/project_data_source.dart';
 import 'package:vikunja_app/data/data_sources/settings_data_source.dart';
 import 'package:vikunja_app/data/data_sources/task_data_source.dart';
@@ -88,6 +89,37 @@ List<Task> filterForDueTasks(List<Task> tasks) {
       .toList();
 }
 
+Future<Response<List<Task>>> loadWidgetTasks(
+  TaskRepository taskService, {
+  int? projectId,
+  String filter = 'done = false',
+  Map<String, List<String>>? queryParameters,
+}) async {
+  final tasks = <Task>[];
+  for (var page = 1; ; page++) {
+    final parameters = {
+      ...?queryParameters,
+      'filter': [filter],
+      'page': [page.toString()],
+    };
+    final response = projectId == null
+        ? await taskService.getByFilterString(filter, parameters)
+        : await taskService.getAllByProject(projectId, parameters);
+    if (!response.isSuccessful) return response;
+
+    final result = response.toSuccess();
+    tasks.addAll(result.body.where((task) => !task.done));
+    final headers = result.headers.map(
+      (key, value) => MapEntry(key.toLowerCase(), value),
+    );
+    final totalPages =
+        int.tryParse(headers['x-pagination-total-pages'] ?? '1') ?? 1;
+    if (page >= totalPages) {
+      return SuccessResponse(tasks, result.statusCode, result.headers);
+    }
+  }
+}
+
 Future<void> updateWidget() async {
   var datasource = SettingsDatasource(FlutterSecureStorage());
   final client = await _initWidgetClient(datasource);
@@ -151,21 +183,23 @@ Future<void> _updateWidgetId(
 
   switch (view) {
     case WidgetView.inbox:
-      final result = await taskService.getByFilterString('done = false');
+      final result = await loadWidgetTasks(taskService);
       success = result.isSuccessful;
       if (success) tasks = result.toSuccess().body;
 
     case WidgetView.today:
-      final result = await taskService.getByFilterString(
-        'done = false && due_date < now/d+1d',
+      final result = await loadWidgetTasks(
+        taskService,
+        filter: 'done = false && due_date < now/d+1d',
       );
       success = result.isSuccessful;
       if (success) tasks = result.toSuccess().body;
 
     case WidgetView.upcoming:
-      final result = await taskService.getByFilterString(
-        'done = false && due_date >= now/d && due_date < now/d+7d',
-        {
+      final result = await loadWidgetTasks(
+        taskService,
+        filter: 'done = false && due_date >= now/d && due_date < now/d+7d',
+        queryParameters: {
           'filter_include_nulls': ['false'],
         },
       );
@@ -185,10 +219,10 @@ Future<void> _updateWidgetId(
         'widget_project_name_$widgetId',
       );
       if (projectId != 0) {
-        final result = await taskService.getAllByProject(projectId);
+        final result = await loadWidgetTasks(taskService, projectId: projectId);
         success = result.isSuccessful;
         if (success) {
-          tasks = result.toSuccess().body.where((t) => !t.done).toList();
+          tasks = result.toSuccess().body;
         }
       }
       title = projectName ?? view.displayName;
