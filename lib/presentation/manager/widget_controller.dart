@@ -2,25 +2,34 @@ import 'dart:convert';
 import 'dart:developer' as developer;
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:home_widget/home_widget.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:vikunja_app/core/home_widget_store.dart';
 import 'package:vikunja_app/core/network/client.dart';
+import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/data/data_sources/project_data_source.dart';
 import 'package:vikunja_app/data/data_sources/settings_data_source.dart';
 import 'package:vikunja_app/data/data_sources/task_data_source.dart';
 import 'package:vikunja_app/data/repositories/project_repository_impl.dart';
 import 'package:vikunja_app/data/repositories/task_repository_impl.dart';
+import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/entities/widget_task.dart';
 import 'package:vikunja_app/domain/entities/widget_view.dart';
+import 'package:vikunja_app/domain/repositories/project_repository.dart';
 import 'package:vikunja_app/domain/repositories/task_repository.dart';
+
+/// Widget updates are patient background work — nobody is staring at a
+/// spinner — and saved-filter queries in particular can be slow on large
+/// accounts. The foreground UI keeps its short timeout; background clients
+/// wait far longer.
+const widgetRequestTimeout = Duration(seconds: 60);
 
 Future<Client?> _initWidgetClient(SettingsDatasource datasource) async {
   var base = await datasource.getServer();
   var refreshToken = await datasource.getRefreshToken();
   if (refreshToken == null || base == null) return null;
 
-  Client client = Client(base: base);
+  Client client = Client(base: base, requestTimeout: widgetRequestTimeout);
   tz.initializeTimeZones();
 
   var ignoreCertificates = await datasource.getIgnoreCertificates();
@@ -28,17 +37,49 @@ Future<Client?> _initWidgetClient(SettingsDatasource datasource) async {
   return client;
 }
 
-// Save project list for the widget config activity to read
-Future<void> _syncWidgetProjects(Client client) async {
-  final projectService = ProjectRepositoryImpl(ProjectDataSource(client));
-  final projectsResponse = await projectService.getAll();
-  if (projectsResponse.isSuccessful) {
-    final projects = projectsResponse.toSuccess().body;
-    final projectsJson = jsonEncode(
-      projects.map((p) => {'id': p.id, 'title': p.title}).toList(),
+/// Widget fetches run where nothing waits on them, so a failure that isn't a
+/// definitive server answer (timeout, dropped connection) gets one automatic
+/// retry before the previous state is kept. Server responses — success or
+/// HTTP error — are returned as-is.
+Future<Response<T>> _retryOnException<T>(
+  Future<Response<T>> Function() fetch,
+) async {
+  final first = await fetch();
+  if (!first.isException) return first;
+  return fetch();
+}
+
+/// Saves every page of the signed-in account's projects — including saved
+/// filters, which the server lists as pseudo-projects with negative ids —
+/// into the widget data store for the configuration screen's pickers.
+///
+/// A failed fetch keeps the last good list so the pickers never go blank.
+Future<void> syncWidgetProjectOptions({
+  required ProjectRepository projectService,
+  required HomeWidgetStore store,
+}) async {
+  final projects = <Project>[];
+  for (var page = 1; ; page++) {
+    final response = await _retryOnException(
+      () => projectService.getAll(page: page),
     );
-    await HomeWidget.saveWidgetData('WidgetProjects', projectsJson);
+    if (!response.isSuccessful) return;
+
+    final success = response.toSuccess();
+    projects.addAll(success.body);
+
+    final headers = success.headers.map(
+      (key, value) => MapEntry(key.toLowerCase(), value),
+    );
+    final totalPages =
+        int.tryParse(headers['x-pagination-total-pages'] ?? '1') ?? 1;
+    if (page >= totalPages) break;
   }
+
+  final projectsJson = jsonEncode(
+    projects.map((p) => {'id': p.id, 'title': p.title}).toList(),
+  );
+  await store.write('WidgetProjects', projectsJson);
 }
 
 Future<void> completeTask(String taskID) async {
@@ -58,7 +99,10 @@ Future<void> completeTask(String taskID) async {
   var taskResponse = await taskService.getTask(int.parse(taskID));
   var task = taskResponse.toSuccess().body;
   await taskService.update(task.copyWith(done: true));
-  await updateWidget();
+  // Skip the project-catalog sync here: completions want the visible list
+  // refreshed as fast as possible, and the catalog is refreshed by app
+  // opens and the periodic sync anyway.
+  await updateWidget(syncProjects: false);
 }
 
 WidgetTask convertTask(Task task) {
@@ -88,24 +132,33 @@ List<Task> filterForDueTasks(List<Task> tasks) {
       .toList();
 }
 
-Future<void> updateWidget() async {
+Future<void> updateWidget({bool syncProjects = true}) async {
   var datasource = SettingsDatasource(FlutterSecureStorage());
   final client = await _initWidgetClient(datasource);
   if (client == null) return;
 
   try {
-    await _syncWidgetProjects(client);
+    final store = HomeWidgetPluginStore();
+    if (syncProjects) {
+      await syncWidgetProjectOptions(
+        projectService: ProjectRepositoryImpl(ProjectDataSource(client)),
+        store: store,
+      );
+    }
 
-    final widgetIdsJson =
-        await HomeWidget.getWidgetData<String>('WidgetIds') ?? '[]';
+    final widgetIdsJson = await store.read<String>('WidgetIds') ?? '[]';
     final widgetIds = (jsonDecode(widgetIdsJson) as List).cast<String>();
 
     final taskService = TaskRepositoryImpl(TaskDataSource(client));
     for (final widgetId in widgetIds) {
-      await _updateWidgetId(widgetId, taskService);
+      await updateWidgetInstance(
+        widgetId,
+        store: store,
+        taskService: taskService,
+      );
     }
 
-    await reRenderWidget();
+    await store.rerenderWidget();
   } catch (e, s) {
     developer.log('Update widget error:', error: e, stackTrace: s);
   }
@@ -125,49 +178,74 @@ Future<void> updateWidgetForId(String? widgetId) async {
   }
 
   try {
-    await _syncWidgetProjects(client);
-
+    final store = HomeWidgetPluginStore();
+    // Deliberately no project-catalog sync here: this path serves a view
+    // switch or a configure save, where the chosen view's tasks should be
+    // fetched as fast as possible. The catalog (which feeds the pickers)
+    // is refreshed by the full update on app opens and the periodic sync.
     final taskService = TaskRepositoryImpl(TaskDataSource(client));
-    await _updateWidgetId(widgetId, taskService);
-    await reRenderWidget();
+    await updateWidgetInstance(
+      widgetId,
+      store: store,
+      taskService: taskService,
+    );
+    await store.rerenderWidget();
   } catch (e, s) {
     developer.log('Update widget $widgetId error:', error: e, stackTrace: s);
   }
 }
 
-Future<void> _updateWidgetId(
-  String widgetId,
-  TaskRepositoryImpl taskService,
-) async {
-  final rawViewStr = await HomeWidget.getWidgetData<String>(
-    'widget_view_$widgetId',
-  );
+/// Fetches the tasks for one widget instance's configured view and persists
+/// them for the native widget to render.
+///
+/// Saved filters are configured like projects (view `project` with a
+/// negative project id); the server resolves the id to the filter
+/// expression, and only the filter's undone tasks are rendered.
+///
+/// A successful fetch also records `widget_state_<id> = 'ok'`; a permanent
+/// failure (403/404, or a project view with no stored id — the configured
+/// view is gone or broken) records `'error'`, which the native widget
+/// renders as an explicit error state instead of the stale cached list.
+/// Transient failures keep the last good cache and the previous state.
+Future<void> updateWidgetInstance(
+  String widgetId, {
+  required HomeWidgetStore store,
+  required TaskRepository taskService,
+}) async {
+  final rawViewStr = await store.read<String>('widget_view_$widgetId');
   final viewStr = rawViewStr ?? 'today';
   final view = WidgetView.fromString(viewStr);
 
   List<Task> tasks = [];
   String title = view.displayName;
   bool success = true;
+  bool viewInvalid = false;
 
   switch (view) {
     case WidgetView.inbox:
-      final result = await taskService.getByFilterString('done = false');
+      final result = await _retryOnException(
+        () => taskService.getByFilterString('done = false'),
+      );
       success = result.isSuccessful;
       if (success) tasks = result.toSuccess().body;
 
     case WidgetView.today:
-      final result = await taskService.getByFilterString(
-        'done = false && due_date < now/d+1d',
+      final result = await _retryOnException(
+        () => taskService.getByFilterString(
+          'done = false && due_date < now/d+1d',
+        ),
       );
       success = result.isSuccessful;
       if (success) tasks = result.toSuccess().body;
 
     case WidgetView.upcoming:
-      final result = await taskService.getByFilterString(
-        'done = false && due_date >= now/d && due_date < now/d+7d',
-        {
-          'filter_include_nulls': ['false'],
-        },
+      final result = await _retryOnException(
+        () => taskService.getByFilterString(
+          'done = false && due_date >= now/d && due_date < now/d+7d',
+          {
+            'filter_include_nulls': ['false'],
+          },
+        ),
       );
       success = result.isSuccessful;
       if (success) tasks = result.toSuccess().body;
@@ -175,40 +253,60 @@ Future<void> _updateWidgetId(
     case WidgetView.project:
       final projectId =
           int.tryParse(
-            await HomeWidget.getWidgetData<String>(
-                  'widget_project_id_$widgetId',
-                ) ??
-                '0',
+            await store.read<String>('widget_project_id_$widgetId') ?? '0',
           ) ??
           0;
-      final projectName = await HomeWidget.getWidgetData<String>(
+      final projectName = await store.read<String>(
         'widget_project_name_$widgetId',
       );
       if (projectId != 0) {
-        final result = await taskService.getAllByProject(projectId);
+        // A negative id is a saved filter; the server resolves it to the
+        // filter expression, so the fetch is shared with real projects.
+        final result = await _retryOnException(
+          () => taskService.getAllByProject(projectId),
+        );
         success = result.isSuccessful;
         if (success) {
           tasks = result.toSuccess().body.where((t) => !t.done).toList();
+        } else if (result.isError) {
+          final statusCode = result.toError().statusCode;
+          viewInvalid = statusCode == 403 || statusCode == 404;
         }
+      } else {
+        // A project view without a stored id is an invalid configured view.
+        success = false;
+        viewInvalid = true;
       }
       title = projectName ?? view.displayName;
   }
 
-  await HomeWidget.saveWidgetData('widget_title_$widgetId', title);
-  // Don't clobber a good cache with an empty list when the fetch failed.
+  await store.write('widget_title_$widgetId', title);
   if (success) {
-    await _saveWidgetTasks(widgetId, tasks);
+    await store.write('widget_state_$widgetId', 'ok');
+    // Don't clobber a good cache with an empty list when the fetch failed.
+    await _saveWidgetTasks(store, widgetId, tasks);
+  } else if (viewInvalid) {
+    // The native side renders an explicit error state instead of the
+    // (stale) cached task list; the cache itself is kept untouched.
+    await store.write('widget_state_$widgetId', 'error');
+  } else {
+    // A transient failure keeps the last good cache and state — unless the
+    // view was just switched: the picker publishes a loading state and
+    // drops the previous view's cache, so sitting on it forever would
+    // leave the widget stuck. Surface the explicit error state instead;
+    // the next successful refresh clears it.
+    final state = await store.read<String>('widget_state_$widgetId');
+    if (state == 'loading') {
+      await store.write('widget_state_$widgetId', 'error');
+    }
   }
 }
 
-Future<void> _saveWidgetTasks(String widgetId, List<Task> tasks) async {
+Future<void> _saveWidgetTasks(
+  HomeWidgetStore store,
+  String widgetId,
+  List<Task> tasks,
+) async {
   final data = jsonEncode(tasks.map((e) => convertTask(e).toJSON()).toList());
-  await HomeWidget.saveWidgetData('WidgetTasks_$widgetId', data);
-}
-
-Future<void> reRenderWidget() async {
-  await HomeWidget.updateWidget(
-    name: 'AppWidget',
-    qualifiedAndroidName: 'io.vikunja.app.widget.AppWidgetReciever',
-  );
+  await store.write('WidgetTasks_$widgetId', data);
 }

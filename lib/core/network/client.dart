@@ -22,8 +22,11 @@ class Client {
 
   // If the server is reachable but does not respond (e.g. container paused),
   // Cronet/URLSession can hang for a long time. Enforce a sane client-side
-  // timeout so the UI can surface an error and allow recovery.
-  static const Duration _requestTimeout = Duration(seconds: 10);
+  // timeout so the UI can surface an error and allow recovery. Background
+  // callers (widget updates) pass a longer one: nobody is waiting on them
+  // and saved-filter queries can be slow on large accounts.
+  static const Duration _defaultRequestTimeout = Duration(seconds: 10);
+  final Duration _requestTimeout;
 
   final JsonDecoder _decoder = JsonDecoder();
   final JsonEncoder _encoder = JsonEncoder();
@@ -39,7 +42,8 @@ class Client {
 
   String get apiBase => '$_base/api/v1';
 
-  Client({required String base}) {
+  Client({required String base, Duration? requestTimeout})
+    : _requestTimeout = requestTimeout ?? _defaultRequestTimeout {
     base = base.replaceAll(" ", "");
     if (base.endsWith("/")) {
       base = base.substring(0, base.length - 1);
