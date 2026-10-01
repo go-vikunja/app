@@ -6,6 +6,7 @@ import 'package:vikunja_app/presentation/widgets/task/task_actions.dart';
 
 class TaskListItem extends StatefulWidget {
   final Task task;
+  final int indent;
   final Function onTap;
   final Function onEdit;
   final Function(bool value) onCheckedChanged;
@@ -13,6 +14,7 @@ class TaskListItem extends StatefulWidget {
   const TaskListItem({
     super.key,
     required this.task,
+    this.indent = 0,
     required this.onTap,
     required this.onEdit,
     required this.onCheckedChanged,
@@ -30,49 +32,53 @@ class TaskListItemState extends State<TaskListItem> {
     var isThreeLine =
         widget.task.hasDueDate ||
         widget.task.priority != null && widget.task.priority != 0;
+    final indentPx = widget.indent * 24.0;
 
-    return Stack(
-      fit: StackFit.loose,
-      children: [
-        ListTile(
-          onTap: () {
-            widget.onTap();
-          },
-          contentPadding: const EdgeInsetsDirectional.only(
-            start: 16.0,
-            end: 8.0,
-          ),
-          title: Text(
-            widget.task.title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          subtitle: _buildTaskSubtitle(widget.task, context),
-          leading: Checkbox(
-            value: widget.task.done,
-            onChanged: (bool? newValue) {
-              if (newValue != null) {
-                widget.onCheckedChanged(newValue);
-              }
+    return Padding(
+      padding: EdgeInsetsDirectional.only(start: indentPx),
+      child: Stack(
+        fit: StackFit.loose,
+        children: [
+          ListTile(
+            onTap: () {
+              widget.onTap();
             },
+            contentPadding: const EdgeInsetsDirectional.only(
+              start: 16.0,
+              end: 8.0,
+            ),
+            title: Text(
+              widget.task.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            subtitle: _buildTaskSubtitle(widget.task, context),
+            leading: Checkbox(
+              value: widget.task.done,
+              onChanged: (bool? newValue) {
+                if (newValue != null) {
+                  widget.onCheckedChanged(newValue);
+                }
+              },
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TaskActions(
+                  task: widget.task,
+                  onEdit: () => widget.onEdit(),
+                  variant: TaskActionsVariant.menu,
+                ),
+              ],
+            ),
           ),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TaskActions(
-                task: widget.task,
-                onEdit: () => widget.onEdit(),
-                variant: TaskActionsVariant.menu,
-              ),
-            ],
+          Container(
+            width: 4.0,
+            height: isThreeLine ? 86.0 : 72.0,
+            color: widget.task.color,
           ),
-        ),
-        Container(
-          width: 4.0,
-          height: isThreeLine ? 86.0 : 72.0,
-          color: widget.task.color,
-        ),
-      ],
+        ],
+      ),
     );
   }
 
