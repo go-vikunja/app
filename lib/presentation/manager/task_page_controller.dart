@@ -62,16 +62,18 @@ class TaskPageController extends _$TaskPageController
     await loadMoreItems(
       fetcher: (page) => _getAllFiltered(page: page),
       stateUpdater: (newTasks) async {
+        final typed = newTasks as List<Task>;
         var projectsResponse = await ref
             .read(projectRepositoryProvider)
             .getAll();
-        _setProjectOfTask(projectsResponse, newTasks as List<Task>);
-
-        final filteredNewTasks = flattenAndRemoveSubtasks(newTasks);
+        _setProjectOfTask(projectsResponse, typed);
 
         final latestModel = state.value;
         if (latestModel != null) {
-          final updatedTasks = [...latestModel.tasks, ...filteredNewTasks];
+          final updatedTasks = mergeAndRebuildTree(
+            latestModel.tasks,
+            typed,
+          );
           state = AsyncData(
             latestModel.copyWith(tasks: updatedTasks, isLoadingNextPage: false),
           );

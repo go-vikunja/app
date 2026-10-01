@@ -12,18 +12,83 @@ import 'package:vikunja_app/presentation/manager/projects_controller.dart';
 
 part 'project_controller.g.dart';
 
-List<Task> flattenAndRemoveSubtasks(List<Task> tasks) {
-  final Map<int, Task> taskMap = {};
+Task _cloneTask(Task t) => Task(
+  id: t.id,
+  identifier: t.identifier,
+  title: t.title,
+  description: t.description,
+  done: t.done,
+  reminderDates: List.of(t.reminderDates),
+  dueDate: t.dueDate,
+  startDate: t.startDate,
+  endDate: t.endDate,
+  parentTaskId: t.parentTaskId,
+  priority: t.priority,
+  repeatAfter: t.repeatAfter,
+  color: t.color,
+  position: t.position,
+  percentDone: t.percentDone,
+  labels: List.of(t.labels),
+  subtasks: List<Task>.from(t.subtasks.map(_cloneTask)),
+  attachments: List.of(t.attachments),
+  created: t.created,
+  updated: t.updated,
+  createdBy: t.createdBy,
+  projectId: t.projectId,
+  bucketId: t.bucketId,
+);
 
-  for (final task in tasks) {
-    taskMap[task.id] = task;
+List<Task> _collectAllTasks(List<Task> tree) {
+  final result = <Task>[];
+  void walk(List<Task> list) {
+    for (final t in list) {
+      result.add(t);
+      if (t.subtasks.isNotEmpty) walk(t.subtasks);
+    }
   }
 
-  for (final task in tasks) {
+  walk(tree);
+  return result;
+}
+
+void _assignParentIds(List<Task> tasks) {
+  void walk(Task parent) {
+    for (final sub in parent.subtasks) {
+      sub.parentTaskId ??= parent.id;
+      if (sub.subtasks.isNotEmpty) walk(sub);
+    }
+  }
+
+  for (final t in tasks) {
+    if (t.subtasks.isNotEmpty) walk(t);
+  }
+}
+
+List<Task> flattenAndRemoveSubtasks(List<Task> tasks) {
+  if (tasks.isEmpty) return [];
+  final clones = tasks.map(_cloneTask).toList();
+  _assignParentIds(clones);
+  final Map<int, Task> taskMap = {};
+  for (final t in clones) {
+    final existing = taskMap[t.id];
+    if (existing == null) {
+      taskMap[t.id] = t;
+    } else {
+      if (existing.parentTaskId == null && t.parentTaskId != null) {
+        taskMap[t.id] = t;
+      } else if (existing.subtasks.isEmpty && t.subtasks.isNotEmpty) {
+        taskMap[t.id] = t;
+      }
+    }
+  }
+
+  for (final task in taskMap.values) {
     if (task.parentTaskId != null) {
       final parent = taskMap[task.parentTaskId];
-      if (parent != null) {
-        final existingIdx = parent.subtasks.indexWhere((s) => s.id == task.id);
+      if (parent != null && parent.id != task.id) {
+        final existingIdx = parent.subtasks.indexWhere(
+          (s) => s.id == task.id,
+        );
         if (existingIdx >= 0) {
           parent.subtasks[existingIdx] = task;
         } else {
@@ -33,7 +98,18 @@ List<Task> flattenAndRemoveSubtasks(List<Task> tasks) {
     }
   }
 
-  return tasks.where((t) => t.parentTaskId == null).toList();
+  for (final t in taskMap.values) {
+    t.subtasks.sort((a, b) => (a.position ?? 0).compareTo(b.position ?? 0));
+  }
+
+  final roots = taskMap.values.where((t) => t.parentTaskId == null).toList();
+  roots.sort((a, b) => (a.position ?? 0).compareTo(b.position ?? 0));
+  return roots;
+}
+
+List<Task> mergeAndRebuildTree(List<Task> existingTree, List<Task> newRaw) {
+  final all = [..._collectAllTasks(existingTree), ...newRaw];
+  return flattenAndRemoveSubtasks(all);
 }
 
 @riverpod
@@ -86,10 +162,10 @@ class ProjectController extends _$ProjectController with PaginationMixin<Task> {
           page,
         ),
         stateUpdater: (newTasks) {
-          final filteredNewTasks = flattenAndRemoveSubtasks(
+          final updatedTasks = mergeAndRebuildTree(
+            currentState.tasks,
             newTasks as List<Task>,
           );
-          final updatedTasks = [...currentState.tasks, ...filteredNewTasks];
           state = AsyncData(
             currentState.copyWith(
               tasks: updatedTasks,
