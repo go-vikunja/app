@@ -1,0 +1,15 @@
+name: vikunja_domain
+description: Pure-Dart domain model of the Vikunja mobile client.
+publish_to: none
+version: 0.1.0
+resolution: workspace
+
+environment:
+  sdk: ^3.13.0
+
+dependencies:
+  meta: ^1.16.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter

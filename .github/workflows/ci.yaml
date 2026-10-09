@@ -1,0 +1,142 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  analyze-test:
+    name: Analyze and test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up the Flutter workspace
+        uses: ./.github/actions/setup-workspace
+
+      # The setup step has just regenerated l10n and *.g.dart over the
+      # committed files.
+      - name: Check that committed generated code is current
+        run: |
+          if [[ -n "$(git status --porcelain -- app/lib)" ]]; then
+            git status --short -- app/lib
+            echo "::error::Generated code is stale. Run: cd app && flutter gen-l10n && dart run build_runner build"
+            exit 1
+          fi
+
+      - name: Check formatting
+        run: tool/check_format.sh
+
+      - name: Check that packages/ stay pure Dart
+        run: tool/check_pure_dart_packages.sh
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test app
+        working-directory: app
+        run: flutter test
+
+      - name: Test vikunja_domain
+        working-directory: packages/vikunja_domain
+        run: flutter test
+
+      - name: Test vikunja_api (without contract tests)
+        working-directory: packages/vikunja_api
+        run: flutter test --exclude-tags contract
+
+  contract:
+    name: Contract tests (Vikunja 1.0, 2.0, 2.3, 2.4, 2.7)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Started before the SDK install so the servers boot in parallel with it.
+      - name: Start Vikunja test servers
+        run: docker compose -f test_servers/docker-compose.yaml up -d --quiet-pull
+
+      - name: Set up the Flutter workspace
+        uses: ./.github/actions/setup-workspace
+        with:
+          codegen: "false"
+
+      - name: Wait for test servers
+        run: tool/wait_for_test_servers.sh
+
+      - name: Run contract tests
+        working-directory: packages/vikunja_api
+        env:
+          VIKUNJA_CONTRACT: "1"
+        run: flutter test --tags contract
+
+      - name: Dump test server state and logs
+        if: failure()
+        run: |
+          docker compose -f test_servers/docker-compose.yaml ps --all
+          docker compose -f test_servers/docker-compose.yaml logs --no-color --timestamps
+
+  build-android:
+    name: Build Android (release APK)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Java
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Set up the Flutter workspace
+        uses: ./.github/actions/setup-workspace
+        with:
+          codegen: "false"
+
+      - name: Build release APK
+        working-directory: app
+        run: flutter build apk --release
+
+  build-ios:
+    name: Build iOS (release, unsigned)
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up the Flutter workspace
+        uses: ./.github/actions/setup-workspace
+        with:
+          codegen: "false"
+
+      - name: Build for iOS devices (unsigned)
+        working-directory: app
+        run: flutter build ios --release --no-codesign

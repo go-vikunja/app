@@ -1,0 +1,13 @@
+name: vikunja_workspace
+publish_to: none
+
+environment:
+  sdk: ^3.13.0
+
+workspace:
+  - app
+  - packages/vikunja_domain
+  - packages/vikunja_api
+
+dev_dependencies:
+  very_good_analysis: ^11.0.0

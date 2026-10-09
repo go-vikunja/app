@@ -1,0 +1,31 @@
+/// Something the connected server can do. Features are gated on these, never
+/// on raw version strings, so a server whose proxy hides `/api/v2` or whose
+/// admin disabled attachments is handled the same way as an old server.
+enum Capability {
+  apiV2,
+  sessionRefresh,
+  oauthPkce,
+  websocket,
+  bulkCreateTasks,
+  pendingEmail,
+  byIndexRedirect,
+  localAuth,
+  ldapAuth,
+  openIdConnect,
+  registration,
+  linkSharing,
+  taskAttachments,
+  taskComments,
+  totp,
+  caldav,
+  webhooks,
+  publicTeams,
+  userDeletion,
+  emailReminders,
+  backgroundUpload,
+  backgroundUnsplash,
+  timeTracking,
+  adminPanel,
+  auditLogs,
+  userInvites,
+}

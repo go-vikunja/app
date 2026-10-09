@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches the Flutter theme's dark surface colour (app_theme.dart). -->
+    <color name="launch_background">#10131B</color>
+</resources>

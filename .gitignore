@@ -1,0 +1,10 @@
+.DS_Store
+.dart_tool/
+.idea/
+*.iml
+build/
+coverage/
+.env
+*.keystore
+*.jks
+key.properties

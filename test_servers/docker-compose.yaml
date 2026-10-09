@@ -1,0 +1,78 @@
+# Local Vikunja servers for the vikunja_api contract tests, one per server
+# line the app tells apart:
+#   34510  1.0.0  below the 2.3.0 floor: must be reported as unsupported
+#   34520  2.0.0  /api/v1 only, no OAuth: below the floor, must be unsupported
+#   34523  2.3.0  /api/v1 only, adds OAuth 2.0 + PKCE and the WebSocket (floor)
+#   34524  2.4.0  first release with /api/v2
+#   34527  2.7.0  latest release
+# The host ports are referenced by the contract tests, tool/*.sh and the docs;
+# do not change them. They are published on 127.0.0.1 only, because the
+# servers allow open registration with a public JWT secret. An Android
+# emulator still reaches them at 10.0.2.2:<port>, the host's loopback.
+#
+# Start: docker compose -f test_servers/docker-compose.yaml up -d
+#        (docker-compose takes the same arguments)
+# Wait:  tool/wait_for_test_servers.sh
+# Stop:  docker compose -f test_servers/docker-compose.yaml down
+#
+# The images are built FROM scratch, so there is no shell for a healthcheck;
+# readiness is polled from the host by tool/wait_for_test_servers.sh.
+# There is deliberately no top-level `name:`. The project name defaults to
+# this directory, and a different name would start a second stack that
+# collides with a running one on the same ports.
+
+x-vikunja-env: &vikunja-env
+  # Fixed dummy secrets: these servers only ever hold throwaway test data.
+  VIKUNJA_SERVICE_SECRET: contract-tests-only-not-a-secret
+  VIKUNJA_SERVICE_JWTSECRET: contract-tests-only-not-a-secret
+  # The container runs as uid 1000 and its default paths (/db, /app/vikunja/files)
+  # are not writable without volumes. The tmpfs below keeps all state in
+  # memory, so every restart starts from an empty server.
+  VIKUNJA_FILES_BASEPATH: /tmp/files
+  VIKUNJA_DATABASE_TYPE: sqlite
+  VIKUNJA_DATABASE_PATH: /tmp/vikunja.db
+  # Later steps create test users through /register.
+  VIKUNJA_SERVICE_ENABLEREGISTRATION: "true"
+  # All test traffic comes from one IP. The login limiter (10/min) cannot be
+  # disabled and still applies.
+  VIKUNJA_RATELIMIT_ENABLED: "false"
+
+# VIKUNJA_SERVICE_PUBLICURL becomes `frontend_url` in /info. It says
+# localhost, which an emulator cannot open; browser sign-in tests (step 3)
+# will need an emulator-reachable address.
+services:
+  vikunja-1-0:
+    image: vikunja/vikunja:1.0.0
+    environment:
+      <<: *vikunja-env
+      VIKUNJA_SERVICE_PUBLICURL: http://localhost:34510/
+    tmpfs: ["/tmp:mode=1777"]
+    ports: ["127.0.0.1:34510:3456"]
+  vikunja-2-0:
+    image: vikunja/vikunja:2.0.0
+    environment:
+      <<: *vikunja-env
+      VIKUNJA_SERVICE_PUBLICURL: http://localhost:34520/
+    tmpfs: ["/tmp:mode=1777"]
+    ports: ["127.0.0.1:34520:3456"]
+  vikunja-2-3:
+    image: vikunja/vikunja:2.3.0
+    environment:
+      <<: *vikunja-env
+      VIKUNJA_SERVICE_PUBLICURL: http://localhost:34523/
+    tmpfs: ["/tmp:mode=1777"]
+    ports: ["127.0.0.1:34523:3456"]
+  vikunja-2-4:
+    image: vikunja/vikunja:2.4.0
+    environment:
+      <<: *vikunja-env
+      VIKUNJA_SERVICE_PUBLICURL: http://localhost:34524/
+    tmpfs: ["/tmp:mode=1777"]
+    ports: ["127.0.0.1:34524:3456"]
+  vikunja-2-7:
+    image: vikunja/vikunja:2.7.0
+    environment:
+      <<: *vikunja-env
+      VIKUNJA_SERVICE_PUBLICURL: http://localhost:34527/
+    tmpfs: ["/tmp:mode=1777"]
+    ports: ["127.0.0.1:34527:3456"]

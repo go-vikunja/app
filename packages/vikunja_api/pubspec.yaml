@@ -1,0 +1,18 @@
+name: vikunja_api
+description: Pure-Dart client for the Vikunja REST API (v1 and v2).
+publish_to: none
+version: 0.1.0
+resolution: workspace
+
+environment:
+  sdk: ^3.13.0
+
+dependencies:
+  dio: ^5.11.1
+  meta: ^1.16.0
+  vikunja_domain:
+    path: ../vikunja_domain
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter

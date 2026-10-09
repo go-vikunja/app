@@ -1,0 +1,226 @@
+{
+  "@@locale": "en",
+  "appTitle": "Taskuna",
+  "@appTitle": {
+    "description": "Name of the app, shown in the task switcher and on the connect screen. A brand name: do not translate."
+  },
+  "connectTagline": "Your tasks from your own Vikunja server, right on your phone.",
+  "connectAddressLabel": "Server address",
+  "connectAddressHint": "vikunja.example.com",
+  "connectAddressHelper": "The address you open Vikunja with in your browser, for example https://vikunja.example.com",
+  "connectAddressEmpty": "Enter the address of your Vikunja server.",
+  "connectClearAddress": "Clear address",
+  "connectContinue": "Continue",
+  "connectCancel": "Cancel",
+  "connectConnecting": "Connecting…",
+  "connectConnectingTo": "Looking for Vikunja at {address} …",
+  "@connectConnectingTo": {
+    "placeholders": {
+      "address": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "connectTryDemo": "Try the public demo",
+  "failureInvalidAddressTitle": "That doesn’t look like a server address",
+  "failureInvalidAddressExplanation": "“{input}” is not a web address the app can open.",
+  "@failureInvalidAddressExplanation": {
+    "placeholders": {
+      "input": {
+        "type": "String",
+        "example": "ftp://example"
+      }
+    }
+  },
+  "failureInvalidAddressSuggestion": "Enter the address you use for Vikunja in your browser, for example vikunja.example.com.",
+  "failureUnreachableTitle": "Server not reachable",
+  "failureUnreachableExplanation": "{host} could not be reached. The address may be misspelled, the server may be offline, or your device has no internet connection.",
+  "@failureUnreachableExplanation": {
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "failureUnreachableSuggestion": "Check the address and your connection, then try again. If the server runs at home, connect to the same Wi-Fi or VPN first.",
+  "failureTimeoutTitle": "The server took too long to answer",
+  "failureTimeoutExplanation": "{host} did not respond in time.",
+  "@failureTimeoutExplanation": {
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "failureTimeoutSuggestion": "Try again in a moment. If it keeps happening, the server may be overloaded or a firewall may be blocking it.",
+  "failureTlsTitle": "Secure connection failed",
+  "failureTlsExplanation": "This device does not trust the certificate of {host}. It may be self-signed, issued for a different address, or expired.",
+  "@failureTlsExplanation": {
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "failureTlsSuggestion": "If your server uses its own certificate authority, install its certificate in your device settings. Trusting self-signed certificates directly in the app is planned.",
+  "failureTlsSuggestionIos": "If your server uses its own certificate authority, install its certificate profile, then turn on full trust for it under Settings › General › About › Certificate Trust Settings. Trusting self-signed certificates directly in the app is planned.",
+  "failureTlsHandshakeExplanation": "{host} did not complete a secure (HTTPS) connection. The address may only speak plain http, or the server’s HTTPS setup is incomplete.",
+  "@failureTlsHandshakeExplanation": {
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "failureTlsHandshakeSuggestion": "Check the port and whether the address should start with http:// instead of https://. If HTTPS should work, check the reverse proxy’s TLS configuration.",
+  "failureNotVikunjaTitle": "No Vikunja server found",
+  "failureNotVikunjaExplanation": "{host} answered, but not like a Vikunja server.",
+  "@failureNotVikunjaExplanation": {
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "example.com"
+      }
+    }
+  },
+  "failureNotVikunjaSuggestion": "Check the address. If Vikunja runs in a subfolder, include it, for example example.com/vikunja.",
+  "failureUnavailableTitle": "Server temporarily unavailable",
+  "failureUnavailableExplanation": "{host} answered with an error instead of Vikunja. Vikunja may be down, restarting or overloaded.",
+  "@failureUnavailableExplanation": {
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "failureUnavailableSuggestion": "Try again in a few minutes. If it keeps happening, ask whoever runs the server to check on it.",
+  "failureLoginProxyTitle": "Server is behind a login page",
+  "failureLoginProxyExplanation": "A proxy in front of {host} asks for its own sign-in before Vikunja can be reached.",
+  "@failureLoginProxyExplanation": {
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "failureLoginProxySuggestion": "Ask whoever runs the server to let the app reach the Vikunja API directly. Support for custom proxy headers, such as Cloudflare Access tokens, is planned.",
+  "failureUnexpectedTitle": "Something went wrong",
+  "failureUnexpectedExplanation": "An unexpected error occurred while connecting.",
+  "failureUnexpectedSuggestion": "Try again in a moment.",
+  "insecureDialogTitle": "Unencrypted connection",
+  "insecureDialogBody": "{host} uses http:// instead of https://. Your password and tasks would travel unencrypted, and anyone on the same network could read or change them.\n\nOnly continue on a network you trust, such as your home network or a VPN.",
+  "@insecureDialogBody": {
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "192.168.1.20:3456"
+      }
+    }
+  },
+  "insecureDialogCancel": "Cancel",
+  "insecureDialogContinue": "Continue anyway",
+  "overviewTitle": "Server found",
+  "overviewVikunjaVersion": "Vikunja {version}",
+  "@overviewVikunjaVersion": {
+    "placeholders": {
+      "version": {
+        "type": "String",
+        "example": "2.7.0"
+      }
+    }
+  },
+  "overviewVikunjaVersionUnknown": "Vikunja, version unknown",
+  "overviewApiBadge": "API {version}",
+  "@overviewApiBadge": {
+    "placeholders": {
+      "version": {
+        "type": "String",
+        "example": "v2"
+      }
+    }
+  },
+  "overviewDemoBadge": "Demo server",
+  "overviewInsecureBadge": "Unencrypted",
+  "tierFullTitle": "Fully supported",
+  "tierFullBody": "This server offers the modern API, so all of the app's features work with it.",
+  "tierOauthTitle": "Supported",
+  "tierOauthBody": "The app works with this server. A few newer features need Vikunja 2.4 or newer.",
+  "tierOauthV2UnreachableBody": "The app works with this server, but its newer API (/api/v2) could not be reached, so a few features are unavailable. A reverse proxy may be blocking it.",
+  "unsupportedTitle": "This server is too old",
+  "unsupportedBody": "Taskuna needs Vikunja {minimum} or newer. This server runs {found}.",
+  "@unsupportedBody": {
+    "placeholders": {
+      "minimum": {
+        "type": "String",
+        "example": "2.3.0"
+      },
+      "found": {
+        "type": "String",
+        "example": "1.0.0"
+      }
+    }
+  },
+  "unsupportedSuggestion": "Ask whoever runs the server to update Vikunja.",
+  "unsupportedUnknownVersionTitle": "Server version not recognized",
+  "unsupportedUnknownVersionBody": "Taskuna needs Vikunja {minimum} or newer. This server reports a version the app does not recognize.",
+  "@unsupportedUnknownVersionBody": {
+    "placeholders": {
+      "minimum": {
+        "type": "String",
+        "example": "2.3.0"
+      }
+    }
+  },
+  "unsupportedUnknownVersionSuggestion": "Ask whoever runs the server which Vikunja version it runs.",
+  "signInMethodsHeading": "Sign-in methods",
+  "signInBrowserTitle": "Sign in with browser",
+  "signInBrowserSubtitle": "Uses the Vikunja login page, including single sign-on.",
+  "signInBrowserProvidersSubtitle": "Uses the Vikunja login page, including {providers}.",
+  "@signInBrowserProvidersSubtitle": {
+    "placeholders": {
+      "providers": {
+        "type": "String",
+        "example": "Keycloak, Authentik"
+      }
+    }
+  },
+  "featuresHeading": "Server features",
+  "featuresNone": "This server has no optional features enabled.",
+  "featureAttachments": "Attachments",
+  "featureAttachmentsWithLimit": "Attachments up to {size}",
+  "@featureAttachmentsWithLimit": {
+    "placeholders": {
+      "size": {
+        "type": "String",
+        "example": "20 MB"
+      }
+    }
+  },
+  "featureComments": "Comments",
+  "featureLinkSharing": "Link sharing",
+  "featureTotp": "Two-factor authentication (TOTP)",
+  "featureCaldav": "CalDAV sync",
+  "featureWebhooks": "Webhooks",
+  "featureEmailReminders": "Email reminders",
+  "featureRegistration": "Open registration",
+  "featurePublicTeams": "Public teams",
+  "featureUserDeletion": "Account deletion",
+  "@featureUserDeletion": {
+    "description": "Server capability shown in the feature list (noun), not an action."
+  },
+  "featureBackgrounds": "Project backgrounds",
+  "motdHeading": "Message from the server",
+  "legalImprint": "Imprint",
+  "legalPrivacy": "Privacy policy",
+  "legalOpenFailed": "The link could not be opened.",
+  "continueToSignIn": "Continue to sign-in",
+  "useDifferentServer": "Use a different server",
+  "signInComingSoon": "Sign-in isn’t available in this version yet."
+}

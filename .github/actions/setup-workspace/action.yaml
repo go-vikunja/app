@@ -1,0 +1,35 @@
+name: Set up the Flutter workspace
+description: >-
+  Installs the pinned Flutter SDK, resolves the pub workspace from the
+  committed lockfile and optionally generates the app's code.
+
+inputs:
+  codegen:
+    description: Run gen-l10n and build_runner in app/ ("true" or "false").
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    - name: Install Flutter
+      uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+      with:
+        channel: stable
+        flutter-version: 3.47.5
+        cache: true
+
+    - name: Resolve the pub workspace
+      shell: bash
+      run: flutter pub get --enforce-lockfile
+
+    - name: Generate app code
+      if: inputs.codegen == 'true'
+      shell: bash
+      working-directory: app
+      run: |
+        if [[ -f l10n.yaml ]]; then
+          flutter gen-l10n
+        fi
+        if grep -rqE "^part '[^']+\.g\.dart';" lib; then
+          dart run build_runner build
+        fi

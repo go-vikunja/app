@@ -1,0 +1,51 @@
+{
+    "$schema": "https://try.vikunja.io/api/v2/schemas/VikunjaInfos.json",
+    "version": "v2.7.0-6-ge7d7f173",
+    "frontend_url": "https://try.vikunja.io/",
+    "motd": "You can use the user 'demo' and password 'demo' to login. This is a demo instance only and will be reset at irregular intervals. Do not use this for real data.",
+    "link_sharing_enabled": true,
+    "max_file_size": "20MB",
+    "max_items_per_page": 50,
+    "available_migrators": [
+        "vikunja-file",
+        "ticktick",
+        "wekan",
+        "csv",
+        "planka",
+        "todoist",
+        "trello"
+    ],
+    "task_attachments_enabled": true,
+    "enabled_background_providers": [
+        "upload",
+        "unsplash"
+    ],
+    "totp_enabled": false,
+    "legal": {
+        "imprint_url": "https://vikunja.io/imprint/",
+        "privacy_policy_url": "https://vikunja.io/privacy/"
+    },
+    "caldav_enabled": true,
+    "auth": {
+        "local": {
+            "enabled": true,
+            "registration_enabled": true
+        },
+        "ldap": {
+            "enabled": false
+        },
+        "openid_connect": {
+            "enabled": false,
+            "providers": null
+        }
+    },
+    "email_reminders_enabled": true,
+    "user_deletion_enabled": true,
+    "task_comments_enabled": true,
+    "demo_mode_enabled": true,
+    "webhooks_enabled": true,
+    "public_teams_enabled": false,
+    "allow_icon_changes": false,
+    "enabled_pro_features": [],
+    "concurrent_writes": true
+}
