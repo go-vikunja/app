@@ -4,7 +4,7 @@ Rurana (name and logo: see [branding/README.md](branding/README.md)) is an unoff
 
 ## Status
 
-Step 1 of the [roadmap](docs/roadmap.md), server connection and v1/v2 negotiation, is done. **Step 2+3, the HTTP core, browser sign-in (OAuth 2.0 + PKCE) and the session manager, is in progress**; see [architecture §5](docs/architecture.md#5-auth-and-session-in-progress-step-23). The project applies the owner's decisions of 2026-10-09 (app id, browser sign-in only, and the 2.3.0 floor that follows from them). Name and icon: Rurana with the "checkbox ears" llama (see [branding/README.md](branding/README.md)).
+Step 1 of the [roadmap](docs/roadmap.md), server connection and v1/v2 negotiation, is done. **Step 2+3, the HTTP core, browser sign-in (OAuth 2.0 + PKCE) and the session manager, is in review** (verified end to end on the Android emulator and the iOS simulator); see [architecture §5](docs/architecture.md#5-auth-and-session-in-progress-step-23). The project applies the owner's decisions of 2026-10-09 (app id, browser sign-in only, and the 2.3.0 floor that follows from them). Name and icon: Rurana with the "checkbox ears" llama (see [branding/README.md](branding/README.md)).
 
 Step 1 built the first feature: the app takes a server address and finds the Vikunja server behind it. It probes `/api/v2/info` (Vikunja 2.4.0 and newer) and `/api/v1/info` in parallel, and uses v2 when both answer. Then it shows:
 - the server version;
