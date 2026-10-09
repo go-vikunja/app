@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v2/oauth/token",
+  "status": 400,
+  "headers": {
+    "content-type": "application/problem+json"
+  },
+  "body": "{\"$schema\":\"http://localhost:34527/api/v2/schemas/VikunjaErrorModel.json\",\"title\":\"Bad Request\",\"status\":400,\"detail\":\"The redirect URI is not allowed for this client.\",\"code\":17002}\n"
+}

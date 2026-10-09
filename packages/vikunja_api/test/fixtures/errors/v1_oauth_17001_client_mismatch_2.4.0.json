@@ -1,0 +1,9 @@
+{
+  "server": "2.4.0",
+  "request": "POST /api/v1/oauth/token",
+  "status": 400,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"code\":17001,\"message\":\"The OAuth client ID is not recognized.\"}\n"
+}

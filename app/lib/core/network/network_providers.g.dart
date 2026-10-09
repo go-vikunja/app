@@ -90,6 +90,57 @@ final class DioProvider extends $FunctionalProvider<Dio, Dio, Dio>
 
 String _$dioHash() => r'8509dd2ba37c704c7d7fff80a37d894e19166f96';
 
+/// For the OAuth token endpoint: no auth interceptor, and a long receive
+/// timeout, because the server rotates the refresh token as soon as it
+/// receives a refresh, so an abandoned response loses the session.
+
+@ProviderFor(authDio)
+final authDioProvider = AuthDioProvider._();
+
+/// For the OAuth token endpoint: no auth interceptor, and a long receive
+/// timeout, because the server rotates the refresh token as soon as it
+/// receives a refresh, so an abandoned response loses the session.
+
+final class AuthDioProvider extends $FunctionalProvider<Dio, Dio, Dio>
+    with $Provider<Dio> {
+  /// For the OAuth token endpoint: no auth interceptor, and a long receive
+  /// timeout, because the server rotates the refresh token as soon as it
+  /// receives a refresh, so an abandoned response loses the session.
+  AuthDioProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'authDioProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$authDioHash();
+
+  @$internal
+  @override
+  $ProviderElement<Dio> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  Dio create(Ref ref) {
+    return authDio(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(Dio value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<Dio>(value),
+    );
+  }
+}
+
+String _$authDioHash() => r'25533df9f4d8a90cd0bffbf757beb2f310d63b73';
+
 @ProviderFor(serverConnector)
 final serverConnectorProvider = ServerConnectorProvider._();
 

@@ -17,6 +17,19 @@ Dio dio(Ref ref) {
   return dio;
 }
 
+/// For the OAuth token endpoint: no auth interceptor, and a long receive
+/// timeout, because the server rotates the refresh token as soon as it
+/// receives a refresh, so an abandoned response loses the session.
+@Riverpod(keepAlive: true)
+Dio authDio(Ref ref) {
+  final dio = createDio(
+    userAgent: ref.watch(clientIdentityProvider).userAgent,
+    receiveTimeout: const Duration(seconds: 60),
+  );
+  ref.onDispose(dio.close);
+  return dio;
+}
+
 @Riverpod(keepAlive: true)
 ServerConnector serverConnector(Ref ref) =>
     DioServerConnector(ref.watch(dioProvider));

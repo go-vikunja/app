@@ -1,15 +1,18 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/features/session/presentation/sign_in_button.dart';
 
 class OverviewActions extends StatelessWidget {
   const new({
     required this.canSignIn,
+    required this.isSigningIn,
     required this.onContinue,
     required this.onUseDifferentServer,
     super.key,
   });
 
   final bool canSignIn;
+  final bool isSigningIn;
   final VoidCallback onContinue;
   final VoidCallback onUseDifferentServer;
 
@@ -25,13 +28,14 @@ class OverviewActions extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (canSignIn) ...[
-          FilledButton(
+          SignInButton(
+            label: l10n.continueToSignIn,
+            isSigningIn: isSigningIn,
             onPressed: onContinue,
-            child: Text(l10n.continueToSignIn, textAlign: TextAlign.center),
           ),
           const SizedBox(height: 4),
           TextButton(
-            onPressed: onUseDifferentServer,
+            onPressed: isSigningIn ? null : onUseDifferentServer,
             child: useDifferentServer,
           ),
         ] else

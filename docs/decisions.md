@@ -188,7 +188,7 @@ ADR-lite. Each entry has a number, a status and the step that took it. A decisio
 
 ## D14: Browser sign-in only
 
-*Accepted 2026-10-09, step 1 review. From [Q4](open-questions.md#q4-login-methods).*
+*Accepted 2026-10-09, step 1 review. From [Q4](open-questions.md#q4-login-methods). Plugin, `client_id` and redirect scheme: [D23](#d23-browser-sign-in-through-flutter_web_auth_2-client-id-and-redirect-uri).*
 
 - **Context:** Vikunja plans to remove username and password login. On ≥ 2.3.0 the browser flow covers local, LDAP, every OIDC provider and TOTP, because the web frontend's login page handles them.
 - **Decision:**
@@ -297,11 +297,121 @@ ADR-lite. Each entry has a number, a status and the step that took it. A decisio
 
 ## D22: Session keep-alive through background sync
 
-*Accepted 2026-10-09, step 1 review. From [Q5](open-questions.md#q5-session-lifetime).*
+*Accepted 2026-10-09, step 1 review. From [Q5](open-questions.md#q5-session-lifetime). The refresh mechanism is refined by [D26](#d26-refresh-concurrency-single-flight-re-read-and-adopt-write-ahead-epoch).*
 
 - **Context:** OAuth sessions end after 72 h without a refresh (`service.jwtttl`, sliding). With browser sign-in only ([D14](#d14-browser-sign-in-only)) there is no 30-day session.
 - **Decision:**
   - The background sync (step 16) refreshes the session of every signed-in account at least about every 24 h, even when nothing else needs syncing.
   - Android uses WorkManager periodic work. iOS uses BGAppRefresh, which the OS runs at its own discretion.
   - The session manager (step 3) supports refreshing from background isolates: file lock, re-read, write-ahead.
+  - Since step 2+3, opening or resuming the app checks the active session with `GET /user`; a check that has to refresh an expiring access token moves the 72 h window. Step 16 adds the background runs.
 - **Consequences:** On iOS a session can still expire when the app is neither opened nor woken for 72 h. The account then goes to `needsReauth`: local data stays, the outbox pauses, and a "Sign in again" notification appears.
+
+## D23: Browser sign-in through flutter_web_auth_2, client id and redirect URI
+
+*Accepted 2026-10-09, step 2+3. Implements [D14](#d14-browser-sign-in-only).*
+
+- **Context:**
+  - D14 makes OAuth 2.0 + PKCE in the system browser the only sign-in, and leaves the plugin, the `client_id` and the redirect scheme to this step.
+  - Vikunja has no client registry. The `client_id` is free text that must match between the authorize and the token call (else 400 code 17001). The redirect URI's scheme must start with `vikunja-` (else 17002). There is no consent screen ([research/auth.md](research/auth.md) §7).
+- **Decision:**
+  - `client_id`: `dev.coderoftime.vikunja`, the app id ([D15](#d15-app-id-devcoderoftimevikunja)).
+  - Redirect URI: `vikunja-dev.coderoftime.vikunja://oauth/callback`, so the callback scheme is `vikunja-dev.coderoftime.vikunja`. It is neither `vikunja-desktop` nor `vikunja-flutter`, as D14 requires.
+  - The browser leg runs through flutter_web_auth_2 5.1.0: ASWebAuthenticationSession on iOS; on Android a Chrome Auth Tab where the browser supports it, otherwise a Custom Tab, with the plugin's `CallbackActivity`.
+  - The browser session is ephemeral (`preferEphemeral: true`), so no web login in Safari or Chrome is reused. Vikunja has no consent screen and its callback carries only `code` and `state`, no `iss` (RFC 9207; `frontend/src/views/user/OAuthAuthorize.vue`). With a reused web login, a malicious server could send the sheet to another server's authorize page and receive a code, and the PKCE verifier with it, without the user noticing (a mix-up). This replaces the step 2+3 plan and [research/auth.md](research/auth.md) §15.1's advice not to set `preferEphemeral`.
+  - "Sign in again" accepts only the account's own user. Another user is refused before anything is stored, and its new session is logged out best effort.
+  - The app uses the plugin only through a `WebAuthenticator` interface; tests use a fake.
+  - The authorize URL is `{frontend_url}oauth/authorize` (the server root + `/` when `/info` has no `frontend_url`) with an S256 challenge over a 32-byte random verifier and a 16-byte random state, both fresh per attempt. An `http://` `frontend_url` is never used for an `https://` server; the server root + `/` is used instead.
+  - The token client does not follow redirects, and neither does any request that carries an access token.
+  - The code is exchanged at `/api/v2/oauth/token` when `/api/v2` is reachable, otherwise at `/api/v1/oauth/token`, with a JSON body.
+  - The callback must match the redirect URI's scheme and path and the state, and must carry a `code`. An `error` parameter is a failure. A cancelled sheet returns silently.
+- **Consequences:**
+  - Android declares the `CallbackActivity`, exported, with a `VIEW` / `DEFAULT` / `BROWSABLE` intent filter for the scheme. iOS needs no URL type for ASWebAuthenticationSession; step 2+3 verifies this on the simulator.
+  - Every sign-in shows the Vikunja login form, and OIDC and SSO users sign in at their identity provider again each time. iOS shows no "… Wants to Use … to Sign In" prompt (checked on the iOS 18.6 simulator).
+  - On Android, the plugin opens a Custom Tab instead of an Auth Tab for Chrome and Edge before 141, Samsung Internet before 28 and Firefox before 143, which it treats as lacking ephemeral support. There the sheet can share the browser's cookies and reuse a web login; other browsers may ignore the flag as well.
+  - Signing out of the app does not end a web login the user has in the browser. Only the fallback browsers above would reuse it.
+  - The mix-up is not fully closed: a malicious server can still show another server's login page, but the user has to type that server's credentials. Closing it needs a server change: RFC 9207 `iss` in the callback, or a consent screen that names the client. Worth raising upstream.
+  - PKCE keeps an intercepted code useless to another app that claims the same scheme. Without a consent screen, though, any app with a `vikunja-…` scheme can get a token for a user who is signed in to the web app in the system browser. This is a server-side property.
+  - The plugin's stable 5.x line predates both its UIScene migration (6.0.0-alpha.2) and its built-in Kotlin migration (6.0.0-alpha.0). 5.1.0 is used because 6.0 is still alpha. Under the app's UIScene lifecycle it finds the window through its `UIApplication.keyWindow` fallback; the sheet opens and cancels correctly on the iOS 18.6 simulator, and the Custom Tab on the Android emulator (step 2+3, without completing a sign-in). Flutter warns that the plugin's old Kotlin Gradle plugin setup will stop building in a future release, so the move to 6.0 is due once it is stable. If a version stops working, the `WebAuthenticator` interface allows a small platform channel of our own (ASWebAuthenticationSession and Custom Tabs) instead, recorded as a new decision.
+  - **The iOS deployment target stays 15.0.** The plugin's README says 4.0 and later "require" iOS 17.4, but its `Package.swift` and podspec declare iOS 11, and the Swift source uses the iOS 17.4 `ASWebAuthenticationSession.Callback` API only behind `#available(iOS 17.4, *)`. Below 17.4 it falls back to `init(url:callbackURLScheme:completionHandler:)` (iOS 12+), which handles our custom scheme. Only `https` callbacks (universal links) need 17.4, and the app does not use them. The fallback is checked by reading the 5.1.0 source; it is not run on a device, because no simulator runtime older than iOS 18.6 is installed. A real iOS 15–17.3 device check belongs to the release checklist (step 37).
+  - iOS logs that ASWebAuthenticationSession support for `http://` pages is deprecated. Servers on plain `http://` may lose browser sign-in in a future iOS release.
+  - Code-grant sessions are never long-lived: 72 h without a refresh ends them ([D22](#d22-session-keep-alive-through-background-sync)).
+
+## D24: Tokens in secure storage, readable after the first unlock
+
+*Accepted 2026-10-09, step 2+3.*
+
+- **Context:**
+  - The refresh token is the most sensitive secret the app holds.
+  - Background sync (step 16) and notification actions (step 15) must refresh tokens while the device is locked.
+  - Principle 5 of the [architecture](architecture.md#1-principles): secrets live only in the Keychain or the Keystore.
+- **Decision:**
+  - flutter_secure_storage 11.x, with the entries `account.<id>.refresh_token` and `account.<id>.access_token` per account.
+  - iOS: `KeychainAccessibility.first_unlock_this_device` and `synchronizable: false`.
+  - Android: the plugin's v11 defaults (AES-GCM with a key wrapped by an Android Keystore RSA key). `android:allowBackup="false"`, set since step 1, keeps the entries out of Auto Backup.
+  - The access token is stored as well, so another isolate can adopt a refresh result instead of refreshing again ([D26](#d26-refresh-concurrency-single-flight-re-read-and-adopt-write-ahead-epoch)).
+  - No other place holds secrets: not SharedPreferences, not the database, not logs. The log redaction also covers `Bearer`, `access_token`, `refresh_token`, `code=` and `state=`.
+- **Consequences:**
+  - After a restart, nothing can refresh until the user unlocks the device once. Background runs before that must treat the locked Keychain like a network error: keep everything, retry later.
+  - Tokens never leave the device through iCloud Keychain or backups. A backup restored onto another iPhone brings the account registry ([D25](#d25-account-registry-in-sharedpreferences-without-secrets)) but no tokens, so those accounts need a new sign-in.
+  - Widgets and extensions get no keychain access group. Step 19 revisits this only if an extension must authenticate.
+  - Changing the accessibility class later means rewriting the existing items.
+  - iOS keeps Keychain items when the app is deleted, but not its preferences. The first UI start that finds neither the install marker (`auth.install_marker`) nor a registry therefore wipes secure storage once (`app/lib/core/auth/previous_install.dart`); a locked Keychain leaves the marker unset, so the next start tries again. A registry without the marker is an update from an older build and is left alone. On Android, deleting the app removes everything and the wipe finds nothing.
+  - Deleting the app never logs its sessions out on the server. They end after 72 h without a refresh.
+
+## D25: Account registry in SharedPreferences, without secrets
+
+*Accepted 2026-10-09, step 2+3. Builds on [D16](#d16-multi-account-in-the-first-release).*
+
+- **Context:**
+  - The app starts with several accounts ([D16](#d16-multi-account-in-the-first-release)). The UI and background isolates need the account list, the active account and each account's server before any database exists (step 6).
+  - From step 6 on, the per-account databases are found through this list.
+- **Decision:**
+  - The registry is JSON in `SharedPreferencesAsync`: the accounts (`Account`: id, server root, user id, username, display name, `addedAt`, `needsReauth`), the active account id, and each account's last server connection (root, reachable API versions, `/info` re-serialised by `serverInfoToJson`).
+  - Account id: the first 32 hex characters of `sha256("${serverRoot}|${userId}")`. The same user on the same server is always the same account; signing in again replaces its session, and the old session is logged out best effort.
+  - The registry holds no tokens or other secrets ([D24](#d24-tokens-in-secure-storage-readable-after-the-first-unlock)).
+  - `SharedPreferencesAsync` rather than the cached legacy API: every read goes to the platform store, so a background isolate never works on a stale in-memory copy.
+- **Consequences:**
+  - The registry and secure storage are written separately and can disagree after a crash or a restore. An account without tokens is handled like `needsReauth`: the accounts provider marks it when the app starts (`app/lib/core/auth/accounts_without_tokens.dart`), and a session manager that finds no tokens ends the session the same way. Secure storage that cannot be read (the Keychain before the first unlock) does not count as missing tokens.
+  - The id depends on the normalised server root. The same server reached through two different addresses (a LAN IP and a domain) gives two accounts.
+  - An entry that cannot be decoded is left out of the state but written back unchanged, so it is not lost; a readable entry with the same id replaces it. A registry that cannot be decoded at all is copied to `auth.account_registry.unreadable` before it is first overwritten.
+  - Step 4 builds the switcher on this registry. Step 6 names the database files by account id.
+
+## D26: Refresh concurrency: single-flight, re-read and adopt, write-ahead, epoch
+
+*Accepted 2026-10-09, step 2+3. Refines the mechanism that [D22](#d22-session-keep-alive-through-background-sync) names ("file lock, re-read, write-ahead").*
+
+- **Context:**
+  - Vikunja rotates the refresh token on every refresh and has no grace period. Reusing a rotated token gives 401 code 16002 and the session cannot be recovered; the loser of a concurrent rotation gets 16004 ([research/auth.md](research/auth.md) §4.1).
+  - Several isolates can refresh the same account: the UI isolate now, background tasks and notification actions later (steps 15–16).
+  - A response that is lost after the server committed a rotation also kills the session.
+- **Decision:**
+  - Single-flight: one refresh per account and isolate at a time.
+  - Before calling the server, re-read the stored refresh token. If it differs from the caller's snapshot, adopt the stored tokens and skip the call.
+  - On 16002 or 16004, re-read storage a few times with short delays and adopt a newer token if one appears. Only then is the session ended (`needsReauth`).
+  - Write-ahead: persist the rotated tokens before the new access token is used.
+  - The refresh request is not tied to UI cancellation and has a generous timeout.
+  - A per-account auth epoch, increased by sign-out and account removal. A refresh that finishes under an older epoch is discarded. Sign-out retires the session manager first and wipes storage afterwards; the retired manager hands out no token and writes nothing until a new sign-in replaces it. `retire()` waits only for a storage write that has already started, never for a refresh still on the network.
+  - Every session-ended answer re-reads storage first: 16002 and 16004 as above, and also 16003 and 412, which are about the session of the token sent. A session that another isolate stored meanwhile is adopted.
+  - If the secure write after a successful refresh fails, the new tokens stay in memory and are written again before the next refresh; newer tokens in storage win.
+  - Expiry is judged with the per-account server clock offset stored in preferences, so a cold start or a new isolate need not wait for a response.
+  - Failure classes: network errors keep the tokens for a later retry; 5xx is retried once; 429 waits for `Retry-After`, capped at 10 min; a session-ended answer (16002 after re-reading, 16003, 412 code 1020 or 1040) marks the account `needsReauth` and keeps its local data.
+  - Cross-isolate lock: `RandomAccessFile.lock` does **not** serialise two isolates of one process. POSIX record locks belong to the whole process, so a second isolate acquires a lock the first still holds (verified on the macOS host by `app/test/core/auth/file_lock_isolates_test.dart`; Android and iOS use the same `fcntl` locks). The re-read and adoption rules above are therefore the only cross-isolate mechanism, as documented in `app/lib/core/auth/session_manager.dart`.
+  - A 5xx on refresh can be a lost race too: SQLite servers answer the loser with 500 instead of 16004 ([research/README.md](research/README.md) item 7). Before the one retry, storage is re-read; a newer token found there is adopted instead of retrying with the dead one.
+- **Consequences:**
+  - The session manager is the only code that refreshes. `vikunja_api` sees it only through `AccessTokenSource`.
+  - Without a lock, two isolates can send the same refresh token at once. The loser then adopts the winner's tokens once they are written, so the adoption re-reads must outlast the winner's write-ahead.
+  - The remaining risk is a response lost after the server rotated: the process is killed mid-request, or the network drops. That session ends in `needsReauth`. Background runs must not start a refresh with only seconds of runtime left (step 16).
+  - Retirement is per isolate. A sibling isolate can still write tokens back after a sign-out in another isolate; step 16 needs a guard for that.
+
+## D27: Paging and the query builder move to step 5
+
+*Accepted 2026-10-09, step 2+3.*
+
+- **Context:** The owner merged roadmap steps 2 (HTTP core and error model) and 3 (browser sign-in, session manager) into one step on 2026-10-09. Step 2's scope included paging and a query builder, but step 2+3 calls no list endpoint. The first paged reads are step 5's read ports.
+- **Decision:**
+  - Step 2+3 builds the error model (`VikunjaFailure`, `normalizeError`), the retry interceptor, the wider log redaction and the authenticated transport.
+  - `Page<T>` (v1 pagination headers, v2 `{items,total,…}` envelopes) and the query builder (filter, sort and paging parameters) are built with the v1/v2 read adapters in step 5.
+- **Consequences:**
+  - Both are designed against their first real callers, and step 2+3 stays focused on sign-in.
+  - Step 5 (L) grows. It is split if it gets too large.

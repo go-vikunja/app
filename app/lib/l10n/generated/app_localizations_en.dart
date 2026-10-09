@@ -239,7 +239,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get signInMethodsHeading => 'Sign-in methods';
 
   @override
-  String get signInBrowserTitle => 'Sign in with browser';
+  String get signInBrowserTitle => 'Browser sign-in';
 
   @override
   String get signInBrowserSubtitle =>
@@ -313,5 +313,202 @@ class AppLocalizationsEn extends AppLocalizations {
   String get useDifferentServer => 'Use a different server';
 
   @override
-  String get signInComingSoon => 'Sign-in isn’t available in this version yet.';
+  String get signInWaiting => 'Waiting for sign-in…';
+
+  @override
+  String get signInRateLimitedTitle => 'Too many sign-in attempts';
+
+  @override
+  String signInRateLimitedExplanation(String host) {
+    return '$host is limiting sign-ins from your network for now.';
+  }
+
+  @override
+  String get signInRateLimitedSuggestion => 'Wait a minute, then try again.';
+
+  @override
+  String signInRateLimitedSuggestionSeconds(int seconds) {
+    String _temp0 = intl.Intl.pluralLogic(
+      seconds,
+      locale: localeName,
+      other: '$seconds seconds',
+      one: '1 second',
+    );
+    return 'Wait $_temp0, then try again.';
+  }
+
+  @override
+  String signInRateLimitedSuggestionMinutes(int minutes) {
+    String _temp0 = intl.Intl.pluralLogic(
+      minutes,
+      locale: localeName,
+      other: '$minutes minutes',
+      one: '1 minute',
+    );
+    return 'Wait $_temp0, then try again.';
+  }
+
+  @override
+  String signInServerErrorExplanation(String host, String status) {
+    return '$host answered the sign-in with an error (HTTP $status).';
+  }
+
+  @override
+  String get signInExpiredTitle => 'Sign-in expired';
+
+  @override
+  String get signInExpiredExplanation =>
+      'The sign-in took too long or was already used once.';
+
+  @override
+  String get signInRetrySuggestion => 'Please sign in again.';
+
+  @override
+  String get signInRejectedTitle => 'Sign-in rejected';
+
+  @override
+  String signInRejectedExplanation(String host, String code) {
+    return '$host did not accept the sign-in from this app (error $code).';
+  }
+
+  @override
+  String get signInRejectedSuggestion =>
+      'Try again. If it keeps happening, ask whoever runs the server to check it.';
+
+  @override
+  String get signInDiscardedTitle => 'Sign-in discarded';
+
+  @override
+  String get signInDiscardedExplanation =>
+      'The browser returned a sign-in that doesn’t belong to this attempt, so the app discarded it to protect your account.';
+
+  @override
+  String get signInIncompleteTitle => 'Sign-in not completed';
+
+  @override
+  String get signInIncompleteExplanation =>
+      'The browser returned to the app without a finished sign-in.';
+
+  @override
+  String get signInIncompleteSuggestion =>
+      'Try again and finish signing in on the server’s page.';
+
+  @override
+  String get signInNoBrowserTitle => 'No browser available';
+
+  @override
+  String get signInNoBrowserExplanation =>
+      'Signing in needs a web browser, but none is available on this device.';
+
+  @override
+  String get signInNoBrowserSuggestion =>
+      'Install or enable a browser, then try again.';
+
+  @override
+  String get signInBrowserFailedTitle => 'Sign-in page couldn’t be opened';
+
+  @override
+  String get signInBrowserFailedExplanation =>
+      'The app could not show the sign-in page of the server.';
+
+  @override
+  String get signInBrowserFailedSuggestion =>
+      'Try again. If it keeps happening, restart the app.';
+
+  @override
+  String get signInAccountDisabledTitle => 'Account disabled';
+
+  @override
+  String signInAccountDisabledExplanation(String host) {
+    return 'Your account on $host is disabled.';
+  }
+
+  @override
+  String get signInAccountLockedTitle => 'Account locked';
+
+  @override
+  String signInAccountLockedExplanation(String host) {
+    return 'Your account on $host is locked.';
+  }
+
+  @override
+  String get signInAccountBlockedSuggestion =>
+      'Check your email for instructions, or ask whoever runs the server.';
+
+  @override
+  String signInSessionEndedExplanation(String host) {
+    return '$host ended the new session right away.';
+  }
+
+  @override
+  String get signInEndpointMissingTitle => 'Sign-in not available';
+
+  @override
+  String signInEndpointMissingExplanation(String host) {
+    return '$host does not answer at the sign-in address the app needs. A reverse proxy may be blocking it.';
+  }
+
+  @override
+  String get signInEndpointMissingSuggestion =>
+      'Ask whoever runs the server to make the whole Vikunja API reachable.';
+
+  @override
+  String get signInUnexpectedExplanation =>
+      'An unexpected error occurred while signing in.';
+
+  @override
+  String get signInDifferentUserTitle => 'Signed in as a different user';
+
+  @override
+  String signInDifferentUserExplanation(String signedIn, String expected) {
+    return 'The sign-in page signed you in as @$signedIn, but this account is @$expected. Nothing was changed.';
+  }
+
+  @override
+  String signInDifferentUserSuggestion(String expected, String host) {
+    return 'Sign in again as @$expected. If the browser signs you in on its own, sign out of $host in the browser first.';
+  }
+
+  @override
+  String get homeTitle => 'Signed in';
+
+  @override
+  String homeUsername(String username) {
+    return '@$username';
+  }
+
+  @override
+  String get homePlaceholder =>
+      'Your projects and tasks will appear here in a later version.';
+
+  @override
+  String get homeSignOut => 'Sign out';
+
+  @override
+  String get homeSigningOut => 'Signing out…';
+
+  @override
+  String get signOutDialogTitle => 'Sign out?';
+
+  @override
+  String signOutDialogBody(String host) {
+    return 'Taskuna will sign you out of $host. You can sign in again at any time.';
+  }
+
+  @override
+  String get signOutDialogCancel => 'Cancel';
+
+  @override
+  String get signOutDialogConfirm => 'Sign out';
+
+  @override
+  String get reauthTitle => 'Signed out by the server';
+
+  @override
+  String reauthBody(String host) {
+    return '$host ended your session. Sign in again to keep your tasks in sync. Nothing on this device is lost.';
+  }
+
+  @override
+  String get reauthAction => 'Sign in again';
 }

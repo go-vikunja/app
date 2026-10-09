@@ -1,17 +1,17 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
-import 'package:vikunja_mobile/features/onboarding/application/browser_sign_in.dart';
+import 'package:vikunja_mobile/features/onboarding/application/browser_sign_in_method.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/widgets/section_heading.dart';
 
 class SignInMethodsSection extends StatelessWidget {
-  const new({required this.browserSignIn, super.key});
+  const new({required this.method, super.key});
 
-  final BrowserSignIn browserSignIn;
+  final BrowserSignInMethod method;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final providers = browserSignIn.openIdProviderNames;
+    final providers = method.openIdProviderNames;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [

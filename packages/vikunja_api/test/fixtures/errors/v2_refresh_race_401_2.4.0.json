@@ -1,0 +1,10 @@
+{
+  "server": "2.4.0",
+  "request": "POST /api/v2/oauth/token",
+  "status": 401,
+  "headers": {
+    "content-type": "application/problem+json"
+  },
+  "body": "{\"$schema\":\"http://localhost:34524/api/v2/schemas/VikunjaErrorModel.json\",\"title\":\"Unauthorized\",\"status\":401,\"detail\":\"Invalid or expired refresh token.\"}\n",
+  "note": "a loser of 4 concurrent refreshes with the same refresh token"
+}

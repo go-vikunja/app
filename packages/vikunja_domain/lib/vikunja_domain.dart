@@ -1,3 +1,7 @@
+export 'src/account/account.dart';
+export 'src/account/token_set.dart';
+export 'src/account/user.dart';
+export 'src/failure/vikunja_failure.dart';
 export 'src/server/api_version.dart';
 export 'src/server/capability.dart';
 export 'src/server/server_capabilities.dart';

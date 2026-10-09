@@ -1,0 +1,69 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:vikunja_domain/vikunja_domain.dart';
+
+void main() {
+  test('a 404 without a code means the route is absent', () {
+    expect(const NotFound().routeAbsent, isTrue);
+    expect(const NotFound(code: 3001).routeAbsent, isFalse);
+  });
+
+  test('fixed codes', () {
+    expect(const TokenRejected().code, 11);
+    expect(const RefreshRaceLost().code, 16004);
+    expect(const RateLimited().code, isNull);
+    expect(const NetworkFailure(NetworkProblem.timeout).code, isNull);
+  });
+
+  test('toString never includes the server message', () {
+    const message = 'secret detail';
+    final failures = <VikunjaFailure>[
+      const TokenRejected(message: message),
+      const SessionEnded(
+        SessionEndReason.expired,
+        code: 16003,
+        message: message,
+      ),
+      const RefreshRaceLost(message: message),
+      const OAuthFailure(
+        OAuthProblem.pkceMismatch,
+        code: 17006,
+        message: message,
+      ),
+      const Forbidden(message: message),
+      const NotFound(message: message),
+      const ValidationFailed(
+        fieldErrors: {
+          'title': [message],
+        },
+        message: message,
+      ),
+      const RateLimited(message: message),
+      const ServerFailure(500, message: message),
+      const DomainError(400, code: 4029, message: message),
+      const UnexpectedResponse(418, message: message),
+    ];
+
+    for (final failure in failures) {
+      expect('$failure', isNot(contains(message)), reason: '$failure');
+    }
+  });
+
+  test('every failure is exhaustively matchable', () {
+    String describe(VikunjaFailure failure) => switch (failure) {
+      NetworkFailure() => 'network',
+      TokenRejected() => 'token',
+      SessionEnded() => 'session',
+      RefreshRaceLost() => 'race',
+      OAuthFailure() => 'oauth',
+      Forbidden() => 'forbidden',
+      NotFound() => 'not found',
+      ValidationFailed() => 'validation',
+      RateLimited() => 'rate',
+      ServerFailure() => 'server',
+      DomainError() => 'domain',
+      UnexpectedResponse() => 'unexpected',
+    };
+
+    expect(describe(const RateLimited()), 'rate');
+  });
+}

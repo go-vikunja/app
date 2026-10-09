@@ -1,0 +1,10 @@
+{
+  "server": "2.3.0",
+  "request": "POST /api/v1/oauth/token",
+  "status": 401,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"message\":\"Invalid or expired refresh token.\"}\n",
+  "note": "a loser of 4 concurrent refreshes with the same refresh token"
+}

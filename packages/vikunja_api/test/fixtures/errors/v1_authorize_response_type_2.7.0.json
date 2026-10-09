@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v1/oauth/authorize",
+  "status": 400,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"message\":\"response_type must be 'code'\"}\n"
+}

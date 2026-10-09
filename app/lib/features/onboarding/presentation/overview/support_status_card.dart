@@ -1,7 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
-import 'package:vikunja_mobile/features/onboarding/presentation/widgets/status_card.dart';
+import 'package:vikunja_mobile/app/widgets/status_card.dart';
 
 class SupportStatusCard extends StatelessWidget {
   const new({required this.connection, super.key});

@@ -1,0 +1,9 @@
+{
+  "server": "2.3.0",
+  "request": "GET /api/v1/projects/6",
+  "status": 403,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"message\":\"You don't have the permission to see this\"}\n"
+}

@@ -1,0 +1,14 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v2/oauth/token",
+  "status": 429,
+  "headers": {
+    "content-type": "application/json",
+    "retry-after": "60",
+    "x-ratelimit-limit": "60",
+    "x-ratelimit-remaining": "0",
+    "x-ratelimit-reset": "1791533569",
+    "date": "Fri, 09 Oct 2026 08:11:50 GMT"
+  },
+  "body": "{\"message\":\"Too Many Requests\"}\n"
+}

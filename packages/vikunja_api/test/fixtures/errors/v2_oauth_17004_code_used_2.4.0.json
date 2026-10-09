@@ -1,0 +1,10 @@
+{
+  "server": "2.4.0",
+  "request": "POST /api/v2/oauth/token",
+  "status": 400,
+  "headers": {
+    "content-type": "application/problem+json"
+  },
+  "body": "{\"$schema\":\"http://localhost:34524/api/v2/schemas/VikunjaErrorModel.json\",\"title\":\"Bad Request\",\"status\":400,\"detail\":\"The authorization code is invalid or has already been used.\",\"code\":17004}\n",
+  "note": "second exchange of a code that was exchanged successfully"
+}

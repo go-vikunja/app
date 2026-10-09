@@ -16,7 +16,7 @@ poll_interval_seconds=2
 if (($# > 0)); then
   ports=("$@")
 else
-  ports=(34510 34520 34523 34524 34527)
+  ports=(34510 34520 34523 34524 34527 34537)
 fi
 
 if ! command -v curl >/dev/null 2>&1; then

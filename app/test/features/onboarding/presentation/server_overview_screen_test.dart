@@ -68,16 +68,6 @@ void main() {
     expect(_continueButton, findsOneWidget);
   });
 
-  testWidgets('continuing announces that sign-in comes next', (tester) async {
-    useTallSurface(tester);
-    await pumpServerOverview(tester, oauthServer230());
-
-    await tester.tap(_continueButton);
-    await tester.pump();
-
-    expect(find.text(en.signInComingSoon), findsOneWidget);
-  });
-
   testWidgets('2.0 server: too old for browser sign-in, even with OIDC', (
     tester,
   ) async {

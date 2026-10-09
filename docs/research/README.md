@@ -37,6 +37,35 @@ Items 1 and 2 were verified against the Docker test servers in [`test_servers/`]
    - iOS ignores `NSAllowsArbitraryLoads` as soon as `NSAllowsLocalNetworking` is present, and ATS exception domains cannot name hosts typed at runtime.
    - The per-host opt-in is therefore the in-app confirmation only; the OS keys stay open. See [D8](../decisions.md#d8-cleartext-policy).
 
+Items 4 to 9 were verified during step 2+3 against the 2.3.0, 2.4.0 and 2.7.0 Docker images, by the contract tests in `packages/vikunja_api/test/contract/auth_contract_test.dart` and the captures in `packages/vikunja_api/test/fixtures/errors/` and `fixtures/user/`. They correct [auth.md](auth.md).
+
+4. **Access tokens from 2.3.0 and 2.4.0 have no `iat` claim** (auth.md §3).
+   - 2.7.0 sends `iat`; the access tokens of 2.3.0 and 2.4.0 lack it.
+   - `JwtClaims.issuedAt` is therefore optional. The token client derives the issue time as `exp − expires_in` (600 s when `expires_in` is missing), which is still server time, so the clock offset works on every supported version.
+5. **Refresh errors on 2.3.0 and 2.4.0 carry no code** (auth.md §4.3).
+   - A rotated or unknown refresh token gives 401 with only a message: v1 `{"message":"Invalid or expired refresh token."}`, v2 problem+json without `code`. 2.7.0 sends code 16002.
+   - On the public token endpoint any 401 therefore means the refresh token is unusable (`SessionEnded`).
+6. **Before 2.7.0, `/api/v1/oauth/token` shares the login limiter** (auth.md §7, §13).
+   - On 2.3.0 and 2.4.0 the v1 token endpoint counts against the same 10 per minute and IP as `/login` and `/register`. The 429 has `X-RateLimit-Limit: 10` and `X-RateLimit-Reset`, but no `Retry-After`; the wait is computed from `X-RateLimit-Reset` and the server's `Date` header.
+   - The v2 token endpoint on 2.4.0 had no limit. Only 2.7.0 has the separate `tokenrefreshlimit` of 60 per minute.
+   - On 2.3.x, where the app has only the v1 endpoint, a refresh can therefore be refused because of unrelated logins from the same IP (carrier NAT). The session manager keeps the tokens and refuses further refreshes until the limit resets (capped at 10 min).
+7. **A lost rotation race never produced 16004 on these SQLite servers** (auth.md §4.1, §4.3).
+   - When several refreshes send the same token at once, the losers get 500 `Internal Server Error` or 401 (16002 on 2.7.0, no code before).
+   - A 500 on refresh can thus be a lost race. The session manager re-reads storage before it retries and adopts a newer token if a sibling stored one.
+   - There is still no reuse detection: an old refresh token gets 16002 and the session lives on (confirms §4.1).
+8. **2.3.0 and 2.4.0 do not burn a code that fails the token checks** (auth.md §7).
+   - After a failed PKCE (17006), `client_id` (17001) or `redirect_uri` (17002) check, the same code still works with the right values on 2.3.0 and 2.4.0. 2.7.0 burns it, as §7 says.
+   - The token step checks both `client_id` and `redirect_uri` on all three versions.
+9. **`GET /user` does not return the email address** (api-v1.md, api-v2.md).
+   - The own user record has no `email` field on 2.3.0, 2.4.0 or 2.7.0. `User.email` stays null; the app shows the username and display name only.
+
+Item 10 comes from the step 2+3 security review and was read from the source.
+
+10. **A reused web login is the app's problem too** (auth.md §7 "No consent screen", §15.1).
+    - The authorize callback carries only `code` and `state`, no RFC 9207 `iss` (`frontend/src/views/user/OAuthAuthorize.vue:65-71`), and there is no consent screen.
+    - A malicious server can therefore point the app at another server's authorize page. With the browser's web login reused, that server issues a code silently, and the app hands it and the PKCE verifier to the malicious server's token endpoint.
+    - The app therefore uses an ephemeral browser session, contrary to §15.1 ([D23](../decisions.md#d23-browser-sign-in-through-flutter_web_auth_2-client-id-and-redirect-uri)).
+
 ## Confirmed on live servers
 
 These statements in the research files are now confirmed:
@@ -45,3 +74,6 @@ These statements in the research files are now confirmed:
 - `enabled_pro_features` and `allow_icon_changes` also appear first in 2.4.0; they are absent in 2.3.0.
 - `registration_enabled` lives under `auth.local`, not at the top level.
 - The `-N-gHASH` version suffix occurs in practice: `try.vikunja.io` reports `v2.7.0-6-ge7d7f173`.
+- The code grant creates a session whose refresh token rotates on every refresh, without a grace period: the previous token gets 16002 (2.7.0) or a code-less 401 (2.3.0, 2.4.0) right after a rotation (auth.md §4.1).
+- Logout ends the session: refreshing afterwards fails like a rotated token (auth.md §12).
+- On 2.7.0, v2 `POST /oauth/authorize` with a wrong `response_type` returns 500 `unexpected error occurred`; 2.4.0 returns 400 `response_type must be 'code'`. This answers the `huma` question in auth.md §16.

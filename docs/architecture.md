@@ -2,30 +2,31 @@
 
 This is the current, condensed architecture. It is derived from [research/synthesis.md](research/synthesis.md) §2, which has the full reasoning and the Vikunja source references. Status markers:
 
-- **[exists]**: built in step 1, which is in review.
+- **[exists]**: built in step 1.
+- **[in progress, step 2+3]**: being built in the combined step 2+3 (HTTP core, browser sign-in, session manager).
 - **[planned, step N]**: designed, not built. N is the [roadmap](roadmap.md) step.
 
-This page reflects the owner's decisions of 2026-10-09 ([D13](decisions.md#d13-support-floor-230)–[D22](decisions.md#d22-session-keep-alive-through-background-sync)).
+This page reflects the owner's decisions of 2026-10-09 ([D13](decisions.md#d13-support-floor-230)–[D22](decisions.md#d22-session-keep-alive-through-background-sync)) and the step 2+3 decisions ([D23](decisions.md#d23-browser-sign-in-through-flutter_web_auth_2-client-id-and-redirect-uri)–[D27](decisions.md#d27-paging-and-the-query-builder-move-to-step-5)).
 
 ## 1. Principles
 
 1. **The local database is the single source of truth for the UI.** Screens read database streams. The network only feeds the database. [planned, steps 6–7]
-2. **One domain-level API interface, two transport adapters** (`/api/v1`, `/api/v2`). The adapter is chosen from the negotiated **capabilities**, never from a version string. [negotiation exists; adapters planned, steps 2 and 5]
+2. **One domain-level API interface, two transport adapters** (`/api/v1`, `/api/v2`). The adapter is chosen from the negotiated **capabilities**, never from a version string. [negotiation exists; error model and authenticated transport in progress, step 2+3; adapters planned, step 5]
 3. **Every mutation goes through the outbox, even when online.** The UI, notification actions and widgets share one retry, ordering and conflict path. [planned, step 11]
 4. **Every entry point builds the same object graph** with a Riverpod `ProviderContainer`. The entry points are the UI isolate, background tasks, the notification-action isolate and the widget callback. [UI exists; others planned, steps 15–18]
-5. **Secrets live only in the Keychain/Keystore.** Extensions and widgets never refresh tokens. [planned, step 3]
+5. **Secrets live only in the Keychain/Keystore.** Extensions and widgets never refresh tokens. [in progress, step 2+3]
 6. **Pure logic lives in pure-Dart packages** and is pinned by test vectors, many ported from the web frontend's tests. [exists for domain and api]
 
 ## 2. Workspace packages and the dependency rule
 
 The repository is a Dart pub workspace with one shared lockfile.
 
-| Package | Kind | Exists after step 1 | Planned |
-|---|---|---|---|
-| `app/` | Flutter | the "Connect to server" feature; app shell with two routes (go_router: connect, server overview), theming, en/de localisation, logging scaffold | all screens, `core/` services (auth, db, sync, notifications, widgets, background) |
-| `packages/vikunja_domain` | pure Dart | `ServerVersion`, `ApiVersion`, `ServerInfo`, `Capability`, `ServerCapabilities` + `SupportTier`, `ServerConnection`, sealed `ServerConnectionFailure` | entities, `TaskChanges`, `Page<T>`, `VikunjaFailure` (steps 2, 5) |
-| `packages/vikunja_api` | pure Dart | `normalizeServerAddress`, `parseServerInfo`, `ServerConnector` / `DioServerConnector`, `/info` fixtures, contract tests | `VikunjaClient` ports, routed client, v1/v2 adapters, auth protocol, realtime (steps 2–5, 17) |
-| `packages/vikunja_logic` | pure Dart | — | quick-add, filters, dates, positions, colours, checklists (steps 12, 13, 22, 24) |
+| Package | Kind | Exists after step 1 | In progress, step 2+3 | Planned |
+|---|---|---|---|---|
+| `app/` | Flutter | the "Connect to server" feature; app shell with two routes (go_router: connect, server overview), theming, en/de localisation, logging scaffold | `core/auth/` (token store, account registry, session manager, browser sign-in, sign-out); signed-in `/home` placeholder; router guards; wider log redaction | all other screens, `core/` services (db, sync, notifications, widgets, background) |
+| `packages/vikunja_domain` | pure Dart | `ServerVersion`, `ApiVersion`, `ServerInfo`, `Capability`, `ServerCapabilities` + `SupportTier`, `ServerConnection`, sealed `ServerConnectionFailure` | sealed `VikunjaFailure`, `User`, `Account`, `TokenSet` | entities, `TaskChanges`, `Page<T>` (step 5) |
+| `packages/vikunja_api` | pure Dart | `normalizeServerAddress`, `parseServerInfo`, `ServerConnector` / `DioServerConnector`, `/info` fixtures, contract tests | `normalizeError`, retry interceptor, PKCE, `AuthorizationRequest`, `OAuthTokenClient`, `JwtClaims`, auth interceptor + `AccessTokenSource`, `AccountApi`, `createAuthenticatedDio`, `serverInfoToJson`; OAuth contract tests | `VikunjaClient` ports, routed client, v1/v2 adapters, paging, query builder (step 5), realtime (step 17) |
+| `packages/vikunja_logic` | pure Dart | — | — | quick-add, filters, dates, positions, colours, checklists (steps 12, 13, 22, 24) |
 
 **Dependency rule:**
 - `app` → `vikunja_api` → `vikunja_domain`.
@@ -154,7 +155,7 @@ flowchart TD
 - `Authorization`, `Cookie`, `Set-Cookie` and tokens are never logged.
 - Plain `http://` needs explicit confirmation in the app (step 7 above).
 
-## 4. API abstraction [planned, steps 2 and 5]
+## 4. API abstraction [planned, step 5; error model in progress, step 2+3]
 
 There is one `VikunjaClient` with per-area ports (tasks, projects, views, labels, comments, …). A `RoutedVikunjaClient` picks the v2 or the v1 adapter per `ApiGroup`:
 - **v2 wins whenever it exists.** It offers PATCH (no full-replace hazard), totals, ETag and problem+json.
@@ -170,26 +171,201 @@ There is one `VikunjaClient` with per-area ports (tasks, projects, views, labels
 | Lists | bare arrays with pagination headers | `{items,total,…}` envelopes |
 | Errors | `{code,message}` | RFC 9457 problem+json |
 
-**Errors:** all errors are normalised into a sealed `VikunjaFailure`. A version-aware code map covers the error codes renumbered in 2.7.0.
+**Errors [in progress, step 2+3]:** `normalizeError` turns every error into a sealed `VikunjaFailure`. It reads all four error shapes: v1 `{code, message}`, v2 problem+json `{status, title, detail, code?, errors?}`, Echo `{message}` and the 429 `{message}`.
+
+| `VikunjaFailure` | Cause |
+|---|---|
+| `NetworkFailure` | offline, timeout or TLS problem |
+| `TokenRejected` | 401 code 11: the access token is missing, malformed or expired |
+| `SessionEnded` | the refresh says the session is gone: 16002 after re-reading storage, 16003, 412 code 1020 or 1040 |
+| `RefreshRaceLost` | 401 code 16004: a concurrent refresh with the same token won |
+| `OAuthFailure` | 17001–17007 from the OAuth endpoints |
+| `Forbidden`, `NotFound` | 403, 404 (`routeAbsent` when there is no Vikunja code) |
+| `ValidationFailed` | v1 412 with `invalid_fields`, v2 422 with `errors[]` |
+| `RateLimited` | 429, with `Retry-After` |
+| `ServerFailure` | 5xx |
+| `DomainError`, `UnexpectedResponse` | any other Vikunja code; any unknown shape |
+
+A version-aware code map for the error codes renumbered in 2.7.0 is planned.
+
+**Paging and query builder [planned, step 5]:** `Page<T>` over v1 pagination headers and v2 envelopes, and the query builder for filter, sort and paging parameters, are built with the read adapters that first use them ([D27](decisions.md#d27-paging-and-the-query-builder-move-to-step-5)).
 
 **DTOs:** one hand-written DTO set serves both adapters, because the server models are identical. A contract test checks them against the OpenAPI spec of the pinned 2.7.0 image ([D12](decisions.md#d12-hand-written-api-adapters-and-an-openapi-spec-for-contract-tests)).
 
-## 5. Auth and session [planned, steps 3, 4 and 16]
+## 5. Auth and session [in progress, step 2+3]
 
-**Sign-in:** browser OAuth 2.0 + PKCE only (≥ 2.3), which covers local, LDAP, OIDC and TOTP accounts through the web login ([D14](decisions.md#d14-browser-sign-in-only)). Guests use link shares (step 32). Password, TOTP and API-token login are not planned for now.
+Step 2+3 builds sign-in, token storage, refresh and sign-out for several accounts. The account switcher UI is step 4, the keep-alive scheduling is step 16 ([D22](decisions.md#d22-session-keep-alive-through-background-sync)).
 
-**Accounts:** several accounts from the first release ([D16](decisions.md#d16-multi-account-in-the-first-release)). Each account (server + user) has its own tokens, database, outbox and sync state. Step 3 builds a multi-account registry; step 4 adds, switches and removes accounts.
+**Sign-in:** browser OAuth 2.0 + PKCE only (≥ 2.3), which covers local, LDAP, OIDC and TOTP accounts through the web login ([D14](decisions.md#d14-browser-sign-in-only), [D23](decisions.md#d23-browser-sign-in-through-flutter_web_auth_2-client-id-and-redirect-uri)). Guests use link shares (step 32). Password, TOTP and API-token login are not planned for now.
 
-**Token handling:**
-- Refresh tokens rotate on every use, with no grace period. Refresh is therefore:
-  - single-flight per isolate;
-  - file-locked across isolates;
-  - re-reads storage before calling the server;
-  - persists the new refresh token before using the new access token.
-- Proactive refresh 60 s before expiry; reactive refresh once on 401 code 11 (user JWTs only).
-- A dead session keeps local data and pauses the outbox until the user signs in again.
-- Tokens live in `flutter_secure_storage` with `first_unlock_this_device`, so background isolates can read them.
-- OAuth sessions end after 72 h without a refresh, and there is no 30-day option. Background runs refresh every account's session at least about every 24 h ([D22](decisions.md#d22-session-keep-alive-through-background-sync), step 16).
+| | Value |
+|---|---|
+| `client_id` | `dev.coderoftime.vikunja` |
+| `redirect_uri` | `vikunja-dev.coderoftime.vikunja://oauth/callback` (Vikunja accepts only schemes that start with `vikunja-`) |
+| Authorize page | `{frontend_url}oauth/authorize` from `/info`; the server root + `/` when `frontend_url` is empty. An `http://` `frontend_url` is never used for an `https://` server; the server root + `/` is used instead |
+| Token endpoint | `POST /api/v2/oauth/token` when `/api/v2` is reachable, otherwise `POST /api/v1/oauth/token` (2.3.x); JSON body, public. 60 requests per minute per IP on 2.7.0; before that the v1 endpoint shares the login limit of 10 per minute ([research/README.md](research/README.md) item 6) |
+| Current user | `GET /api/v{2,1}/user` |
+| Logout | `POST /api/v2/logout` or `POST /api/v1/user/logout`; needs a valid access token |
+
+The protocol facts are verified against the Vikunja source in [research/auth.md](research/auth.md) §3–§7 and §12.
+
+### 5.1 Browser sign-in
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor U as User
+  participant A as App<br/>(core/auth)
+  participant B as Ephemeral browser sheet<br/>(ASWebAuthenticationSession / Auth Tab / Custom Tab)
+  participant F as Vikunja web frontend<br/>(frontend_url)
+  participant S as Vikunja API
+  participant K as Secure storage
+  participant R as Account registry
+
+  U->>A: "Continue to sign-in" on the server overview
+  A->>A: PKCE verifier (32 random bytes), S256 challenge, random state
+  A->>B: open {frontend_url}oauth/authorize?response_type=code<br/>&client_id&redirect_uri&state&code_challenge&code_challenge_method=S256
+  B->>F: GET /oauth/authorize
+  F->>U: web login (local, LDAP, OIDC, TOTP)
+  U->>F: credentials
+  F->>S: POST oauth/authorize with the web session's JWT and the challenge
+  S-->>F: code (single use, 10 min), state
+  F->>B: redirect to vikunja-dev.coderoftime.vikunja://oauth/callback?code&state
+  B-->>A: callback URL, the sheet closes
+  A->>A: check scheme and path, state, code present, no error parameter
+  A->>S: POST oauth/token: authorization_code, code, client_id,<br/>redirect_uri, code_verifier
+  S-->>A: access_token (JWT, 600 s), refresh_token, expires_in
+  A->>A: JWT claims (type 1, id, sid, exp, iat), server clock offset<br/>from iat (exp − expires_in on 2.3/2.4, which send no iat)
+  A->>S: GET /user with Bearer access token
+  S-->>A: user
+  A->>A: "Sign in again": refuse a different user<br/>(nothing stored, its session logged out best effort)
+  A->>K: refresh and access token under account.{id}.*
+  A->>R: upsert the account (same server and user: replace its session,<br/>log the old one out best effort), set it active
+  A->>U: /home
+```
+
+- Every attempt has a fresh verifier and state.
+- The browser session is ephemeral ([D23](decisions.md#d23-browser-sign-in-through-flutter_web_auth_2-client-id-and-redirect-uri)). Vikunja shows no consent screen and its callback carries no `iss` ([RFC 9207](https://www.rfc-editor.org/rfc/rfc9207)), so a reused web login would let a malicious server get a code for another server without the user noticing (a mix-up). In an ephemeral session the user has to type that server's credentials into its login page.
+  - Every sign-in shows the login form. OIDC and SSO users sign in at their identity provider again each time. iOS shows no "… Wants to Use … to Sign In" prompt.
+  - On Android, flutter_web_auth_2 5.1.0 opens a Custom Tab instead of an Auth Tab for Chrome and Edge before 141, Samsung Internet before 28 and Firefox before 143. It treats these versions as lacking ephemeral support, so the sheet can share the browser's cookies; other browsers may ignore the flag as well. Chrome 133 on the test emulator gets such a Custom Tab.
+  - Signing out of the app does not end a web login the user has in the browser. Only the fallback browsers above would reuse it.
+- "Sign in again" accepts only the account's own user. Another user is refused before anything is stored, its new session is logged out best effort, and the home screen shows a message.
+- Closing the sheet cancels silently. A wrong state, a missing code, an `error` parameter and token endpoint errors (17001–17007) end in an inline message on the overview.
+- While a sign-in runs (and on `/home` while a sign-out runs), back navigation is blocked and the buttons are disabled, so leaving the screen cannot strand a code exchange half way. On Android before 12, back on the root route would finish the activity and the isolate with it.
+- The router sends the app to `/home` when an active account exists, and to onboarding (`/`) otherwise.
+
+### 5.2 Authenticated requests
+
+- `createAuthenticatedDio` builds one `Dio` per account:
+  - base URL `connection.apiBaseUri(connection.preferredApiVersion)`;
+  - adapter, timeouts and `User-Agent` from the app's base `Dio` ([D5](decisions.md#d5-dio-with-native_dio_adapter));
+  - a retry interceptor and the auth interceptor.
+- The auth interceptor asks an `AccessTokenSource` for the token. The session manager implements it, so `vikunja_api` holds no refresh policy and no storage.
+  - `validAccessToken()` refreshes proactively when `exp − serverNow < 60 s`.
+  - `refreshAfterRejection(rejectedToken)` runs after a 401 with code 11. The request is retried once with the new token; a second 401 is not retried.
+  - The `Authorization` header is never added to absolute URLs on another origin.
+- The retry interceptor retries only GET and HEAD, on network errors, 502, 503, 504 and 429. It makes at most 2 retries with exponential backoff and jitter, and honours `Retry-After` up to a cap. Writes are retried by the outbox (step 11), never by the transport.
+- `OAuthTokenClient` uses a separate `Dio` without the auth interceptor, because the token endpoint is public and a refresh must never trigger a refresh.
+- Redirects are not followed: the token client, the account `Dio` and every request the auth interceptor adds a token to use `followRedirects: false`, so neither a code, a refresh token nor an access token reaches the host a redirect names. A 3xx ends as `UnexpectedResponse`.
+- `normalizeError` turns every error into a `VikunjaFailure` (section 4).
+
+### 5.3 Token storage
+
+([D24](decisions.md#d24-tokens-in-secure-storage-readable-after-the-first-unlock))
+
+- `flutter_secure_storage` 11, per account: `account.<id>.refresh_token` and `account.<id>.access_token`.
+- iOS: Keychain with `first_unlock_this_device` and `synchronizable: false`. Background isolates can read the tokens while the device is locked, once it has been unlocked after a restart. The items never reach iCloud Keychain or another device.
+- Android: the plugin's v11 defaults (AES-GCM, with the key wrapped by an Android Keystore RSA key). `android:allowBackup="false"` keeps them out of Auto Backup.
+- The access token is stored too, so another isolate can adopt a refresh result instead of refreshing again.
+- `TokenSet` keeps `exp` and `iat` in server time. The server clock offset comes from `iat` when a token arrives, and every expiry check uses server time.
+- The offset is kept per account in preferences (`auth.server_clock_offset.<id>`; not a secret), written after the tokens and only when it moved by 5 s or more. A cold start or another isolate therefore judges stored tokens in server time before its first response. Sign-out deletes it.
+- iOS keeps Keychain items when the app is deleted, but not its preferences. The first UI start that finds neither the install marker (`auth.install_marker`) nor a registry wipes secure storage once, so a reinstall never inherits refresh tokens ([D24](decisions.md#d24-tokens-in-secure-storage-readable-after-the-first-unlock)). Deleting the app never logs its sessions out on the server; they end after 72 h without a refresh.
+- Secrets appear nowhere else: not in SharedPreferences, not in the database, not in logs. `toString()` of `TokenSet` redacts the tokens.
+
+### 5.4 Refresh
+
+Vikunja rotates the refresh token on **every** refresh and has **no grace period**: the old token is dead as soon as the server commits the rotation. Reusing it gives 401 code 16002, and a concurrent refresh with the same token that loses the race gets 16004. Every rule below follows from that ([D26](decisions.md#d26-refresh-concurrency-single-flight-re-read-and-adopt-write-ahead-epoch)).
+
+- **When:** proactively 60 s before `exp` (server time), and reactively once after a 401 with code 11 for a user JWT.
+- **Single-flight:** one refresh per account and isolate at a time; concurrent callers await the same future.
+- **Re-read, then adopt:** before calling the server, the session manager re-reads the stored refresh token. If it differs from the caller's snapshot, another isolate or process has refreshed, and the stored tokens are adopted without a server call.
+- **Cross-isolate safety:** `RandomAccessFile.lock` does not serialise isolates of one process (POSIX record locks are per process; verified by `app/test/core/auth/file_lock_isolates_test.dart`). Re-reading and adopting are the cross-isolate mechanism, as documented in `app/lib/core/auth/session_manager.dart`.
+- **Write-ahead:** the rotated refresh token (with the new access token) is written to secure storage **before** the new access token is used for anything.
+- **Not cancellable:** the refresh request is not tied to a UI cancel token and has a generous timeout. A response lost after the server rotated leaves only a dead token.
+- **Adoption on 16002 and 16004:** the session manager re-reads storage a few times with short delays, because a sibling may be about to persist the winning tokens. Losing again to a newer stored token keeps it looking. Only when nothing newer appears is the session ended.
+- **Re-read on 16003 and 412:** these answers are about the session of the token that was sent. Storage is re-read first, and a session that another isolate stored meanwhile (a new sign-in) is adopted. Only when storage is unchanged does the session end.
+- **Write failure:** if the secure write after a successful refresh fails, the new tokens stay in memory and are written again before the next refresh; newer tokens in storage win. Only the error type is logged.
+- **Retirement and auth epoch:** sign-out and account removal retire the account's session manager first, then wipe its storage. A retired manager hands out no token and never writes storage; it stays retired in this isolate until a new sign-in replaces it. `retire()` waits only for a storage write that has already started, never for a refresh still on the network, whose result is discarded. Guarding a sibling isolate against writing tokens back after a sign-out in another isolate is open for step 16.
+
+| Refresh outcome | Failure | Action |
+|---|---|---|
+| 200 | — | persist (write-ahead), then use |
+| network error or timeout | `NetworkFailure` | keep the tokens, retry later |
+| 5xx | `ServerFailure` | re-read storage (SQLite servers answer a lost race with 500) and adopt a newer token; otherwise retry once, then keep the tokens |
+| 429 | `RateLimited` | wait for `Retry-After`, capped at 10 min |
+| 401 16004, 16002, or 401 without a code (2.3.0, 2.4.0) | `RefreshRaceLost` / `SessionEnded` | re-read and adopt; otherwise session ended |
+| 401 16003, 412 1020 or 1040 | `SessionEnded` | re-read and adopt a newer session; otherwise session ended |
+
+```mermaid
+flowchart TD
+  ASK["validAccessToken() /<br/>refreshAfterRejection(token)"] --> OK{"stored access token valid for<br/>more than 60 s, and not the rejected one?"}
+  OK -- yes --> USE["use it"]
+  OK -- no --> FLIGHT{"refresh for this account<br/>already running in this isolate?"}
+  FLIGHT -- yes --> JOIN["await it"]
+  FLIGHT -- no --> REREAD{"stored refresh token<br/>changed since the snapshot?"}
+  REREAD -- yes --> ADOPT["adopt the stored tokens"]
+  REREAD -- no --> CALL["POST oauth/token, grant_type=refresh_token<br/>(not cancellable)"]
+  CALL -- "200" --> EPOCH{"manager not retired?"}
+  EPOCH -- no --> DROP["discard"]
+  EPOCH -- yes --> WRITE["write tokens to secure storage"] --> USE
+  CALL -- "401 16002 / 16004" --> RETRY{"newer token in storage<br/>after a few short re-reads?"}
+  RETRY -- yes --> ADOPT
+  RETRY -- no --> ENDED["SessionEnded: account needsReauth"]
+  CALL -- "401 16003, 412 1020 / 1040" --> NEWER{"storage changed<br/>since the call?"}
+  NEWER -- yes --> ADOPT
+  NEWER -- no --> ENDED
+  CALL -- "network, 5xx, 429" --> KEEP["keep the tokens; retry per the table"]
+```
+
+### 5.5 Session end and `needsReauth`
+
+- A `SessionEnded` failure marks the account `needsReauth` in the registry. Its local data stays.
+- `/home` then shows a "Sign in again" banner. It runs the browser sign-in for the same server; signing in as the same user replaces the account's tokens and clears the flag.
+- `/home` checks the active session with `GET /user` after its first frame, when the app resumes and when the active account changes: at most once a minute per account, never for an account in `needsReauth`, and never while a sign-in or sign-out runs. A session the server ended shows the banner right away. An unreachable server shows nothing. A sign-in counts as a check.
+- The server ends an OAuth session after 72 h without a refresh (`service.jwtttl`), and there is no long-session option for the code grant. The check above refreshes an expiring access token, so opening the app moves that window. Background runs will refresh every account at least about every 24 h (step 16).
+- From step 11 on, the outbox of an account in `needsReauth` pauses; from step 16 on, a "Sign in again" notification appears.
+
+### 5.6 Sign-out
+
+1. Best-effort logout: make sure the access token is valid (refresh first if needed), then `POST` logout. Network errors are ignored.
+2. Retire the account's session manager (section 5.4), so nothing in this isolate writes its tokens again.
+3. Wipe the account's secure entries, its server clock offset and its registry entry.
+
+When no active account remains, the router returns to onboarding. From step 6 on, sign-out also deletes the account's database and cancels its notifications ([D16](decisions.md#d16-multi-account-in-the-first-release)).
+
+### 5.7 Multi-account registry
+
+([D25](decisions.md#d25-account-registry-in-sharedpreferences-without-secrets))
+
+- The registry lives in `SharedPreferencesAsync` as JSON and holds no secrets:
+  - the accounts (`Account`: id, server root, user id, username, display name, `addedAt`, `needsReauth`);
+  - the active account id;
+  - each account's last server connection, with `/info` re-serialised by `serverInfoToJson`, so start-up and headless refreshes need no probe.
+- Account id: the first 32 hex characters of `sha256("${serverRoot}|${userId}")`. The same user on the same server is always the same account, so signing in again replaces its session instead of adding a duplicate.
+- Per-account objects are keyed by the account id: the session manager, the authenticated `Dio`, and later the database (step 6), the outbox (step 11) and the notification namespace (step 15).
+- The registry and secure storage are written separately. An account without tokens is handled like `needsReauth`: the accounts provider marks it at start (`flagAccountsWithoutTokens`), and a session manager that finds no tokens ends the session. Unreadable storage (the Keychain before the first unlock) is not taken as missing tokens.
+- Entries that cannot be decoded are left out of the state but written back unchanged; a readable entry with the same id replaces one. A registry that cannot be decoded at all is copied to `auth.account_registry.unreadable` before it is first overwritten ([D25](decisions.md#d25-account-registry-in-sharedpreferences-without-secrets)).
+- `bootstrap.dart` loads the registry before `runApp`, behind the native launch screen, so the first route is already the right one. The token-presence check runs afterwards without blocking start-up.
+- The account switcher UI (add, switch, remove) is step 4.
+
+### 5.8 Headless use
+
+- The token store, the registry, the session manager and the token client need no `BuildContext` and no widget tree. A background isolate builds them through the same Riverpod `ProviderContainer` as the UI (principle 4).
+- What makes that work:
+  - the Keychain accessibility above, so tokens are readable while the device is locked;
+  - `SharedPreferencesAsync`, which has no in-memory cache that could go stale across isolates;
+  - the re-read and adoption rules of section 5.4.
+- Extensions and widgets never refresh tokens (principle 5). Step 16 schedules the background refreshes; step 2+3 only has to make them possible.
 
 ## 6. Offline-first data layer [planned]
 
@@ -232,9 +408,11 @@ There is one `VikunjaClient` with per-area ports (tasks, projects, views, labels
 
 - **UI:** material_ui and cupertino_ui instead of the in-SDK libraries ([D2](decisions.md#d2-material_ui-and-cupertino_ui)); dynamic colour on Android [planned, step 8]; dark mode and 200 % text scale in every step.
 - **Localisation:** gen-l10n with ARB files, English and German, which is also the first-release scope ([D21](decisions.md#d21-languages-english-and-german)). Generated code lives in `app/lib/l10n/generated/`.
-- **Logging:** `package:logging` with redaction of auth headers and tokens [scaffold exists]. A ring buffer, file rotation and diagnostics export are planned (steps 2 and 35).
+- **Logging:** `package:logging` with redaction of auth headers and tokens [scaffold exists]. Step 2+3 also redacts `code=`, `state=`, `access_token`, `refresh_token` and `Bearer` values, and never logs a callback URL unredacted [in progress]. A ring buffer, file rotation and diagnostics export are planned (steps 2 and 35).
 - **Platform configuration:**
   - Android: `android.uniquePackageNames=false` for Cronet ([D5](decisions.md#d5-dio-with-native_dio_adapter)).
   - Android has a network security config that trusts system and user CAs and permits cleartext. iOS has `NSAllowsArbitraryLoads` and `NSLocalNetworkUsageDescription` [exists, D8].
+  - Browser sign-in: on Android, flutter_web_auth_2's `CallbackActivity`, exported, with a `BROWSABLE` intent filter for the scheme `vikunja-dev.coderoftime.vikunja`. iOS needs no URL type for ASWebAuthenticationSession; step 2+3 verifies this on the simulator [in progress, [D23](decisions.md#d23-browser-sign-in-through-flutter_web_auth_2-client-id-and-redirect-uri)].
   - Per-server TLS pinning, mTLS and custom headers are planned for step 35.
-- **CI:** analyze, format and tests; a check that the committed generated code is current; the Docker contract matrix; release builds (Android APK, unsigned iOS device build) ([.github/workflows/ci.yaml](../.github/workflows/ci.yaml)).
+- **CI:** analyze, format and tests; a check that the committed generated code is current; the Docker contract matrix; release builds (Android APK, unsigned iOS device build) ([.github/workflows/ci.yaml](../.github/workflows/ci.yaml)). The contract job starts every service of `test_servers/` and waits for all of them.
+- **Test servers:** `test_servers/docker-compose.yaml` runs one server per supported line for the contract tests ([D11](decisions.md#d11-docker-contract-matrix-10--20--23--24--27)), plus a second 2.7.0 on port 34537 for on-device sign-in from the Android emulator. Its `publicurl` is `http://10.0.2.2:34537/`, because the bundled web frontend uses `publicurl` as its API address and the emulator cannot reach the host as `localhost`. The iOS simulator shares the host's network and uses the regular 2.7.0 server on port 34527. `tool/seed_e2e_user.sh` creates the sign-in test user from `test_servers/seed/e2e-user.env` on both; the [README](../README.md#sign-in-on-a-device-end-to-end) has the manual run.

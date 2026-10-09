@@ -241,7 +241,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get signInMethodsHeading => 'Anmeldemöglichkeiten';
 
   @override
-  String get signInBrowserTitle => 'Über den Browser anmelden';
+  String get signInBrowserTitle => 'Anmeldung im Browser';
 
   @override
   String get signInBrowserSubtitle =>
@@ -316,6 +316,204 @@ class AppLocalizationsDe extends AppLocalizations {
   String get useDifferentServer => 'Anderen Server verwenden';
 
   @override
-  String get signInComingSoon =>
-      'Die Anmeldung ist in dieser Version noch nicht verfügbar.';
+  String get signInWaiting => 'Warte auf Anmeldung …';
+
+  @override
+  String get signInRateLimitedTitle => 'Zu viele Anmeldeversuche';
+
+  @override
+  String signInRateLimitedExplanation(String host) {
+    return '$host begrenzt Anmeldungen aus deinem Netzwerk gerade.';
+  }
+
+  @override
+  String get signInRateLimitedSuggestion =>
+      'Warte eine Minute und versuche es dann noch einmal.';
+
+  @override
+  String signInRateLimitedSuggestionSeconds(int seconds) {
+    String _temp0 = intl.Intl.pluralLogic(
+      seconds,
+      locale: localeName,
+      other: '$seconds Sekunden',
+      one: '1 Sekunde',
+    );
+    return 'Warte $_temp0 und versuche es dann noch einmal.';
+  }
+
+  @override
+  String signInRateLimitedSuggestionMinutes(int minutes) {
+    String _temp0 = intl.Intl.pluralLogic(
+      minutes,
+      locale: localeName,
+      other: '$minutes Minuten',
+      one: '1 Minute',
+    );
+    return 'Warte $_temp0 und versuche es dann noch einmal.';
+  }
+
+  @override
+  String signInServerErrorExplanation(String host, String status) {
+    return '$host hat die Anmeldung mit einem Fehler beantwortet (HTTP $status).';
+  }
+
+  @override
+  String get signInExpiredTitle => 'Anmeldung abgelaufen';
+
+  @override
+  String get signInExpiredExplanation =>
+      'Die Anmeldung hat zu lange gedauert oder wurde schon einmal verwendet.';
+
+  @override
+  String get signInRetrySuggestion => 'Bitte melde dich noch einmal an.';
+
+  @override
+  String get signInRejectedTitle => 'Anmeldung abgelehnt';
+
+  @override
+  String signInRejectedExplanation(String host, String code) {
+    return '$host hat die Anmeldung dieser App nicht akzeptiert (Fehler $code).';
+  }
+
+  @override
+  String get signInRejectedSuggestion =>
+      'Versuche es noch einmal. Wenn das öfter passiert, bitte die Person, die den Server betreut, ihn zu prüfen.';
+
+  @override
+  String get signInDiscardedTitle => 'Anmeldung verworfen';
+
+  @override
+  String get signInDiscardedExplanation =>
+      'Der Browser hat eine Anmeldung zurückgegeben, die nicht zu diesem Versuch gehört. Zum Schutz deines Kontos hat die App sie verworfen.';
+
+  @override
+  String get signInIncompleteTitle => 'Anmeldung nicht abgeschlossen';
+
+  @override
+  String get signInIncompleteExplanation =>
+      'Der Browser ist ohne abgeschlossene Anmeldung zur App zurückgekehrt.';
+
+  @override
+  String get signInIncompleteSuggestion =>
+      'Versuche es noch einmal und schließe die Anmeldung auf der Seite des Servers ab.';
+
+  @override
+  String get signInNoBrowserTitle => 'Kein Browser verfügbar';
+
+  @override
+  String get signInNoBrowserExplanation =>
+      'Für die Anmeldung wird ein Webbrowser gebraucht, aber auf diesem Gerät ist keiner verfügbar.';
+
+  @override
+  String get signInNoBrowserSuggestion =>
+      'Installiere oder aktiviere einen Browser und versuche es dann noch einmal.';
+
+  @override
+  String get signInBrowserFailedTitle =>
+      'Anmeldeseite konnte nicht geöffnet werden';
+
+  @override
+  String get signInBrowserFailedExplanation =>
+      'Die App konnte die Anmeldeseite des Servers nicht anzeigen.';
+
+  @override
+  String get signInBrowserFailedSuggestion =>
+      'Versuche es noch einmal. Wenn das öfter passiert, starte die App neu.';
+
+  @override
+  String get signInAccountDisabledTitle => 'Konto deaktiviert';
+
+  @override
+  String signInAccountDisabledExplanation(String host) {
+    return 'Dein Konto auf $host ist deaktiviert.';
+  }
+
+  @override
+  String get signInAccountLockedTitle => 'Konto gesperrt';
+
+  @override
+  String signInAccountLockedExplanation(String host) {
+    return 'Dein Konto auf $host ist gesperrt.';
+  }
+
+  @override
+  String get signInAccountBlockedSuggestion =>
+      'Sieh in deinen E-Mails nach Anweisungen oder frage die Person, die den Server betreut.';
+
+  @override
+  String signInSessionEndedExplanation(String host) {
+    return '$host hat die neue Sitzung sofort wieder beendet.';
+  }
+
+  @override
+  String get signInEndpointMissingTitle => 'Anmeldung nicht verfügbar';
+
+  @override
+  String signInEndpointMissingExplanation(String host) {
+    return '$host antwortet nicht unter der Anmeldeadresse, die die App braucht. Vielleicht blockiert ein Reverse-Proxy sie.';
+  }
+
+  @override
+  String get signInEndpointMissingSuggestion =>
+      'Bitte die Person, die den Server betreut, die gesamte Vikunja-API erreichbar zu machen.';
+
+  @override
+  String get signInUnexpectedExplanation =>
+      'Bei der Anmeldung ist ein unerwarteter Fehler aufgetreten.';
+
+  @override
+  String get signInDifferentUserTitle => 'Mit einem anderen Konto angemeldet';
+
+  @override
+  String signInDifferentUserExplanation(String signedIn, String expected) {
+    return 'Die Anmeldeseite hat dich als @$signedIn angemeldet, dieses Konto ist aber @$expected. Es wurde nichts geändert.';
+  }
+
+  @override
+  String signInDifferentUserSuggestion(String expected, String host) {
+    return 'Melde dich erneut als @$expected an. Falls der Browser dich von selbst anmeldet, melde dich dort zuerst von $host ab.';
+  }
+
+  @override
+  String get homeTitle => 'Angemeldet';
+
+  @override
+  String homeUsername(String username) {
+    return '@$username';
+  }
+
+  @override
+  String get homePlaceholder =>
+      'Deine Projekte und Aufgaben erscheinen hier in einer späteren Version.';
+
+  @override
+  String get homeSignOut => 'Abmelden';
+
+  @override
+  String get homeSigningOut => 'Wird abgemeldet …';
+
+  @override
+  String get signOutDialogTitle => 'Abmelden?';
+
+  @override
+  String signOutDialogBody(String host) {
+    return 'Taskuna meldet dich von $host ab. Du kannst dich jederzeit wieder anmelden.';
+  }
+
+  @override
+  String get signOutDialogCancel => 'Abbrechen';
+
+  @override
+  String get signOutDialogConfirm => 'Abmelden';
+
+  @override
+  String get reauthTitle => 'Vom Server abgemeldet';
+
+  @override
+  String reauthBody(String host) {
+    return '$host hat deine Sitzung beendet. Melde dich erneut an, damit deine Aufgaben synchron bleiben. Auf diesem Gerät geht nichts verloren.';
+  }
+
+  @override
+  String get reauthAction => 'Erneut anmelden';
 }

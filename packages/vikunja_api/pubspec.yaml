@@ -8,6 +8,7 @@ environment:
   sdk: ^3.13.0
 
 dependencies:
+  crypto: ^3.0.7
   dio: ^5.11.1
   meta: ^1.16.0
   vikunja_domain:

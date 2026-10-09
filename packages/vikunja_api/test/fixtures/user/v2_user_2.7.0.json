@@ -1,0 +1,26 @@
+{
+  "$schema": "http://localhost:34527/api/v2/schemas/UserInfoBody.json",
+  "id": 5,
+  "name": "",
+  "username": "usrd7253b34",
+  "created": "2026-10-09T08:17:58Z",
+  "updated": "2026-10-09T08:17:58Z",
+  "settings": {
+    "name": "",
+    "email_reminders_enabled": false,
+    "discoverable_by_name": false,
+    "discoverable_by_email": false,
+    "overdue_tasks_reminders_enabled": true,
+    "overdue_tasks_reminders_time": "9:00",
+    "default_project_id": 6,
+    "week_start": 0,
+    "language": "",
+    "timezone": "GMT",
+    "frontend_settings": null,
+    "extra_settings_links": null
+  },
+  "deletion_scheduled_at": "0001-01-01T00:00:00Z",
+  "is_local_user": true,
+  "auth_provider": "local",
+  "is_admin": false
+}

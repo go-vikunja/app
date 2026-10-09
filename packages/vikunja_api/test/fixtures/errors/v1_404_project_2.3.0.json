@@ -1,0 +1,9 @@
+{
+  "server": "2.3.0",
+  "request": "GET /api/v1/projects/99999999",
+  "status": 404,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"code\":3001,\"message\":\"This project does not exist.\"}\n"
+}

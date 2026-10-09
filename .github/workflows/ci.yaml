@@ -73,6 +73,9 @@ jobs:
           persist-credentials: false
 
       # Started before the SDK install so the servers boot in parallel with it.
+      # This includes vikunja-2-7-emulator, which only the manual on-device
+      # sign-in uses. It shares the 2.7.0 image, so it costs no extra pull,
+      # and tool/wait_for_test_servers.sh waits for every service by default.
       - name: Start Vikunja test servers
         run: docker compose -f test_servers/docker-compose.yaml up -d --quiet-pull
 

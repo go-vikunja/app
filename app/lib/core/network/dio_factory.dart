@@ -11,11 +11,12 @@ Dio createDio({
   required String userAgent,
   HttpClientAdapter? httpClientAdapter,
   bool logRequests = kDebugMode,
+  Duration receiveTimeout = const Duration(seconds: 15),
 }) {
   final dio = Dio(
     BaseOptions(
       connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 15),
+      receiveTimeout: receiveTimeout,
       sendTimeout: const Duration(seconds: 15),
       headers: {'User-Agent': userAgent},
     ),

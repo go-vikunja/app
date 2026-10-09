@@ -1,0 +1,55 @@
+import 'package:flutter/services.dart';
+import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
+
+/// Shows a web page in the system browser sheet until it redirects to the
+/// callback scheme.
+abstract interface class WebAuthenticator {
+  /// The URL the browser was redirected to, or null when the user closed the
+  /// sheet.
+  Future<Uri?> authenticate(Uri url, {required String callbackUrlScheme});
+}
+
+enum WebAuthenticationProblem { noBrowser, failed }
+
+final class WebAuthenticationFailed implements Exception {
+  const new(this.problem, {this.platformCode});
+
+  final WebAuthenticationProblem problem;
+  final String? platformCode;
+
+  @override
+  String toString() => 'WebAuthenticationFailed($problem, $platformCode)';
+}
+
+/// ASWebAuthenticationSession on iOS, Custom Tabs on Android.
+final class FlutterWebAuthenticator implements WebAuthenticator {
+  const new();
+
+  @override
+  Future<Uri?> authenticate(
+    Uri url, {
+    required String callbackUrlScheme,
+  }) async {
+    final String callback;
+    try {
+      // Ephemeral, so a web login in the system browser is never redeemed
+      // silently: Vikunja has no consent screen and sends no `iss`, so a code
+      // from another server would be indistinguishable.
+      callback = await FlutterWebAuth2.authenticate(
+        url: url.toString(),
+        callbackUrlScheme: callbackUrlScheme,
+        options: const FlutterWebAuth2Options(preferEphemeral: true),
+      );
+    } on PlatformException catch (error) {
+      if (error.code == 'CANCELED') return null;
+      // The message and details can echo the URL, so only the code is kept.
+      throw WebAuthenticationFailed(
+        error.code == 'NO_BROWSER'
+            ? WebAuthenticationProblem.noBrowser
+            : WebAuthenticationProblem.failed,
+        platformCode: error.code,
+      );
+    }
+    return Uri.tryParse(callback) ?? Uri();
+  }
+}

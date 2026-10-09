@@ -115,3 +115,31 @@ String readFixture(String name) =>
 
 Map<String, Object?> fixtureJson(String name) =>
     jsonDecode(readFixture(name)) as Map<String, Object?>;
+
+/// Answers the n-th request with the n-th route, and every later one with
+/// the last.
+FakeRoute sequence(List<FakeRoute> routes) {
+  var calls = 0;
+  return (request) {
+    final route = routes[calls < routes.length ? calls : routes.length - 1];
+    calls++;
+    return route(request);
+  };
+}
+
+/// A response captured from a test server, see test/fixtures/errors.
+FakeRoute errorFixture(String name) =>
+    (_) => errorFixtureBody(name);
+
+ResponseBody errorFixtureBody(String name) {
+  final fixture = fixtureJson('errors/$name.json');
+  final headers = fixture['headers']! as Map<String, Object?>;
+  return ResponseBody.fromString(
+    fixture['body']! as String,
+    fixture['status']! as int,
+    headers: {
+      for (final MapEntry(:key, :value) in headers.entries)
+        key: [value! as String],
+    },
+  );
+}

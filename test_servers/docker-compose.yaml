@@ -1,10 +1,11 @@
-# Local Vikunja servers for the vikunja_api contract tests, one per server
-# line the app tells apart:
+# Local Vikunja servers: one per server line the app tells apart, for the
+# vikunja_api contract tests, and one for sign-in on the Android emulator:
 #   34510  1.0.0  below the 2.3.0 floor: must be reported as unsupported
 #   34520  2.0.0  /api/v1 only, no OAuth: below the floor, must be unsupported
 #   34523  2.3.0  /api/v1 only, adds OAuth 2.0 + PKCE and the WebSocket (floor)
 #   34524  2.4.0  first release with /api/v2
 #   34527  2.7.0  latest release
+#   34537  2.7.0  the same release for browser sign-in on the Android emulator
 # The host ports are referenced by the contract tests, tool/*.sh and the docs;
 # do not change them. They are published on 127.0.0.1 only, because the
 # servers allow open registration with a public JWT secret. An Android
@@ -13,6 +14,7 @@
 # Start: docker compose -f test_servers/docker-compose.yaml up -d
 #        (docker-compose takes the same arguments)
 # Wait:  tool/wait_for_test_servers.sh
+# Seed:  tool/seed_e2e_user.sh (the sign-in test user, see the README)
 # Stop:  docker compose -f test_servers/docker-compose.yaml down
 #
 # The images are built FROM scratch, so there is no shell for a healthcheck;
@@ -31,15 +33,18 @@ x-vikunja-env: &vikunja-env
   VIKUNJA_FILES_BASEPATH: /tmp/files
   VIKUNJA_DATABASE_TYPE: sqlite
   VIKUNJA_DATABASE_PATH: /tmp/vikunja.db
-  # Later steps create test users through /register.
+  # The contract tests and tool/seed_e2e_user.sh create users through /register.
   VIKUNJA_SERVICE_ENABLEREGISTRATION: "true"
   # All test traffic comes from one IP. The login limiter (10/min) cannot be
   # disabled and still applies.
   VIKUNJA_RATELIMIT_ENABLED: "false"
 
-# VIKUNJA_SERVICE_PUBLICURL becomes `frontend_url` in /info. It says
-# localhost, which an emulator cannot open; browser sign-in tests (step 3)
-# will need an emulator-reachable address.
+# VIKUNJA_SERVICE_PUBLICURL becomes `frontend_url` in /info, where the app
+# opens the OAuth authorize page, and it is also injected into the bundled web
+# frontend as its API base URL. A localhost publicurl works for the host and
+# the iOS simulator, which shares the host's network, but not for the Android
+# emulator, where localhost is the emulator itself. vikunja-2-7-emulator
+# therefore says 10.0.2.2, and its web frontend only works from the emulator.
 services:
   vikunja-1-0:
     image: vikunja/vikunja:1.0.0
@@ -76,3 +81,10 @@ services:
       VIKUNJA_SERVICE_PUBLICURL: http://localhost:34527/
     tmpfs: ["/tmp:mode=1777"]
     ports: ["127.0.0.1:34527:3456"]
+  vikunja-2-7-emulator:
+    image: vikunja/vikunja:2.7.0
+    environment:
+      <<: *vikunja-env
+      VIKUNJA_SERVICE_PUBLICURL: http://10.0.2.2:34537/
+    tmpfs: ["/tmp:mode=1777"]
+    ports: ["127.0.0.1:34537:3456"]

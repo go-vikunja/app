@@ -14,6 +14,7 @@ import 'package:vikunja_mobile/core/network/network_providers.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connection_error_card.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/overview/server_overview_screen.dart';
 
+import '../helpers/auth_fakes.dart';
 import '../helpers/fakes.dart';
 import '../helpers/pump_app.dart';
 
@@ -81,6 +82,7 @@ Future<_RoutingAdapter> _pumpApp(
       overrides: [
         dioProvider.overrideWithValue(dio),
         externalLinkOpenerProvider.overrideWithValue(FakeExternalLinkOpener()),
+        ...AuthFakes().overrides,
       ],
       child: const VikunjaApp(),
     ),

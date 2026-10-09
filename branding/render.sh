@@ -5,7 +5,7 @@ cd "$(dirname "$0")"
 # ImageMagick 7 ships only its internal MSVG renderer here (no librsvg delegate),
 # and MSVG paints linearGradient fills black, so Inkscape does the rasterising.
 INKSCAPE="${INKSCAPE:-$(command -v inkscape || echo /Applications/Inkscape.app/Contents/MacOS/inkscape)}"
-FLATTEN_COLOR='#1650E8'
+FLATTEN_COLOR='#1252E6'
 
 render() {
   "$INKSCAPE" "$1" --export-type=png --export-filename="$2" \
@@ -57,14 +57,14 @@ for size in 256 96 48; do
     -bordercolor '#ECEEF2' -border 12 +append "$tmp/row-$size.png"
 done
 magick png/logo-mark-1024.png -resize 200x200 -background white -gravity center -extent 256x256 "$tmp/logo-light.png"
-magick png/logo-mark-1024.png -resize 200x200 -channel RGB -fill white -colorize 100 +channel \
+magick png/logo-mark-1024.png -resize 200x200 \
   -background '#15171C' -gravity center -extent 256x256 "$tmp/logo-dark.png"
 magick -background '#ECEEF2' "$tmp/logo-light.png" "$tmp/logo-dark.png" -bordercolor '#ECEEF2' -border 12 +append "$tmp/row-logo.png"
 magick -background '#ECEEF2' "$tmp/row-256.png" "$tmp/row-96.png" "$tmp/row-48.png" "$tmp/row-logo.png" \
   -gravity west -append png/preview-sheet.png
 
 columns=()
-for svg in explorations/*.svg; do
+for svg in explorations-v1/*.svg; do
   base="$tmp/$(basename "$svg" .svg)"
   render "$svg" "$base-1024.png" 1024
   magick "$base-1024.png" -resize 256x256 "$tmp/m-ios.png" -alpha off -compose CopyOpacity -composite "$base-256.png"
@@ -74,4 +74,4 @@ for svg in explorations/*.svg; do
   magick -background '#ECEEF2' "$base-256.png" "$base-small.png" -gravity center -bordercolor '#ECEEF2' -border 12 -append "$base-column.png"
   columns+=("$base-column.png")
 done
-magick -background '#ECEEF2' "${columns[@]}" +append explorations/comparison.png
+magick -background '#ECEEF2' "${columns[@]}" +append explorations-v1/comparison.png

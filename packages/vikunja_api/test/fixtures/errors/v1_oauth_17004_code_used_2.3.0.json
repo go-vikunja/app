@@ -1,0 +1,10 @@
+{
+  "server": "2.3.0",
+  "request": "POST /api/v1/oauth/token",
+  "status": 400,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"code\":17004,\"message\":\"The authorization code is invalid or has already been used.\"}\n",
+  "note": "second exchange of a code that was exchanged successfully"
+}

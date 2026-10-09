@@ -4,15 +4,15 @@ Taskuna (name and logo: see [branding/README.md](branding/README.md)) is an unof
 
 ## Status
 
-The project is at **step 1 of the [roadmap](docs/roadmap.md): server connection and v1/v2 negotiation, in review.** It applies the owner's decisions of 2026-10-09 (app id, browser sign-in only, and the 2.3.0 floor that follows from them) and proposes a name and icon (see [branding/README.md](branding/README.md)).
+Step 1 of the [roadmap](docs/roadmap.md), server connection and v1/v2 negotiation, is done. **Step 2+3, the HTTP core, browser sign-in (OAuth 2.0 + PKCE) and the session manager, is in progress**; see [architecture §5](docs/architecture.md#5-auth-and-session-in-progress-step-23). The project applies the owner's decisions of 2026-10-09 (app id, browser sign-in only, and the 2.3.0 floor that follows from them) and proposes a name and icon (see [branding/README.md](branding/README.md)).
 
-The app does one thing so far. It takes a server address and finds the Vikunja server behind it. It probes `/api/v2/info` (Vikunja 2.4.0 and newer) and `/api/v1/info` in parallel, and uses v2 when both answer. Then it shows:
+Step 1 built the first feature: the app takes a server address and finds the Vikunja server behind it. It probes `/api/v2/info` (Vikunja 2.4.0 and newer) and `/api/v1/info` in parallel, and uses v2 when both answer. Then it shows:
 - the server version;
 - the API mode;
 - the support tier;
 - the detected capabilities.
 
-Servers older than 2.3.0 are reported as unsupported, because browser sign-in needs 2.3.0. Sign-in, local data and task screens are not built yet.
+Servers older than 2.3.0 are reported as unsupported, because browser sign-in needs 2.3.0. Step 2+3 adds sign-in through the system browser, a signed-in home placeholder and sign-out. Local data and task screens are not built yet.
 
 ## Goals
 
@@ -47,7 +47,7 @@ Not planned for now: the admin panel, an MCP page, time tracking (licensed), pus
 | `packages/vikunja_domain/` | Pure Dart domain model. Today: server version, capabilities, support tier, connection result, connection failures |
 | `packages/vikunja_api/` | Pure Dart API client. Today: address normalisation, `/info` parsing, parallel v2/v1 `/info` probing. `test/fixtures/` holds real `/info` responses |
 | `branding/` | Name, logo and icon sources (SVG) with the rendered PNGs |
-| `test_servers/` | Docker Compose stack with Vikunja 1.0.0, 2.0.0, 2.3.0, 2.4.0 and 2.7.0 for contract tests |
+| `test_servers/` | Docker Compose stack with Vikunja 1.0.0, 2.0.0, 2.3.0, 2.4.0 and 2.7.0 for contract tests, plus a second 2.7.0 for sign-in on the Android emulator. `seed/e2e-user.env` holds the throwaway sign-in test user |
 | `tool/` | Scripts used by CI and for local work |
 | `docs/` | Architecture, roadmap, decisions, open questions, research |
 | `.github/workflows/ci.yaml` | CI: analyze and test, generated-code check, contract tests, Android and iOS release builds |
@@ -67,6 +67,7 @@ The repository is a Dart [pub workspace](https://dart.dev/tools/pub/workspaces).
 
   Setting `DEVELOPER_DIR` is not enough. The Dart native-asset build hooks (for example `objective_c`, used by `cupertino_http`) ignore it, and iOS builds fail.
 - **Docker** for the test servers. Docker Desktop works, and so does [colima](https://github.com/abiosoft/colima) with the docker CLI. Either `docker compose` or the standalone `docker-compose` works.
+- **curl and jq** for the scripts in `tool/`.
 
 ## Common commands
 
@@ -125,6 +126,7 @@ With the standalone binary (for example colima with Homebrew's docker-compose), 
 | 34523 | 2.3.0 | `/api/v1` only, OAuth tier |
 | 34524 | 2.4.0 | `/api/v2`, full tier |
 | 34527 | 2.7.0 | `/api/v2`, full tier |
+| 34537 | 2.7.0 | the same, for browser sign-in from the Android emulator (see below); not used by the contract tests |
 
 Run the app on an Android emulator:
 
@@ -134,11 +136,53 @@ flutter devices                       # find the emulator id, e.g. emulator-5554
 flutter run -d emulator-5554
 ```
 
-Enter `http://10.0.2.2:34527` as the server address. `10.0.2.2` is the emulator's alias for the host, where the 2.7.0 test server runs. On the iOS simulator, use `http://localhost:34527`. The app uses a server over plain `http://` only after you confirm it.
+Enter `http://10.0.2.2:34527` as the server address. `10.0.2.2` is the emulator's alias for the host, where the 2.7.0 test server runs. On the iOS simulator, use `http://localhost:34527`. The app uses a server over plain `http://` only after you confirm it. To sign in on the emulator, use port 34537 instead, as described in the next section.
+
+## Sign in on a device (end to end)
+
+Browser sign-in is tested by hand against the Docker test servers, with a fixed test user. Its username and password are in [`test_servers/seed/e2e-user.env`](test_servers/seed/e2e-user.env). They are throwaway values for these local servers only.
+
+| Device | Server address | Test server |
+|---|---|---|
+| Android emulator | `http://10.0.2.2:34537` | `vikunja-2-7-emulator` |
+| iOS simulator | `http://localhost:34527` | `vikunja-2-7` |
+
+The emulator needs its own server. The web frontend bundled with Vikunja calls the API at the server's `publicurl`, and the browser on the emulator cannot reach the host as `localhost`. Port 34537 therefore has `publicurl` `http://10.0.2.2:34537/`. For the same reason its web frontend does not work in a browser on the host.
+
+Alternatively, forward the emulator's `localhost:34527` to the host with `adb reverse tcp:34527 tcp:34527` (again after every emulator restart) and use `http://localhost:34527` on the emulator too. Then the regular 2.7.0 server works, browser included.
+
+The app's minimum is iOS 15.0. Below iOS 17.4, flutter_web_auth_2 falls back to the older ASWebAuthenticationSession initializer, which handles the app's custom callback scheme ([D23](docs/decisions.md#d23-browser-sign-in-through-flutter_web_auth_2-client-id-and-redirect-uri)).
+
+1. Start the test servers and create the user:
+
+   ```sh
+   docker compose -f test_servers/docker-compose.yaml up -d   # or docker-compose
+   tool/wait_for_test_servers.sh
+   tool/seed_e2e_user.sh                 # creates the user on 34527 and 34537
+   ```
+
+   The script is idempotent: for a user that already exists it checks the password with one login. The servers keep their data in a tmpfs, so run it again after a server restarts. It counts against the server's login limit of 10 requests per minute per IP.
+
+2. Run the app (`cd app`, then `flutter run -d emulator-5554` or `flutter run -d "iPhone 16 Pro"`), enter the address from the table and confirm the unencrypted connection.
+3. Tap **Continue to sign-in**.
+   - Android: a Custom Tab (or Chrome's Auth Tab) opens the Vikunja login page. On a new emulator, Chrome may show its first-run screens first.
+   - iOS: a sign-in sheet opens the Vikunja login page. The session is ephemeral, so iOS asks no "Wants to Use … to Sign In" question.
+4. Sign in with the username and password from the env file. To enter the password without printing it, copy it to the clipboard and paste it into the field (the emulator and the simulator share the host clipboard), or type it into the focused field on the emulator:
+
+   ```sh
+   # copy to the macOS clipboard
+   sed -n 's/^E2E_PASSWORD=//p' test_servers/seed/e2e-user.env | tr -d '\n' | pbcopy
+   # or type into the focused field on the emulator
+   adb shell input text "$(sed -n 's/^E2E_PASSWORD=//p' test_servers/seed/e2e-user.env)"
+   ```
+
+5. The sheet closes and the app shows the signed-in home: initials, display name, `@` username, server host and version. **Sign out**, after a confirmation, returns to onboarding.
+
+Every sign-in starts with an empty browser session and shows the login form ([D23](docs/decisions.md#d23-browser-sign-in-through-flutter_web_auth_2-client-id-and-redirect-uri)). On Android, Chrome before 141 (the emulator image ships 133) gets a regular Custom Tab instead, which can reuse a web login in Chrome; to see the form again there, sign out in Chrome or clear its data for the server.
 
 ## Documentation
 
-- [Architecture](docs/architecture.md): what exists after step 1 and what is planned.
+- [Architecture](docs/architecture.md): what exists after step 1, what step 2+3 is building, and what is planned.
 - [Roadmap](docs/roadmap.md): all steps and milestones, with status.
 - [Decisions](docs/decisions.md): decision log.
 - [Open questions](docs/open-questions.md): the owner's answers of 2026-10-09 and the items still deferred.

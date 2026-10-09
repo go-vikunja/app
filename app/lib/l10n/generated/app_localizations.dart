@@ -467,7 +467,7 @@ abstract class AppLocalizations {
   /// No description provided for @signInBrowserTitle.
   ///
   /// In en, this message translates to:
-  /// **'Sign in with browser'**
+  /// **'Browser sign-in'**
   String get signInBrowserTitle;
 
   /// No description provided for @signInBrowserSubtitle.
@@ -602,11 +602,299 @@ abstract class AppLocalizations {
   /// **'Use a different server'**
   String get useDifferentServer;
 
-  /// No description provided for @signInComingSoon.
+  /// No description provided for @signInWaiting.
   ///
   /// In en, this message translates to:
-  /// **'Sign-in isn’t available in this version yet.'**
-  String get signInComingSoon;
+  /// **'Waiting for sign-in…'**
+  String get signInWaiting;
+
+  /// No description provided for @signInRateLimitedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many sign-in attempts'**
+  String get signInRateLimitedTitle;
+
+  /// No description provided for @signInRateLimitedExplanation.
+  ///
+  /// In en, this message translates to:
+  /// **'{host} is limiting sign-ins from your network for now.'**
+  String signInRateLimitedExplanation(String host);
+
+  /// No description provided for @signInRateLimitedSuggestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Wait a minute, then try again.'**
+  String get signInRateLimitedSuggestion;
+
+  /// No description provided for @signInRateLimitedSuggestionSeconds.
+  ///
+  /// In en, this message translates to:
+  /// **'Wait {seconds, plural, =1{1 second} other{{seconds} seconds}}, then try again.'**
+  String signInRateLimitedSuggestionSeconds(int seconds);
+
+  /// No description provided for @signInRateLimitedSuggestionMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'Wait {minutes, plural, =1{1 minute} other{{minutes} minutes}}, then try again.'**
+  String signInRateLimitedSuggestionMinutes(int minutes);
+
+  /// No description provided for @signInServerErrorExplanation.
+  ///
+  /// In en, this message translates to:
+  /// **'{host} answered the sign-in with an error (HTTP {status}).'**
+  String signInServerErrorExplanation(String host, String status);
+
+  /// No description provided for @signInExpiredTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in expired'**
+  String get signInExpiredTitle;
+
+  /// No description provided for @signInExpiredExplanation.
+  ///
+  /// In en, this message translates to:
+  /// **'The sign-in took too long or was already used once.'**
+  String get signInExpiredExplanation;
+
+  /// No description provided for @signInRetrySuggestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Please sign in again.'**
+  String get signInRetrySuggestion;
+
+  /// No description provided for @signInRejectedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in rejected'**
+  String get signInRejectedTitle;
+
+  /// No description provided for @signInRejectedExplanation.
+  ///
+  /// In en, this message translates to:
+  /// **'{host} did not accept the sign-in from this app (error {code}).'**
+  String signInRejectedExplanation(String host, String code);
+
+  /// No description provided for @signInRejectedSuggestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again. If it keeps happening, ask whoever runs the server to check it.'**
+  String get signInRejectedSuggestion;
+
+  /// No description provided for @signInDiscardedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in discarded'**
+  String get signInDiscardedTitle;
+
+  /// No description provided for @signInDiscardedExplanation.
+  ///
+  /// In en, this message translates to:
+  /// **'The browser returned a sign-in that doesn’t belong to this attempt, so the app discarded it to protect your account.'**
+  String get signInDiscardedExplanation;
+
+  /// No description provided for @signInIncompleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in not completed'**
+  String get signInIncompleteTitle;
+
+  /// No description provided for @signInIncompleteExplanation.
+  ///
+  /// In en, this message translates to:
+  /// **'The browser returned to the app without a finished sign-in.'**
+  String get signInIncompleteExplanation;
+
+  /// No description provided for @signInIncompleteSuggestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again and finish signing in on the server’s page.'**
+  String get signInIncompleteSuggestion;
+
+  /// No description provided for @signInNoBrowserTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No browser available'**
+  String get signInNoBrowserTitle;
+
+  /// No description provided for @signInNoBrowserExplanation.
+  ///
+  /// In en, this message translates to:
+  /// **'Signing in needs a web browser, but none is available on this device.'**
+  String get signInNoBrowserExplanation;
+
+  /// No description provided for @signInNoBrowserSuggestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Install or enable a browser, then try again.'**
+  String get signInNoBrowserSuggestion;
+
+  /// No description provided for @signInBrowserFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in page couldn’t be opened'**
+  String get signInBrowserFailedTitle;
+
+  /// No description provided for @signInBrowserFailedExplanation.
+  ///
+  /// In en, this message translates to:
+  /// **'The app could not show the sign-in page of the server.'**
+  String get signInBrowserFailedExplanation;
+
+  /// No description provided for @signInBrowserFailedSuggestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again. If it keeps happening, restart the app.'**
+  String get signInBrowserFailedSuggestion;
+
+  /// No description provided for @signInAccountDisabledTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Account disabled'**
+  String get signInAccountDisabledTitle;
+
+  /// No description provided for @signInAccountDisabledExplanation.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account on {host} is disabled.'**
+  String signInAccountDisabledExplanation(String host);
+
+  /// No description provided for @signInAccountLockedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Account locked'**
+  String get signInAccountLockedTitle;
+
+  /// No description provided for @signInAccountLockedExplanation.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account on {host} is locked.'**
+  String signInAccountLockedExplanation(String host);
+
+  /// No description provided for @signInAccountBlockedSuggestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your email for instructions, or ask whoever runs the server.'**
+  String get signInAccountBlockedSuggestion;
+
+  /// No description provided for @signInSessionEndedExplanation.
+  ///
+  /// In en, this message translates to:
+  /// **'{host} ended the new session right away.'**
+  String signInSessionEndedExplanation(String host);
+
+  /// No description provided for @signInEndpointMissingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in not available'**
+  String get signInEndpointMissingTitle;
+
+  /// No description provided for @signInEndpointMissingExplanation.
+  ///
+  /// In en, this message translates to:
+  /// **'{host} does not answer at the sign-in address the app needs. A reverse proxy may be blocking it.'**
+  String signInEndpointMissingExplanation(String host);
+
+  /// No description provided for @signInEndpointMissingSuggestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask whoever runs the server to make the whole Vikunja API reachable.'**
+  String get signInEndpointMissingSuggestion;
+
+  /// No description provided for @signInUnexpectedExplanation.
+  ///
+  /// In en, this message translates to:
+  /// **'An unexpected error occurred while signing in.'**
+  String get signInUnexpectedExplanation;
+
+  /// No description provided for @signInDifferentUserTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in as a different user'**
+  String get signInDifferentUserTitle;
+
+  /// No description provided for @signInDifferentUserExplanation.
+  ///
+  /// In en, this message translates to:
+  /// **'The sign-in page signed you in as @{signedIn}, but this account is @{expected}. Nothing was changed.'**
+  String signInDifferentUserExplanation(String signedIn, String expected);
+
+  /// No description provided for @signInDifferentUserSuggestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in again as @{expected}. If the browser signs you in on its own, sign out of {host} in the browser first.'**
+  String signInDifferentUserSuggestion(String expected, String host);
+
+  /// No description provided for @homeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in'**
+  String get homeTitle;
+
+  /// No description provided for @homeUsername.
+  ///
+  /// In en, this message translates to:
+  /// **'@{username}'**
+  String homeUsername(String username);
+
+  /// No description provided for @homePlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Your projects and tasks will appear here in a later version.'**
+  String get homePlaceholder;
+
+  /// No description provided for @homeSignOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out'**
+  String get homeSignOut;
+
+  /// No description provided for @homeSigningOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Signing out…'**
+  String get homeSigningOut;
+
+  /// No description provided for @signOutDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out?'**
+  String get signOutDialogTitle;
+
+  /// No description provided for @signOutDialogBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Taskuna will sign you out of {host}. You can sign in again at any time.'**
+  String signOutDialogBody(String host);
+
+  /// No description provided for @signOutDialogCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get signOutDialogCancel;
+
+  /// No description provided for @signOutDialogConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out'**
+  String get signOutDialogConfirm;
+
+  /// No description provided for @reauthTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed out by the server'**
+  String get reauthTitle;
+
+  /// No description provided for @reauthBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{host} ended your session. Sign in again to keep your tasks in sync. Nothing on this device is lost.'**
+  String reauthBody(String host);
+
+  /// No description provided for @reauthAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in again'**
+  String get reauthAction;
 }
 
 class _AppLocalizationsDelegate

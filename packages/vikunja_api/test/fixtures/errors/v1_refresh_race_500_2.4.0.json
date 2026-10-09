@@ -1,0 +1,10 @@
+{
+  "server": "2.4.0",
+  "request": "POST /api/v1/oauth/token",
+  "status": 500,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"message\":\"Internal Server Error\"}\n",
+  "note": "a loser of 4 concurrent refreshes with the same refresh token"
+}

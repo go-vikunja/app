@@ -35,6 +35,15 @@ ServerConnectionFailure transportFailure(Uri root, DioException exception) {
   }
 }
 
+/// The same classification as [transportFailure] for a request of an
+/// established connection.
+NetworkProblem networkProblemOf(DioException exception) =>
+    switch (transportFailure(exception.requestOptions.uri, exception)) {
+      TlsFailure() => NetworkProblem.tls,
+      ServerTimeout() => NetworkProblem.timeout,
+      _ => NetworkProblem.unreachable,
+    };
+
 /// Whether nothing answered at the address, so another port or scheme may
 /// still reach Vikunja. A rejected certificate means a TLS server answered.
 bool isConnectionLevel(ServerConnectionFailure failure) => switch (failure) {

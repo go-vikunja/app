@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v1/oauth/authorize",
+  "status": 400,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"code\":17002,\"message\":\"The redirect URI is not allowed for this client.\"}\n"
+}

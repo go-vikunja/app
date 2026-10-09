@@ -4,8 +4,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/core/auth/web_authenticator.dart';
+import 'package:vikunja_mobile/features/home/presentation/reauth_banner.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connection_error_card.dart';
 
+import '../helpers/auth_fakes.dart';
 import '../helpers/fakes.dart';
 import '../helpers/pump_app.dart';
 import '../helpers/server_connections.dart';
@@ -138,5 +141,70 @@ void main() {
         expect(tester.takeException(), isNull);
       });
     }
+
+    testWidgets('overview with a sign-in failure at 200 % in dark mode '
+        '(${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      final auth = AuthFakes();
+      auth.tokenGateway.onExchange = (_) async =>
+          throw const RateLimited(retryAfter: Duration(minutes: 3));
+      await pumpServerOverview(tester, fullServer270(), auth: auth);
+
+      await tester.tap(find.byType(FilledButton));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ConnectionErrorCard), findsOneWidget);
+      await scrollToEnd(tester, find.byType(ListView));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('home with an ended session and a failed retry at 200 % in '
+        'dark mode (${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      final auth = AuthFakes();
+      await auth.seedAccount(
+        fullServer270(root: 'https://a-rather-long-host.example.org/vikunja'),
+        tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
+        displayName: 'Maximiliane Musterfrau-Beispielhausen',
+        needsReauth: true,
+      );
+      auth.webAuthenticator.handler = (_, _) async =>
+          throw const WebAuthenticationFailed(
+            WebAuthenticationProblem.noBrowser,
+          );
+      await pumpVikunjaApp(
+        tester,
+        auth: auth,
+        connector: FakeServerConnector.failing(StateError('offline')),
+      );
+
+      expect(find.byType(ReauthBanner), findsOneWidget);
+      await tester.ensureVisible(find.byType(FilledButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(FilledButton));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ConnectionErrorCard), findsOneWidget);
+      await scrollToEnd(tester, find.byType(ListView));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('sign-out dialog at 200 % in dark mode '
+        '(${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      final auth = AuthFakes();
+      await auth.seedAccount(
+        fullServer270(),
+        tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
+      );
+      await pumpVikunjaApp(tester, auth: auth);
+
+      await scrollToEnd(tester, find.byType(ListView));
+      await tester.tap(find.byType(OutlinedButton));
+      await tester.pumpAndSettle();
+
+      expect(find.byWidgetPredicate((w) => w is AlertDialog), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
   }
 }

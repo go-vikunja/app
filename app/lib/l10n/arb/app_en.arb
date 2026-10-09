@@ -180,7 +180,7 @@
   },
   "unsupportedUnknownVersionSuggestion": "Ask whoever runs the server which Vikunja version it runs.",
   "signInMethodsHeading": "Sign-in methods",
-  "signInBrowserTitle": "Sign in with browser",
+  "signInBrowserTitle": "Browser sign-in",
   "signInBrowserSubtitle": "Uses the Vikunja login page, including single sign-on.",
   "signInBrowserProvidersSubtitle": "Uses the Vikunja login page, including {providers}.",
   "@signInBrowserProvidersSubtitle": {
@@ -222,5 +222,181 @@
   "legalOpenFailed": "The link could not be opened.",
   "continueToSignIn": "Continue to sign-in",
   "useDifferentServer": "Use a different server",
-  "signInComingSoon": "Sign-in isn’t available in this version yet."
+  "signInWaiting": "Waiting for sign-in…",
+  "signInRateLimitedTitle": "Too many sign-in attempts",
+  "signInRateLimitedExplanation": "{host} is limiting sign-ins from your network for now.",
+  "@signInRateLimitedExplanation": {
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "signInRateLimitedSuggestion": "Wait a minute, then try again.",
+  "signInRateLimitedSuggestionSeconds": "Wait {seconds, plural, =1{1 second} other{{seconds} seconds}}, then try again.",
+  "@signInRateLimitedSuggestionSeconds": {
+    "placeholders": {
+      "seconds": {
+        "type": "int",
+        "example": "30"
+      }
+    }
+  },
+  "signInRateLimitedSuggestionMinutes": "Wait {minutes, plural, =1{1 minute} other{{minutes} minutes}}, then try again.",
+  "@signInRateLimitedSuggestionMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int",
+        "example": "5"
+      }
+    }
+  },
+  "signInServerErrorExplanation": "{host} answered the sign-in with an error (HTTP {status}).",
+  "@signInServerErrorExplanation": {
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      },
+      "status": {
+        "type": "String",
+        "example": "502"
+      }
+    }
+  },
+  "signInExpiredTitle": "Sign-in expired",
+  "signInExpiredExplanation": "The sign-in took too long or was already used once.",
+  "signInRetrySuggestion": "Please sign in again.",
+  "signInRejectedTitle": "Sign-in rejected",
+  "signInRejectedExplanation": "{host} did not accept the sign-in from this app (error {code}).",
+  "@signInRejectedExplanation": {
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      },
+      "code": {
+        "type": "String",
+        "example": "17006"
+      }
+    }
+  },
+  "signInRejectedSuggestion": "Try again. If it keeps happening, ask whoever runs the server to check it.",
+  "signInDiscardedTitle": "Sign-in discarded",
+  "signInDiscardedExplanation": "The browser returned a sign-in that doesn’t belong to this attempt, so the app discarded it to protect your account.",
+  "signInIncompleteTitle": "Sign-in not completed",
+  "signInIncompleteExplanation": "The browser returned to the app without a finished sign-in.",
+  "signInIncompleteSuggestion": "Try again and finish signing in on the server’s page.",
+  "signInNoBrowserTitle": "No browser available",
+  "signInNoBrowserExplanation": "Signing in needs a web browser, but none is available on this device.",
+  "signInNoBrowserSuggestion": "Install or enable a browser, then try again.",
+  "signInBrowserFailedTitle": "Sign-in page couldn’t be opened",
+  "signInBrowserFailedExplanation": "The app could not show the sign-in page of the server.",
+  "signInBrowserFailedSuggestion": "Try again. If it keeps happening, restart the app.",
+  "signInAccountDisabledTitle": "Account disabled",
+  "signInAccountDisabledExplanation": "Your account on {host} is disabled.",
+  "@signInAccountDisabledExplanation": {
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "signInAccountLockedTitle": "Account locked",
+  "signInAccountLockedExplanation": "Your account on {host} is locked.",
+  "@signInAccountLockedExplanation": {
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "signInAccountBlockedSuggestion": "Check your email for instructions, or ask whoever runs the server.",
+  "signInSessionEndedExplanation": "{host} ended the new session right away.",
+  "@signInSessionEndedExplanation": {
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "signInEndpointMissingTitle": "Sign-in not available",
+  "signInEndpointMissingExplanation": "{host} does not answer at the sign-in address the app needs. A reverse proxy may be blocking it.",
+  "@signInEndpointMissingExplanation": {
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "signInEndpointMissingSuggestion": "Ask whoever runs the server to make the whole Vikunja API reachable.",
+  "signInUnexpectedExplanation": "An unexpected error occurred while signing in.",
+  "signInDifferentUserTitle": "Signed in as a different user",
+  "signInDifferentUserExplanation": "The sign-in page signed you in as @{signedIn}, but this account is @{expected}. Nothing was changed.",
+  "@signInDifferentUserExplanation": {
+    "placeholders": {
+      "signedIn": {
+        "type": "String",
+        "example": "bob"
+      },
+      "expected": {
+        "type": "String",
+        "example": "alice"
+      }
+    }
+  },
+  "signInDifferentUserSuggestion": "Sign in again as @{expected}. If the browser signs you in on its own, sign out of {host} in the browser first.",
+  "@signInDifferentUserSuggestion": {
+    "placeholders": {
+      "expected": {
+        "type": "String",
+        "example": "alice"
+      },
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "homeTitle": "Signed in",
+  "homeUsername": "@{username}",
+  "@homeUsername": {
+    "placeholders": {
+      "username": {
+        "type": "String",
+        "example": "alice"
+      }
+    }
+  },
+  "homePlaceholder": "Your projects and tasks will appear here in a later version.",
+  "homeSignOut": "Sign out",
+  "homeSigningOut": "Signing out…",
+  "signOutDialogTitle": "Sign out?",
+  "signOutDialogBody": "Taskuna will sign you out of {host}. You can sign in again at any time.",
+  "@signOutDialogBody": {
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "signOutDialogCancel": "Cancel",
+  "signOutDialogConfirm": "Sign out",
+  "reauthTitle": "Signed out by the server",
+  "reauthBody": "{host} ended your session. Sign in again to keep your tasks in sync. Nothing on this device is lost.",
+  "@reauthBody": {
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "reauthAction": "Sign in again"
 }
