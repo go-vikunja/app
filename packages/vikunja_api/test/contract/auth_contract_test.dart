@@ -143,11 +143,7 @@ final class _SessionTokens implements AccessTokenSource {
 
 void main() {
   group('browser sign-in on local Docker servers', skip: _skip, () {
-    for (final (port, version) in [
-      (34523, '2.3.0'),
-      (34524, '2.4.0'),
-      (34527, '2.7.0'),
-    ]) {
+    for (final (port, version) in [(34527, '2.7.0')]) {
       group('$version on :$port', () {
         late Dio dio;
         late ServerConnection connection;

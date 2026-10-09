@@ -33,34 +33,6 @@ void main() {
   group('local Docker servers', skip: _skip, () {
     for (final (port, version, apiVersions, tier, concurrentWrites) in [
       (
-        34510,
-        const ServerVersion(1, 0, 0),
-        {ApiVersion.v1},
-        SupportTier.unsupported,
-        null,
-      ),
-      (
-        34520,
-        const ServerVersion(2, 0, 0),
-        {ApiVersion.v1},
-        SupportTier.unsupported,
-        null,
-      ),
-      (
-        34523,
-        const ServerVersion(2, 3, 0),
-        {ApiVersion.v1},
-        SupportTier.oauth,
-        null,
-      ),
-      (
-        34524,
-        const ServerVersion(2, 4, 0),
-        {ApiVersion.v1, ApiVersion.v2},
-        SupportTier.full,
-        false,
-      ),
-      (
         34527,
         const ServerVersion(2, 7, 0),
         {ApiVersion.v1, ApiVersion.v2},
@@ -144,10 +116,10 @@ void main() {
 
     test('a pasted API URL is normalised', () async {
       final connection = await connector.connect(
-        'HTTP://LOCALHOST:34524/api/v1/',
+        'HTTP://LOCALHOST:34527/api/v1/',
       );
 
-      expect(connection.rootUri, Uri.parse('http://localhost:34524'));
+      expect(connection.rootUri, Uri.parse('http://localhost:34527'));
       expect(connection.apiVersions, {ApiVersion.v1, ApiVersion.v2});
     });
 
@@ -156,8 +128,7 @@ void main() {
       ('http://localhost:34527/vikunja', 'http://localhost:34527'),
       ('http://localhost:34527/login', 'http://localhost:34527'),
       ('http://localhost:34527/projects/1/1', 'http://localhost:34527'),
-      ('http://localhost:34524/tasks/by/upcoming', 'http://localhost:34524'),
-      ('http://localhost:34520/login', 'http://localhost:34520'),
+      ('http://localhost:34527/tasks/by/upcoming', 'http://localhost:34527'),
     ]) {
       test('a pasted browser or API URL connects: $input', () async {
         final connection = await connector.connect(input);

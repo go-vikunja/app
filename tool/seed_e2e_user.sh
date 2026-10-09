@@ -5,8 +5,7 @@
 # password nor any token.
 #
 # Usage: tool/seed_e2e_user.sh [port | base URL ...]
-#        (default: 34527 and 34537, the 2.7.0 servers for the iOS simulator
-#        and the Android emulator)
+#        (default: 34527, the 2.7.0 test server)
 # Env:   VIKUNJA_TEST_HOST  host for bare ports (default: localhost)
 #        E2E_USER_ENV       credentials file (default: test_servers/seed/e2e-user.env)
 #
@@ -50,7 +49,7 @@ fi
 if (($# > 0)); then
   servers=("$@")
 else
-  servers=(34527 34537)
+  servers=(34527)
 fi
 
 tmp="$(mktemp -d)"

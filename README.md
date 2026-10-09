@@ -119,14 +119,7 @@ docker compose -f test_servers/docker-compose.yaml down
 
 With the standalone binary (for example colima with Homebrew's docker-compose), use `docker-compose` with the same arguments. The servers listen on `127.0.0.1` only.
 
-| Port | Vikunja | Expected result |
-|---|---|---|
-| 34510 | 1.0.0 | unsupported (below the 2.3.0 floor) |
-| 34520 | 2.0.0 | unsupported (below the 2.3.0 floor) |
-| 34523 | 2.3.0 | `/api/v1` only, OAuth tier |
-| 34524 | 2.4.0 | `/api/v2`, full tier |
-| 34527 | 2.7.0 | `/api/v2`, full tier |
-| 34537 | 2.7.0 | the same, for browser sign-in from the Android emulator (see below); not used by the contract tests |
+Only the latest Vikunja release is tested: one server, 2.7.0 on port 34527 (`/api/v2`, full tier). Older servers down to the 2.3.0 floor stay supported in code and are covered by unit tests with recorded `/info` and error responses ([D28](docs/decisions.md#d28-test-only-the-latest-vikunja-release)).
 
 Run the app on an Android emulator:
 
@@ -136,20 +129,19 @@ flutter devices                       # find the emulator id, e.g. emulator-5554
 flutter run -d emulator-5554
 ```
 
-Enter `http://10.0.2.2:34527` as the server address. `10.0.2.2` is the emulator's alias for the host, where the 2.7.0 test server runs. On the iOS simulator, use `http://localhost:34527`. The app uses a server over plain `http://` only after you confirm it. To sign in on the emulator, use port 34537 instead, as described in the next section.
+Forward the emulator's `localhost:34527` to the host once per emulator start, then enter `http://localhost:34527` as the server address (the same address works on the iOS simulator):
+
+```sh
+adb reverse tcp:34527 tcp:34527
+```
+
+The app uses a server over plain `http://` only after you confirm it.
 
 ## Sign in on a device (end to end)
 
 Browser sign-in is tested by hand against the Docker test servers, with a fixed test user. Its username and password are in [`test_servers/seed/e2e-user.env`](test_servers/seed/e2e-user.env). They are throwaway values for these local servers only.
 
-| Device | Server address | Test server |
-|---|---|---|
-| Android emulator | `http://10.0.2.2:34537` | `vikunja-2-7-emulator` |
-| iOS simulator | `http://localhost:34527` | `vikunja-2-7` |
-
-The emulator needs its own server. The web frontend bundled with Vikunja calls the API at the server's `publicurl`, and the browser on the emulator cannot reach the host as `localhost`. Port 34537 therefore has `publicurl` `http://10.0.2.2:34537/`. For the same reason its web frontend does not work in a browser on the host.
-
-Alternatively, forward the emulator's `localhost:34527` to the host with `adb reverse tcp:34527 tcp:34527` (again after every emulator restart) and use `http://localhost:34527` on the emulator too. Then the regular 2.7.0 server works, browser included.
+Both the Android emulator (after `adb reverse tcp:34527 tcp:34527`) and the iOS simulator use `http://localhost:34527`. The server's `publicurl` is `http://localhost:34527/`, so its web login page also loads in the emulator's browser.
 
 The app's minimum is iOS 15.0. Below iOS 17.4, flutter_web_auth_2 falls back to the older ASWebAuthenticationSession initializer, which handles the app's custom callback scheme ([D23](docs/decisions.md#d23-browser-sign-in-through-flutter_web_auth_2-client-id-and-redirect-uri)).
 
@@ -158,12 +150,12 @@ The app's minimum is iOS 15.0. Below iOS 17.4, flutter_web_auth_2 falls back to 
    ```sh
    docker compose -f test_servers/docker-compose.yaml up -d   # or docker-compose
    tool/wait_for_test_servers.sh
-   tool/seed_e2e_user.sh                 # creates the user on 34527 and 34537
+   tool/seed_e2e_user.sh                 # creates the user on 34527
    ```
 
-   The script is idempotent: for a user that already exists it checks the password with one login. The servers keep their data in a tmpfs, so run it again after a server restarts. It counts against the server's login limit of 10 requests per minute per IP.
+   The script is idempotent: for a user that already exists it checks the password with one login. The server keeps its data in a tmpfs, so run it again after the server restarts. It counts against the server's login limit of 10 requests per minute per IP.
 
-2. Run the app (`cd app`, then `flutter run -d emulator-5554` or `flutter run -d "iPhone 16 Pro"`), enter the address from the table and confirm the unencrypted connection.
+2. Run the app (`cd app`, then `flutter run -d emulator-5554` or `flutter run -d "iPhone 16 Pro"`), enter `http://localhost:34527` and confirm the unencrypted connection.
 3. Tap **Continue to sign-in**.
    - Android: a Custom Tab (or Chrome's Auth Tab) opens the Vikunja login page. On a new emulator, Chrome may show its first-run screens first.
    - iOS: a sign-in sheet opens the Vikunja login page. The session is ephemeral, so iOS asks no "Wants to Use … to Sign In" question.

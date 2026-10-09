@@ -140,7 +140,7 @@ ADR-lite. Each entry has a number, a status and the step that took it. A decisio
 
 ## D11: Docker contract matrix 1.0 / 2.0 / 2.3 / 2.4 / 2.7
 
-*Accepted, step 1.*
+*Accepted, step 1. Superseded by [D28](#d28-test-only-the-latest-vikunja-release) on 2026-10-09.*
 
 - **Context:** Behaviour differs across server lines. Mocks alone cannot prove v1/v2 detection.
 - **Decision:**
@@ -415,3 +415,17 @@ ADR-lite. Each entry has a number, a status and the step that took it. A decisio
 - **Consequences:**
   - Both are designed against their first real callers, and step 2+3 stays focused on sign-in.
   - Step 5 (L) grows. It is split if it gets too large.
+
+## D28: Test only the latest Vikunja release
+
+*Accepted 2026-10-09 (owner decision). Supersedes [D11](#d11-docker-contract-matrix-10--20--23--24--27).*
+
+- **Context:** The five-server matrix (1.0, 2.0, 2.3, 2.4, 2.7) plus an emulator-only server slowed the contract runs and shared one login rate limit. The owner asked to test only the newest release from now on.
+- **Decision:**
+  - `test_servers/docker-compose.yaml` runs a single `vikunja/vikunja:2.7.0` on `127.0.0.1:34527`; the tag is bumped when a new release comes out.
+  - Contract tests (negotiation and the full OAuth flow) run only against it.
+  - The Android emulator reaches it as `localhost` through `adb reverse tcp:34527 tcp:34527`, so no emulator-specific server is needed.
+  - Support for older servers down to the 2.3.0 floor stays in the code; it is covered by unit tests against the recorded `/info` and error fixtures captured from the old images.
+- **Consequences:**
+  - Regressions that only show on 2.3–2.6 servers are no longer caught by a live server. If such a server matters again, an image can be added back temporarily.
+  - CI pulls one image and the contract job is faster.
