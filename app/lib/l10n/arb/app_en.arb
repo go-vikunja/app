@@ -1,6 +1,6 @@
 {
   "@@locale": "en",
-  "appTitle": "Taskuna",
+  "appTitle": "Rurana",
   "@appTitle": {
     "description": "Name of the app, shown in the task switcher and on the connect screen. A brand name: do not translate."
   },
@@ -154,7 +154,7 @@
   "tierOauthBody": "The app works with this server. A few newer features need Vikunja 2.4 or newer.",
   "tierOauthV2UnreachableBody": "The app works with this server, but its newer API (/api/v2) could not be reached, so a few features are unavailable. A reverse proxy may be blocking it.",
   "unsupportedTitle": "This server is too old",
-  "unsupportedBody": "Taskuna needs Vikunja {minimum} or newer. This server runs {found}.",
+  "unsupportedBody": "Rurana needs Vikunja {minimum} or newer. This server runs {found}.",
   "@unsupportedBody": {
     "placeholders": {
       "minimum": {
@@ -169,7 +169,7 @@
   },
   "unsupportedSuggestion": "Ask whoever runs the server to update Vikunja.",
   "unsupportedUnknownVersionTitle": "Server version not recognized",
-  "unsupportedUnknownVersionBody": "Taskuna needs Vikunja {minimum} or newer. This server reports a version the app does not recognize.",
+  "unsupportedUnknownVersionBody": "Rurana needs Vikunja {minimum} or newer. This server reports a version the app does not recognize.",
   "@unsupportedUnknownVersionBody": {
     "placeholders": {
       "minimum": {
@@ -377,7 +377,7 @@
   "homeSignOut": "Sign out",
   "homeSigningOut": "Signing out…",
   "signOutDialogTitle": "Sign out?",
-  "signOutDialogBody": "Taskuna will sign you out of {host}. You can sign in again at any time.",
+  "signOutDialogBody": "Rurana will sign you out of {host}. You can sign in again at any time.",
   "@signOutDialogBody": {
     "placeholders": {
       "host": {

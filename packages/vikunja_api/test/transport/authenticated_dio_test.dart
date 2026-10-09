@@ -78,7 +78,7 @@ void main() {
     base.options
       ..connectTimeout = const Duration(seconds: 3)
       ..receiveTimeout = const Duration(seconds: 4)
-      ..headers['User-Agent'] = 'Taskuna/1.0.0';
+      ..headers['User-Agent'] = 'Rurana/1.0.0';
 
     final dio = createAuthenticatedDio(
       base: base,
@@ -90,7 +90,7 @@ void main() {
     final sent = adapterOf(base).requests.single;
     expect(sent.connectTimeout, const Duration(seconds: 3));
     expect(sent.receiveTimeout, const Duration(seconds: 4));
-    expect(sent.headers['User-Agent'], 'Taskuna/1.0.0');
+    expect(sent.headers['User-Agent'], 'Rurana/1.0.0');
     expect(base.options.headers.containsKey('Authorization'), isFalse);
   });
 

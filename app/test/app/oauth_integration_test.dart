@@ -33,7 +33,7 @@ import '../helpers/pump_app.dart';
 final Uri _root = Uri.parse('https://vikunja.example.com');
 const _userId = 5;
 const _username = 'taskuna-e2e';
-const _name = 'Taskuna Tester';
+const _name = 'Rurana Tester';
 
 Map<String, Object?> _fixture(String path) => jsonDecode(
   File('../packages/vikunja_api/test/fixtures/$path').readAsStringSync(),
@@ -336,7 +336,7 @@ void main() {
 
       Future<void> launch() async {
         final dio = createDio(
-          userAgent: 'Taskuna/0.1.0 test',
+          userAgent: 'Rurana/0.1.0 test',
           httpClientAdapter: server,
           logRequests: false,
         );

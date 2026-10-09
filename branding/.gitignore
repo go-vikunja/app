@@ -1,0 +1,6 @@
+# Design iterations and their renders stay local; only SVG sources, the
+# comparison sheets and the chosen assets in png/ are committed.
+explorations-*/*/**/*.png
+explorations-*/*/iterations/
+explorations-*/*/work*/
+explorations-*/*/refine/

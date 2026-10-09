@@ -101,7 +101,7 @@ abstract class AppLocalizations {
   /// Name of the app, shown in the task switcher and on the connect screen. A brand name: do not translate.
   ///
   /// In en, this message translates to:
-  /// **'Taskuna'**
+  /// **'Rurana'**
   String get appTitle;
 
   /// No description provided for @connectTagline.
@@ -431,7 +431,7 @@ abstract class AppLocalizations {
   /// No description provided for @unsupportedBody.
   ///
   /// In en, this message translates to:
-  /// **'Taskuna needs Vikunja {minimum} or newer. This server runs {found}.'**
+  /// **'Rurana needs Vikunja {minimum} or newer. This server runs {found}.'**
   String unsupportedBody(String minimum, String found);
 
   /// No description provided for @unsupportedSuggestion.
@@ -449,7 +449,7 @@ abstract class AppLocalizations {
   /// No description provided for @unsupportedUnknownVersionBody.
   ///
   /// In en, this message translates to:
-  /// **'Taskuna needs Vikunja {minimum} or newer. This server reports a version the app does not recognize.'**
+  /// **'Rurana needs Vikunja {minimum} or newer. This server reports a version the app does not recognize.'**
   String unsupportedUnknownVersionBody(String minimum);
 
   /// No description provided for @unsupportedUnknownVersionSuggestion.
@@ -863,7 +863,7 @@ abstract class AppLocalizations {
   /// No description provided for @signOutDialogBody.
   ///
   /// In en, this message translates to:
-  /// **'Taskuna will sign you out of {host}. You can sign in again at any time.'**
+  /// **'Rurana will sign you out of {host}. You can sign in again at any time.'**
   String signOutDialogBody(String host);
 
   /// No description provided for @signOutDialogCancel.

@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="108" height="108" viewBox="0 0 108 108">
+  <defs>
+    <path id="face" d="M512 300 C624 300 706 352 706 452 C706 580 668 668 668 760 C668 846 600 904 512 904 C424 904 356 846 356 760 C356 668 318 580 318 452 C318 352 400 300 512 300 Z"/>
+    <clipPath id="face-clip"><use xlink:href="#face"/></clipPath>
+    <g id="ear">
+      <path fill="#FFFFFF" d="M-56 0 C-84 -120 -62 -228 -4 -276 C10 -288 32 -284 30 -262 C20 -196 24 -90 56 0 Z"/>
+      <path fill="#FFB9AA" d="M-26 -36 C-42 -116 -30 -184 6 -226 C0 -166 6 -96 26 -36 Z"/>
+    </g>
+  </defs>
+  <g id="mark" transform="translate(54 54) scale(0.072) translate(-512 -498)">
+    <use xlink:href="#ear" transform="translate(402 396) rotate(-8)"/>
+    <use xlink:href="#ear" transform="translate(622 396) scale(-1 1) rotate(-8)"/>
+    <use xlink:href="#face" fill="#FFFFFF"/>
+    <g fill="#D3E3FF" clip-path="url(#face-clip)">
+      <circle cx="420" cy="438" r="56"/>
+      <circle cx="512" cy="430" r="58"/>
+      <circle cx="604" cy="438" r="56"/>
+    </g>
+    <g fill="#FFFFFF">
+      <circle cx="360" cy="378" r="66"/>
+      <circle cx="434" cy="324" r="72"/>
+      <circle cx="512" cy="304" r="76"/>
+      <circle cx="590" cy="324" r="72"/>
+      <circle cx="664" cy="378" r="66"/>
+      <circle cx="420" cy="422" r="56"/>
+      <circle cx="512" cy="414" r="58"/>
+      <circle cx="604" cy="422" r="56"/>
+    </g>
+    <ellipse fill="#DDE9FF" cx="512" cy="776" rx="136" ry="100"/>
+    <g fill="#FFB9AA" fill-opacity="0.7">
+      <ellipse cx="388" cy="676" rx="34" ry="20"/>
+      <ellipse cx="636" cy="676" rx="34" ry="20"/>
+    </g>
+    <g fill="#0E2A66">
+      <ellipse cx="416" cy="584" rx="34" ry="42"/>
+      <ellipse cx="608" cy="584" rx="34" ry="42"/>
+    </g>
+    <g fill="#FFFFFF">
+      <circle cx="428" cy="568" r="11"/>
+      <circle cx="620" cy="568" r="11"/>
+    </g>
+    <g fill="none" stroke="#0E2A66" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke-width="12" d="M386 556 L368 540 M638 556 L656 540"/>
+      <path stroke-width="18" d="M484 730 L472 748 M540 730 L552 748"/>
+      <path stroke-width="20" d="M476 798 L500 820 L552 784"/>
+    </g>
+  </g>
+</svg>

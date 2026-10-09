@@ -126,7 +126,7 @@ void main() {
     expect(find.text(en.overviewInsecureBadge), findsNothing);
     expect(
       adapter.requests.map((request) => request.headers['User-Agent']).toSet(),
-      {'Taskuna/0.1.0+1 (android 15)'},
+      {'Rurana/0.1.0+1 (android 15)'},
     );
   });
 

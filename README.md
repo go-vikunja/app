@@ -1,10 +1,10 @@
-# Taskuna
+# Rurana
 
-Taskuna (name and logo: see [branding/README.md](branding/README.md)) is an unofficial mobile client for self-hosted [Vikunja](https://vikunja.io) servers, for Android and iOS, built with Flutter. The Vikunja project does not make, endorse or support it.
+Rurana (name and logo: see [branding/README.md](branding/README.md)) is an unofficial mobile client for self-hosted [Vikunja](https://vikunja.io) servers, for Android and iOS, built with Flutter. The Vikunja project does not make, endorse or support it.
 
 ## Status
 
-Step 1 of the [roadmap](docs/roadmap.md), server connection and v1/v2 negotiation, is done. **Step 2+3, the HTTP core, browser sign-in (OAuth 2.0 + PKCE) and the session manager, is in progress**; see [architecture §5](docs/architecture.md#5-auth-and-session-in-progress-step-23). The project applies the owner's decisions of 2026-10-09 (app id, browser sign-in only, and the 2.3.0 floor that follows from them) and proposes a name and icon (see [branding/README.md](branding/README.md)).
+Step 1 of the [roadmap](docs/roadmap.md), server connection and v1/v2 negotiation, is done. **Step 2+3, the HTTP core, browser sign-in (OAuth 2.0 + PKCE) and the session manager, is in progress**; see [architecture §5](docs/architecture.md#5-auth-and-session-in-progress-step-23). The project applies the owner's decisions of 2026-10-09 (app id, browser sign-in only, and the 2.3.0 floor that follows from them). Name and icon: Rurana with the "checkbox ears" llama (see [branding/README.md](branding/README.md)).
 
 Step 1 built the first feature: the app takes a server address and finds the Vikunja server behind it. It probes `/api/v2/info` (Vikunja 2.4.0 and newer) and `/api/v1/info` in parallel, and uses v2 when both answer. Then it shows:
 - the server version;
@@ -33,9 +33,9 @@ Not planned for now: the admin panel, an MCP page, time tracking (licensed), pus
 
 | | |
 |---|---|
-| Name | Taskuna (proposed, pending owner approval), see [branding/README.md](branding/README.md) |
-| Store listing | `Taskuna – client for Vikunja` (de: `Taskuna – Client für Vikunja`) |
-| Icon | The "check-llama" from [branding/](branding/README.md), generated into the platform projects by `flutter_launcher_icons` |
+| Name | Rurana (Quechua for "what is to be done"), see [branding/README.md](branding/README.md) |
+| Store listing | `Rurana – client for Vikunja` (de: `Rurana – Client für Vikunja`) |
+| Icon | The "checkbox ears" llama from [branding/](branding/README.md), generated into the platform projects by `flutter_launcher_icons` |
 | Android `applicationId`, iOS bundle id | `dev.coderoftime.vikunja` ([D15](docs/decisions.md#d15-app-id-devcoderoftimevikunja)) |
 | Dart package | `vikunja_mobile` (internal only, never shown) |
 

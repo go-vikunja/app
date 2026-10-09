@@ -155,7 +155,7 @@ void main() {
             BaseOptions(
               connectTimeout: const Duration(seconds: 5),
               receiveTimeout: const Duration(seconds: 20),
-              headers: {'User-Agent': 'Taskuna contract tests'},
+              headers: {'User-Agent': 'Rurana contract tests'},
             ),
           );
           connection = await DioServerConnector(dio)

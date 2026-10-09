@@ -45,7 +45,7 @@ Rough total: about 85 engineer-days to M3 and about 160 to M5.
 ## Steps
 
 The owner's answers of 2026-10-09 ([open questions](open-questions.md)) changed this plan:
-- Step 1 was finalized with the 2.3.0 floor without the `standard` tier ([D13](decisions.md#d13-support-floor-230)), the app id `dev.coderoftime.vikunja`, and the name Taskuna (proposed, pending approval) with its icon from [branding/README.md](../branding/README.md) ([D15](decisions.md#d15-app-id-devcoderoftimevikunja)).
+- Step 1 was finalized with the 2.3.0 floor without the `standard` tier ([D13](decisions.md#d13-support-floor-230)), the app id `dev.coderoftime.vikunja`, and the name Rurana with its icon from [branding/README.md](../branding/README.md) ([D15](decisions.md#d15-app-id-devcoderoftimevikunja)).
 - Step 4 was "Password + TOTP login, API-token login". Multi-account replaces it ([D14](decisions.md#d14-browser-sign-in-only), [D16](decisions.md#d16-multi-account-in-the-first-release)), so no step is renumbered.
 - Step 34 is deferred and step 38 (legacy servers 0.24–1.x, optional) is removed ([D20](decisions.md#d20-scope-cuts-and-desktop-adaptations), [D13](decisions.md#d13-support-floor-230)).
 - Steps 2 and 3 are merged into one step, 2+3 (owner decision of 2026-10-09). Its paging and query builder moved to step 5, where they are first used ([D27](decisions.md#d27-paging-and-the-query-builder-move-to-step-5)). No step is renumbered: "step 2" and "step 3" elsewhere in the docs mean step 2+3.
@@ -81,7 +81,7 @@ The owner's answers of 2026-10-09 ([open questions](open-questions.md)) changed 
 | 23 | Project management and views | Project CRUD, archive, duplicate, views management | L | planned |
 | 24 | Filters engine, saved filters, global search | Local filter evaluation, filter builder, offline search | L | planned |
 | 25 | Description editor (TipTap in a WebView) and interactive checklists | Lossless rich-text editing ([D18](decisions.md#d18-tiptap-description-editor-in-a-webview)) | L | planned |
-| 26 | Attachments and share target | Upload, download, previews, "Share to Taskuna" | M | planned |
+| 26 | Attachments and share target | Upload, download, previews, "Share to Rurana" | M | planned |
 | 27 | Comments, reactions, unread | Comment threads, mentions, reactions | M | planned |
 | 28 | Labels, teams, sharing | Label CRUD, teams, project sharing and link shares | M | planned |
 | 29 | Table and timeline views | Detailed list and a read-only timeline | M | planned |

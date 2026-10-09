@@ -16,7 +16,7 @@ The project owner answered Q1–Q15 on 2026-10-09. This page records each answer
 
 - **Asked:** app name and logo, `applicationId` and bundle id, OAuth `client_id` and redirect scheme, App Group and keychain group.
 - **Answer:** `applicationId` and bundle id `dev.coderoftime.vikunja`. Generate a name and a logo that lean on Vikunja's.
-- **Result:** [D15](decisions.md#d15-app-id-devcoderoftimevikunja), superseding [D10](decisions.md#d10-placeholder-application-ids). Proposed name Taskuna, store listing `Taskuna – client for Vikunja` (de: `Taskuna – Client für Vikunja`), check-llama icon; pending owner approval in the step 1 review. See [branding/README.md](../branding/README.md). The OAuth `client_id` and the `vikunja-…` redirect scheme were fixed in step 2+3 ([D23](decisions.md#d23-browser-sign-in-through-flutter_web_auth_2-client-id-and-redirect-uri)); the App Group and keychain group derive from the app id in step 19.
+- **Result:** [D15](decisions.md#d15-app-id-devcoderoftimevikunja), superseding [D10](decisions.md#d10-placeholder-application-ids). Name **Rurana** with the "checkbox ears" llama icon, chosen by the owner on 2026-10-09 after the first proposal (Taskuna, check-llama) was rejected; store listing `Rurana – client for Vikunja` (de: `Rurana – Client für Vikunja`). See [branding/README.md](../branding/README.md). The OAuth `client_id` and the `vikunja-…` redirect scheme were fixed in step 2+3 ([D23](decisions.md#d23-browser-sign-in-through-flutter_web_auth_2-client-id-and-redirect-uri)); the App Group and keychain group derive from the app id in step 19.
 
 ## Q3: Licence and distribution
 

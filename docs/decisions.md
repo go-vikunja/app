@@ -203,12 +203,12 @@ ADR-lite. Each entry has a number, a status and the step that took it. A decisio
 
 ## D15: App id `dev.coderoftime.vikunja`
 
-*Accepted 2026-10-09, step 1 review. Supersedes [D10](#d10-placeholder-application-ids). From [Q2](open-questions.md#q2-app-identity). The app id and the ids derived from it are accepted; the name, store listing, `User-Agent` prefix and icon are **proposed, pending owner approval**.*
+*Accepted 2026-10-09, step 1 review. Supersedes [D10](#d10-placeholder-application-ids). From [Q2](open-questions.md#q2-app-identity). The app id and the ids derived from it are accepted. The owner chose the name Rurana and the "checkbox ears" icon on 2026-10-09 (the proposed Taskuna and its check-llama icon were rejected).*
 
 - **Decision:**
   - Android `applicationId` and iOS bundle id: `dev.coderoftime.vikunja`.
-  - App name (proposed, pending owner approval): **Taskuna** (*task* + *vicuña*), with the "check-llama" icon; see [branding/README.md](../branding/README.md). The store listing reads `Taskuna – client for Vikunja` (de: `Taskuna – Client für Vikunja`). Name and logo lean on Vikunja's, but must not suggest an official Vikunja app.
-  - Platform ids under the app id: the Android namespace and the Kotlin package `dev.coderoftime.vikunja`, the iOS test bundle `dev.coderoftime.vikunja.RunnerTests`, and the method channel `dev.coderoftime.vikunja/device`. The HTTP `User-Agent` starts with `Taskuna/<version>`, following the proposed name. The Dart package keeps its internal name `vikunja_mobile`.
+  - App name: **Rurana** (Quechua *rurana*, "what is to be done"), with the "checkbox ears" llama icon; see [branding/README.md](../branding/README.md). The store listing reads `Rurana – client for Vikunja` (de: `Rurana – Client für Vikunja`). Name and logo lean on Vikunja's, but must not suggest an official Vikunja app.
+  - Platform ids under the app id: the Android namespace and the Kotlin package `dev.coderoftime.vikunja`, the iOS test bundle `dev.coderoftime.vikunja.RunnerTests`, and the method channel `dev.coderoftime.vikunja/device`. The HTTP `User-Agent` starts with `Rurana/<version>`. The Dart package keeps its internal name `vikunja_mobile`.
   - Ids derived from it later: the App Group `group.dev.coderoftime.vikunja` and a keychain group on the same base (step 19). The OAuth `client_id` and redirect scheme follow [D14](#d14-browser-sign-in-only).
 - **Consequences:**
   - The step 1 finalization replaced the template ids `com.example.vikunja_mobile` and `com.example.vikunjaMobile`. A debug build with the old id stays installed next to the new one until it is uninstalled.

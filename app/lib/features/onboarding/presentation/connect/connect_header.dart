@@ -17,9 +17,6 @@ class ConnectHeader extends StatelessWidget {
           width: 72,
           height: 72,
           excludeFromSemantics: true,
-          // The brand blue is too dark to stand out on dark surfaces.
-          color: theme.brightness == Brightness.dark ? colors.primary : null,
-          colorBlendMode: BlendMode.srcIn,
         ),
         const SizedBox(height: 20),
         Semantics(

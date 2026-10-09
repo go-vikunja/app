@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" width="432" height="432">
+  <title>Woolly llama adaptive icon background</title>
+  <defs>
+    <linearGradient id="sky" x1="18" y1="18" x2="90" y2="90" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4B92FF"/>
+      <stop offset="1" stop-color="#1859EE"/>
+    </linearGradient>
+  </defs>
+  <rect width="108" height="108" fill="url(#sky)"/>
+</svg>

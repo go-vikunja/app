@@ -10,7 +10,7 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
-  String get appTitle => 'Taskuna';
+  String get appTitle => 'Rurana';
 
   @override
   String get connectTagline =>
@@ -216,7 +216,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String unsupportedBody(String minimum, String found) {
-    return 'Taskuna needs Vikunja $minimum or newer. This server runs $found.';
+    return 'Rurana needs Vikunja $minimum or newer. This server runs $found.';
   }
 
   @override
@@ -228,7 +228,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String unsupportedUnknownVersionBody(String minimum) {
-    return 'Taskuna needs Vikunja $minimum or newer. This server reports a version the app does not recognize.';
+    return 'Rurana needs Vikunja $minimum or newer. This server reports a version the app does not recognize.';
   }
 
   @override
@@ -492,7 +492,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String signOutDialogBody(String host) {
-    return 'Taskuna will sign you out of $host. You can sign in again at any time.';
+    return 'Rurana will sign you out of $host. You can sign in again at any time.';
   }
 
   @override

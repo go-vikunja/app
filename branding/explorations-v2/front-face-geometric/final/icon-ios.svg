@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" gradientUnits="userSpaceOnUse" x1="204.8" y1="0" x2="819.2" y2="1024">
+      <stop offset="0" stop-color="#4A94FF"/>
+      <stop offset="0.5" stop-color="#2470FF"/>
+      <stop offset="1" stop-color="#1450E0"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <g id="mark" transform="translate(512 504) scale(1.08) translate(-512 -502)">
+    <g id="ears" fill="#FFFFFF">
+      <path d="M376.4 389.3 C339 344.6 320.5 266.6 330.9 204.2 C336.8 164.8 353.2 127.7 371.8 104.5 C380.4 95.1 394.9 96.8 397.1 110.7 C410.1 167.3 435.9 228 437.4 288.5 C439.4 326.7 442.1 356.6 443.6 378.7 Z"/>
+      <path d="M647.6 389.3 C685 344.6 703.5 266.6 693.1 204.2 C687.2 164.8 670.8 127.7 652.2 104.5 C643.6 95.1 629.1 96.8 626.9 110.7 C613.9 167.3 588.1 228 586.6 288.5 C584.6 326.7 581.9 356.6 580.4 378.7 Z"/>
+    </g>
+    <g id="inner-ears" fill="#F4B98F">
+      <path d="M391.2 354.6 C357.4 307.3 343.1 242.7 351.1 190.8 C355.2 165.9 363.9 144.3 377.5 127.9 C389.6 178.7 412.8 235.7 417.3 289.7 C419.4 315.7 420.3 333.8 418.8 350.2 Z"/>
+      <path d="M632.8 354.6 C666.6 307.3 680.9 242.7 672.9 190.8 C668.8 165.9 660.1 144.3 646.5 127.9 C634.4 178.7 611.2 235.7 606.7 289.7 C604.6 315.7 603.7 333.8 605.2 350.2 Z"/>
+    </g>
+    <g id="head" fill="#FFFFFF">
+      <path d="M512 300 C626 300 702 354 702 460 C702 590 652 670 650 770 C650 852 590 906 512 906 C434 906 374 852 374 770 C372 670 322 590 322 460 C322 354 398 300 512 300 Z"/>
+      <circle cx="366" cy="384" r="62"/>
+      <circle cx="440" cy="330" r="68"/>
+      <circle cx="512" cy="306" r="76"/>
+      <circle cx="584" cy="330" r="68"/>
+      <circle cx="658" cy="384" r="62"/>
+      <circle cx="424" cy="424" r="54"/>
+      <circle cx="512" cy="418" r="58"/>
+      <circle cx="600" cy="424" r="54"/>
+    </g>
+    <path id="fringe" fill="none" stroke="#BCD2FF" stroke-width="20" stroke-linecap="round" d="M364.2 451.9 A66 66 0 0 0 468.4 472.8 A70 70 0 0 0 555.6 472.8 A66 66 0 0 0 659.8 451.9"/>
+    <ellipse id="muzzle" fill="#FCDDC6" cx="512" cy="800" rx="112" ry="82"/>
+    <g id="eyes" fill="#0E2A66">
+      <ellipse cx="408" cy="590" rx="34" ry="40"/>
+      <ellipse cx="616" cy="590" rx="34" ry="40"/>
+    </g>
+    <g id="highlights" fill="#FFFFFF">
+      <circle cx="418" cy="576" r="11"/>
+      <circle cx="626" cy="576" r="11"/>
+    </g>
+    <path id="nose-and-check" fill="none" stroke="#0E2A66" stroke-width="26" stroke-linecap="round" stroke-linejoin="round" d="M488 744 L478 760 M536 744 L546 760 M470 804 L500 832 L558 794"/>
+  </g>
+</svg>

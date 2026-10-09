@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" width="432" height="432">
+  <title>Woolly-cloud llama, monochrome</title>
+  <defs>
+    <path id="ear" d="M403 389C349 314 317 201 329 110Q337 74 363 96C406 165 434 270 464 356Z"/>
+    <path id="topknot" d="M512 240A53 53 0 0 1 597 264A41 41 0 0 1 632 322A41 41 0 0 1 597 380A53 53 0 0 1 512 404A53 53 0 0 1 427 380A41 41 0 0 1 392 322A41 41 0 0 1 427 264A53 53 0 0 1 512 240Z"/>
+    <path id="face" d="M512 300C602 300 658 338 658 424C658 488 632 520 630 566C628 600 642 618 640 640C638 684 590 712 512 712C434 712 386 684 384 640C382 618 396 600 394 566C392 520 366 488 366 424C366 338 422 300 512 300Z"/>
+    <path id="neck" d="M512 600A59 59 0 0 1 610 593A50 50 0 0 1 658 661A59 59 0 0 1 677 757A59 59 0 0 1 704 851A55 55 0 0 1 656 929A58 58 0 0 1 561 949A59 59 0 0 1 463 949A58 58 0 0 1 368 929A55 55 0 0 1 320 851A59 59 0 0 1 347 757A59 59 0 0 1 366 661A50 50 0 0 1 414 593A59 59 0 0 1 512 600Z"/>
+    <path id="tick" d="M458 836L494 872L568 798"/>
+    <!-- Single colour: gaps, eyes, nostrils, mouth and tick are holes, not painted shapes. -->
+    <mask id="ear-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+      <rect width="1024" height="1024" fill="#fff"/>
+      <g fill="#000" stroke="#000" stroke-width="48" stroke-linejoin="round">
+        <use href="#face"/>
+        <use href="#topknot"/>
+      </g>
+    </mask>
+    <mask id="face-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+      <rect width="1024" height="1024" fill="#fff"/>
+      <use href="#topknot" fill="#000" stroke="#000" stroke-width="48" stroke-linejoin="round"/>
+      <g fill="#000">
+        <ellipse cx="448" cy="470" rx="25" ry="31"/>
+        <ellipse cx="576" cy="470" rx="25" ry="31"/>
+        <ellipse cx="484" cy="616" rx="9" ry="15" transform="rotate(-28 484 616)"/>
+        <ellipse cx="540" cy="616" rx="9" ry="15" transform="rotate(28 540 616)"/>
+      </g>
+      <path d="M512 628V658M512 658Q496 672 478 664M512 658Q528 672 546 664" fill="none" stroke="#000" stroke-width="12" stroke-linecap="round"/>
+    </mask>
+    <mask id="neck-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+      <rect width="1024" height="1024" fill="#fff"/>
+      <use href="#face" fill="#000" stroke="#000" stroke-width="48" stroke-linejoin="round"/>
+      <use href="#tick" fill="none" stroke="#000" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+    </mask>
+  </defs>
+
+  <g transform="matrix(0.0708 0 0 0.0708 17.7504 17.4672)" fill="#000000">
+    <g mask="url(#ear-cut)">
+      <use href="#ear"/>
+      <use href="#ear" transform="matrix(-1 0 0 1 1024 0)"/>
+    </g>
+    <use href="#neck" mask="url(#neck-cut)"/>
+    <use href="#face" mask="url(#face-cut)"/>
+    <use href="#topknot"/>
+  </g>
+</svg>

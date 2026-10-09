@@ -96,7 +96,7 @@ void main() {
   test('createDio sets timeouts, User-Agent and the given adapter', () async {
     final adapter = _StubAdapter(200);
     final dio = createDio(
-      userAgent: 'Taskuna/1.0+1 (android 15)',
+      userAgent: 'Rurana/1.0+1 (android 15)',
       httpClientAdapter: adapter,
       logRequests: false,
     );
@@ -108,7 +108,7 @@ void main() {
     expect(dio.options.sendTimeout, const Duration(seconds: 15));
     expect(
       adapter.lastRequest?.headers['User-Agent'],
-      'Taskuna/1.0+1 (android 15)',
+      'Rurana/1.0+1 (android 15)',
     );
     expect(dio.interceptors.whereType<RequestLogInterceptor>(), isEmpty);
   });

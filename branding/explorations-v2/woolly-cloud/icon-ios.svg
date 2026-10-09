@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>Woolly-cloud llama</title>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1024" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4B92FF"/>
+      <stop offset="1" stop-color="#1859EE"/>
+    </linearGradient>
+    <path id="ear" d="M403 389C349 314 317 201 329 110Q337 74 363 96C406 165 434 270 464 356Z"/>
+    <path id="ear-inner" d="M412 353C376 299 353 221 352 150C383 196 406 273 434 339Z"/>
+    <path id="topknot" d="M512 240A53 53 0 0 1 597 264A41 41 0 0 1 632 322A41 41 0 0 1 597 380A53 53 0 0 1 512 404A53 53 0 0 1 427 380A41 41 0 0 1 392 322A41 41 0 0 1 427 264A53 53 0 0 1 512 240Z"/>
+    <path id="face" d="M512 300C602 300 658 338 658 424C658 488 632 520 630 566C628 600 642 618 640 640C638 684 590 712 512 712C434 712 386 684 384 640C382 618 396 600 394 566C392 520 366 488 366 424C366 338 422 300 512 300Z"/>
+    <path id="muzzle" d="M512 562C580 562 638 590 640 636C642 684 590 712 512 712C434 712 382 684 384 636C386 590 444 562 512 562Z"/>
+    <path id="neck" d="M512 600A59 59 0 0 1 610 593A50 50 0 0 1 658 661A59 59 0 0 1 677 757A59 59 0 0 1 704 851A55 55 0 0 1 656 929A58 58 0 0 1 561 949A59 59 0 0 1 463 949A58 58 0 0 1 368 929A55 55 0 0 1 320 851A59 59 0 0 1 347 757A59 59 0 0 1 366 661A50 50 0 0 1 414 593A59 59 0 0 1 512 600Z"/>
+    <path id="tick" d="M458 836L494 872L568 798"/>
+    <!-- Overlapping parts are separated by a 24-unit knockout so the mark still works in one colour. -->
+    <mask id="ear-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+      <rect width="1024" height="1024" fill="#fff"/>
+      <g fill="#000" stroke="#000" stroke-width="48" stroke-linejoin="round">
+        <use href="#face"/>
+        <use href="#topknot"/>
+      </g>
+    </mask>
+    <mask id="face-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+      <rect width="1024" height="1024" fill="#fff"/>
+      <use href="#topknot" fill="#000" stroke="#000" stroke-width="48" stroke-linejoin="round"/>
+    </mask>
+    <mask id="neck-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+      <rect width="1024" height="1024" fill="#fff"/>
+      <use href="#face" fill="#000" stroke="#000" stroke-width="48" stroke-linejoin="round"/>
+      <use href="#tick" fill="none" stroke="#000" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+    </mask>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#sky)"/>
+
+  <g transform="matrix(0.94 0 0 0.94 30.72 31.44)">
+    <g mask="url(#ear-cut)">
+      <g fill="#FFFFFF">
+        <use href="#ear"/>
+        <use href="#ear" transform="matrix(-1 0 0 1 1024 0)"/>
+      </g>
+      <g fill="#BCD4FF">
+        <use href="#ear-inner"/>
+        <use href="#ear-inner" transform="matrix(-1 0 0 1 1024 0)"/>
+      </g>
+    </g>
+    <use href="#neck" fill="#FFFFFF" mask="url(#neck-cut)"/>
+    <g mask="url(#face-cut)">
+      <use href="#face" fill="#FFFFFF"/>
+      <use href="#muzzle" fill="#DCE8FF"/>
+    </g>
+    <use href="#topknot" fill="#FFFFFF"/>
+    <g fill="#0E2A66">
+      <ellipse cx="448" cy="470" rx="25" ry="31"/>
+      <ellipse cx="576" cy="470" rx="25" ry="31"/>
+      <ellipse cx="484" cy="616" rx="9" ry="15" transform="rotate(-28 484 616)"/>
+      <ellipse cx="540" cy="616" rx="9" ry="15" transform="rotate(28 540 616)"/>
+    </g>
+    <g fill="#FFFFFF">
+      <circle cx="456" cy="460" r="8"/>
+      <circle cx="584" cy="460" r="8"/>
+    </g>
+    <path d="M512 628V658M512 658Q496 672 478 664M512 658Q528 672 546 664" fill="none" stroke="#0E2A66" stroke-width="12" stroke-linecap="round"/>
+  </g>
+</svg>
