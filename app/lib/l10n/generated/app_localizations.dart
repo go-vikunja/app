@@ -824,23 +824,11 @@ abstract class AppLocalizations {
   /// **'Sign in again as @{expected}. If the browser signs you in on its own, sign out of {host} in the browser first.'**
   String signInDifferentUserSuggestion(String expected, String host);
 
-  /// No description provided for @homeTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Signed in'**
-  String get homeTitle;
-
   /// No description provided for @homeUsername.
   ///
   /// In en, this message translates to:
   /// **'@{username}'**
   String homeUsername(String username);
-
-  /// No description provided for @homePlaceholder.
-  ///
-  /// In en, this message translates to:
-  /// **'Your projects and tasks will appear here in a later version.'**
-  String get homePlaceholder;
 
   /// No description provided for @homeSignOut.
   ///
@@ -895,6 +883,594 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sign in again'**
   String get reauthAction;
+
+  /// No description provided for @tabOverview.
+  ///
+  /// In en, this message translates to:
+  /// **'Overview'**
+  String get tabOverview;
+
+  /// No description provided for @tabProjects.
+  ///
+  /// In en, this message translates to:
+  /// **'Projects'**
+  String get tabProjects;
+
+  /// No description provided for @tabAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Account'**
+  String get tabAccount;
+
+  /// No description provided for @overviewLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading your tasks…'**
+  String get overviewLoading;
+
+  /// No description provided for @overviewEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'All done'**
+  String get overviewEmptyTitle;
+
+  /// No description provided for @overviewEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'No open tasks right now. Enjoy the quiet, or add some on the web.'**
+  String get overviewEmptyBody;
+
+  /// No description provided for @sectionOverdue.
+  ///
+  /// In en, this message translates to:
+  /// **'Overdue'**
+  String get sectionOverdue;
+
+  /// No description provided for @sectionToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get sectionToday;
+
+  /// No description provided for @sectionNextSevenDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Next 7 days'**
+  String get sectionNextSevenDays;
+
+  /// No description provided for @sectionLater.
+  ///
+  /// In en, this message translates to:
+  /// **'Later'**
+  String get sectionLater;
+
+  /// No description provided for @sectionNoDueDate.
+  ///
+  /// In en, this message translates to:
+  /// **'No due date'**
+  String get sectionNoDueDate;
+
+  /// No description provided for @projectsLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading your projects…'**
+  String get projectsLoading;
+
+  /// No description provided for @projectsEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No projects yet'**
+  String get projectsEmptyTitle;
+
+  /// No description provided for @projectsEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Create your first project on the web and it will show up here.'**
+  String get projectsEmptyBody;
+
+  /// No description provided for @projectsFavouritesHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'Favourites'**
+  String get projectsFavouritesHeading;
+
+  /// No description provided for @projectsAllHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'All projects'**
+  String get projectsAllHeading;
+
+  /// No description provided for @projectChildCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 subproject} other{{count} subprojects}}'**
+  String projectChildCount(int count);
+
+  /// Semantic label of the expand control in the project tree.
+  ///
+  /// In en, this message translates to:
+  /// **'Show subprojects of {title}'**
+  String projectExpand(String title);
+
+  /// No description provided for @projectCollapse.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide subprojects of {title}'**
+  String projectCollapse(String title);
+
+  /// App bar title while the project of a task list is not in the local project list.
+  ///
+  /// In en, this message translates to:
+  /// **'Project'**
+  String get projectUnknownTitle;
+
+  /// Semantic label of the star shown on favourite projects and tasks.
+  ///
+  /// In en, this message translates to:
+  /// **'Favourite'**
+  String get favouriteLabel;
+
+  /// No description provided for @projectTasksShowDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Show done tasks'**
+  String get projectTasksShowDone;
+
+  /// No description provided for @projectTasksLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading tasks…'**
+  String get projectTasksLoading;
+
+  /// No description provided for @projectTasksLoadMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Load more'**
+  String get projectTasksLoadMore;
+
+  /// No description provided for @projectTasksLoadingMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading more tasks…'**
+  String get projectTasksLoadingMore;
+
+  /// No description provided for @projectTasksEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No open tasks'**
+  String get projectTasksEmptyTitle;
+
+  /// No description provided for @projectTasksEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything in this project is done. Turn on “Show done tasks” to see them.'**
+  String get projectTasksEmptyBody;
+
+  /// No description provided for @projectTasksEmptyAllTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No tasks'**
+  String get projectTasksEmptyAllTitle;
+
+  /// No description provided for @projectTasksEmptyAllBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This project has no tasks yet.'**
+  String get projectTasksEmptyAllBody;
+
+  /// Tooltip of the overflow menu button.
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get moreActions;
+
+  /// Tooltip of the refresh button in the app bar, the single-tap alternative to pull-to-refresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get refresh;
+
+  /// No description provided for @taskDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get taskDone;
+
+  /// No description provided for @taskNotDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Not done'**
+  String get taskNotDone;
+
+  /// No description provided for @taskDueSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Due {when}'**
+  String taskDueSemantics(String when);
+
+  /// No description provided for @taskOverdueSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Overdue, due {when}'**
+  String taskOverdueSemantics(String when);
+
+  /// No description provided for @prioritySemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Priority: {priority}'**
+  String prioritySemantics(String priority);
+
+  /// No description provided for @labelSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Label: {label}'**
+  String labelSemantics(String label);
+
+  /// No description provided for @priorityUnset.
+  ///
+  /// In en, this message translates to:
+  /// **'Unset'**
+  String get priorityUnset;
+
+  /// No description provided for @priorityLow.
+  ///
+  /// In en, this message translates to:
+  /// **'Low'**
+  String get priorityLow;
+
+  /// No description provided for @priorityMedium.
+  ///
+  /// In en, this message translates to:
+  /// **'Medium'**
+  String get priorityMedium;
+
+  /// No description provided for @priorityHigh.
+  ///
+  /// In en, this message translates to:
+  /// **'High'**
+  String get priorityHigh;
+
+  /// No description provided for @priorityUrgent.
+  ///
+  /// In en, this message translates to:
+  /// **'Urgent'**
+  String get priorityUrgent;
+
+  /// No description provided for @priorityDoNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Do now'**
+  String get priorityDoNow;
+
+  /// No description provided for @relativeNow.
+  ///
+  /// In en, this message translates to:
+  /// **'now'**
+  String get relativeNow;
+
+  /// No description provided for @relativeInMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{in 1 minute} other{in {count} minutes}}'**
+  String relativeInMinutes(int count);
+
+  /// No description provided for @relativeMinutesAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 minute ago} other{{count} minutes ago}}'**
+  String relativeMinutesAgo(int count);
+
+  /// No description provided for @relativeInHours.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{in 1 hour} other{in {count} hours}}'**
+  String relativeInHours(int count);
+
+  /// No description provided for @relativeHoursAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 hour ago} other{{count} hours ago}}'**
+  String relativeHoursAgo(int count);
+
+  /// No description provided for @relativeInDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{in 1 day} other{in {count} days}}'**
+  String relativeInDays(int count);
+
+  /// No description provided for @relativeDaysAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 day ago} other{{count} days ago}}'**
+  String relativeDaysAgo(int count);
+
+  /// No description provided for @relativeInMonths.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{in 1 month} other{in {count} months}}'**
+  String relativeInMonths(int count);
+
+  /// No description provided for @relativeMonthsAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 month ago} other{{count} months ago}}'**
+  String relativeMonthsAgo(int count);
+
+  /// No description provided for @relativeInYears.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{in 1 year} other{in {count} years}}'**
+  String relativeInYears(int count);
+
+  /// No description provided for @relativeYearsAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 year ago} other{{count} years ago}}'**
+  String relativeYearsAgo(int count);
+
+  /// No description provided for @taskDetailStatusDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get taskDetailStatusDone;
+
+  /// No description provided for @taskDetailStatusOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get taskDetailStatusOpen;
+
+  /// No description provided for @taskDetailIdentifierInProject.
+  ///
+  /// In en, this message translates to:
+  /// **'{identifier} in {project}'**
+  String taskDetailIdentifierInProject(String identifier, String project);
+
+  /// No description provided for @taskDetailDueDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Due date'**
+  String get taskDetailDueDate;
+
+  /// No description provided for @taskDetailStartDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Start date'**
+  String get taskDetailStartDate;
+
+  /// No description provided for @taskDetailEndDate.
+  ///
+  /// In en, this message translates to:
+  /// **'End date'**
+  String get taskDetailEndDate;
+
+  /// No description provided for @taskDetailDoneAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Done at'**
+  String get taskDetailDoneAt;
+
+  /// No description provided for @taskDetailPriority.
+  ///
+  /// In en, this message translates to:
+  /// **'Priority'**
+  String get taskDetailPriority;
+
+  /// No description provided for @taskDetailProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Progress'**
+  String get taskDetailProgress;
+
+  /// No description provided for @taskPercentDone.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent}% done'**
+  String taskPercentDone(int percent);
+
+  /// No description provided for @taskDetailLabels.
+  ///
+  /// In en, this message translates to:
+  /// **'Labels'**
+  String get taskDetailLabels;
+
+  /// No description provided for @taskDetailAssignees.
+  ///
+  /// In en, this message translates to:
+  /// **'Assignees'**
+  String get taskDetailAssignees;
+
+  /// No description provided for @taskDetailReminders.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminders'**
+  String get taskDetailReminders;
+
+  /// No description provided for @taskDetailRepeat.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeats'**
+  String get taskDetailRepeat;
+
+  /// No description provided for @taskDetailDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get taskDetailDescription;
+
+  /// No description provided for @taskDetailNoDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'No description'**
+  String get taskDetailNoDescription;
+
+  /// No description provided for @taskDetailClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get taskDetailClose;
+
+  /// No description provided for @repeatMonthly.
+  ///
+  /// In en, this message translates to:
+  /// **'Every month'**
+  String get repeatMonthly;
+
+  /// No description provided for @repeatEverySeconds.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Every second} other{Every {count} seconds}}'**
+  String repeatEverySeconds(int count);
+
+  /// No description provided for @repeatEveryMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Every minute} other{Every {count} minutes}}'**
+  String repeatEveryMinutes(int count);
+
+  /// No description provided for @repeatEveryHours.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Every hour} other{Every {count} hours}}'**
+  String repeatEveryHours(int count);
+
+  /// No description provided for @repeatEveryDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Every day} other{Every {count} days}}'**
+  String repeatEveryDays(int count);
+
+  /// No description provided for @repeatEveryWeeks.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Every week} other{Every {count} weeks}}'**
+  String repeatEveryWeeks(int count);
+
+  /// No description provided for @repeatFromCompletion.
+  ///
+  /// In en, this message translates to:
+  /// **'{repeat}, counted from completion'**
+  String repeatFromCompletion(String repeat);
+
+  /// No description provided for @periodSeconds.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 second} other{{count} seconds}}'**
+  String periodSeconds(int count);
+
+  /// No description provided for @periodMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 minute} other{{count} minutes}}'**
+  String periodMinutes(int count);
+
+  /// No description provided for @periodHours.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 hour} other{{count} hours}}'**
+  String periodHours(int count);
+
+  /// No description provided for @periodDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 day} other{{count} days}}'**
+  String periodDays(int count);
+
+  /// No description provided for @periodWeeks.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 week} other{{count} weeks}}'**
+  String periodWeeks(int count);
+
+  /// No description provided for @reminderBefore.
+  ///
+  /// In en, this message translates to:
+  /// **'{period} before the {reference}'**
+  String reminderBefore(String period, String reference);
+
+  /// No description provided for @reminderAfter.
+  ///
+  /// In en, this message translates to:
+  /// **'{period} after the {reference}'**
+  String reminderAfter(String period, String reference);
+
+  /// No description provided for @reminderAtReference.
+  ///
+  /// In en, this message translates to:
+  /// **'At the {reference}'**
+  String reminderAtReference(String reference);
+
+  /// No description provided for @reminderReferenceDueDate.
+  ///
+  /// In en, this message translates to:
+  /// **'due date'**
+  String get reminderReferenceDueDate;
+
+  /// No description provided for @reminderReferenceStartDate.
+  ///
+  /// In en, this message translates to:
+  /// **'start date'**
+  String get reminderReferenceStartDate;
+
+  /// No description provided for @reminderReferenceEndDate.
+  ///
+  /// In en, this message translates to:
+  /// **'end date'**
+  String get reminderReferenceEndDate;
+
+  /// No description provided for @dataFailureLoadTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t load from the server'**
+  String get dataFailureLoadTitle;
+
+  /// No description provided for @dataFailureRefreshTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t refresh'**
+  String get dataFailureRefreshTitle;
+
+  /// No description provided for @dataFailureStaleNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Showing what was loaded last.'**
+  String get dataFailureStaleNote;
+
+  /// No description provided for @dataFailureSessionEnded.
+  ///
+  /// In en, this message translates to:
+  /// **'Your session on {host} has ended. Sign in again on the Account tab.'**
+  String dataFailureSessionEnded(String host);
+
+  /// No description provided for @dataFailureForbidden.
+  ///
+  /// In en, this message translates to:
+  /// **'{host} refused the request. You may no longer have access to this.'**
+  String dataFailureForbidden(String host);
+
+  /// No description provided for @dataFailureNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'{host} no longer has this. It may have been deleted.'**
+  String dataFailureNotFound(String host);
+
+  /// No description provided for @dataFailureRateLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'{host} is limiting requests from your network for now.'**
+  String dataFailureRateLimited(String host);
+
+  /// No description provided for @dataFailureUnexpected.
+  ///
+  /// In en, this message translates to:
+  /// **'An unexpected error occurred while loading from {host}.'**
+  String dataFailureUnexpected(String host);
+
+  /// No description provided for @retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get retry;
 }
 
 class _AppLocalizationsDelegate

@@ -2,30 +2,30 @@
 
 This is the current, condensed architecture. It is derived from [research/synthesis.md](research/synthesis.md) §2, which has the full reasoning and the Vikunja source references. Status markers:
 
-- **[exists]**: built in step 1.
-- **[in progress, step 2+3]**: being built in the combined step 2+3 (HTTP core, browser sign-in, session manager).
+- **[exists]**: built in step 1 or in the combined step 2+3 (HTTP core, browser sign-in, session manager; in review).
+- **[in progress, step 5]**: being built in step 5 (read client, online repositories, the first screens).
 - **[planned, step N]**: designed, not built. N is the [roadmap](roadmap.md) step.
 
-This page reflects the owner's decisions of 2026-10-09 ([D13](decisions.md#d13-support-floor-230)–[D22](decisions.md#d22-session-keep-alive-through-background-sync)) and the step 2+3 decisions ([D23](decisions.md#d23-browser-sign-in-through-flutter_web_auth_2-client-id-and-redirect-uri)–[D27](decisions.md#d27-paging-and-the-query-builder-move-to-step-5)).
+This page reflects the owner's decisions of 2026-10-09 ([D13](decisions.md#d13-support-floor-230)–[D22](decisions.md#d22-session-keep-alive-through-background-sync)), the step 2+3 decisions ([D23](decisions.md#d23-browser-sign-in-through-flutter_web_auth_2-client-id-and-redirect-uri)–[D27](decisions.md#d27-paging-and-the-query-builder-move-to-step-5)) and the step 5 decisions ([D29](decisions.md#d29-ui-reads-through-repository-interfaces-the-online-implementation-is-replaced-by-drift-in-step-6-without-ui-changes), [D30](decisions.md#d30-kanban-board-reads-deferred-to-step-20)).
 
 ## 1. Principles
 
-1. **The local database is the single source of truth for the UI.** Screens read database streams. The network only feeds the database. [planned, steps 6–7]
-2. **One domain-level API interface, two transport adapters** (`/api/v1`, `/api/v2`). The adapter is chosen from the negotiated **capabilities**, never from a version string. [negotiation exists; error model and authenticated transport in progress, step 2+3; adapters planned, step 5]
+1. **The local database is the single source of truth for the UI.** Screens read database streams. The network only feeds the database. [repository interfaces with streams in progress, step 5; the database behind them planned, steps 6–7, [D29](decisions.md#d29-ui-reads-through-repository-interfaces-the-online-implementation-is-replaced-by-drift-in-step-6-without-ui-changes)]
+2. **One domain-level API interface, two transport adapters** (`/api/v1`, `/api/v2`). The adapter is chosen from the negotiated **capabilities**, never from a version string. [negotiation, error model and authenticated transport exist; read client in progress, step 5; write adapters and the routed client planned, step 11]
 3. **Every mutation goes through the outbox, even when online.** The UI, notification actions and widgets share one retry, ordering and conflict path. [planned, step 11]
 4. **Every entry point builds the same object graph** with a Riverpod `ProviderContainer`. The entry points are the UI isolate, background tasks, the notification-action isolate and the widget callback. [UI exists; others planned, steps 15–18]
-5. **Secrets live only in the Keychain/Keystore.** Extensions and widgets never refresh tokens. [in progress, step 2+3]
+5. **Secrets live only in the Keychain/Keystore.** Extensions and widgets never refresh tokens. [exists]
 6. **Pure logic lives in pure-Dart packages** and is pinned by test vectors, many ported from the web frontend's tests. [exists for domain and api]
 
 ## 2. Workspace packages and the dependency rule
 
 The repository is a Dart pub workspace with one shared lockfile.
 
-| Package | Kind | Exists after step 1 | In progress, step 2+3 | Planned |
+| Package | Kind | Exists (steps 1 and 2+3) | In progress, step 5 | Planned |
 |---|---|---|---|---|
-| `app/` | Flutter | the "Connect to server" feature; app shell with two routes (go_router: connect, server overview), theming, en/de localisation, logging scaffold | `core/auth/` (token store, account registry, session manager, browser sign-in, sign-out); signed-in `/home` placeholder; router guards; wider log redaction | all other screens, `core/` services (db, sync, notifications, widgets, background) |
-| `packages/vikunja_domain` | pure Dart | `ServerVersion`, `ApiVersion`, `ServerInfo`, `Capability`, `ServerCapabilities` + `SupportTier`, `ServerConnection`, sealed `ServerConnectionFailure` | sealed `VikunjaFailure`, `User`, `Account`, `TokenSet` | entities, `TaskChanges`, `Page<T>` (step 5) |
-| `packages/vikunja_api` | pure Dart | `normalizeServerAddress`, `parseServerInfo`, `ServerConnector` / `DioServerConnector`, `/info` fixtures, contract tests | `normalizeError`, retry interceptor, PKCE, `AuthorizationRequest`, `OAuthTokenClient`, `JwtClaims`, auth interceptor + `AccessTokenSource`, `AccountApi`, `createAuthenticatedDio`, `serverInfoToJson`; OAuth contract tests | `VikunjaClient` ports, routed client, v1/v2 adapters, paging, query builder (step 5), realtime (step 17) |
+| `app/` | Flutter | the "Connect to server" feature (connect, server overview); `core/auth/` (token store, account registry, session manager, browser sign-in, sign-out); the signed-in `/home`; router guards; theming, en/de localisation, redacting logging | `core/repositories/` (`ProjectRepository`, `TaskRepository`, their online implementations); `/home` as a three-tab shell: Overview, Projects (tree, project tasks, task detail), Account | all other screens, `core/` services (db, sync, notifications, widgets, background) |
+| `packages/vikunja_domain` | pure Dart | `ServerVersion`, `ApiVersion`, `ServerInfo`, `Capability`, `ServerCapabilities` + `SupportTier`, `ServerConnection`, sealed `ServerConnectionFailure`, sealed `VikunjaFailure`, `User`, `Account`, `TokenSet` | `Project`, `ProjectView`, `Label`, `Task`, `TaskReminder`, `TaskRelationKind`, `Page<T>`, `TaskQuery` | `TaskChanges` and the write-side types (step 11), buckets (step 20), saved filters (step 24) |
+| `packages/vikunja_api` | pure Dart | `normalizeServerAddress`, `parseServerInfo`, `ServerConnector` / `DioServerConnector`, `normalizeError`, retry interceptor, PKCE, `AuthorizationRequest`, `OAuthTokenClient`, `JwtClaims`, auth interceptor + `AccessTokenSource`, `AccountApi`, `createAuthenticatedDio`, `serverInfoToJson`; `/info`, error and OAuth fixtures and contract tests | `VikunjaReadClient` (`ProjectsPort`, `LabelsPort`, `TasksPort`) and `ReadClient` over v1 and v2, JSON codecs (`dto/`), paging, query builder; read fixtures and contract tests | write adapters and the routed client with route-absent downgrade (step 11), kanban reads (step 20), realtime (step 17) |
 | `packages/vikunja_logic` | pure Dart | — | — | quick-add, filters, dates, positions, colours, checklists (steps 12, 13, 22, 24) |
 
 **Dependency rule:**
@@ -36,7 +36,7 @@ The repository is a Dart pub workspace with one shared lockfile.
 **Layers inside `app`:**
 - The layers are presentation → application → repositories → (DAOs, `vikunja_api` ports).
 - The UI never imports wire DTOs or adapters.
-- Step 1 has no repositories yet. Its application layer calls `ServerConnector` directly.
+- Since step 5, the project and task screens read through `core/repositories` (section 6). Onboarding and session code call `vikunja_api` directly (`ServerConnector`, `AccountApi`, the token client), because they run before an account exists.
 
 `vikunja_api` receives a configured `Dio`, so it never chooses a transport itself:
 - The app injects `NativeAdapter`: Cronet on Android, NSURLSession on iOS.
@@ -47,7 +47,7 @@ The repository is a Dart pub workspace with one shared lockfile.
 flowchart TD
   subgraph APP["app/ (Flutter)"]
     PRES["features/*/presentation"] --> APPL["features/*/application<br/>(Riverpod)"]
-    APPL --> REPO["core/repositories"]
+    APPL --> REPO["core/repositories<br/>(online cache in step 5, Drift from step 6)"]
     REPO --> DB[("Drift DB per account")]
     REPO --> OUTBOX["core/sync: SyncEngine, outbox"]
   end
@@ -60,10 +60,10 @@ flowchart TD
   API --> DIO["dio + injected adapter<br/>(Cronet / NSURLSession / dart:io)"]
 
   classDef planned stroke-dasharray: 5 5,color:#777
-  class REPO,DB,OUTBOX,LOGIC planned
+  class DB,OUTBOX,LOGIC planned
 ```
 
-Dashed nodes are planned. In step 1 the application layer talks to `vikunja_api` directly.
+Dashed nodes are planned. The repositories exist from step 5 on with an in-memory cache; the database behind them comes in step 6 ([D29](decisions.md#d29-ui-reads-through-repository-interfaces-the-online-implementation-is-replaced-by-drift-in-step-6-without-ui-changes)).
 
 ## 3. Server connection and v1/v2 negotiation [exists]
 
@@ -147,7 +147,7 @@ flowchart TD
 - `concurrent_writes`:
   - It is reported since 2.4.0 and is `false` on SQLite.
   - A missing value means "unknown", so writes are serialized.
-- Re-negotiation [planned, steps 3 and 5] happens at login, every 24 h, on app update, and after a "route absent" 404.
+- Re-negotiation [planned, with the sync engine] happens at login, every 24 h, on app update, and after a "route absent" 404.
 
 **Transport rules that already apply:**
 - Only `http` and `https`.
@@ -155,9 +155,11 @@ flowchart TD
 - `Authorization`, `Cookie`, `Set-Cookie` and tokens are never logged.
 - Plain `http://` needs explicit confirmation in the app (step 7 above).
 
-## 4. API abstraction [planned, step 5; error model in progress, step 2+3]
+## 4. API abstraction [read client in progress, step 5; routed client and writes planned, step 11]
 
-There is one `VikunjaClient` with per-area ports (tasks, projects, views, labels, comments, …). A `RoutedVikunjaClient` picks the v2 or the v1 adapter per `ApiGroup`:
+Step 5 builds the read half: `VikunjaReadClient` with the ports `ProjectsPort`, `LabelsPort` and `TasksPort`, created by `createReadClient(dio:, connection:)` over the account's authenticated `Dio` (section 5.2). It uses `/api/v2` when the connection reached it and `/api/v1` otherwise, and hides the version differences inside one `ReadClient` (section 6).
+
+The full `VikunjaClient` with per-area ports (tasks, projects, views, labels, comments, …) comes with the write path. A `RoutedVikunjaClient` then picks the v2 or the v1 adapter per `ApiGroup` [planned, step 11]:
 - **v2 wins whenever it exists.** It offers PATCH (no full-replace hazard), totals, ETag and problem+json.
 - **A 404 without a Vikunja error `code`** on a core group means the route is absent. That group is downgraded to v1 and the request is re-sent.
 - **On licence-gated groups** the same 404 means `FeatureUnavailable`.
@@ -171,7 +173,7 @@ There is one `VikunjaClient` with per-area ports (tasks, projects, views, labels
 | Lists | bare arrays with pagination headers | `{items,total,…}` envelopes |
 | Errors | `{code,message}` | RFC 9457 problem+json |
 
-**Errors [in progress, step 2+3]:** `normalizeError` turns every error into a sealed `VikunjaFailure`. It reads all four error shapes: v1 `{code, message}`, v2 problem+json `{status, title, detail, code?, errors?}`, Echo `{message}` and the 429 `{message}`.
+**Errors [exists]:** `normalizeError` turns every error into a sealed `VikunjaFailure`. It reads all four error shapes: v1 `{code, message}`, v2 problem+json `{status, title, detail, code?, errors?}`, Echo `{message}` and the 429 `{message}`.
 
 | `VikunjaFailure` | Cause |
 |---|---|
@@ -188,13 +190,13 @@ There is one `VikunjaClient` with per-area ports (tasks, projects, views, labels
 
 A version-aware code map for the error codes renumbered in 2.7.0 is planned.
 
-**Paging and query builder [planned, step 5]:** `Page<T>` over v1 pagination headers and v2 envelopes, and the query builder for filter, sort and paging parameters, are built with the read adapters that first use them ([D27](decisions.md#d27-paging-and-the-query-builder-move-to-step-5)).
+**Paging and query builder [in progress, step 5]:** `Page<T>` (`items`, `page`, `perPage`, `totalPages`, `hasMore`; `total` on v2 only) over v1 pagination headers and v2 envelopes, and `TaskQuery` (filter, sorts, expands, paging) with its translation into query parameters, are built with the read client that first uses them ([D27](decisions.md#d27-paging-and-the-query-builder-move-to-step-5); details in section 6).
 
-**DTOs:** one hand-written DTO set serves both adapters, because the server models are identical. A contract test checks them against the OpenAPI spec of the pinned 2.7.0 image ([D12](decisions.md#d12-hand-written-api-adapters-and-an-openapi-spec-for-contract-tests)).
+**DTOs:** one hand-written codec layer (`lib/src/dto/`) serves both versions, because the server models are identical. Step 5 tests it against JSON captured from the 2.7.0 server and against the live server. The DTO-vs-OpenAPI contract test of [D12](decisions.md#d12-hand-written-api-adapters-and-an-openapi-spec-for-contract-tests) is still planned.
 
-## 5. Auth and session [in progress, step 2+3]
+## 5. Auth and session [exists, step 2+3]
 
-Step 2+3 builds sign-in, token storage, refresh and sign-out for several accounts. The account switcher UI is step 4, the keep-alive scheduling is step 16 ([D22](decisions.md#d22-session-keep-alive-through-background-sync)).
+Step 2+3 built sign-in, token storage, refresh and sign-out for several accounts. The account switcher UI is step 4, the keep-alive scheduling is step 16 ([D22](decisions.md#d22-session-keep-alive-through-background-sync)).
 
 **Sign-in:** browser OAuth 2.0 + PKCE only (≥ 2.3), which covers local, LDAP, OIDC and TOTP accounts through the web login ([D14](decisions.md#d14-browser-sign-in-only), [D23](decisions.md#d23-browser-sign-in-through-flutter_web_auth_2-client-id-and-redirect-uri)). Guests use link shares (step 32). Password, TOTP and API-token login are not planned for now.
 
@@ -330,7 +332,7 @@ flowchart TD
 ### 5.5 Session end and `needsReauth`
 
 - A `SessionEnded` failure marks the account `needsReauth` in the registry. Its local data stays.
-- `/home` then shows a "Sign in again" banner. It runs the browser sign-in for the same server; signing in as the same user replaces the account's tokens and clears the flag.
+- `/home` (its Account tab since step 5) then shows a "Sign in again" banner. It runs the browser sign-in for the same server; signing in as the same user replaces the account's tokens and clears the flag.
 - `/home` checks the active session with `GET /user` after its first frame, when the app resumes and when the active account changes: at most once a minute per account, never for an account in `needsReauth`, and never while a sign-in or sign-out runs. A session the server ended shows the banner right away. An unreachable server shows nothing. A sign-in counts as a check.
 - The server ends an OAuth session after 72 h without a refresh (`service.jwtttl`), and there is no long-session option for the code grant. The check above refreshes an expiring access token, so opening the app moves that window. Background runs will refresh every account at least about every 24 h (step 16).
 - From step 11 on, the outbox of an account in `needsReauth` pauses; from step 16 on, a "Sign in again" notification appears.
@@ -367,9 +369,61 @@ When no active account remains, the router returns to onboarding. From step 6 on
   - the re-read and adoption rules of section 5.4.
 - Extensions and widgets never refresh tokens (principle 5). Step 16 schedules the background refreshes; step 2+3 only has to make them possible.
 
-## 6. Offline-first data layer [planned]
+## 6. Read path [in progress, step 5]
 
-- **Database (step 6):** one Drift SQLite file per account, opened with `shareAcrossIsolates`. It is never placed in the iOS App Group container. Tasks carry:
+Step 5 puts the first real data on screen, read-only and online. Every layer below the screens is shaped so that step 6 can put Drift under the repositories without touching the UI ([D29](decisions.md#d29-ui-reads-through-repository-interfaces-the-online-implementation-is-replaced-by-drift-in-step-6-without-ui-changes)).
+
+```mermaid
+flowchart TD
+  subgraph APP["app/ (Flutter)"]
+    UI["features/*: Overview, Projects,<br/>project tasks, task detail"] --> REPO["core/repositories<br/>ProjectRepository, TaskRepository<br/>(streams + refresh + load more)"]
+    PROV["providers per active account:<br/>readClientProvider, repository providers"] --> REPO
+    REPO --> ONLINE["OnlineProjectRepository / OnlineTaskRepository<br/>(in-memory cache per account)"]
+    REPO --> DRIFT["Drift-backed repositories<br/>(step 6)"]
+  end
+  subgraph API["packages/vikunja_api"]
+    PORTS["VikunjaReadClient<br/>ProjectsPort, LabelsPort, TasksPort"] --> RC["ReadClient<br/>(base path, search param, page shape;<br/>TaskQuery → query parameters)"]
+    RC --> DTO["dto/: JSON → entities"]
+  end
+  ONLINE --> PORTS
+  RC --> DIO["authenticated Dio per account<br/>(section 5.2)"]
+  DTO --> DOM["packages/vikunja_domain:<br/>Project, ProjectView, Label, Task, Page, TaskQuery"]
+
+  classDef planned stroke-dasharray: 5 5,color:#777
+  class DRIFT planned
+```
+
+**Ports and `ReadClient`** (`packages/vikunja_api/lib/src/read/`):
+- `VikunjaReadClient` exposes `projects`, `labels` and `tasks`. `createReadClient(dio:, connection:)` takes the account's authenticated `Dio` and picks `/api/v2` or `/api/v1` from `connection.preferredApiVersion`.
+- Both versions share the entity JSON, so one codec layer (`lib/src/dto/`) parses it. The client hides the rest: the base path, the search parameter (`s` on v1, `q` on v2) and the page shape (v1: a bare array plus `x-pagination-total-pages` and `x-pagination-result-count` headers, so `Page.total` is null; v2: `{items, total, page, per_page, total_pages}`).
+- `TaskQuery` becomes `filter`, `filter_timezone`, `filter_include_nulls`, repeated `sort_by` and `order_by` (paired by position), `expand`, `page` and `per_page`. URLs are built from query parameters, never by string concatenation, because filters contain `&&`, quotes and spaces; dio sends the lists as `sort_by=a&sort_by=b` (`ListFormat.multi`). A sort by `position` is dropped on `GET /tasks` and `GET /projects/{p}/tasks`, because positions live per view and the server rejects the sort there (error 4026); it stays on the view endpoint.
+- The server caps `per_page` at its `max_items_per_page` (50 by default), so paging follows the response. `listAll` walks `page < totalPages` and de-duplicates the pseudo projects (Favorites `-1`, saved filters `≤ -2`) that the server appends to every page.
+- Parsing rules: the zero date `0001-01-01T00:00:00Z` is null and every date is parsed to UTC; `null` arrays are empty; `hex_color` is normalised to six lowercase hex digits without `#`; unknown keys are ignored; v2's `max_permission` and `ETag` are ignored for now.
+- Endpoints: `GET /tasks` (all projects), `GET /projects/{p}/tasks` (no view filter, so done tasks are included unless filtered out), `GET /projects/{p}/views/{v}/tasks` (the view's filter is AND-ed server-side; never used with kanban views, [D30](decisions.md#d30-kanban-board-reads-deferred-to-step-20)), `GET /projects` (archived only with `is_archived=true`), `GET /projects/{id}` (with views), `GET /labels`, `GET /tasks/{id}`.
+- Errors go through `normalizeError`; a cancelled request rethrows its `DioException`; JSON the codecs cannot read ends as `UnexpectedResponse`.
+- Tests: unit tests with a fake HTTP adapter, parsing tests on JSON captured from the 2.7.0 server (`test/fixtures/read/`, captured by `tool/capture_read_fixtures.dart` with the user name redacted), and a contract test that seeds data and checks that v1 and v2 give equal domain objects except `Page.total`. The seed project gets a per-run identifier (`CT` plus four hex digits), because identifiers are unique per server and the server outlives a run; the sign-in helper retries a 500, because the SQLite test server loses a write race when two contract files register at once.
+
+**Repositories** (`app/lib/core/repositories/`):
+- `ProjectRepository`: `watchAll()`, `refresh()`, `find(id)`. `TaskRepository`: `watchOpenTasks()`, `watchProjectTasks(projectId, showDone:)` (a `PagedList`: the items loaded so far and whether the server has more), `refreshOpenTasks()`, `refreshProjectTasks(...)`, `loadMoreProjectTasks(...)`.
+- The contract is streams of the current local state plus explicit refresh and load-more. A failed first load is the stream's error; a failed refresh or load-more throws the `VikunjaFailure` and leaves the stale data in the stream. Database streams and a sync trigger satisfy it as well.
+- The step 5 implementations (`online/`) keep an in-memory cache per account, filled on first subscription and on refresh through `VikunjaReadClient`; a load that is already running is joined, not repeated. The overview reads `GET /tasks` with `done = false`, sorted by due date, up to 5 pages (logged when capped); project tasks are read page by page from `GET /projects/{p}/tasks`, newest first, with `showDone` deciding the filter and one list per `(project, showDone)`; a task that moves between pages while loading is kept once.
+- Nothing survives a restart. Offline comes with step 6.
+
+**Providers** (`core/repositories/repository_providers.dart`): `readClientProvider(accountId)` builds the read client over `createAuthenticatedDio` with the account's session manager as token source, rebuilt only when the account's root URL or API versions change; in debug builds it logs one line per request (method, URL without query, status), never headers or bodies. `projectRepositoryProvider` and `taskRepositoryProvider` follow the active account id: null while nobody is signed in, rebuilt and the old one disposed on a switch, gone on sign-out, so an account switch never shows another account's data. The screens watch stream providers over them (`projectsProvider`, `projectByIdProvider`, `projectTasksProvider`, `openTasksProvider`), which stay loading without an account. `clockTickProvider` supplies "now" for the due-date grouping and relative dates: it re-reads `clockProvider` (which tests pin) when the app returns to the foreground and every minute while it is in front, so sections and labels do not freeze overnight.
+
+**Screens** (`app/lib/features/`, material_ui and cupertino_ui, `.adaptive` where available):
+- `/home` is a `StatefulShellRoute.indexedStack` (`HomeShell` in `features/home/`) with the tabs Overview (`/home/overview`), Projects (`/home/projects`, `/home/projects/:id`) and Account (`/home/account`: the step 2+3 home content, now `AccountTab`). `/home` itself redirects to the overview; the splash, connect and home redirects stay; each tab keeps its stack. The shell runs the session check on the first frame, on resume and when the active account changes, and blocks system back while a sign-in or sign-out runs; that sign-out progress lives in `SignOutController` (`features/session/`), because the shell and the Account tab both need it. The tab bar is Material 3 on Android and a `CupertinoTabBar` on iOS.
+- Overview (`features/overview/`) groups the open tasks into Overdue, Today, Next 7 days, Later and No due date in device local time, computed at build time. A row (`TaskRow` in `features/tasks/`) shows the done indicator, title, `displayIdentifier`, project title, relative due date (overdue in the error colour), priority chip for high and above, label chips (text colour by luminance, like the web's `getTextColor`) and the favourite star. Its pull-to-refresh also refreshes the projects for the titles and reports only the task failure.
+- Projects (`features/projects/`) shows favourites first, then the tree from `parentProjectId` (sorted by position, then title; archived and pseudo projects hidden; saved filters come with step 24; collapsible children with a colour dot and child count). A project opens its task list with a "Show done tasks" toggle in the overflow menu (a separate list per setting) and load more at the end of the list.
+- Task detail (`TaskDetailSheet` in `features/tasks/`) is a modal sheet over the task from the list (a `DraggableScrollableSheet`, `showCupertinoSheet` on iOS): title, identifier and project, done state, dates (absolute, localised), priority, percent done, labels, assignees, reminders, repeat summary and the description as plain text (`htmlToPlainText` strips tags and decodes the basic entities; rich rendering is step 10).
+- Pull-to-refresh, a loading placeholder on first load, an error card with retry (`features/common/`, over `StatusCard`) and an empty state on every list. A failed first load fills the screen; a failed refresh is a notice above the stale list; a failed load-more sits where the next page would be. Read-only: no action changes anything on the server.
+- The screens depend on the repository interfaces and the domain types only. They never see `Page`, the ports or DTOs.
+
+**Planned:** step 6 replaces the online repositories with Drift-backed ones behind the same interfaces and feeds the database through the same ports; step 7 adds the incremental sync; step 9 serves the lists offline and adds the Upcoming presets; step 10 renders the description; step 20 adds the kanban reads ([D30](decisions.md#d30-kanban-board-reads-deferred-to-step-20)); step 24 the saved filters.
+
+## 7. Offline-first data layer [planned]
+
+- **Database (step 6):** one Drift SQLite file per account, opened with `shareAcrossIsolates`. It is never placed in the iOS App Group container. Its DAOs sit behind the repository interfaces of section 6 ([D29](decisions.md#d29-ui-reads-through-repository-interfaces-the-online-implementation-is-replaced-by-drift-in-step-6-without-ui-changes)). Tasks carry:
   - a stable `local_id` and a nullable `server_id`;
   - `base_json` and `dirty_fields` for 3-way merges;
   - a `sync_status`.
@@ -404,15 +458,15 @@ When no active account remains, the router returns to onboarding. From step 6 on
   - Android uses Glance with a Dart callback.
   - On iOS, mark-done is a native Swift AppIntent that uses an App Group outbox file. It never opens SQLite and never refreshes tokens.
 
-## 7. Cross-cutting
+## 8. Cross-cutting
 
-- **UI:** material_ui and cupertino_ui instead of the in-SDK libraries ([D2](decisions.md#d2-material_ui-and-cupertino_ui)); dynamic colour on Android [planned, step 8]; dark mode and 200 % text scale in every step.
+- **UI:** material_ui and cupertino_ui instead of the in-SDK libraries ([D2](decisions.md#d2-material_ui-and-cupertino_ui)); dynamic colour on Android [planned, step 8]; dark mode and 200 % text scale in every step. Relative dates in list rows and absolute, localised dates in the detail come from intl, in device local time [in progress, step 5].
 - **Localisation:** gen-l10n with ARB files, English and German, which is also the first-release scope ([D21](decisions.md#d21-languages-english-and-german)). Generated code lives in `app/lib/l10n/generated/`.
-- **Logging:** `package:logging` with redaction of auth headers and tokens [scaffold exists]. Step 2+3 also redacts `code=`, `state=`, `access_token`, `refresh_token` and `Bearer` values, and never logs a callback URL unredacted [in progress]. A ring buffer, file rotation and diagnostics export are planned (steps 2 and 35).
+- **Logging:** `package:logging` with redaction of auth headers and tokens, of `code=`, `state=`, `access_token`, `refresh_token` and `Bearer` values, and of callback URLs [exists]. A ring buffer, file rotation and diagnostics export are planned (step 35).
 - **Platform configuration:**
   - Android: `android.uniquePackageNames=false` for Cronet ([D5](decisions.md#d5-dio-with-native_dio_adapter)).
   - Android has a network security config that trusts system and user CAs and permits cleartext. iOS has `NSAllowsArbitraryLoads` and `NSLocalNetworkUsageDescription` [exists, D8].
-  - Browser sign-in: on Android, flutter_web_auth_2's `CallbackActivity`, exported, with a `BROWSABLE` intent filter for the scheme `vikunja-dev.coderoftime.vikunja`. iOS needs no URL type for ASWebAuthenticationSession; step 2+3 verifies this on the simulator [in progress, [D23](decisions.md#d23-browser-sign-in-through-flutter_web_auth_2-client-id-and-redirect-uri)].
+  - Browser sign-in: on Android, flutter_web_auth_2's `CallbackActivity`, exported, with a `BROWSABLE` intent filter for the scheme `vikunja-dev.coderoftime.vikunja`. iOS needs no URL type for ASWebAuthenticationSession, verified on the simulator in step 2+3 ([D23](decisions.md#d23-browser-sign-in-through-flutter_web_auth_2-client-id-and-redirect-uri)).
   - Per-server TLS pinning, mTLS and custom headers are planned for step 35.
 - **CI:** analyze, format and tests; a check that the committed generated code is current; the Docker contract tests against the latest release; release builds (Android APK, unsigned iOS device build) ([.github/workflows/ci.yaml](../.github/workflows/ci.yaml)). The contract job starts every service of `test_servers/` and waits for all of them.
 - **Test servers:** `test_servers/docker-compose.yaml` runs one server, the latest Vikunja release (2.7.0 on port 34527), for the contract tests and manual sign-in ([D28](decisions.md#d28-test-only-the-latest-vikunja-release)). The iOS simulator uses it directly; the Android emulator after `adb reverse tcp:34527 tcp:34527`. `tool/seed_e2e_user.sh` creates the sign-in test user from `test_servers/seed/e2e-user.env`; the [README](../README.md#sign-in-on-a-device-end-to-end) has the manual run.

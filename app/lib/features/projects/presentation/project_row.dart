@@ -1,0 +1,69 @@
+import 'package:material_ui/material_ui.dart';
+import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/theme/hex_color.dart';
+
+class ProjectRow extends StatelessWidget {
+  const new({
+    required this.project,
+    required this.onTap,
+    this.depth = 0,
+    this.childCount = 0,
+    this.expanded = false,
+    this.onToggleExpanded,
+    super.key,
+  });
+
+  final Project project;
+  final VoidCallback onTap;
+  final int depth;
+  final int childCount;
+  final bool expanded;
+  final VoidCallback? onToggleExpanded;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final color = parseHexColor(project.hexColor);
+    return ListTile(
+      onTap: onTap,
+      contentPadding: EdgeInsetsDirectional.only(
+        start: 16 + depth * 20.0,
+        end: 8,
+      ),
+      leading: ExcludeSemantics(
+        child: color == null
+            ? Icon(Icons.folder_outlined, color: colors.onSurfaceVariant)
+            : DecoratedBox(
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                child: const SizedBox.square(dimension: 16),
+              ),
+      ),
+      title: Text(project.title),
+      subtitle: childCount > 0
+          ? Text(l10n.projectChildCount(childCount))
+          : null,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (project.isFavorite)
+            Icon(
+              Icons.star,
+              color: colors.tertiary,
+              semanticLabel: l10n.favouriteLabel,
+            ),
+          if (onToggleExpanded case final onToggle? when childCount > 0)
+            IconButton(
+              onPressed: onToggle,
+              tooltip: expanded
+                  ? l10n.projectCollapse(project.title)
+                  : l10n.projectExpand(project.title),
+              icon: Icon(expanded ? Icons.expand_less : Icons.expand_more),
+            ),
+        ],
+      ),
+    );
+  }
+}

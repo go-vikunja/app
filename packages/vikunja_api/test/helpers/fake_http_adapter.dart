@@ -131,8 +131,16 @@ FakeRoute sequence(List<FakeRoute> routes) {
 FakeRoute errorFixture(String name) =>
     (_) => errorFixtureBody(name);
 
-ResponseBody errorFixtureBody(String name) {
-  final fixture = fixtureJson('errors/$name.json');
+ResponseBody errorFixtureBody(String name) =>
+    capturedFixtureBody('errors/$name');
+
+/// A `{status, headers, body}` capture under test/fixtures, e.g.
+/// `read/v1_tasks_page_2.7.0`.
+FakeRoute capturedFixture(String name) =>
+    (_) => capturedFixtureBody(name);
+
+ResponseBody capturedFixtureBody(String name) {
+  final fixture = fixtureJson('$name.json');
   final headers = fixture['headers']! as Map<String, Object?>;
   return ResponseBody.fromString(
     fixture['body']! as String,

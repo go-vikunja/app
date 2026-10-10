@@ -363,7 +363,6 @@
       }
     }
   },
-  "homeTitle": "Signed in",
   "homeUsername": "@{username}",
   "@homeUsername": {
     "placeholders": {
@@ -373,7 +372,6 @@
       }
     }
   },
-  "homePlaceholder": "Your projects and tasks will appear here in a later version.",
   "homeSignOut": "Sign out",
   "homeSigningOut": "Signing out…",
   "signOutDialogTitle": "Sign out?",
@@ -398,5 +396,432 @@
       }
     }
   },
-  "reauthAction": "Sign in again"
+  "reauthAction": "Sign in again",
+  "tabOverview": "Overview",
+  "tabProjects": "Projects",
+  "tabAccount": "Account",
+  "overviewLoading": "Loading your tasks…",
+  "overviewEmptyTitle": "All done",
+  "overviewEmptyBody": "No open tasks right now. Enjoy the quiet, or add some on the web.",
+  "sectionOverdue": "Overdue",
+  "sectionToday": "Today",
+  "sectionNextSevenDays": "Next 7 days",
+  "sectionLater": "Later",
+  "sectionNoDueDate": "No due date",
+  "projectsLoading": "Loading your projects…",
+  "projectsEmptyTitle": "No projects yet",
+  "projectsEmptyBody": "Create your first project on the web and it will show up here.",
+  "projectsFavouritesHeading": "Favourites",
+  "projectsAllHeading": "All projects",
+  "projectChildCount": "{count, plural, =1{1 subproject} other{{count} subprojects}}",
+  "@projectChildCount": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "projectExpand": "Show subprojects of {title}",
+  "@projectExpand": {
+    "description": "Semantic label of the expand control in the project tree.",
+    "placeholders": {
+      "title": {
+        "type": "String",
+        "example": "Work"
+      }
+    }
+  },
+  "projectCollapse": "Hide subprojects of {title}",
+  "@projectCollapse": {
+    "placeholders": {
+      "title": {
+        "type": "String",
+        "example": "Work"
+      }
+    }
+  },
+  "projectUnknownTitle": "Project",
+  "@projectUnknownTitle": {
+    "description": "App bar title while the project of a task list is not in the local project list."
+  },
+  "favouriteLabel": "Favourite",
+  "@favouriteLabel": {
+    "description": "Semantic label of the star shown on favourite projects and tasks."
+  },
+  "projectTasksShowDone": "Show done tasks",
+  "projectTasksLoading": "Loading tasks…",
+  "projectTasksLoadMore": "Load more",
+  "projectTasksLoadingMore": "Loading more tasks…",
+  "projectTasksEmptyTitle": "No open tasks",
+  "projectTasksEmptyBody": "Everything in this project is done. Turn on “Show done tasks” to see them.",
+  "projectTasksEmptyAllTitle": "No tasks",
+  "projectTasksEmptyAllBody": "This project has no tasks yet.",
+  "moreActions": "More",
+  "@moreActions": {
+    "description": "Tooltip of the overflow menu button."
+  },
+  "refresh": "Refresh",
+  "@refresh": {
+    "description": "Tooltip of the refresh button in the app bar, the single-tap alternative to pull-to-refresh."
+  },
+  "taskDone": "Done",
+  "taskNotDone": "Not done",
+  "taskDueSemantics": "Due {when}",
+  "@taskDueSemantics": {
+    "placeholders": {
+      "when": {
+        "type": "String",
+        "example": "in 3 days"
+      }
+    }
+  },
+  "taskOverdueSemantics": "Overdue, due {when}",
+  "@taskOverdueSemantics": {
+    "placeholders": {
+      "when": {
+        "type": "String",
+        "example": "2 days ago"
+      }
+    }
+  },
+  "prioritySemantics": "Priority: {priority}",
+  "@prioritySemantics": {
+    "placeholders": {
+      "priority": {
+        "type": "String",
+        "example": "High"
+      }
+    }
+  },
+  "labelSemantics": "Label: {label}",
+  "@labelSemantics": {
+    "placeholders": {
+      "label": {
+        "type": "String",
+        "example": "Urgent"
+      }
+    }
+  },
+  "priorityUnset": "Unset",
+  "priorityLow": "Low",
+  "priorityMedium": "Medium",
+  "priorityHigh": "High",
+  "priorityUrgent": "Urgent",
+  "priorityDoNow": "Do now",
+  "relativeNow": "now",
+  "relativeInMinutes": "{count, plural, =1{in 1 minute} other{in {count} minutes}}",
+  "@relativeInMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "5"
+      }
+    }
+  },
+  "relativeMinutesAgo": "{count, plural, =1{1 minute ago} other{{count} minutes ago}}",
+  "@relativeMinutesAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "5"
+      }
+    }
+  },
+  "relativeInHours": "{count, plural, =1{in 1 hour} other{in {count} hours}}",
+  "@relativeInHours": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "relativeHoursAgo": "{count, plural, =1{1 hour ago} other{{count} hours ago}}",
+  "@relativeHoursAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "relativeInDays": "{count, plural, =1{in 1 day} other{in {count} days}}",
+  "@relativeInDays": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "relativeDaysAgo": "{count, plural, =1{1 day ago} other{{count} days ago}}",
+  "@relativeDaysAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "2"
+      }
+    }
+  },
+  "relativeInMonths": "{count, plural, =1{in 1 month} other{in {count} months}}",
+  "@relativeInMonths": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "2"
+      }
+    }
+  },
+  "relativeMonthsAgo": "{count, plural, =1{1 month ago} other{{count} months ago}}",
+  "@relativeMonthsAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "2"
+      }
+    }
+  },
+  "relativeInYears": "{count, plural, =1{in 1 year} other{in {count} years}}",
+  "@relativeInYears": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "2"
+      }
+    }
+  },
+  "relativeYearsAgo": "{count, plural, =1{1 year ago} other{{count} years ago}}",
+  "@relativeYearsAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "2"
+      }
+    }
+  },
+  "taskDetailStatusDone": "Done",
+  "taskDetailStatusOpen": "Open",
+  "taskDetailIdentifierInProject": "{identifier} in {project}",
+  "@taskDetailIdentifierInProject": {
+    "placeholders": {
+      "identifier": {
+        "type": "String",
+        "example": "WORK-12"
+      },
+      "project": {
+        "type": "String",
+        "example": "Work"
+      }
+    }
+  },
+  "taskDetailDueDate": "Due date",
+  "taskDetailStartDate": "Start date",
+  "taskDetailEndDate": "End date",
+  "taskDetailDoneAt": "Done at",
+  "taskDetailPriority": "Priority",
+  "taskDetailProgress": "Progress",
+  "taskPercentDone": "{percent}% done",
+  "@taskPercentDone": {
+    "placeholders": {
+      "percent": {
+        "type": "int",
+        "example": "50"
+      }
+    }
+  },
+  "taskDetailLabels": "Labels",
+  "taskDetailAssignees": "Assignees",
+  "taskDetailReminders": "Reminders",
+  "taskDetailRepeat": "Repeats",
+  "taskDetailDescription": "Description",
+  "taskDetailNoDescription": "No description",
+  "taskDetailClose": "Close",
+  "repeatMonthly": "Every month",
+  "repeatEverySeconds": "{count, plural, =1{Every second} other{Every {count} seconds}}",
+  "@repeatEverySeconds": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "30"
+      }
+    }
+  },
+  "repeatEveryMinutes": "{count, plural, =1{Every minute} other{Every {count} minutes}}",
+  "@repeatEveryMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "30"
+      }
+    }
+  },
+  "repeatEveryHours": "{count, plural, =1{Every hour} other{Every {count} hours}}",
+  "@repeatEveryHours": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "2"
+      }
+    }
+  },
+  "repeatEveryDays": "{count, plural, =1{Every day} other{Every {count} days}}",
+  "@repeatEveryDays": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "repeatEveryWeeks": "{count, plural, =1{Every week} other{Every {count} weeks}}",
+  "@repeatEveryWeeks": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "2"
+      }
+    }
+  },
+  "repeatFromCompletion": "{repeat}, counted from completion",
+  "@repeatFromCompletion": {
+    "placeholders": {
+      "repeat": {
+        "type": "String",
+        "example": "Every 2 weeks"
+      }
+    }
+  },
+  "periodSeconds": "{count, plural, =1{1 second} other{{count} seconds}}",
+  "@periodSeconds": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "30"
+      }
+    }
+  },
+  "periodMinutes": "{count, plural, =1{1 minute} other{{count} minutes}}",
+  "@periodMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "30"
+      }
+    }
+  },
+  "periodHours": "{count, plural, =1{1 hour} other{{count} hours}}",
+  "@periodHours": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "2"
+      }
+    }
+  },
+  "periodDays": "{count, plural, =1{1 day} other{{count} days}}",
+  "@periodDays": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "30"
+      }
+    }
+  },
+  "periodWeeks": "{count, plural, =1{1 week} other{{count} weeks}}",
+  "@periodWeeks": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "2"
+      }
+    }
+  },
+  "reminderBefore": "{period} before the {reference}",
+  "@reminderBefore": {
+    "placeholders": {
+      "period": {
+        "type": "String",
+        "example": "1 hour"
+      },
+      "reference": {
+        "type": "String",
+        "example": "due date"
+      }
+    }
+  },
+  "reminderAfter": "{period} after the {reference}",
+  "@reminderAfter": {
+    "placeholders": {
+      "period": {
+        "type": "String",
+        "example": "1 hour"
+      },
+      "reference": {
+        "type": "String",
+        "example": "due date"
+      }
+    }
+  },
+  "reminderAtReference": "At the {reference}",
+  "@reminderAtReference": {
+    "placeholders": {
+      "reference": {
+        "type": "String",
+        "example": "due date"
+      }
+    }
+  },
+  "reminderReferenceDueDate": "due date",
+  "reminderReferenceStartDate": "start date",
+  "reminderReferenceEndDate": "end date",
+  "dataFailureLoadTitle": "Couldn’t load from the server",
+  "dataFailureRefreshTitle": "Couldn’t refresh",
+  "dataFailureStaleNote": "Showing what was loaded last.",
+  "dataFailureSessionEnded": "Your session on {host} has ended. Sign in again on the Account tab.",
+  "@dataFailureSessionEnded": {
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "dataFailureForbidden": "{host} refused the request. You may no longer have access to this.",
+  "@dataFailureForbidden": {
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "dataFailureNotFound": "{host} no longer has this. It may have been deleted.",
+  "@dataFailureNotFound": {
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "dataFailureRateLimited": "{host} is limiting requests from your network for now.",
+  "@dataFailureRateLimited": {
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "dataFailureUnexpected": "An unexpected error occurred while loading from {host}.",
+  "@dataFailureUnexpected": {
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "retry": "Try again"
 }

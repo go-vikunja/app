@@ -2,81 +2,18 @@
 @Timeout(Duration(minutes: 6))
 library;
 
-import 'dart:io';
-import 'dart:math';
-
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_api/src/auth/pkce.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 
-// Needs the servers of test_servers/docker-compose.yaml:
-// VIKUNJA_CONTRACT=1 flutter test --tags contract
-//
-// /login, /register and, before 2.7.0, /api/v1/oauth/token share a limit of
-// 10 requests per minute and IP that cannot be switched off, so each server
-// gets one user per run and every unauthenticated call waits out a 429.
-final String? _skip = Platform.environment['VIKUNJA_CONTRACT'] != '1'
-    ? 'Set VIKUNJA_CONTRACT=1 and start test_servers/docker-compose.yaml'
-    : null;
+import 'helpers.dart';
 
 final _client = OAuthClientConfig(
   clientId: 'dev.coderoftime.vikunja',
   redirectUri: Uri.parse('vikunja-dev.coderoftime.vikunja://oauth/callback'),
 );
-
-Future<T> _patiently<T>(Future<T> Function() call) async {
-  for (var attempt = 1; ; attempt++) {
-    try {
-      return await call();
-    } on Object catch (error) {
-      final failure = switch (error) {
-        final VikunjaFailure failure => failure,
-        final DioException exception => normalizeError(exception),
-        _ => null,
-      };
-      if (failure is! RateLimited || attempt == 8) rethrow;
-      await Future<void>.delayed(
-        (failure.retryAfter ?? const Duration(seconds: 10)) +
-            const Duration(seconds: 1),
-      );
-    }
-  }
-}
-
-typedef _TestUser = ({int id, String username, String jwt});
-
-Future<_TestUser> _registerAndLogin(
-  Dio dio,
-  ServerConnection connection,
-) async {
-  final v1 = connection.apiBaseUri(ApiVersion.v1);
-  final suffix = Random.secure().nextInt(1 << 32).toRadixString(16);
-  final username = 'contract$suffix';
-  final password = 'password-$suffix';
-  final registered = await _patiently(
-    () => dio.postUri<Map<String, Object?>>(
-      v1.replace(path: '${v1.path}/register'),
-      data: {
-        'username': username,
-        'email': '$username@example.com',
-        'password': password,
-      },
-    ),
-  );
-  final login = await _patiently(
-    () => dio.postUri<Map<String, Object?>>(
-      v1.replace(path: '${v1.path}/login'),
-      data: {'username': username, 'password': password},
-    ),
-  );
-  return (
-    id: registered.data!['id']! as int,
-    username: username,
-    jwt: login.data!['token']! as String,
-  );
-}
 
 /// What the web app's /oauth/authorize page does once the user is signed in:
 /// POST /oauth/authorize with the page's query, then redirect to
@@ -84,7 +21,7 @@ Future<_TestUser> _registerAndLogin(
 Future<Uri> _browserLeg(
   Dio dio,
   ServerConnection connection,
-  _TestUser user,
+  TestUser user,
   AuthorizationRequest request,
 ) async {
   final query = request.url.queryParameters;
@@ -136,19 +73,19 @@ final class _SessionTokens implements AccessTokenSource {
     rejectedTokens.add(rejectedToken);
     if (onRejection case final onRejection?) return onRejection(rejectedToken);
     accessTokenOverride = null;
-    tokens = await _patiently(() => _tokenClient.refresh(tokens.refreshToken));
+    tokens = await patiently(() => _tokenClient.refresh(tokens.refreshToken));
     return tokens.accessToken;
   }
 }
 
 void main() {
-  group('browser sign-in on local Docker servers', skip: _skip, () {
+  group('browser sign-in on local Docker servers', skip: contractSkip, () {
     for (final (port, version) in [(34527, '2.7.0')]) {
       group('$version on :$port', () {
         late Dio dio;
         late ServerConnection connection;
         late OAuthTokenClient tokenClient;
-        late _TestUser user;
+        late TestUser user;
 
         setUpAll(() async {
           dio = Dio(
@@ -161,7 +98,7 @@ void main() {
           connection = await DioServerConnector(dio)
               .connect('http://localhost:$port');
           tokenClient = OAuthTokenClient(dio, connection);
-          user = await _registerAndLogin(dio, connection);
+          user = await registerAndLogin(dio, connection);
         });
 
         tearDownAll(() => dio.close(force: true));
@@ -174,7 +111,7 @@ void main() {
 
         Future<TokenSet> signIn() async {
           final (request, code) = await authorize();
-          return await _patiently(
+          return await patiently(
             () => tokenClient.exchangeCode(code: code, request: request),
           );
         }
@@ -225,7 +162,7 @@ void main() {
           final seenRefreshTokens = {first.refreshToken};
           for (var i = 0; i < 3; i++) {
             final previous = current;
-            current = await _patiently(
+            current = await patiently(
               () => tokenClient.refresh(previous.refreshToken),
             );
             expect(seenRefreshTokens, isNot(contains(current.refreshToken)));
@@ -236,7 +173,7 @@ void main() {
           }
 
           await expectLater(
-            _patiently(() => tokenClient.refresh(first.refreshToken)),
+            patiently(() => tokenClient.refresh(first.refreshToken)),
             throwsA(
               isA<SessionEnded>().having(
                 (f) => f.reason,
@@ -247,7 +184,7 @@ void main() {
           );
 
           // No reuse detection: replaying an old token leaves the session.
-          current = await _patiently(
+          current = await patiently(
             () => tokenClient.refresh(current.refreshToken),
           );
 
@@ -255,7 +192,7 @@ void main() {
           await api.logout();
 
           await expectLater(
-            _patiently(() => tokenClient.refresh(current.refreshToken)),
+            patiently(() => tokenClient.refresh(current.refreshToken)),
             throwsA(isA<SessionEnded>()),
           );
         });
@@ -270,7 +207,7 @@ void main() {
           );
 
           await expectLater(
-            _patiently(
+            patiently(
               () => tokenClient.exchangeCode(code: code, request: forged),
             ),
             throwsA(
@@ -287,12 +224,12 @@ void main() {
 
         test('a code works once', () async {
           final (request, code) = await authorize();
-          await _patiently(
+          await patiently(
             () => tokenClient.exchangeCode(code: code, request: request),
           );
 
           await expectLater(
-            _patiently(
+            patiently(
               () => tokenClient.exchangeCode(code: code, request: request),
             ),
             throwsA(
@@ -333,7 +270,7 @@ void main() {
             );
 
             await expectLater(
-              _patiently(
+              patiently(
                 () => tokenClient.exchangeCode(code: code, request: forged),
               ),
               throwsA(
@@ -375,7 +312,7 @@ void main() {
             await api.logout();
             expect(tokens.rejectedTokens, ['garbage', 'garbage', 'garbage']);
             await expectLater(
-              _patiently(() => tokenClient.refresh(tokens.tokens.refreshToken)),
+              patiently(() => tokenClient.refresh(tokens.tokens.refreshToken)),
               throwsA(isA<SessionEnded>()),
             );
           },

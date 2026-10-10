@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "GET /api/v2/labels",
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"$schema\":\"http://localhost:34527/api/v2/schemas/PaginatedLabelWithTaskID.json\",\"items\":[{\"id\":4,\"title\":\"urgent\",\"description\":\"\",\"hex_color\":\"e8323c\",\"created_by\":{\"id\":13,\"name\":\"\",\"username\":\"fixtureuser\",\"created\":\"2026-10-10T08:12:10Z\",\"updated\":\"2026-10-10T08:12:10Z\"},\"created\":\"2026-10-10T08:12:10Z\",\"updated\":\"2026-10-10T08:12:10Z\"},{\"id\":5,\"title\":\"home\",\"description\":\"Things at home\",\"hex_color\":\"4CAF50\",\"created_by\":{\"id\":13,\"name\":\"\",\"username\":\"fixtureuser\",\"created\":\"2026-10-10T08:12:10Z\",\"updated\":\"2026-10-10T08:12:10Z\"},\"created\":\"2026-10-10T08:12:10Z\",\"updated\":\"2026-10-10T08:12:10Z\"}],\"total\":2,\"page\":1,\"per_page\":50,\"total_pages\":1}\n"
+}

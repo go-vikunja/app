@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:vikunja_api/src/dto/user_codec.dart';
 import 'package:vikunja_api/src/errors/normalize_error.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 
@@ -14,22 +15,11 @@ final class AccountApi {
   final ServerConnection _connection;
 
   Future<User> currentUser() async {
-    final json = await _send('GET', '/user');
-    if (json case {'id': final int id, 'username': final String username}) {
-      return User(
-        id: id,
-        username: username,
-        name: switch (json['name']) {
-          final String name => name,
-          _ => '',
-        },
-        email: switch (json['email']) {
-          final String email when email.isNotEmpty => email,
-          _ => null,
-        },
-      );
+    final user = parseUser(await _send('GET', '/user'));
+    if (user == null) {
+      throw const UnexpectedResponse(200, message: 'not a user');
     }
-    throw const UnexpectedResponse(200, message: 'not a user');
+    return user;
   }
 
   /// Ends the server session of the current token (best effort for callers).

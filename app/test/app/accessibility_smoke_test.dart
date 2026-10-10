@@ -4,13 +4,18 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/auth/web_authenticator.dart';
+import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
 import 'package:vikunja_mobile/features/home/presentation/reauth_banner.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connection_error_card.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 
 import '../helpers/auth_fakes.dart';
+import '../helpers/fake_read_client.dart';
 import '../helpers/fakes.dart';
 import '../helpers/pump_app.dart';
+import '../helpers/sample_data.dart';
 import '../helpers/server_connections.dart';
 
 // Layout overflows are reported as test failures, so reaching the end of each
@@ -40,7 +45,121 @@ void main() {
     expect(position.extentAfter, 0);
   }
 
+  FakeReadClient richData() {
+    final now = DateTime.now();
+    final label = sampleLabel(
+      id: 1,
+      title: 'A rather long label title',
+      hexColor: 'ffeb10',
+    );
+    final client = FakeReadClient();
+    client.projects.all = [
+      sampleProject(
+        id: 1,
+        title: 'Work with a very long project title',
+        favorite: true,
+        hexColor: '1973ff',
+      ),
+      sampleProject(
+        id: 2,
+        title: 'Child project with another long title',
+        parent: 1,
+      ),
+    ];
+    client.tasks.openTasks = [
+      for (var i = 1; i <= 6; i++)
+        sampleTask(
+          id: i,
+          title: 'Task $i with a title long enough to wrap onto several lines',
+          due: i == 6 ? null : now.add(Duration(days: i * 3 - 5)),
+          identifier: 'LONGIDENT-$i',
+          priority: TaskPriority.doNow,
+          labels: [label, label],
+          favorite: true,
+          assignees: const [
+            User(
+              id: 1,
+              username: 'maximiliane',
+              name: 'Maximiliane Musterfrau-Beispielhausen',
+            ),
+          ],
+          reminders: const [
+            TaskReminder(
+              relativePeriod: Duration(hours: -1),
+              relativeTo: ReminderRelativeTo.dueDate,
+            ),
+          ],
+          repeatAfter: const Duration(days: 14),
+          percentDone: 0.5,
+          description:
+              '<p>Some description text that is long enough to wrap.</p>',
+        ),
+    ];
+    client.tasks.projectTasks = {1: client.tasks.openTasks};
+    client.tasks.perPage = 4;
+    return client;
+  }
+
   for (final locale in locales) {
+    testWidgets('overview with tasks at 200 % in dark mode '
+        '(${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      await pumpSignedInApp(tester, readClient: richData());
+
+      await scrollToEnd(tester, find.byType(CustomScrollView));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('task detail sheet at 200 % in dark mode '
+        '(${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      await pumpSignedInApp(tester, readClient: richData());
+
+      await tester.tap(find.textContaining('Task 1 ').first);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TaskDetailSheet), findsOneWidget);
+      await scrollToEnd(tester, find.byType(TaskDetailSheet));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('project tree and project tasks at 200 % in dark mode '
+        '(${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      await pumpSignedInApp(tester, readClient: richData());
+      final l10n = lookupAppLocalizations(locale);
+
+      await openTab(tester, l10n.tabProjects);
+      await scrollToEnd(tester, find.byType(CustomScrollView));
+      expect(tester.takeException(), isNull);
+
+      containerOf(tester).read(appRouterProvider).go(AppRoutes.project(1));
+      await tester.pumpAndSettle();
+      await scrollToEnd(tester, find.byType(CustomScrollView));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('overview failure states at 200 % in dark mode '
+        '(${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      final client = richData();
+      client.tasks.onList = (_) async =>
+          throw const NetworkFailure(NetworkProblem.unreachable);
+      await pumpSignedInApp(tester, readClient: client);
+      expect(find.byType(DataFailureCard), findsOneWidget);
+      await scrollToEnd(tester, find.byType(CustomScrollView));
+
+      client.tasks.onList = null;
+      await tester.tap(find.byType(TextButton));
+      await tester.pumpAndSettle();
+      client.tasks.onList = (_) async => throw const ServerFailure(502);
+      await pullToRefresh(tester, find.byType(CustomScrollView));
+
+      expect(find.byType(DataFailureCard), findsOneWidget);
+      await scrollToEnd(tester, find.byType(CustomScrollView));
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('connect screen with an error at 200 % in dark mode '
         '(${locale.languageCode})', (tester) async {
       useWorstCase(tester, locale);
@@ -177,6 +296,7 @@ void main() {
         auth: auth,
         connector: FakeServerConnector.failing(StateError('offline')),
       );
+      await openTab(tester, l10n.tabAccount);
 
       expect(find.byType(ReauthBanner), findsOneWidget);
       await tester.ensureVisible(find.byType(FilledButton));
@@ -198,6 +318,7 @@ void main() {
         tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
       );
       await pumpVikunjaApp(tester, auth: auth);
+      await openTab(tester, l10n.tabAccount);
 
       await scrollToEnd(tester, find.byType(ListView));
       await tester.tap(find.byType(OutlinedButton));

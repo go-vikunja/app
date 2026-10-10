@@ -8,6 +8,7 @@ class StatusCard extends StatelessWidget {
     required this.background,
     required this.foreground,
     this.footnote,
+    this.action,
     this.liveRegion = false,
     super.key,
   });
@@ -16,6 +17,9 @@ class StatusCard extends StatelessWidget {
   final String title;
   final String body;
   final String? footnote;
+
+  /// Shown below the texts, outside the announced region.
+  final Widget? action;
   final Color background;
   final Color foreground;
   final bool liveRegion;
@@ -28,34 +32,45 @@ class StatusCard extends StatelessWidget {
     // and all texts into one node, so the whole card is announced.
     return Card.filled(
       color: background,
-      child: Semantics(
-        liveRegion: liveRegion,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(icon, color: foreground),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: textTheme.titleMedium?.copyWith(color: foreground),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Semantics(
+              liveRegion: liveRegion,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(icon, color: foreground),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: textTheme.titleMedium?.copyWith(
+                            color: foreground,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(body, style: bodyStyle),
+                        if (footnote case final footnote?) ...[
+                          const SizedBox(height: 8),
+                          Text(footnote, style: bodyStyle),
+                        ],
+                      ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(body, style: bodyStyle),
-                    if (footnote case final footnote?) ...[
-                      const SizedBox(height: 8),
-                      Text(footnote, style: bodyStyle),
-                    ],
-                  ],
-                ),
+                  ),
+                ],
               ),
+            ),
+            if (action case final action?) ...[
+              const SizedBox(height: 8),
+              Align(alignment: AlignmentDirectional.centerEnd, child: action),
             ],
-          ),
+          ],
         ),
       ),
     );

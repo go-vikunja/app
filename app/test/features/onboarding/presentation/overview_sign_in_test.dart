@@ -7,7 +7,7 @@ import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/auth/oauth_client.dart';
 import 'package:vikunja_mobile/core/auth/web_authenticator.dart';
-import 'package:vikunja_mobile/features/home/presentation/home_screen.dart';
+import 'package:vikunja_mobile/features/home/presentation/home_shell.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connection_error_card.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/overview/server_overview_screen.dart';
 
@@ -43,8 +43,9 @@ void main() {
     await tester.tap(_continueButton);
     await tester.pumpAndSettle();
 
-    expect(location(tester), AppRoutes.home);
-    expect(find.byType(HomeScreen), findsOneWidget);
+    expect(location(tester), AppRoutes.overview);
+    expect(find.byType(HomeShell), findsOneWidget);
+    await openTab(tester, en.tabAccount);
     expect(find.text('Alice Example'), findsOneWidget);
     expect(find.text(en.homeUsername('alice')), findsOneWidget);
     expect(auth.webAuthenticator.schemes, [oauthCallbackScheme]);
@@ -101,7 +102,7 @@ void main() {
 
     exchange.complete(issueTokens(issuedAt: DateTime.now().toUtc()));
     await tester.pumpAndSettle();
-    expect(location(tester), AppRoutes.home);
+    expect(location(tester), AppRoutes.overview);
   });
 
   testWidgets('the app bar back button is disabled while signing in', (
@@ -230,7 +231,7 @@ void main() {
     await tester.tap(_continueButton);
     await tester.pumpAndSettle();
 
-    expect(find.byType(HomeScreen), findsOneWidget);
+    expect(find.byType(HomeShell), findsOneWidget);
   });
 
   testWidgets('a failure is announced as one live region', (tester) async {

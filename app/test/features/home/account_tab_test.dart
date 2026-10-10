@@ -8,7 +8,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/features/home/presentation/account_header.dart';
-import 'package:vikunja_mobile/features/home/presentation/home_screen.dart';
+import 'package:vikunja_mobile/features/home/presentation/account_tab.dart';
 import 'package:vikunja_mobile/features/home/presentation/reauth_banner.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_server_screen.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connection_error_card.dart';
@@ -49,6 +49,7 @@ void main() {
       connector: connector,
       overrides: overrides,
     );
+    await openTab(tester, en.tabAccount);
   }
 
   Future<void> tapSignOut(WidgetTester tester) async {
@@ -56,7 +57,12 @@ void main() {
     await tester.scrollUntilVisible(
       button,
       100,
-      scrollable: find.byType(Scrollable).first,
+      scrollable: find
+          .descendant(
+            of: find.byType(AccountTab),
+            matching: find.byType(Scrollable),
+          )
+          .first,
     );
     await tester.tap(button);
     await tester.pumpAndSettle();
@@ -65,7 +71,7 @@ void main() {
   testWidgets('shows who is signed in on which server', (tester) async {
     await pumpHome(tester);
 
-    expect(find.text(en.homeTitle), findsOneWidget);
+    expect(find.text(en.tabAccount), findsAtLeast(1));
     expect(find.text('AE'), findsOneWidget);
     expect(find.text('Alice Example'), findsOneWidget);
     expect(find.text(en.homeUsername('alice')), findsOneWidget);
@@ -112,7 +118,7 @@ void main() {
     await tester.tap(find.text(en.signOutDialogCancel));
     await tester.pumpAndSettle();
 
-    expect(find.byType(HomeScreen), findsOneWidget);
+    expect(find.byType(AccountTab), findsOneWidget);
     expect(auth.accountGateway.logoutTokens, isEmpty);
     expect((await auth.registry.load()).accounts, hasLength(1));
   });
@@ -158,7 +164,7 @@ void main() {
     await tester.pump();
 
     expect(systemCalls, isNot(contains('SystemNavigator.pop')));
-    expect(find.byType(HomeScreen), findsOneWidget);
+    expect(find.byType(AccountTab), findsOneWidget);
 
     logout.complete();
     await tester.pumpAndSettle();
@@ -217,7 +223,7 @@ void main() {
     await tester.tap(find.widgetWithText(TextButton, en.signOutDialogConfirm));
     await tester.pumpAndSettle();
 
-    expect(find.byType(HomeScreen), findsOneWidget);
+    expect(find.byType(AccountTab), findsOneWidget);
     expect(find.text('Bob'), findsOneWidget);
   });
 

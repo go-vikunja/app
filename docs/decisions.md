@@ -154,7 +154,7 @@ ADR-lite. Each entry has a number, a status and the step that took it. A decisio
 
 ## D12: Hand-written API adapters and an OpenAPI spec for contract tests
 
-*Accepted, implemented in step 5 (planned).*
+*Accepted. The hand-written read adapters are built in step 5; the committed OpenAPI spec and the DTO-vs-schema test are still planned.*
 
 - **Context:**
   - v1 and v2 share the same server models.
@@ -429,3 +429,39 @@ ADR-lite. Each entry has a number, a status and the step that took it. A decisio
 - **Consequences:**
   - Regressions that only show on 2.3–2.6 servers are no longer caught by a live server. If such a server matters again, an image can be added back temporarily.
   - CI pulls one image and the contract job is faster.
+
+## D29: UI reads through repository interfaces; the online implementation is replaced by Drift in step 6 without UI changes
+
+*Accepted 2026-10-10, step 5.*
+
+- **Context:**
+  - Principle 1 of the [architecture](architecture.md#1-principles) makes the local database the UI's only source, but Drift comes in step 6. The roadmap had step 5 as read ports only, with the first screens in steps 8–10, so the read adapters would have had no real consumer until then.
+  - Screens written directly against `VikunjaReadClient` would have to be rewritten when the database arrives.
+- **Decision:**
+  - Step 5 puts the first screens on real data (open tasks by due date, project tree, a project's tasks, task detail), read-only and online.
+  - They read through interfaces in `app/lib/core/repositories/`: `ProjectRepository` (`watchAll()`, `refresh()`, `find(id)`) and `TaskRepository` (`watchOpenTasks()`, `watchProjectTasks(projectId, showDone:)` as a `PagedList` of the items loaded so far plus `hasMore`, the matching refresh calls and `loadMoreProjectTasks`). The contract is streams of the current local state plus explicit refresh and load-more: a failed first load is the stream's error, a failed refresh or load-more throws and leaves the stale data in the stream. Database streams and a sync trigger satisfy this shape as well.
+  - Step 5 ships `OnlineProjectRepository` and `OnlineTaskRepository`: an in-memory cache per account, filled on first subscription and on refresh through `VikunjaReadClient`. A failed refresh keeps the stale data visible and surfaces the `VikunjaFailure`.
+  - The read client and the repositories are Riverpod providers keyed by the active account id and are disposed on sign-out.
+  - The screens depend on these interfaces and the domain types only; they never see `Page`, the ports or DTOs. Task detail shows the task from the list without a request of its own.
+  - Step 6 replaces the online implementations with Drift-backed ones behind the same interfaces. The sync engine fills the database through the same read ports.
+- **Consequences:**
+  - Step 6 changes no screen, and the widget tests of step 5 keep running against fake repositories.
+  - Until step 6 nothing survives a restart, the app needs the server, and the overview reads at most 5 pages of `GET /tasks` (logged when capped). All three limits go away with Drift.
+  - Steps 8 and 9 shrink to what remains: shell polish and settings applied; offline lists and Upcoming presets.
+
+## D30: Kanban board reads deferred to step 20
+
+*Accepted 2026-10-10, step 5.*
+
+- **Context:**
+  - The synthesis scope of step 5 covered every read operation, kanban included: `GET /projects/{p}/views/{v}/tasks` answers with buckets for a kanban view, v2 adds `…/views/{v}/buckets/tasks`, and `per_page` applies per bucket there.
+  - The first consumer is the kanban board (step 20). The sync of steps 6–7 reads tasks through `GET /tasks`; buckets and positions are on-demand data that do not bump `tasks.updated`.
+  - Step 5 already grew by paging and the query builder ([D27](#d27-paging-and-the-query-builder-move-to-step-5)) and by the first screens ([D29](#d29-ui-reads-through-repository-interfaces-the-online-implementation-is-replaced-by-drift-in-step-6-without-ui-changes)).
+- **Decision:**
+  - Step 5's read client has `ProjectsPort`, `LabelsPort` and `TasksPort` only. `TasksPort.listInView` is never called with a kanban view, and the bucket-shaped answer is not parsed.
+  - `ProjectView` (kind, filter, bucket configuration) is parsed in step 5, because the project read carries the views.
+  - Step 20 adds the kanban read path with the board: a buckets port, the bucket codecs and per-bucket paging, on v1 and v2. The acceptance "kanban per-bucket paging works on both versions" moves there.
+- **Consequences:**
+  - Step 5 shows no board; the Projects tab opens a project's task list only.
+  - Step 6 decides whether the bucket tables of the schema are created empty or added by a migration in step 20.
+

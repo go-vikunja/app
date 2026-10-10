@@ -16,11 +16,13 @@ import 'package:vikunja_mobile/core/auth/web_authenticator.dart';
 import 'package:vikunja_mobile/core/links/external_link_opener.dart';
 import 'package:vikunja_mobile/core/network/dio_factory.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
-import 'package:vikunja_mobile/features/home/presentation/home_screen.dart';
+import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/features/home/presentation/home_shell.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_server_screen.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/overview/server_overview_screen.dart';
 
 import '../helpers/auth_fakes.dart';
+import '../helpers/fake_read_client.dart';
 import '../helpers/fakes.dart';
 import '../helpers/pump_app.dart';
 
@@ -353,6 +355,8 @@ void main() {
               externalLinkOpenerProvider.overrideWithValue(
                 FakeExternalLinkOpener(),
               ),
+              // The task screens are not this test's story.
+              readClientProvider.overrideWith((ref, _) => FakeReadClient()),
             ],
             child: const VikunjaApp(),
           ),
@@ -374,7 +378,8 @@ void main() {
       await tester.tap(find.widgetWithText(FilledButton, en.continueToSignIn));
       await tester.pumpAndSettle();
 
-      expect(find.byType(HomeScreen), findsOneWidget);
+      expect(find.byType(HomeShell), findsOneWidget);
+      await openTab(tester, en.tabAccount);
       expect(find.text(_name), findsOneWidget);
       expect(find.text('@$_username'), findsOneWidget);
 
@@ -448,7 +453,8 @@ void main() {
 
       final beforeRestart = server.seen.length;
       await launch();
-      expect(find.byType(HomeScreen), findsOneWidget);
+      expect(find.byType(HomeShell), findsOneWidget);
+      await openTab(tester, en.tabAccount);
       expect(find.text(_name), findsOneWidget);
       // Home is shown from storage; the session check follows it.
       expect(routesSince(beforeRestart), ['GET /api/v2/user 200']);

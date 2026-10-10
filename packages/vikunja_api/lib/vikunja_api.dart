@@ -10,5 +10,6 @@ export 'src/negotiation/server_address.dart';
 export 'src/negotiation/server_connector.dart';
 export 'src/negotiation/server_info_parser.dart';
 export 'src/negotiation/server_info_serializer.dart';
+export 'src/read/read_ports.dart';
 export 'src/transport/authenticated_dio.dart';
 export 'src/transport/retry_interceptor.dart';

@@ -5,7 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/vikunja_app.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
-import 'package:vikunja_mobile/features/home/presentation/home_screen.dart';
+import 'package:vikunja_mobile/features/home/presentation/home_shell.dart';
 import 'package:vikunja_mobile/features/home/presentation/reauth_banner.dart';
 import 'package:vikunja_mobile/features/onboarding/application/current_server.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_server_screen.dart';
@@ -75,8 +75,8 @@ void main() {
       final connector = FakeServerConnector();
       await pumpVikunjaApp(tester, auth: auth, connector: connector);
 
-      expect(location(tester), AppRoutes.home);
-      expect(find.byType(HomeScreen), findsOneWidget);
+      expect(location(tester), AppRoutes.overview);
+      expect(find.byType(HomeShell), findsOneWidget);
       expect(connector.inputs, isEmpty);
       expect(auth.tokenGateway.refreshedTokens, isEmpty);
       // The session check after the first frame.
@@ -94,7 +94,7 @@ void main() {
       );
       await pumpVikunjaApp(tester, auth: auth);
 
-      expect(location(tester), AppRoutes.home);
+      expect(location(tester), AppRoutes.overview);
     });
 
     testWidgets('an account without tokens opens home asking to sign in', (
@@ -108,7 +108,8 @@ void main() {
       await auth.tokenStore.delete(entry.id);
       await pumpVikunjaApp(tester, auth: auth);
 
-      expect(location(tester), AppRoutes.home);
+      expect(location(tester), AppRoutes.overview);
+      await openTab(tester, en.tabAccount);
       expect(find.byType(ReauthBanner), findsOneWidget);
       expect(auth.tokenGateway.refreshedTokens, isEmpty);
       expect((await auth.registry.find(entry.id))!.account.needsReauth, isTrue);
@@ -121,7 +122,7 @@ void main() {
     });
 
     for (final (name, signedIn, screen) in [
-      ('home', true, HomeScreen),
+      ('home', true, HomeShell),
       ('the connect screen', false, ConnectServerScreen),
     ]) {
       testWidgets(
@@ -139,7 +140,6 @@ void main() {
           final container = ProviderContainer(
             overrides: appOverrides(auth: auth),
           );
-          addTearDown(container.dispose);
           await container.read(accountsProvider.future);
 
           await tester.pumpWidget(
@@ -152,6 +152,11 @@ void main() {
           final route = ModalRoute.of(tester.element(find.byType(screen)))!;
           expect(route.animation?.status, AnimationStatus.completed);
           await tester.pumpAndSettle();
+
+          // Bootstrap's container outlives the tree; the test's must not,
+          // or the kept-alive providers' timers outlive the test.
+          await tester.pumpWidget(const SizedBox());
+          container.dispose();
         },
         variant: const TargetPlatformVariant({
           TargetPlatform.iOS,
@@ -178,7 +183,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(location(tester), AppRoutes.connect);
-    expect(find.byType(HomeScreen), findsNothing);
+    expect(find.byType(HomeShell), findsNothing);
   });
 
   testWidgets('signed in, the connect screen stays reachable', (tester) async {

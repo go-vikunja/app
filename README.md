@@ -4,15 +4,19 @@ Rurana (name and logo: see [branding/README.md](branding/README.md)) is an unoff
 
 ## Status
 
-Step 1 of the [roadmap](docs/roadmap.md), server connection and v1/v2 negotiation, is done. **Step 2+3, the HTTP core, browser sign-in (OAuth 2.0 + PKCE) and the session manager, is in review** (verified end to end on the Android emulator and the iOS simulator); see [architecture §5](docs/architecture.md#5-auth-and-session-in-progress-step-23). The project applies the owner's decisions of 2026-10-09 (app id, browser sign-in only, and the 2.3.0 floor that follows from them). Name and icon: Rurana with the "checkbox ears" llama (see [branding/README.md](branding/README.md)).
+Step 1 of the [roadmap](docs/roadmap.md), server connection and v1/v2 negotiation, is done. Step 2+3, the HTTP core, browser sign-in (OAuth 2.0 + PKCE) and the session manager, is in review (verified end to end on the Android emulator and the iOS simulator); see [architecture §5](docs/architecture.md#5-auth-and-session-exists-step-23). **Step 5, projects and tasks, read-only and online, is in progress**: the first screens with real data, built on repository interfaces that step 6 fills from a local database without UI changes ([D29](docs/decisions.md#d29-ui-reads-through-repository-interfaces-the-online-implementation-is-replaced-by-drift-in-step-6-without-ui-changes)); see [architecture §6](docs/architecture.md#6-read-path-in-progress-step-5). The project applies the owner's decisions of 2026-10-09 (app id, browser sign-in only, and the 2.3.0 floor that follows from them). Name and icon: Rurana with the "checkbox ears" llama (see [branding/README.md](branding/README.md)).
 
-Step 1 built the first feature: the app takes a server address and finds the Vikunja server behind it. It probes `/api/v2/info` (Vikunja 2.4.0 and newer) and `/api/v1/info` in parallel, and uses v2 when both answer. Then it shows:
-- the server version;
-- the API mode;
-- the support tier;
-- the detected capabilities.
+### What you can see now
 
-Servers older than 2.3.0 are reported as unsupported, because browser sign-in needs 2.3.0. Step 2+3 adds sign-in through the system browser, a signed-in home placeholder and sign-out. Local data and task screens are not built yet.
+- **Connect to a server.** The app takes an address, probes `/api/v2/info` (Vikunja 2.4.0 and newer) and `/api/v1/info` in parallel, uses v2 when both answer, and shows the server version, the API mode, the support tier and the detected capabilities. Servers older than 2.3.0 are reported as unsupported, because browser sign-in needs 2.3.0.
+- **Sign in** through the system browser. The session is refreshed transparently and survives restarts; sign-out after a confirmation.
+- **Overview tab:** your open tasks across all projects, grouped into Overdue, Today, Next 7 days, Later and No due date, with identifier, project, relative due date, priority, labels and favourite.
+- **Projects tab:** favourites first, then the project tree. A project opens its task list, with a "Show done tasks" toggle and load more.
+- **Task detail:** a sheet with title, identifier and project, done state, dates, priority, percent done, labels, assignees, reminders, repeat and the description as plain text.
+- **Account tab:** who is signed in on which server, a "Sign in again" banner when the session ended, sign out.
+- English and German, dark mode, large text. Pull to refresh reloads every list.
+
+Everything is read-only and needs the server: nothing is stored on the device yet (step 6) and nothing can be edited (step 11).
 
 ## Goals
 
@@ -44,10 +48,10 @@ Not planned for now: the admin panel, an MCP page, time tracking (licensed), pus
 | Path | Contents |
 |---|---|
 | `app/` | Flutter app (feature-first: `lib/features/*`, shared code in `lib/core/`) |
-| `packages/vikunja_domain/` | Pure Dart domain model. Today: server version, capabilities, support tier, connection result, connection failures |
-| `packages/vikunja_api/` | Pure Dart API client. Today: address normalisation, `/info` parsing, parallel v2/v1 `/info` probing. `test/fixtures/` holds real `/info` responses |
+| `packages/vikunja_domain/` | Pure Dart domain model: server version, capabilities, support tier, connection result and failures; user, account, tokens, `VikunjaFailure`; projects, views, labels, tasks, reminders, `Page<T>`, `TaskQuery` |
+| `packages/vikunja_api/` | Pure Dart API client: address normalisation, `/info` parsing, parallel v2/v1 `/info` probing, error normalisation, OAuth + PKCE token client, authenticated transport, and the read client for projects, labels and tasks over v1 and v2. `test/fixtures/` holds real server responses |
 | `branding/` | Name, logo and icon sources (SVG) with the rendered PNGs |
-| `test_servers/` | Docker Compose stack with Vikunja 1.0.0, 2.0.0, 2.3.0, 2.4.0 and 2.7.0 for contract tests, plus a second 2.7.0 for sign-in on the Android emulator. `seed/e2e-user.env` holds the throwaway sign-in test user |
+| `test_servers/` | Docker Compose stack with one Vikunja 2.7.0 for contract tests and manual sign-in ([D28](docs/decisions.md#d28-test-only-the-latest-vikunja-release)). `seed/e2e-user.env` holds the throwaway sign-in test user |
 | `tool/` | Scripts used by CI and for local work |
 | `docs/` | Architecture, roadmap, decisions, open questions, research |
 | `.github/workflows/ci.yaml` | CI: analyze and test, generated-code check, contract tests, Android and iOS release builds |
@@ -119,7 +123,7 @@ docker compose -f test_servers/docker-compose.yaml down
 
 With the standalone binary (for example colima with Homebrew's docker-compose), use `docker-compose` with the same arguments. The servers listen on `127.0.0.1` only.
 
-Only the latest Vikunja release is tested: one server, 2.7.0 on port 34527 (`/api/v2`, full tier). Older servers down to the 2.3.0 floor stay supported in code and are covered by unit tests with recorded `/info` and error responses ([D28](docs/decisions.md#d28-test-only-the-latest-vikunja-release)).
+Only the latest Vikunja release is tested: one server, 2.7.0 on port 34527 (`/api/v2`, full tier). Older servers down to the 2.3.0 floor stay supported in code and are covered by unit tests with recorded `/info`, error and entity responses ([D28](docs/decisions.md#d28-test-only-the-latest-vikunja-release)). Each contract run registers a throwaway user; the server allows 10 logins or registrations per minute per IP, so leave a minute between repeated runs.
 
 Run the app on an Android emulator:
 
@@ -168,13 +172,13 @@ The app's minimum is iOS 15.0. Below iOS 17.4, flutter_web_auth_2 falls back to 
    adb shell input text "$(sed -n 's/^E2E_PASSWORD=//p' test_servers/seed/e2e-user.env)"
    ```
 
-5. The sheet closes and the app shows the signed-in home: initials, display name, `@` username, server host and version. **Sign out**, after a confirmation, returns to onboarding.
+5. The sheet closes and the app shows the Overview tab. The Account tab shows initials, display name, `@` username, server host and version; **Sign out** there, after a confirmation, returns to onboarding. To see tasks and projects, create some in the web app at `http://localhost:34527` with the same user, then pull to refresh.
 
 Every sign-in starts with an empty browser session and shows the login form ([D23](docs/decisions.md#d23-browser-sign-in-through-flutter_web_auth_2-client-id-and-redirect-uri)). On Android, Chrome before 141 (the emulator image ships 133) gets a regular Custom Tab instead, which can reuse a web login in Chrome; to see the form again there, sign out in Chrome or clear its data for the server.
 
 ## Documentation
 
-- [Architecture](docs/architecture.md): what exists after step 1, what step 2+3 is building, and what is planned.
+- [Architecture](docs/architecture.md): what exists after steps 1 and 2+3, what step 5 is building, and what is planned.
 - [Roadmap](docs/roadmap.md): all steps and milestones, with status.
 - [Decisions](docs/decisions.md): decision log.
 - [Open questions](docs/open-questions.md): the owner's answers of 2026-10-09 and the items still deferred.

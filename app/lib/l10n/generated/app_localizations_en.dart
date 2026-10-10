@@ -470,16 +470,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get homeTitle => 'Signed in';
-
-  @override
   String homeUsername(String username) {
     return '@$username';
   }
-
-  @override
-  String get homePlaceholder =>
-      'Your projects and tasks will appear here in a later version.';
 
   @override
   String get homeSignOut => 'Sign out';
@@ -511,4 +504,503 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get reauthAction => 'Sign in again';
+
+  @override
+  String get tabOverview => 'Overview';
+
+  @override
+  String get tabProjects => 'Projects';
+
+  @override
+  String get tabAccount => 'Account';
+
+  @override
+  String get overviewLoading => 'Loading your tasks…';
+
+  @override
+  String get overviewEmptyTitle => 'All done';
+
+  @override
+  String get overviewEmptyBody =>
+      'No open tasks right now. Enjoy the quiet, or add some on the web.';
+
+  @override
+  String get sectionOverdue => 'Overdue';
+
+  @override
+  String get sectionToday => 'Today';
+
+  @override
+  String get sectionNextSevenDays => 'Next 7 days';
+
+  @override
+  String get sectionLater => 'Later';
+
+  @override
+  String get sectionNoDueDate => 'No due date';
+
+  @override
+  String get projectsLoading => 'Loading your projects…';
+
+  @override
+  String get projectsEmptyTitle => 'No projects yet';
+
+  @override
+  String get projectsEmptyBody =>
+      'Create your first project on the web and it will show up here.';
+
+  @override
+  String get projectsFavouritesHeading => 'Favourites';
+
+  @override
+  String get projectsAllHeading => 'All projects';
+
+  @override
+  String projectChildCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count subprojects',
+      one: '1 subproject',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String projectExpand(String title) {
+    return 'Show subprojects of $title';
+  }
+
+  @override
+  String projectCollapse(String title) {
+    return 'Hide subprojects of $title';
+  }
+
+  @override
+  String get projectUnknownTitle => 'Project';
+
+  @override
+  String get favouriteLabel => 'Favourite';
+
+  @override
+  String get projectTasksShowDone => 'Show done tasks';
+
+  @override
+  String get projectTasksLoading => 'Loading tasks…';
+
+  @override
+  String get projectTasksLoadMore => 'Load more';
+
+  @override
+  String get projectTasksLoadingMore => 'Loading more tasks…';
+
+  @override
+  String get projectTasksEmptyTitle => 'No open tasks';
+
+  @override
+  String get projectTasksEmptyBody =>
+      'Everything in this project is done. Turn on “Show done tasks” to see them.';
+
+  @override
+  String get projectTasksEmptyAllTitle => 'No tasks';
+
+  @override
+  String get projectTasksEmptyAllBody => 'This project has no tasks yet.';
+
+  @override
+  String get moreActions => 'More';
+
+  @override
+  String get refresh => 'Refresh';
+
+  @override
+  String get taskDone => 'Done';
+
+  @override
+  String get taskNotDone => 'Not done';
+
+  @override
+  String taskDueSemantics(String when) {
+    return 'Due $when';
+  }
+
+  @override
+  String taskOverdueSemantics(String when) {
+    return 'Overdue, due $when';
+  }
+
+  @override
+  String prioritySemantics(String priority) {
+    return 'Priority: $priority';
+  }
+
+  @override
+  String labelSemantics(String label) {
+    return 'Label: $label';
+  }
+
+  @override
+  String get priorityUnset => 'Unset';
+
+  @override
+  String get priorityLow => 'Low';
+
+  @override
+  String get priorityMedium => 'Medium';
+
+  @override
+  String get priorityHigh => 'High';
+
+  @override
+  String get priorityUrgent => 'Urgent';
+
+  @override
+  String get priorityDoNow => 'Do now';
+
+  @override
+  String get relativeNow => 'now';
+
+  @override
+  String relativeInMinutes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'in $count minutes',
+      one: 'in 1 minute',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String relativeMinutesAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count minutes ago',
+      one: '1 minute ago',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String relativeInHours(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'in $count hours',
+      one: 'in 1 hour',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String relativeHoursAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count hours ago',
+      one: '1 hour ago',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String relativeInDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'in $count days',
+      one: 'in 1 day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String relativeDaysAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count days ago',
+      one: '1 day ago',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String relativeInMonths(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'in $count months',
+      one: 'in 1 month',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String relativeMonthsAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count months ago',
+      one: '1 month ago',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String relativeInYears(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'in $count years',
+      one: 'in 1 year',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String relativeYearsAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count years ago',
+      one: '1 year ago',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get taskDetailStatusDone => 'Done';
+
+  @override
+  String get taskDetailStatusOpen => 'Open';
+
+  @override
+  String taskDetailIdentifierInProject(String identifier, String project) {
+    return '$identifier in $project';
+  }
+
+  @override
+  String get taskDetailDueDate => 'Due date';
+
+  @override
+  String get taskDetailStartDate => 'Start date';
+
+  @override
+  String get taskDetailEndDate => 'End date';
+
+  @override
+  String get taskDetailDoneAt => 'Done at';
+
+  @override
+  String get taskDetailPriority => 'Priority';
+
+  @override
+  String get taskDetailProgress => 'Progress';
+
+  @override
+  String taskPercentDone(int percent) {
+    return '$percent% done';
+  }
+
+  @override
+  String get taskDetailLabels => 'Labels';
+
+  @override
+  String get taskDetailAssignees => 'Assignees';
+
+  @override
+  String get taskDetailReminders => 'Reminders';
+
+  @override
+  String get taskDetailRepeat => 'Repeats';
+
+  @override
+  String get taskDetailDescription => 'Description';
+
+  @override
+  String get taskDetailNoDescription => 'No description';
+
+  @override
+  String get taskDetailClose => 'Close';
+
+  @override
+  String get repeatMonthly => 'Every month';
+
+  @override
+  String repeatEverySeconds(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Every $count seconds',
+      one: 'Every second',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String repeatEveryMinutes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Every $count minutes',
+      one: 'Every minute',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String repeatEveryHours(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Every $count hours',
+      one: 'Every hour',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String repeatEveryDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Every $count days',
+      one: 'Every day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String repeatEveryWeeks(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Every $count weeks',
+      one: 'Every week',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String repeatFromCompletion(String repeat) {
+    return '$repeat, counted from completion';
+  }
+
+  @override
+  String periodSeconds(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count seconds',
+      one: '1 second',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String periodMinutes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count minutes',
+      one: '1 minute',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String periodHours(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count hours',
+      one: '1 hour',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String periodDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count days',
+      one: '1 day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String periodWeeks(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count weeks',
+      one: '1 week',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String reminderBefore(String period, String reference) {
+    return '$period before the $reference';
+  }
+
+  @override
+  String reminderAfter(String period, String reference) {
+    return '$period after the $reference';
+  }
+
+  @override
+  String reminderAtReference(String reference) {
+    return 'At the $reference';
+  }
+
+  @override
+  String get reminderReferenceDueDate => 'due date';
+
+  @override
+  String get reminderReferenceStartDate => 'start date';
+
+  @override
+  String get reminderReferenceEndDate => 'end date';
+
+  @override
+  String get dataFailureLoadTitle => 'Couldn’t load from the server';
+
+  @override
+  String get dataFailureRefreshTitle => 'Couldn’t refresh';
+
+  @override
+  String get dataFailureStaleNote => 'Showing what was loaded last.';
+
+  @override
+  String dataFailureSessionEnded(String host) {
+    return 'Your session on $host has ended. Sign in again on the Account tab.';
+  }
+
+  @override
+  String dataFailureForbidden(String host) {
+    return '$host refused the request. You may no longer have access to this.';
+  }
+
+  @override
+  String dataFailureNotFound(String host) {
+    return '$host no longer has this. It may have been deleted.';
+  }
+
+  @override
+  String dataFailureRateLimited(String host) {
+    return '$host is limiting requests from your network for now.';
+  }
+
+  @override
+  String dataFailureUnexpected(String host) {
+    return 'An unexpected error occurred while loading from $host.';
+  }
+
+  @override
+  String get retry => 'Try again';
 }

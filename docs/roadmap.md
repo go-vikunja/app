@@ -49,6 +49,7 @@ The owner's answers of 2026-10-09 ([open questions](open-questions.md)) changed 
 - Step 4 was "Password + TOTP login, API-token login". Multi-account replaces it ([D14](decisions.md#d14-browser-sign-in-only), [D16](decisions.md#d16-multi-account-in-the-first-release)), so no step is renumbered.
 - Step 34 is deferred and step 38 (legacy servers 0.24–1.x, optional) is removed ([D20](decisions.md#d20-scope-cuts-and-desktop-adaptations), [D13](decisions.md#d13-support-floor-230)).
 - Steps 2 and 3 are merged into one step, 2+3 (owner decision of 2026-10-09). Its paging and query builder moved to step 5, where they are first used ([D27](decisions.md#d27-paging-and-the-query-builder-move-to-step-5)). No step is renumbered: "step 2" and "step 3" elsewhere in the docs mean step 2+3.
+- Step 5 was "Domain model and read ports (v1 + v2 adapters)". It now also puts the first screens on real data, read-only and online, behind repository interfaces that step 6 fills from Drift without UI changes ([D29](decisions.md#d29-ui-reads-through-repository-interfaces-the-online-implementation-is-replaced-by-drift-in-step-6-without-ui-changes)). Kanban board reads moved to step 20, their first consumer ([D30](decisions.md#d30-kanban-board-reads-deferred-to-step-20)). Steps 8 and 9 shrink to what remains.
 
 | # | Step | Goal | Size | Status |
 |---|---|---|---|---|
@@ -57,11 +58,11 @@ The owner's answers of 2026-10-09 ([open questions](open-questions.md)) changed 
 | 2+3 | HTTP core, sign in with browser (OAuth + PKCE), session manager | A signed-in user on ≥ 2.3 servers (the support floor), through the system browser, with transparent token refresh that survives restarts and works without a widget tree; sign-out; a signed-in home placeholder. One reliable transport per account: retries, redacting logger, `VikunjaFailure`. The session manager supports several accounts and refresh from background isolates ([D16](decisions.md#d16-multi-account-in-the-first-release), [D22](decisions.md#d22-session-keep-alive-through-background-sync), [D23](decisions.md#d23-browser-sign-in-through-flutter_web_auth_2-client-id-and-redirect-uri)–[D26](decisions.md#d26-refresh-concurrency-single-flight-re-read-and-adopt-write-ahead-epoch)). Paging and the query builder moved to step 5 ([D27](decisions.md#d27-paging-and-the-query-builder-move-to-step-5)) | L | **in review** |
 | 4 | Multi-account: add, switch and remove accounts | Account switcher in the first release. Each account has its own tokens and, from step 6, its own database ([D16](decisions.md#d16-multi-account-in-the-first-release)) | S | planned |
 | | **Phase 1: Offline read path** | | | |
-| 5 | Domain model and read ports (v1 + v2 adapters) | A complete read-only `VikunjaClient` for sync and the first screens, including paging and the query builder (moved from step 2, [D27](decisions.md#d27-paging-and-the-query-builder-move-to-step-5)) | L | planned |
-| 6 | Local database and initial sync | After login, the full account is in Drift and readable offline | M | planned |
+| 5 | Projects and tasks, read-only, online | Domain entities, the v1 + v2 read adapters with paging and the query builder (moved from step 2, [D27](decisions.md#d27-paging-and-the-query-builder-move-to-step-5)), and the first screens with real data: open tasks grouped by due date, the project tree, a project's task list with "show done" and load more, a minimal task detail; pull-to-refresh everywhere; a three-tab shell (Overview, Projects, Account). Online and read-only. The UI reads through repository interfaces, so step 6 can put Drift underneath without UI changes ([D29](decisions.md#d29-ui-reads-through-repository-interfaces-the-online-implementation-is-replaced-by-drift-in-step-6-without-ui-changes)). Kanban board reads come with step 20 ([D30](decisions.md#d30-kanban-board-reads-deferred-to-step-20)) | L | **in progress** |
+| 6 | Local database and initial sync | Drift behind the repositories of step 5 and the initial sync: after login, the full account is in Drift and readable offline, with no screen changed ([D29](decisions.md#d29-ui-reads-through-repository-interfaces-the-online-implementation-is-replaced-by-drift-in-step-6-without-ui-changes)) | M | planned |
 | 7 | Incremental sync and delete reconciliation | Web changes, deletions included, appear on open and on pull-to-refresh | M | planned |
-| 8 | App shell, theming, settings applied, projects tree | A navigable app that feels native, with the account switcher in the shell | M | planned |
-| 9 | Task lists (read-only) | The daily views (Home, Upcoming, project list) work offline | M | planned |
+| 8 | App shell polish, theming, settings applied | What step 5's shell leaves: a rail at ≥ 600 dp, dynamic colour and `color_schema`, `frontend_settings` applied (date and time format, week start, minimum priority, default view), the account switcher in the shell, translated default project names, an archived toggle in the tree, an offline banner | S | planned |
+| 9 | Task lists offline, Upcoming presets | The lists of step 5 served from Drift, per project view with subtask nesting and the sort sheet; Home honours `filter_id_used_on_overview`; Upcoming with the web's date-range presets, a pinned Overdue section and the show-without-dates toggle | M | planned |
 | 10 | Task detail (read-only), HTML rendering, deep links | Every task property is visible and correctly rendered | M | planned |
 | | **Phase 2: Write path** | | | |
 | 11 | Outbox engine and first mutations (done/undo, favorite, delete) | The safe write pipeline, proven on the most frequent actions | M | planned |
@@ -75,7 +76,7 @@ The owner's answers of 2026-10-09 ([open questions](open-questions.md)) changed 
 | 18 | Home-screen widgets: Android | Configurable, interactive Glance widgets | M | planned |
 | 19 | Home-screen widgets: iOS | WidgetKit parity, mark done with the app terminated | L | planned |
 | | **Phase 4: Web parity** | | | |
-| 20 | Kanban board | Board with paged buckets and accessible drag-and-drop | M | planned |
+| 20 | Kanban board | Board with paged buckets and accessible drag-and-drop, including the kanban read path (buckets, per-bucket paging on v1 and v2) that step 5 left out ([D30](decisions.md#d30-kanban-board-reads-deferred-to-step-20)) | M | planned |
 | 21 | Bucket management | Bucket CRUD, limits, done/default bucket | S | planned |
 | 22 | Manual ordering | Drag-reorder tasks and projects | S | planned |
 | 23 | Project management and views | Project CRUD, archive, duplicate, views management | L | planned |
