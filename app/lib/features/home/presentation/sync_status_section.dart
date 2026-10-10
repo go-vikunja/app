@@ -13,9 +13,9 @@ import 'package:vikunja_mobile/features/sync/presentation/sync_phase_label.dart'
 import 'package:vikunja_mobile/features/tasks/presentation/relative_time.dart';
 
 /// When the account was last synced, what went wrong if the last run
-/// failed, and a button for a sync right now. The button rests during a
-/// sign-out, whose wipe a run would race, and for a session that ended,
-/// which the banner above asks to renew.
+/// failed, a button for a sync right now and one for a full resync. The
+/// buttons rest during a sign-out, whose wipe a run would race, and for a
+/// session that ended, which the banner above asks to renew.
 class SyncStatusSection extends ConsumerWidget {
   const new({required this.entry, required this.signingOut, super.key});
 
@@ -27,6 +27,13 @@ class SyncStatusSection extends ConsumerWidget {
     ref
         .read(syncEngineProvider(entry.id))
         .refresh()
+        .then<void>((_) {}, onError: (Object _) {}),
+  );
+
+  void _fullResync(WidgetRef ref) => unawaited(
+    ref
+        .read(syncEngineProvider(entry.id))
+        .fullResync()
         .then<void>((_) {}, onError: (Object _) {}),
   );
 
@@ -63,12 +70,16 @@ class SyncStatusSection extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 spacing: 4,
                 children: [
-                  // The phase and a failure are announced when they change;
-                  // the time ticks every minute and is only read on focus.
+                  // A run is announced once, not per phase: the timer runs
+                  // one every minute. A failure is announced when it
+                  // appears; the time ticks every minute and is only read
+                  // on focus.
                   if (status case SyncRunning(:final phase))
                     Semantics(
                       container: true,
                       liveRegion: true,
+                      label: l10n.accountSyncing,
+                      excludeSemantics: true,
                       child: Text(
                         syncPhaseLabel(l10n, phase),
                         style: theme.textTheme.bodyLarge,
@@ -116,18 +127,27 @@ class SyncStatusSection extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: 12),
-        Align(
-          alignment: AlignmentDirectional.centerStart,
-          child: FilledButton.tonalIcon(
-            onPressed: canSync ? () => _syncNow(ref) : null,
-            icon: running
-                ? const SizedBox.square(
-                    dimension: 18,
-                    child: CircularProgressIndicator.adaptive(strokeWidth: 2),
-                  )
-                : const Icon(Icons.sync),
-            label: Text(running ? l10n.accountSyncing : l10n.accountSyncNow),
-          ),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            FilledButton.tonalIcon(
+              onPressed: canSync ? () => _syncNow(ref) : null,
+              icon: running
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator.adaptive(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.sync),
+              label: Text(running ? l10n.accountSyncing : l10n.accountSyncNow),
+            ),
+            TextButton.icon(
+              onPressed: canSync ? () => _fullResync(ref) : null,
+              icon: const Icon(Icons.cloud_download_outlined),
+              label: Text(l10n.accountFullResync),
+            ),
+          ],
         ),
       ],
     );

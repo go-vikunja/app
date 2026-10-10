@@ -33,16 +33,19 @@ final class LabelsDao extends DatabaseAccessor<AppDatabase>
     ];
   }
 
-  Future<void> upsertAll(Iterable<Label> all) => batch((b) {
-    b
-      ..insertAllOnConflictUpdate(users, [
-        for (final label in all)
-          if (label.createdBy case final user?) userRow(user),
-      ])
-      ..insertAllOnConflictUpdate(labels, [
-        for (final label in all) labelRow(label).toCompanion(false),
-      ]);
-  });
+  Future<void> upsertAll(Iterable<Label> all) {
+    if (all.isEmpty) return Future.value();
+    return batch((b) {
+      b
+        ..insertAllOnConflictUpdate(users, [
+          for (final label in all)
+            if (label.createdBy case final user?) userRow(user),
+        ])
+        ..insertAllOnConflictUpdate(labels, [
+          for (final label in all) labelRow(label).toCompanion(false),
+        ]);
+    });
+  }
 
   Future<int> purgeNotIn(Iterable<int> ids) =>
       (delete(labels)..where((l) => l.id.isNotIn(ids))).go();

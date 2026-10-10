@@ -118,7 +118,7 @@ void main() {
 
       expect(seen.first, const SyncNeverRun());
       final running = seen.whereType<SyncRunning>().toList();
-      expect(running.map((s) => s.phase).toSet(), SyncPhase.values.toSet());
+      expect(running.map((s) => s.phase).toSet(), fullRunPhases);
       expect(running.every((s) => s.initial), isTrue);
       final phases = [for (final s in running) s.phase];
       expect(phases, orderedPhases(phases));
@@ -138,8 +138,11 @@ void main() {
       );
       expect(seen.last, SyncIdle(lastSyncedAt: now));
       expect(sync.currentStatus, SyncIdle(lastSyncedAt: now));
+      // The sample tasks carry no `updated`, so the watermark is the floor.
       expect(await state(), {
         SyncStateKeys.lastSyncedAt: now.toIso8601String(),
+        SyncStateKeys.lastFullSyncAt: now.toIso8601String(),
+        SyncStateKeys.watermark: DateTime.utc(1970).toIso8601String(),
       });
     });
 
@@ -148,12 +151,15 @@ void main() {
       () async {
         await engine().ensureInitialSync();
 
-        // The last one is the pass over what changed during the run, before
-        // the purge.
-        const catchUp = "tasks updated >= '2026-10-10T11:58:00Z' && id > 0";
+        // The third request finds the newest `updated` the server has, the
+        // bound of the last one: the pass over what changed during the run,
+        // before the purge. The sample tasks carry none, so the bound is
+        // the floor.
+        const catchUp = "tasks updated >= '1970-01-01T00:00:00Z' && id > 0";
         expect(client.requests.where((r) => r.startsWith('tasks ')), [
           'tasks done = false per_page=1 page=1',
           'tasks done = true per_page=1 page=1',
+          'tasks (all) sort=updated desc per_page=1 page=1',
           'tasks done = false && id > 0 per_page=50 page=1',
           'tasks done = false && id > 50 per_page=50 page=1',
           'tasks done = false && id > 100 per_page=50 page=1',
@@ -236,6 +242,39 @@ void main() {
         );
       },
     );
+
+    test('a project deleted between two pages of the list makes the walk '
+        'start over instead of taking the shifted one for removed', () async {
+      client
+        ..allProjects = [
+          for (var id = 1; id <= 60; id++)
+            sampleProject(id: id, title: 'P$id', position: id.toDouble()),
+        ]
+        ..allTasks = liveTasks;
+      var deleted = false;
+      client.beforeRequest = (request) async {
+        if (request == 'projects page 2 archived=true' && !deleted) {
+          deleted = true;
+          client.allProjects = [
+            for (final p in client.allProjects)
+              if (p.id != 3) p,
+          ];
+        }
+      };
+
+      await engine().ensureInitialSync();
+
+      expect(client.requests.where((r) => r.startsWith('projects page')), [
+        'projects page 1 archived=true',
+        'projects page 2 archived=true',
+        'projects page 1 archived=true',
+        'projects page 2 archived=true',
+      ]);
+      final ids = (await db.projectsDao.loadAll()).map((p) => p.id).toList();
+      expect(ids, hasLength(59));
+      expect(ids, isNot(contains(3)));
+      expect(ids, contains(51));
+    });
 
     test('works without a current user source', () async {
       await engine(withUser: false).ensureInitialSync();
@@ -365,7 +404,7 @@ void main() {
     });
   });
 
-  group('refresh', () {
+  group('full resync', () {
     test('re-pulls and purges what the server no longer returns', () async {
       final sync = engine();
       await sync.ensureInitialSync();
@@ -388,7 +427,7 @@ void main() {
       now = now.add(const Duration(hours: 1));
       final seen = record(sync);
 
-      await sync.refresh();
+      await sync.fullResync();
 
       expect((await db.projectsDao.loadAll()).map((p) => p.id), [1, 3, 4]);
       expect(await db.labelsDao.loadAll(), [later]);
@@ -417,7 +456,7 @@ void main() {
         };
         final seen = record(sync);
 
-        await expectLater(sync.refresh(), throwsA(isA<ServerFailure>()));
+        await expectLater(sync.fullResync(), throwsA(isA<ServerFailure>()));
 
         expect(
           seen.last,
@@ -495,6 +534,53 @@ void main() {
         hasLength(1),
       );
     });
+
+    test(
+      "the catch-up pass is bounded by the server's newest updated, so a "
+      'device clock ahead of the server cannot make it miss a flip',
+      () async {
+        final monday = DateTime.utc(2026, 10, 5, 9);
+        client.allTasks = [
+          for (final task in client.allTasks)
+            sampleTask(
+              id: task.id,
+              title: task.title,
+              projectId: task.projectId,
+              done: task.done,
+              updated: monday,
+            ),
+        ];
+        // The device clock is five minutes ahead of the server.
+        now = DateTime.utc(2026, 10, 10, 12, 5);
+        client.beforeRequest = (request) async {
+          if (request.startsWith('tasks done = true && id > 0')) {
+            client.allTasks = [
+              for (final task in client.allTasks)
+                if (task.id == 121)
+                  sampleTask(
+                    id: 121,
+                    title: 'Reopened',
+                    updated: DateTime.utc(2026, 10, 10, 12, 0, 30),
+                  )
+                else
+                  task,
+            ];
+          }
+        };
+
+        await engine().ensureInitialSync();
+
+        expect(
+          client.requests,
+          contains(
+            "tasks updated >= '2026-10-05T08:58:00Z' && id > 0 "
+            'per_page=50 page=1',
+          ),
+        );
+        expect((await db.tasksDao.find(121))!.title, 'Reopened');
+        expect(await db.tasksDao.count(), 155);
+      },
+    );
 
     test(
       'a task reopened during the run is caught up before the purge',
@@ -581,6 +667,15 @@ void main() {
     expect(client.requests.where((r) => r.startsWith('tasks')), isEmpty);
   });
 }
+
+const Set<SyncPhase> fullRunPhases = {
+  SyncPhase.account,
+  SyncPhase.projects,
+  SyncPhase.labels,
+  SyncPhase.tasks,
+  SyncPhase.archivedTasks,
+  SyncPhase.finishing,
+};
 
 /// The phases in the order the engine runs them, with repeats.
 List<SyncPhase> orderedPhases(List<SyncPhase> phases) {

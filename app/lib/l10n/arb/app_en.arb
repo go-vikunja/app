@@ -841,6 +841,8 @@
   "syncPhaseLabels": "Loading labels…",
   "syncPhaseTasks": "Loading tasks…",
   "syncPhaseArchivedTasks": "Loading archived projects…",
+  "syncPhaseDelta": "Loading changes…",
+  "syncPhaseReconcile": "Checking for deleted tasks…",
   "syncPhaseFinishing": "Finishing up…",
   "syncProgressOfTotal": "{done} of {total}",
   "@syncProgressOfTotal": {
@@ -882,5 +884,6 @@
   "accountNeverSynced": "Not synced yet",
   "accountSyncing": "Syncing…",
   "accountSyncFailed": "The last sync failed.",
-  "accountSyncNow": "Sync now"
+  "accountSyncNow": "Sync now",
+  "accountFullResync": "Full resync"
 }

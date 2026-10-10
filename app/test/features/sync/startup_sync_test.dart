@@ -16,7 +16,8 @@ void main() {
   FakeSyncEngine engineAt(SyncStatus status) =>
       FakeSyncEngine(initialStatus: status, clock: () => now);
 
-  test('refreshes an account synced more than a minute ago', () async {
+  test('syncs an account synced more than a minute ago, '
+      'incrementally', () async {
     final engine = engineAt(
       SyncIdle(lastSyncedAt: now.subtract(const Duration(minutes: 2))),
     );
@@ -24,6 +25,7 @@ void main() {
     await startupSync.run(engine);
 
     expect(engine.refreshCalls, 1);
+    expect(engine.fullResyncCalls, 0);
     expect(engine.currentStatus, isA<SyncIdle>());
   });
 

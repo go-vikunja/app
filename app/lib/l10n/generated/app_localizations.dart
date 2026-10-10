@@ -1526,6 +1526,18 @@ abstract class AppLocalizations {
   /// **'Loading archived projects…'**
   String get syncPhaseArchivedTasks;
 
+  /// No description provided for @syncPhaseDelta.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading changes…'**
+  String get syncPhaseDelta;
+
+  /// No description provided for @syncPhaseReconcile.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking for deleted tasks…'**
+  String get syncPhaseReconcile;
+
   /// No description provided for @syncPhaseFinishing.
   ///
   /// In en, this message translates to:
@@ -1591,6 +1603,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sync now'**
   String get accountSyncNow;
+
+  /// No description provided for @accountFullResync.
+  ///
+  /// In en, this message translates to:
+  /// **'Full resync'**
+  String get accountFullResync;
 }
 
 class _AppLocalizationsDelegate

@@ -53,6 +53,7 @@ final class ProjectsDao extends DatabaseAccessor<AppDatabase>
   /// Pseudo projects are skipped; their views are replaced wholesale.
   Future<void> upsertAll(Iterable<Project> all) {
     final real = all.where((project) => !project.isPseudo).toList();
+    if (real.isEmpty) return Future.value();
     return batch((b) {
       b
         ..insertAllOnConflictUpdate(users, [
@@ -77,4 +78,7 @@ final class ProjectsDao extends DatabaseAccessor<AppDatabase>
   /// Views go with their project through the foreign key.
   Future<int> purgeNotIn(Iterable<int> ids) =>
       (delete(projects)..where((p) => p.id.isNotIn(ids))).go();
+
+  Future<int> purge(Iterable<int> ids) =>
+      (delete(projects)..where((p) => p.id.isIn(ids))).go();
 }

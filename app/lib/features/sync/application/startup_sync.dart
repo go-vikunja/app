@@ -14,9 +14,9 @@ final _log = Logger('StartupSync');
 StartupSync startupSync(Ref ref) =>
     StartupSync(clock: ref.watch(clockProvider));
 
-/// The quiet refresh when the shell opens. Skipped while a run is in progress
-/// and right after one, so the first sync is not followed by a second full
-/// pull. An account without a completed first run is the first-sync
+/// The quiet incremental sync when the shell opens. Skipped while a run is
+/// in progress and right after one, so the first sync is not followed by a
+/// second run. An account without a completed first run is the first-sync
 /// screen's, which resumes its checkpoint instead of starting over.
 final class StartupSync {
   new({required this._clock, this._minInterval = const Duration(minutes: 1)});

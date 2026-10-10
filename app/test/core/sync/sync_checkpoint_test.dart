@@ -6,7 +6,7 @@ void main() {
   test('round trips through the state map', () {
     final checkpoint = SyncCheckpoint(
       runId: 'run-1',
-      startedAt: DateTime.utc(2026, 10, 10, 12),
+      newestUpdatedAtStart: DateTime.utc(2026, 10, 10, 12),
       phase: SyncPhase.archivedTasks,
       done: 120,
       total: 300,
@@ -37,11 +37,11 @@ void main() {
     );
   });
 
-  test('advancing keeps the run and its start, and resets the counters', () {
-    final startedAt = DateTime.utc(2026, 10, 10, 12);
+  test('advancing keeps the run and its bound, and resets the counters', () {
+    final newest = DateTime.utc(2026, 10, 10, 12);
     final checkpoint = SyncCheckpoint(
       runId: 'run-1',
-      startedAt: startedAt,
+      newestUpdatedAtStart: newest,
       phase: SyncPhase.tasks,
       done: 5,
       total: 9,
@@ -53,7 +53,7 @@ void main() {
       checkpoint.advanceTo(SyncPhase.archivedTasks),
       SyncCheckpoint(
         runId: 'run-1',
-        startedAt: startedAt,
+        newestUpdatedAtStart: newest,
         phase: SyncPhase.archivedTasks,
       ),
     );

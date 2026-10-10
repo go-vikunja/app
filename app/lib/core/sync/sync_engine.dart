@@ -13,10 +13,13 @@ abstract interface class SyncEngine {
   /// checkpoint. Returns normally when the account is already synced.
   Future<void> ensureInitialSync();
 
-  /// A full re-pull that upserts everything and purges rows the server no
-  /// longer returns. Throws the `VikunjaFailure` of the first request that
-  /// failed; data from before the run stays readable.
+  /// Pulls what changed since the last run. Throws the `VikunjaFailure` of
+  /// the first request that failed; data from before the run stays readable.
   Future<void> refresh();
+
+  /// A full re-pull that upserts everything and purges rows the server no
+  /// longer returns. Fails like [refresh].
+  Future<void> fullResync();
 
   Future<void> dispose();
 }

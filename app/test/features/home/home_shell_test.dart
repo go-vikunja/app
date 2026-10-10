@@ -6,11 +6,14 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
+import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/home/presentation/account_tab.dart';
 import 'package:vikunja_mobile/features/home/presentation/home_shell.dart';
+import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_server_screen.dart';
 import 'package:vikunja_mobile/features/overview/presentation/overview_screen.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_tasks_screen.dart';
 import 'package:vikunja_mobile/features/projects/presentation/projects_screen.dart';
+import 'package:vikunja_mobile/features/sync/presentation/first_sync_screen.dart';
 import 'package:vikunja_mobile/features/sync/presentation/sync_progress_bar.dart';
 
 import '../../helpers/auth_fakes.dart';
@@ -261,6 +264,176 @@ void main() {
       await pumpVikunjaApp(tester, auth: auth, sync: data);
 
       expect(find.byType(HomeShell), findsOneWidget);
+      expect(data.engine.refreshCalls, 0);
+    });
+  });
+
+  group('foreground sync', () {
+    const minute = Duration(seconds: 60);
+
+    void lifecycle(WidgetTester tester, List<AppLifecycleState> states) =>
+        states.forEach(tester.binding.handleAppLifecycleStateChanged);
+
+    const leave = [
+      AppLifecycleState.inactive,
+      AppLifecycleState.hidden,
+      AppLifecycleState.paused,
+    ];
+    const comeBack = [
+      AppLifecycleState.hidden,
+      AppLifecycleState.inactive,
+      AppLifecycleState.resumed,
+    ];
+
+    testWidgets('syncs a minute after the last run while the app is in '
+        'front', (tester) async {
+      await pumpSignedInApp(tester, sync: data, now: now);
+      expect(data.engine.refreshCalls, 0);
+
+      await tester.pump(const Duration(seconds: 30));
+      expect(data.engine.refreshCalls, 0);
+      await tester.pump(const Duration(seconds: 30));
+      expect(data.engine.refreshCalls, 1);
+      expect(data.engine.fullResyncCalls, 0);
+      await tester.pumpAndSettle();
+
+      await tester.pump(minute);
+      expect(data.engine.refreshCalls, 2);
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('waits longer while the server is unreachable', (tester) async {
+      await pumpSignedInApp(tester, sync: data, now: now);
+      data.engine.onRefresh = () async =>
+          throw const NetworkFailure(NetworkProblem.unreachable);
+
+      await tester.pump(minute);
+      await tester.pumpAndSettle();
+      expect(data.engine.refreshCalls, 1);
+
+      await tester.pump(minute);
+      expect(data.engine.refreshCalls, 1);
+      await tester.pump(minute);
+      await tester.pumpAndSettle();
+      expect(data.engine.refreshCalls, 2);
+    });
+
+    testWidgets('nothing runs in the background; coming back after more than '
+        'a minute syncs', (tester) async {
+      var current = now;
+      await pumpSignedInApp(
+        tester,
+        sync: data,
+        overrides: [clockProvider.overrideWithValue(() => current)],
+      );
+
+      lifecycle(tester, leave);
+      await tester.pump(const Duration(minutes: 5));
+      expect(data.engine.refreshCalls, 0);
+
+      current = now.add(const Duration(minutes: 5));
+      lifecycle(tester, comeBack);
+      await tester.pumpAndSettle();
+      expect(data.engine.refreshCalls, 1);
+    });
+
+    testWidgets('coming back within a minute lets the timer finish the wait', (
+      tester,
+    ) async {
+      var current = now;
+      await pumpSignedInApp(
+        tester,
+        sync: data,
+        overrides: [clockProvider.overrideWithValue(() => current)],
+      );
+
+      lifecycle(tester, leave);
+      current = now.add(const Duration(seconds: 30));
+      lifecycle(tester, comeBack);
+      await tester.pumpAndSettle();
+      expect(data.engine.refreshCalls, 0);
+
+      await tester.pump(const Duration(seconds: 30));
+      expect(data.engine.refreshCalls, 1);
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('signing out stops it', (tester) async {
+      await pumpSignedInApp(tester, sync: data, now: now);
+      await openTab(tester, en.tabAccount);
+      await tester.tap(find.text(en.homeSignOut));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.widgetWithText(TextButton, en.signOutDialogConfirm),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(HomeShell), findsNothing);
+
+      await tester.pump(const Duration(minutes: 5));
+
+      expect(data.engine.refreshCalls, 0);
+    });
+
+    testWidgets('does not run for a session that needs a new sign-in', (
+      tester,
+    ) async {
+      final auth = AuthFakes();
+      await auth.seedAccount(
+        fullServer270(),
+        tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
+        needsReauth: true,
+      );
+      await pumpVikunjaApp(tester, auth: auth, sync: data);
+
+      await tester.pump(const Duration(minutes: 5));
+
+      expect(data.engine.refreshCalls, 0);
+    });
+
+    testWidgets('rests while the shell is gone: an unsynced account that '
+        'becomes active on sign-out and is cancelled on its first-sync '
+        'screen starts nothing', (tester) async {
+      final auth = AuthFakes();
+      final bob = await auth.seedAccount(
+        fullServer270(),
+        tokens: issueTokens(issuedAt: now, userId: 8, username: 'bob'),
+        displayName: 'Bob',
+        activate: false,
+      );
+      // Offline: the first sync fails at once, so the first-sync screen
+      // shows the failure and the scheduler's timer keeps looking again.
+      final bobData = AccountDataFakes(now: now, status: const SyncNeverRun());
+      bobData.engine.onEnsureInitialSync = () async =>
+          throw const NetworkFailure(NetworkProblem.unreachable);
+      data.accounts[bob.id] = bobData;
+      await pumpSignedInApp(tester, sync: data, auth: auth, now: now);
+
+      await openTab(tester, en.tabAccount);
+      await tester.tap(find.text(en.homeSignOut));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.widgetWithText(TextButton, en.signOutDialogConfirm),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(FirstSyncScreen), findsOneWidget);
+      expect(find.byType(HomeShell), findsNothing);
+      expect(bobData.engine.ensureInitialSyncCalls, 1);
+
+      await tester.ensureVisible(find.text(en.firstSyncCancel));
+      await tester.tap(find.text(en.firstSyncCancel));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.widgetWithText(TextButton, en.signOutDialogConfirm),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(ConnectServerScreen), findsOneWidget);
+
+      // Signed out and no longer in need of a first sync: a timer still
+      // alive would start a run now.
+      bobData.engine.emit(SyncIdle(lastSyncedAt: now));
+      await tester.pump(const Duration(minutes: 5));
+
+      expect(bobData.engine.refreshCalls, 0);
       expect(data.engine.refreshCalls, 0);
     });
   });

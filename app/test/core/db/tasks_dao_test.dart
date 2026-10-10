@@ -269,4 +269,60 @@ void main() {
       },
     );
   });
+
+  group('per project', () {
+    setUp(
+      () => upsert([
+        sampleTask(id: 1, title: 'A', projectId: 5, updated: monday),
+        sampleTask(id: 2, title: 'B', projectId: 5, done: true),
+        sampleTask(id: 3, title: 'C', projectId: 5, updated: tuesday),
+        sampleTask(id: 4, title: 'D', projectId: 6, labels: const [urgent]),
+      ]),
+    );
+
+    test('counts and lists ids, done tasks included', () async {
+      expect(await db.tasksDao.countInProject(5), 3);
+      expect(await db.tasksDao.countInProject(7), 0);
+      expect(await db.tasksDao.idsInProject(5), [1, 2, 3]);
+    });
+
+    test('finds several by id, unknown ids left out', () async {
+      final found = await db.tasksDao.findAll([1, 3, 99]);
+
+      expect(found.keys, unorderedEquals([1, 3]));
+      expect(found[3]!.title, 'C');
+    });
+
+    test('the newest updated can be bounded', () async {
+      expect(await db.tasksDao.maxUpdated(notAfter: tuesday), tuesday);
+      expect(await db.tasksDao.maxUpdated(notAfter: monday), monday);
+      expect(
+        await db.tasksDao.maxUpdated(
+          notAfter: monday.subtract(const Duration(days: 1)),
+        ),
+        isNull,
+      );
+    });
+
+    test('the newest updated ignores tasks without one', () async {
+      expect(await db.tasksDao.maxUpdated(), tuesday);
+
+      await db.tasksDao.purgeInProjects([5]);
+
+      expect(await db.tasksDao.maxUpdated(), isNull);
+    });
+
+    test('purging a project takes its tasks and their rows', () async {
+      expect(await db.tasksDao.purgeInProjects([5, 6]), 4);
+      expect(await db.tasksDao.count(), 0);
+      expect(await db.select(db.taskLabels).get(), isEmpty);
+    });
+
+    test('purging except keeps the given ids and other projects', () async {
+      expect(await db.tasksDao.purgeInProjectExcept(5, {1, 3, 4}), 1);
+      expect(await db.tasksDao.idsInProject(5), [1, 3]);
+      expect(await db.tasksDao.idsInProject(6), [4]);
+      expect(await db.tasksDao.purgeInProjectExcept(5, {1, 3}), 0);
+    });
+  });
 }

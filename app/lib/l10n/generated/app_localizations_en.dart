@@ -1034,6 +1034,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get syncPhaseArchivedTasks => 'Loading archived projects…';
 
   @override
+  String get syncPhaseDelta => 'Loading changes…';
+
+  @override
+  String get syncPhaseReconcile => 'Checking for deleted tasks…';
+
+  @override
   String get syncPhaseFinishing => 'Finishing up…';
 
   @override
@@ -1083,4 +1089,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get accountSyncNow => 'Sync now';
+
+  @override
+  String get accountFullResync => 'Full resync';
 }

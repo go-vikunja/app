@@ -204,6 +204,50 @@ void main() {
       expect(data.engine.refreshCalls, 0);
     });
 
+    testWidgets('"Full resync" pulls everything again and rests, like '
+        '"Sync now", while it runs', (tester) async {
+      final run = Completer<void>();
+      data.engine.onFullResync = () => run.future;
+      await pumpHome(tester);
+
+      await tester.tap(find.text(en.accountFullResync));
+      await tester.pump();
+
+      expect(data.engine.fullResyncCalls, 1);
+      expect(data.engine.refreshCalls, 0);
+      expect(find.text(en.accountSyncing), findsOneWidget);
+      expect(find.text(en.syncPhaseAccount), findsOneWidget);
+      TextButton fullResync() => tester.widget<TextButton>(
+        find.widgetWithText(TextButton, en.accountFullResync),
+      );
+      expect(fullResync().onPressed, isNull);
+      expect(
+        tester
+            .widget<FilledButton>(
+              find.widgetWithText(FilledButton, en.accountSyncing),
+            )
+            .onPressed,
+        isNull,
+      );
+
+      run.complete();
+      await tester.pumpAndSettle();
+      expect(find.text(en.accountLastSyncedJustNow), findsOneWidget);
+      expect(fullResync().onPressed, isNotNull);
+    });
+
+    testWidgets('"Full resync" rests for a session that needs a new sign-in', (
+      tester,
+    ) async {
+      await pumpHome(tester, needsReauth: true);
+
+      final button = tester.widget<TextButton>(
+        find.widgetWithText(TextButton, en.accountFullResync),
+      );
+      expect(button.onPressed, isNull);
+      expect(data.engine.fullResyncCalls, 0);
+    });
+
     testWidgets('"Sync now" rests while signing out', (tester) async {
       final logout = Completer<void>();
       auth.accountGateway.onLogout = (_) => logout.future;
@@ -248,8 +292,10 @@ void main() {
       expect(find.text(en.accountLastSynced('2 days ago')), findsOneWidget);
     });
 
-    testWidgets('the phase and a failure are live regions, the time that '
-        'ticks every minute is not', (tester) async {
+    testWidgets('a run is announced once, not per phase, a failure when it '
+        'appears, and the time that ticks every minute not at all', (
+      tester,
+    ) async {
       final semantics = tester.ensureSemantics();
       data = SyncFakes(
         now: now,
@@ -283,7 +329,19 @@ void main() {
       await tester.tap(find.text(en.accountSyncNow));
       await tester.pump();
 
-      expect(inLiveRegion(find.text(en.syncPhaseAccount)), isTrue);
+      final announced = tester.getSemantics(find.text(en.syncPhaseAccount));
+      expect(announced.flagsCollection.isLiveRegion, isTrue);
+      expect(announced.label, en.accountSyncing);
+
+      data.engine.emit(
+        const SyncRunning(phase: SyncPhase.labels, done: 0, initial: false),
+      );
+      await tester.pump();
+      expect(find.text(en.syncPhaseLabels), findsOneWidget);
+      expect(
+        tester.getSemantics(find.text(en.syncPhaseLabels)).label,
+        en.accountSyncing,
+      );
 
       run.completeError(const ServerFailure(502));
       await tester.pumpAndSettle();
@@ -296,6 +354,7 @@ void main() {
 
       expect(find.text(de.accountLastSyncedJustNow), findsOneWidget);
       expect(find.text(de.accountSyncNow), findsOneWidget);
+      expect(find.text(de.accountFullResync), findsOneWidget);
     });
   });
 

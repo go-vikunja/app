@@ -91,6 +91,18 @@ Future<T> _despiteWriteRaces<T>(Future<T> Function() call) async {
   }
 }
 
+/// The same server, with [version] as its only API, so the read client
+/// under test uses it.
+ServerConnection onlyApiVersion(
+  ServerConnection connection,
+  ApiVersion version,
+) => ServerConnection(
+  rootUri: connection.rootUri,
+  apiVersions: {version},
+  info: connection.info,
+  capabilities: connection.capabilities,
+);
+
 /// A session with one long-lived JWT that cannot be refreshed.
 final class StaticJwt implements AccessTokenSource {
   new(this._jwt);
@@ -124,6 +136,22 @@ final class Seeder {
 
   Future<int> create(String path, Map<String, Object?> body) async =>
       (await post(path, body))['id']! as int;
+
+  Future<void> delete(String path) async {
+    try {
+      await _despiteWriteRaces(
+        () => _dio.deleteUri<Object?>(
+          _v2.replace(path: '${_v2.path}$path'),
+          options: Options(headers: {'Authorization': 'Bearer ${_user.jwt}'}),
+        ),
+      );
+    } on DioException catch (error) {
+      throw StateError(
+        'DELETE $path failed with ${error.response?.statusCode}: '
+        '${error.response?.data}',
+      );
+    }
+  }
 
   Future<Map<String, Object?>> _send(
     String method,

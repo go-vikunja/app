@@ -46,8 +46,10 @@ final class FakeSyncEngine implements SyncEngine {
   Future<void>? _running;
 
   Future<void> Function()? onRefresh;
+  Future<void> Function()? onFullResync;
   Future<void> Function()? onEnsureInitialSync;
   int refreshCalls = 0;
+  int fullResyncCalls = 0;
   int ensureInitialSyncCalls = 0;
   bool disposed = false;
 
@@ -79,13 +81,20 @@ final class FakeSyncEngine implements SyncEngine {
   @override
   Future<void> refresh() {
     refreshCalls++;
-    final initial = switch (_status) {
-      SyncNeverRun() || SyncFailed(lastSyncedAt: null) => true,
-      SyncRunning(:final initial) => initial,
-      _ => false,
-    };
-    return _run(initial: initial, handler: onRefresh);
+    return _run(initial: _initial, handler: onRefresh);
   }
+
+  @override
+  Future<void> fullResync() {
+    fullResyncCalls++;
+    return _run(initial: _initial, handler: onFullResync);
+  }
+
+  bool get _initial => switch (_status) {
+    SyncNeverRun() || SyncFailed(lastSyncedAt: null) => true,
+    SyncRunning(:final initial) => initial,
+    _ => false,
+  };
 
   Future<void> _run({
     required bool initial,

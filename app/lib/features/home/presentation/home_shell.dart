@@ -11,11 +11,13 @@ import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/features/session/application/session_check.dart';
 import 'package:vikunja_mobile/features/session/application/sign_in_controller.dart';
 import 'package:vikunja_mobile/features/session/application/sign_out_controller.dart';
+import 'package:vikunja_mobile/features/sync/application/foreground_sync_scheduler_providers.dart';
 import 'package:vikunja_mobile/features/sync/application/startup_sync.dart';
 
 /// The signed-in app: the tab bar around the Overview, Projects and Account
-/// branches, the session check when the app opens or resumes, and the quiet
-/// sync when it opens.
+/// branches, the session check when the app opens or resumes, the quiet
+/// sync when it opens and the scheduler that keeps syncing while it is in
+/// front.
 class HomeShell extends ConsumerStatefulWidget {
   const new({required this.navigationShell, super.key});
 
@@ -92,7 +94,10 @@ class _HomeShellState extends ConsumerState<HomeShell> {
         accountsProvider.select((accounts) => accounts.value?.activeAccountId),
         _onActiveAccountChanged,
       )
-      ..listen(signOutControllerProvider, _onSignOutChanged);
+      ..listen(signOutControllerProvider, _onSignOutChanged)
+      // A provider nobody listens to is paused; the scheduler runs while
+      // the shell is up.
+      ..listen(foregroundSyncSchedulerProvider, (_, _) {});
     final signedIn = ref.watch(
       accountsProvider.select(
         (accounts) => accounts.value?.activeAccount != null,

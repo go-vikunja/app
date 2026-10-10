@@ -5,21 +5,28 @@ import 'package:logging/logging.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/sync/archived_projects.dart';
+import 'package:vikunja_mobile/core/sync/incremental_run.dart';
+import 'package:vikunja_mobile/core/sync/stable_pages.dart';
 import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
+import 'package:vikunja_mobile/core/sync/task_filters.dart';
 
 final _log = Logger('SyncEngine');
 
 /// `GET /user`, which the read client does not cover.
 typedef CurrentUserSource = Future<User> Function();
 
-/// The full pull of one account: account → projects → labels → tasks →
-/// archived projects' tasks → finishing. Tasks are pulled keyset by id
-/// (`id > lastId`, sorted by id, one page per request), open ones first, and
-/// every page is checkpointed in `sync_state`, so a killed app resumes where
-/// it stopped. Projects and labels are purged against the full list; tasks
-/// are marked with the run id and purged at the end.
+/// The sync of one account. A full run goes account → projects → labels →
+/// tasks → archived projects' tasks → finishing: tasks are pulled keyset by
+/// id (`id > lastId`, sorted by id, one page per request), open ones first,
+/// every page is checkpointed in `sync_state` so a killed app resumes where
+/// it stopped, and tasks the run did not return are purged at the end. A
+/// refresh is an [IncrementalRun] from the stored watermark, unless no full
+/// run completed within [fullResyncInterval]. Runs are serialized: a call
+/// joins the run in progress, except that a full run asked for during an
+/// incremental one follows it.
 ///
 /// The first status event arrives once the stored state has been read; the
 /// stream replays the current status to every subscriber after that.
@@ -46,16 +53,33 @@ final class DefaultSyncEngine implements SyncEngine {
   // future resolves.
   final _changes = StreamController<SyncStatus>.broadcast(sync: true);
 
-  /// Changes that landed during the run, with the server's commit lag.
+  /// Changes that landed during a run, with the server's commit lag: the
+  /// catch-up pass of a full run and the start of an incremental run reach
+  /// this far back.
   static const catchUpOverlap = Duration(seconds: 120);
+
+  /// A refresh runs a full pull instead once the last one is this old.
+  static const fullResyncInterval = Duration(hours: 24);
+
+  /// How far ahead of the device clock a server `updated` may lie and still
+  /// move the watermark: a row from a server whose clock once ran fast would
+  /// otherwise put every delta in the future for good.
+  static const clockTolerance = Duration(hours: 1);
+
+  /// The watermark of an account without tasks: an incremental run then
+  /// asks for everything, which is nothing.
+  static final watermarkFloor = DateTime.utc(1970);
 
   late Future<void> _ready;
   SyncStatus _status = const SyncNeverRun();
   var _restored = false;
   VikunjaFailure? _restoreFailure;
   DateTime? _lastSyncedAt;
+  DateTime? _lastFullSyncAt;
+  DateTime? _watermark;
   SyncCheckpoint? _checkpoint;
   Future<void>? _current;
+  var _currentIsFull = false;
   var _disposed = false;
 
   @override
@@ -76,13 +100,23 @@ final class DefaultSyncEngine implements SyncEngine {
   Future<void> ensureInitialSync() async {
     await _ensureRestored();
     if (_lastSyncedAt != null) return;
-    return await _join(() => _run(resume: true));
+    return await _join(() => _runFull(resume: true), full: true);
   }
 
   @override
   Future<void> refresh() async {
     await _ensureRestored();
-    return await _join(() => _run(resume: false));
+    final full = !_canRunIncrementally;
+    return await _join(
+      full ? () => _runFull(resume: false) : _runIncremental,
+      full: full,
+    );
+  }
+
+  @override
+  Future<void> fullResync() async {
+    await _ensureRestored();
+    return await _join(() => _runFull(resume: false), full: true);
   }
 
   @override
@@ -91,8 +125,34 @@ final class DefaultSyncEngine implements SyncEngine {
     await _changes.close();
   }
 
-  Future<void> _join(Future<void> Function() start) =>
-      _current ??= start().whenComplete(() => _current = null);
+  /// Not before the first run completed, not from a state written before
+  /// incremental sync existed, and not once the last full run is a day old.
+  bool get _canRunIncrementally {
+    if (_lastSyncedAt == null || _watermark == null) return false;
+    final lastFull = _lastFullSyncAt;
+    if (lastFull == null) return false;
+    return _now().toUtc().difference(lastFull) < fullResyncInterval;
+  }
+
+  /// A full run joins only a full run: joining an incremental one would
+  /// resolve without the full pull, so it waits for that run instead,
+  /// whatever its outcome.
+  Future<void> _join(Future<void> Function() start, {required bool full}) {
+    if (_current case final running? when !full || _currentIsFull) {
+      return running;
+    }
+    final previous = _current;
+    late final Future<void> run;
+    run = (previous ?? Future<void>.value())
+        .then<void>((_) {}, onError: (Object _) {})
+        .then((_) => start())
+        .whenComplete(() {
+          if (identical(_current, run)) _current = null;
+        });
+    _current = run;
+    _currentIsFull = full;
+    return run;
+  }
 
   /// A stored state that could not be read is retried here, so Retry on the
   /// first-sync screen covers it; a second failure is the caller's.
@@ -108,8 +168,9 @@ final class DefaultSyncEngine implements SyncEngine {
   Future<void> _restore() async {
     try {
       final state = await _db.syncStateDao.readAll();
-      _lastSyncedAt = DateTime.tryParse(state[SyncStateKeys.lastSyncedAt] ?? '')
-          ?.toUtc();
+      _lastSyncedAt = _stored(state, SyncStateKeys.lastSyncedAt);
+      _lastFullSyncAt = _stored(state, SyncStateKeys.lastFullSyncAt);
+      _watermark = _stored(state, SyncStateKeys.watermark);
       _checkpoint = SyncCheckpoint.fromState(state);
       _restoreFailure = null;
       _emit(switch (_lastSyncedAt) {
@@ -126,19 +187,45 @@ final class DefaultSyncEngine implements SyncEngine {
     }
   }
 
-  Future<void> _run({required bool resume}) async {
+  static DateTime? _stored(Map<String, String> state, String key) =>
+      DateTime.tryParse(state[key] ?? '')?.toUtc();
+
+  Future<void> _runIncremental() async {
+    final runId = _newRunId();
+    final run = IncrementalRun(
+      db: _db,
+      client: _client,
+      perPage: _perPage,
+      runId: runId,
+      since: _watermark!.subtract(catchUpOverlap),
+      checkActive: _checkDisposed,
+      report: (phase, {done = 0, total}) => _emit(
+        SyncRunning(phase: phase, done: done, total: total, initial: false),
+      ),
+    );
+    _log.info('Starting incremental sync run $runId from ${_watermark!}');
+    await _guarded(runId, () => run.phase.name, () async {
+      await run.execute();
+      _checkDisposed();
+      final finishedAt = _now().toUtc();
+      _emit(
+        const SyncRunning(phase: SyncPhase.finishing, done: 0, initial: false),
+      );
+      await _writeCompletion(finishedAt, full: false);
+      _log.info('Sync run $runId done');
+      _emit(SyncIdle(lastSyncedAt: finishedAt));
+    });
+  }
+
+  Future<void> _runFull({required bool resume}) async {
     var checkpoint =
         (resume ? _checkpoint : null) ??
-        SyncCheckpoint(
-          runId: _newRunId(),
-          startedAt: _now().toUtc(),
-          phase: SyncPhase.account,
-        );
+        SyncCheckpoint(runId: _newRunId(), phase: SyncPhase.account);
     _log.info(
       '${resume && _checkpoint != null ? 'Resuming' : 'Starting'} '
       'sync run ${checkpoint.runId} at ${checkpoint.phase.name}',
     );
-    try {
+    await _guarded(checkpoint.runId, () => checkpoint.phase.name, () async {
       await _save(checkpoint);
       if (checkpoint.phase == SyncPhase.account) {
         checkpoint = await _syncAccount(checkpoint);
@@ -156,16 +243,27 @@ final class DefaultSyncEngine implements SyncEngine {
         checkpoint = await _syncArchivedTasks(checkpoint);
       }
       await _finish(checkpoint);
+    });
+  }
+
+  Future<void> _guarded(
+    String runId,
+    String Function() phaseName,
+    Future<void> Function() body,
+  ) async {
+    try {
+      await body();
     } on _Disposed {
       return;
     } on VikunjaFailure catch (failure) {
-      _fail(failure, checkpoint);
+      _fail(failure, runId, phaseName());
       rethrow;
     } on Object catch (error) {
       // Never a server answer; the type is enough to find the cause.
       _fail(
         UnexpectedResponse(null, message: '${error.runtimeType}'),
-        checkpoint,
+        runId,
+        phaseName(),
       );
       rethrow;
     }
@@ -184,22 +282,23 @@ final class DefaultSyncEngine implements SyncEngine {
   /// All pages, archived projects included, in one list; the pseudo projects
   /// (Favorites, saved filters) repeat on every page and are skipped.
   Future<SyncCheckpoint> _syncProjects(SyncCheckpoint checkpoint) async {
-    final byId = <int, Project>{};
     var current = checkpoint;
-    for (var page = 1; ; page++) {
-      _checkDisposed();
-      final result = await _client.projects.list(
-        page: page,
-        perPage: _perPage,
-        includeArchived: true,
-      );
-      for (final project in result.items) {
-        if (!project.isPseudo) byId.putIfAbsent(project.id, () => project);
-      }
-      current = current.copyWith(done: byId.length, total: result.total);
-      _report(current);
-      if (!result.hasMore) break;
-    }
+    final byId = await collectPages<Project>(
+      fetch: (page) {
+        _checkDisposed();
+        return _client.projects.list(
+          page: page,
+          perPage: _perPage,
+          includeArchived: true,
+        );
+      },
+      idOf: (project) => project.id,
+      skip: (project) => project.isPseudo,
+      onPage: (collected, page) {
+        current = current.copyWith(done: collected.length, total: page.total);
+        _report(current);
+      },
+    );
     _checkDisposed();
     await _db.transaction(() async {
       await _db.projectsDao.upsertAll(byId.values);
@@ -210,18 +309,18 @@ final class DefaultSyncEngine implements SyncEngine {
   }
 
   Future<SyncCheckpoint> _syncLabels(SyncCheckpoint checkpoint) async {
-    final byId = <int, Label>{};
     var current = checkpoint;
-    for (var page = 1; ; page++) {
-      _checkDisposed();
-      final result = await _client.labels.list(page: page, perPage: _perPage);
-      for (final label in result.items) {
-        byId.putIfAbsent(label.id, () => label);
-      }
-      current = current.copyWith(done: byId.length, total: result.total);
-      _report(current);
-      if (!result.hasMore) break;
-    }
+    final byId = await collectPages<Label>(
+      fetch: (page) {
+        _checkDisposed();
+        return _client.labels.list(page: page, perPage: _perPage);
+      },
+      idOf: (label) => label.id,
+      onPage: (collected, page) {
+        current = current.copyWith(done: collected.length, total: page.total);
+        _report(current);
+      },
+    );
     _checkDisposed();
     await _db.transaction(() async {
       await _db.labelsDao.upsertAll(byId.values);
@@ -234,7 +333,10 @@ final class DefaultSyncEngine implements SyncEngine {
   Future<SyncCheckpoint> _syncTasks(SyncCheckpoint checkpoint) async {
     var current = checkpoint;
     if (current.total == null) {
-      current = current.copyWith(total: await _countTasks());
+      current = current.copyWith(
+        total: await _countTasks(),
+        newestUpdatedAtStart: await _newestUpdated(),
+      );
       await _save(current);
     }
     _report(current);
@@ -250,7 +352,8 @@ final class DefaultSyncEngine implements SyncEngine {
   /// through their project, including the children of an archived parent.
   Future<SyncCheckpoint> _syncArchivedTasks(SyncCheckpoint checkpoint) async {
     var current = checkpoint;
-    for (final projectId in await _archivedProjectIds()) {
+    final archived = archivedProjectIds(await _db.projectsDao.loadAll());
+    for (final projectId in archived) {
       if (projectId < current.archivedProjectId) continue;
       if (projectId != current.archivedProjectId) {
         current = current.copyWith(
@@ -272,12 +375,15 @@ final class DefaultSyncEngine implements SyncEngine {
   /// Before the purge, one more pass over what changed while the run was
   /// going: a task reopened after the open pass had passed its id, and
   /// completed again after the done pass had, is in neither list and would
-  /// be purged as gone. Tasks of archived projects cannot change.
+  /// be purged as gone. Such a change lies above the newest `updated` the
+  /// server had when the task phase began, a server time, so the device
+  /// clock plays no part. Tasks of archived projects cannot change.
   Future<void> _finish(SyncCheckpoint checkpoint) async {
     _report(checkpoint);
-    final since = (checkpoint.startedAt ?? _now().toUtc()).subtract(
-      catchUpOverlap,
-    );
+    final since = switch (checkpoint.newestUpdatedAtStart) {
+      final newest? => newest.subtract(catchUpOverlap),
+      null => watermarkFloor,
+    };
     final caughtUp = await _pullKeyset(
       checkpoint,
       (query) => _client.tasks.list(query),
@@ -288,16 +394,47 @@ final class DefaultSyncEngine implements SyncEngine {
     final finishedAt = _now().toUtc();
     final purged = await _db.transaction(() async {
       final purged = await _db.tasksDao.purgeNotInRun(caughtUp.runId);
-      await _db.syncStateDao.write({
-        ...SyncCheckpoint.cleared,
-        SyncStateKeys.lastSyncedAt: finishedAt.toIso8601String(),
-      });
+      await _writeCompletion(finishedAt, full: true);
       return purged;
     });
-    _lastSyncedAt = finishedAt;
-    _checkpoint = null;
     _log.info('Sync run ${checkpoint.runId} done, $purged tasks purged');
     _emit(SyncIdle(lastSyncedAt: finishedAt));
+  }
+
+  /// The watermark is the newest `updated` the database holds within
+  /// [clockTolerance] of the device clock; the next incremental run starts
+  /// [catchUpOverlap] below it. An incremental run never lowers it, a full
+  /// run sets it afresh, so a value a fast clock once stored goes with the
+  /// daily full pull.
+  Future<void> _writeCompletion(
+    DateTime finishedAt, {
+    required bool full,
+  }) async {
+    final bound = finishedAt.add(clockTolerance);
+    final newest = await _db.tasksDao.maxUpdated(notAfter: bound);
+    final beyond = await _db.tasksDao.maxUpdated();
+    if (beyond != null && beyond.isAfter(bound)) {
+      _log.warning(
+        'A task updated at $beyond lies ahead of the clock; the watermark '
+        'stays below $bound',
+      );
+    }
+    final watermark = [
+      if (!full) _watermark,
+      newest,
+      watermarkFloor,
+    ].nonNulls.reduce((a, b) => a.isAfter(b) ? a : b);
+    await _db.syncStateDao.write({
+      ...SyncCheckpoint.cleared,
+      SyncStateKeys.pendingWholePull: null,
+      SyncStateKeys.lastSyncedAt: finishedAt.toIso8601String(),
+      if (full) SyncStateKeys.lastFullSyncAt: finishedAt.toIso8601String(),
+      SyncStateKeys.watermark: watermark.toIso8601String(),
+    });
+    _lastSyncedAt = finishedAt;
+    if (full) _lastFullSyncAt = finishedAt;
+    _watermark = watermark;
+    _checkpoint = null;
   }
 
   Future<SyncCheckpoint> _pullBothFilters(
@@ -327,7 +464,7 @@ final class DefaultSyncEngine implements SyncEngine {
     bool report = true,
   }) async {
     final filter = switch (changedSince) {
-      final since? => "updated >= '${_rfc3339(since)}'",
+      final since? => TaskFilters.updatedSince(since),
       null => checkpoint.doneFilter.filter,
     };
     var current = checkpoint;
@@ -335,8 +472,8 @@ final class DefaultSyncEngine implements SyncEngine {
       _checkDisposed();
       final page = await fetch(
         TaskQuery(
-          filter: '$filter && id > ${current.lastId}',
-          sort: const [TaskSort(TaskSortField.id)],
+          filter: '$filter && ${TaskFilters.after(current.lastId)}',
+          sort: TaskFilters.byId,
           perPage: _perPage,
         ),
       );
@@ -366,9 +503,15 @@ final class DefaultSyncEngine implements SyncEngine {
     }
   }
 
-  /// Second precision, like the server's timestamps.
-  static String _rfc3339(DateTime moment) =>
-      '${moment.toUtc().toIso8601String().substring(0, 19)}Z';
+  /// The newest task `updated` the server has: everything that changes from
+  /// now on lies above it. Null for an account without live tasks.
+  Future<DateTime?> _newestUpdated() async {
+    _checkDisposed();
+    final page = await _client.tasks.list(
+      const TaskQuery(sort: TaskFilters.byUpdatedDescending, perPage: 1),
+    );
+    return page.items.firstOrNull?.updated;
+  }
 
   /// One request per filter with `per_page=1`, whose page count is the item
   /// count on both API versions.
@@ -382,29 +525,6 @@ final class DefaultSyncEngine implements SyncEngine {
       total += page.total ?? page.totalPages;
     }
     return total;
-  }
-
-  /// Archived projects and their descendants, ascending.
-  Future<List<int>> _archivedProjectIds() async {
-    final projects = await _db.projectsDao.loadAll();
-    final parentOf = {for (final p in projects) p.id: p.parentProjectId};
-    final archived = {
-      for (final p in projects)
-        if (p.isArchived) p.id,
-    };
-    bool isArchived(int id) {
-      final seen = <int>{};
-      for (var current = id; seen.add(current); current = parentOf[current]!) {
-        if (archived.contains(current)) return true;
-        if (!parentOf.containsKey(current)) return false;
-      }
-      return false;
-    }
-
-    return [
-      for (final p in projects)
-        if (isArchived(p.id)) p.id,
-    ]..sort();
   }
 
   /// The task phase reports itself once it knows its total.
@@ -434,10 +554,9 @@ final class DefaultSyncEngine implements SyncEngine {
     ),
   );
 
-  void _fail(VikunjaFailure failure, SyncCheckpoint checkpoint) {
+  void _fail(VikunjaFailure failure, String runId, String phaseName) {
     _log.warning(
-      'Sync run ${checkpoint.runId} failed at ${checkpoint.phase.name}: '
-      '${failure.runtimeType}',
+      'Sync run $runId failed at $phaseName: ${failure.runtimeType}',
     );
     _emit(SyncFailed(failure: failure, lastSyncedAt: _lastSyncedAt));
   }

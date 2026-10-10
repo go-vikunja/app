@@ -5,9 +5,9 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 
 /// A server-like fake for the sync engine: projects (archived ones only
 /// with `includeArchived`, pseudo projects repeated on every page), labels,
-/// and tasks served keyset-style from the engine's `done = … && id > …`
-/// filters, capped at [maxPerPage] like a real server. Every request is
-/// logged; [beforeRequest] can fail or hold a request.
+/// and tasks served from exactly the filters and sorts the engine sends,
+/// capped at [maxPerPage] like a real server. Every request is logged;
+/// [beforeRequest] can fail or hold a request.
 final class FakeSyncClient implements VikunjaReadClient {
   new({this.maxPerPage = 50, this.reportsTotal = true});
 
@@ -19,6 +19,10 @@ final class FakeSyncClient implements VikunjaReadClient {
 
   List<Project> allProjects = [];
   List<Project> pseudoProjects = [];
+
+  /// Projects the user lost access to since the list: their task requests
+  /// answer 403 with Vikunja's code 7003, like the 2.7.0 server.
+  final Set<int> forbiddenProjects = {};
   List<Label> allLabels = [];
   List<Task> allTasks = [];
   User? currentUser;
@@ -128,8 +132,10 @@ final class FakeLabelsPort implements LabelsPort {
 }
 
 final _doneClause = RegExp(r'^done = (true|false)$');
-final _updatedClause = RegExp(r"^updated >= '([^']+)'$");
+final _updatedClause = RegExp(r"^updated (>=|>) '([^']+)'$");
 final _idClause = RegExp(r'^id > (\d+)$');
+
+typedef _Matches = bool Function(Task task);
 
 final class FakeTasksPort implements TasksPort {
   new(this._client);
@@ -142,7 +148,7 @@ final class FakeTasksPort implements TasksPort {
   /// A broken server that answers every keyset request with the first page.
   bool ignoresCursor = false;
 
-  /// A server that applies the web's position order instead of `sort_by=id`.
+  /// A server that applies the web's position order instead of the sort.
   bool ignoresSort = false;
 
   @override
@@ -154,9 +160,16 @@ final class FakeTasksPort implements TasksPort {
     ], query);
   }
 
+  /// A project the server does not have answers like a deleted one.
   @override
   Future<Page<Task>> listInProject(int projectId, TaskQuery query) async {
     await _client._request('project $projectId tasks ${_describe(query)}');
+    if (_client.forbiddenProjects.contains(projectId)) {
+      throw const Forbidden(code: 7003);
+    }
+    if (!_client.allProjects.any((project) => project.id == projectId)) {
+      throw const NotFound(code: 3001);
+    }
     return _serve([
       for (final task in _client.allTasks)
         if (task.projectId == projectId) task,
@@ -173,42 +186,81 @@ final class FakeTasksPort implements TasksPort {
     return _client.allTasks.firstWhere((task) => task.id == id);
   }
 
-  /// `done = …`, `updated >= '…'` and `id > …` joined by `&&`, in any
-  /// combination the engine sends.
   Page<Task> _serve(List<Task> all, TaskQuery query) {
     queries.add(query);
-    bool? done;
-    DateTime? updatedSince;
-    var afterId = 0;
-    for (final clause in (query.filter ?? '').split(' && ')) {
-      if (_doneClause.firstMatch(clause) case final match?) {
-        done = match.group(1) == 'true';
-      } else if (_updatedClause.firstMatch(clause) case final match?) {
-        updatedSince = DateTime.parse(match.group(1)!);
-      } else if (_idClause.firstMatch(clause) case final match?) {
-        afterId = ignoresCursor ? 0 : int.parse(match.group(1)!);
-      } else {
-        throw StateError('unexpected task filter: ${query.filter}');
-      }
-    }
+    final matches = _predicate(query.filter);
     final matching = [
       for (final task in all)
-        if ((done == null || task.done == done) &&
-            (updatedSince == null ||
-                (task.updated?.isBefore(updatedSince) == false)) &&
-            task.id > afterId)
-          task,
+        if (matches(task)) task,
     ];
-    if (ignoresSort) {
-      matching.sort((a, b) {
-        final byPosition = a.position.compareTo(b.position);
-        return byPosition != 0 ? byPosition : b.id.compareTo(a.id);
-      });
-    } else {
-      matching.sort((a, b) => a.id.compareTo(b.id));
-    }
+    final sorts = ignoresSort
+        ? const [
+            TaskSort(TaskSortField.position),
+            TaskSort(TaskSortField.id, descending: true),
+          ]
+        : query.sort;
+    matching.sort((a, b) {
+      for (final sort in sorts) {
+        final order = switch (sort.field) {
+          TaskSortField.id => a.id.compareTo(b.id),
+          TaskSortField.updated => _epoch(
+            a.updated,
+          ).compareTo(_epoch(b.updated)),
+          TaskSortField.position => a.position.compareTo(b.position),
+          _ => throw StateError('unsupported task sort: ${sort.field}'),
+        };
+        if (order != 0) return sort.descending ? -order : order;
+      }
+      // The server's final tie-breaker.
+      return a.id.compareTo(b.id);
+    });
     return _client._page(matching, page: query.page, perPage: query.perPage);
   }
+
+  /// The filters the engine sends: `done = …`, `updated >= '…'`,
+  /// `updated > '…'` and `id > …` joined by `&&`, or parenthesized groups
+  /// of those joined by `||`. Anything else is a bug in the engine.
+  _Matches _predicate(String? filter) {
+    if (filter == null || filter.isEmpty) return (_) => true;
+    final groups = [
+      for (final group in filter.split(' || ')) _conjunction(group, filter),
+    ];
+    return (task) => groups.any((matches) => matches(task));
+  }
+
+  _Matches _conjunction(String group, String filter) {
+    var clauses = group;
+    if (clauses.startsWith('(') && clauses.endsWith(')')) {
+      clauses = clauses.substring(1, clauses.length - 1);
+    } else if (filter != group) {
+      throw StateError('unparenthesized group in task filter: $filter');
+    }
+    final tests = <_Matches>[];
+    for (final clause in clauses.split(' && ')) {
+      if (_doneClause.firstMatch(clause) case final match?) {
+        final done = match.group(1) == 'true';
+        tests.add((task) => task.done == done);
+      } else if (_updatedClause.firstMatch(clause) case final match?) {
+        final strict = match.group(1) == '>';
+        final moment = DateTime.parse(match.group(2)!);
+        tests.add(
+          (task) => switch (task.updated) {
+            null => false,
+            final updated =>
+              strict ? updated.isAfter(moment) : !updated.isBefore(moment),
+          },
+        );
+      } else if (_idClause.firstMatch(clause) case final match?) {
+        final after = ignoresCursor ? 0 : int.parse(match.group(1)!);
+        tests.add((task) => task.id > after);
+      } else {
+        throw StateError('unexpected task filter: $filter');
+      }
+    }
+    return (task) => tests.every((test) => test(task));
+  }
+
+  static int _epoch(DateTime? moment) => moment?.millisecondsSinceEpoch ?? 0;
 
   bool _isArchivedProject(int projectId) {
     final byId = {for (final p in _client.allProjects) p.id: p};
@@ -220,8 +272,17 @@ final class FakeTasksPort implements TasksPort {
     return false;
   }
 
-  String _describe(TaskQuery query) =>
-      '${query.filter} per_page=${query.perPage} page=${query.page}';
+  /// A descending sort is named, so that the newest-`updated` probe reads
+  /// apart from the count probe.
+  String _describe(TaskQuery query) {
+    final descending = [
+      for (final sort in query.sort)
+        if (sort.descending) '${sort.field.wireName} desc',
+    ];
+    return '${query.filter ?? '(all)'}'
+        '${descending.isEmpty ? '' : ' sort=${descending.join(',')}'}'
+        ' per_page=${query.perPage} page=${query.page}';
+  }
 }
 
 /// Holds every request matching [pattern] until [release] is called.

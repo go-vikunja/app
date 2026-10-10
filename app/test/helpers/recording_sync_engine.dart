@@ -10,13 +10,14 @@ final class RecordingSyncEngine implements SyncEngine {
   SyncStatus _status;
   final _changes = StreamController<SyncStatus>.broadcast();
   int refreshCalls = 0;
+  int fullResyncCalls = 0;
   int ensureInitialSyncCalls = 0;
   bool disposed = false;
 
-  /// Thrown by [refresh] and [ensureInitialSync] when set.
+  /// Thrown by every run when set.
   Exception? error;
 
-  /// Holds [refresh] and [ensureInitialSync] open while set.
+  /// Holds every run open while set.
   Completer<void>? gate;
 
   @override
@@ -43,6 +44,12 @@ final class RecordingSyncEngine implements SyncEngine {
   @override
   Future<void> refresh() {
     refreshCalls++;
+    return _call();
+  }
+
+  @override
+  Future<void> fullResync() {
+    fullResyncCalls++;
     return _call();
   }
 

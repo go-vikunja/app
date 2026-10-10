@@ -238,6 +238,8 @@
   "syncPhaseLabels": "Labels werden geladen …",
   "syncPhaseTasks": "Aufgaben werden geladen …",
   "syncPhaseArchivedTasks": "Archivierte Projekte werden geladen …",
+  "syncPhaseDelta": "Änderungen werden geladen …",
+  "syncPhaseReconcile": "Gelöschte Aufgaben werden gesucht …",
   "syncPhaseFinishing": "Fast fertig …",
   "syncProgressOfTotal": "{done} von {total}",
   "syncProgressCount": "Bisher {count}",
@@ -248,5 +250,6 @@
   "accountNeverSynced": "Noch nicht synchronisiert",
   "accountSyncing": "Synchronisiert …",
   "accountSyncFailed": "Die letzte Synchronisierung ist fehlgeschlagen.",
-  "accountSyncNow": "Jetzt synchronisieren"
+  "accountSyncNow": "Jetzt synchronisieren",
+  "accountFullResync": "Alles neu laden"
 }

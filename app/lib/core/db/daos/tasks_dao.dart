@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/db/epoch_millis.dart';
 import 'package:vikunja_mobile/core/db/mappers/label_mappers.dart';
 import 'package:vikunja_mobile/core/db/mappers/task_mappers.dart';
 import 'package:vikunja_mobile/core/db/mappers/user_mappers.dart';
@@ -78,10 +79,82 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
     return found.singleOrNull;
   }
 
+  Future<Map<int, Task>> findAll(Iterable<int> ids) async {
+    final found = await _load(where: tasks.id.isIn(ids), orderBy: const []);
+    return {for (final task in found) task.id: task};
+  }
+
   Future<int> count() {
     final count = tasks.id.count();
     final query = selectOnly(tasks)..addColumns([count]);
     return query.map((row) => row.read(count)!).getSingle();
+  }
+
+  Future<int> countInProject(int projectId) {
+    final count = tasks.id.count();
+    final query = selectOnly(tasks)
+      ..addColumns([count])
+      ..where(tasks.projectId.equals(projectId));
+    return query.map((row) => row.read(count)!).getSingle();
+  }
+
+  /// The tasks outside [projectIds]: with the archived projects given, the
+  /// tasks `GET /tasks` would return.
+  Future<int> countNotInProjects(Iterable<int> projectIds) {
+    final excluded = projectIds.toList();
+    if (excluded.isEmpty) return count();
+    final total = tasks.id.count();
+    final query = selectOnly(tasks)
+      ..addColumns([total])
+      ..where(tasks.projectId.isNotIn(excluded));
+    return query.map((row) => row.read(total)!).getSingle();
+  }
+
+  Future<List<int>> idsInProject(int projectId) {
+    final query = selectOnly(tasks)
+      ..addColumns([tasks.id])
+      ..where(tasks.projectId.equals(projectId));
+    return query.map((row) => row.read(tasks.id)!).get();
+  }
+
+  /// The newest server `updated` of any task, at most [notAfter]; null
+  /// without one.
+  Future<DateTime?> maxUpdated({DateTime? notAfter}) async {
+    final newest = tasks.updated.max();
+    final query = selectOnly(tasks)..addColumns([newest]);
+    if (notAfter != null) {
+      query.where(
+        tasks.updated.isSmallerOrEqualValue(
+          const EpochMillis().toSql(notAfter),
+        ),
+      );
+    }
+    final millis = await query.map((row) => row.read(newest)).getSingle();
+    return millis == null ? null : const EpochMillis().fromSql(millis);
+  }
+
+  Future<int> purgeInProjects(Iterable<int> projectIds) =>
+      (delete(tasks)..where((t) => t.projectId.isIn(projectIds))).go();
+
+  /// Removes the tasks of [projectId] whose id is not in [keep]. The ids to
+  /// delete are picked locally, so the statements stay small whatever the
+  /// size of [keep].
+  Future<int> purgeInProjectExcept(int projectId, Set<int> keep) async {
+    final gone = [
+      for (final id in await idsInProject(projectId))
+        if (!keep.contains(id)) id,
+    ];
+    var purged = 0;
+    await transaction(() async {
+      for (var start = 0; start < gone.length; start += _chunkSize) {
+        final chunk = gone.sublist(
+          start,
+          (start + _chunkSize).clamp(0, gone.length),
+        );
+        purged += await (delete(tasks)..where((t) => t.id.isIn(chunk))).go();
+      }
+    });
+    return purged;
   }
 
   /// Upserts the tasks with the users and labels they carry, replacing their

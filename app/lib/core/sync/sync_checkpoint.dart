@@ -7,8 +7,23 @@ abstract final class SyncStateKeys {
   /// completes.
   static const lastSyncedAt = 'last_synced_at';
 
+  /// When the last full run completed, ISO 8601 UTC. A refresh runs a full
+  /// pull again once this is a day old.
+  static const lastFullSyncAt = 'last_full_sync_at';
+
+  /// The newest task `updated` the database holds, server time, ISO 8601
+  /// UTC; an incremental run pulls what changed from shortly below it.
+  /// Absent in a database written before incremental sync existed.
+  static const watermark = 'watermark';
+
+  /// Ids of the projects whose tasks still have to be pulled whole, comma
+  /// separated: an incremental run writes them with the project rows, so a
+  /// run that fails afterwards leaves the pull to the next one; a completed
+  /// run clears the key.
+  static const pendingWholePull = 'pending_whole_pull';
+
   static const runId = 'run_id';
-  static const runStartedAt = 'run_started_at';
+  static const runNewestUpdated = 'run_newest_updated';
   static const phase = 'phase';
   static const phaseDone = 'phase_done';
   static const phaseTotal = 'phase_total';
@@ -18,7 +33,7 @@ abstract final class SyncStateKeys {
 
   static const List<String> checkpoint = [
     runId,
-    runStartedAt,
+    runNewestUpdated,
     phase,
     phaseDone,
     phaseTotal,
@@ -41,13 +56,15 @@ enum DoneFilter {
 /// Where a sync run is, written after every page so that a killed app
 /// continues where it stopped. [lastId] is the keyset cursor of the current
 /// task list; [archivedProjectId] the archived project whose tasks are being
-/// pulled; [startedAt] bounds the catch-up pass before the purge.
+/// pulled; [newestUpdatedAtStart] is the newest task `updated` the server
+/// had when the task phase began, a server time that bounds the catch-up
+/// pass before the purge (null for an account without tasks).
 @immutable
 final class SyncCheckpoint {
   const new({
     required this.runId,
     required this.phase,
-    this.startedAt,
+    this.newestUpdatedAtStart,
     this.done = 0,
     this.total,
     this.lastId = 0,
@@ -56,7 +73,7 @@ final class SyncCheckpoint {
   });
 
   final String runId;
-  final DateTime? startedAt;
+  final DateTime? newestUpdatedAtStart;
   final SyncPhase phase;
   final int done;
   final int? total;
@@ -70,8 +87,9 @@ final class SyncCheckpoint {
     if (runId == null || phase == null) return null;
     return SyncCheckpoint(
       runId: runId,
-      startedAt: DateTime.tryParse(state[SyncStateKeys.runStartedAt] ?? '')
-          ?.toUtc(),
+      newestUpdatedAtStart: DateTime.tryParse(
+        state[SyncStateKeys.runNewestUpdated] ?? '',
+      )?.toUtc(),
       phase: phase,
       done: int.tryParse(state[SyncStateKeys.phaseDone] ?? '') ?? 0,
       total: int.tryParse(state[SyncStateKeys.phaseTotal] ?? ''),
@@ -91,7 +109,7 @@ final class SyncCheckpoint {
 
   Map<String, String?> toState() => {
     SyncStateKeys.runId: runId,
-    SyncStateKeys.runStartedAt: startedAt?.toIso8601String(),
+    SyncStateKeys.runNewestUpdated: newestUpdatedAtStart?.toIso8601String(),
     SyncStateKeys.phase: phase.name,
     SyncStateKeys.phaseDone: '$done',
     SyncStateKeys.phaseTotal: total?.toString(),
@@ -101,6 +119,7 @@ final class SyncCheckpoint {
   };
 
   SyncCheckpoint copyWith({
+    DateTime? newestUpdatedAtStart,
     int? done,
     int? total,
     int? lastId,
@@ -108,7 +127,7 @@ final class SyncCheckpoint {
     int? archivedProjectId,
   }) => SyncCheckpoint(
     runId: runId,
-    startedAt: startedAt,
+    newestUpdatedAtStart: newestUpdatedAtStart ?? this.newestUpdatedAtStart,
     phase: phase,
     done: done ?? this.done,
     total: total ?? this.total,
@@ -118,14 +137,17 @@ final class SyncCheckpoint {
   );
 
   /// The same run at the start of [next].
-  SyncCheckpoint advanceTo(SyncPhase next) =>
-      SyncCheckpoint(runId: runId, startedAt: startedAt, phase: next);
+  SyncCheckpoint advanceTo(SyncPhase next) => SyncCheckpoint(
+    runId: runId,
+    newestUpdatedAtStart: newestUpdatedAtStart,
+    phase: next,
+  );
 
   @override
   bool operator ==(Object other) =>
       other is SyncCheckpoint &&
       other.runId == runId &&
-      other.startedAt == startedAt &&
+      other.newestUpdatedAtStart == newestUpdatedAtStart &&
       other.phase == phase &&
       other.done == done &&
       other.total == total &&
@@ -136,7 +158,7 @@ final class SyncCheckpoint {
   @override
   int get hashCode => Object.hash(
     runId,
-    startedAt,
+    newestUpdatedAtStart,
     phase,
     done,
     total,
@@ -149,5 +171,5 @@ final class SyncCheckpoint {
   String toString() =>
       'SyncCheckpoint($runId, ${phase.name}, done: $done/$total, '
       'lastId: $lastId, ${doneFilter.name}, archived: $archivedProjectId, '
-      'started: $startedAt)';
+      'newest updated at start: $newestUpdatedAtStart)';
 }

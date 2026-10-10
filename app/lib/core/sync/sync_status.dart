@@ -1,7 +1,18 @@
 import 'package:flutter/foundation.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 
-enum SyncPhase { account, projects, labels, tasks, archivedTasks, finishing }
+/// `account` to `archivedTasks` belong to a full run, `delta` and `reconcile`
+/// to an incremental one; `projects`, `labels` and `finishing` are shared.
+enum SyncPhase {
+  account,
+  projects,
+  labels,
+  tasks,
+  archivedTasks,
+  delta,
+  reconcile,
+  finishing,
+}
 
 /// What the sync engine of one account is doing. A running sync counts the
 /// items of its current phase; the total is null while the server has not

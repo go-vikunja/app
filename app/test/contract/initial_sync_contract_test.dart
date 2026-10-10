@@ -75,14 +75,6 @@ Future<_Seed> _seed(Seeder seeder, TestUser user) async {
   );
 }
 
-ServerConnection _only(ServerConnection connection, ApiVersion version) =>
-    ServerConnection(
-      rootUri: connection.rootUri,
-      apiVersions: {version},
-      info: connection.info,
-      capabilities: connection.capabilities,
-    );
-
 void main() {
   group('initial sync against the local Docker server', skip: contractSkip, () {
     late Dio dio;
@@ -102,7 +94,7 @@ void main() {
 
     for (final apiVersion in ApiVersion.values) {
       test('pulls the whole account over ${apiVersion.pathSegment}', () async {
-        final only = _only(connection, apiVersion);
+        final only = onlyApiVersion(connection, apiVersion);
         final requests = <Uri>[];
         final authenticated = createAuthenticatedDio(
           base: dio,
@@ -136,7 +128,14 @@ void main() {
         expect(seen.first, const SyncNeverRun());
         expect(seen.last, isA<SyncIdle>());
         final running = seen.whereType<SyncRunning>().toList();
-        expect(running.map((s) => s.phase).toSet(), SyncPhase.values.toSet());
+        expect(running.map((s) => s.phase).toSet(), {
+          SyncPhase.account,
+          SyncPhase.projects,
+          SyncPhase.labels,
+          SyncPhase.tasks,
+          SyncPhase.archivedTasks,
+          SyncPhase.finishing,
+        });
         expect(
           running.where((s) => s.phase == SyncPhase.tasks).map((s) => s.total),
           everyElement(_liveOpen + _liveDone),
@@ -213,7 +212,8 @@ void main() {
           await db.tasksDao.loadProjectTasks(seed.liveId, showDone: false),
           hasLength(_liveOpen),
         );
-        expect(await db.syncStateDao.readAll(), hasLength(1));
+        // Last run, last full run and the watermark; no checkpoint.
+        expect(await db.syncStateDao.readAll(), hasLength(3));
 
         // A second run changes nothing.
         await engine.refresh();

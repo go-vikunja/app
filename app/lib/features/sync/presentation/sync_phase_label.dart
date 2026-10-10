@@ -8,5 +8,7 @@ String syncPhaseLabel(AppLocalizations l10n, SyncPhase phase) =>
       SyncPhase.labels => l10n.syncPhaseLabels,
       SyncPhase.tasks => l10n.syncPhaseTasks,
       SyncPhase.archivedTasks => l10n.syncPhaseArchivedTasks,
+      SyncPhase.delta => l10n.syncPhaseDelta,
+      SyncPhase.reconcile => l10n.syncPhaseReconcile,
       SyncPhase.finishing => l10n.syncPhaseFinishing,
     };

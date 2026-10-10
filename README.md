@@ -4,18 +4,19 @@ Rurana (name and logo: see [branding/README.md](branding/README.md)) is an unoff
 
 ## Status
 
-Steps 1 to 6 of the [roadmap](docs/roadmap.md) are done: server connection and v1/v2 negotiation, browser sign-in (OAuth 2.0 + PKCE) with a session manager, read-only projects and tasks, and a local database per account that is filled by an initial sync so the app works offline. **Step 6 is in review**; step 7 (incremental sync and delete reconciliation) is next. The project applies the owner's decisions of 2026-10-09 (app id, browser sign-in only, the 2.3.0 floor). Name and icon: Rurana with the "checkbox ears" llama (see [branding/README.md](branding/README.md)).
+Steps 1 to 6 of the [roadmap](docs/roadmap.md) are done: server connection and v1/v2 negotiation, browser sign-in (OAuth 2.0 + PKCE) with a session manager, read-only projects and tasks, and a local database per account that is filled by an initial sync so the app works offline. **Step 7 (incremental sync and delete reconciliation) is in progress**: web changes, deletions included, reach the phone with a sync that costs a handful of requests. The project applies the owner's decisions of 2026-10-09 (app id, browser sign-in only, the 2.3.0 floor). Name and icon: Rurana with the "checkbox ears" llama (see [branding/README.md](branding/README.md)).
 
 ### What you can see now
 
 - **Connect to a server.** The app takes an address, probes `/api/v2/info` (Vikunja 2.4.0 and newer) and `/api/v1/info` in parallel, uses v2 when both answer, and shows the server version, the API mode, the support tier and the detected capabilities. Servers older than 2.3.0 are reported as unsupported, because browser sign-in needs 2.3.0.
 - **Sign in** through the system browser. The session is refreshed transparently and survives restarts; sign-out after a confirmation, which also deletes the account's local data.
 - **First sync** right after sign-in: a progress screen with the current phase and counts pulls the whole account into the local database. It resumes where it stopped if the app is killed, and shows a Retry when the server is unreachable.
-- **Offline:** every screen reads from the local database, so projects and tasks are there without the server. Pull to refresh or "Sync now" in the Account tab re-pulls everything (the incremental sync is step 7); while offline, lists show the saved data with an "Offline" notice.
+- **Offline:** every screen reads from the local database, so projects and tasks are there without the server. Pull to refresh or "Sync now" in the Account tab runs an incremental sync; while offline, lists show the saved data with an "Offline" notice.
+- **Stays current (step 7, in progress):** the app syncs on start, when it comes back to the foreground, every minute while it is open and on pull to refresh. A sync pulls only the tasks changed since the last run (keyed on the server's `updated`), catches tasks deleted on the web by comparing the server's task count with the local one (per project only when they differ), and falls back to a full re-pull once a day; "Full resync" in the Account tab forces one ([D33](docs/decisions.md#d33-incremental-sync-watermark-on-updated-with-a-120-s-overlap-keyset-over-updated-id-delete-detection-by-per-project-count-check-and-id-reconcile-daily-full-resync)).
 - **Overview tab:** your open tasks across all projects, grouped into Overdue, Today, Next 7 days, Later and No due date, with identifier, project, relative due date, priority, labels and favourite.
 - **Projects tab:** favourites first, then the project tree. A project opens its task list, with a "Show done tasks" toggle.
 - **Task detail:** a sheet with title, identifier and project, done state, dates, priority, percent done, labels, assignees, reminders, repeat and the description as plain text.
-- **Account tab:** who is signed in on which server, when the account was last synced, "Sync now", a "Sign in again" banner when the session ended, sign out.
+- **Account tab:** who is signed in on which server, when the account was last synced, "Sync now" and "Full resync", a "Sign in again" banner when the session ended, sign out.
 - English and German, dark mode, large text. A slim progress bar shows a running sync.
 
 Everything is read-only: nothing can be edited yet (step 11). Kanban buckets, comments and attachments are not synced yet.
@@ -131,7 +132,7 @@ tool/wait_for_test_servers.sh
 docker compose -f test_servers/docker-compose.yaml down
 ```
 
-The app's contract test registers a user, seeds projects and tasks, runs the initial sync into an in-memory database and checks the counts; it is tagged `contract` and skipped without `VIKUNJA_CONTRACT=1`.
+The app's contract tests register a user, seed projects and tasks and run the sync engine into an in-memory database: the initial sync test checks the counts; the incremental sync test (`app/test/contract/incremental_sync_contract_test.dart`) changes the server through the API (creates, edits, deletes, a move, a new and an archived project, label changes), runs one `refresh()` on each API version and checks that the database mirrors the server, that the keyset filter over `(updated, id)` is accepted, and that a sync with nothing new costs exactly 4 requests. Both are tagged `contract` and skipped without `VIKUNJA_CONTRACT=1`.
 
 With the standalone binary (for example colima with Homebrew's docker-compose), use `docker-compose` with the same arguments. The servers listen on `127.0.0.1` only.
 
@@ -184,13 +185,13 @@ The app's minimum is iOS 15.0. Below iOS 17.4, flutter_web_auth_2 falls back to 
    adb shell input text "$(sed -n 's/^E2E_PASSWORD=//p' test_servers/seed/e2e-user.env)"
    ```
 
-5. The sheet closes, the first-sync screen pulls the account, and the app shows the Overview tab. The Account tab shows initials, display name, `@` username, server host and version, when the account was last synced, and **Sync now**; **Sign out** there, after a confirmation, deletes the local data and returns to onboarding. To see tasks and projects, create some in the web app at `http://localhost:34527` with the same user, then pull to refresh or tap Sync now. Turn the network off afterwards: the lists stay, with an "Offline" notice on refresh.
+5. The sheet closes, the first-sync screen pulls the account, and the app shows the Overview tab. The Account tab shows initials, display name, `@` username, server host and version, when the account was last synced, and **Sync now**; **Sign out** there, after a confirmation, deletes the local data and returns to onboarding. To see tasks and projects, create some in the web app at `http://localhost:34527` with the same user, then pull to refresh, tap Sync now or wait for the minute timer. Turn the network off afterwards: the lists stay, with an "Offline" notice on refresh.
 
 Every sign-in starts with an empty browser session and shows the login form ([D23](docs/decisions.md#d23-browser-sign-in-through-flutter_web_auth_2-client-id-and-redirect-uri)). On Android, Chrome before 141 (the emulator image ships 133) gets a regular Custom Tab instead, which can reuse a web login in Chrome; to see the form again there, sign out in Chrome or clear its data for the server.
 
 ## Documentation
 
-- [Architecture](docs/architecture.md): what exists after steps 1, 2+3 and 5, what step 6 is building, and what is planned.
+- [Architecture](docs/architecture.md): what exists after steps 1 to 6, what step 7 is building, and what is planned.
 - [Roadmap](docs/roadmap.md): all steps and milestones, with status.
 - [Decisions](docs/decisions.md): decision log.
 - [Open questions](docs/open-questions.md): the owner's answers of 2026-10-09 and the items still deferred.
