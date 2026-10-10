@@ -59,7 +59,9 @@ void main() {
     addTearDown(repository.dispose);
     await db.tasksDao.upsertAll(tasks, syncRunId: 'run');
     write.serverTasks.addEntries(tasks.map((t) => MapEntry(t.id, t)));
-    read.allTasks = tasks;
+    read
+      ..allProjects = [sampleProject(id: 7, title: 'Work')]
+      ..allTasks = tasks;
   });
 
   test('open tasks come from the database, nearest due date first', () async {
@@ -269,6 +271,182 @@ void main() {
       expect(problems.last, isEmpty);
       expect((await db.tasksDao.find(2))!.isFavorite, isFalse);
       expect(write.serverTasks[2]!.isFavorite, isFalse);
+    });
+  });
+
+  group('creates', () {
+    const draft = NewTask(projectId: 7, title: 'Buy milk');
+
+    test('a new task is on screen at once under a temporary id, then under '
+        'the server id once the create is answered', () async {
+      final open = <List<Task>>[];
+      final project = <PagedList<Task>>[];
+      final pendingIds = <Set<int>>[];
+      repository.watchOpenTasks().listen(open.add);
+      repository.watchProjectTasks(7, showDone: false).listen(project.add);
+      repository.watchPendingTaskIds().listen(pendingIds.add);
+      await pumpEventQueue();
+      final gate = RequestGate()..pattern = 'create';
+      write.beforeRequest = gate.call;
+
+      final id = await repository.createTask(draft);
+      final watched = <Task?>[];
+      repository.watchTask(id).listen(watched.add);
+      await pumpEventQueue();
+
+      expect(id, -1);
+      expect(open.last.map((t) => t.id), [2, -1, 4, 1]);
+      expect(project.last.items.map((t) => t.id), [-1, 2, 1]);
+      expect(pendingIds.last, {-1});
+      expect(watched.single!.title, 'Buy milk');
+      expect(watched.single!.identifier, '');
+      expect(write.requests, ['create Buy milk']);
+
+      gate.release();
+      await pumpEventQueue();
+
+      expect(open.last.map((t) => t.id), [2, 100, 4, 1]);
+      expect(project.last.items.map((t) => t.id), [100, 2, 1]);
+      expect(pendingIds.last, isEmpty);
+      expect(watched.last!.id, 100);
+      expect(watched.last!.identifier, '-100');
+      expect(write.creates.single, draft);
+      expect(await db.tasksDao.find(-1), isNull);
+      expect(sync.refreshCalls, 1);
+    });
+
+    test('an edit before the send goes with the create', () async {
+      sender.pause();
+      final id = await repository.createTask(draft);
+      await repository.updateTask(
+        id,
+        TaskChanges(title: 'Buy oat milk', dueDate: DateChange.set(monday)),
+      );
+      await repository.setFavorite(id, favorite: true);
+      expect((await db.tasksDao.find(id))!.title, 'Buy oat milk');
+
+      await sender.resume();
+
+      expect(write.requests, ['create Buy oat milk']);
+      expect(
+        write.creates.single,
+        NewTask(
+          projectId: 7,
+          title: 'Buy oat milk',
+          dueDate: monday,
+          isFavorite: true,
+        ),
+      );
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    test('a delete before the send costs nothing', () async {
+      sender.pause();
+      final id = await repository.createTask(draft);
+      await repository.deleteTask(id);
+
+      await sender.resume();
+
+      expect(write.requests, isEmpty);
+      expect(await db.tasksDao.findRow(id), isNull);
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    test('a done before the send follows the create', () async {
+      sender.pause();
+      final id = await repository.createTask(draft);
+      await repository.setDone(id, done: true);
+      expect((await db.tasksDao.find(id))!.done, isTrue);
+
+      await sender.resume();
+
+      expect(write.requests, ['create Buy milk', 'update 100']);
+      expect(write.updates.single, (100, const TaskChanges(done: true)));
+      expect((await db.tasksDao.find(100))!.done, isTrue);
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    test('a create never throws for the network; the row waits', () async {
+      write.beforeRequest = (_) =>
+          throw const NetworkFailure(NetworkProblem.unreachable);
+
+      final id = await repository.createTask(draft);
+      await pumpEventQueue();
+
+      expect((await db.tasksDao.find(id))!.title, 'Buy milk');
+      expect(await db.outboxDao.count(), 1);
+      expect(sender.state, OutboxSenderState.waiting);
+
+      write.beforeRequest = null;
+      expect(await repository.sendPendingChanges(), isNull);
+      expect(await db.tasksDao.resolveId(id), 100);
+    });
+  });
+
+  group('updateTask', () {
+    test('sends exactly the changed fields and applies the answer', () async {
+      final changes = TaskChanges(
+        title: 'Renamed',
+        priority: TaskPriority.urgent.value,
+        percentDone: 0.5,
+        hexColor: '1973ff',
+        dueDate: DateChange.set(monday),
+        startDate: const DateChange.clear(),
+        repeatAfter: const Duration(days: 30),
+        repeatMode: RepeatMode.afterAmount,
+        projectId: 8,
+      );
+
+      await repository.updateTask(1, changes);
+      final atOnce = (await db.tasksDao.find(1))!;
+      await pumpEventQueue();
+
+      expect(atOnce.title, 'Renamed');
+      expect(atOnce.projectId, 8);
+      expect(atOnce.repeatAfter, const Duration(days: 30));
+      expect(atOnce.updated, isNull);
+      expect(write.updates.single, (1, changes));
+      final applied = (await db.tasksDao.find(1))!;
+      expect(applied.title, 'Renamed');
+      expect(applied.projectId, 8);
+      expect(applied.priority, TaskPriority.urgent);
+      expect(applied.percentDone, 0.5);
+      expect(applied.hexColor, '1973ff');
+      expect(applied.dueDate, monday);
+      expect(applied.updated, now);
+      expect(write.serverTasks[1]!.projectId, 8);
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    test('an empty change is nothing to queue', () async {
+      await repository.updateTask(1, const TaskChanges());
+      await pumpEventQueue();
+
+      expect(write.requests, isEmpty);
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    test('two edits before the send merge into one request', () async {
+      sender.pause();
+      await repository.updateTask(2, const TaskChanges(title: 'First'));
+      await repository.updateTask(
+        2,
+        const TaskChanges(
+          repeatAfter: Duration.zero,
+          repeatMode: RepeatMode.afterAmount,
+        ),
+      );
+
+      await sender.resume();
+
+      expect(write.updates.single, (
+        2,
+        const TaskChanges(
+          title: 'First',
+          repeatAfter: Duration.zero,
+          repeatMode: RepeatMode.afterAmount,
+        ),
+      ));
     });
   });
 }

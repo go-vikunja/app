@@ -23,6 +23,18 @@ abstract interface class TaskRepository {
   /// Writes apply to the local row at once and are queued for the server;
   /// they never throw for network reasons. [setDone] on a repeating task
   /// shows it done until the server answers with the next occurrence.
+  /// The task as this device knows it, following it across the id change
+  /// a queued create gets once the server has assigned the real id. Emits
+  /// null once the task is gone.
+  Stream<Task?> watchTask(int taskId);
+
+  /// Creates the task locally at once under a temporary negative id and
+  /// queues the server create; returns that local id.
+  Future<int> createTask(NewTask task);
+
+  /// Applies the fields set in [changes] at once and queues them.
+  Future<void> updateTask(int taskId, TaskChanges changes);
+
   Future<void> setDone(int taskId, {required bool done});
 
   /// Takes back a done of [previous], which may already have been answered:

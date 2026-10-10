@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "PUT /api/v1/projects/{id}/tasks",
+  "status": 400,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"code\":4029,\"message\":\"The task repeat interval must be between 0 and 315360000 seconds (10 years).\"}\n"
+}

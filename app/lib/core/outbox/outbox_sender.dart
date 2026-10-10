@@ -5,10 +5,12 @@ import 'package:logging/logging.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/outbox/new_task_json.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/outbox/task_changes_json.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
+import 'package:vikunja_mobile/core/sync/task_filters.dart';
 
 final _log = Logger('Outbox');
 
@@ -46,6 +48,12 @@ enum OutboxSenderState {
 /// something the sync engine refreshes, so server-computed fields arrive;
 /// and a sync that reaches the server while an op waits out a network
 /// failure sends at once, because the network is evidently back.
+///
+/// A create has no idempotency key, so a request that may have reached the
+/// server without an answer (a network failure, a 5xx a proxy answers for
+/// a slow upstream, a kill while the request was in flight) is not simply
+/// sent again: the next attempt first looks for a task with the sent title
+/// created since [lostResponseWindow] before that attempt and adopts it.
 final class OutboxSender {
   new({
     required this._db,
@@ -64,6 +72,12 @@ final class OutboxSender {
 
   static const initialBackoff = Duration(seconds: 2);
   static const maxBackoff = Duration(minutes: 15);
+
+  /// How far before an unanswered create's attempt the lookup reaches: the
+  /// server's `created` is its clock, the attempt time this device's, and
+  /// the sync engine tolerates the same hour of skew between the two. The
+  /// exact title and project keep the match narrow.
+  static const lostResponseWindow = Duration(hours: 1);
 
   /// A delete of a task that is already gone.
   static const _taskGoneCode = 4002;
@@ -85,6 +99,7 @@ final class OutboxSender {
   /// What the oldest op waits out while the state is `waiting`.
   VikunjaFailure? _blockedBy;
   Future<void>? _running;
+  var _exiting = false;
   var _requested = false;
   var _recovered = false;
   var _paused = false;
@@ -111,7 +126,15 @@ final class OutboxSender {
   Future<void> drain() {
     if (_disposed) return Future.value();
     _requested = true;
-    return _running ??= _run().whenComplete(() => _running = null);
+    // A run on its way out (paused, or just done) no longer looks at the
+    // queue; a new one does.
+    if (_running case final running? when !_exiting) return running;
+    _exiting = false;
+    late final Future<void> run;
+    run = _run().whenComplete(() {
+      if (identical(_running, run)) _running = null;
+    });
+    return _running = run;
   }
 
   /// A drain that skips every backoff: "Send now". Returns the failure
@@ -148,10 +171,16 @@ final class OutboxSender {
   /// server no longer has, or no longer shows this user, is removed here.
   /// Throws the `VikunjaFailure` of the read and changes nothing then, so
   /// the user can try again later. An op that went meanwhile (a retry that
-  /// succeeded, a delete that was sent) leaves the row as it is.
+  /// succeeded, a delete that was sent) leaves the row as it is. A
+  /// rejected create is dropped with its row: the server never had it.
   Future<void> discard(String operationId) async {
     final op = await _db.outboxDao.find(operationId);
     if (op == null) return;
+    if (op.kind == OutboxOperationKind.createTask.name) {
+      await _db.outboxDao.cancelCreate(op.taskId);
+      _log.info('Discarded the create of task ${op.taskId}');
+      return;
+    }
     final fresh = await _readOrGone(op.taskId);
     await _db.transaction(() async {
       if (await _db.outboxDao.find(operationId) == null) return;
@@ -211,7 +240,7 @@ final class OutboxSender {
   Future<void> _run() async {
     if (!_recovered) {
       // Ops a killed app left in flight.
-      await _db.outboxDao.resetSending();
+      await _db.outboxDao.resetSending(now: _now());
       _recovered = true;
     }
     try {
@@ -221,6 +250,7 @@ final class OutboxSender {
         if (sent > 0) await _refreshQuietly();
       }
     } finally {
+      _exiting = true;
       // A database error left the drain: the queue has not been looked at.
       if (_state == OutboxSenderState.draining) _emit(OutboxSenderState.idle);
     }
@@ -257,7 +287,8 @@ final class OutboxSender {
   /// True when the server accepted the op. Only the request is guarded:
   /// once the server has stored the change, an error while applying it
   /// propagates and leaves the op `sending`, so nothing is re-sent on the
-  /// spot; the next start resets and re-sends it (at least once).
+  /// spot; the next start resets it and sends an update or delete again
+  /// (at least once), while a create is looked up first.
   Future<bool> _send(OutboxRow op) async {
     final kind = OutboxOperationKind.values.asNameMap()[op.kind];
     if (kind == null) {
@@ -270,6 +301,11 @@ final class OutboxSender {
     final Task? task;
     try {
       switch (kind) {
+        case OutboxOperationKind.createTask:
+          final newTask = decodeNewTask(op.payload);
+          task =
+              await _recoverCreate(op, newTask) ??
+              await _write.tasks.create(newTask);
         case OutboxOperationKind.updateTask:
           task = await _write.tasks.update(
             op.taskId,
@@ -285,6 +321,14 @@ final class OutboxSender {
         await _applyDelete(op);
         return true;
       }
+      if (kind == OutboxOperationKind.createTask &&
+          _mayHaveReachedServer(failure) &&
+          !_disposed) {
+        await _db.outboxDao.markUncertain(
+          op.id,
+          sentAt: op.lastAttemptAt ?? _now(),
+        );
+      }
       await _handleFailure(op, failure);
       return false;
     } on Object catch (error) {
@@ -296,6 +340,8 @@ final class OutboxSender {
       return false;
     }
     switch (kind) {
+      case OutboxOperationKind.createTask:
+        await _applyCreate(op, task!);
       case OutboxOperationKind.updateTask:
         await _applyUpdate(op, task!);
       case OutboxOperationKind.deleteTask:
@@ -305,10 +351,60 @@ final class OutboxSender {
     return true;
   }
 
+  /// The task an earlier, unanswered attempt of this create left on the
+  /// server, if there is one: the newest task of the project with the sent
+  /// title, created since [lostResponseWindow] before that attempt, that
+  /// no other create of this device has adopted already; of two created in
+  /// the same second (the server's order among them is undefined) the one
+  /// with the higher id. Null when the create was never sent or nothing is
+  /// found, so it must go (again).
+  Future<Task?> _recoverCreate(OutboxRow op, NewTask newTask) async {
+    final sentAt = op.sentAt;
+    if (sentAt == null) return null;
+    final page = await _read.tasks.listInProject(
+      newTask.projectId,
+      TaskQuery(
+        filter: TaskFilters.createdSince(sentAt.subtract(lostResponseWindow)),
+        sort: TaskFilters.byCreatedDescending,
+      ),
+    );
+    final adopted = await _db.tasksDao.remappedServerIds();
+    Task? found;
+    for (final candidate in page.items) {
+      if (candidate.title != newTask.title || adopted.contains(candidate.id)) {
+        continue;
+      }
+      if (found == null ||
+          (candidate.created == found.created && candidate.id > found.id)) {
+        found = candidate;
+      } else if (candidate.created != found.created) {
+        break;
+      }
+    }
+    if (found != null) {
+      _log.info(
+        'Create of task ${op.taskId} had reached the server as '
+        '${found.id}; adopted',
+      );
+      return found;
+    }
+    _log.info(
+      'Create of task ${op.taskId} did not reach the server; sent again',
+    );
+    return null;
+  }
+
+  /// The row moves to the server id with the response applied; the ops
+  /// queued behind the create follow it.
+  Future<void> _applyCreate(OutboxRow op, Task task) async {
+    if (_disposed) return;
+    await _db.outboxDao.completeCreate(op.id, task, at: _now());
+  }
+
   /// The server's task replaces the row, except for the fields a later op
   /// of the task still carries. Nothing is written after dispose: sign-out
   /// closes the database behind a request in flight, and an op left in
-  /// `sending` is reset at the next start.
+  /// `sending` is reset at the next start and sent again.
   Future<void> _applyUpdate(OutboxRow op, Task task) async {
     if (_disposed) return;
     await _db.transaction(() async {
@@ -364,6 +460,12 @@ final class OutboxSender {
     await _db.outboxDao.markFailed(op.id, failure);
     _log.warning('${op.kind} for task ${op.taskId} was rejected: $failure');
   }
+
+  /// A request the server may have processed without this device seeing
+  /// the answer: the connection broke or timed out, or a proxy answered
+  /// for an upstream that was still at work.
+  static bool _mayHaveReachedServer(VikunjaFailure failure) =>
+      failure is NetworkFailure || failure is ServerFailure;
 
   /// What a later attempt may get past. A token the server rejects after
   /// the interceptor's own refresh means a session that was replaced or a

@@ -18,6 +18,13 @@ abstract final class TaskFilters {
   static String updatedSince(DateTime since) =>
       "updated >= '${rfc3339(since)}'";
 
+  static String createdSince(DateTime since) =>
+      "created >= '${rfc3339(since)}'";
+
+  static const byCreatedDescending = [
+    TaskSort(TaskSortField.created, descending: true),
+  ];
+
   /// Continues a list sorted by `(updated, id)` after its last item.
   ///
   /// The tie clause asks for `updated > U − 1 s` rather than `updated = U`:

@@ -6,6 +6,7 @@ import 'package:vikunja_mobile/core/db/mappers/label_mappers.dart';
 import 'package:vikunja_mobile/core/db/mappers/task_mappers.dart';
 import 'package:vikunja_mobile/core/db/mappers/user_mappers.dart';
 import 'package:vikunja_mobile/core/db/tables/labels.dart';
+import 'package:vikunja_mobile/core/db/tables/task_id_remaps.dart';
 import 'package:vikunja_mobile/core/db/tables/tasks.dart';
 import 'package:vikunja_mobile/core/db/tables/users.dart';
 import 'package:vikunja_mobile/core/db/watch_tables.dart';
@@ -25,6 +26,7 @@ typedef _TaskRows = ({TaskRow task, UserRow? createdBy});
     TaskRelations,
     Labels,
     Users,
+    TaskIdRemaps,
   ],
 )
 final class TasksDao extends DatabaseAccessor<AppDatabase>
@@ -48,10 +50,23 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
   /// concerned; the counts still include it, see [count].
   Expression<bool> get _visible => tasks.pendingDelete.equals(false);
 
+  /// A task the server has named; a negative id is a task created here
+  /// whose create is still queued.
+  Expression<bool> get _onServer => tasks.id.isBiggerThanValue(0);
+
   /// A row with a queued op is never purged: it exists on the server or is
   /// being deleted anyway, and the pull after the op is sent sorts it out.
   Expression<bool> get _purgeable =>
-      tasks.pendingChanges.isNull() & tasks.pendingDelete.equals(false);
+      tasks.pendingChanges.isNull() &
+      tasks.pendingDelete.equals(false) &
+      _onServer;
+
+  /// Newest first: a task created here comes before every server task,
+  /// and temporary ids are handed out downwards.
+  List<OrderingTerm> get _newestFirst => [
+    OrderingTerm.desc(tasks.id.isSmallerThanValue(0)),
+    OrderingTerm.desc(tasks.id.abs()),
+  ];
 
   /// Open tasks across all projects: nearest due date first, tasks without
   /// one last, newest first within a date.
@@ -62,7 +77,7 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
     where: tasks.done.equals(false) & _visible,
     orderBy: [
       OrderingTerm.asc(tasks.dueDate, nulls: NullsOrder.last),
-      OrderingTerm.desc(tasks.id),
+      ..._newestFirst,
     ],
   );
 
@@ -84,8 +99,32 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
         : tasks.projectId.equals(projectId) &
               tasks.done.equals(false) &
               _visible,
-    orderBy: [OrderingTerm.asc(tasks.position), OrderingTerm.desc(tasks.id)],
+    orderBy: [OrderingTerm.asc(tasks.position), ..._newestFirst],
   );
+
+  /// One task, following a temporary id to the server id once the create
+  /// is answered; null once the row is gone or queued for deletion.
+  Stream<Task?> watchTask(int id) => watchTables({
+    ..._readTables,
+    taskIdRemaps,
+  }, () async => await find(await resolveId(id)));
+
+  /// The server id a temporary [id] was remapped to, else [id] itself.
+  Future<int> resolveId(int id) async {
+    if (id > 0) return id;
+    final remap = await (select(
+      taskIdRemaps,
+    )..where((r) => r.localId.equals(id))).getSingleOrNull();
+    return remap?.serverId ?? id;
+  }
+
+  /// Every server id a create of this device was remapped to.
+  Future<Set<int>> remappedServerIds() async {
+    final query = selectOnly(taskIdRemaps)..addColumns([taskIdRemaps.serverId]);
+    return {
+      for (final row in await query.get()) row.read(taskIdRemaps.serverId)!,
+    };
+  }
 
   Future<Task?> find(int id) async {
     final found = await _load(
@@ -109,10 +148,13 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
 
   /// The counts mirror the server, so they include the rows queued for
   /// deletion: the server holds those until the delete is sent, and the
-  /// sync's probe must not see a mismatch on every run until then.
+  /// sync's probe must not see a mismatch on every run until then. Tasks
+  /// created here and not yet sent are left out for the same reason.
   Future<int> count() {
     final count = tasks.id.count();
-    final query = selectOnly(tasks)..addColumns([count]);
+    final query = selectOnly(tasks)
+      ..addColumns([count])
+      ..where(_onServer);
     return query.map((row) => row.read(count)!).getSingle();
   }
 
@@ -120,7 +162,7 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
     final count = tasks.id.count();
     final query = selectOnly(tasks)
       ..addColumns([count])
-      ..where(tasks.projectId.equals(projectId));
+      ..where(tasks.projectId.equals(projectId) & _onServer);
     return query.map((row) => row.read(count)!).getSingle();
   }
 
@@ -132,7 +174,7 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
     final total = tasks.id.count();
     final query = selectOnly(tasks)
       ..addColumns([total])
-      ..where(tasks.projectId.isNotIn(excluded));
+      ..where(tasks.projectId.isNotIn(excluded) & _onServer);
     return query.map((row) => row.read(total)!).getSingle();
   }
 

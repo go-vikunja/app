@@ -2,7 +2,10 @@ import 'package:drift_dev/api/migrations_native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/db/daos/outbox_dao.dart';
+import 'package:vikunja_mobile/core/outbox/task_changes_json.dart';
 
+import '../../helpers/sample_data.dart';
 import 'generated/schema.dart';
 
 void main() {
@@ -34,7 +37,7 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 2);
+    await verifier.migrateAndValidate(db, 3);
 
     final task = (await db.tasksDao.find(1))!;
     expect(task.title, 'Keep me');
@@ -63,6 +66,61 @@ void main() {
       ),
       isTrue,
     );
+    expect(await db.outboxDao.count(), 1);
+  });
+
+  test('v2 → v3 keeps the queued ops, adds the remap table and the '
+      'sent_at column', () async {
+    final verifier = SchemaVerifier(GeneratedHelper());
+    final schema = await verifier.schemaAt(2);
+    schema.rawDatabase
+      ..execute(
+        'INSERT INTO tasks (id, project_id, title, description, done, done_at, '
+        'due_date, start_date, end_date, priority, percent_done, hex_color, '
+        'identifier, "index", is_favorite, position, repeat_after, '
+        'repeat_mode, bucket_id, created_by_id, created, updated, '
+        'sync_run_id, pending_changes, pending_delete) '
+        "VALUES (1, 7, 'Queued', '', 1, 1760100000000, NULL, NULL, NULL, 0, "
+        "0.0, '', '-1', 1, 0, 0.0, 0, 0, 0, NULL, NULL, 1759000000000, "
+        "'run-1', '{\"done\":true}', 0)",
+      )
+      ..execute(
+        'INSERT INTO outbox (id, sequence, kind, task_id, payload, created_at, '
+        'attempts, next_attempt_at, last_attempt_at, state, last_error) '
+        "VALUES ('op-1', 1, 'updateTask', 1, '{\"done\":true}', "
+        "1760100000000, 1, 1760100002000, 1760100000000, 'pending', "
+        "'{\"kind\":\"network\",\"problem\":\"timeout\"}')",
+      );
+    final db = AppDatabase(schema.newConnection());
+    addTearDown(db.close);
+
+    await verifier.migrateAndValidate(db, 3);
+
+    final op = (await db.outboxDao.all()).single;
+    expect(op.id, 'op-1');
+    expect(op.kind, 'updateTask');
+    expect(op.state, OutboxState.pending.name);
+    expect(op.attempts, 1);
+    expect(op.sentAt, isNull);
+    expect(decodeTaskChanges(op.payload), const TaskChanges(done: true));
+    expect((await db.tasksDao.find(1))!.done, isTrue);
+    expect((await db.outboxDao.nextPending())!.id, 'op-1');
+
+    final localId = await db.outboxDao.queueCreate(
+      const NewTask(projectId: 7, title: 'Created after the upgrade'),
+      now: DateTime.utc(2026, 10, 11),
+    );
+    expect(localId, -1);
+    expect((await db.tasksDao.find(-1))!.title, 'Created after the upgrade');
+    final create = (await db.outboxDao.all()).last;
+    await db.outboxDao.completeCreate(
+      create.id,
+      sampleTask(id: 50, title: 'Created after the upgrade', projectId: 7),
+      at: DateTime.utc(2026, 10, 11),
+    );
+    expect(await db.tasksDao.resolveId(-1), 50);
+    expect(await db.tasksDao.find(-1), isNull);
+    expect((await db.tasksDao.find(50))!.title, 'Created after the upgrade');
     expect(await db.outboxDao.count(), 1);
   });
 }

@@ -5,7 +5,9 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/db/daos/outbox_dao.dart';
 import 'package:vikunja_mobile/core/outbox/failure_json.dart';
+import 'package:vikunja_mobile/core/outbox/new_task_json.dart';
 import 'package:vikunja_mobile/core/outbox/outbox_sender.dart';
+import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/outbox/task_changes_json.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 
@@ -77,7 +79,9 @@ void main() {
     db = testDatabase();
     now = DateTime.utc(2026, 10, 10, 12);
     write = FakeWriteClient(clock: () => now);
-    read = FakeSyncClient()..allTasks = tasks;
+    read = FakeSyncClient()
+      ..allProjects = [sampleProject(id: 7, title: 'Work')]
+      ..allTasks = tasks;
     sync = RecordingSyncEngine();
     timers = FakeTimers();
     await db.tasksDao.upsertAll(tasks, syncRunId: 'run');
@@ -844,6 +848,439 @@ void main() {
       await outbox.discard('missing');
 
       expect(read.requests, isEmpty);
+    });
+  });
+
+  group('creates', () {
+    const draft = NewTask(
+      projectId: 7,
+      title: 'Buy milk',
+      priority: TaskPriority.high,
+      isFavorite: true,
+    );
+
+    Future<int> create([NewTask task = draft]) =>
+        db.outboxDao.queueCreate(task, now: now);
+
+    /// The server as the sync engine reads it: what the write client holds.
+    void mirrorServer() => read.allTasks = write.serverTasks.values.toList();
+
+    test('a create is sent, the row moves to the server id with the response '
+        'applied, and watchers follow', () async {
+      final id = await create();
+      final seen = <Task?>[];
+      final subscription = db.tasksDao.watchTask(id).listen(seen.add);
+      addTearDown(subscription.cancel);
+      await pumpEventQueue();
+      expect(seen.single!.id, id);
+
+      await sender().drain();
+
+      expect(write.requests, ['create Buy milk']);
+      expect(write.creates, [draft]);
+      expect(await db.tasksDao.findRow(id), isNull);
+      final created = (await db.tasksDao.find(100))!;
+      expect(created.title, 'Buy milk');
+      expect(created.priority, TaskPriority.high);
+      expect(created.isFavorite, isTrue);
+      expect(created.identifier, '-100');
+      expect(created.updated, now);
+      expect(await db.tasksDao.resolveId(id), 100);
+      await pumpEventQueue();
+      expect(seen.last!.id, 100);
+      expect(await db.outboxDao.count(), 0);
+      expect(sync.refreshCalls, 1);
+    });
+
+    test(
+      'ops go in order: a create, an update and a delete of other tasks, '
+      'and an edit queued behind the create is sent under the server id',
+      () async {
+        final id = await create();
+        await queue(1, done);
+        await queueDelete(2);
+        final gate = RequestGate()..pattern = 'create';
+        write.beforeRequest = gate.call;
+        final outbox = sender();
+        final drain = outbox.drain();
+        await pumpEventQueue();
+        await queue(id, const TaskChanges(done: true, title: 'Bought'));
+        expect(await db.outboxDao.all(), hasLength(4));
+
+        gate.release();
+        await drain;
+
+        expect(write.requests, [
+          'create Buy milk',
+          'update 1',
+          'delete 2',
+          'update 100',
+        ]);
+        expect(write.updates.last, (
+          100,
+          const TaskChanges(done: true, title: 'Bought'),
+        ));
+        final created = (await db.tasksDao.find(100))!;
+        expect(created.title, 'Bought');
+        expect(created.done, isTrue);
+        expect(write.serverTasks[100]!.done, isTrue);
+        expect(await db.outboxDao.count(), 0);
+      },
+    );
+
+    test('a create whose answer was lost is recovered by its title instead '
+        'of being sent twice', () async {
+      final id = await create();
+      write.afterRequest = (_) =>
+          fail(const NetworkFailure(NetworkProblem.timeout));
+      final outbox = sender();
+
+      await outbox.drain();
+
+      expect(outbox.state, OutboxSenderState.waiting);
+      final op = (await ops()).single;
+      expect(op.state, OutboxState.pending.name);
+      expect(op.sentAt, now);
+      expect(op.attempts, 1);
+      expect(write.serverTasks[100]!.title, 'Buy milk');
+      expect((await db.tasksDao.find(id))!.title, 'Buy milk');
+
+      // The server has it; the next attempt looks before it sends.
+      mirrorServer();
+      write.afterRequest = null;
+      now = now.add(timers.pendingWait);
+      timers.fireNext();
+      await pumpEventQueue();
+
+      expect(write.requests, ['create Buy milk']);
+      expect(
+        read.requests.single,
+        startsWith(
+          "project 7 tasks created >= '2026-10-10T11:00:00Z' sort=created desc",
+        ),
+      );
+      expect(await db.tasksDao.findRow(id), isNull);
+      expect((await db.tasksDao.find(100))!.title, 'Buy milk');
+      expect(await db.tasksDao.resolveId(id), 100);
+      expect(await db.outboxDao.count(), 0);
+      expect(outbox.state, OutboxSenderState.idle);
+    });
+
+    test('the lookup matches the title as sent, not the newer one, and '
+        'ignores other tasks created meanwhile', () async {
+      final id = await create();
+      write.afterRequest = (_) =>
+          fail(const NetworkFailure(NetworkProblem.unreachable));
+      final outbox = sender();
+      await outbox.drain();
+      await queue(id, const TaskChanges(title: 'Buy oat milk'));
+      read.allTasks = [
+        ...tasks,
+        sampleTask(
+          id: 99,
+          title: 'Something else',
+          projectId: 7,
+        ).copyWith(created: now),
+        write.serverTasks[100]!,
+      ];
+
+      write.afterRequest = null;
+      await outbox.sendNow();
+
+      expect(write.requests, ['create Buy milk', 'update 100']);
+      expect(write.updates, [(100, const TaskChanges(title: 'Buy oat milk'))]);
+      expect(write.serverTasks[100]!.title, 'Buy oat milk');
+      expect((await db.tasksDao.find(100))!.title, 'Buy oat milk');
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    test(
+      'an unanswered create the server does not have is sent again',
+      () async {
+        final id = await create();
+        write.beforeRequest = (_) =>
+            fail(const NetworkFailure(NetworkProblem.timeout));
+        final outbox = sender();
+        await outbox.drain();
+        expect((await ops()).single.sentAt, now);
+        expect(write.serverTasks.containsKey(100), isFalse);
+
+        write.beforeRequest = null;
+        await outbox.sendNow();
+
+        expect(write.requests, ['create Buy milk', 'create Buy milk']);
+        expect(read.requests, hasLength(1));
+        expect(await db.tasksDao.resolveId(id), 100);
+        expect(await db.outboxDao.count(), 0);
+      },
+    );
+
+    test('a 5xx may have come from a proxy after the server stored the '
+        'task: the next attempt looks first', () async {
+      await create();
+      write.afterRequest = (_) => fail(const ServerFailure(504));
+      final outbox = sender();
+      await outbox.drain();
+      expect((await ops()).single.sentAt, now);
+      mirrorServer();
+
+      write.afterRequest = null;
+      await outbox.sendNow();
+
+      expect(write.requests, ['create Buy milk']);
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    test('a lookup that cannot reach the server leaves the create uncertain '
+        'and waiting', () async {
+      await create();
+      write.afterRequest = (_) =>
+          fail(const NetworkFailure(NetworkProblem.timeout));
+      final outbox = sender();
+      await outbox.drain();
+      read.beforeRequest = (_) =>
+          fail(const NetworkFailure(NetworkProblem.unreachable));
+
+      await outbox.sendNow();
+
+      expect(write.requests, ['create Buy milk']);
+      final op = (await ops()).single;
+      expect(op.sentAt, now);
+      expect(op.attempts, 2);
+      expect(outbox.state, OutboxSenderState.waiting);
+    });
+
+    test(
+      'a 429 or a rejected token is certain: no lookup afterwards',
+      () async {
+        await create();
+        write.beforeRequest = (_) =>
+            fail(const RateLimited(retryAfter: Duration(seconds: 5)));
+        final outbox = sender();
+        await outbox.drain();
+        expect((await ops()).single.sentAt, isNull);
+
+        write.beforeRequest = null;
+        await outbox.sendNow();
+
+        expect(read.requests, isEmpty);
+        expect(write.requests, ['create Buy milk', 'create Buy milk']);
+      },
+    );
+
+    test('a rejected create is a problem under its title; the row stays '
+        'until the user decides', () async {
+      final id = await create();
+      await queue(1, done);
+      write.beforeRequest = (request) => request.startsWith('create')
+          ? fail(const DomainError(412, code: 3008, message: 'archived'))
+          : Future.value();
+      final outbox = sender();
+
+      await outbox.drain();
+
+      expect(write.requests, ['create Buy milk', 'update 1']);
+      final problem = (await db.outboxDao.loadProblems()).single;
+      expect(problem.kind, OutboxOperationKind.createTask);
+      expect(problem.taskId, id);
+      expect(problem.taskTitle, 'Buy milk');
+      expect(problem.failure, isA<DomainError>());
+      expect((await db.tasksDao.find(id))!.title, 'Buy milk');
+      expect(outbox.state, OutboxSenderState.idle);
+
+      // Moved to another project and retried.
+      await db.outboxDao.queueUpdate(
+        id,
+        const TaskChanges(projectId: 8),
+        now: now,
+      );
+      write.beforeRequest = null;
+      await outbox.drain();
+
+      expect(write.creates.last.projectId, 8);
+      expect(await db.tasksDao.resolveId(id), 100);
+      expect(await db.outboxDao.loadProblems(), isEmpty);
+    });
+
+    test('discarding a rejected create drops the task without asking the '
+        'server', () async {
+      final id = await create();
+      write.beforeRequest = (_) =>
+          fail(const ValidationFailed(code: 4001, message: 'title'));
+      final outbox = sender();
+      await outbox.drain();
+      final problem = (await db.outboxDao.loadProblems()).single;
+
+      await outbox.discard(problem.operationId);
+
+      expect(read.requests, isEmpty);
+      expect(await db.tasksDao.findRow(id), isNull);
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    test('a create and its delete before the send cost no request', () async {
+      final id = await create();
+      await queueDelete(id);
+
+      await sender().drain();
+
+      expect(write.requests, isEmpty);
+      expect(sync.refreshCalls, 0);
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    test('a delete queued while the create is in flight is sent under the '
+        'server id', () async {
+      final id = await create();
+      final gate = RequestGate()..pattern = 'create';
+      write.beforeRequest = gate.call;
+      final outbox = sender();
+      final drain = outbox.drain();
+      await pumpEventQueue();
+      await queueDelete(id);
+      expect(await db.tasksDao.find(id), isNull);
+
+      gate.release();
+      await drain;
+
+      expect(write.requests, ['create Buy milk', 'delete 100']);
+      expect(write.serverTasks.containsKey(100), isFalse);
+      expect(await db.tasksDao.findRow(100), isNull);
+      expect(await db.tasksDao.findRow(id), isNull);
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    test('an op queued behind a rejected create waits for it', () async {
+      final id = await create();
+      final held = Completer<void>();
+      write.beforeRequest = (request) =>
+          request.startsWith('create') ? held.future : Future.value();
+      final outbox = sender();
+      final drain = outbox.drain();
+      await pumpEventQueue();
+      await queue(id, done);
+      held.completeError(const Forbidden(code: 7003));
+      await drain;
+
+      expect(write.requests, ['create Buy milk']);
+      expect(await db.outboxDao.count(), 2);
+      expect(await db.outboxDao.loadProblems(), hasLength(1));
+      expect(outbox.state, OutboxSenderState.idle);
+
+      write.beforeRequest = null;
+      await outbox.retry(
+        (await db.outboxDao.loadProblems()).single.operationId,
+      );
+
+      expect(write.requests, [
+        'create Buy milk',
+        'create Buy milk',
+        'update 100',
+      ]);
+      expect((await db.tasksDao.find(100))!.done, isTrue);
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    test('a create a killed app left in flight is looked up at the next start '
+        'and adopted, not sent again', () async {
+      final id = await create();
+      final op = (await ops()).single;
+      await db.outboxDao.markSending(op.id, at: now);
+      // The request had reached the server before the kill.
+      write.serverTasks[100] = taskFromNewTask(draft, id: 100, now: now);
+      write.nextId = 101;
+      mirrorServer();
+
+      await sender().drain();
+
+      expect(write.requests, isEmpty);
+      expect(
+        read.requests.single,
+        startsWith("project 7 tasks created >= '2026-10-10T11:00:00Z'"),
+      );
+      expect(await db.tasksDao.findRow(id), isNull);
+      expect((await db.tasksDao.find(100))!.title, 'Buy milk');
+      expect(await db.tasksDao.resolveId(id), 100);
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    test('a create a killed app left in flight that never reached the server '
+        'is sent once', () async {
+      final id = await create();
+      final op = (await ops()).single;
+      await db.outboxDao.markSending(op.id, at: now);
+
+      await sender().drain();
+
+      expect(read.requests, hasLength(1));
+      expect(write.requests, ['create Buy milk']);
+      expect(await db.tasksDao.resolveId(id), 100);
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    test('a server clock minutes behind the phone still lands the stored '
+        'task in the lookup window', () async {
+      write = FakeWriteClient(
+        clock: () => now.subtract(const Duration(minutes: 3)),
+      );
+      final id = await create();
+      write.afterRequest = (_) =>
+          fail(const NetworkFailure(NetworkProblem.timeout));
+      final outbox = sender();
+      await outbox.drain();
+      expect(
+        write.serverTasks[100]!.created,
+        now.subtract(const Duration(minutes: 3)),
+      );
+      mirrorServer();
+
+      write.afterRequest = null;
+      await outbox.sendNow();
+
+      expect(write.requests, ['create Buy milk']);
+      expect(await db.tasksDao.resolveId(id), 100);
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    test('two lost creates with the same title adopt two different server '
+        'tasks', () async {
+      const callBack = NewTask(projectId: 7, title: 'Call back');
+      final first = await create(callBack);
+      final second = await create(callBack);
+      write.afterRequest = (_) =>
+          fail(const NetworkFailure(NetworkProblem.timeout));
+      final outbox = sender();
+      // The first reaches the server (100), its answer is lost.
+      await outbox.drain();
+      mirrorServer();
+      // The first is adopted; the second reaches the server (101) in the
+      // same second, its answer is lost too.
+      await outbox.sendNow();
+      expect(await db.tasksDao.resolveId(first), 100);
+      expect(write.serverTasks[101]!.created, write.serverTasks[100]!.created);
+      mirrorServer();
+
+      write.afterRequest = null;
+      await outbox.sendNow();
+
+      expect(write.requests, ['create Call back', 'create Call back']);
+      expect(await db.tasksDao.resolveId(second), 101);
+      expect(await db.tasksDao.findRow(first), isNull);
+      expect(await db.tasksDao.findRow(second), isNull);
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    test('the create payload the sender sends is the merged one', () async {
+      final id = await create();
+      await queue(id, TaskChanges(dueDate: DateChange.set(monday)));
+
+      await sender().drain();
+
+      expect(write.creates.single.dueDate, monday);
+      expect(
+        decodeNewTask(encodeNewTask(write.creates.single)).title,
+        'Buy milk',
+      );
     });
   });
 }

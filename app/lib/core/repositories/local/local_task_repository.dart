@@ -15,7 +15,8 @@ final _log = Logger('AccountData');
 /// Tasks from the account's database. The whole account is local, so a
 /// project list is never paged and every refresh is a full sync run. A
 /// write lands in the database and the outbox in one transaction, then the
-/// sender drains.
+/// sender drains; a create gets a temporary negative id that the sender
+/// remaps once the server has named the task.
 final class LocalTaskRepository
     implements TaskRepository, PendingTaskIdsSource {
   new(this._db, this._sync, this._outbox, {DateTime Function()? now})
@@ -47,6 +48,20 @@ final class LocalTaskRepository
   @override
   Future<void> loadMoreProjectTasks(int projectId, {required bool showDone}) =>
       Future.value();
+
+  @override
+  Stream<Task?> watchTask(int taskId) => _db.tasksDao.watchTask(taskId);
+
+  @override
+  Future<int> createTask(NewTask task) async {
+    final id = await _db.outboxDao.queueCreate(task, now: _now());
+    _drainQuietly();
+    return id;
+  }
+
+  @override
+  Future<void> updateTask(int taskId, TaskChanges changes) =>
+      changes.isEmpty ? Future.value() : _queue(taskId, changes);
 
   @override
   Future<void> setDone(int taskId, {required bool done}) =>

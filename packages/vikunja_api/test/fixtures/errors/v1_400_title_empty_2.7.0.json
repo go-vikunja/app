@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "PUT /api/v1/projects/{id}/tasks",
+  "status": 400,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"code\":4001,\"message\":\"You must provide at least a task title.\"}\n"
+}

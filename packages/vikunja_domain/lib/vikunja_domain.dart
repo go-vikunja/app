@@ -14,6 +14,7 @@ export 'src/server/server_connection.dart';
 export 'src/server/server_connection_failure.dart';
 export 'src/server/server_info.dart';
 export 'src/server/server_version.dart';
+export 'src/task/new_task.dart';
 export 'src/task/task.dart';
 export 'src/task/task_changes.dart';
 export 'src/task/task_relation_kind.dart';

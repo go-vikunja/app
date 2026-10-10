@@ -258,13 +258,22 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
     return onLoadMore?.call() ?? Future.value();
   }
 
-  /// Every write, in order, as `setDone 1 true`, `undoDone 1`,
-  /// `setFavorite 2 false`, `delete 3`, `retry <op>`, `discard <op>` or
-  /// `sendPending`. A write applies to the task at once, like the local
-  /// database; what counts as pending is the test's to say with
-  /// [pendingChanges] and [pendingTaskIds].
+  /// Every write, in order, as `create -1 Title`, `update 1`,
+  /// `setDone 1 true`, `undoDone 1`, `setFavorite 2 false`, `delete 3`,
+  /// `retry <op>`, `discard <op>` or `sendPending`. A write applies to the
+  /// task at once, like the local database; what counts as pending is the
+  /// test's to say with [pendingChanges] and [pendingTaskIds].
   final List<String> writes = [];
   Future<void> Function()? beforeWrite;
+
+  /// What `createTask` and `updateTask` were given, in order.
+  final List<NewTask> creates = [];
+  final List<(int, TaskChanges)> updates = [];
+
+  /// Temporary id → server id, as [remapTask] records them; `watchTask`
+  /// and [find] follow them like the database does.
+  final Map<int, int> remaps = {};
+  int _nextLocalId = -1;
 
   /// What `sendPendingChanges` reports as still blocking the queue.
   VikunjaFailure? sendBlockedBy;
@@ -301,8 +310,9 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
   }
 
   Task? find(int id) {
+    final resolved = remaps[id] ?? id;
     for (final task in _all) {
-      if (task.id == id) return task;
+      if (task.id == resolved) return task;
     }
     return null;
   }
@@ -311,6 +321,50 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
     writes.add(entry);
     await beforeWrite?.call();
     all = [for (final task in _all) ?change(task)];
+  }
+
+  @override
+  Stream<Task?> watchTask(int taskId) =>
+      _replaying(() => _all, _changes.stream).map((_) => find(taskId));
+
+  /// The task goes into the list under the next temporary id (−1, −2, …)
+  /// with [createdAt] as its `created`, like the local row.
+  @override
+  Future<int> createTask(NewTask task) async {
+    final id = _nextLocalId--;
+    writes.add('create $id ${task.title}');
+    creates.add(task);
+    await beforeWrite?.call();
+    all = [
+      ..._all,
+      taskFromNewTask(
+        task,
+        id: id,
+        now: createdAt,
+      ).copyWith(identifier: '', index: 0, updated: null),
+    ];
+    return id;
+  }
+
+  /// The server named the task: it moves to [serverId] in the list and
+  /// watchers of [localId] follow.
+  void remapTask(int localId, int serverId) {
+    remaps[localId] = serverId;
+    all = [
+      for (final task in _all)
+        if (task.id == localId) taskWithId(task, serverId) else task,
+    ];
+  }
+
+  @override
+  Future<void> updateTask(int taskId, TaskChanges changes) {
+    updates.add((taskId, changes));
+    return _write(
+      'update $taskId',
+      (task) => task.id == (remaps[taskId] ?? taskId)
+          ? applyChangesToTask(task, changes, now: _doneAt)
+          : task,
+    );
   }
 
   @override
@@ -387,6 +441,9 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
   }
 
   static final _doneAt = DateTime.utc(2026, 10, 10, 12);
+
+  /// The `created` of every task made through [createTask].
+  DateTime createdAt = _doneAt;
 
   @override
   void dispose() {

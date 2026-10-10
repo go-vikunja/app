@@ -114,6 +114,9 @@ void main() {
         late TestUser user;
         late _Seeder seeder;
         late int projectId;
+        late String identifier;
+        late int otherProjectId;
+        late String otherIdentifier;
         late int labelId;
 
         setUpAll(() async {
@@ -123,10 +126,15 @@ void main() {
           user = await registerAndLogin(dio, connection);
           seeder = _Seeder(dio, connection, user);
           final runId = Random.secure().nextInt(1 << 16).toRadixString(16);
-          final identifier = 'CW${runId.toUpperCase()}';
+          identifier = 'CW${runId.toUpperCase()}';
+          otherIdentifier = 'CX${runId.toUpperCase()}';
           projectId = await seeder.create('/projects', {
             'title': 'Write contract',
             'identifier': identifier,
+          });
+          otherProjectId = await seeder.create('/projects', {
+            'title': 'Write contract, moved',
+            'identifier': otherIdentifier,
           });
           labelId = await seeder.create('/labels', {
             'title': 'kept',
@@ -141,6 +149,7 @@ void main() {
             late _Seed seed;
             late TasksWritePort writes;
             late TasksPort reads;
+            late int createdId;
 
             setUpAll(() async {
               expect(connection.apiVersions, contains(apiVersion));
@@ -311,6 +320,159 @@ void main() {
                 expect(stored.dueDate, response.dueDate);
               },
             );
+
+            test('create with every core field: the server echoes them and '
+                'assigns the identifier', () async {
+              final due = DateTime.utc(2030, 1, 2, 3, 4, 5);
+              final start = DateTime.utc(2030, 1, 1, 8);
+              final end = DateTime.utc(2030, 1, 3, 18);
+              final title = 'Created on ${apiVersion.pathSegment}';
+
+              final created = await writes.create(
+                NewTask(
+                  projectId: projectId,
+                  title: title,
+                  description: '<p>With everything</p>',
+                  dueDate: due,
+                  startDate: start,
+                  endDate: end,
+                  priority: TaskPriority.urgent,
+                  percentDone: 0.5,
+                  hexColor: '1973ff',
+                  repeatAfter: const Duration(days: 30),
+                  isFavorite: true,
+                ),
+              );
+              createdId = created.id;
+
+              expect(created.id, greaterThan(0));
+              expect(created.projectId, projectId);
+              expect(created.index, greaterThan(0));
+              expect(created.identifier, '$identifier-${created.index}');
+              expect(created.title, title);
+              expect(created.description, '<p>With everything</p>');
+              expect(created.done, isFalse);
+              expect(created.dueDate, due);
+              expect(created.startDate, start);
+              expect(created.endDate, end);
+              expect(created.priority, TaskPriority.urgent);
+              expect(created.percentDone, 0.5);
+              expect(created.hexColor, '1973ff');
+              expect(created.repeatAfter, const Duration(days: 30));
+              expect(created.repeatMode, RepeatMode.afterAmount);
+              expect(created.repeats, isTrue);
+              expect(created.isFavorite, isTrue);
+              expect(created.created, isNotNull);
+              expect(created.createdBy?.id, user.id);
+
+              final stored = await reads.read(created.id);
+              expect(stored.identifier, created.identifier);
+              expect(stored.title, title);
+              expect(stored.dueDate, due);
+              expect(stored.priority, TaskPriority.urgent);
+              expect(stored.hexColor, '1973ff');
+              expect(stored.repeatAfter, const Duration(days: 30));
+              expect(stored.isFavorite, isTrue);
+            });
+
+            test('a move to another project gives a new identifier', () async {
+              final moved = await writes.update(
+                createdId,
+                TaskChanges(projectId: otherProjectId),
+              );
+
+              expect(moved.id, createdId);
+              expect(moved.projectId, otherProjectId);
+              expect(moved.identifier, '$otherIdentifier-${moved.index}');
+              expect(moved.title, 'Created on ${apiVersion.pathSegment}');
+              expect(moved.repeatAfter, const Duration(days: 30));
+              expect(moved.isFavorite, isTrue);
+
+              final stored = await reads.read(createdId);
+              expect(stored.projectId, otherProjectId);
+              expect(stored.identifier, moved.identifier);
+              expect(stored.index, moved.index);
+            });
+
+            test('repeat changed, switched to monthly and removed', () async {
+              final weekly = await writes.update(
+                createdId,
+                const TaskChanges(
+                  repeatAfter: Duration(days: 7),
+                  repeatMode: RepeatMode.afterAmount,
+                ),
+              );
+              expect(weekly.repeatAfter, const Duration(days: 7));
+              expect(weekly.repeatMode, RepeatMode.afterAmount);
+              expect(weekly.repeats, isTrue);
+
+              final monthly = await writes.update(
+                createdId,
+                const TaskChanges(repeatMode: RepeatMode.monthly),
+              );
+              expect(monthly.repeatMode, RepeatMode.monthly);
+              expect(monthly.repeats, isTrue);
+
+              final removed = await writes.update(
+                createdId,
+                const TaskChanges(
+                  repeatAfter: Duration.zero,
+                  repeatMode: RepeatMode.afterAmount,
+                ),
+              );
+              expect(removed.repeatAfter, Duration.zero);
+              expect(removed.repeatMode, RepeatMode.afterAmount);
+              expect(removed.repeats, isFalse);
+
+              final stored = await reads.read(createdId);
+              expect(stored.repeatAfter, Duration.zero);
+              expect(stored.repeatMode, RepeatMode.afterAmount);
+              expect(stored.repeats, isFalse);
+            });
+
+            test('an empty title is rejected', () async {
+              final failure = switch (apiVersion) {
+                ApiVersion.v2 => isA<ValidationFailed>().having(
+                  (f) => f.fieldErrors.keys,
+                  'fields',
+                  ['title'],
+                ),
+                ApiVersion.v1 =>
+                  isA<DomainError>()
+                      .having((f) => f.statusCode, 'status', 400)
+                      .having((f) => f.code, 'code', 4001),
+              };
+
+              await expectLater(
+                writes.create(NewTask(projectId: projectId, title: '')),
+                throwsA(failure),
+              );
+            });
+
+            test('a repeat beyond ten years is domain error 4029', () async {
+              final failure = isA<DomainError>()
+                  .having((f) => f.statusCode, 'status', 400)
+                  .having((f) => f.code, 'code', 4029);
+              const tooLong = Duration(days: 4000);
+
+              await expectLater(
+                writes.create(
+                  NewTask(
+                    projectId: projectId,
+                    title: 'Too long',
+                    repeatAfter: tooLong,
+                  ),
+                ),
+                throwsA(failure),
+              );
+              await expectLater(
+                writes.update(
+                  createdId,
+                  const TaskChanges(repeatAfter: tooLong),
+                ),
+                throwsA(failure),
+              );
+            });
 
             test('delete, then delete again', () async {
               await writes.delete(seed.doomedId);

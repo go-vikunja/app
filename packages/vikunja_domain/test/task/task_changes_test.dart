@@ -33,6 +33,9 @@ void main() {
         TaskChanges(dueDate: DateChange.set(monday)),
         const TaskChanges(startDate: DateChange.clear()),
         const TaskChanges(endDate: DateChange.clear()),
+        const TaskChanges(repeatAfter: Duration.zero),
+        const TaskChanges(repeatMode: RepeatMode.afterAmount),
+        const TaskChanges(projectId: 1),
       ];
 
       expect(singles.map((c) => c.isEmpty), everyElement(isFalse));
@@ -105,6 +108,37 @@ void main() {
       expect(done.merge(undone), undone);
       expect(done.merge(undone).merge(done), done);
     });
+
+    test('repeat and project follow the later change', () {
+      const repeating = TaskChanges(
+        repeatAfter: Duration(days: 30),
+        repeatMode: RepeatMode.afterAmount,
+        projectId: 3,
+      );
+      const removed = TaskChanges(
+        repeatAfter: Duration.zero,
+        repeatMode: RepeatMode.afterAmount,
+      );
+
+      expect(
+        repeating.merge(removed),
+        const TaskChanges(
+          repeatAfter: Duration.zero,
+          repeatMode: RepeatMode.afterAmount,
+          projectId: 3,
+        ),
+      );
+      expect(removed.merge(repeating), repeating);
+      expect(repeating.merge(const TaskChanges(projectId: 4)).projectId, 4);
+      expect(
+        repeating.merge(const TaskChanges(repeatMode: RepeatMode.monthly)),
+        const TaskChanges(
+          repeatAfter: Duration(days: 30),
+          repeatMode: RepeatMode.monthly,
+          projectId: 3,
+        ),
+      );
+    });
   });
 
   group('equality', () {
@@ -124,6 +158,18 @@ void main() {
       expect(
         const TaskChanges(percentDone: 0.5),
         isNot(const TaskChanges(percentDone: 0.25)),
+      );
+      expect(
+        const TaskChanges(repeatAfter: Duration(days: 1)),
+        isNot(const TaskChanges(repeatAfter: Duration(days: 2))),
+      );
+      expect(
+        const TaskChanges(repeatMode: RepeatMode.monthly),
+        isNot(const TaskChanges(repeatMode: RepeatMode.afterAmount)),
+      );
+      expect(
+        const TaskChanges(projectId: 1),
+        isNot(const TaskChanges(projectId: 2)),
       );
     });
   });

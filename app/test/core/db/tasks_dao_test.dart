@@ -5,6 +5,8 @@ import 'package:vikunja_mobile/core/db/app_database.dart';
 import '../../helpers/sample_data.dart';
 import '../../helpers/test_database.dart';
 
+const _tempTask = NewTask(projectId: 5, title: 'Created here');
+
 void main() {
   late AppDatabase db;
   const alice = User(id: 7, username: 'alice', name: 'Alice');
@@ -323,6 +325,106 @@ void main() {
       expect(await db.tasksDao.idsInProject(5), [1, 3]);
       expect(await db.tasksDao.idsInProject(6), [4]);
       expect(await db.tasksDao.purgeInProjectExcept(5, {1, 3}), 0);
+    });
+  });
+
+  group('tasks created here', () {
+    final now = DateTime.utc(2026, 10, 10, 12);
+
+    Future<int> create(NewTask task) =>
+        db.outboxDao.queueCreate(task, now: now);
+
+    setUp(
+      () => upsert([
+        sampleTask(id: 1, title: 'Old', projectId: 5, updated: monday),
+        sampleTask(id: 2, title: 'New', projectId: 5, due: monday),
+        sampleTask(id: 3, title: 'Elsewhere', projectId: 6),
+      ]),
+    );
+
+    test('come first in every list, the newest of them on top', () async {
+      final first = await create(_tempTask);
+      final second = await create(
+        const NewTask(projectId: 5, title: 'Created later'),
+      );
+      final dated = await create(
+        NewTask(projectId: 5, title: 'Created dated', dueDate: monday),
+      );
+
+      final open = await db.tasksDao.loadOpenTasks();
+      final project = await db.tasksDao.loadProjectTasks(5, showDone: false);
+
+      expect(open.map((t) => t.id), [dated, 2, second, first, 3, 1]);
+      expect(project.map((t) => t.id), [dated, second, first, 2, 1]);
+    });
+
+    test('are left out of the counts, which mirror the server', () async {
+      await create(_tempTask);
+
+      expect(await db.tasksDao.count(), 3);
+      expect(await db.tasksDao.countInProject(5), 2);
+      expect(await db.tasksDao.countNotInProjects([6]), 2);
+      expect(await db.tasksDao.maxUpdated(), monday);
+    });
+
+    test('are never purged', () async {
+      final id = await create(_tempTask);
+
+      await db.tasksDao.purgeNotInRun('other-run');
+      await db.tasksDao.purgeInProjects([5]);
+      await db.tasksDao.purgeInProjectExcept(5, {});
+
+      expect((await db.tasksDao.find(id))!.title, 'Created here');
+      expect(await db.tasksDao.count(), 0);
+    });
+
+    test('a watched task follows its remap and ends with null', () async {
+      final id = await create(_tempTask);
+      final seen = <Task?>[];
+      final subscription = db.tasksDao.watchTask(id).listen(seen.add);
+      addTearDown(subscription.cancel);
+      await pumpEventQueue();
+      expect(seen.single!.id, id);
+
+      await db.outboxDao.queueUpdate(
+        id,
+        const TaskChanges(title: 'Renamed'),
+        now: now,
+      );
+      await pumpEventQueue();
+      expect(seen.last!.title, 'Renamed');
+
+      final op = (await db.outboxDao.all()).single;
+      await db.outboxDao.completeCreate(
+        op.id,
+        sampleTask(id: 50, title: 'Renamed', projectId: 5),
+        at: now,
+      );
+      await pumpEventQueue();
+      expect(seen.last!.id, 50);
+
+      await upsert([
+        sampleTask(id: 50, title: 'From the server', projectId: 5),
+      ]);
+      await pumpEventQueue();
+      expect(seen.last!.title, 'From the server');
+
+      await db.tasksDao.deleteRow(50);
+      await pumpEventQueue();
+      expect(seen.last, isNull);
+    });
+
+    test('a watched server task is just the row', () async {
+      final seen = <Task?>[];
+      final subscription = db.tasksDao.watchTask(2).listen(seen.add);
+      addTearDown(subscription.cancel);
+      await pumpEventQueue();
+      expect(seen.single!.title, 'New');
+
+      await db.outboxDao.queueDelete(2, now: now);
+      await pumpEventQueue();
+
+      expect(seen.last, isNull);
     });
   });
 }

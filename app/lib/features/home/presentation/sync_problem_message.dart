@@ -5,6 +5,7 @@ import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 /// What failed and why, for the Sync problems section.
 String describeSyncProblem(AppLocalizations l10n, SyncProblem problem) {
   final what = switch (problem.kind) {
+    OutboxOperationKind.createTask => l10n.syncProblemCreateFailed,
     OutboxOperationKind.updateTask => l10n.syncProblemUpdateFailed,
     OutboxOperationKind.deleteTask => l10n.syncProblemDeleteFailed,
   };

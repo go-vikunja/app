@@ -42,7 +42,11 @@ class TaskRow extends StatelessWidget {
     final detailStyle = theme.textTheme.bodyMedium?.copyWith(
       color: colors.onSurfaceVariant,
     );
-    final details = [task.displayIdentifier, ?projectTitle].join(' · ');
+    // A task not yet sent has no identifier until the server assigns one.
+    final details = [
+      if (task.id > 0) task.displayIdentifier,
+      ?projectTitle,
+    ].join(' · ');
     final showsChips =
         PriorityChip.shows(task.priority) || task.labels.isNotEmpty;
 
@@ -65,7 +69,7 @@ class TaskRow extends StatelessWidget {
             spacing: 8,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Text(details, style: detailStyle),
+              if (details.isNotEmpty) Text(details, style: detailStyle),
               if (due != null)
                 _DueText(
                   due: due,

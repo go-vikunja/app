@@ -1771,6 +1771,342 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Discard'**
   String get syncProblemDiscard;
+
+  /// No description provided for @syncProblemCreateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The task could not be created.'**
+  String get syncProblemCreateFailed;
+
+  /// No description provided for @taskEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get taskEdit;
+
+  /// No description provided for @taskEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit task'**
+  String get taskEditTitle;
+
+  /// No description provided for @taskEditSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get taskEditSave;
+
+  /// No description provided for @taskEditSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved'**
+  String get taskEditSaved;
+
+  /// No description provided for @taskEditLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading task…'**
+  String get taskEditLoading;
+
+  /// No description provided for @taskEditGoneTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Task not found'**
+  String get taskEditGoneTitle;
+
+  /// No description provided for @taskEditGoneBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This task is no longer on this device.'**
+  String get taskEditGoneBody;
+
+  /// No description provided for @taskEditTitleLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get taskEditTitleLabel;
+
+  /// No description provided for @taskEditTitleRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a title.'**
+  String get taskEditTitleRequired;
+
+  /// No description provided for @taskEditProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Project'**
+  String get taskEditProject;
+
+  /// No description provided for @taskEditProjectPickerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a project'**
+  String get taskEditProjectPickerTitle;
+
+  /// No description provided for @taskEditProjectSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Project: {project}'**
+  String taskEditProjectSemantics(String project);
+
+  /// No description provided for @taskEditDateNotSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Not set'**
+  String get taskEditDateNotSet;
+
+  /// No description provided for @taskEditClearDueDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear due date'**
+  String get taskEditClearDueDate;
+
+  /// No description provided for @taskEditClearStartDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear start date'**
+  String get taskEditClearStartDate;
+
+  /// No description provided for @taskEditClearEndDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear end date'**
+  String get taskEditClearEndDate;
+
+  /// No description provided for @shortcutToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get shortcutToday;
+
+  /// No description provided for @shortcutTomorrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Tomorrow'**
+  String get shortcutTomorrow;
+
+  /// No description provided for @shortcutNextMonday.
+  ///
+  /// In en, this message translates to:
+  /// **'Next Monday'**
+  String get shortcutNextMonday;
+
+  /// No description provided for @shortcutThisWeekend.
+  ///
+  /// In en, this message translates to:
+  /// **'This weekend'**
+  String get shortcutThisWeekend;
+
+  /// No description provided for @shortcutLaterThisWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'Later this week'**
+  String get shortcutLaterThisWeek;
+
+  /// No description provided for @shortcutNextWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'Next week'**
+  String get shortcutNextWeek;
+
+  /// No description provided for @shortcutNextWeekend.
+  ///
+  /// In en, this message translates to:
+  /// **'Next weekend'**
+  String get shortcutNextWeekend;
+
+  /// No description provided for @shortcutEndOfMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'End of month'**
+  String get shortcutEndOfMonth;
+
+  /// No description provided for @shortcutInAMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'In a month'**
+  String get shortcutInAMonth;
+
+  /// A date shortcut chip read out with the day it stands for.
+  ///
+  /// In en, this message translates to:
+  /// **'{label}, {date}'**
+  String shortcutSemantics(String label, String date);
+
+  /// No description provided for @taskEditColour.
+  ///
+  /// In en, this message translates to:
+  /// **'Colour'**
+  String get taskEditColour;
+
+  /// No description provided for @taskEditNoColour.
+  ///
+  /// In en, this message translates to:
+  /// **'No colour'**
+  String get taskEditNoColour;
+
+  /// No description provided for @taskEditColourSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Colour {hex}'**
+  String taskEditColourSemantics(String hex);
+
+  /// No description provided for @taskEditRepeat.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat'**
+  String get taskEditRepeat;
+
+  /// No description provided for @repeatModeNone.
+  ///
+  /// In en, this message translates to:
+  /// **'Never'**
+  String get repeatModeNone;
+
+  /// No description provided for @repeatModeEvery.
+  ///
+  /// In en, this message translates to:
+  /// **'Every…'**
+  String get repeatModeEvery;
+
+  /// No description provided for @repeatModeMonthly.
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly'**
+  String get repeatModeMonthly;
+
+  /// No description provided for @repeatModeFromCompletion.
+  ///
+  /// In en, this message translates to:
+  /// **'From completion'**
+  String get repeatModeFromCompletion;
+
+  /// No description provided for @repeatAmountLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Every'**
+  String get repeatAmountLabel;
+
+  /// No description provided for @repeatAmountInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter more than 0.'**
+  String get repeatAmountInvalid;
+
+  /// No description provided for @repeatUnitHours.
+  ///
+  /// In en, this message translates to:
+  /// **'Hours'**
+  String get repeatUnitHours;
+
+  /// No description provided for @repeatUnitDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Days'**
+  String get repeatUnitDays;
+
+  /// No description provided for @repeatUnitWeeks.
+  ///
+  /// In en, this message translates to:
+  /// **'Weeks'**
+  String get repeatUnitWeeks;
+
+  /// No description provided for @repeatPresetDaily.
+  ///
+  /// In en, this message translates to:
+  /// **'Every day'**
+  String get repeatPresetDaily;
+
+  /// No description provided for @repeatPresetWeekly.
+  ///
+  /// In en, this message translates to:
+  /// **'Every week'**
+  String get repeatPresetWeekly;
+
+  /// No description provided for @repeatPresetThirtyDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Every 30 days'**
+  String get repeatPresetThirtyDays;
+
+  /// No description provided for @taskEditDiscardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard changes?'**
+  String get taskEditDiscardTitle;
+
+  /// No description provided for @taskEditDiscardBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your edits to this task will be lost.'**
+  String get taskEditDiscardBody;
+
+  /// No description provided for @taskEditKeepEditing.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep editing'**
+  String get taskEditKeepEditing;
+
+  /// No description provided for @taskEditDiscard.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard'**
+  String get taskEditDiscard;
+
+  /// No description provided for @pickerDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get pickerDone;
+
+  /// No description provided for @pickerCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get pickerCancel;
+
+  /// No description provided for @newTask.
+  ///
+  /// In en, this message translates to:
+  /// **'New task'**
+  String get newTask;
+
+  /// No description provided for @newTaskTitleHint.
+  ///
+  /// In en, this message translates to:
+  /// **'What needs doing?'**
+  String get newTaskTitleHint;
+
+  /// No description provided for @newTaskAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get newTaskAdd;
+
+  /// No description provided for @newTaskMoreOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'More options'**
+  String get newTaskMoreOptions;
+
+  /// No description provided for @newTaskPickDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick date…'**
+  String get newTaskPickDate;
+
+  /// No description provided for @newTaskNoProject.
+  ///
+  /// In en, this message translates to:
+  /// **'No project'**
+  String get newTaskNoProject;
+
+  /// No description provided for @newTaskCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Added “{title}”'**
+  String newTaskCreated(String title);
 }
 
 class _AppLocalizationsDelegate

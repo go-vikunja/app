@@ -11,6 +11,7 @@ mixin _$TasksDaoMixin on DatabaseAccessor<AppDatabase> {
   $TaskAssigneesTable get taskAssignees => attachedDatabase.taskAssignees;
   $TaskRemindersTable get taskReminders => attachedDatabase.taskReminders;
   $TaskRelationsTable get taskRelations => attachedDatabase.taskRelations;
+  $TaskIdRemapsTable get taskIdRemaps => attachedDatabase.taskIdRemaps;
   TasksDaoManager get managers => TasksDaoManager(this);
 }
 
@@ -31,4 +32,6 @@ class TasksDaoManager {
       $$TaskRemindersTableTableManager(_db.attachedDatabase, _db.taskReminders);
   $$TaskRelationsTableTableManager get taskRelations =>
       $$TaskRelationsTableTableManager(_db.attachedDatabase, _db.taskRelations);
+  $$TaskIdRemapsTableTableManager get taskIdRemaps =>
+      $$TaskIdRemapsTableTableManager(_db.attachedDatabase, _db.taskIdRemaps);
 }

@@ -23,6 +23,9 @@ Map<String, Object?> taskChangesToJson(TaskChanges changes) => {
   if (changes.dueDate case final date?) 'due_date': _dateJson(date),
   if (changes.startDate case final date?) 'start_date': _dateJson(date),
   if (changes.endDate case final date?) 'end_date': _dateJson(date),
+  'repeat_after': ?changes.repeatAfter?.inSeconds,
+  'repeat_mode': ?changes.repeatMode?.value,
+  'project_id': ?changes.projectId,
 };
 
 TaskChanges taskChangesFromJson(Map<String, Object?> json) => TaskChanges(
@@ -36,6 +39,15 @@ TaskChanges taskChangesFromJson(Map<String, Object?> json) => TaskChanges(
   dueDate: _dateChange(json['due_date']),
   startDate: _dateChange(json['start_date']),
   endDate: _dateChange(json['end_date']),
+  repeatAfter: switch (json['repeat_after']) {
+    final int seconds => Duration(seconds: seconds),
+    _ => null,
+  },
+  repeatMode: switch (json['repeat_mode']) {
+    final int value => RepeatMode.fromValue(value),
+    _ => null,
+  },
+  projectId: json['project_id'] as int?,
 );
 
 String _dateJson(DateChange change) => switch (change) {

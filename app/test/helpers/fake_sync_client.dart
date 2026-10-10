@@ -133,6 +133,7 @@ final class FakeLabelsPort implements LabelsPort {
 
 final _doneClause = RegExp(r'^done = (true|false)$');
 final _updatedClause = RegExp(r"^updated (>=|>) '([^']+)'$");
+final _createdClause = RegExp(r"^created >= '([^']+)'$");
 final _idClause = RegExp(r'^id > (\d+)$');
 
 typedef _Matches = bool Function(Task task);
@@ -210,6 +211,9 @@ final class FakeTasksPort implements TasksPort {
           TaskSortField.updated => _epoch(
             a.updated,
           ).compareTo(_epoch(b.updated)),
+          TaskSortField.created => _epoch(
+            a.created,
+          ).compareTo(_epoch(b.created)),
           TaskSortField.position => a.position.compareTo(b.position),
           _ => throw StateError('unsupported task sort: ${sort.field}'),
         };
@@ -221,9 +225,10 @@ final class FakeTasksPort implements TasksPort {
     return _client._page(matching, page: query.page, perPage: query.perPage);
   }
 
-  /// The filters the engine sends: `done = …`, `updated >= '…'`,
-  /// `updated > '…'` and `id > …` joined by `&&`, or parenthesized groups
-  /// of those joined by `||`. Anything else is a bug in the engine.
+  /// The filters the engine and the outbox sender send: `done = …`,
+  /// `updated >= '…'`, `updated > '…'`, `created >= '…'` and `id > …`
+  /// joined by `&&`, or parenthesized groups of those joined by `||`.
+  /// Anything else is a bug in the engine.
   _Matches _predicate(String? filter) {
     if (filter == null || filter.isEmpty) return (_) => true;
     final groups = [
@@ -252,6 +257,14 @@ final class FakeTasksPort implements TasksPort {
             null => false,
             final updated =>
               strict ? updated.isAfter(moment) : !updated.isBefore(moment),
+          },
+        );
+      } else if (_createdClause.firstMatch(clause) case final match?) {
+        final moment = DateTime.parse(match.group(1)!);
+        tests.add(
+          (task) => switch (task.created) {
+            null => false,
+            final created => !created.isBefore(moment),
           },
         );
       } else if (_idClause.firstMatch(clause) case final match?) {

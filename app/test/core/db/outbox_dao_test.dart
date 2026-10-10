@@ -3,6 +3,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/db/daos/outbox_dao.dart';
 import 'package:vikunja_mobile/core/outbox/failure_json.dart';
+import 'package:vikunja_mobile/core/outbox/new_task_json.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/outbox/task_changes_json.dart';
 
@@ -309,9 +310,11 @@ void main() {
       await queue(1, done);
       await db.outboxDao.markSending((await ops()).single.id, at: now);
 
-      expect(await db.outboxDao.resetSending(), 1);
+      expect(await db.outboxDao.resetSending(now: later), 1);
 
-      expect((await ops()).single.state, OutboxState.pending.name);
+      final op = (await ops()).single;
+      expect(op.state, OutboxState.pending.name);
+      expect(op.sentAt, isNull);
     });
 
     test("removing an op recomputes the task's pending changes", () async {
@@ -398,6 +401,484 @@ void main() {
       expect(counts.last, 0);
       expect(problems.last, isEmpty);
       expect(ids.last, isEmpty);
+    });
+  });
+
+  group('creates', () {
+    const draft = NewTask(
+      projectId: 7,
+      title: 'Buy milk',
+      priority: TaskPriority.high,
+      hexColor: 'ff4136',
+      isFavorite: true,
+    );
+
+    Future<int> create([NewTask task = draft]) =>
+        db.outboxDao.queueCreate(task, now: now);
+
+    Future<OutboxRow> createOp(int localId) async => (await ops()).singleWhere(
+      (op) => op.taskId == localId && op.kind == 'createTask',
+    );
+
+    test('a new task gets the next temporary id and a create op', () async {
+      final first = await create();
+      final second = await create(const NewTask(projectId: 8, title: 'Two'));
+
+      expect(first, -1);
+      expect(second, -2);
+      final task = (await db.tasksDao.find(-1))!;
+      expect(task.title, 'Buy milk');
+      expect(task.projectId, 7);
+      expect(task.priority, TaskPriority.high);
+      expect(task.hexColor, 'ff4136');
+      expect(task.isFavorite, isTrue);
+      expect(task.identifier, '');
+      expect(task.created, now);
+      expect(task.updated, isNull);
+      expect((await db.tasksDao.findRow(-1))!.pendingChanges, isNull);
+      final op = await createOp(-1);
+      expect(op.state, OutboxState.pending.name);
+      expect(op.sentAt, isNull);
+      expect(decodeNewTask(op.payload), draft);
+      expect(await db.outboxDao.count(), 2);
+      expect(await db.outboxDao.loadPendingTaskIds(), {-1, -2});
+      expect((await db.outboxDao.nextPending())!.taskId, -1);
+    });
+
+    test(
+      'temporary ids are never reused, even once the rows are gone',
+      () async {
+        final first = await create();
+        await db.outboxDao.completeCreate(
+          (await createOp(first)).id,
+          sampleTask(id: 50, title: 'Buy milk', projectId: 7),
+          at: later,
+        );
+        await db.outboxDao.cancelCreate(await create());
+
+        expect(await create(), -3);
+      },
+    );
+
+    test('an edit before the send folds into the create', () async {
+      final id = await create();
+
+      expect(
+        await queue(
+          id,
+          TaskChanges(
+            title: 'Buy oat milk',
+            projectId: 8,
+            dueDate: DateChange.set(monday),
+            repeatAfter: const Duration(days: 1),
+            isFavorite: false,
+          ),
+        ),
+        isTrue,
+      );
+
+      final op = (await ops()).single;
+      expect(op.kind, 'createTask');
+      expect(
+        decodeNewTask(op.payload),
+        NewTask(
+          projectId: 8,
+          title: 'Buy oat milk',
+          priority: TaskPriority.high,
+          hexColor: 'ff4136',
+          dueDate: monday,
+          repeatAfter: const Duration(days: 1),
+        ),
+      );
+      final task = (await db.tasksDao.find(id))!;
+      expect(task.title, 'Buy oat milk');
+      expect(task.projectId, 8);
+      expect(task.dueDate, monday);
+      expect(task.repeatAfter, const Duration(days: 1));
+      expect(task.isFavorite, isFalse);
+      expect((await db.tasksDao.findRow(id))!.pendingChanges, isNull);
+    });
+
+    test(
+      'a done before the send is the one update a create cannot carry',
+      () async {
+        final id = await create();
+
+        await queue(id, const TaskChanges(done: true, title: 'Bought'));
+        await queue(id, const TaskChanges(done: false));
+
+        final all = await ops();
+        expect(all.map((op) => op.kind), ['createTask', 'updateTask']);
+        expect(decodeNewTask(all.first.payload).title, 'Bought');
+        expect(
+          decodeTaskChanges(all.last.payload),
+          const TaskChanges(done: false),
+        );
+        expect(await pendingOf(id), const TaskChanges(done: false));
+        expect((await db.tasksDao.find(id))!.done, isFalse);
+        // The update waits for the create: it cannot go under a temporary id.
+        expect((await db.outboxDao.nextPending())!.kind, 'createTask');
+        await db.outboxDao.markSending(all.first.id, at: now);
+        expect(await db.outboxDao.nextPending(), isNull);
+      },
+    );
+
+    test('a delete before the send cancels the create and the row', () async {
+      final id = await create();
+      await queue(id, const TaskChanges(done: true));
+
+      expect(await db.outboxDao.queueDelete(id, now: now), isTrue);
+
+      expect(await db.tasksDao.findRow(id), isNull);
+      expect(await db.outboxDao.count(), 0);
+      expect(await db.outboxDao.queueDelete(id, now: now), isFalse);
+    });
+
+    test('a rejected create takes the edit and goes back to pending; a delete '
+        'cancels it', () async {
+      final id = await create();
+      final op = await createOp(id);
+      await db.outboxDao.markSending(op.id, at: now);
+      await db.outboxDao.markFailed(op.id, const DomainError(412, code: 3008));
+      expect((await db.outboxDao.loadProblems()).single.taskTitle, 'Buy milk');
+
+      await queue(id, const TaskChanges(projectId: 9));
+
+      final retaken = (await ops()).single;
+      expect(retaken.id, op.id);
+      expect(retaken.state, OutboxState.pending.name);
+      expect(retaken.lastError, isNull);
+      expect(decodeNewTask(retaken.payload).projectId, 9);
+      expect(await db.outboxDao.loadProblems(), isEmpty);
+
+      await db.outboxDao.markFailed(op.id, const DomainError(412, code: 3008));
+      await db.outboxDao.queueDelete(id, now: now);
+
+      expect(await db.outboxDao.count(), 0);
+      expect(await db.tasksDao.findRow(id), isNull);
+    });
+
+    test('while the create is in flight, edits and a delete queue behind it '
+        'under the temporary id', () async {
+      final id = await create();
+      final op = await createOp(id);
+      await db.outboxDao.markSending(op.id, at: now);
+
+      await queue(id, const TaskChanges(title: 'Edited in flight'));
+      await queue(id, favorite);
+      expect(await db.outboxDao.queueDelete(id, now: now), isTrue);
+
+      final all = await ops();
+      expect(all.map((op) => op.kind), ['createTask', 'deleteTask']);
+      expect(all.map((op) => op.taskId), [id, id]);
+      expect(decodeNewTask(all.first.payload), draft);
+      expect((await db.tasksDao.findRow(id))!.pendingDelete, isTrue);
+      expect(await db.tasksDao.find(id), isNull);
+    });
+
+    test('an unanswered create keeps its payload: the lookup needs the title '
+        'as sent', () async {
+      final id = await create();
+      final op = await createOp(id);
+      await db.outboxDao.markSending(op.id, at: now);
+      await db.outboxDao.markUncertain(op.id, sentAt: now);
+      await db.outboxDao.scheduleRetry(
+        op.id,
+        attempts: 1,
+        failure: const NetworkFailure(NetworkProblem.timeout),
+        nextAttemptAt: later,
+      );
+      // A second uncertain attempt keeps the first time.
+      await db.outboxDao.markUncertain(op.id, sentAt: later);
+
+      await queue(id, const TaskChanges(title: 'Renamed meanwhile'));
+
+      final all = await ops();
+      expect(all.map((op) => op.kind), ['createTask', 'updateTask']);
+      expect(all.first.sentAt, now);
+      expect(decodeNewTask(all.first.payload).title, 'Buy milk');
+      expect(
+        decodeTaskChanges(all.last.payload),
+        const TaskChanges(title: 'Renamed meanwhile'),
+      );
+      expect((await db.tasksDao.find(id))!.title, 'Renamed meanwhile');
+      expect(
+        await pendingOf(id),
+        const TaskChanges(title: 'Renamed meanwhile'),
+      );
+    });
+
+    test('a create left in flight by a killed app is uncertain as of its '
+        'attempt, and an edit queues behind it', () async {
+      final id = await create();
+      final createOpId = (await createOp(id)).id;
+      await db.outboxDao.markSending(createOpId, at: now);
+      await queue(1, done);
+      await db.outboxDao.markSending((await ops()).last.id, at: now);
+
+      expect(await db.outboxDao.resetSending(now: later), 2);
+
+      final all = await ops();
+      expect(all.map((op) => op.state), ['pending', 'pending']);
+      expect(all.first.sentAt, now);
+      expect(all.first.lastAttemptAt, now);
+      expect(all.last.sentAt, isNull);
+      // The server may have the task: the edit is not folded into the create.
+      await queue(id, const TaskChanges(title: 'Edited after the restart'));
+      expect((await ops()).map((op) => op.kind), [
+        'createTask',
+        'updateTask',
+        'updateTask',
+      ]);
+      expect(decodeNewTask((await createOp(id)).payload).title, 'Buy milk');
+    });
+
+    test('a create reset after a restart keeps an earlier sent_at', () async {
+      final id = await create();
+      final op = await createOp(id);
+      await db.outboxDao.markUncertain(op.id, sentAt: now);
+      await db.outboxDao.markSending(op.id, at: later);
+
+      await db.outboxDao.resetSending(now: later);
+
+      expect((await createOp(id)).sentAt, now);
+    });
+
+    test('a create left in flight without an attempt time takes the reset '
+        'time', () async {
+      final id = await create();
+      final op = await createOp(id);
+      await db.outboxDao.markSending(op.id, at: now);
+      await db.customStatement(
+        'UPDATE outbox SET last_attempt_at = NULL WHERE id = ?',
+        [op.id],
+      );
+
+      await db.outboxDao.resetSending(now: later);
+
+      expect((await createOp(id)).sentAt, later);
+    });
+
+    test('a rejected create takes the edit queued while it was in flight, so '
+        'a later edit folded into it is not reverted', () async {
+      final id = await create();
+      final op = await createOp(id);
+      await db.outboxDao.markSending(op.id, at: now);
+      await queue(id, const TaskChanges(title: 'B', done: true));
+      expect((await ops()).map((op) => op.kind), ['createTask', 'updateTask']);
+
+      await db.outboxDao.markFailed(op.id, const DomainError(412, code: 3008));
+
+      var all = await ops();
+      expect(all.map((op) => op.kind), ['createTask', 'updateTask']);
+      expect(decodeNewTask(all.first.payload).title, 'B');
+      expect(
+        decodeTaskChanges(all.last.payload),
+        const TaskChanges(done: true),
+      );
+      expect(await pendingOf(id), const TaskChanges(done: true));
+
+      await queue(id, const TaskChanges(title: 'C'));
+
+      all = await ops();
+      expect(decodeNewTask(all.first.payload).title, 'C');
+      expect(all.first.state, OutboxState.pending.name);
+      await db.outboxDao.completeCreate(
+        all.first.id,
+        sampleTask(id: 50, title: 'C', projectId: 7),
+        at: later,
+      );
+      final task = (await db.tasksDao.find(50))!;
+      expect(task.title, 'C');
+      expect(task.done, isTrue);
+      expect(await pendingOf(50), const TaskChanges(done: true));
+    });
+
+    test('a rejected create with only a rename behind it carries the rename '
+        'and the update op goes', () async {
+      final id = await create();
+      final op = await createOp(id);
+      await db.outboxDao.markSending(op.id, at: now);
+      await queue(id, const TaskChanges(title: 'B'));
+
+      await db.outboxDao.markFailed(op.id, const NotFound(code: 3001));
+
+      final failed = (await ops()).single;
+      expect(failed.kind, 'createTask');
+      expect(failed.state, OutboxState.failed.name);
+      expect(decodeNewTask(failed.payload).title, 'B');
+      expect(await pendingOf(id), isNull);
+      expect((await db.tasksDao.find(id))!.title, 'B');
+    });
+
+    test('an edit or a delete under a remapped temporary id lands on the '
+        'server row', () async {
+      final id = await create();
+      await db.outboxDao.completeCreate(
+        (await createOp(id)).id,
+        sampleTask(id: 50, title: 'Buy milk', projectId: 7),
+        at: later,
+      );
+
+      expect(await queue(id, done), isTrue);
+
+      final op = (await ops()).single;
+      expect(op.kind, 'updateTask');
+      expect(op.taskId, 50);
+      expect((await db.tasksDao.find(50))!.done, isTrue);
+      expect(await pendingOf(50), done);
+
+      expect(await db.outboxDao.queueDelete(id, now: now), isTrue);
+
+      expect((await ops()).single.kind, 'deleteTask');
+      expect((await ops()).single.taskId, 50);
+      expect((await db.tasksDao.findRow(50))!.pendingDelete, isTrue);
+      expect(await queue(id, done), isFalse);
+    });
+
+    test('a rejection clears the uncertainty: the server said no', () async {
+      final id = await create();
+      final op = await createOp(id);
+      await db.outboxDao.markUncertain(op.id, sentAt: now);
+
+      await db.outboxDao.markFailed(op.id, const NotFound(code: 3001));
+
+      expect((await createOp(id)).sentAt, isNull);
+    });
+
+    test(
+      'a rejected create behind which a delete waits goes with it',
+      () async {
+        final id = await create();
+        final op = await createOp(id);
+        await db.outboxDao.markSending(op.id, at: now);
+        await db.outboxDao.queueDelete(id, now: now);
+
+        await db.outboxDao.markFailed(op.id, const NotFound(code: 3001));
+
+        expect(await db.outboxDao.count(), 0);
+        expect(await db.tasksDao.findRow(id), isNull);
+      },
+    );
+
+    test('completing a create moves the row to the server id with the '
+        'response applied and records the remap', () async {
+      final id = await create();
+      final op = await createOp(id);
+      final created = sampleTask(
+        id: 50,
+        title: 'Buy milk',
+        projectId: 7,
+        priority: TaskPriority.high,
+        favorite: true,
+        identifier: 'SHOP-4',
+        updated: later,
+      );
+
+      await db.outboxDao.completeCreate(op.id, created, at: later);
+
+      expect(await db.tasksDao.findRow(id), isNull);
+      final task = (await db.tasksDao.find(50))!;
+      expect(task.title, 'Buy milk');
+      expect(task.identifier, 'SHOP-4');
+      expect(task.index, 50);
+      expect(task.updated, later);
+      expect((await db.tasksDao.findRow(50))!.pendingChanges, isNull);
+      expect(await db.outboxDao.count(), 0);
+      expect(await db.tasksDao.resolveId(id), 50);
+      expect(await db.tasksDao.resolveId(50), 50);
+      expect(await db.tasksDao.resolveId(-99), -99);
+    });
+
+    test('the ops queued behind the create follow it to the server id and '
+        'their fields stay on top of the response', () async {
+      final id = await create();
+      final op = await createOp(id);
+      await db.outboxDao.markSending(op.id, at: now);
+      await queue(id, const TaskChanges(done: true, title: 'Edited in flight'));
+
+      await db.outboxDao.completeCreate(
+        op.id,
+        sampleTask(id: 50, title: 'Buy milk', projectId: 7, updated: later),
+        at: later,
+      );
+
+      final follower = (await ops()).single;
+      expect(follower.kind, 'updateTask');
+      expect(follower.taskId, 50);
+      expect(follower.state, OutboxState.pending.name);
+      expect((await db.outboxDao.nextPending())!.id, follower.id);
+      final task = (await db.tasksDao.find(50))!;
+      expect(task.title, 'Edited in flight');
+      expect(task.done, isTrue);
+      expect(task.doneAt, now);
+      expect(task.updated, later);
+      expect(
+        await pendingOf(50),
+        const TaskChanges(done: true, title: 'Edited in flight'),
+      );
+      expect(await db.outboxDao.loadPendingTaskIds(), {50});
+    });
+
+    test(
+      'a delete queued behind the create keeps the server row hidden',
+      () async {
+        final id = await create();
+        final op = await createOp(id);
+        await db.outboxDao.markSending(op.id, at: now);
+        await db.outboxDao.queueDelete(id, now: now);
+
+        await db.outboxDao.completeCreate(
+          op.id,
+          sampleTask(id: 50, title: 'Buy milk', projectId: 7),
+          at: later,
+        );
+
+        expect(await db.tasksDao.find(50), isNull);
+        expect((await db.tasksDao.findRow(50))!.pendingDelete, isTrue);
+        final follower = (await ops()).single;
+        expect(follower.kind, 'deleteTask');
+        expect(follower.taskId, 50);
+      },
+    );
+
+    test(
+      'a row the sync pulled under the server id meanwhile is replaced',
+      () async {
+        final id = await create();
+        final op = await createOp(id);
+        await db.tasksDao.upsertAll([
+          sampleTask(id: 50, title: 'Buy milk', projectId: 7, updated: now),
+        ], syncRunId: 'run');
+
+        await db.outboxDao.completeCreate(
+          op.id,
+          sampleTask(id: 50, title: 'Buy milk', projectId: 7, updated: later),
+          at: later,
+        );
+
+        expect((await db.tasksDao.find(50))!.updated, later);
+        expect(await db.tasksDao.findRow(id), isNull);
+        expect(await db.tasksDao.count(), 4);
+      },
+    );
+
+    test('a create is listed as a problem under its title', () async {
+      final id = await create();
+      final op = await createOp(id);
+      await db.outboxDao.markSending(op.id, at: later);
+
+      await db.outboxDao.markFailed(
+        op.id,
+        const ValidationFailed(code: 4001, message: 'title empty'),
+      );
+
+      final problem = (await db.outboxDao.loadProblems()).single;
+      expect(problem.kind, OutboxOperationKind.createTask);
+      expect(problem.taskId, id);
+      expect(problem.taskTitle, 'Buy milk');
+      expect(problem.failedAt, later);
+      expect(await db.outboxDao.nextPending(), isNull);
     });
   });
 }

@@ -231,4 +231,64 @@ void main() {
 
     expect((await db.tasksDao.find(1))!.done, isFalse);
   });
+
+  group('a task created here', () {
+    const draft = NewTask(projectId: 1, title: 'Created offline');
+
+    test('survives every pull and never counts as missing', () async {
+      final id = await db.outboxDao.queueCreate(draft, now: now);
+      client.requests.clear();
+
+      await engine().refresh();
+
+      // The probe matched: no project was counted.
+      expect(
+        client.requests.where((r) => r.contains('per_page=1 ')),
+        hasLength(1),
+      );
+      expect((await db.tasksDao.find(id))!.title, 'Created offline');
+
+      await engine().fullResync();
+
+      expect((await db.tasksDao.find(id))!.title, 'Created offline');
+      expect(await db.tasksDao.count(), 4);
+      expect(await db.outboxDao.count(), 1);
+    });
+
+    test(
+      'once remapped, the next pull upserts the server task as usual',
+      () async {
+        final id = await db.outboxDao.queueCreate(draft, now: now);
+        final write = FakeWriteClient(clock: () => now);
+        final sync = RecordingSyncEngine();
+        final sender = OutboxSender(
+          db: db,
+          writeClient: write,
+          readClient: client,
+          sync: sync,
+          now: () => now,
+          createTimer: FakeTimers().create,
+          random: ZeroRandom(),
+        );
+        addTearDown(sender.dispose);
+        await sender.drain();
+        expect(await db.tasksDao.resolveId(id), 100);
+        client.allTasks = [
+          ...client.allTasks,
+          copyTask(
+            write.serverTasks[100]!,
+            title: 'Edited on the web',
+            updated: edited,
+          ),
+        ];
+
+        await engine().refresh();
+
+        expect((await db.tasksDao.find(100))!.title, 'Edited on the web');
+        expect(await db.tasksDao.find(id), isNull);
+        expect(await db.tasksDao.count(), 5);
+        expect(await db.outboxDao.count(), 0);
+      },
+    );
+  });
 }

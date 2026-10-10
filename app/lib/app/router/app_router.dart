@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_mobile/app/router/splash_screen.dart';
@@ -16,6 +16,7 @@ import 'package:vikunja_mobile/features/projects/presentation/project_tasks_scre
 import 'package:vikunja_mobile/features/projects/presentation/projects_screen.dart';
 import 'package:vikunja_mobile/features/sync/application/sync_status_queries.dart';
 import 'package:vikunja_mobile/features/sync/presentation/first_sync_screen.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/edit/task_edit_page.dart';
 
 part 'app_router.g.dart';
 
@@ -34,6 +35,9 @@ abstract final class AppRoutes {
   static const account = '/home/account';
 
   static String project(int id) => '$projects/$id';
+
+  /// Full screen over the shell, from the detail sheet or a new task.
+  static String taskEdit(int id) => '$home/tasks/$id/edit';
 }
 
 @Riverpod(keepAlive: true)
@@ -49,7 +53,9 @@ GoRouter appRouter(Ref ref) {
     ..onDispose(accounts.dispose)
     ..onDispose(syncStatus.dispose);
 
+  final rootNavigatorKey = GlobalKey<NavigatorState>();
   final router = GoRouter(
+    navigatorKey: rootNavigatorKey,
     initialLocation: AppRoutes.splash,
     refreshListenable: Listenable.merge([currentServer, accounts, syncStatus]),
     redirect: (context, state) => _redirect(
@@ -81,6 +87,14 @@ GoRouter appRouter(Ref ref) {
         path: AppRoutes.home,
         redirect: (context, state) => AppRoutes.overview,
       ),
+      // On the root navigator: it covers the tab bar.
+      GoRoute(
+        path: '${AppRoutes.home}/tasks/:id/edit',
+        parentNavigatorKey: rootNavigatorKey,
+        redirect: (context, state) =>
+            _idParam(state) == null ? AppRoutes.overview : null,
+        builder: (context, state) => TaskEditPage(taskId: _idParam(state)!),
+      ),
       // Each tab keeps its own navigation stack and scroll position.
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
@@ -103,9 +117,9 @@ GoRouter appRouter(Ref ref) {
                   GoRoute(
                     path: ':id',
                     redirect: (context, state) =>
-                        _projectId(state) == null ? AppRoutes.projects : null,
+                        _idParam(state) == null ? AppRoutes.projects : null,
                     builder: (context, state) =>
-                        ProjectTasksScreen(projectId: _projectId(state)!),
+                        ProjectTasksScreen(projectId: _idParam(state)!),
                   ),
                 ],
               ),
@@ -127,7 +141,9 @@ GoRouter appRouter(Ref ref) {
   return router;
 }
 
-int? _projectId(GoRouterState state) =>
+/// The `:id` of a route; negative for a task created on this device and
+/// not yet sent.
+int? _idParam(GoRouterState state) =>
     int.tryParse(state.pathParameters['id'] ?? '');
 
 /// The account registry and the sync state are local, so the start screen

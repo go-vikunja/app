@@ -59,14 +59,37 @@ Map<String, Object?> encodeTaskChanges(TaskChanges changes) => {
   'priority': ?changes.priority,
   'percent_done': ?changes.percentDone,
   if (changes.hexColor case final hexColor?)
-    'hex_color': hexColor.startsWith('#') ? hexColor.substring(1) : hexColor,
+    'hex_color': _hexColorWire(hexColor),
   if (changes.dueDate case final dueDate?)
     'due_date': _encodeDateChange(dueDate),
   if (changes.startDate case final startDate?)
     'start_date': _encodeDateChange(startDate),
   if (changes.endDate case final endDate?)
     'end_date': _encodeDateChange(endDate),
+  'repeat_after': ?changes.repeatAfter?.inSeconds,
+  'repeat_mode': ?changes.repeatMode?.value,
+  'project_id': ?changes.projectId,
 };
+
+/// The create body for both versions. The project is only in the path: a
+/// `project_id` in a v1 body overrides the path (v2 ignores it). Unset
+/// dates are omitted; the server stores the zero date for them.
+Map<String, Object?> encodeNewTask(NewTask task) => {
+  'title': task.title,
+  'description': task.description,
+  if (task.dueDate case final dueDate?) 'due_date': encodeDate(dueDate),
+  if (task.startDate case final startDate?) 'start_date': encodeDate(startDate),
+  if (task.endDate case final endDate?) 'end_date': encodeDate(endDate),
+  'priority': task.priority.value,
+  'percent_done': task.percentDone,
+  'hex_color': _hexColorWire(task.hexColor),
+  'repeat_after': task.repeatAfter.inSeconds,
+  'repeat_mode': task.repeatMode.value,
+  'is_favorite': task.isFavorite,
+};
+
+String _hexColorWire(String hexColor) =>
+    hexColor.startsWith('#') ? hexColor.substring(1) : hexColor;
 
 String _encodeDateChange(DateChange change) => switch (change) {
   SetDate(:final value) => encodeDate(value),

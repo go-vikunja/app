@@ -3,7 +3,9 @@ import 'package:vikunja_mobile/core/db/epoch_millis.dart';
 
 /// Queued task writes, sent in [sequence] order. One row per task at most
 /// in `pending` or `failed`: a later edit merges into it, a delete replaces
-/// it. [state] is `pending`, `sending` or `failed`.
+/// it; only a create that may already be on the server keeps the ops
+/// queued after it apart, under its temporary id until the server id is
+/// known. [state] is `pending`, `sending` or `failed`.
 @DataClassName('OutboxRow')
 @TableIndex(name: 'outbox_state_sequence', columns: {#state, #sequence})
 class Outbox extends Table {
@@ -15,9 +17,12 @@ class Outbox extends Table {
 
   /// `OutboxOperationKind.name`.
   TextColumn get kind => text()();
+
+  /// Negative for a task created here that the server has not named yet.
   IntColumn get taskId => integer()();
 
-  /// The `TaskChanges` as JSON; empty for a delete.
+  /// The `TaskChanges` as JSON, the `NewTask` for a create; empty for a
+  /// delete.
   TextColumn get payload => text()();
   IntColumn get createdAt => integer().map(const EpochMillis())();
   IntColumn get attempts => integer()();
@@ -29,6 +34,12 @@ class Outbox extends Table {
 
   /// The normalized `VikunjaFailure` of the last attempt as JSON.
   TextColumn get lastError => text().nullable()();
+
+  /// When a create's request may have reached the server although no
+  /// answer came back: set on the first such attempt, so the next one looks
+  /// for the task before sending it again. Null for every other op and for
+  /// a create the server rejected.
+  IntColumn get sentAt => integer().map(const EpochMillis()).nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => {id};

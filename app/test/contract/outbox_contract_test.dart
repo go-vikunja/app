@@ -17,8 +17,12 @@ import 'helpers.dart';
 
 // Each API version gets a user of its own with a task carrying everything a
 // v1 full replace could lose (the user as assignee, an absolute and a
-// relative reminder, a label), a daily repeating task and a task to delete.
+// relative reminder, a label), a daily repeating task, a task to delete and
+// a second project, with an identifier prefix, to move a task into.
 typedef _Seed = ({
+  int projectId,
+  int otherProjectId,
+  String otherIdentifier,
   int richId,
   int repeatingId,
   int doomedId,
@@ -38,6 +42,13 @@ Future<_Seed> _seed(Seeder seeder, TestUser user) async {
   );
   final repeatingDue = reminderAt.add(const Duration(days: 2));
   final projectId = await seeder.create('/projects', {'title': 'Outbox'});
+  // Identifiers are unique across the server, so the user's random suffix
+  // keeps runs apart.
+  final otherIdentifier = 'M${user.username.substring(4).toUpperCase()}';
+  final otherProjectId = await seeder.create('/projects', {
+    'title': 'Elsewhere',
+    'identifier': otherIdentifier,
+  });
   final labelId = await seeder.create('/labels', {'title': 'kept'});
   final path = '/projects/$projectId/tasks';
   final richId = await seeder.create(path, {
@@ -59,6 +70,9 @@ Future<_Seed> _seed(Seeder seeder, TestUser user) async {
   });
   final doomedId = await seeder.create(path, {'title': 'Doomed'});
   return (
+    projectId: projectId,
+    otherProjectId: otherProjectId,
+    otherIdentifier: otherIdentifier,
     richId: richId,
     repeatingId: repeatingId,
     doomedId: doomedId,
@@ -91,6 +105,12 @@ final class _FlakyTasks implements TasksWritePort {
       _client.failNext--;
       throw const NetworkFailure(NetworkProblem.unreachable);
     }
+  }
+
+  @override
+  Future<Task> create(NewTask task) {
+    _maybeFail();
+    return _client._real.tasks.create(task);
   }
 
   @override
@@ -148,150 +168,352 @@ void main() {
     tearDownAll(() => dio.close(force: true));
 
     for (final apiVersion in ApiVersion.values) {
-      test('local writes reach the server over ${apiVersion.pathSegment} '
-          'and the answers land in the rows', () async {
-        final user = await registerAndLogin(dio, connection);
-        final seed = await _seed(Seeder(dio, connection, user), user);
-        final only = onlyApiVersion(connection, apiVersion);
-        final authenticated = createAuthenticatedDio(
-          base: dio,
-          connection: only,
-          tokens: StaticJwt(user.jwt),
-        );
-        final reads = createReadClient(dio: authenticated, connection: only);
-        final writes = _FlakyWriteClient(
-          createWriteClient(dio: authenticated, connection: only),
-        );
-        final db = testDatabase();
-        final engine = DefaultSyncEngine(
-          db: db,
-          client: reads,
-          perPage: only.info.maxItemsPerPage,
-          currentUser: AccountApi(authenticated, only).currentUser,
-        );
-        addTearDown(engine.dispose);
-        final sender = OutboxSender(
-          db: db,
-          writeClient: writes,
-          readClient: reads,
-          sync: engine,
-        );
-        addTearDown(sender.dispose);
-        final repository = LocalTaskRepository(db, engine, sender);
-        addTearDown(repository.dispose);
+      group('over ${apiVersion.pathSegment}', () {
+        late TestUser user;
+        late _Seed seed;
+        late VikunjaReadClient reads;
+        late _FlakyWriteClient writes;
+        late AppDatabase db;
+        late DefaultSyncEngine engine;
+        late OutboxSender sender;
+        late LocalTaskRepository repository;
 
-        await engine.ensureInitialSync();
-        expect(await db.tasksDao.count(), 3);
-
-        void expectIntact(Task task) {
-          expect(task.assignees.map((u) => u.id), [user.id]);
-          expect(task.reminders, hasLength(2));
-          expect(
-            task.reminders.map((r) => r.relativeTo),
-            containsAll([null, ReminderRelativeTo.dueDate]),
+        // One user per version: /register and /login share the limiter.
+        setUpAll(() async {
+          user = await registerAndLogin(dio, connection);
+          seed = await _seed(Seeder(dio, connection, user), user);
+          final only = onlyApiVersion(connection, apiVersion);
+          final authenticated = createAuthenticatedDio(
+            base: dio,
+            connection: only,
+            tokens: StaticJwt(user.jwt),
           );
-          expect(task.labels.map((l) => l.id), [seed.labelId]);
-          expect(task.title, 'Water the plants');
-          expect(task.description, '<p>Every pot</p>');
-          expect(task.priority, TaskPriority.high);
-        }
+          reads = createReadClient(dio: authenticated, connection: only);
+          writes = _FlakyWriteClient(
+            createWriteClient(dio: authenticated, connection: only),
+          );
+          db = testDatabase();
+          engine = DefaultSyncEngine(
+            db: db,
+            client: reads,
+            perPage: only.info.maxItemsPerPage,
+            currentUser: AccountApi(authenticated, only).currentUser,
+          );
+          addTearDown(engine.dispose);
+          sender = OutboxSender(
+            db: db,
+            writeClient: writes,
+            readClient: reads,
+            sync: engine,
+          );
+          addTearDown(sender.dispose);
+          repository = LocalTaskRepository(db, engine, sender);
+          addTearDown(repository.dispose);
+          await engine.ensureInitialSync();
+        });
 
-        // Done: on screen at once, then on the server; the response fills
-        // done_at, and nothing the v1 full replace could lose is lost.
-        await repository.setDone(seed.richId, done: true);
-        expect((await db.tasksDao.find(seed.richId))!.done, isTrue);
-        await _drainFully(sender, db);
+        test('local writes reach the server and the answers land in the '
+            'rows', () async {
+          expect(await db.tasksDao.count(), 3);
 
-        expect(await db.outboxDao.count(), 0);
-        final rich = (await db.tasksDao.find(seed.richId))!;
-        expect(rich.done, isTrue);
-        expect(rich.doneAt, isNotNull);
-        expectIntact(rich);
-        final richOnServer = await reads.tasks.read(seed.richId);
-        expect(richOnServer.done, isTrue);
-        expect(richOnServer.doneAt, rich.doneAt);
-        expect(richOnServer.updated, rich.updated);
-        expectIntact(richOnServer);
+          void expectIntact(Task task) {
+            expect(task.assignees.map((u) => u.id), [user.id]);
+            expect(task.reminders, hasLength(2));
+            expect(
+              task.reminders.map((r) => r.relativeTo),
+              containsAll([null, ReminderRelativeTo.dueDate]),
+            );
+            expect(task.labels.map((l) => l.id), [seed.labelId]);
+            expect(task.title, 'Water the plants');
+            expect(task.description, '<p>Every pot</p>');
+            expect(task.priority, TaskPriority.high);
+          }
 
-        // Favourite.
-        await repository.setFavorite(seed.richId, favorite: true);
-        await _drainFully(sender, db);
+          // Done: on screen at once, then on the server; the response fills
+          // done_at, and nothing the v1 full replace could lose is lost.
+          await repository.setDone(seed.richId, done: true);
+          expect((await db.tasksDao.find(seed.richId))!.done, isTrue);
+          await _drainFully(sender, db);
 
-        expect((await db.tasksDao.find(seed.richId))!.isFavorite, isTrue);
-        expect((await reads.tasks.read(seed.richId)).isFavorite, isTrue);
-        expect(await db.outboxDao.count(), 0);
+          expect(await db.outboxDao.count(), 0);
+          final rich = (await db.tasksDao.find(seed.richId))!;
+          expect(rich.done, isTrue);
+          expect(rich.doneAt, isNotNull);
+          expectIntact(rich);
+          final richOnServer = await reads.tasks.read(seed.richId);
+          expect(richOnServer.done, isTrue);
+          expect(richOnServer.doneAt, rich.doneAt);
+          expect(richOnServer.updated, rich.updated);
+          expectIntact(richOnServer);
 
-        // Offline for the first attempt: the op waits for its backoff and
-        // gets through on the retry.
-        writes.failNext = 1;
-        final attemptsBefore = writes.attempts;
-        await repository.setDone(seed.richId, done: false);
-        await sender.drain();
+          // Favourite.
+          await repository.setFavorite(seed.richId, favorite: true);
+          await _drainFully(sender, db);
 
-        expect(sender.state, OutboxSenderState.waiting);
-        final waiting = (await db.outboxDao.all()).single;
-        expect(waiting.state, OutboxState.pending.name);
-        expect(waiting.attempts, 1);
-        expect(waiting.nextAttemptAt, isNotNull);
-        expect((await db.tasksDao.find(seed.richId))!.done, isFalse);
-        await _until(() async => await db.outboxDao.count() == 0);
-        expect(writes.attempts, greaterThanOrEqualTo(attemptsBefore + 2));
-        expect((await reads.tasks.read(seed.richId)).done, isFalse);
-        final undone = (await db.tasksDao.find(seed.richId))!;
-        expect(undone.done, isFalse);
-        expect(undone.doneAt, isNull);
-        expectIntact(undone);
+          expect((await db.tasksDao.find(seed.richId))!.isFavorite, isTrue);
+          expect((await reads.tasks.read(seed.richId)).isFavorite, isTrue);
+          expect(await db.outboxDao.count(), 0);
 
-        // A repeating task comes back open with the server's next date.
-        final repeatingBefore = (await db.tasksDao.find(seed.repeatingId))!;
-        await repository.setDone(seed.repeatingId, done: true);
-        expect((await db.tasksDao.find(seed.repeatingId))!.done, isTrue);
-        await _drainFully(sender, db);
+          // Offline for the first attempt: the op waits for its backoff and
+          // gets through on the retry.
+          writes.failNext = 1;
+          final attemptsBefore = writes.attempts;
+          await repository.setDone(seed.richId, done: false);
+          await sender.drain();
 
-        final daily = (await db.tasksDao.find(seed.repeatingId))!;
-        expect(daily.done, isFalse);
-        expect(
-          daily.dueDate,
-          _within1s(seed.repeatingDue.add(const Duration(days: 1))),
-        );
-        expect(
-          (await reads.tasks.read(seed.repeatingId)).dueDate,
-          daily.dueDate,
-        );
+          expect(sender.state, OutboxSenderState.waiting);
+          final waiting = (await db.outboxDao.all()).single;
+          expect(waiting.state, OutboxState.pending.name);
+          expect(waiting.attempts, 1);
+          expect(waiting.nextAttemptAt, isNotNull);
+          expect((await db.tasksDao.find(seed.richId))!.done, isFalse);
+          await _until(() async => await db.outboxDao.count() == 0);
+          expect(writes.attempts, greaterThanOrEqualTo(attemptsBefore + 2));
+          expect((await reads.tasks.read(seed.richId)).done, isFalse);
+          final undone = (await db.tasksDao.find(seed.richId))!;
+          expect(undone.done, isFalse);
+          expect(undone.doneAt, isNull);
+          expectIntact(undone);
 
-        // Undo takes the previous occurrence back: the server does not
-        // shift an open task again, on either version.
-        await repository.undoDone(repeatingBefore);
-        expect(
-          (await db.tasksDao.find(seed.repeatingId))!.dueDate,
-          _within1s(seed.repeatingDue),
-        );
-        await _drainFully(sender, db);
+          // A repeating task comes back open with the server's next date.
+          final repeatingBefore = (await db.tasksDao.find(seed.repeatingId))!;
+          await repository.setDone(seed.repeatingId, done: true);
+          expect((await db.tasksDao.find(seed.repeatingId))!.done, isTrue);
+          await _drainFully(sender, db);
 
-        final restored = (await db.tasksDao.find(seed.repeatingId))!;
-        expect(restored.done, isFalse);
-        expect(restored.dueDate, _within1s(seed.repeatingDue));
-        expect(
-          (await reads.tasks.read(seed.repeatingId)).dueDate,
-          restored.dueDate,
-        );
+          final daily = (await db.tasksDao.find(seed.repeatingId))!;
+          expect(daily.done, isFalse);
+          expect(
+            daily.dueDate,
+            _within1s(seed.repeatingDue.add(const Duration(days: 1))),
+          );
+          expect(
+            (await reads.tasks.read(seed.repeatingId)).dueDate,
+            daily.dueDate,
+          );
 
-        // Delete: hidden at once, gone on both sides after the drain.
-        await repository.deleteTask(seed.doomedId);
-        expect(await db.tasksDao.find(seed.doomedId), isNull);
-        await _drainFully(sender, db);
+          // Undo takes the previous occurrence back: the server does not
+          // shift an open task again, on either version.
+          await repository.undoDone(repeatingBefore);
+          expect(
+            (await db.tasksDao.find(seed.repeatingId))!.dueDate,
+            _within1s(seed.repeatingDue),
+          );
+          await _drainFully(sender, db);
 
-        expect(await db.tasksDao.findRow(seed.doomedId), isNull);
-        await expectLater(
-          reads.tasks.read(seed.doomedId),
-          throwsA(isA<NotFound>().having((f) => f.code, 'code', 4002)),
-        );
+          final restored = (await db.tasksDao.find(seed.repeatingId))!;
+          expect(restored.done, isFalse);
+          expect(restored.dueDate, _within1s(seed.repeatingDue));
+          expect(
+            (await reads.tasks.read(seed.repeatingId)).dueDate,
+            restored.dueDate,
+          );
 
-        // The pull after the drain agrees with the server.
-        await engine.refresh();
-        expect(await db.tasksDao.count(), 2);
-        expect(await db.outboxDao.count(), 0);
-        expect(sender.state, OutboxSenderState.idle);
+          // Delete: hidden at once, gone on both sides after the drain.
+          await repository.deleteTask(seed.doomedId);
+          expect(await db.tasksDao.find(seed.doomedId), isNull);
+          await _drainFully(sender, db);
+
+          expect(await db.tasksDao.findRow(seed.doomedId), isNull);
+          await expectLater(
+            reads.tasks.read(seed.doomedId),
+            throwsA(isA<NotFound>().having((f) => f.code, 'code', 4002)),
+          );
+
+          // The pull after the drain agrees with the server.
+          await engine.refresh();
+          expect(await db.tasksDao.count(), 2);
+          expect(await db.outboxDao.count(), 0);
+          expect(sender.state, OutboxSenderState.idle);
+        });
+
+        test('a task created offline reaches the server with its fields, the '
+            'row moves to the server id, edits before the send go with the '
+            'create, a delete before the send cancels it, and a move and a '
+            'repeat removal come back applied', () async {
+          final today = DateTime.now().toUtc();
+          final due = DateTime.utc(today.year, today.month, today.day + 3, 9);
+          final draft = NewTask(
+            projectId: seed.projectId,
+            title: 'Created offline',
+            description: '<p>While offline</p>',
+            dueDate: due,
+            priority: TaskPriority.high,
+            percentDone: 0.5,
+            hexColor: 'ff4136',
+            repeatAfter: const Duration(days: 30),
+            isFavorite: true,
+          );
+
+          // Offline for the first attempt: the row is there at once, the
+          // create waits for its backoff and gets through on the retry.
+          writes.failNext = 1;
+          final localId = await repository.createTask(draft);
+          final watched = <Task?>[];
+          final subscription = repository
+              .watchTask(localId)
+              .listen(watched.add);
+          addTearDown(subscription.cancel);
+          expect(localId, isNegative);
+          expect((await db.tasksDao.find(localId))!.title, 'Created offline');
+          expect(
+            (await db.tasksDao.loadProjectTasks(
+              seed.projectId,
+              showDone: false,
+            )).first.id,
+            localId,
+          );
+          await sender.drain();
+          expect(sender.state, OutboxSenderState.waiting);
+          expect((await db.outboxDao.all()).single.kind, 'createTask');
+          await _until(() async => await db.outboxDao.count() == 0);
+
+          final serverId = await db.tasksDao.resolveId(localId);
+          expect(serverId, isPositive);
+          expect(await db.tasksDao.findRow(localId), isNull);
+          final created = (await db.tasksDao.find(serverId))!;
+          expect(created.title, 'Created offline');
+          expect(created.description, '<p>While offline</p>');
+          expect(created.dueDate, _within1s(due));
+          expect(created.priority, TaskPriority.high);
+          expect(created.percentDone, 0.5);
+          expect(created.hexColor, 'ff4136');
+          expect(created.repeatAfter, const Duration(days: 30));
+          expect(created.isFavorite, isTrue);
+          expect(created.index, greaterThan(0));
+          expect(created.identifier, isNotEmpty);
+          expect(created.updated, isNotNull);
+          final onServer = await reads.tasks.read(serverId);
+          expect(onServer.title, created.title);
+          expect(onServer.dueDate, created.dueDate);
+          expect(onServer.priority, created.priority);
+          expect(onServer.percentDone, created.percentDone);
+          expect(onServer.hexColor, created.hexColor);
+          expect(onServer.repeatAfter, created.repeatAfter);
+          expect(onServer.isFavorite, isTrue);
+          expect(onServer.identifier, created.identifier);
+          expect(onServer.index, created.index);
+          expect(onServer.updated, created.updated);
+          await _until(() async => watched.last?.id == serverId);
+          expect(watched.first!.id, localId);
+
+          // Create and edit before the send: one request.
+          sender.pause();
+          var attemptsBefore = writes.attempts;
+          final editedId = await repository.createTask(
+            NewTask(projectId: seed.projectId, title: 'Draft'),
+          );
+          await repository.updateTask(
+            editedId,
+            TaskChanges(
+              title: 'Edited before the send',
+              priority: TaskPriority.urgent.value,
+            ),
+          );
+          await sender.resume();
+          await _until(() async => await db.outboxDao.count() == 0);
+
+          expect(writes.attempts, attemptsBefore + 1);
+          final editedServerId = await db.tasksDao.resolveId(editedId);
+          expect(editedServerId, isPositive);
+          final edited = await reads.tasks.read(editedServerId);
+          expect(edited.title, 'Edited before the send');
+          expect(edited.priority, TaskPriority.urgent);
+
+          // Create and delete before the send: no request.
+          sender.pause();
+          attemptsBefore = writes.attempts;
+          final doomedId = await repository.createTask(
+            NewTask(projectId: seed.projectId, title: 'Never sent'),
+          );
+          await repository.deleteTask(doomedId);
+          await sender.resume();
+
+          expect(writes.attempts, attemptsBefore);
+          expect(await db.tasksDao.findRow(doomedId), isNull);
+          expect(await db.outboxDao.count(), 0);
+
+          // A move: the answer carries the new project's identifier.
+          await repository.updateTask(
+            serverId,
+            TaskChanges(projectId: seed.otherProjectId),
+          );
+          expect(
+            (await db.tasksDao.find(serverId))!.projectId,
+            seed.otherProjectId,
+          );
+          await _drainFully(sender, db);
+
+          final moved = (await db.tasksDao.find(serverId))!;
+          expect(moved.projectId, seed.otherProjectId);
+          expect(moved.identifier, '${seed.otherIdentifier}-${moved.index}');
+          expect(moved.identifier, isNot(created.identifier));
+          final movedOnServer = await reads.tasks.read(serverId);
+          expect(movedOnServer.projectId, seed.otherProjectId);
+          expect(movedOnServer.identifier, moved.identifier);
+          expect(movedOnServer.index, moved.index);
+
+          // The repeat removed.
+          await repository.updateTask(
+            serverId,
+            const TaskChanges(
+              repeatAfter: Duration.zero,
+              repeatMode: RepeatMode.afterAmount,
+            ),
+          );
+          expect((await db.tasksDao.find(serverId))!.repeats, isFalse);
+          await _drainFully(sender, db);
+
+          expect((await db.tasksDao.find(serverId))!.repeats, isFalse);
+          expect((await reads.tasks.read(serverId)).repeatAfter, Duration.zero);
+
+          // The pull after the drain agrees with the server.
+          await engine.refresh();
+          expect(await db.tasksDao.count(), 4);
+          expect(await db.tasksDao.countInProject(seed.otherProjectId), 1);
+          expect(await db.outboxDao.count(), 0);
+          expect(sender.state, OutboxSenderState.idle);
+        });
+
+        test('a create whose answer was lost is adopted from the server by '
+            'its title instead of being sent again', () async {
+          final draft = NewTask(
+            projectId: seed.projectId,
+            title: 'Lost answer',
+          );
+          // The request reached the server; the answer did not come back.
+          final onServer = await writes.tasks.create(draft);
+          sender.pause();
+          final attemptsBefore = writes.attempts;
+          final localId = await repository.createTask(draft);
+          final op = (await db.outboxDao.all()).single;
+          await db.outboxDao.markUncertain(op.id, sentAt: DateTime.now());
+
+          await sender.resume();
+          await _until(() async => await db.outboxDao.count() == 0);
+
+          expect(writes.attempts, attemptsBefore);
+          expect(await db.tasksDao.resolveId(localId), onServer.id);
+          expect(await db.tasksDao.findRow(localId), isNull);
+          final adopted = (await db.tasksDao.find(onServer.id))!;
+          expect(adopted.title, 'Lost answer');
+          expect(adopted.identifier, onServer.identifier);
+          await engine.refresh();
+          final inProject = await reads.tasks.listInProject(
+            seed.projectId,
+            const TaskQuery(),
+          );
+          expect(
+            inProject.items.where((task) => task.title == 'Lost answer'),
+            hasLength(1),
+          );
+          expect(
+            await db.tasksDao.countInProject(seed.projectId),
+            inProject.items.length,
+          );
+          expect(await db.outboxDao.count(), 0);
+          expect(sender.state, OutboxSenderState.idle);
+        });
       });
     }
   });

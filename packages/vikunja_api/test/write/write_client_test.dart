@@ -136,6 +136,35 @@ void main() {
           'end_date': '2026-10-12T09:00:00.000Z',
         },
       ),
+      (
+        'repeat every 30 days',
+        const TaskChanges(
+          repeatAfter: Duration(days: 30),
+          repeatMode: RepeatMode.afterAmount,
+        ),
+        {'repeat_after': 2592000, 'repeat_mode': 0},
+      ),
+      (
+        'repeat monthly',
+        const TaskChanges(repeatMode: RepeatMode.monthly),
+        {'repeat_mode': 1},
+      ),
+      (
+        'repeat two weeks from completion',
+        const TaskChanges(
+          repeatAfter: Duration(days: 14),
+          repeatMode: RepeatMode.fromCurrentDate,
+        ),
+        {'repeat_after': 1209600, 'repeat_mode': 2},
+      ),
+      (
+        'repeat removed',
+        const TaskChanges(
+          repeatAfter: Duration.zero,
+          repeatMode: RepeatMode.afterAmount,
+        ),
+        {'repeat_after': 0, 'repeat_mode': 0},
+      ),
     ];
 
     for (final (name, changes, body) in cases) {
@@ -251,6 +280,41 @@ void main() {
               .having((f) => f.message, 'message', 'task without id'),
         ),
       );
+    });
+  });
+
+  group('v2 move', () {
+    // The server answers a move with the identifier it built before moving.
+    test('reads the task back for its new identifier', () async {
+      final dio = fakeDio({
+        '$_v2/tasks/42': sequence([
+          json(
+            taskJson(
+              42,
+              overrides: {'project_id': 9, 'identifier': 'P7-42', 'index': 1},
+            ),
+          ),
+          json(
+            taskJson(
+              42,
+              overrides: {'project_id': 9, 'identifier': 'OTHER-1', 'index': 1},
+            ),
+          ),
+        ]),
+      });
+
+      final task = await _client(dio).tasks
+          .update(42, const TaskChanges(projectId: 9));
+
+      final adapter = adapterOf(dio);
+      expect(adapter.requests.map((r) => r.method), ['PATCH', 'GET']);
+      expect(adapter.decodedBodies, [
+        {'project_id': 9},
+        null,
+      ]);
+      expect(task.projectId, 9);
+      expect(task.identifier, 'OTHER-1');
+      expect(task.index, 1);
     });
   });
 
@@ -463,6 +527,356 @@ void main() {
           ),
         ),
       );
+    });
+  });
+
+  group('v1 move and repeat', () {
+    test('a project move changes project_id in the full POST and reads the '
+        'task back for its new identifier', () async {
+      final dio = fakeDio({
+        '$_v1/tasks/42': sequence([
+          json(_richTask),
+          json({..._richTask, 'project_id': 9, 'index': 1}),
+          json({
+            ..._richTask,
+            'project_id': 9,
+            'identifier': 'OTHER-1',
+            'index': 1,
+          }),
+        ]),
+      });
+
+      final task = await _client(
+        dio,
+        hasV2: false,
+      ).tasks.update(42, const TaskChanges(projectId: 9));
+
+      final adapter = adapterOf(dio);
+      expect(adapter.requests.map((r) => r.method), ['GET', 'POST', 'GET']);
+      final body = adapter.decodedBodies[1]! as Map<String, Object?>;
+      expect(body['project_id'], 9);
+      expect(body['id'], 42);
+      expect(body['title'], _richTask['title']);
+      expect(body['repeat_after'], _richTask['repeat_after']);
+      expect(body['assignees'], _richTask['assignees']);
+      expect(body['reminders'], _richTask['reminders']);
+      expect(task.projectId, 9);
+      expect(task.identifier, 'OTHER-1');
+      expect(task.labels.map((l) => l.id), [4]);
+    });
+
+    test('a repeat is overlaid in seconds with its mode', () async {
+      final dio = fakeDio({'$_v1/tasks/42': json(_richTask)});
+
+      await _client(dio, hasV2: false).tasks.update(
+        42,
+        const TaskChanges(
+          repeatAfter: Duration(days: 30),
+          repeatMode: RepeatMode.fromCurrentDate,
+        ),
+      );
+
+      final body = adapterOf(dio).decodedBodies.last! as Map<String, Object?>;
+      expect(body['repeat_after'], 2592000);
+      expect(body['repeat_mode'], 2);
+      expect(body['project_id'], _richTask['project_id']);
+    });
+
+    test('a repeat removal overlays zero', () async {
+      final dio = fakeDio({'$_v1/tasks/42': json(_richTask)});
+
+      await _client(dio, hasV2: false).tasks.update(
+        42,
+        const TaskChanges(
+          repeatAfter: Duration.zero,
+          repeatMode: RepeatMode.afterAmount,
+        ),
+      );
+
+      final body = adapterOf(dio).decodedBodies.last! as Map<String, Object?>;
+      expect(body['repeat_after'], 0);
+      expect(body['repeat_mode'], 0);
+    });
+  });
+
+  group('create', () {
+    final due = DateTime.utc(2030, 1, 2, 3, 4, 5);
+    final full = NewTask(
+      projectId: 7,
+      title: 'Water the plants',
+      description: '<p>Every pot</p>',
+      dueDate: due,
+      startDate: DateTime.utc(2030),
+      endDate: DateTime.utc(2030, 1, 3),
+      priority: TaskPriority.high,
+      percentDone: 0.5,
+      hexColor: 'ff4136',
+      repeatAfter: const Duration(days: 30),
+      repeatMode: RepeatMode.fromCurrentDate,
+      isFavorite: true,
+    );
+    const fullBody = <String, Object?>{
+      'title': 'Water the plants',
+      'description': '<p>Every pot</p>',
+      'due_date': '2030-01-02T03:04:05.000Z',
+      'start_date': '2030-01-01T00:00:00.000Z',
+      'end_date': '2030-01-03T00:00:00.000Z',
+      'priority': 3,
+      'percent_done': 0.5,
+      'hex_color': 'ff4136',
+      'repeat_after': 2592000,
+      'repeat_mode': 2,
+      'is_favorite': true,
+    };
+    const minimalBody = <String, Object?>{
+      'title': 'Milk',
+      'description': '',
+      'priority': 0,
+      'percent_done': 0,
+      'hex_color': '',
+      'repeat_after': 0,
+      'repeat_mode': 0,
+      'is_favorite': false,
+    };
+    final created = taskJson(
+      43,
+      overrides: {
+        ...fullBody,
+        'due_date': '2030-01-02T03:04:05Z',
+        'start_date': '2030-01-01T00:00:00Z',
+        'end_date': '2030-01-03T00:00:00Z',
+        'identifier': 'P7-12',
+        'index': 12,
+      },
+    );
+
+    for (final (hasV2, base, method) in [
+      (true, _v2, 'POST'),
+      (false, _v1, 'PUT'),
+    ]) {
+      final version = hasV2 ? 'v2' : 'v1';
+
+      test('$version sends every field with $method and parses the '
+          'created task', () async {
+        final dio = fakeDio({'$base/projects/7/tasks': json(created)});
+
+        final task = await _client(dio, hasV2: hasV2).tasks.create(full);
+
+        final adapter = adapterOf(dio);
+        final request = adapter.requests.single;
+        expect(request.method, method);
+        expect(request.headers['content-type'], 'application/json');
+        expect(request.headers['Accept'], 'application/json');
+        expect(adapter.decodedBodies.single, fullBody);
+        expect(task.id, 43);
+        expect(task.projectId, 7);
+        expect(task.identifier, 'P7-12');
+        expect(task.index, 12);
+        expect(task.title, 'Water the plants');
+        expect(task.dueDate, due);
+        expect(task.repeatAfter, const Duration(days: 30));
+        expect(task.repeatMode, RepeatMode.fromCurrentDate);
+        expect(task.isFavorite, isTrue);
+      });
+
+      test('$version omits unset dates and sends the defaults', () async {
+        final dio = fakeDio({
+          '$base/projects/7/tasks': json(
+            taskJson(43, overrides: {'title': 'Milk'}),
+          ),
+        });
+
+        final task = await _client(
+          dio,
+          hasV2: hasV2,
+        ).tasks.create(const NewTask(projectId: 7, title: 'Milk'));
+
+        expect(adapterOf(dio).decodedBodies.single, minimalBody);
+        expect(task.title, 'Milk');
+        expect(task.dueDate, isNull);
+      });
+
+      // A project_id in a v1 body overrides the path, so none is ever sent.
+      test('$version carries the project only in the path', () async {
+        final dio = fakeDio({'$base/projects/7/tasks': json(created)});
+
+        await _client(dio, hasV2: hasV2).tasks.create(full);
+
+        final body =
+            adapterOf(dio).decodedBodies.single! as Map<String, Object?>;
+        expect(body.containsKey('project_id'), isFalse);
+        expect(body.containsKey('id'), isFalse);
+        expect(adapterOf(dio).requestedUrls, ['$base/projects/7/tasks']);
+      });
+    }
+
+    test('a local date is sent as UTC', () async {
+      final dio = fakeDio({'$_v2/projects/7/tasks': json(created)});
+      final local = DateTime(2030, 1, 2, 9);
+
+      await _client(dio).tasks
+          .create(NewTask(projectId: 7, title: 'Milk', dueDate: local));
+
+      final body = adapterOf(dio).decodedBodies.single! as Map<String, Object?>;
+      expect(body['due_date'], local.toUtc().toIso8601String());
+    });
+
+    test('the colour loses its hash', () async {
+      final dio = fakeDio({'$_v2/projects/7/tasks': json(created)});
+
+      await _client(dio).tasks.create(
+        const NewTask(projectId: 7, title: 'Milk', hexColor: '#4caf50'),
+      );
+
+      final body = adapterOf(dio).decodedBodies.single! as Map<String, Object?>;
+      expect(body['hex_color'], '4caf50');
+    });
+
+    test('a response that is not a task is unexpected', () async {
+      final dio = fakeDio({
+        '$_v2/projects/7/tasks': json({'title': 'no id'}, status: 201),
+      });
+
+      await expectLater(
+        _client(dio).tasks.create(const NewTask(projectId: 7, title: 'Milk')),
+        throwsA(
+          isA<UnexpectedResponse>()
+              .having((f) => f.statusCode, 'statusCode', 201)
+              .having((f) => f.message, 'message', 'task without id'),
+        ),
+      );
+    });
+
+    group('errors', () {
+      const empty = NewTask(projectId: 7, title: '');
+
+      test('an empty title is a validation failure on v2', () async {
+        final dio = fakeDio({
+          '$_v2/projects/7/tasks': errorFixture('v2_422_title_empty_2.7.0'),
+        });
+
+        await expectLater(
+          _client(dio).tasks.create(empty),
+          throwsA(
+            isA<ValidationFailed>().having(
+              (f) => f.fieldErrors,
+              'fieldErrors',
+              {
+                'title': ['expected length >= 1'],
+              },
+            ),
+          ),
+        );
+      });
+
+      test('an empty title is domain error 4001 on v1', () async {
+        final dio = fakeDio({
+          '$_v1/projects/7/tasks': errorFixture('v1_400_title_empty_2.7.0'),
+        });
+
+        await expectLater(
+          _client(dio, hasV2: false).tasks.create(empty),
+          throwsA(
+            isA<DomainError>()
+                .having((f) => f.statusCode, 'status', 400)
+                .having((f) => f.code, 'code', 4001),
+          ),
+        );
+      });
+
+      for (final (hasV2, base) in [(true, _v2), (false, _v1)]) {
+        final version = hasV2 ? 'v2' : 'v1';
+
+        test(
+          'a repeat beyond ten years is domain error 4029 on $version',
+          () async {
+            final dio = fakeDio({
+              '$base/projects/7/tasks': errorFixture(
+                '${version}_400_repeat_range_2.7.0',
+              ),
+            });
+
+            await expectLater(
+              _client(dio, hasV2: hasV2).tasks.create(
+                const NewTask(
+                  projectId: 7,
+                  title: 'Milk',
+                  repeatAfter: Duration(days: 4000),
+                ),
+              ),
+              throwsA(
+                isA<DomainError>()
+                    .having((f) => f.statusCode, 'status', 400)
+                    .having((f) => f.code, 'code', 4029),
+              ),
+            );
+          },
+        );
+
+        test('an unknown project is not found on $version', () async {
+          final dio = fakeDio({
+            '$base/projects/7/tasks': errorFixture(
+              '${version}_404_project_2.7.0',
+            ),
+          });
+
+          await expectLater(
+            _client(
+              dio,
+              hasV2: hasV2,
+            ).tasks.create(const NewTask(projectId: 7, title: 'Milk')),
+            throwsA(isA<NotFound>().having((f) => f.code, 'code', 3001)),
+          );
+        });
+      }
+
+      test('an archived project is a domain error', () async {
+        final dio = fakeDio({
+          '$_v2/projects/7/tasks': json({
+            'code': 3008,
+            'message': 'This project is archived.',
+          }, status: 412),
+        });
+
+        await expectLater(
+          _client(dio).tasks.create(const NewTask(projectId: 7, title: 'Milk')),
+          throwsA(
+            isA<DomainError>()
+                .having((f) => f.statusCode, 'status', 412)
+                .having((f) => f.code, 'code', 3008),
+          ),
+        );
+      });
+
+      test('network failures are normalized', () async {
+        await expectLater(
+          _client(fakeDio({})).tasks
+              .create(const NewTask(projectId: 7, title: 'Milk')),
+          throwsA(isA<NetworkFailure>()),
+        );
+      });
+
+      test('a cancelled request rethrows its DioException', () async {
+        final dio = fakeDio({
+          '$_v2/projects/7/tasks': failsWith(
+            (request) => DioException.requestCancelled(
+              requestOptions: request,
+              reason: 'closed',
+            ),
+          ),
+        });
+
+        await expectLater(
+          _client(dio).tasks.create(const NewTask(projectId: 7, title: 'Milk')),
+          throwsA(
+            isA<DioException>().having(
+              (e) => e.type,
+              'type',
+              DioExceptionType.cancel,
+            ),
+          ),
+        );
+      });
     });
   });
 

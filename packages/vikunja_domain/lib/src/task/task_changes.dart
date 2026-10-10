@@ -1,4 +1,5 @@
 import 'package:meta/meta.dart';
+import 'package:vikunja_domain/src/task/task.dart';
 
 /// A date field edit: set to an instant or cleared. Null in [TaskChanges]
 /// means "unchanged".
@@ -49,6 +50,9 @@ final class TaskChanges {
     this.dueDate,
     this.startDate,
     this.endDate,
+    this.repeatAfter,
+    this.repeatMode,
+    this.projectId,
   });
 
   final String? title;
@@ -62,6 +66,13 @@ final class TaskChanges {
   final DateChange? startDate;
   final DateChange? endDate;
 
+  /// `Duration.zero` with [RepeatMode.afterAmount] removes the repeat.
+  final Duration? repeatAfter;
+  final RepeatMode? repeatMode;
+
+  /// Moves the task; the server reassigns `index` and `identifier`.
+  final int? projectId;
+
   bool get isEmpty =>
       title == null &&
       description == null &&
@@ -72,7 +83,10 @@ final class TaskChanges {
       hexColor == null &&
       dueDate == null &&
       startDate == null &&
-      endDate == null;
+      endDate == null &&
+      repeatAfter == null &&
+      repeatMode == null &&
+      projectId == null;
 
   /// [later] wins where both set a field.
   TaskChanges merge(TaskChanges later) => TaskChanges(
@@ -86,6 +100,9 @@ final class TaskChanges {
     dueDate: later.dueDate ?? dueDate,
     startDate: later.startDate ?? startDate,
     endDate: later.endDate ?? endDate,
+    repeatAfter: later.repeatAfter ?? repeatAfter,
+    repeatMode: later.repeatMode ?? repeatMode,
+    projectId: later.projectId ?? projectId,
   );
 
   @override
@@ -100,7 +117,10 @@ final class TaskChanges {
       other.hexColor == hexColor &&
       other.dueDate == dueDate &&
       other.startDate == startDate &&
-      other.endDate == endDate;
+      other.endDate == endDate &&
+      other.repeatAfter == repeatAfter &&
+      other.repeatMode == repeatMode &&
+      other.projectId == projectId;
 
   @override
   int get hashCode => Object.hash(
@@ -114,5 +134,8 @@ final class TaskChanges {
     dueDate,
     startDate,
     endDate,
+    repeatAfter,
+    repeatMode,
+    projectId,
   );
 }

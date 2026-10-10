@@ -12,6 +12,8 @@ import 'package:vikunja_mobile/features/home/presentation/reauth_banner.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connection_error_card.dart';
 import 'package:vikunja_mobile/features/sync/presentation/first_sync_screen.dart';
 import 'package:vikunja_mobile/features/sync/presentation/offline_notice.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/edit/task_edit_page.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 
 import '../helpers/auth_fakes.dart';
@@ -46,6 +48,14 @@ void main() {
       await tester.pumpAndSettle();
     }
     expect(position.extentAfter, 0);
+  }
+
+  /// Taps the row's title at its start, clear of the floating action
+  /// button that may cover the row's end on a small screen.
+  Future<void> tapRow(WidgetTester tester, String titleStart) async {
+    final title = find.textContaining(titleStart).first;
+    await tester.tapAt(tester.getTopLeft(title) + const Offset(4, 4));
+    await tester.pumpAndSettle();
   }
 
   SyncFakes richData({SyncStatus? status}) {
@@ -116,11 +126,73 @@ void main() {
       useWorstCase(tester, locale);
       await pumpSignedInApp(tester, sync: richData());
 
-      await tester.tap(find.textContaining('Task 1 ').first);
-      await tester.pumpAndSettle();
+      await tapRow(tester, 'Task 1 ');
 
       expect(find.byType(TaskDetailSheet), findsOneWidget);
       await scrollToEnd(tester, find.byType(TaskDetailSheet));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('task edit page with its pickers at 200 % in dark mode '
+        '(${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      await pumpSignedInApp(tester, sync: richData());
+      final l10n = lookupAppLocalizations(locale);
+      await tapRow(tester, 'Task 1 ');
+      await tester.tap(find.byTooltip(l10n.taskEdit));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TaskEditPage), findsOneWidget);
+      await scrollToEnd(tester, find.byType(ListView));
+      expect(tester.takeException(), isNull);
+
+      // The end of the list is built now; the top is not, so jump back.
+      await tester.tap(find.text(l10n.repeatModeFromCompletion));
+      await tester.pumpAndSettle();
+      tester
+          .state<ScrollableState>(
+            find
+                .descendant(
+                  of: find.byType(ListView),
+                  matching: find.byType(Scrollable),
+                )
+                .first,
+          )
+          .position
+          .jumpTo(0);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(
+        find.widgetWithText(ListTile, l10n.taskEditProject),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ListTile, l10n.taskEditProject));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.taskEditProjectPickerTitle), findsOneWidget);
+      await tester.tap(find.text(l10n.taskEditProjectPickerTitle));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.taskEditDiscardTitle), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('new task sheet at 200 % in dark mode '
+        '(${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      await pumpSignedInApp(tester, sync: richData());
+      final l10n = lookupAppLocalizations(locale);
+
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pumpAndSettle();
+      expect(find.byType(NewTaskSheet), findsOneWidget);
+
+      await tester.enterText(find.byType(TextField), 'A new task');
+      await tester.tap(find.text(l10n.shortcutTomorrow));
+      await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
     });
 

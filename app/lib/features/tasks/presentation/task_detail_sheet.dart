@@ -2,17 +2,20 @@ import 'dart:async';
 
 import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 import 'package:vikunja_mobile/features/home/presentation/account_header.dart';
-import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
 import 'package:vikunja_mobile/features/tasks/application/html_to_text.dart';
+import 'package:vikunja_mobile/features/tasks/application/task_providers.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/delete_task_dialog.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/favourite_button.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/moment_format.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_chips.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_formatting.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_write_feedback.dart';
@@ -59,9 +62,10 @@ Future<void> showTaskDetail(
 
 enum _SheetAction { delete }
 
-/// Follows the local row of [task] while it is open, so a done toggle here
-/// and the server's answer to it (a repeating task's next occurrence) show;
-/// [task] itself is the fallback once the row is gone.
+/// Follows the local row of [task] while it is open, so a done toggle here,
+/// the server's answer to it (a repeating task's next occurrence) and the
+/// id a queued create gets show; [task] itself is the fallback once the row
+/// is gone.
 class TaskDetailSheet extends ConsumerWidget {
   const new({
     required this.task,
@@ -90,34 +94,22 @@ class TaskDetailSheet extends ConsumerWidget {
     messenger.showSnackBar(SnackBar(content: Text(l10n.taskDeleted)));
   }
 
+  /// The edit page replaces the sheet, so its "Saved" lands on the list.
+  void _edit(BuildContext context, Task task) {
+    final router = GoRouter.of(context);
+    Navigator.of(context).pop();
+    unawaited(router.push(AppRoutes.taskEdit(task.id)));
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    final materialL10n = MaterialLocalizations.of(context);
-    final use24Hour = MediaQuery.alwaysUse24HourFormatOf(context);
     final repository = ref.watch(taskRepositoryProvider);
-    final task =
-        ref.watch(
-          projectTasksProvider(
-            this.task.projectId,
-            showDone: true,
-          ).select((page) => _find(page.value?.items, this.task.id)),
-        ) ??
-        this.task;
+    final task = ref.watch(taskByIdProvider(this.task.id)).value ?? this.task;
     final pending =
         ref.watch(pendingTaskIdsProvider).value?.contains(task.id) ?? false;
-
-    String formatMoment(DateTime moment) {
-      final local = moment.toLocal();
-      final time = materialL10n.formatTimeOfDay(
-        TimeOfDay.fromDateTime(local),
-        alwaysUse24HourFormat: use24Hour,
-      );
-      return '${materialL10n.formatShortDate(local)} $time';
-    }
-
     final description = htmlToPlainText(task.description);
     final repeat = formatRepeat(l10n, task);
     final percent = (task.percentDone * 100).round();
@@ -134,18 +126,39 @@ class TaskDetailSheet extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: Semantics(
-                    header: true,
-                    child: Text(
-                      task.title,
-                      style: task.done
-                          ? theme.textTheme.titleLarge?.copyWith(
-                              decoration: TextDecoration.lineThrough,
-                              color: colors.onSurfaceVariant,
-                            )
-                          : theme.textTheme.titleLarge,
+                  // One node: the heading, its tap and the hint together.
+                  child: MergeSemantics(
+                    child: Semantics(
+                      header: true,
+                      button: repository != null,
+                      hint: repository == null ? null : l10n.taskEdit,
+                      child: InkWell(
+                        onTap: repository == null
+                            ? null
+                            : () => _edit(context, task),
+                        borderRadius: BorderRadius.circular(8),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Text(
+                            task.title,
+                            style: task.done
+                                ? theme.textTheme.titleLarge?.copyWith(
+                                    decoration: TextDecoration.lineThrough,
+                                    color: colors.onSurfaceVariant,
+                                  )
+                                : theme.textTheme.titleLarge,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
+                ),
+                IconButton(
+                  onPressed: repository == null
+                      ? null
+                      : () => _edit(context, task),
+                  tooltip: l10n.taskEdit,
+                  icon: const Icon(Icons.edit_outlined),
                 ),
                 FavouriteButton(
                   isFavorite: task.isFavorite,
@@ -192,18 +205,22 @@ class TaskDetailSheet extends ConsumerWidget {
                 ),
               ],
             ),
-            Text(
-              switch (project) {
-                final project? => l10n.taskDetailIdentifierInProject(
-                  task.displayIdentifier,
-                  project.title,
+            // A task not yet sent has no identifier until the server
+            // assigns one.
+            if (task.id > 0 || project != null)
+              Text(
+                switch ((task.id > 0, project)) {
+                  (true, final project?) => l10n.taskDetailIdentifierInProject(
+                    task.displayIdentifier,
+                    project.title,
+                  ),
+                  (true, null) => task.displayIdentifier,
+                  (false, _) => project!.title,
+                },
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colors.onSurfaceVariant,
                 ),
-                null => task.displayIdentifier,
-              },
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: colors.onSurfaceVariant,
               ),
-            ),
             const SizedBox(height: 4),
             CheckboxListTile.adaptive(
               value: task.done,
@@ -233,25 +250,25 @@ class TaskDetailSheet extends ConsumerWidget {
               _Property(
                 icon: Icons.event,
                 label: l10n.taskDetailDueDate,
-                value: formatMoment(dueDate),
+                value: formatMoment(context, dueDate),
               ),
             if (task.startDate case final startDate?)
               _Property(
                 icon: Icons.play_arrow_outlined,
                 label: l10n.taskDetailStartDate,
-                value: formatMoment(startDate),
+                value: formatMoment(context, startDate),
               ),
             if (task.endDate case final endDate?)
               _Property(
                 icon: Icons.stop_outlined,
                 label: l10n.taskDetailEndDate,
-                value: formatMoment(endDate),
+                value: formatMoment(context, endDate),
               ),
             if (task.doneAt case final doneAt? when task.done)
               _Property(
                 icon: Icons.check,
                 label: l10n.taskDetailDoneAt,
-                value: formatMoment(doneAt),
+                value: formatMoment(context, doneAt),
               ),
             if (task.priority != TaskPriority.unset)
               _Property(
@@ -280,7 +297,7 @@ class TaskDetailSheet extends ConsumerWidget {
                     formatReminder(
                       l10n,
                       reminder,
-                      formatAbsolute: formatMoment,
+                      formatAbsolute: (moment) => formatMoment(context, moment),
                     ),
                 ].join('\n'),
               ),
@@ -332,13 +349,6 @@ class TaskDetailSheet extends ConsumerWidget {
         ),
       ),
     );
-  }
-
-  static Task? _find(List<Task>? tasks, int id) {
-    for (final task in tasks ?? const <Task>[]) {
-      if (task.id == id) return task;
-    }
-    return null;
   }
 }
 

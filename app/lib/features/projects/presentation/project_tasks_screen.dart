@@ -15,6 +15,7 @@ import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dar
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
 import 'package:vikunja_mobile/features/sync/presentation/sync_progress_bar.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_list_actions.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
@@ -124,6 +125,12 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
         ],
         bottom: const SyncProgressBar(),
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () =>
+            unawaited(showNewTaskSheet(context, projectId: widget.projectId)),
+        tooltip: l10n.newTask,
+        child: const Icon(Icons.add),
+      ),
       body: buildRefreshable(
         tasks,
         loadingLabel: l10n.projectTasksLoading,
@@ -205,9 +212,10 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
                 },
               ),
             ),
+          // Room for the floating action button below the last row.
           const SliverSafeArea(
             top: false,
-            sliver: SliverToBoxAdapter(child: SizedBox(height: 16)),
+            sliver: SliverToBoxAdapter(child: SizedBox(height: 88)),
           ),
         ],
       ),

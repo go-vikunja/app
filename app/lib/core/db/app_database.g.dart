@@ -4794,6 +4794,15 @@ class $OutboxTable extends Outbox with TableInfo<$OutboxTable, OutboxRow> {
     requiredDuringInsert: false,
   );
   @override
+  late final GeneratedColumnWithTypeConverter<DateTime?, int> sentAt =
+      GeneratedColumn<int>(
+        'sent_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      ).withConverter<DateTime?>($OutboxTable.$convertersentAtn);
+  @override
   List<GeneratedColumn> get $columns => [
     id,
     sequence,
@@ -4806,6 +4815,7 @@ class $OutboxTable extends Outbox with TableInfo<$OutboxTable, OutboxRow> {
     lastAttemptAt,
     state,
     lastError,
+    sentAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -4937,6 +4947,12 @@ class $OutboxTable extends Outbox with TableInfo<$OutboxTable, OutboxRow> {
         DriftSqlType.string,
         data['${effectivePrefix}last_error'],
       ),
+      sentAt: $OutboxTable.$convertersentAtn.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}sent_at'],
+        ),
+      ),
     );
   }
 
@@ -4954,6 +4970,9 @@ class $OutboxTable extends Outbox with TableInfo<$OutboxTable, OutboxRow> {
       const EpochMillis();
   static TypeConverter<DateTime?, int?> $converterlastAttemptAtn =
       NullAwareTypeConverter.wrap($converterlastAttemptAt);
+  static TypeConverter<DateTime, int> $convertersentAt = const EpochMillis();
+  static TypeConverter<DateTime?, int?> $convertersentAtn =
+      NullAwareTypeConverter.wrap($convertersentAt);
 }
 
 class OutboxRow extends DataClass implements Insertable<OutboxRow> {
@@ -4965,9 +4984,12 @@ class OutboxRow extends DataClass implements Insertable<OutboxRow> {
 
   /// `OutboxOperationKind.name`.
   final String kind;
+
+  /// Negative for a task created here that the server has not named yet.
   final int taskId;
 
-  /// The `TaskChanges` as JSON; empty for a delete.
+  /// The `TaskChanges` as JSON, the `NewTask` for a create; empty for a
+  /// delete.
   final String payload;
   final DateTime createdAt;
   final int attempts;
@@ -4977,6 +4999,12 @@ class OutboxRow extends DataClass implements Insertable<OutboxRow> {
 
   /// The normalized `VikunjaFailure` of the last attempt as JSON.
   final String? lastError;
+
+  /// When a create's request may have reached the server although no
+  /// answer came back: set on the first such attempt, so the next one looks
+  /// for the task before sending it again. Null for every other op and for
+  /// a create the server rejected.
+  final DateTime? sentAt;
   const OutboxRow({
     required this.id,
     required this.sequence,
@@ -4989,6 +5017,7 @@ class OutboxRow extends DataClass implements Insertable<OutboxRow> {
     this.lastAttemptAt,
     required this.state,
     this.lastError,
+    this.sentAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -5018,6 +5047,11 @@ class OutboxRow extends DataClass implements Insertable<OutboxRow> {
     if (!nullToAbsent || lastError != null) {
       map['last_error'] = Variable<String>(lastError);
     }
+    if (!nullToAbsent || sentAt != null) {
+      map['sent_at'] = Variable<int>(
+        $OutboxTable.$convertersentAtn.toSql(sentAt),
+      );
+    }
     return map;
   }
 
@@ -5040,6 +5074,9 @@ class OutboxRow extends DataClass implements Insertable<OutboxRow> {
       lastError: lastError == null && nullToAbsent
           ? const Value.absent()
           : Value(lastError),
+      sentAt: sentAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sentAt),
     );
   }
 
@@ -5060,6 +5097,7 @@ class OutboxRow extends DataClass implements Insertable<OutboxRow> {
       lastAttemptAt: serializer.fromJson<DateTime?>(json['lastAttemptAt']),
       state: serializer.fromJson<String>(json['state']),
       lastError: serializer.fromJson<String?>(json['lastError']),
+      sentAt: serializer.fromJson<DateTime?>(json['sentAt']),
     );
   }
   @override
@@ -5077,6 +5115,7 @@ class OutboxRow extends DataClass implements Insertable<OutboxRow> {
       'lastAttemptAt': serializer.toJson<DateTime?>(lastAttemptAt),
       'state': serializer.toJson<String>(state),
       'lastError': serializer.toJson<String?>(lastError),
+      'sentAt': serializer.toJson<DateTime?>(sentAt),
     };
   }
 
@@ -5092,6 +5131,7 @@ class OutboxRow extends DataClass implements Insertable<OutboxRow> {
     Value<DateTime?> lastAttemptAt = const Value.absent(),
     String? state,
     Value<String?> lastError = const Value.absent(),
+    Value<DateTime?> sentAt = const Value.absent(),
   }) => OutboxRow(
     id: id ?? this.id,
     sequence: sequence ?? this.sequence,
@@ -5108,6 +5148,7 @@ class OutboxRow extends DataClass implements Insertable<OutboxRow> {
         : this.lastAttemptAt,
     state: state ?? this.state,
     lastError: lastError.present ? lastError.value : this.lastError,
+    sentAt: sentAt.present ? sentAt.value : this.sentAt,
   );
   OutboxRow copyWithCompanion(OutboxCompanion data) {
     return OutboxRow(
@@ -5126,6 +5167,7 @@ class OutboxRow extends DataClass implements Insertable<OutboxRow> {
           : this.lastAttemptAt,
       state: data.state.present ? data.state.value : this.state,
       lastError: data.lastError.present ? data.lastError.value : this.lastError,
+      sentAt: data.sentAt.present ? data.sentAt.value : this.sentAt,
     );
   }
 
@@ -5142,7 +5184,8 @@ class OutboxRow extends DataClass implements Insertable<OutboxRow> {
           ..write('nextAttemptAt: $nextAttemptAt, ')
           ..write('lastAttemptAt: $lastAttemptAt, ')
           ..write('state: $state, ')
-          ..write('lastError: $lastError')
+          ..write('lastError: $lastError, ')
+          ..write('sentAt: $sentAt')
           ..write(')'))
         .toString();
   }
@@ -5160,6 +5203,7 @@ class OutboxRow extends DataClass implements Insertable<OutboxRow> {
     lastAttemptAt,
     state,
     lastError,
+    sentAt,
   );
   @override
   bool operator ==(Object other) =>
@@ -5175,7 +5219,8 @@ class OutboxRow extends DataClass implements Insertable<OutboxRow> {
           other.nextAttemptAt == this.nextAttemptAt &&
           other.lastAttemptAt == this.lastAttemptAt &&
           other.state == this.state &&
-          other.lastError == this.lastError);
+          other.lastError == this.lastError &&
+          other.sentAt == this.sentAt);
 }
 
 class OutboxCompanion extends UpdateCompanion<OutboxRow> {
@@ -5190,6 +5235,7 @@ class OutboxCompanion extends UpdateCompanion<OutboxRow> {
   final Value<DateTime?> lastAttemptAt;
   final Value<String> state;
   final Value<String?> lastError;
+  final Value<DateTime?> sentAt;
   final Value<int> rowid;
   const OutboxCompanion({
     this.id = const Value.absent(),
@@ -5203,6 +5249,7 @@ class OutboxCompanion extends UpdateCompanion<OutboxRow> {
     this.lastAttemptAt = const Value.absent(),
     this.state = const Value.absent(),
     this.lastError = const Value.absent(),
+    this.sentAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   OutboxCompanion.insert({
@@ -5217,6 +5264,7 @@ class OutboxCompanion extends UpdateCompanion<OutboxRow> {
     this.lastAttemptAt = const Value.absent(),
     required String state,
     this.lastError = const Value.absent(),
+    this.sentAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        sequence = Value(sequence),
@@ -5238,6 +5286,7 @@ class OutboxCompanion extends UpdateCompanion<OutboxRow> {
     Expression<int>? lastAttemptAt,
     Expression<String>? state,
     Expression<String>? lastError,
+    Expression<int>? sentAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -5252,6 +5301,7 @@ class OutboxCompanion extends UpdateCompanion<OutboxRow> {
       if (lastAttemptAt != null) 'last_attempt_at': lastAttemptAt,
       if (state != null) 'state': state,
       if (lastError != null) 'last_error': lastError,
+      if (sentAt != null) 'sent_at': sentAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -5268,6 +5318,7 @@ class OutboxCompanion extends UpdateCompanion<OutboxRow> {
     Value<DateTime?>? lastAttemptAt,
     Value<String>? state,
     Value<String?>? lastError,
+    Value<DateTime?>? sentAt,
     Value<int>? rowid,
   }) {
     return OutboxCompanion(
@@ -5282,6 +5333,7 @@ class OutboxCompanion extends UpdateCompanion<OutboxRow> {
       lastAttemptAt: lastAttemptAt ?? this.lastAttemptAt,
       state: state ?? this.state,
       lastError: lastError ?? this.lastError,
+      sentAt: sentAt ?? this.sentAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -5328,6 +5380,11 @@ class OutboxCompanion extends UpdateCompanion<OutboxRow> {
     if (lastError.present) {
       map['last_error'] = Variable<String>(lastError.value);
     }
+    if (sentAt.present) {
+      map['sent_at'] = Variable<int>(
+        $OutboxTable.$convertersentAtn.toSql(sentAt.value),
+      );
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -5348,7 +5405,258 @@ class OutboxCompanion extends UpdateCompanion<OutboxRow> {
           ..write('lastAttemptAt: $lastAttemptAt, ')
           ..write('state: $state, ')
           ..write('lastError: $lastError, ')
+          ..write('sentAt: $sentAt, ')
           ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $TaskIdRemapsTable extends TaskIdRemaps
+    with TableInfo<$TaskIdRemapsTable, TaskIdRemapRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TaskIdRemapsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _localIdMeta = const VerificationMeta(
+    'localId',
+  );
+  @override
+  late final GeneratedColumn<int> localId = GeneratedColumn<int>(
+    'local_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _serverIdMeta = const VerificationMeta(
+    'serverId',
+  );
+  @override
+  late final GeneratedColumn<int> serverId = GeneratedColumn<int>(
+    'server_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<DateTime, int> at =
+      GeneratedColumn<int>(
+        'at',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: true,
+      ).withConverter<DateTime>($TaskIdRemapsTable.$converterat);
+  @override
+  List<GeneratedColumn> get $columns => [localId, serverId, at];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'task_id_remaps';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<TaskIdRemapRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('local_id')) {
+      context.handle(
+        _localIdMeta,
+        localId.isAcceptableOrUnknown(data['local_id']!, _localIdMeta),
+      );
+    }
+    if (data.containsKey('server_id')) {
+      context.handle(
+        _serverIdMeta,
+        serverId.isAcceptableOrUnknown(data['server_id']!, _serverIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_serverIdMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {localId};
+  @override
+  TaskIdRemapRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TaskIdRemapRow(
+      localId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}local_id'],
+      )!,
+      serverId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}server_id'],
+      )!,
+      at: $TaskIdRemapsTable.$converterat.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}at'],
+        )!,
+      ),
+    );
+  }
+
+  @override
+  $TaskIdRemapsTable createAlias(String alias) {
+    return $TaskIdRemapsTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<DateTime, int> $converterat = const EpochMillis();
+}
+
+class TaskIdRemapRow extends DataClass implements Insertable<TaskIdRemapRow> {
+  final int localId;
+  final int serverId;
+  final DateTime at;
+  const TaskIdRemapRow({
+    required this.localId,
+    required this.serverId,
+    required this.at,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['local_id'] = Variable<int>(localId);
+    map['server_id'] = Variable<int>(serverId);
+    {
+      map['at'] = Variable<int>($TaskIdRemapsTable.$converterat.toSql(at));
+    }
+    return map;
+  }
+
+  TaskIdRemapsCompanion toCompanion(bool nullToAbsent) {
+    return TaskIdRemapsCompanion(
+      localId: Value(localId),
+      serverId: Value(serverId),
+      at: Value(at),
+    );
+  }
+
+  factory TaskIdRemapRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TaskIdRemapRow(
+      localId: serializer.fromJson<int>(json['localId']),
+      serverId: serializer.fromJson<int>(json['serverId']),
+      at: serializer.fromJson<DateTime>(json['at']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'localId': serializer.toJson<int>(localId),
+      'serverId': serializer.toJson<int>(serverId),
+      'at': serializer.toJson<DateTime>(at),
+    };
+  }
+
+  TaskIdRemapRow copyWith({int? localId, int? serverId, DateTime? at}) =>
+      TaskIdRemapRow(
+        localId: localId ?? this.localId,
+        serverId: serverId ?? this.serverId,
+        at: at ?? this.at,
+      );
+  TaskIdRemapRow copyWithCompanion(TaskIdRemapsCompanion data) {
+    return TaskIdRemapRow(
+      localId: data.localId.present ? data.localId.value : this.localId,
+      serverId: data.serverId.present ? data.serverId.value : this.serverId,
+      at: data.at.present ? data.at.value : this.at,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TaskIdRemapRow(')
+          ..write('localId: $localId, ')
+          ..write('serverId: $serverId, ')
+          ..write('at: $at')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(localId, serverId, at);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TaskIdRemapRow &&
+          other.localId == this.localId &&
+          other.serverId == this.serverId &&
+          other.at == this.at);
+}
+
+class TaskIdRemapsCompanion extends UpdateCompanion<TaskIdRemapRow> {
+  final Value<int> localId;
+  final Value<int> serverId;
+  final Value<DateTime> at;
+  const TaskIdRemapsCompanion({
+    this.localId = const Value.absent(),
+    this.serverId = const Value.absent(),
+    this.at = const Value.absent(),
+  });
+  TaskIdRemapsCompanion.insert({
+    this.localId = const Value.absent(),
+    required int serverId,
+    required DateTime at,
+  }) : serverId = Value(serverId),
+       at = Value(at);
+  static Insertable<TaskIdRemapRow> custom({
+    Expression<int>? localId,
+    Expression<int>? serverId,
+    Expression<int>? at,
+  }) {
+    return RawValuesInsertable({
+      if (localId != null) 'local_id': localId,
+      if (serverId != null) 'server_id': serverId,
+      if (at != null) 'at': at,
+    });
+  }
+
+  TaskIdRemapsCompanion copyWith({
+    Value<int>? localId,
+    Value<int>? serverId,
+    Value<DateTime>? at,
+  }) {
+    return TaskIdRemapsCompanion(
+      localId: localId ?? this.localId,
+      serverId: serverId ?? this.serverId,
+      at: at ?? this.at,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (localId.present) {
+      map['local_id'] = Variable<int>(localId.value);
+    }
+    if (serverId.present) {
+      map['server_id'] = Variable<int>(serverId.value);
+    }
+    if (at.present) {
+      map['at'] = Variable<int>(
+        $TaskIdRemapsTable.$converterat.toSql(at.value),
+      );
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TaskIdRemapsCompanion(')
+          ..write('localId: $localId, ')
+          ..write('serverId: $serverId, ')
+          ..write('at: $at')
           ..write(')'))
         .toString();
   }
@@ -5368,6 +5676,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $TaskRelationsTable taskRelations = $TaskRelationsTable(this);
   late final $SyncStateTable syncState = $SyncStateTable(this);
   late final $OutboxTable outbox = $OutboxTable(this);
+  late final $TaskIdRemapsTable taskIdRemaps = $TaskIdRemapsTable(this);
   late final Index projectViewsProject = Index(
     'project_views_project',
     'CREATE INDEX project_views_project ON project_views (project_id)',
@@ -5406,6 +5715,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     taskRelations,
     syncState,
     outbox,
+    taskIdRemaps,
     projectViewsProject,
     tasksProject,
     tasksDoneDue,
@@ -9307,6 +9617,7 @@ typedef $$OutboxTableCreateCompanionBuilder = OutboxCompanion Function({
   Value<DateTime?> lastAttemptAt,
   required String state,
   Value<String?> lastError,
+  Value<DateTime?> sentAt,
   Value<int> rowid,
 });
 typedef $$OutboxTableUpdateCompanionBuilder = OutboxCompanion Function({
@@ -9321,6 +9632,7 @@ typedef $$OutboxTableUpdateCompanionBuilder = OutboxCompanion Function({
   Value<DateTime?> lastAttemptAt,
   Value<String> state,
   Value<String?> lastError,
+  Value<DateTime?> sentAt,
   Value<int> rowid,
 });
 
@@ -9390,6 +9702,12 @@ class $$OutboxTableFilterComposer
     column: $table.lastError,
     builder: (column) => ColumnFilters(column),
   );
+
+  ColumnWithTypeConverterFilters<DateTime?, DateTime, int> get sentAt =>
+      $composableBuilder(
+        column: $table.sentAt,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
 }
 
 class $$OutboxTableOrderingComposer
@@ -9455,6 +9773,11 @@ class $$OutboxTableOrderingComposer
     column: $table.lastError,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get sentAt => $composableBuilder(
+    column: $table.sentAt,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$OutboxTableAnnotationComposer
@@ -9504,6 +9827,9 @@ class $$OutboxTableAnnotationComposer
 
   GeneratedColumn<String> get lastError =>
       $composableBuilder(column: $table.lastError, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<DateTime?, int> get sentAt =>
+      $composableBuilder(column: $table.sentAt, builder: (column) => column);
 }
 
 class $$OutboxTableTableManager
@@ -9545,6 +9871,7 @@ class $$OutboxTableTableManager
                 Value<DateTime?> lastAttemptAt = const Value.absent(),
                 Value<String> state = const Value.absent(),
                 Value<String?> lastError = const Value.absent(),
+                Value<DateTime?> sentAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => OutboxCompanion(
                 id: id,
@@ -9558,6 +9885,7 @@ class $$OutboxTableTableManager
                 lastAttemptAt: lastAttemptAt,
                 state: state,
                 lastError: lastError,
+                sentAt: sentAt,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -9573,6 +9901,7 @@ class $$OutboxTableTableManager
                 Value<DateTime?> lastAttemptAt = const Value.absent(),
                 required String state,
                 Value<String?> lastError = const Value.absent(),
+                Value<DateTime?> sentAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => OutboxCompanion.insert(
                 id: id,
@@ -9586,6 +9915,7 @@ class $$OutboxTableTableManager
                 lastAttemptAt: lastAttemptAt,
                 state: state,
                 lastError: lastError,
+                sentAt: sentAt,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -9619,6 +9949,172 @@ typedef $$OutboxTableProcessedTableManager =
       OutboxRow,
       PrefetchHooks Function()
     >;
+typedef $$TaskIdRemapsTableCreateCompanionBuilder =
+    TaskIdRemapsCompanion Function({
+      Value<int> localId,
+      required int serverId,
+      required DateTime at,
+    });
+typedef $$TaskIdRemapsTableUpdateCompanionBuilder =
+    TaskIdRemapsCompanion Function({
+      Value<int> localId,
+      Value<int> serverId,
+      Value<DateTime> at,
+    });
+
+class $$TaskIdRemapsTableFilterComposer
+    extends Composer<_$AppDatabase, $TaskIdRemapsTable> {
+  $$TaskIdRemapsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get localId => $composableBuilder(
+    column: $table.localId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get serverId => $composableBuilder(
+    column: $table.serverId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<DateTime, DateTime, int> get at =>
+      $composableBuilder(
+        column: $table.at,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+}
+
+class $$TaskIdRemapsTableOrderingComposer
+    extends Composer<_$AppDatabase, $TaskIdRemapsTable> {
+  $$TaskIdRemapsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get localId => $composableBuilder(
+    column: $table.localId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get serverId => $composableBuilder(
+    column: $table.serverId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get at => $composableBuilder(
+    column: $table.at,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$TaskIdRemapsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TaskIdRemapsTable> {
+  $$TaskIdRemapsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get localId =>
+      $composableBuilder(column: $table.localId, builder: (column) => column);
+
+  GeneratedColumn<int> get serverId =>
+      $composableBuilder(column: $table.serverId, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<DateTime, int> get at =>
+      $composableBuilder(column: $table.at, builder: (column) => column);
+}
+
+class $$TaskIdRemapsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $TaskIdRemapsTable,
+          TaskIdRemapRow,
+          $$TaskIdRemapsTableFilterComposer,
+          $$TaskIdRemapsTableOrderingComposer,
+          $$TaskIdRemapsTableAnnotationComposer,
+          $$TaskIdRemapsTableCreateCompanionBuilder,
+          $$TaskIdRemapsTableUpdateCompanionBuilder,
+          (
+            TaskIdRemapRow,
+            BaseReferences<_$AppDatabase, $TaskIdRemapsTable, TaskIdRemapRow>,
+          ),
+          TaskIdRemapRow,
+          PrefetchHooks Function()
+        > {
+  $$TaskIdRemapsTableTableManager(_$AppDatabase db, $TaskIdRemapsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TaskIdRemapsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TaskIdRemapsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TaskIdRemapsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> localId = const Value.absent(),
+                Value<int> serverId = const Value.absent(),
+                Value<DateTime> at = const Value.absent(),
+              }) => TaskIdRemapsCompanion(
+                localId: localId,
+                serverId: serverId,
+                at: at,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> localId = const Value.absent(),
+                required int serverId,
+                required DateTime at,
+              }) => TaskIdRemapsCompanion.insert(
+                localId: localId,
+                serverId: serverId,
+                at: at,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$TaskIdRemapsTable, TaskIdRemapRow>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $TaskIdRemapsTable,
+                    TaskIdRemapRow
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$TaskIdRemapsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $TaskIdRemapsTable,
+      TaskIdRemapRow,
+      $$TaskIdRemapsTableFilterComposer,
+      $$TaskIdRemapsTableOrderingComposer,
+      $$TaskIdRemapsTableAnnotationComposer,
+      $$TaskIdRemapsTableCreateCompanionBuilder,
+      $$TaskIdRemapsTableUpdateCompanionBuilder,
+      (
+        TaskIdRemapRow,
+        BaseReferences<_$AppDatabase, $TaskIdRemapsTable, TaskIdRemapRow>,
+      ),
+      TaskIdRemapRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -9645,4 +10141,6 @@ class $AppDatabaseManager {
       $$SyncStateTableTableManager(_db, _db.syncState);
   $$OutboxTableTableManager get outbox =>
       $$OutboxTableTableManager(_db, _db.outbox);
+  $$TaskIdRemapsTableTableManager get taskIdRemaps =>
+      $$TaskIdRemapsTableTableManager(_db, _db.taskIdRemaps);
 }

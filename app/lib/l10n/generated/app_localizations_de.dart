@@ -1208,4 +1208,183 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get syncProblemDiscard => 'Verwerfen';
+
+  @override
+  String get syncProblemCreateFailed =>
+      'Die Aufgabe konnte nicht angelegt werden.';
+
+  @override
+  String get taskEdit => 'Bearbeiten';
+
+  @override
+  String get taskEditTitle => 'Aufgabe bearbeiten';
+
+  @override
+  String get taskEditSave => 'Speichern';
+
+  @override
+  String get taskEditSaved => 'Gespeichert';
+
+  @override
+  String get taskEditLoading => 'Aufgabe wird geladen …';
+
+  @override
+  String get taskEditGoneTitle => 'Aufgabe nicht gefunden';
+
+  @override
+  String get taskEditGoneBody =>
+      'Diese Aufgabe gibt es auf diesem Gerät nicht mehr.';
+
+  @override
+  String get taskEditTitleLabel => 'Titel';
+
+  @override
+  String get taskEditTitleRequired => 'Gib einen Titel ein.';
+
+  @override
+  String get taskEditProject => 'Projekt';
+
+  @override
+  String get taskEditProjectPickerTitle => 'Projekt wählen';
+
+  @override
+  String taskEditProjectSemantics(String project) {
+    return 'Projekt: $project';
+  }
+
+  @override
+  String get taskEditDateNotSet => 'Nicht gesetzt';
+
+  @override
+  String get taskEditClearDueDate => 'Fälligkeitsdatum entfernen';
+
+  @override
+  String get taskEditClearStartDate => 'Startdatum entfernen';
+
+  @override
+  String get taskEditClearEndDate => 'Enddatum entfernen';
+
+  @override
+  String get shortcutToday => 'Heute';
+
+  @override
+  String get shortcutTomorrow => 'Morgen';
+
+  @override
+  String get shortcutNextMonday => 'Nächster Montag';
+
+  @override
+  String get shortcutThisWeekend => 'Dieses Wochenende';
+
+  @override
+  String get shortcutLaterThisWeek => 'Später diese Woche';
+
+  @override
+  String get shortcutNextWeek => 'Nächste Woche';
+
+  @override
+  String get shortcutNextWeekend => 'Nächstes Wochenende';
+
+  @override
+  String get shortcutEndOfMonth => 'Monatsende';
+
+  @override
+  String get shortcutInAMonth => 'In einem Monat';
+
+  @override
+  String shortcutSemantics(String label, String date) {
+    return '$label, $date';
+  }
+
+  @override
+  String get taskEditColour => 'Farbe';
+
+  @override
+  String get taskEditNoColour => 'Keine Farbe';
+
+  @override
+  String taskEditColourSemantics(String hex) {
+    return 'Farbe $hex';
+  }
+
+  @override
+  String get taskEditRepeat => 'Wiederholung';
+
+  @override
+  String get repeatModeNone => 'Nie';
+
+  @override
+  String get repeatModeEvery => 'Alle …';
+
+  @override
+  String get repeatModeMonthly => 'Monatlich';
+
+  @override
+  String get repeatModeFromCompletion => 'Ab Erledigung';
+
+  @override
+  String get repeatAmountLabel => 'Alle';
+
+  @override
+  String get repeatAmountInvalid => 'Gib mehr als 0 ein.';
+
+  @override
+  String get repeatUnitHours => 'Stunden';
+
+  @override
+  String get repeatUnitDays => 'Tage';
+
+  @override
+  String get repeatUnitWeeks => 'Wochen';
+
+  @override
+  String get repeatPresetDaily => 'Jeden Tag';
+
+  @override
+  String get repeatPresetWeekly => 'Jede Woche';
+
+  @override
+  String get repeatPresetThirtyDays => 'Alle 30 Tage';
+
+  @override
+  String get taskEditDiscardTitle => 'Änderungen verwerfen?';
+
+  @override
+  String get taskEditDiscardBody =>
+      'Deine Änderungen an dieser Aufgabe gehen verloren.';
+
+  @override
+  String get taskEditKeepEditing => 'Weiter bearbeiten';
+
+  @override
+  String get taskEditDiscard => 'Verwerfen';
+
+  @override
+  String get pickerDone => 'Fertig';
+
+  @override
+  String get pickerCancel => 'Abbrechen';
+
+  @override
+  String get newTask => 'Neue Aufgabe';
+
+  @override
+  String get newTaskTitleHint => 'Was ist zu tun?';
+
+  @override
+  String get newTaskAdd => 'Hinzufügen';
+
+  @override
+  String get newTaskMoreOptions => 'Mehr Optionen';
+
+  @override
+  String get newTaskPickDate => 'Datum wählen …';
+
+  @override
+  String get newTaskNoProject => 'Kein Projekt';
+
+  @override
+  String newTaskCreated(String title) {
+    return '„$title“ hinzugefügt';
+  }
 }

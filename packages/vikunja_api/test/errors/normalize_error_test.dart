@@ -78,6 +78,27 @@ Matcher _expectedFor(String name) {
         'title': ['expected string'],
       },
     ),
+    // Huma validates the v2 create body; v1 reaches the model's own check.
+    '422_title_empty' =>
+      isA<ValidationFailed>()
+          .having((f) => f.fieldErrors, 'fieldErrors', {
+            'title': ['expected length >= 1'],
+          })
+          .having((f) => f.message, 'message', 'validation failed'),
+    '400_title_empty' =>
+      isA<DomainError>()
+          .having((f) => f.statusCode, 'status', 400)
+          .having((f) => f.code, 'code', 4001)
+          .having(
+            (f) => f.message,
+            'message',
+            'You must provide at least a task title.',
+          ),
+    '400_repeat_range' =>
+      isA<DomainError>()
+          .having((f) => f.statusCode, 'status', 400)
+          .having((f) => f.code, 'code', 4029)
+          .having((f) => f.message, 'message', startsWith('The task repeat')),
     '429_oauth_token' =>
       isA<RateLimited>()
           .having(

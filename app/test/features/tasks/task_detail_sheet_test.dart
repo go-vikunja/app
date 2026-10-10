@@ -174,6 +174,53 @@ void main() {
     expect(find.byType(TaskDetailSheet), findsNothing);
   }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 
+  testWidgets('offers Edit and hides the identifier of a task not yet sent', (
+    tester,
+  ) async {
+    await data.tasks.createTask(
+      const NewTask(projectId: 1, title: 'Just added'),
+    );
+    await openDetail(tester, 'Just added');
+
+    final sheet = find.byType(TaskDetailSheet);
+    expect(
+      find.descendant(of: sheet, matching: find.byTooltip(en.taskEdit)),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: sheet, matching: find.text('Work')),
+      findsOneWidget,
+    );
+    expect(find.descendant(of: sheet, matching: find.text('#0')), findsNothing);
+    expect(
+      find.descendant(
+        of: sheet,
+        matching: find.text(en.taskDetailIdentifierInProject('#0', 'Work')),
+      ),
+      findsNothing,
+    );
+  });
+
+  testWidgets('follows the task to the id the server assigns', (tester) async {
+    final localId = await data.tasks.createTask(
+      const NewTask(projectId: 1, title: 'Just added'),
+    );
+    await openDetail(tester, 'Just added');
+
+    // The fake keeps index 0; the identifier line appears once the id is
+    // the server's.
+    data.tasks.remapTask(localId, 77);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(
+        of: find.byType(TaskDetailSheet),
+        matching: find.text(en.taskDetailIdentifierInProject('#0', 'Work')),
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('dates are localized in German', (tester) async {
     useLocale(tester, const Locale('de'));
     await openDetail(tester, 'Quarterly report');

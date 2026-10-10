@@ -7,6 +7,7 @@ const _unset = Object();
 Task copyTask(
   Task task, {
   String? title,
+  int? projectId,
   String? description,
   bool? done,
   Object? doneAt = _unset,
@@ -17,12 +18,15 @@ Task copyTask(
   double? percentDone,
   String? hexColor,
   bool? isFavorite,
+  Duration? repeatAfter,
+  RepeatMode? repeatMode,
   Object? updated = _unset,
   List<Label>? labels,
   List<User>? assignees,
   List<TaskReminder>? reminders,
 }) => task.copyWith(
   title: title,
+  projectId: projectId,
   description: description,
   done: done,
   doneAt: _date(doneAt, task.doneAt),
@@ -33,10 +37,69 @@ Task copyTask(
   percentDone: percentDone,
   hexColor: hexColor,
   isFavorite: isFavorite,
+  repeatAfter: repeatAfter,
+  repeatMode: repeatMode,
   labels: labels,
   assignees: assignees,
   reminders: reminders,
   updated: _date(updated, task.updated),
+);
+
+/// The same task under another id, as a remap moves it.
+Task taskWithId(Task task, int id) => Task(
+  id: id,
+  title: task.title,
+  projectId: task.projectId,
+  description: task.description,
+  done: task.done,
+  doneAt: task.doneAt,
+  dueDate: task.dueDate,
+  startDate: task.startDate,
+  endDate: task.endDate,
+  priority: task.priority,
+  percentDone: task.percentDone,
+  hexColor: task.hexColor,
+  identifier: task.identifier,
+  index: task.index,
+  isFavorite: task.isFavorite,
+  position: task.position,
+  labels: task.labels,
+  assignees: task.assignees,
+  reminders: task.reminders,
+  repeatAfter: task.repeatAfter,
+  repeatMode: task.repeatMode,
+  relatedTasks: task.relatedTasks,
+  bucketId: task.bucketId,
+  createdBy: task.createdBy,
+  created: task.created,
+  updated: task.updated,
+);
+
+/// What the server stores for a create: [id] and [index] assigned, the
+/// identifier `-<index>` of a project without a prefix, timestamps [now].
+Task taskFromNewTask(
+  NewTask task, {
+  required int id,
+  required DateTime now,
+  int? index,
+}) => Task(
+  id: id,
+  title: task.title,
+  projectId: task.projectId,
+  description: task.description,
+  dueDate: task.dueDate?.toUtc(),
+  startDate: task.startDate?.toUtc(),
+  endDate: task.endDate?.toUtc(),
+  priority: task.priority,
+  percentDone: task.percentDone,
+  hexColor: task.hexColor,
+  identifier: '-${index ?? id}',
+  index: index ?? id,
+  isFavorite: task.isFavorite,
+  repeatAfter: task.repeatAfter,
+  repeatMode: task.repeatMode,
+  created: now.toUtc(),
+  updated: now.toUtc(),
 );
 
 /// [changes] applied as the server stores them.
@@ -47,6 +110,7 @@ Task applyChangesToTask(
 }) => copyTask(
   task,
   title: changes.title,
+  projectId: changes.projectId,
   description: changes.description,
   done: changes.done,
   doneAt: switch (changes.done) {
@@ -64,6 +128,8 @@ Task applyChangesToTask(
   percentDone: changes.percentDone,
   hexColor: changes.hexColor,
   isFavorite: changes.isFavorite,
+  repeatAfter: changes.repeatAfter,
+  repeatMode: changes.repeatMode,
   updated: now,
 );
 

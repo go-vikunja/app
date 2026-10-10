@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/outbox/failure_json.dart';
+import 'package:vikunja_mobile/core/outbox/new_task_json.dart';
 import 'package:vikunja_mobile/core/outbox/task_changes_json.dart';
 
 void main() {
@@ -18,6 +19,9 @@ void main() {
         hexColor: 'ff0000',
         dueDate: DateChange.set(DateTime.utc(2026, 10, 12, 9)),
         startDate: const DateChange.clear(),
+        repeatAfter: const Duration(days: 30),
+        repeatMode: RepeatMode.fromCurrentDate,
+        projectId: 9,
       );
 
       final json = encodeTaskChanges(changes);
@@ -32,8 +36,23 @@ void main() {
         'hex_color': 'ff0000',
         'due_date': '2026-10-12T09:00:00.000Z',
         'start_date': '',
+        'repeat_after': 2592000,
+        'repeat_mode': 2,
+        'project_id': 9,
       });
       expect(decodeTaskChanges(json), changes);
+    });
+
+    test('a removed repeat is zero seconds in the default mode', () {
+      const removed = TaskChanges(
+        repeatAfter: Duration.zero,
+        repeatMode: RepeatMode.afterAmount,
+      );
+
+      final json = encodeTaskChanges(removed);
+
+      expect(jsonDecode(json), {'repeat_after': 0, 'repeat_mode': 0});
+      expect(decodeTaskChanges(json), removed);
     });
 
     test('an empty change is an empty object', () {
@@ -48,6 +67,55 @@ void main() {
         encodeTaskChanges(TaskChanges(endDate: DateChange.set(local))),
       );
       expect(decoded.endDate, DateChange.set(local.toUtc()));
+    });
+  });
+
+  group('NewTask', () {
+    test('round-trips every field under the wire names', () {
+      final task = NewTask(
+        projectId: 7,
+        title: 'Water the plants',
+        description: '<p>Every pot</p>',
+        dueDate: DateTime.utc(2026, 10, 12, 9),
+        startDate: DateTime(2026, 10, 12, 8),
+        priority: TaskPriority.high,
+        percentDone: 0.3,
+        hexColor: 'ff4136',
+        repeatAfter: const Duration(days: 7),
+        repeatMode: RepeatMode.monthly,
+        isFavorite: true,
+      );
+
+      final json = encodeNewTask(task);
+
+      expect(jsonDecode(json), {
+        'project_id': 7,
+        'title': 'Water the plants',
+        'description': '<p>Every pot</p>',
+        'due_date': '2026-10-12T09:00:00.000Z',
+        'start_date': DateTime(2026, 10, 12, 8).toUtc().toIso8601String(),
+        'priority': 3,
+        'percent_done': 0.3,
+        'hex_color': 'ff4136',
+        'repeat_after': 604800,
+        'repeat_mode': 1,
+        'is_favorite': true,
+      });
+      final back = decodeNewTask(json);
+      expect(back.startDate, DateTime(2026, 10, 12, 8).toUtc());
+      expect(back.startDate!.isUtc, isTrue);
+      expect(back.endDate, isNull);
+      expect(decodeNewTask(encodeNewTask(back)), back);
+    });
+
+    test('the defaults fill what an older payload leaves out', () {
+      final task = decodeNewTask('{"project_id":1,"title":"Bare"}');
+
+      expect(task, const NewTask(projectId: 1, title: 'Bare'));
+    });
+
+    test('anything but an object is unreadable', () {
+      expect(() => decodeNewTask('[]'), throwsFormatException);
     });
   });
 

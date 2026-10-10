@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 
-enum OutboxOperationKind { updateTask, deleteTask }
+enum OutboxOperationKind { createTask, updateTask, deleteTask }
 
 /// A queued change the server rejected for good. The local edit stays
 /// visible until the user retries or discards it.

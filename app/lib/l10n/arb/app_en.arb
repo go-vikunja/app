@@ -952,5 +952,98 @@
     }
   },
   "syncProblemFailedJustNow": "Failed just now",
-  "syncProblemDiscard": "Discard"
+  "syncProblemDiscard": "Discard",
+  "syncProblemCreateFailed": "The task could not be created.",
+  "taskEdit": "Edit",
+  "taskEditTitle": "Edit task",
+  "taskEditSave": "Save",
+  "taskEditSaved": "Saved",
+  "taskEditLoading": "Loading task…",
+  "taskEditGoneTitle": "Task not found",
+  "taskEditGoneBody": "This task is no longer on this device.",
+  "taskEditTitleLabel": "Title",
+  "taskEditTitleRequired": "Enter a title.",
+  "taskEditProject": "Project",
+  "taskEditProjectPickerTitle": "Choose a project",
+  "taskEditProjectSemantics": "Project: {project}",
+  "@taskEditProjectSemantics": {
+    "placeholders": {
+      "project": {
+        "type": "String",
+        "example": "Inbox"
+      }
+    }
+  },
+  "taskEditDateNotSet": "Not set",
+  "taskEditClearDueDate": "Clear due date",
+  "taskEditClearStartDate": "Clear start date",
+  "taskEditClearEndDate": "Clear end date",
+  "shortcutToday": "Today",
+  "shortcutTomorrow": "Tomorrow",
+  "shortcutNextMonday": "Next Monday",
+  "shortcutThisWeekend": "This weekend",
+  "shortcutLaterThisWeek": "Later this week",
+  "shortcutNextWeek": "Next week",
+  "shortcutNextWeekend": "Next weekend",
+  "shortcutEndOfMonth": "End of month",
+  "shortcutInAMonth": "In a month",
+  "shortcutSemantics": "{label}, {date}",
+  "@shortcutSemantics": {
+    "description": "A date shortcut chip read out with the day it stands for.",
+    "placeholders": {
+      "label": {
+        "type": "String",
+        "example": "Tomorrow"
+      },
+      "date": {
+        "type": "String",
+        "example": "Sat, Oct 10"
+      }
+    }
+  },
+  "taskEditColour": "Colour",
+  "taskEditNoColour": "No colour",
+  "taskEditColourSemantics": "Colour {hex}",
+  "@taskEditColourSemantics": {
+    "placeholders": {
+      "hex": {
+        "type": "String",
+        "example": "#1973ff"
+      }
+    }
+  },
+  "taskEditRepeat": "Repeat",
+  "repeatModeNone": "Never",
+  "repeatModeEvery": "Every…",
+  "repeatModeMonthly": "Monthly",
+  "repeatModeFromCompletion": "From completion",
+  "repeatAmountLabel": "Every",
+  "repeatAmountInvalid": "Enter more than 0.",
+  "repeatUnitHours": "Hours",
+  "repeatUnitDays": "Days",
+  "repeatUnitWeeks": "Weeks",
+  "repeatPresetDaily": "Every day",
+  "repeatPresetWeekly": "Every week",
+  "repeatPresetThirtyDays": "Every 30 days",
+  "taskEditDiscardTitle": "Discard changes?",
+  "taskEditDiscardBody": "Your edits to this task will be lost.",
+  "taskEditKeepEditing": "Keep editing",
+  "taskEditDiscard": "Discard",
+  "pickerDone": "Done",
+  "pickerCancel": "Cancel",
+  "newTask": "New task",
+  "newTaskTitleHint": "What needs doing?",
+  "newTaskAdd": "Add",
+  "newTaskMoreOptions": "More options",
+  "newTaskPickDate": "Pick date…",
+  "newTaskNoProject": "No project",
+  "newTaskCreated": "Added “{title}”",
+  "@newTaskCreated": {
+    "placeholders": {
+      "title": {
+        "type": "String",
+        "example": "Buy milk"
+      }
+    }
+  }
 }

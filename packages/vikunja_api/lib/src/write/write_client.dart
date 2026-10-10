@@ -40,6 +40,19 @@ final class _TasksWriteApi implements TasksWritePort {
   final _WriteTransport _transport;
 
   @override
+  Future<Task> create(NewTask task) async {
+    final response = await _transport.send(
+      switch (_transport.version) {
+        ApiVersion.v2 => 'POST',
+        ApiVersion.v1 => 'PUT',
+      },
+      '/projects/${task.projectId}/tasks',
+      body: encodeNewTask(task),
+    );
+    return _transport.decode<Task>(response, parseTask);
+  }
+
+  @override
   Future<Task> update(int id, TaskChanges changes) {
     if (changes.isEmpty) return _read(id);
     return switch (_transport.version) {
@@ -65,8 +78,12 @@ final class _TasksWriteApi implements TasksWritePort {
       contentType: mergePatchContentType,
       acceptNotModified: true,
     );
-    // A patch that changes nothing is answered with 304 and no body.
-    if (response.statusCode == _notModified) return await _read(id);
+    // A patch that changes nothing is answered with 304 and no body. A move
+    // is answered with the identifier of the old project (the server builds
+    // it before moving), so the stored task is read back.
+    if (response.statusCode == _notModified || changes.projectId != null) {
+      return await _read(id);
+    }
     return _transport.decode<Task>(response, parseTask);
   }
 
@@ -84,6 +101,8 @@ final class _TasksWriteApi implements TasksWritePort {
         ...encodeTaskChanges(changes),
       },
     );
+    // After a move the answer still carries the old project's identifier.
+    if (changes.projectId != null) return await _read(id);
     // The v1 update answers without the labels, which it cannot change; the
     // read just made has them.
     return _transport.decode<Task>(response, (json) {
