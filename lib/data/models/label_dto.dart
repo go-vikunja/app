@@ -8,7 +8,7 @@ class LabelDto extends Dto<Label> {
   final int id;
   final String title, description;
   final DateTime created, updated;
-  final UserDto createdBy;
+  final UserDto? createdBy;
   final Color? color;
 
   LabelDto({
@@ -18,7 +18,7 @@ class LabelDto extends Dto<Label> {
     this.color,
     DateTime? created,
     DateTime? updated,
-    required this.createdBy,
+    this.createdBy,
   }) : created = created ?? DateTime.now(),
        updated = updated ?? DateTime.now();
 
@@ -31,7 +31,9 @@ class LabelDto extends Dto<Label> {
           : Color(int.parse(json['hex_color'], radix: 16) + 0xFF000000),
       updated = DateTime.parse(json['updated']),
       created = DateTime.parse(json['created']),
-      createdBy = UserDto.fromJson(json['created_by']);
+      createdBy = json['created_by'] != null
+          ? UserDto.fromJson(json['created_by'])
+          : null;
 
   Map<String, Object?> toJSON() => {
     'id': id,
@@ -42,7 +44,7 @@ class LabelDto extends Dto<Label> {
         .toRadixString(16)
         .padLeft(8, '0')
         .substring(2),
-    'created_by': createdBy.toJSON(),
+    'created_by': createdBy?.toJSON(),
     'updated': updated.toUtc().toIso8601String(),
     'created': created.toUtc().toIso8601String(),
   };
@@ -54,7 +56,7 @@ class LabelDto extends Dto<Label> {
     description: description,
     created: created,
     updated: updated,
-    createdBy: createdBy.toDomain(),
+    createdBy: createdBy?.toDomain(),
     color: color,
   );
 
@@ -64,7 +66,7 @@ class LabelDto extends Dto<Label> {
     description: b.description,
     created: b.created,
     updated: b.updated,
-    createdBy: UserDto.fromDomain(b.createdBy),
+    createdBy: b.createdBy != null ? UserDto.fromDomain(b.createdBy!) : null,
     color: b.color,
   );
 }
