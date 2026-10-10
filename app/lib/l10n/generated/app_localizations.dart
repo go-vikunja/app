@@ -854,6 +854,12 @@ abstract class AppLocalizations {
   /// **'Rurana will sign you out of {host} and delete the tasks saved on this device. You can sign in again at any time.'**
   String signOutDialogBody(String host);
 
+  /// No description provided for @signOutDialogPendingChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{One change has not been sent to the server yet and will be lost; tap Send now first to keep it.} other{{count} changes have not been sent to the server yet and will be lost; tap Send now first to keep them.}}'**
+  String signOutDialogPendingChanges(int count);
+
   /// No description provided for @signOutDialogCancel.
   ///
   /// In en, this message translates to:
@@ -1076,12 +1082,6 @@ abstract class AppLocalizations {
   /// **'Done'**
   String get taskDone;
 
-  /// No description provided for @taskNotDone.
-  ///
-  /// In en, this message translates to:
-  /// **'Not done'**
-  String get taskNotDone;
-
   /// No description provided for @taskDueSemantics.
   ///
   /// In en, this message translates to:
@@ -1207,18 +1207,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =1{1 year ago} other{{count} years ago}}'**
   String relativeYearsAgo(int count);
-
-  /// No description provided for @taskDetailStatusDone.
-  ///
-  /// In en, this message translates to:
-  /// **'Done'**
-  String get taskDetailStatusDone;
-
-  /// No description provided for @taskDetailStatusOpen.
-  ///
-  /// In en, this message translates to:
-  /// **'Open'**
-  String get taskDetailStatusOpen;
 
   /// No description provided for @taskDetailIdentifierInProject.
   ///
@@ -1609,6 +1597,180 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Full resync'**
   String get accountFullResync;
+
+  /// No description provided for @taskMarkDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark done'**
+  String get taskMarkDone;
+
+  /// No description provided for @taskMarkNotDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark not done'**
+  String get taskMarkNotDone;
+
+  /// No description provided for @taskMarkedDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Marked done'**
+  String get taskMarkedDone;
+
+  /// No description provided for @undo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get undo;
+
+  /// No description provided for @taskAddFavourite.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to favourites'**
+  String get taskAddFavourite;
+
+  /// No description provided for @taskRemoveFavourite.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from favourites'**
+  String get taskRemoveFavourite;
+
+  /// No description provided for @taskNotYetSynced.
+  ///
+  /// In en, this message translates to:
+  /// **'Not yet synced'**
+  String get taskNotYetSynced;
+
+  /// No description provided for @taskDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete task'**
+  String get taskDelete;
+
+  /// No description provided for @taskDeleteDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete task?'**
+  String get taskDeleteDialogTitle;
+
+  /// No description provided for @taskDeleteDialogBody.
+  ///
+  /// In en, this message translates to:
+  /// **'“{title}” will be deleted on the server too. This cannot be undone.'**
+  String taskDeleteDialogBody(String title);
+
+  /// No description provided for @taskDeleteDialogCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get taskDeleteDialogCancel;
+
+  /// No description provided for @taskDeleteDialogConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get taskDeleteDialogConfirm;
+
+  /// No description provided for @taskDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Task deleted'**
+  String get taskDeleted;
+
+  /// No description provided for @accountPendingChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending changes: {count}'**
+  String accountPendingChanges(int count);
+
+  /// No description provided for @accountSendNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Send now'**
+  String get accountSendNow;
+
+  /// No description provided for @accountSending.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending…'**
+  String get accountSending;
+
+  /// No description provided for @accountSendNowFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Not sent. {reason}'**
+  String accountSendNowFailed(String reason);
+
+  /// No description provided for @accountSyncProblems.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync problems'**
+  String get accountSyncProblems;
+
+  /// No description provided for @syncProblemUpdateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The change could not be saved.'**
+  String get syncProblemUpdateFailed;
+
+  /// No description provided for @syncProblemDeleteFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The task could not be deleted.'**
+  String get syncProblemDeleteFailed;
+
+  /// No description provided for @syncProblemForbidden.
+  ///
+  /// In en, this message translates to:
+  /// **'You no longer have access to its project.'**
+  String get syncProblemForbidden;
+
+  /// No description provided for @syncProblemProjectMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Its project no longer exists on the server.'**
+  String get syncProblemProjectMissing;
+
+  /// No description provided for @syncProblemTaskMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'The task no longer exists on the server.'**
+  String get syncProblemTaskMissing;
+
+  /// No description provided for @syncProblemProjectArchived.
+  ///
+  /// In en, this message translates to:
+  /// **'Its project is archived.'**
+  String get syncProblemProjectArchived;
+
+  /// No description provided for @syncProblemRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'The server rejected the change.'**
+  String get syncProblemRejected;
+
+  /// No description provided for @syncProblemUnexpected.
+  ///
+  /// In en, this message translates to:
+  /// **'The server answered in an unexpected way.'**
+  String get syncProblemUnexpected;
+
+  /// No description provided for @syncProblemFailedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed {when}'**
+  String syncProblemFailedAt(String when);
+
+  /// No description provided for @syncProblemFailedJustNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed just now'**
+  String get syncProblemFailedJustNow;
+
+  /// No description provided for @syncProblemDiscard.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard'**
+  String get syncProblemDiscard;
 }
 
 class _AppLocalizationsDelegate

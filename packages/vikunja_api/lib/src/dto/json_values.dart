@@ -61,14 +61,20 @@ String stringOr(Map<String, Object?> json, String key, String fallback) =>
       _ => fallback,
     };
 
-/// RFC 3339 in the server's zone, converted to UTC. Go's zero time
-/// (`0001-01-01T00:00:00Z`) means "no date".
+/// Go's zero time: the server sends it for "no date" and clears a date
+/// when it receives it.
+const zeroDate = '0001-01-01T00:00:00Z';
+
+/// RFC 3339 in the server's zone, converted to UTC. [zeroDate] means
+/// "no date".
 DateTime? dateOf(Object? value) {
   if (value is! String) return null;
   final parsed = DateTime.tryParse(value);
   if (parsed == null || parsed.year <= 1) return null;
   return parsed.toUtc();
 }
+
+String encodeDate(DateTime value) => value.toUtc().toIso8601String();
 
 final _sixHexDigits = RegExp(r'^[0-9a-f]{6}$');
 final _threeHexDigits = RegExp(r'^[0-9a-f]{3}$');

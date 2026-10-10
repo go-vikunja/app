@@ -131,6 +131,23 @@ void main() {
     expect((await auth.registry.load()).accounts, hasLength(1));
   });
 
+  testWidgets('the sign-out dialog warns about changes not sent yet', (
+    tester,
+  ) async {
+    data.tasks.pendingChanges = 2;
+    await pumpHome(tester);
+
+    await tapSignOut(tester);
+
+    expect(
+      find.text(
+        '${en.signOutDialogBody('tasks.example.org')} '
+        '${en.signOutDialogPendingChanges(2)}',
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('signing out returns to the connect screen', (tester) async {
     await pumpHome(tester);
 

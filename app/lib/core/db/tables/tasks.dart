@@ -40,6 +40,15 @@ class Tasks extends Table {
   /// seen ids in memory.
   TextColumn get syncRunId => text().nullable()();
 
+  /// The merged `TaskChanges` of this task's unsent outbox ops as JSON; the
+  /// sync's upserts keep these fields. Null once everything is sent.
+  TextColumn get pendingChanges => text().nullable()();
+
+  /// A queued delete: the row is hidden from every query and count until
+  /// the server confirms.
+  BoolColumn get pendingDelete =>
+      boolean().withDefault(const Constant(false))();
+
   @override
   Set<Column<Object>> get primaryKey => {id};
 }

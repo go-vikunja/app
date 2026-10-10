@@ -1,7 +1,8 @@
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 
-TaskRow taskRow(Task task, {required String syncRunId}) => TaskRow(
+/// Without queued changes; `upsertAll` keeps a row's own.
+TaskRow taskRow(Task task, {String? syncRunId}) => TaskRow(
   id: task.id,
   projectId: task.projectId,
   title: task.title,
@@ -25,6 +26,7 @@ TaskRow taskRow(Task task, {required String syncRunId}) => TaskRow(
   created: task.created,
   updated: task.updated,
   syncRunId: syncRunId,
+  pendingDelete: false,
 );
 
 List<TaskLabelRow> taskLabelRows(Task task) => [

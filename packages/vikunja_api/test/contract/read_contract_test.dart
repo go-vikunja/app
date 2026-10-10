@@ -137,14 +137,6 @@ Future<_Seed> _seed(Dio dio, ServerConnection connection, TestUser user) async {
   );
 }
 
-ServerConnection _only(ServerConnection connection, ApiVersion version) =>
-    ServerConnection(
-      rootUri: connection.rootUri,
-      apiVersions: {version},
-      info: connection.info,
-      capabilities: connection.capabilities,
-    );
-
 Future<_Reads> _read(VikunjaReadClient client, _Seed seed) async => (
   projects: await client.projects.listAll(),
   firstProjectsPage: await client.projects.list(perPage: 2),
@@ -211,7 +203,7 @@ void main() {
           seed = await _seed(dio, connection, user);
           reads = {};
           for (final apiVersion in connection.apiVersions) {
-            final only = _only(connection, apiVersion);
+            final only = onlyVersion(connection, apiVersion);
             final client = createReadClient(
               dio: createAuthenticatedDio(
                 base: dio,

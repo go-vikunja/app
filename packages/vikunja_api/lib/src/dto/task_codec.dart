@@ -47,6 +47,32 @@ Task parseTask(Object? json) {
   );
 }
 
+const mergePatchContentType = 'application/merge-patch+json';
+
+/// The set fields of [changes] under their wire names: a v2 merge-patch, or
+/// the overlay for a v1 full replace. The zero date clears a date.
+Map<String, Object?> encodeTaskChanges(TaskChanges changes) => {
+  'title': ?changes.title,
+  'description': ?changes.description,
+  'done': ?changes.done,
+  'is_favorite': ?changes.isFavorite,
+  'priority': ?changes.priority,
+  'percent_done': ?changes.percentDone,
+  if (changes.hexColor case final hexColor?)
+    'hex_color': hexColor.startsWith('#') ? hexColor.substring(1) : hexColor,
+  if (changes.dueDate case final dueDate?)
+    'due_date': _encodeDateChange(dueDate),
+  if (changes.startDate case final startDate?)
+    'start_date': _encodeDateChange(startDate),
+  if (changes.endDate case final endDate?)
+    'end_date': _encodeDateChange(endDate),
+};
+
+String _encodeDateChange(DateChange change) => switch (change) {
+  SetDate(:final value) => encodeDate(value),
+  ClearDate() => zeroDate,
+};
+
 TaskReminder parseReminder(Object? json) {
   final map = objectOf(json, 'reminder');
   return TaskReminder(

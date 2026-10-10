@@ -67,7 +67,11 @@ void main() {
       inSheet(en.taskDetailIdentifierInProject('WORK-1', 'Work')),
       findsOneWidget,
     );
-    expect(inSheet(en.taskDetailStatusOpen), findsOneWidget);
+    final done = tester.widget<CheckboxListTile>(
+      find.descendant(of: sheet, matching: find.byType(CheckboxListTile)),
+    );
+    expect(done.value, isFalse);
+    expect(inSheet(en.taskDone), findsOneWidget);
     expect(inSheet(en.taskDetailDueDate), findsOneWidget);
     expect(inSheet('Oct 12, 2026 9:30 AM'), findsOneWidget);
     expect(inSheet('Oct 11, 2026 8:00 AM'), findsOneWidget);
@@ -83,10 +87,13 @@ void main() {
     expect(inSheet('Alice Example'), findsOneWidget);
     expect(inSheet('bob'), findsOneWidget);
     expect(inSheet('Numbers & charts\n• revenue'), findsOneWidget);
-    final star = tester.widget<Icon>(
-      find.descendant(of: sheet, matching: find.byIcon(Icons.star)),
+    expect(
+      find.descendant(
+        of: sheet,
+        matching: find.byTooltip(en.taskRemoveFavourite),
+      ),
+      findsOneWidget,
     );
-    expect(star.semanticLabel, en.favouriteLabel);
   });
 
   testWidgets('a bare task shows only its status and no description', (

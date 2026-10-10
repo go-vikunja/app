@@ -55,7 +55,7 @@ Future<TestUser> registerAndLogin(Dio dio, ServerConnection connection) async {
   final suffix = Random.secure().nextInt(1 << 32).toRadixString(16);
   final username = 'contract$suffix';
   final password = 'password-$suffix';
-  final registered = await _despiteWriteRaces(
+  final registered = await despiteWriteRaces(
     () => dio.postUri<Map<String, Object?>>(
       v1.replace(path: '${v1.path}/register'),
       data: {
@@ -65,7 +65,7 @@ Future<TestUser> registerAndLogin(Dio dio, ServerConnection connection) async {
       },
     ),
   );
-  final login = await _despiteWriteRaces(
+  final login = await despiteWriteRaces(
     () => dio.postUri<Map<String, Object?>>(
       v1.replace(path: '${v1.path}/login'),
       data: {'username': username, 'password': password},
@@ -78,9 +78,11 @@ Future<TestUser> registerAndLogin(Dio dio, ServerConnection connection) async {
   );
 }
 
-// Test files run in parallel and register at the same moment; the SQLite
-// test server answers a lost write race with a 500.
-Future<T> _despiteWriteRaces<T>(Future<T> Function() call) async {
+/// Test files run in parallel and register at the same moment, and a write
+/// right after an assignee change collides with the server's own listener
+/// that bumps the task; the SQLite test server answers a lost write race
+/// with a 500.
+Future<T> despiteWriteRaces<T>(Future<T> Function() call) async {
   for (var attempt = 1; ; attempt++) {
     try {
       return await patiently(call);
@@ -90,6 +92,16 @@ Future<T> _despiteWriteRaces<T>(Future<T> Function() call) async {
     }
   }
 }
+
+/// [connection] restricted to [version], so a client built over it uses
+/// that API version.
+ServerConnection onlyVersion(ServerConnection connection, ApiVersion version) =>
+    ServerConnection(
+      rootUri: connection.rootUri,
+      apiVersions: {version},
+      info: connection.info,
+      capabilities: connection.capabilities,
+    );
 
 /// A session with one long-lived JWT that cannot be refreshed.
 final class StaticJwt implements AccessTokenSource {

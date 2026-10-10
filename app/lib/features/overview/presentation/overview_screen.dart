@@ -14,8 +14,10 @@ import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dar
 import 'package:vikunja_mobile/features/overview/application/due_date_groups.dart';
 import 'package:vikunja_mobile/features/overview/application/open_tasks_provider.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
+import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
 import 'package:vikunja_mobile/features/sync/presentation/sync_progress_bar.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/task_list_actions.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
 
 /// The open tasks across all projects, grouped by due date.
@@ -27,9 +29,15 @@ class OverviewScreen extends ConsumerStatefulWidget {
 }
 
 class _OverviewScreenState extends ConsumerState<OverviewScreen>
-    with RefreshableList<OverviewScreen> {
+    with RefreshableList<OverviewScreen>, TaskListActions<OverviewScreen> {
   @override
   ProviderListenable<Object?> get repositoryProvider => taskRepositoryProvider;
+
+  @override
+  void onRepositoryReplaced() {
+    super.onRepositoryReplaced();
+    clearLeavingTasks();
+  }
 
   // One sync run brings the project titles along.
   @override
@@ -43,6 +51,7 @@ class _OverviewScreenState extends ConsumerState<OverviewScreen>
     final projects = ref.watch(projectsProvider).value ?? const <Project>[];
     final projectsById = {for (final project in projects) project.id: project};
     final now = ref.watch(clockTickProvider);
+    final pendingIds = ref.watch(pendingTaskIdsProvider).value ?? const {};
 
     return Scaffold(
       appBar: AppBar(
@@ -54,10 +63,15 @@ class _OverviewScreenState extends ConsumerState<OverviewScreen>
         tasks,
         loadingLabel: l10n.overviewLoading,
         builder: (value, notice) => _TaskSections(
-          sections: groupTasksByDueDate(value, now),
+          sections: groupTasksByDueDate(withLeavingTasks(value), now),
           projectsById: projectsById,
+          pendingIds: pendingIds,
           now: now,
           notice: notice,
+          onDoneChanged: (task, {required done}) =>
+              unawaited(setTaskDone(task, done: done)),
+          onFavoriteChanged: (task, {required favorite}) =>
+              unawaited(setTaskFavorite(task, favorite: favorite)),
         ),
       ),
     );
@@ -68,14 +82,20 @@ class _TaskSections extends StatelessWidget {
   const new({
     required this.sections,
     required this.projectsById,
+    required this.pendingIds,
     required this.now,
     required this.notice,
+    required this.onDoneChanged,
+    required this.onFavoriteChanged,
   });
 
   final List<DueSection> sections;
   final Map<int, Project> projectsById;
+  final Set<int> pendingIds;
   final DateTime now;
   final Widget? notice;
+  final void Function(Task task, {required bool done}) onDoneChanged;
+  final void Function(Task task, {required bool favorite}) onFavoriteChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -107,12 +127,17 @@ class _TaskSections extends StatelessWidget {
               final task = section.tasks[index];
               final project = projectsById[task.projectId];
               return TaskRow(
+                key: ValueKey(task.id),
                 task: task,
                 now: now,
                 projectTitle: project?.title,
+                pending: pendingIds.contains(task.id),
                 onTap: () => unawaited(
                   showTaskDetail(context, task: task, project: project),
                 ),
+                onDoneChanged: (done) => onDoneChanged(task, done: done),
+                onFavoriteChanged: (favorite) =>
+                    onFavoriteChanged(task, favorite: favorite),
               );
             },
           ),

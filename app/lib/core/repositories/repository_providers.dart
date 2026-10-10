@@ -1,24 +1,29 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart' show AppLifecycleListener;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/auth/session_manager.dart';
 import 'package:vikunja_mobile/core/auth/sign_out.dart';
 import 'package:vikunja_mobile/core/db/account_database_files.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/db/open_account_database.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
 import 'package:vikunja_mobile/core/network/request_log_interceptor.dart';
+import 'package:vikunja_mobile/core/outbox/outbox_sender.dart';
 import 'package:vikunja_mobile/core/repositories/local/local_project_repository.dart';
 import 'package:vikunja_mobile/core/repositories/local/local_task_repository.dart';
 import 'package:vikunja_mobile/core/repositories/project_repository.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine_impl.dart';
+import 'package:vikunja_mobile/core/time/clock_provider.dart';
 
 part 'repository_providers.g.dart';
 
@@ -29,12 +34,36 @@ String? activeAccountId(Ref ref) => ref.watch(
   accountsProvider.select((accounts) => accounts.value?.activeAccountId),
 );
 
-/// Reads for one account, through its session manager. Kept alive by the
-/// sync engine that uses it, so it goes with the engine on sign-out.
+/// The authenticated client of one account, shared by its read and write
+/// clients. Kept alive by the sync engine and the outbox sender that use
+/// it, so it goes with them on sign-out.
 @riverpod
-VikunjaReadClient readClient(Ref ref, String accountId) {
-  // The registry hands out new connection instances on every write, so only
-  // the parts that choose the transport count as a change.
+Dio accountDio(Ref ref, String accountId) {
+  final dio = createAuthenticatedDio(
+    base: ref.watch(dioProvider),
+    connection: _connectionOf(ref, accountId),
+    tokens: _AccountTokens(ref.watch(sessionManagersProvider), accountId),
+    interceptors: [if (kDebugMode) RequestLogInterceptor()],
+  );
+  ref.onDispose(dio.close);
+  return dio;
+}
+
+@riverpod
+VikunjaReadClient readClient(Ref ref, String accountId) => createReadClient(
+  dio: ref.watch(accountDioProvider(accountId)),
+  connection: _connectionOf(ref, accountId),
+);
+
+@riverpod
+VikunjaWriteClient writeClient(Ref ref, String accountId) => createWriteClient(
+  dio: ref.watch(accountDioProvider(accountId)),
+  connection: _connectionOf(ref, accountId),
+);
+
+/// The registry hands out new connection instances on every write, so only
+/// the parts that choose the transport count as a change.
+ServerConnection _connectionOf(Ref ref, String accountId) {
   final transportKey = ref.watch(
     accountsProvider.select(
       (accounts) => _transportKey(accounts.value?.find(accountId)?.connection),
@@ -43,19 +72,24 @@ VikunjaReadClient readClient(Ref ref, String accountId) {
   if (transportKey == null) {
     throw StateError('Account $accountId is not registered');
   }
-  final connection = ref
-      .read(accountsProvider)
-      .value!
-      .find(accountId)!
-      .connection;
-  final dio = createAuthenticatedDio(
-    base: ref.watch(dioProvider),
-    connection: connection,
-    tokens: ref.watch(sessionManagersProvider).forAccount(accountId),
-    interceptors: [if (kDebugMode) RequestLogInterceptor()],
-  );
-  ref.onDispose(dio.close);
-  return createReadClient(dio: dio, connection: connection);
+  return ref.read(accountsProvider).value!.find(accountId)!.connection;
+}
+
+/// Looks the session manager up on every request: a new sign-in replaces
+/// the manager, and a client built before it must use the new session.
+final class _AccountTokens implements AccessTokenSource {
+  const new(this._sessions, this._accountId);
+
+  final SessionManagers _sessions;
+  final String _accountId;
+
+  @override
+  Future<String> validAccessToken() =>
+      _sessions.forAccount(_accountId).validAccessToken();
+
+  @override
+  Future<String?> refreshAfterRejection(String rejectedToken) =>
+      _sessions.forAccount(_accountId).refreshAfterRejection(rejectedToken);
 }
 
 (Uri, String)? _transportKey(ServerConnection? connection) {
@@ -166,6 +200,55 @@ SyncEngine syncEngine(Ref ref, String accountId) {
   return engine;
 }
 
+/// One account's outbox sender; disposed with its database on sign-out.
+/// It drains when built (app start), when the app comes back to the front
+/// and after every local write; a session that needs a new sign-in pauses
+/// it, and the sign-in resumes it.
+@Riverpod(keepAlive: true)
+OutboxSender outboxSender(Ref ref, String accountId) {
+  final sender = OutboxSender(
+    db: ref.watch(appDatabaseProvider(accountId)),
+    writeClient: ref.watch(writeClientProvider(accountId)),
+    readClient: ref.watch(readClientProvider(accountId)),
+    sync: ref.watch(syncEngineProvider(accountId)),
+    now: ref.watch(clockProvider),
+  );
+  final needsReauth = accountsProvider.select(
+    (accounts) => accounts.value?.find(accountId)?.account.needsReauth,
+  );
+  ref.listen(needsReauth, (_, next) {
+    switch (next) {
+      case true:
+        sender.pause();
+      case false:
+        _drainQuietly(sender.resume);
+      case null:
+        break;
+    }
+  });
+  final lifecycle = AppLifecycleListener(
+    onResume: () => _drainQuietly(sender.drain),
+  );
+  ref.onDispose(() {
+    lifecycle.dispose();
+    unawaited(sender.dispose());
+  });
+  if (ref.read(needsReauth) ?? true) {
+    sender.pause();
+  } else {
+    _drainQuietly(sender.drain);
+  }
+  return sender;
+}
+
+void _drainQuietly(Future<void> Function() drain) => unawaited(
+  drain().then<void>(
+    (_) {},
+    onError: (Object error) =>
+        _log.warning('Outbox drain failed: ${error.runtimeType}'),
+  ),
+);
+
 /// One account's repositories over its database. Kept alive by the
 /// active-account providers below, so they go when another account takes
 /// over.
@@ -184,6 +267,8 @@ TaskRepository accountTaskRepository(Ref ref, String accountId) {
   final repository = LocalTaskRepository(
     ref.watch(appDatabaseProvider(accountId)),
     ref.watch(syncEngineProvider(accountId)),
+    ref.watch(outboxSenderProvider(accountId)),
+    now: ref.watch(clockProvider),
   );
   ref.onDispose(repository.dispose);
   return repository;
@@ -205,24 +290,40 @@ TaskRepository? taskRepository(Ref ref) {
   return ref.watch(accountTaskRepositoryProvider(accountId));
 }
 
-/// The last step of a sign-out: stops the account's sync engine, closes its
-/// database and deletes the files.
+/// The last step of a sign-out: stops the account's outbox sender and sync
+/// engine, closes its database and deletes the files.
 @Riverpod(keepAlive: true)
 AccountDataWiper accountDataWiper(Ref ref) => (accountId) async {
-  await _disposeSyncEngine(ref, accountId);
+  if (ref.exists(outboxSenderProvider(accountId))) {
+    await _disposeQuietly(
+      'Outbox sender',
+      accountId,
+      () => ref.read(outboxSenderProvider(accountId)).dispose(),
+    );
+  }
+  if (ref.exists(syncEngineProvider(accountId))) {
+    await _disposeQuietly(
+      'Sync engine',
+      accountId,
+      () => ref.read(syncEngineProvider(accountId)).dispose(),
+    );
+  }
   await ref.read(openDatabasesProvider).close(accountId);
   await ref.read(accountDatabaseFilesProvider).deleteFor(accountId);
 };
 
-Future<void> _disposeSyncEngine(Ref ref, String accountId) async {
-  if (!ref.exists(syncEngineProvider(accountId))) return;
+Future<void> _disposeQuietly(
+  String what,
+  String accountId,
+  Future<void> Function() dispose,
+) async {
   try {
-    await ref.read(syncEngineProvider(accountId)).dispose();
+    await dispose();
   } on Object catch (error) {
-    // The registry change got there first: the provider disposed the engine
-    // and now refuses the unregistered account.
+    // The registry change got there first: the provider disposed it and
+    // now refuses the unregistered account.
     _log.fine(
-      'Sync engine of account $accountId was already disposed: '
+      '$what of account $accountId was already disposed: '
       '${error.runtimeType}',
     );
   }

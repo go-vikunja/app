@@ -2247,6 +2247,32 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRow> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _pendingChangesMeta = const VerificationMeta(
+    'pendingChanges',
+  );
+  @override
+  late final GeneratedColumn<String> pendingChanges = GeneratedColumn<String>(
+    'pending_changes',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _pendingDeleteMeta = const VerificationMeta(
+    'pendingDelete',
+  );
+  @override
+  late final GeneratedColumn<bool> pendingDelete = GeneratedColumn<bool>(
+    'pending_delete',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("pending_delete" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -2272,6 +2298,8 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRow> {
     created,
     updated,
     syncRunId,
+    pendingChanges,
+    pendingDelete,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2424,6 +2452,24 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRow> {
         syncRunId.isAcceptableOrUnknown(data['sync_run_id']!, _syncRunIdMeta),
       );
     }
+    if (data.containsKey('pending_changes')) {
+      context.handle(
+        _pendingChangesMeta,
+        pendingChanges.isAcceptableOrUnknown(
+          data['pending_changes']!,
+          _pendingChangesMeta,
+        ),
+      );
+    }
+    if (data.containsKey('pending_delete')) {
+      context.handle(
+        _pendingDeleteMeta,
+        pendingDelete.isAcceptableOrUnknown(
+          data['pending_delete']!,
+          _pendingDeleteMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -2537,6 +2583,14 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRow> {
         DriftSqlType.string,
         data['${effectivePrefix}sync_run_id'],
       ),
+      pendingChanges: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}pending_changes'],
+      ),
+      pendingDelete: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}pending_delete'],
+      )!,
     );
   }
 
@@ -2595,6 +2649,14 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
   /// every task the run did not touch. Survives a restart, unlike a set of
   /// seen ids in memory.
   final String? syncRunId;
+
+  /// The merged `TaskChanges` of this task's unsent outbox ops as JSON; the
+  /// sync's upserts keep these fields. Null once everything is sent.
+  final String? pendingChanges;
+
+  /// A queued delete: the row is hidden from every query and count until
+  /// the server confirms.
+  final bool pendingDelete;
   const TaskRow({
     required this.id,
     required this.projectId,
@@ -2619,6 +2681,8 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
     this.created,
     this.updated,
     this.syncRunId,
+    this.pendingChanges,
+    required this.pendingDelete,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2674,6 +2738,10 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
     if (!nullToAbsent || syncRunId != null) {
       map['sync_run_id'] = Variable<String>(syncRunId);
     }
+    if (!nullToAbsent || pendingChanges != null) {
+      map['pending_changes'] = Variable<String>(pendingChanges);
+    }
+    map['pending_delete'] = Variable<bool>(pendingDelete);
     return map;
   }
 
@@ -2718,6 +2786,10 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
       syncRunId: syncRunId == null && nullToAbsent
           ? const Value.absent()
           : Value(syncRunId),
+      pendingChanges: pendingChanges == null && nullToAbsent
+          ? const Value.absent()
+          : Value(pendingChanges),
+      pendingDelete: Value(pendingDelete),
     );
   }
 
@@ -2750,6 +2822,8 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
       created: serializer.fromJson<DateTime?>(json['created']),
       updated: serializer.fromJson<DateTime?>(json['updated']),
       syncRunId: serializer.fromJson<String?>(json['syncRunId']),
+      pendingChanges: serializer.fromJson<String?>(json['pendingChanges']),
+      pendingDelete: serializer.fromJson<bool>(json['pendingDelete']),
     );
   }
   @override
@@ -2779,6 +2853,8 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
       'created': serializer.toJson<DateTime?>(created),
       'updated': serializer.toJson<DateTime?>(updated),
       'syncRunId': serializer.toJson<String?>(syncRunId),
+      'pendingChanges': serializer.toJson<String?>(pendingChanges),
+      'pendingDelete': serializer.toJson<bool>(pendingDelete),
     };
   }
 
@@ -2806,6 +2882,8 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
     Value<DateTime?> created = const Value.absent(),
     Value<DateTime?> updated = const Value.absent(),
     Value<String?> syncRunId = const Value.absent(),
+    Value<String?> pendingChanges = const Value.absent(),
+    bool? pendingDelete,
   }) => TaskRow(
     id: id ?? this.id,
     projectId: projectId ?? this.projectId,
@@ -2830,6 +2908,10 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
     created: created.present ? created.value : this.created,
     updated: updated.present ? updated.value : this.updated,
     syncRunId: syncRunId.present ? syncRunId.value : this.syncRunId,
+    pendingChanges: pendingChanges.present
+        ? pendingChanges.value
+        : this.pendingChanges,
+    pendingDelete: pendingDelete ?? this.pendingDelete,
   );
   TaskRow copyWithCompanion(TasksCompanion data) {
     return TaskRow(
@@ -2870,6 +2952,12 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
       created: data.created.present ? data.created.value : this.created,
       updated: data.updated.present ? data.updated.value : this.updated,
       syncRunId: data.syncRunId.present ? data.syncRunId.value : this.syncRunId,
+      pendingChanges: data.pendingChanges.present
+          ? data.pendingChanges.value
+          : this.pendingChanges,
+      pendingDelete: data.pendingDelete.present
+          ? data.pendingDelete.value
+          : this.pendingDelete,
     );
   }
 
@@ -2898,7 +2986,9 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
           ..write('createdById: $createdById, ')
           ..write('created: $created, ')
           ..write('updated: $updated, ')
-          ..write('syncRunId: $syncRunId')
+          ..write('syncRunId: $syncRunId, ')
+          ..write('pendingChanges: $pendingChanges, ')
+          ..write('pendingDelete: $pendingDelete')
           ..write(')'))
         .toString();
   }
@@ -2928,6 +3018,8 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
     created,
     updated,
     syncRunId,
+    pendingChanges,
+    pendingDelete,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -2955,7 +3047,9 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
           other.createdById == this.createdById &&
           other.created == this.created &&
           other.updated == this.updated &&
-          other.syncRunId == this.syncRunId);
+          other.syncRunId == this.syncRunId &&
+          other.pendingChanges == this.pendingChanges &&
+          other.pendingDelete == this.pendingDelete);
 }
 
 class TasksCompanion extends UpdateCompanion<TaskRow> {
@@ -2982,6 +3076,8 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
   final Value<DateTime?> created;
   final Value<DateTime?> updated;
   final Value<String?> syncRunId;
+  final Value<String?> pendingChanges;
+  final Value<bool> pendingDelete;
   const TasksCompanion({
     this.id = const Value.absent(),
     this.projectId = const Value.absent(),
@@ -3006,6 +3102,8 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
     this.created = const Value.absent(),
     this.updated = const Value.absent(),
     this.syncRunId = const Value.absent(),
+    this.pendingChanges = const Value.absent(),
+    this.pendingDelete = const Value.absent(),
   });
   TasksCompanion.insert({
     this.id = const Value.absent(),
@@ -3031,6 +3129,8 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
     this.created = const Value.absent(),
     this.updated = const Value.absent(),
     this.syncRunId = const Value.absent(),
+    this.pendingChanges = const Value.absent(),
+    this.pendingDelete = const Value.absent(),
   }) : projectId = Value(projectId),
        title = Value(title),
        description = Value(description),
@@ -3069,6 +3169,8 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
     Expression<int>? created,
     Expression<int>? updated,
     Expression<String>? syncRunId,
+    Expression<String>? pendingChanges,
+    Expression<bool>? pendingDelete,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -3094,6 +3196,8 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
       if (created != null) 'created': created,
       if (updated != null) 'updated': updated,
       if (syncRunId != null) 'sync_run_id': syncRunId,
+      if (pendingChanges != null) 'pending_changes': pendingChanges,
+      if (pendingDelete != null) 'pending_delete': pendingDelete,
     });
   }
 
@@ -3121,6 +3225,8 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
     Value<DateTime?>? created,
     Value<DateTime?>? updated,
     Value<String?>? syncRunId,
+    Value<String?>? pendingChanges,
+    Value<bool>? pendingDelete,
   }) {
     return TasksCompanion(
       id: id ?? this.id,
@@ -3146,6 +3252,8 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
       created: created ?? this.created,
       updated: updated ?? this.updated,
       syncRunId: syncRunId ?? this.syncRunId,
+      pendingChanges: pendingChanges ?? this.pendingChanges,
+      pendingDelete: pendingDelete ?? this.pendingDelete,
     );
   }
 
@@ -3233,6 +3341,12 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
     if (syncRunId.present) {
       map['sync_run_id'] = Variable<String>(syncRunId.value);
     }
+    if (pendingChanges.present) {
+      map['pending_changes'] = Variable<String>(pendingChanges.value);
+    }
+    if (pendingDelete.present) {
+      map['pending_delete'] = Variable<bool>(pendingDelete.value);
+    }
     return map;
   }
 
@@ -3261,7 +3375,9 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
           ..write('createdById: $createdById, ')
           ..write('created: $created, ')
           ..write('updated: $updated, ')
-          ..write('syncRunId: $syncRunId')
+          ..write('syncRunId: $syncRunId, ')
+          ..write('pendingChanges: $pendingChanges, ')
+          ..write('pendingDelete: $pendingDelete')
           ..write(')'))
         .toString();
   }
@@ -4565,6 +4681,679 @@ class SyncStateCompanion extends UpdateCompanion<SyncStateRow> {
   }
 }
 
+class $OutboxTable extends Outbox with TableInfo<$OutboxTable, OutboxRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $OutboxTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sequenceMeta = const VerificationMeta(
+    'sequence',
+  );
+  @override
+  late final GeneratedColumn<int> sequence = GeneratedColumn<int>(
+    'sequence',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+    'kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _taskIdMeta = const VerificationMeta('taskId');
+  @override
+  late final GeneratedColumn<int> taskId = GeneratedColumn<int>(
+    'task_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _payloadMeta = const VerificationMeta(
+    'payload',
+  );
+  @override
+  late final GeneratedColumn<String> payload = GeneratedColumn<String>(
+    'payload',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<DateTime, int> createdAt =
+      GeneratedColumn<int>(
+        'created_at',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: true,
+      ).withConverter<DateTime>($OutboxTable.$convertercreatedAt);
+  static const VerificationMeta _attemptsMeta = const VerificationMeta(
+    'attempts',
+  );
+  @override
+  late final GeneratedColumn<int> attempts = GeneratedColumn<int>(
+    'attempts',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<DateTime?, int> nextAttemptAt =
+      GeneratedColumn<int>(
+        'next_attempt_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      ).withConverter<DateTime?>($OutboxTable.$converternextAttemptAtn);
+  @override
+  late final GeneratedColumnWithTypeConverter<DateTime?, int> lastAttemptAt =
+      GeneratedColumn<int>(
+        'last_attempt_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      ).withConverter<DateTime?>($OutboxTable.$converterlastAttemptAtn);
+  static const VerificationMeta _stateMeta = const VerificationMeta('state');
+  @override
+  late final GeneratedColumn<String> state = GeneratedColumn<String>(
+    'state',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _lastErrorMeta = const VerificationMeta(
+    'lastError',
+  );
+  @override
+  late final GeneratedColumn<String> lastError = GeneratedColumn<String>(
+    'last_error',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    sequence,
+    kind,
+    taskId,
+    payload,
+    createdAt,
+    attempts,
+    nextAttemptAt,
+    lastAttemptAt,
+    state,
+    lastError,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'outbox';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<OutboxRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('sequence')) {
+      context.handle(
+        _sequenceMeta,
+        sequence.isAcceptableOrUnknown(data['sequence']!, _sequenceMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sequenceMeta);
+    }
+    if (data.containsKey('kind')) {
+      context.handle(
+        _kindMeta,
+        kind.isAcceptableOrUnknown(data['kind']!, _kindMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_kindMeta);
+    }
+    if (data.containsKey('task_id')) {
+      context.handle(
+        _taskIdMeta,
+        taskId.isAcceptableOrUnknown(data['task_id']!, _taskIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_taskIdMeta);
+    }
+    if (data.containsKey('payload')) {
+      context.handle(
+        _payloadMeta,
+        payload.isAcceptableOrUnknown(data['payload']!, _payloadMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_payloadMeta);
+    }
+    if (data.containsKey('attempts')) {
+      context.handle(
+        _attemptsMeta,
+        attempts.isAcceptableOrUnknown(data['attempts']!, _attemptsMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_attemptsMeta);
+    }
+    if (data.containsKey('state')) {
+      context.handle(
+        _stateMeta,
+        state.isAcceptableOrUnknown(data['state']!, _stateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_stateMeta);
+    }
+    if (data.containsKey('last_error')) {
+      context.handle(
+        _lastErrorMeta,
+        lastError.isAcceptableOrUnknown(data['last_error']!, _lastErrorMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  OutboxRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return OutboxRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      sequence: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sequence'],
+      )!,
+      kind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kind'],
+      )!,
+      taskId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}task_id'],
+      )!,
+      payload: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payload'],
+      )!,
+      createdAt: $OutboxTable.$convertercreatedAt.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}created_at'],
+        )!,
+      ),
+      attempts: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}attempts'],
+      )!,
+      nextAttemptAt: $OutboxTable.$converternextAttemptAtn.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}next_attempt_at'],
+        ),
+      ),
+      lastAttemptAt: $OutboxTable.$converterlastAttemptAtn.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}last_attempt_at'],
+        ),
+      ),
+      state: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}state'],
+      )!,
+      lastError: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}last_error'],
+      ),
+    );
+  }
+
+  @override
+  $OutboxTable createAlias(String alias) {
+    return $OutboxTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<DateTime, int> $convertercreatedAt = const EpochMillis();
+  static TypeConverter<DateTime, int> $converternextAttemptAt =
+      const EpochMillis();
+  static TypeConverter<DateTime?, int?> $converternextAttemptAtn =
+      NullAwareTypeConverter.wrap($converternextAttemptAt);
+  static TypeConverter<DateTime, int> $converterlastAttemptAt =
+      const EpochMillis();
+  static TypeConverter<DateTime?, int?> $converterlastAttemptAtn =
+      NullAwareTypeConverter.wrap($converterlastAttemptAt);
+}
+
+class OutboxRow extends DataClass implements Insertable<OutboxRow> {
+  /// A UUID, so a retry or discard names exactly one op.
+  final String id;
+
+  /// Strictly increasing per database; the send order.
+  final int sequence;
+
+  /// `OutboxOperationKind.name`.
+  final String kind;
+  final int taskId;
+
+  /// The `TaskChanges` as JSON; empty for a delete.
+  final String payload;
+  final DateTime createdAt;
+  final int attempts;
+  final DateTime? nextAttemptAt;
+  final DateTime? lastAttemptAt;
+  final String state;
+
+  /// The normalized `VikunjaFailure` of the last attempt as JSON.
+  final String? lastError;
+  const OutboxRow({
+    required this.id,
+    required this.sequence,
+    required this.kind,
+    required this.taskId,
+    required this.payload,
+    required this.createdAt,
+    required this.attempts,
+    this.nextAttemptAt,
+    this.lastAttemptAt,
+    required this.state,
+    this.lastError,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['sequence'] = Variable<int>(sequence);
+    map['kind'] = Variable<String>(kind);
+    map['task_id'] = Variable<int>(taskId);
+    map['payload'] = Variable<String>(payload);
+    {
+      map['created_at'] = Variable<int>(
+        $OutboxTable.$convertercreatedAt.toSql(createdAt),
+      );
+    }
+    map['attempts'] = Variable<int>(attempts);
+    if (!nullToAbsent || nextAttemptAt != null) {
+      map['next_attempt_at'] = Variable<int>(
+        $OutboxTable.$converternextAttemptAtn.toSql(nextAttemptAt),
+      );
+    }
+    if (!nullToAbsent || lastAttemptAt != null) {
+      map['last_attempt_at'] = Variable<int>(
+        $OutboxTable.$converterlastAttemptAtn.toSql(lastAttemptAt),
+      );
+    }
+    map['state'] = Variable<String>(state);
+    if (!nullToAbsent || lastError != null) {
+      map['last_error'] = Variable<String>(lastError);
+    }
+    return map;
+  }
+
+  OutboxCompanion toCompanion(bool nullToAbsent) {
+    return OutboxCompanion(
+      id: Value(id),
+      sequence: Value(sequence),
+      kind: Value(kind),
+      taskId: Value(taskId),
+      payload: Value(payload),
+      createdAt: Value(createdAt),
+      attempts: Value(attempts),
+      nextAttemptAt: nextAttemptAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(nextAttemptAt),
+      lastAttemptAt: lastAttemptAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastAttemptAt),
+      state: Value(state),
+      lastError: lastError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastError),
+    );
+  }
+
+  factory OutboxRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return OutboxRow(
+      id: serializer.fromJson<String>(json['id']),
+      sequence: serializer.fromJson<int>(json['sequence']),
+      kind: serializer.fromJson<String>(json['kind']),
+      taskId: serializer.fromJson<int>(json['taskId']),
+      payload: serializer.fromJson<String>(json['payload']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      attempts: serializer.fromJson<int>(json['attempts']),
+      nextAttemptAt: serializer.fromJson<DateTime?>(json['nextAttemptAt']),
+      lastAttemptAt: serializer.fromJson<DateTime?>(json['lastAttemptAt']),
+      state: serializer.fromJson<String>(json['state']),
+      lastError: serializer.fromJson<String?>(json['lastError']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'sequence': serializer.toJson<int>(sequence),
+      'kind': serializer.toJson<String>(kind),
+      'taskId': serializer.toJson<int>(taskId),
+      'payload': serializer.toJson<String>(payload),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'attempts': serializer.toJson<int>(attempts),
+      'nextAttemptAt': serializer.toJson<DateTime?>(nextAttemptAt),
+      'lastAttemptAt': serializer.toJson<DateTime?>(lastAttemptAt),
+      'state': serializer.toJson<String>(state),
+      'lastError': serializer.toJson<String?>(lastError),
+    };
+  }
+
+  OutboxRow copyWith({
+    String? id,
+    int? sequence,
+    String? kind,
+    int? taskId,
+    String? payload,
+    DateTime? createdAt,
+    int? attempts,
+    Value<DateTime?> nextAttemptAt = const Value.absent(),
+    Value<DateTime?> lastAttemptAt = const Value.absent(),
+    String? state,
+    Value<String?> lastError = const Value.absent(),
+  }) => OutboxRow(
+    id: id ?? this.id,
+    sequence: sequence ?? this.sequence,
+    kind: kind ?? this.kind,
+    taskId: taskId ?? this.taskId,
+    payload: payload ?? this.payload,
+    createdAt: createdAt ?? this.createdAt,
+    attempts: attempts ?? this.attempts,
+    nextAttemptAt: nextAttemptAt.present
+        ? nextAttemptAt.value
+        : this.nextAttemptAt,
+    lastAttemptAt: lastAttemptAt.present
+        ? lastAttemptAt.value
+        : this.lastAttemptAt,
+    state: state ?? this.state,
+    lastError: lastError.present ? lastError.value : this.lastError,
+  );
+  OutboxRow copyWithCompanion(OutboxCompanion data) {
+    return OutboxRow(
+      id: data.id.present ? data.id.value : this.id,
+      sequence: data.sequence.present ? data.sequence.value : this.sequence,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      taskId: data.taskId.present ? data.taskId.value : this.taskId,
+      payload: data.payload.present ? data.payload.value : this.payload,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      attempts: data.attempts.present ? data.attempts.value : this.attempts,
+      nextAttemptAt: data.nextAttemptAt.present
+          ? data.nextAttemptAt.value
+          : this.nextAttemptAt,
+      lastAttemptAt: data.lastAttemptAt.present
+          ? data.lastAttemptAt.value
+          : this.lastAttemptAt,
+      state: data.state.present ? data.state.value : this.state,
+      lastError: data.lastError.present ? data.lastError.value : this.lastError,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OutboxRow(')
+          ..write('id: $id, ')
+          ..write('sequence: $sequence, ')
+          ..write('kind: $kind, ')
+          ..write('taskId: $taskId, ')
+          ..write('payload: $payload, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('attempts: $attempts, ')
+          ..write('nextAttemptAt: $nextAttemptAt, ')
+          ..write('lastAttemptAt: $lastAttemptAt, ')
+          ..write('state: $state, ')
+          ..write('lastError: $lastError')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    sequence,
+    kind,
+    taskId,
+    payload,
+    createdAt,
+    attempts,
+    nextAttemptAt,
+    lastAttemptAt,
+    state,
+    lastError,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is OutboxRow &&
+          other.id == this.id &&
+          other.sequence == this.sequence &&
+          other.kind == this.kind &&
+          other.taskId == this.taskId &&
+          other.payload == this.payload &&
+          other.createdAt == this.createdAt &&
+          other.attempts == this.attempts &&
+          other.nextAttemptAt == this.nextAttemptAt &&
+          other.lastAttemptAt == this.lastAttemptAt &&
+          other.state == this.state &&
+          other.lastError == this.lastError);
+}
+
+class OutboxCompanion extends UpdateCompanion<OutboxRow> {
+  final Value<String> id;
+  final Value<int> sequence;
+  final Value<String> kind;
+  final Value<int> taskId;
+  final Value<String> payload;
+  final Value<DateTime> createdAt;
+  final Value<int> attempts;
+  final Value<DateTime?> nextAttemptAt;
+  final Value<DateTime?> lastAttemptAt;
+  final Value<String> state;
+  final Value<String?> lastError;
+  final Value<int> rowid;
+  const OutboxCompanion({
+    this.id = const Value.absent(),
+    this.sequence = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.taskId = const Value.absent(),
+    this.payload = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.attempts = const Value.absent(),
+    this.nextAttemptAt = const Value.absent(),
+    this.lastAttemptAt = const Value.absent(),
+    this.state = const Value.absent(),
+    this.lastError = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  OutboxCompanion.insert({
+    required String id,
+    required int sequence,
+    required String kind,
+    required int taskId,
+    required String payload,
+    required DateTime createdAt,
+    required int attempts,
+    this.nextAttemptAt = const Value.absent(),
+    this.lastAttemptAt = const Value.absent(),
+    required String state,
+    this.lastError = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       sequence = Value(sequence),
+       kind = Value(kind),
+       taskId = Value(taskId),
+       payload = Value(payload),
+       createdAt = Value(createdAt),
+       attempts = Value(attempts),
+       state = Value(state);
+  static Insertable<OutboxRow> custom({
+    Expression<String>? id,
+    Expression<int>? sequence,
+    Expression<String>? kind,
+    Expression<int>? taskId,
+    Expression<String>? payload,
+    Expression<int>? createdAt,
+    Expression<int>? attempts,
+    Expression<int>? nextAttemptAt,
+    Expression<int>? lastAttemptAt,
+    Expression<String>? state,
+    Expression<String>? lastError,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (sequence != null) 'sequence': sequence,
+      if (kind != null) 'kind': kind,
+      if (taskId != null) 'task_id': taskId,
+      if (payload != null) 'payload': payload,
+      if (createdAt != null) 'created_at': createdAt,
+      if (attempts != null) 'attempts': attempts,
+      if (nextAttemptAt != null) 'next_attempt_at': nextAttemptAt,
+      if (lastAttemptAt != null) 'last_attempt_at': lastAttemptAt,
+      if (state != null) 'state': state,
+      if (lastError != null) 'last_error': lastError,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  OutboxCompanion copyWith({
+    Value<String>? id,
+    Value<int>? sequence,
+    Value<String>? kind,
+    Value<int>? taskId,
+    Value<String>? payload,
+    Value<DateTime>? createdAt,
+    Value<int>? attempts,
+    Value<DateTime?>? nextAttemptAt,
+    Value<DateTime?>? lastAttemptAt,
+    Value<String>? state,
+    Value<String?>? lastError,
+    Value<int>? rowid,
+  }) {
+    return OutboxCompanion(
+      id: id ?? this.id,
+      sequence: sequence ?? this.sequence,
+      kind: kind ?? this.kind,
+      taskId: taskId ?? this.taskId,
+      payload: payload ?? this.payload,
+      createdAt: createdAt ?? this.createdAt,
+      attempts: attempts ?? this.attempts,
+      nextAttemptAt: nextAttemptAt ?? this.nextAttemptAt,
+      lastAttemptAt: lastAttemptAt ?? this.lastAttemptAt,
+      state: state ?? this.state,
+      lastError: lastError ?? this.lastError,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (sequence.present) {
+      map['sequence'] = Variable<int>(sequence.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (taskId.present) {
+      map['task_id'] = Variable<int>(taskId.value);
+    }
+    if (payload.present) {
+      map['payload'] = Variable<String>(payload.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(
+        $OutboxTable.$convertercreatedAt.toSql(createdAt.value),
+      );
+    }
+    if (attempts.present) {
+      map['attempts'] = Variable<int>(attempts.value);
+    }
+    if (nextAttemptAt.present) {
+      map['next_attempt_at'] = Variable<int>(
+        $OutboxTable.$converternextAttemptAtn.toSql(nextAttemptAt.value),
+      );
+    }
+    if (lastAttemptAt.present) {
+      map['last_attempt_at'] = Variable<int>(
+        $OutboxTable.$converterlastAttemptAtn.toSql(lastAttemptAt.value),
+      );
+    }
+    if (state.present) {
+      map['state'] = Variable<String>(state.value);
+    }
+    if (lastError.present) {
+      map['last_error'] = Variable<String>(lastError.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OutboxCompanion(')
+          ..write('id: $id, ')
+          ..write('sequence: $sequence, ')
+          ..write('kind: $kind, ')
+          ..write('taskId: $taskId, ')
+          ..write('payload: $payload, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('attempts: $attempts, ')
+          ..write('nextAttemptAt: $nextAttemptAt, ')
+          ..write('lastAttemptAt: $lastAttemptAt, ')
+          ..write('state: $state, ')
+          ..write('lastError: $lastError, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -4578,6 +5367,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $TaskRemindersTable taskReminders = $TaskRemindersTable(this);
   late final $TaskRelationsTable taskRelations = $TaskRelationsTable(this);
   late final $SyncStateTable syncState = $SyncStateTable(this);
+  late final $OutboxTable outbox = $OutboxTable(this);
   late final Index projectViewsProject = Index(
     'project_views_project',
     'CREATE INDEX project_views_project ON project_views (project_id)',
@@ -4590,11 +5380,16 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'tasks_done_due',
     'CREATE INDEX tasks_done_due ON tasks (done, due_date)',
   );
+  late final Index outboxStateSequence = Index(
+    'outbox_state_sequence',
+    'CREATE INDEX outbox_state_sequence ON outbox (state, sequence)',
+  );
   late final ProjectsDao projectsDao = ProjectsDao(this as AppDatabase);
   late final LabelsDao labelsDao = LabelsDao(this as AppDatabase);
   late final UsersDao usersDao = UsersDao(this as AppDatabase);
   late final TasksDao tasksDao = TasksDao(this as AppDatabase);
   late final SyncStateDao syncStateDao = SyncStateDao(this as AppDatabase);
+  late final OutboxDao outboxDao = OutboxDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -4610,9 +5405,11 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     taskReminders,
     taskRelations,
     syncState,
+    outbox,
     projectViewsProject,
     tasksProject,
     tasksDoneDue,
+    outboxStateSequence,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -6100,6 +6897,8 @@ typedef $$TasksTableCreateCompanionBuilder = TasksCompanion Function({
   Value<DateTime?> created,
   Value<DateTime?> updated,
   Value<String?> syncRunId,
+  Value<String?> pendingChanges,
+  Value<bool> pendingDelete,
 });
 typedef $$TasksTableUpdateCompanionBuilder = TasksCompanion Function({
   Value<int> id,
@@ -6125,6 +6924,8 @@ typedef $$TasksTableUpdateCompanionBuilder = TasksCompanion Function({
   Value<DateTime?> created,
   Value<DateTime?> updated,
   Value<String?> syncRunId,
+  Value<String?> pendingChanges,
+  Value<bool> pendingDelete,
 });
 
 final class $$TasksTableReferences
@@ -6330,6 +7131,16 @@ class $$TasksTableFilterComposer extends Composer<_$AppDatabase, $TasksTable> {
 
   ColumnFilters<String> get syncRunId => $composableBuilder(
     column: $table.syncRunId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get pendingChanges => $composableBuilder(
+    column: $table.pendingChanges,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get pendingDelete => $composableBuilder(
+    column: $table.pendingDelete,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6557,6 +7368,16 @@ class $$TasksTableOrderingComposer
     column: $table.syncRunId,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get pendingChanges => $composableBuilder(
+    column: $table.pendingChanges,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get pendingDelete => $composableBuilder(
+    column: $table.pendingDelete,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$TasksTableAnnotationComposer
@@ -6650,6 +7471,16 @@ class $$TasksTableAnnotationComposer
 
   GeneratedColumn<String> get syncRunId =>
       $composableBuilder(column: $table.syncRunId, builder: (column) => column);
+
+  GeneratedColumn<String> get pendingChanges => $composableBuilder(
+    column: $table.pendingChanges,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get pendingDelete => $composableBuilder(
+    column: $table.pendingDelete,
+    builder: (column) => column,
+  );
 
   Expression<T> taskLabelsRefs<T extends Object>(
     Expression<T> Function($$TaskLabelsTableAnnotationComposer a) f,
@@ -6808,6 +7639,8 @@ class $$TasksTableTableManager
                 Value<DateTime?> created = const Value.absent(),
                 Value<DateTime?> updated = const Value.absent(),
                 Value<String?> syncRunId = const Value.absent(),
+                Value<String?> pendingChanges = const Value.absent(),
+                Value<bool> pendingDelete = const Value.absent(),
               }) => TasksCompanion(
                 id: id,
                 projectId: projectId,
@@ -6832,6 +7665,8 @@ class $$TasksTableTableManager
                 created: created,
                 updated: updated,
                 syncRunId: syncRunId,
+                pendingChanges: pendingChanges,
+                pendingDelete: pendingDelete,
               ),
           createCompanionCallback:
               ({
@@ -6858,6 +7693,8 @@ class $$TasksTableTableManager
                 Value<DateTime?> created = const Value.absent(),
                 Value<DateTime?> updated = const Value.absent(),
                 Value<String?> syncRunId = const Value.absent(),
+                Value<String?> pendingChanges = const Value.absent(),
+                Value<bool> pendingDelete = const Value.absent(),
               }) => TasksCompanion.insert(
                 id: id,
                 projectId: projectId,
@@ -6882,6 +7719,8 @@ class $$TasksTableTableManager
                 created: created,
                 updated: updated,
                 syncRunId: syncRunId,
+                pendingChanges: pendingChanges,
+                pendingDelete: pendingDelete,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -8456,6 +9295,330 @@ typedef $$SyncStateTableProcessedTableManager =
       SyncStateRow,
       PrefetchHooks Function()
     >;
+typedef $$OutboxTableCreateCompanionBuilder = OutboxCompanion Function({
+  required String id,
+  required int sequence,
+  required String kind,
+  required int taskId,
+  required String payload,
+  required DateTime createdAt,
+  required int attempts,
+  Value<DateTime?> nextAttemptAt,
+  Value<DateTime?> lastAttemptAt,
+  required String state,
+  Value<String?> lastError,
+  Value<int> rowid,
+});
+typedef $$OutboxTableUpdateCompanionBuilder = OutboxCompanion Function({
+  Value<String> id,
+  Value<int> sequence,
+  Value<String> kind,
+  Value<int> taskId,
+  Value<String> payload,
+  Value<DateTime> createdAt,
+  Value<int> attempts,
+  Value<DateTime?> nextAttemptAt,
+  Value<DateTime?> lastAttemptAt,
+  Value<String> state,
+  Value<String?> lastError,
+  Value<int> rowid,
+});
+
+class $$OutboxTableFilterComposer
+    extends Composer<_$AppDatabase, $OutboxTable> {
+  $$OutboxTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sequence => $composableBuilder(
+    column: $table.sequence,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get taskId => $composableBuilder(
+    column: $table.taskId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<DateTime, DateTime, int> get createdAt =>
+      $composableBuilder(
+        column: $table.createdAt,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnFilters<int> get attempts => $composableBuilder(
+    column: $table.attempts,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<DateTime?, DateTime, int> get nextAttemptAt =>
+      $composableBuilder(
+        column: $table.nextAttemptAt,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnWithTypeConverterFilters<DateTime?, DateTime, int> get lastAttemptAt =>
+      $composableBuilder(
+        column: $table.lastAttemptAt,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnFilters<String> get state => $composableBuilder(
+    column: $table.state,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lastError => $composableBuilder(
+    column: $table.lastError,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$OutboxTableOrderingComposer
+    extends Composer<_$AppDatabase, $OutboxTable> {
+  $$OutboxTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sequence => $composableBuilder(
+    column: $table.sequence,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get taskId => $composableBuilder(
+    column: $table.taskId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get attempts => $composableBuilder(
+    column: $table.attempts,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get nextAttemptAt => $composableBuilder(
+    column: $table.nextAttemptAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get lastAttemptAt => $composableBuilder(
+    column: $table.lastAttemptAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get state => $composableBuilder(
+    column: $table.state,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get lastError => $composableBuilder(
+    column: $table.lastError,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$OutboxTableAnnotationComposer
+    extends Composer<_$AppDatabase, $OutboxTable> {
+  $$OutboxTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get sequence =>
+      $composableBuilder(column: $table.sequence, builder: (column) => column);
+
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<int> get taskId =>
+      $composableBuilder(column: $table.taskId, builder: (column) => column);
+
+  GeneratedColumn<String> get payload =>
+      $composableBuilder(column: $table.payload, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<DateTime, int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get attempts =>
+      $composableBuilder(column: $table.attempts, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<DateTime?, int> get nextAttemptAt =>
+      $composableBuilder(
+        column: $table.nextAttemptAt,
+        builder: (column) => column,
+      );
+
+  GeneratedColumnWithTypeConverter<DateTime?, int> get lastAttemptAt =>
+      $composableBuilder(
+        column: $table.lastAttemptAt,
+        builder: (column) => column,
+      );
+
+  GeneratedColumn<String> get state =>
+      $composableBuilder(column: $table.state, builder: (column) => column);
+
+  GeneratedColumn<String> get lastError =>
+      $composableBuilder(column: $table.lastError, builder: (column) => column);
+}
+
+class $$OutboxTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $OutboxTable,
+          OutboxRow,
+          $$OutboxTableFilterComposer,
+          $$OutboxTableOrderingComposer,
+          $$OutboxTableAnnotationComposer,
+          $$OutboxTableCreateCompanionBuilder,
+          $$OutboxTableUpdateCompanionBuilder,
+          (OutboxRow, BaseReferences<_$AppDatabase, $OutboxTable, OutboxRow>),
+          OutboxRow,
+          PrefetchHooks Function()
+        > {
+  $$OutboxTableTableManager(_$AppDatabase db, $OutboxTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$OutboxTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$OutboxTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$OutboxTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<int> sequence = const Value.absent(),
+                Value<String> kind = const Value.absent(),
+                Value<int> taskId = const Value.absent(),
+                Value<String> payload = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> attempts = const Value.absent(),
+                Value<DateTime?> nextAttemptAt = const Value.absent(),
+                Value<DateTime?> lastAttemptAt = const Value.absent(),
+                Value<String> state = const Value.absent(),
+                Value<String?> lastError = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => OutboxCompanion(
+                id: id,
+                sequence: sequence,
+                kind: kind,
+                taskId: taskId,
+                payload: payload,
+                createdAt: createdAt,
+                attempts: attempts,
+                nextAttemptAt: nextAttemptAt,
+                lastAttemptAt: lastAttemptAt,
+                state: state,
+                lastError: lastError,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required int sequence,
+                required String kind,
+                required int taskId,
+                required String payload,
+                required DateTime createdAt,
+                required int attempts,
+                Value<DateTime?> nextAttemptAt = const Value.absent(),
+                Value<DateTime?> lastAttemptAt = const Value.absent(),
+                required String state,
+                Value<String?> lastError = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => OutboxCompanion.insert(
+                id: id,
+                sequence: sequence,
+                kind: kind,
+                taskId: taskId,
+                payload: payload,
+                createdAt: createdAt,
+                attempts: attempts,
+                nextAttemptAt: nextAttemptAt,
+                lastAttemptAt: lastAttemptAt,
+                state: state,
+                lastError: lastError,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$OutboxTable, OutboxRow>(table),
+                  BaseReferences<_$AppDatabase, $OutboxTable, OutboxRow>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$OutboxTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $OutboxTable,
+      OutboxRow,
+      $$OutboxTableFilterComposer,
+      $$OutboxTableOrderingComposer,
+      $$OutboxTableAnnotationComposer,
+      $$OutboxTableCreateCompanionBuilder,
+      $$OutboxTableUpdateCompanionBuilder,
+      (OutboxRow, BaseReferences<_$AppDatabase, $OutboxTable, OutboxRow>),
+      OutboxRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -8480,4 +9643,6 @@ class $AppDatabaseManager {
       $$TaskRelationsTableTableManager(_db, _db.taskRelations);
   $$SyncStateTableTableManager get syncState =>
       $$SyncStateTableTableManager(_db, _db.syncState);
+  $$OutboxTableTableManager get outbox =>
+      $$OutboxTableTableManager(_db, _db.outbox);
 }

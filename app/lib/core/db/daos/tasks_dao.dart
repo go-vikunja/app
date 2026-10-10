@@ -9,6 +9,8 @@ import 'package:vikunja_mobile/core/db/tables/labels.dart';
 import 'package:vikunja_mobile/core/db/tables/tasks.dart';
 import 'package:vikunja_mobile/core/db/tables/users.dart';
 import 'package:vikunja_mobile/core/db/watch_tables.dart';
+import 'package:vikunja_mobile/core/outbox/apply_task_changes.dart';
+import 'package:vikunja_mobile/core/outbox/task_changes_json.dart';
 
 part 'tasks_dao.g.dart';
 
@@ -42,13 +44,22 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
     users,
   };
 
+  /// A task queued for deletion is gone as far as every reader is
+  /// concerned; the counts still include it, see [count].
+  Expression<bool> get _visible => tasks.pendingDelete.equals(false);
+
+  /// A row with a queued op is never purged: it exists on the server or is
+  /// being deleted anyway, and the pull after the op is sent sorts it out.
+  Expression<bool> get _purgeable =>
+      tasks.pendingChanges.isNull() & tasks.pendingDelete.equals(false);
+
   /// Open tasks across all projects: nearest due date first, tasks without
   /// one last, newest first within a date.
   Stream<List<Task>> watchOpenTasks() =>
       watchTables(_readTables, loadOpenTasks);
 
   Future<List<Task>> loadOpenTasks() => _load(
-    where: tasks.done.equals(false),
+    where: tasks.done.equals(false) & _visible,
     orderBy: [
       OrderingTerm.asc(tasks.dueDate, nulls: NullsOrder.last),
       OrderingTerm.desc(tasks.id),
@@ -69,21 +80,36 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
     required bool showDone,
   }) => _load(
     where: showDone
-        ? tasks.projectId.equals(projectId)
-        : tasks.projectId.equals(projectId) & tasks.done.equals(false),
+        ? tasks.projectId.equals(projectId) & _visible
+        : tasks.projectId.equals(projectId) &
+              tasks.done.equals(false) &
+              _visible,
     orderBy: [OrderingTerm.asc(tasks.position), OrderingTerm.desc(tasks.id)],
   );
 
   Future<Task?> find(int id) async {
-    final found = await _load(where: tasks.id.equals(id), orderBy: const []);
+    final found = await _load(
+      where: tasks.id.equals(id) & _visible,
+      orderBy: const [],
+    );
     return found.singleOrNull;
   }
 
   Future<Map<int, Task>> findAll(Iterable<int> ids) async {
-    final found = await _load(where: tasks.id.isIn(ids), orderBy: const []);
+    final found = await _load(
+      where: tasks.id.isIn(ids) & _visible,
+      orderBy: const [],
+    );
     return {for (final task in found) task.id: task};
   }
 
+  /// The stored row, a task queued for deletion included.
+  Future<TaskRow?> findRow(int id) =>
+      (select(tasks)..where((t) => t.id.equals(id))).getSingleOrNull();
+
+  /// The counts mirror the server, so they include the rows queued for
+  /// deletion: the server holds those until the delete is sent, and the
+  /// sync's probe must not see a mismatch on every run until then.
   Future<int> count() {
     final count = tasks.id.count();
     final query = selectOnly(tasks)..addColumns([count]);
@@ -110,10 +136,13 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
     return query.map((row) => row.read(total)!).getSingle();
   }
 
-  Future<List<int>> idsInProject(int projectId) {
+  Future<List<int>> idsInProject(int projectId) =>
+      _ids(tasks.projectId.equals(projectId) & _visible);
+
+  Future<List<int>> _ids(Expression<bool> where) {
     final query = selectOnly(tasks)
       ..addColumns([tasks.id])
-      ..where(tasks.projectId.equals(projectId));
+      ..where(where);
     return query.map((row) => row.read(tasks.id)!).get();
   }
 
@@ -133,15 +162,19 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
     return millis == null ? null : const EpochMillis().fromSql(millis);
   }
 
-  Future<int> purgeInProjects(Iterable<int> projectIds) =>
-      (delete(tasks)..where((t) => t.projectId.isIn(projectIds))).go();
+  Future<int> purgeInProjects(Iterable<int> projectIds) => (delete(
+    tasks,
+  )..where((t) => t.projectId.isIn(projectIds) & _purgeable)).go();
 
   /// Removes the tasks of [projectId] whose id is not in [keep]. The ids to
   /// delete are picked locally, so the statements stay small whatever the
   /// size of [keep].
   Future<int> purgeInProjectExcept(int projectId, Set<int> keep) async {
+    final candidates = await _ids(
+      tasks.projectId.equals(projectId) & _purgeable,
+    );
     final gone = [
-      for (final id in await idsInProject(projectId))
+      for (final id in candidates)
         if (!keep.contains(id)) id,
     ];
     var purged = 0;
@@ -159,10 +192,24 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
 
   /// Upserts the tasks with the users and labels they carry, replacing their
   /// labels, assignees, reminders and relations; marks them seen in
-  /// [syncRunId].
-  Future<void> upsertAll(List<Task> all, {required String syncRunId}) {
+  /// [syncRunId], or leaves the run a row has when null. A row with queued
+  /// changes keeps those fields over the incoming values, and a row queued
+  /// for deletion stays hidden.
+  Future<void> upsertAll(List<Task> all, {String? syncRunId}) async {
     final ids = [for (final task in all) task.id];
-    return batch((b) {
+    final queued = await _queuedRows(ids);
+    TasksCompanion row(Task task) {
+      var stored = taskRow(task, syncRunId: syncRunId);
+      if (queued[task.id] case final local?) {
+        stored = _keepQueued(stored, local);
+      }
+      final companion = stored.toCompanion(false);
+      return syncRunId == null
+          ? companion.copyWith(syncRunId: const Value.absent())
+          : companion;
+    }
+
+    await batch((b) {
       b
         ..insertAllOnConflictUpdate(users, [
           for (final task in all) ...[
@@ -174,10 +221,7 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
           for (final task in all)
             for (final label in task.labels) labelRow(label).toCompanion(false),
         ])
-        ..insertAllOnConflictUpdate(tasks, [
-          for (final task in all)
-            taskRow(task, syncRunId: syncRunId).toCompanion(false),
-        ])
+        ..insertAllOnConflictUpdate(tasks, [for (final task in all) row(task)])
         ..deleteWhere(taskLabels, (t) => t.taskId.isIn(ids))
         ..deleteWhere(taskAssignees, (t) => t.taskId.isIn(ids))
         ..deleteWhere(taskReminders, (t) => t.taskId.isIn(ids))
@@ -203,9 +247,39 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
   /// assignees, reminders and relations go with them.
   Future<int> purgeNotInRun(String syncRunId) =>
       (delete(tasks)..where(
-            (t) => t.syncRunId.isNull() | t.syncRunId.equals(syncRunId).not(),
+            (t) =>
+                (t.syncRunId.isNull() | t.syncRunId.equals(syncRunId).not()) &
+                _purgeable,
           ))
           .go();
+
+  Future<void> deleteRow(int id) =>
+      (delete(tasks)..where((t) => t.id.equals(id))).go();
+
+  /// The rows among [ids] that carry a queued op.
+  Future<Map<int, TaskRow>> _queuedRows(List<int> ids) async {
+    final rows = await (select(
+      tasks,
+    )..where((t) => t.id.isIn(ids) & _purgeable.not())).get();
+    return {for (final row in rows) row.id: row};
+  }
+
+  /// [incoming] with the queued fields of [local] on top; a queued done
+  /// keeps the moment it was done here.
+  static TaskRow _keepQueued(TaskRow incoming, TaskRow local) {
+    final row = incoming.copyWith(
+      pendingChanges: Value(local.pendingChanges),
+      pendingDelete: local.pendingDelete,
+    );
+    return switch (local.pendingChanges) {
+      final json? => applyTaskChanges(
+        row,
+        decodeTaskChanges(json),
+        now: local.doneAt ?? DateTime.timestamp(),
+      ),
+      null => row,
+    };
+  }
 
   Future<List<Task>> _load({
     required Expression<bool> where,

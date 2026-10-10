@@ -494,6 +494,18 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String signOutDialogPendingChanges(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count Änderungen wurden noch nicht an den Server gesendet und gehen verloren; tippe vorher auf „Jetzt senden“, um sie zu behalten.',
+      one: 'Eine Änderung wurde noch nicht an den Server gesendet und geht verloren; tippe vorher auf „Jetzt senden“, um sie zu behalten.',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get signOutDialogCancel => 'Abbrechen';
 
   @override
@@ -621,9 +633,6 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get taskDone => 'Erledigt';
-
-  @override
-  String get taskNotDone => 'Nicht erledigt';
 
   @override
   String taskDueSemantics(String when) {
@@ -775,12 +784,6 @@ class AppLocalizationsDe extends AppLocalizations {
     );
     return '$_temp0';
   }
-
-  @override
-  String get taskDetailStatusDone => 'Erledigt';
-
-  @override
-  String get taskDetailStatusOpen => 'Offen';
 
   @override
   String taskDetailIdentifierInProject(String identifier, String project) {
@@ -1100,4 +1103,109 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get accountFullResync => 'Alles neu laden';
+
+  @override
+  String get taskMarkDone => 'Als erledigt markieren';
+
+  @override
+  String get taskMarkNotDone => 'Als nicht erledigt markieren';
+
+  @override
+  String get taskMarkedDone => 'Als erledigt markiert';
+
+  @override
+  String get undo => 'Rückgängig';
+
+  @override
+  String get taskAddFavourite => 'Zu den Favoriten hinzufügen';
+
+  @override
+  String get taskRemoveFavourite => 'Aus den Favoriten entfernen';
+
+  @override
+  String get taskNotYetSynced => 'Noch nicht synchronisiert';
+
+  @override
+  String get taskDelete => 'Aufgabe löschen';
+
+  @override
+  String get taskDeleteDialogTitle => 'Aufgabe löschen?';
+
+  @override
+  String taskDeleteDialogBody(String title) {
+    return '„$title“ wird auch auf dem Server gelöscht. Das lässt sich nicht rückgängig machen.';
+  }
+
+  @override
+  String get taskDeleteDialogCancel => 'Abbrechen';
+
+  @override
+  String get taskDeleteDialogConfirm => 'Löschen';
+
+  @override
+  String get taskDeleted => 'Aufgabe gelöscht';
+
+  @override
+  String accountPendingChanges(int count) {
+    final intl.NumberFormat countNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String countString = countNumberFormat.format(count);
+
+    return 'Ausstehende Änderungen: $countString';
+  }
+
+  @override
+  String get accountSendNow => 'Jetzt senden';
+
+  @override
+  String get accountSending => 'Wird gesendet …';
+
+  @override
+  String accountSendNowFailed(String reason) {
+    return 'Nicht gesendet. $reason';
+  }
+
+  @override
+  String get accountSyncProblems => 'Synchronisierungsprobleme';
+
+  @override
+  String get syncProblemUpdateFailed =>
+      'Die Änderung konnte nicht gespeichert werden.';
+
+  @override
+  String get syncProblemDeleteFailed =>
+      'Die Aufgabe konnte nicht gelöscht werden.';
+
+  @override
+  String get syncProblemForbidden =>
+      'Du hast keinen Zugriff mehr auf das Projekt der Aufgabe.';
+
+  @override
+  String get syncProblemProjectMissing =>
+      'Das Projekt der Aufgabe gibt es auf dem Server nicht mehr.';
+
+  @override
+  String get syncProblemTaskMissing =>
+      'Die Aufgabe gibt es auf dem Server nicht mehr.';
+
+  @override
+  String get syncProblemProjectArchived =>
+      'Das Projekt der Aufgabe ist archiviert.';
+
+  @override
+  String get syncProblemRejected => 'Der Server hat die Änderung abgelehnt.';
+
+  @override
+  String get syncProblemUnexpected => 'Der Server hat unerwartet geantwortet.';
+
+  @override
+  String syncProblemFailedAt(String when) {
+    return 'Fehlgeschlagen $when';
+  }
+
+  @override
+  String get syncProblemFailedJustNow => 'Gerade eben fehlgeschlagen';
+
+  @override
+  String get syncProblemDiscard => 'Verwerfen';
 }

@@ -13,8 +13,10 @@ import 'package:vikunja_mobile/features/common/presentation/data_failure_card.da
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
 import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
+import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
 import 'package:vikunja_mobile/features/sync/presentation/sync_progress_bar.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/task_list_actions.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
 
 enum _Action { toggleShowDone }
@@ -29,7 +31,9 @@ class ProjectTasksScreen extends ConsumerStatefulWidget {
 }
 
 class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
-    with RefreshableList<ProjectTasksScreen> {
+    with
+        RefreshableList<ProjectTasksScreen>,
+        TaskListActions<ProjectTasksScreen> {
   bool _showDone = false;
   bool _loadingMore = false;
   Object? _loadMoreFailure;
@@ -50,6 +54,7 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
   void onRepositoryReplaced() {
     super.onRepositoryReplaced();
     _loadMoreFailure = null;
+    clearLeavingTasks();
   }
 
   Future<void> _loadMore() async {
@@ -85,6 +90,7 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
     _showDone = !_showDone;
     clearRefreshFailure();
     _loadMoreFailure = null;
+    clearLeavingTasks();
   });
 
   @override
@@ -95,6 +101,7 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
       projectTasksProvider(widget.projectId, showDone: _showDone),
     );
     final now = ref.watch(clockTickProvider);
+    final pendingIds = ref.watch(pendingTaskIdsProvider).value ?? const {};
 
     return Scaffold(
       appBar: AppBar(
@@ -120,7 +127,8 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
       body: buildRefreshable(
         tasks,
         loadingLabel: l10n.projectTasksLoading,
-        builder: (page, notice) => _list(page, notice, project, now),
+        builder: (page, notice) =>
+            _list(page, notice, project, now, pendingIds),
       ),
     );
   }
@@ -130,9 +138,11 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
     Widget? notice,
     Project? project,
     DateTime now,
+    Set<int> pendingIds,
   ) {
     final l10n = context.l10n;
-    if (page.items.isEmpty) {
+    final items = withLeavingTasks(page.items);
+    if (items.isEmpty) {
       return CenteredScrollView(
         header: notice,
         child: EmptyState(
@@ -153,15 +163,21 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
         slivers: [
           if (notice case final notice?) NoticeSliver(notice: notice),
           SliverList.builder(
-            itemCount: page.items.length,
+            itemCount: items.length,
             itemBuilder: (context, index) {
-              final task = page.items[index];
+              final task = items[index];
               return TaskRow(
+                key: ValueKey(task.id),
                 task: task,
                 now: now,
+                pending: pendingIds.contains(task.id),
                 onTap: () => unawaited(
                   showTaskDetail(context, task: task, project: project),
                 ),
+                onDoneChanged: (done) =>
+                    unawaited(setTaskDone(task, done: done)),
+                onFavoriteChanged: (favorite) =>
+                    unawaited(setTaskFavorite(task, favorite: favorite)),
               );
             },
           ),

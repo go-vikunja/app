@@ -136,6 +136,72 @@ final class Task {
   List<Task> get parentTasks =>
       relatedTasks[TaskRelationKind.parentTask] ?? const [];
 
+  static const _unset = Object();
+
+  /// This task with the given fields replaced. A nullable field passed as
+  /// null is cleared; one left out keeps its value.
+  Task copyWith({
+    String? title,
+    int? projectId,
+    String? description,
+    bool? done,
+    Object? doneAt = _unset,
+    Object? dueDate = _unset,
+    Object? startDate = _unset,
+    Object? endDate = _unset,
+    TaskPriority? priority,
+    double? percentDone,
+    String? hexColor,
+    String? identifier,
+    int? index,
+    bool? isFavorite,
+    double? position,
+    List<Label>? labels,
+    List<User>? assignees,
+    List<TaskReminder>? reminders,
+    Duration? repeatAfter,
+    RepeatMode? repeatMode,
+    Map<TaskRelationKind, List<Task>>? relatedTasks,
+    int? bucketId,
+    Object? createdBy = _unset,
+    Object? created = _unset,
+    Object? updated = _unset,
+    Object? commentCount = _unset,
+    Object? isUnread = _unset,
+  }) => Task(
+    id: id,
+    title: title ?? this.title,
+    projectId: projectId ?? this.projectId,
+    description: description ?? this.description,
+    done: done ?? this.done,
+    doneAt: _or(doneAt, this.doneAt),
+    dueDate: _or(dueDate, this.dueDate),
+    startDate: _or(startDate, this.startDate),
+    endDate: _or(endDate, this.endDate),
+    priority: priority ?? this.priority,
+    percentDone: percentDone ?? this.percentDone,
+    hexColor: hexColor ?? this.hexColor,
+    identifier: identifier ?? this.identifier,
+    index: index ?? this.index,
+    isFavorite: isFavorite ?? this.isFavorite,
+    position: position ?? this.position,
+    labels: labels ?? this.labels,
+    assignees: assignees ?? this.assignees,
+    reminders: reminders ?? this.reminders,
+    repeatAfter: repeatAfter ?? this.repeatAfter,
+    repeatMode: repeatMode ?? this.repeatMode,
+    relatedTasks: relatedTasks ?? this.relatedTasks,
+    bucketId: bucketId ?? this.bucketId,
+    createdBy: _or(createdBy, this.createdBy),
+    created: _or(created, this.created),
+    updated: _or(updated, this.updated),
+    commentCount: _or(commentCount, this.commentCount),
+    isUnread: _or(isUnread, this.isUnread),
+  );
+
+  static T? _or<T>(Object? given, T? current) =>
+      identical(given, _unset) ? current : given as T?;
+
   @override
   bool operator ==(Object other) =>
       other is Task &&

@@ -133,4 +133,52 @@ void main() {
   test('toString uses the display identifier', () {
     expect('${_task(identifier: '-4', index: 4)}', 'Task(1, #4, t)');
   });
+
+  _copyWithTests();
+}
+
+void _copyWithTests() {
+  final monday = DateTime.utc(2026, 10, 12, 9);
+  final task = Task(
+    id: 1,
+    title: 't',
+    projectId: 2,
+    done: true,
+    doneAt: monday,
+    dueDate: monday,
+    isFavorite: true,
+    labels: const [Label(id: 3, title: 'l')],
+    assignees: const [User(id: 7, username: 'alice')],
+    repeatAfter: const Duration(days: 1),
+    updated: monday,
+    commentCount: 4,
+  );
+
+  group('copyWith', () {
+    test('keeps every field that is left out', () {
+      final copy = task.copyWith(title: 'renamed');
+
+      expect(copy.title, 'renamed');
+      expect(copy.id, 1);
+      expect(copy.projectId, 2);
+      expect(copy.done, isTrue);
+      expect(copy.doneAt, monday);
+      expect(copy.dueDate, monday);
+      expect(copy.isFavorite, isTrue);
+      expect(copy.labels, task.labels);
+      expect(copy.assignees, task.assignees);
+      expect(copy.repeatAfter, const Duration(days: 1));
+      expect(copy.updated, monday);
+      expect(copy.commentCount, 4);
+    });
+
+    test('clears a nullable field passed as null', () {
+      final copy = task.copyWith(done: false, doneAt: null, dueDate: null);
+
+      expect(copy.done, isFalse);
+      expect(copy.doneAt, isNull);
+      expect(copy.dueDate, isNull);
+      expect(copy.updated, monday);
+    });
+  });
 }

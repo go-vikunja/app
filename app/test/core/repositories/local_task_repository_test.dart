@@ -1,30 +1,65 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/outbox/outbox_sender.dart';
+import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/repositories/local/local_task_repository.dart';
 import 'package:vikunja_mobile/core/repositories/paged_list.dart';
 
+import '../../helpers/fake_sync_client.dart';
+import '../../helpers/fake_timers.dart';
+import '../../helpers/fake_write_client.dart';
 import '../../helpers/recording_sync_engine.dart';
 import '../../helpers/sample_data.dart';
 import '../../helpers/test_database.dart';
+import '../../helpers/zero_random.dart';
 
 void main() {
   late AppDatabase db;
   late RecordingSyncEngine sync;
+  late FakeWriteClient write;
+  late FakeSyncClient read;
+  late FakeTimers timers;
+  late OutboxSender sender;
   late LocalTaskRepository repository;
   final monday = DateTime.utc(2026, 10, 12, 9);
+  final now = DateTime.utc(2026, 10, 10, 12);
+  final tasks = [
+    sampleTask(id: 1, title: 'Undated', projectId: 7),
+    sampleTask(id: 2, title: 'Monday', projectId: 7, due: monday),
+    sampleTask(id: 3, title: 'Done', projectId: 7, done: true),
+    sampleTask(id: 4, title: 'Elsewhere', projectId: 8),
+  ];
+  final daily = sampleTask(
+    id: 5,
+    title: 'Daily',
+    projectId: 7,
+    due: monday,
+    start: monday.subtract(const Duration(hours: 1)),
+    repeatAfter: const Duration(days: 1),
+  );
 
   setUp(() async {
     db = testDatabase();
     sync = RecordingSyncEngine();
-    repository = LocalTaskRepository(db, sync);
+    write = FakeWriteClient(clock: () => now);
+    read = FakeSyncClient();
+    timers = FakeTimers();
+    sender = OutboxSender(
+      db: db,
+      writeClient: write,
+      readClient: read,
+      sync: sync,
+      now: () => now,
+      createTimer: timers.create,
+      random: ZeroRandom(),
+    );
+    addTearDown(sender.dispose);
+    repository = LocalTaskRepository(db, sync, sender, now: () => now);
     addTearDown(repository.dispose);
-    await db.tasksDao.upsertAll([
-      sampleTask(id: 1, title: 'Undated', projectId: 7),
-      sampleTask(id: 2, title: 'Monday', projectId: 7, due: monday),
-      sampleTask(id: 3, title: 'Done', projectId: 7, done: true),
-      sampleTask(id: 4, title: 'Elsewhere', projectId: 8),
-    ], syncRunId: 'run');
+    await db.tasksDao.upsertAll(tasks, syncRunId: 'run');
+    write.serverTasks.addEntries(tasks.map((t) => MapEntry(t.id, t)));
+    read.allTasks = tasks;
   });
 
   test('open tasks come from the database, nearest due date first', () async {
@@ -80,5 +115,160 @@ void main() {
 
     expect(sync.refreshCalls, 4);
     expect(errors, isEmpty);
+  });
+
+  group('writes', () {
+    test('mark done shows at once, then goes to the server', () async {
+      final open = <List<Task>>[];
+      final pending = <int>[];
+      final pendingIds = <Set<int>>[];
+      repository.watchOpenTasks().listen(open.add);
+      repository.watchPendingChanges().listen(pending.add);
+      repository.watchPendingTaskIds().listen(pendingIds.add);
+      await pumpEventQueue();
+      // The server is slow: the row changes before it answers.
+      final gate = RequestGate()..pattern = 'update';
+      write.beforeRequest = gate.call;
+
+      await repository.setDone(2, done: true);
+      await pumpEventQueue();
+
+      expect(open.last.map((t) => t.id), [4, 1]);
+      expect(pending.last, 1);
+      expect(pendingIds.last, {2});
+      expect(write.requests, ['update 2']);
+
+      gate.release();
+      await pumpEventQueue();
+
+      expect(write.updates.single, (2, const TaskChanges(done: true)));
+      expect(write.serverTasks[2]!.done, isTrue);
+      expect(pending.last, 0);
+      expect(pendingIds.last, isEmpty);
+      expect((await db.tasksDao.find(2))!.updated, now);
+      expect(sync.refreshCalls, 1);
+    });
+
+    test('an undo before the send merges into one change', () async {
+      await repository.setDone(2, done: true);
+      await repository.setDone(2, done: false);
+      await pumpEventQueue();
+
+      expect(write.updates.map((u) => u.$2.done), [false]);
+      expect(write.serverTasks[2]!.done, isFalse);
+      expect((await db.tasksDao.find(2))!.done, isFalse);
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    test('undoing a repeating task the server already moved on restores '
+        'its dates', () async {
+      await db.tasksDao.upsertAll([daily], syncRunId: 'run');
+      write.serverTasks[5] = daily;
+      final previous = (await db.tasksDao.find(5))!;
+      await repository.setDone(5, done: true);
+      await pumpEventQueue();
+      final shifted = (await db.tasksDao.find(5))!;
+      expect(shifted.done, isFalse);
+      expect(shifted.dueDate, monday.add(const Duration(days: 1)));
+
+      await repository.undoDone(previous);
+      final restored = (await db.tasksDao.find(5))!;
+      expect(restored.dueDate, monday);
+      expect(restored.startDate, previous.startDate);
+      await pumpEventQueue();
+
+      expect(write.updates.last, (
+        5,
+        TaskChanges(
+          done: false,
+          dueDate: DateChange.set(monday),
+          startDate: DateChange.set(previous.startDate!),
+        ),
+      ));
+      final server = write.serverTasks[5]!;
+      expect(server.done, isFalse);
+      expect(server.dueDate, monday);
+      expect(server.startDate, previous.startDate);
+      expect((await db.tasksDao.find(5))!.dueDate, monday);
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    test('undoing a task that does not repeat sends done only', () async {
+      final previous = (await db.tasksDao.find(2))!;
+      await repository.setDone(2, done: true);
+      await repository.undoDone(previous);
+      await pumpEventQueue();
+
+      expect(write.updates.single, (2, const TaskChanges(done: false)));
+    });
+
+    test('favourite and delete', () async {
+      await repository.setFavorite(1, favorite: true);
+      await repository.deleteTask(4);
+      await pumpEventQueue();
+
+      expect((await db.tasksDao.find(1))!.isFavorite, isTrue);
+      expect(await db.tasksDao.find(4), isNull);
+      expect(write.updates.single, (1, const TaskChanges(isFavorite: true)));
+      expect(write.deletes, [4]);
+      expect(write.serverTasks.containsKey(4), isFalse);
+      expect(await db.tasksDao.findRow(4), isNull);
+    });
+
+    test('a write for a task that is gone here does nothing', () async {
+      await repository.setDone(99, done: true);
+      await repository.deleteTask(99);
+      await pumpEventQueue();
+
+      expect(write.requests, isEmpty);
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    test('a write never throws for the network; the op waits', () async {
+      write.beforeRequest = (_) =>
+          throw const NetworkFailure(NetworkProblem.unreachable);
+
+      await repository.setDone(1, done: true);
+      await pumpEventQueue();
+
+      expect((await db.tasksDao.find(1))!.done, isTrue);
+      expect(await db.outboxDao.count(), 1);
+      expect(sender.state, OutboxSenderState.waiting);
+      expect(timers.pendingWait, OutboxSender.initialBackoff);
+
+      expect(await repository.sendPendingChanges(), isA<NetworkFailure>());
+
+      write.beforeRequest = null;
+      expect(await repository.sendPendingChanges(), isNull);
+
+      expect(await db.outboxDao.count(), 0);
+      expect(write.serverTasks[1]!.done, isTrue);
+    });
+
+    test('a rejected write is a sync problem to retry or discard', () async {
+      final problems = <List<SyncProblem>>[];
+      repository.watchSyncProblems().listen(problems.add);
+      write.beforeRequest = (_) => throw const Forbidden(code: 7003);
+
+      await repository.setDone(1, done: true);
+      await repository.setFavorite(2, favorite: true);
+      await pumpEventQueue();
+
+      expect(problems.last.map((p) => p.taskTitle), ['Undated', 'Monday']);
+      expect(problems.last.first.failure, isA<Forbidden>());
+      final (first, second) = (problems.last.first, problems.last.last);
+
+      write.beforeRequest = null;
+      await repository.retrySyncProblem(first.operationId);
+      await pumpEventQueue();
+      expect(problems.last.map((p) => p.taskId), [2]);
+      expect(write.serverTasks[1]!.done, isTrue);
+
+      await repository.discardSyncProblem(second.operationId);
+      await pumpEventQueue();
+      expect(problems.last, isEmpty);
+      expect((await db.tasksDao.find(2))!.isFavorite, isFalse);
+      expect(write.serverTasks[2]!.isFavorite, isFalse);
+    });
   });
 }

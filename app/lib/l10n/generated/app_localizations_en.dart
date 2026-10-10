@@ -489,6 +489,18 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String signOutDialogPendingChanges(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count changes have not been sent to the server yet and will be lost; tap Send now first to keep them.',
+      one: 'One change has not been sent to the server yet and will be lost; tap Send now first to keep it.',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get signOutDialogCancel => 'Cancel';
 
   @override
@@ -615,9 +627,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get taskDone => 'Done';
-
-  @override
-  String get taskNotDone => 'Not done';
 
   @override
   String taskDueSemantics(String when) {
@@ -769,12 +778,6 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
-
-  @override
-  String get taskDetailStatusDone => 'Done';
-
-  @override
-  String get taskDetailStatusOpen => 'Open';
 
   @override
   String taskDetailIdentifierInProject(String identifier, String project) {
@@ -1092,4 +1095,107 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get accountFullResync => 'Full resync';
+
+  @override
+  String get taskMarkDone => 'Mark done';
+
+  @override
+  String get taskMarkNotDone => 'Mark not done';
+
+  @override
+  String get taskMarkedDone => 'Marked done';
+
+  @override
+  String get undo => 'Undo';
+
+  @override
+  String get taskAddFavourite => 'Add to favourites';
+
+  @override
+  String get taskRemoveFavourite => 'Remove from favourites';
+
+  @override
+  String get taskNotYetSynced => 'Not yet synced';
+
+  @override
+  String get taskDelete => 'Delete task';
+
+  @override
+  String get taskDeleteDialogTitle => 'Delete task?';
+
+  @override
+  String taskDeleteDialogBody(String title) {
+    return '“$title” will be deleted on the server too. This cannot be undone.';
+  }
+
+  @override
+  String get taskDeleteDialogCancel => 'Cancel';
+
+  @override
+  String get taskDeleteDialogConfirm => 'Delete';
+
+  @override
+  String get taskDeleted => 'Task deleted';
+
+  @override
+  String accountPendingChanges(int count) {
+    final intl.NumberFormat countNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String countString = countNumberFormat.format(count);
+
+    return 'Pending changes: $countString';
+  }
+
+  @override
+  String get accountSendNow => 'Send now';
+
+  @override
+  String get accountSending => 'Sending…';
+
+  @override
+  String accountSendNowFailed(String reason) {
+    return 'Not sent. $reason';
+  }
+
+  @override
+  String get accountSyncProblems => 'Sync problems';
+
+  @override
+  String get syncProblemUpdateFailed => 'The change could not be saved.';
+
+  @override
+  String get syncProblemDeleteFailed => 'The task could not be deleted.';
+
+  @override
+  String get syncProblemForbidden =>
+      'You no longer have access to its project.';
+
+  @override
+  String get syncProblemProjectMissing =>
+      'Its project no longer exists on the server.';
+
+  @override
+  String get syncProblemTaskMissing =>
+      'The task no longer exists on the server.';
+
+  @override
+  String get syncProblemProjectArchived => 'Its project is archived.';
+
+  @override
+  String get syncProblemRejected => 'The server rejected the change.';
+
+  @override
+  String get syncProblemUnexpected =>
+      'The server answered in an unexpected way.';
+
+  @override
+  String syncProblemFailedAt(String when) {
+    return 'Failed $when';
+  }
+
+  @override
+  String get syncProblemFailedJustNow => 'Failed just now';
+
+  @override
+  String get syncProblemDiscard => 'Discard';
 }

@@ -180,10 +180,14 @@ final class FakeTasksPort implements TasksPort {
   Future<Page<Task>> listInView(int projectId, int viewId, TaskQuery query) =>
       listInProject(projectId, query);
 
+  /// A task the server does not have answers like a deleted one.
   @override
   Future<Task> read(int id, {Set<TaskExpand> expand = const {}}) async {
     await _client._request('task $id');
-    return _client.allTasks.firstWhere((task) => task.id == id);
+    for (final task in _client.allTasks) {
+      if (task.id == id) return task;
+    }
+    throw const NotFound(code: 4002);
   }
 
   Page<Task> _serve(List<Task> all, TaskQuery query) {

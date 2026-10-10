@@ -78,11 +78,8 @@ void main() {
     expect(loaded(tester, showDone: true), 27);
     final doneTitle = tester.widget<Text>(find.text('Done 26'));
     expect(doneTitle.style?.decoration, TextDecoration.lineThrough);
-    final doneIcons = tester.widgetList<Icon>(find.byIcon(Icons.check_circle));
-    expect(doneIcons.map((icon) => icon.semanticLabel), [
-      en.taskDone,
-      en.taskDone,
-    ]);
+    expect(find.byIcon(Icons.check_circle), findsNWidgets(2));
+    expect(find.byTooltip(en.taskMarkNotDone), findsNWidgets(2));
 
     await toggleShowDone(tester);
     expect(find.text('Done 26'), findsNothing);

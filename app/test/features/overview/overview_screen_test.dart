@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:ui' show Tristate;
 
+import 'package:flutter/semantics.dart' show SemanticsAction;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
@@ -125,18 +127,18 @@ void main() {
     expect(sunny.style?.color, const Color(0xFF000000));
     final night = tester.widget<Text>(find.text('Night'));
     expect(night.style?.color, const Color(0xFFFFFFFF));
-    final star = tester.widget<Icon>(find.byIcon(Icons.star));
-    expect(star.semanticLabel, en.favouriteLabel);
+    expect(find.byTooltip(en.taskRemoveFavourite), findsOneWidget);
+    expect(find.byTooltip(en.taskAddFavourite), findsNWidgets(4));
   });
 
-  testWidgets('a row is one semantics node with status, due and labels', (
-    tester,
-  ) async {
+  testWidgets('a row is one semantics node with title, due and labels, next '
+      'to the done and favourite controls', (tester) async {
     final semantics = tester.ensureSemantics();
     await pumpOverview(tester);
 
     final node = tester.getSemantics(find.text('Pay the bill'));
-    expect(node.label, contains(en.taskNotDone));
+    expect(node.getSemanticsData().hasAction(SemanticsAction.tap), isTrue);
+    expect(node.label, isNot(contains(en.taskMarkDone)));
     expect(node.label, contains('Pay the bill'));
     expect(node.label, contains(en.taskOverdueSemantics('1 day ago')));
     expect(node.label, contains(en.prioritySemantics(en.priorityUrgent)));
@@ -144,6 +146,24 @@ void main() {
     expect(
       tester.getSemantics(find.text('Write report')).label,
       contains(en.taskDueSemantics('in 3 days')),
+    );
+    final row = find.widgetWithText(TaskRow, 'Pay the bill');
+    final done = tester.getSemantics(
+      find.descendant(of: row, matching: find.byTooltip(en.taskMarkDone)),
+    );
+    expect(done.tooltip, en.taskMarkDone);
+    expect(done.getSemanticsData().hasAction(SemanticsAction.tap), isTrue);
+    expect(done.flagsCollection.isSelected, isNot(Tristate.isTrue));
+    final star = tester.getSemantics(
+      find.descendant(of: row, matching: find.byTooltip(en.taskAddFavourite)),
+    );
+    expect(star.flagsCollection.isToggled, Tristate.isFalse);
+    expect(
+      tester
+          .getSemantics(find.byTooltip(en.taskRemoveFavourite))
+          .flagsCollection
+          .isToggled,
+      Tristate.isTrue,
     );
     semantics.dispose();
   });

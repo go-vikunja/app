@@ -1,11 +1,21 @@
+import 'dart:async';
+
 import 'package:cupertino_ui/cupertino_ui.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 import 'package:vikunja_mobile/features/home/presentation/account_header.dart';
+import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
+import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
 import 'package:vikunja_mobile/features/tasks/application/html_to_text.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/delete_task_dialog.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/favourite_button.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_chips.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_formatting.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/task_write_feedback.dart';
 
 /// Shows what the list already knows about [task]; no network call.
 Future<void> showTaskDetail(
@@ -47,7 +57,12 @@ Future<void> showTaskDetail(
   }
 }
 
-class TaskDetailSheet extends StatelessWidget {
+enum _SheetAction { delete }
+
+/// Follows the local row of [task] while it is open, so a done toggle here
+/// and the server's answer to it (a repeating task's next occurrence) show;
+/// [task] itself is the fallback once the row is gone.
+class TaskDetailSheet extends ConsumerWidget {
   const new({
     required this.task,
     required this.scrollController,
@@ -59,13 +74,40 @@ class TaskDetailSheet extends StatelessWidget {
   final Project? project;
   final ScrollController scrollController;
 
+  Future<void> _delete(
+    BuildContext context,
+    TaskRepository repository,
+    Task task,
+  ) async {
+    final l10n = context.l10n;
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final confirmed = await confirmDeleteTask(context, title: task.title);
+    if (!confirmed || !context.mounted) return;
+    await repository.deleteTask(task.id);
+    if (!context.mounted) return;
+    navigator.pop();
+    messenger.showSnackBar(SnackBar(content: Text(l10n.taskDeleted)));
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final materialL10n = MaterialLocalizations.of(context);
     final use24Hour = MediaQuery.alwaysUse24HourFormatOf(context);
+    final repository = ref.watch(taskRepositoryProvider);
+    final task =
+        ref.watch(
+          projectTasksProvider(
+            this.task.projectId,
+            showDone: true,
+          ).select((page) => _find(page.value?.items, this.task.id)),
+        ) ??
+        this.task;
+    final pending =
+        ref.watch(pendingTaskIdsProvider).value?.contains(task.id) ?? false;
 
     String formatMoment(DateTime moment) {
       final local = moment.toLocal();
@@ -94,8 +136,54 @@ class TaskDetailSheet extends StatelessWidget {
                 Expanded(
                   child: Semantics(
                     header: true,
-                    child: Text(task.title, style: theme.textTheme.titleLarge),
+                    child: Text(
+                      task.title,
+                      style: task.done
+                          ? theme.textTheme.titleLarge?.copyWith(
+                              decoration: TextDecoration.lineThrough,
+                              color: colors.onSurfaceVariant,
+                            )
+                          : theme.textTheme.titleLarge,
+                    ),
                   ),
+                ),
+                FavouriteButton(
+                  isFavorite: task.isFavorite,
+                  onChanged: repository == null
+                      ? null
+                      : (favorite) => unawaited(
+                          writeTaskFavorite(
+                            repository,
+                            task,
+                            favorite: favorite,
+                          ),
+                        ),
+                ),
+                PopupMenuButton<_SheetAction>(
+                  tooltip: l10n.moreActions,
+                  enabled: repository != null,
+                  onSelected: (action) => switch (action) {
+                    _SheetAction.delete => unawaited(
+                      _delete(context, repository!, task),
+                    ),
+                  },
+                  itemBuilder: (context) => [
+                    PopupMenuItem(
+                      value: _SheetAction.delete,
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete_outline, color: colors.error),
+                          const SizedBox(width: 12),
+                          Flexible(
+                            child: Text(
+                              l10n.taskDelete,
+                              style: TextStyle(color: colors.error),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
                 IconButton(
                   onPressed: () => Navigator.of(context).pop(),
@@ -116,24 +204,31 @@ class TaskDetailSheet extends StatelessWidget {
                 color: colors.onSurfaceVariant,
               ),
             ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                _StatusChip(done: task.done),
-                if (task.isFavorite)
-                  Icon(
-                    Icons.star,
-                    color: colors.tertiary,
-                    semanticLabel: l10n.favouriteLabel,
-                  ),
-                if (PriorityChip.shows(task.priority))
-                  PriorityChip(priority: task.priority),
-              ],
+            const SizedBox(height: 4),
+            CheckboxListTile.adaptive(
+              value: task.done,
+              onChanged: repository == null
+                  ? null
+                  : (done) => unawaited(
+                      writeTaskDone(repository, task, done: done ?? false),
+                    ),
+              title: Text(l10n.taskDone),
+              controlAffinity: ListTileControlAffinity.leading,
+              contentPadding: EdgeInsets.zero,
             ),
-            const SizedBox(height: 8),
+            if (pending || PriorityChip.shows(task.priority)) ...[
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  if (PriorityChip.shows(task.priority))
+                    PriorityChip(priority: task.priority),
+                  if (pending) const _PendingChip(),
+                ],
+              ),
+              const SizedBox(height: 8),
+            ],
             if (task.dueDate case final dueDate?)
               _Property(
                 icon: Icons.event,
@@ -238,23 +333,25 @@ class TaskDetailSheet extends StatelessWidget {
       ),
     );
   }
+
+  static Task? _find(List<Task>? tasks, int id) {
+    for (final task in tasks ?? const <Task>[]) {
+      if (task.id == id) return task;
+    }
+    return null;
+  }
 }
 
-class _StatusChip extends StatelessWidget {
-  const new({required this.done});
-
-  final bool done;
+class _PendingChip extends StatelessWidget {
+  const new();
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final colors = Theme.of(context).colorScheme;
     return Chip(
-      avatar: Icon(
-        done ? Icons.check_circle : Icons.radio_button_unchecked,
-        color: done ? colors.primary : colors.onSurfaceVariant,
-      ),
-      label: Text(done ? l10n.taskDetailStatusDone : l10n.taskDetailStatusOpen),
+      avatar: Icon(Icons.cloud_off_outlined, color: colors.onSurfaceVariant),
+      label: Text(l10n.taskNotYetSynced),
       visualDensity: VisualDensity.compact,
     );
   }

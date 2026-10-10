@@ -3,12 +3,16 @@ import 'dart:async';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/account_database_files.dart';
+import 'package:vikunja_mobile/core/outbox/pending_task_ids_source.dart';
+import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/repositories/paged_list.dart';
 import 'package:vikunja_mobile/core/repositories/project_repository.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
+
+import 'task_edits.dart';
 
 /// Replays [current] to every subscriber when it has one, then forwards
 /// [updates].
@@ -179,7 +183,7 @@ final class FakeProjectRepository implements ProjectRepository {
 /// Tasks as a local database would hold them, with the DAO orders: open
 /// tasks by due date (nulls last) then newest first, project tasks by
 /// position then newest first.
-final class FakeTaskRepository implements TaskRepository {
+final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
   new(this._engine);
 
   final FakeSyncEngine _engine;
@@ -254,10 +258,143 @@ final class FakeTaskRepository implements TaskRepository {
     return onLoadMore?.call() ?? Future.value();
   }
 
+  /// Every write, in order, as `setDone 1 true`, `undoDone 1`,
+  /// `setFavorite 2 false`, `delete 3`, `retry <op>`, `discard <op>` or
+  /// `sendPending`. A write applies to the task at once, like the local
+  /// database; what counts as pending is the test's to say with
+  /// [pendingChanges] and [pendingTaskIds].
+  final List<String> writes = [];
+  Future<void> Function()? beforeWrite;
+
+  /// What `sendPendingChanges` reports as still blocking the queue.
+  VikunjaFailure? sendBlockedBy;
+
+  /// Thrown by `discardSyncProblem`, like a server read that failed.
+  VikunjaFailure? discardFailure;
+
+  final _pendingChanges = StreamController<int>.broadcast();
+  final _problems = StreamController<List<SyncProblem>>.broadcast();
+  final _pendingIds = StreamController<Set<int>>.broadcast();
+  int _pendingCount = 0;
+  List<SyncProblem> _problemList = const [];
+  Set<int> _pendingTaskIds = const {};
+
+  int get pendingChanges => _pendingCount;
+
+  set pendingChanges(int count) {
+    _pendingCount = count;
+    if (!_pendingChanges.isClosed) _pendingChanges.add(count);
+  }
+
+  List<SyncProblem> get syncProblems => _problemList;
+
+  set syncProblems(List<SyncProblem> problems) {
+    _problemList = List.unmodifiable(problems);
+    if (!_problems.isClosed) _problems.add(_problemList);
+  }
+
+  Set<int> get pendingTaskIds => _pendingTaskIds;
+
+  set pendingTaskIds(Set<int> ids) {
+    _pendingTaskIds = Set.unmodifiable(ids);
+    if (!_pendingIds.isClosed) _pendingIds.add(_pendingTaskIds);
+  }
+
+  Task? find(int id) {
+    for (final task in _all) {
+      if (task.id == id) return task;
+    }
+    return null;
+  }
+
+  Future<void> _write(String entry, Task? Function(Task task) change) async {
+    writes.add(entry);
+    await beforeWrite?.call();
+    all = [for (final task in _all) ?change(task)];
+  }
+
+  @override
+  Future<void> setDone(int taskId, {required bool done}) => _write(
+    'setDone $taskId $done',
+    (task) => task.id == taskId
+        ? copyTask(task, done: done, doneAt: done ? _doneAt : null)
+        : task,
+  );
+
+  /// The previous dates come back, like the real repository restores them.
+  @override
+  Future<void> undoDone(Task previous) => _write(
+    'undoDone ${previous.id}',
+    (task) => task.id == previous.id
+        ? task.copyWith(
+            done: false,
+            doneAt: null,
+            dueDate: previous.dueDate ?? task.dueDate,
+            startDate: previous.startDate ?? task.startDate,
+            endDate: previous.endDate ?? task.endDate,
+          )
+        : task,
+  );
+
+  @override
+  Future<void> setFavorite(int taskId, {required bool favorite}) => _write(
+    'setFavorite $taskId $favorite',
+    (task) => task.id == taskId ? copyTask(task, isFavorite: favorite) : task,
+  );
+
+  @override
+  Future<void> deleteTask(int taskId) =>
+      _write('delete $taskId', (task) => task.id == taskId ? null : task);
+
+  @override
+  Stream<int> watchPendingChanges() =>
+      _replaying(() => _pendingCount, _pendingChanges.stream);
+
+  @override
+  Stream<List<SyncProblem>> watchSyncProblems() =>
+      _replaying(() => _problemList, _problems.stream);
+
+  @override
+  Stream<Set<int>> watchPendingTaskIds() =>
+      _replaying(() => _pendingTaskIds, _pendingIds.stream);
+
+  @override
+  Future<void> retrySyncProblem(String operationId) async {
+    writes.add('retry $operationId');
+    syncProblems = [
+      for (final problem in _problemList)
+        if (problem.operationId != operationId) problem,
+    ];
+  }
+
+  @override
+  Future<VikunjaFailure?> sendPendingChanges() async {
+    writes.add('sendPending');
+    await beforeWrite?.call();
+    return sendBlockedBy;
+  }
+
+  @override
+  Future<void> discardSyncProblem(String operationId) async {
+    writes.add('discard $operationId');
+    await beforeWrite?.call();
+    if (discardFailure case final failure?) throw failure;
+    syncProblems = [
+      for (final problem in _problemList)
+        if (problem.operationId != operationId) problem,
+    ];
+    pendingChanges = _pendingCount > 0 ? _pendingCount - 1 : 0;
+  }
+
+  static final _doneAt = DateTime.utc(2026, 10, 10, 12);
+
   @override
   void dispose() {
     disposed = true;
     unawaited(_changes.close());
+    unawaited(_pendingChanges.close());
+    unawaited(_problems.close());
+    unawaited(_pendingIds.close());
   }
 }
 

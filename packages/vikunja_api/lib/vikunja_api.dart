@@ -13,3 +13,4 @@ export 'src/negotiation/server_info_serializer.dart';
 export 'src/read/read_ports.dart';
 export 'src/transport/authenticated_dio.dart';
 export 'src/transport/retry_interceptor.dart';
+export 'src/write/write_ports.dart';

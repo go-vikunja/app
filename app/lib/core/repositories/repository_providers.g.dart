@@ -50,14 +50,103 @@ final class ActiveAccountIdProvider
 
 String _$activeAccountIdHash() => r'07a5feac1a80c62c1728f98bba9dcebb1446c138';
 
-/// Reads for one account, through its session manager. Kept alive by the
-/// sync engine that uses it, so it goes with the engine on sign-out.
+/// The authenticated client of one account, shared by its read and write
+/// clients. Kept alive by the sync engine and the outbox sender that use
+/// it, so it goes with them on sign-out.
+
+@ProviderFor(accountDio)
+final accountDioProvider = AccountDioFamily._();
+
+/// The authenticated client of one account, shared by its read and write
+/// clients. Kept alive by the sync engine and the outbox sender that use
+/// it, so it goes with them on sign-out.
+
+final class AccountDioProvider extends $FunctionalProvider<Dio, Dio, Dio>
+    with $Provider<Dio> {
+  /// The authenticated client of one account, shared by its read and write
+  /// clients. Kept alive by the sync engine and the outbox sender that use
+  /// it, so it goes with them on sign-out.
+  AccountDioProvider._({
+    required AccountDioFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'accountDioProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$accountDioHash();
+
+  @override
+  String toString() {
+    return r'accountDioProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $ProviderElement<Dio> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  Dio create(Ref ref) {
+    final argument = this.argument as String;
+    return accountDio(ref, argument);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(Dio value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<Dio>(value),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is AccountDioProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$accountDioHash() => r'855a91badf2f5ef12c8cf4b0b811470ee66c504d';
+
+/// The authenticated client of one account, shared by its read and write
+/// clients. Kept alive by the sync engine and the outbox sender that use
+/// it, so it goes with them on sign-out.
+
+final class AccountDioFamily extends $Family
+    with $FunctionalFamilyOverride<Dio, String> {
+  AccountDioFamily._()
+    : super(
+        retry: null,
+        name: r'accountDioProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// The authenticated client of one account, shared by its read and write
+  /// clients. Kept alive by the sync engine and the outbox sender that use
+  /// it, so it goes with them on sign-out.
+
+  AccountDioProvider call(String accountId) =>
+      AccountDioProvider._(argument: accountId, from: this);
+
+  @override
+  String toString() => r'accountDioProvider';
+}
 
 @ProviderFor(readClient)
 final readClientProvider = ReadClientFamily._();
-
-/// Reads for one account, through its session manager. Kept alive by the
-/// sync engine that uses it, so it goes with the engine on sign-out.
 
 final class ReadClientProvider
     extends
@@ -67,8 +156,6 @@ final class ReadClientProvider
           VikunjaReadClient
         >
     with $Provider<VikunjaReadClient> {
-  /// Reads for one account, through its session manager. Kept alive by the
-  /// sync engine that uses it, so it goes with the engine on sign-out.
   ReadClientProvider._({
     required ReadClientFamily super.from,
     required String super.argument,
@@ -121,10 +208,7 @@ final class ReadClientProvider
   }
 }
 
-String _$readClientHash() => r'3ad409139f33c1caeedfdc3679744b3581f9a56a';
-
-/// Reads for one account, through its session manager. Kept alive by the
-/// sync engine that uses it, so it goes with the engine on sign-out.
+String _$readClientHash() => r'b352d1dea82ff78308ca11d599871e7b6ae001b7';
 
 final class ReadClientFamily extends $Family
     with $FunctionalFamilyOverride<VikunjaReadClient, String> {
@@ -137,14 +221,94 @@ final class ReadClientFamily extends $Family
         isAutoDispose: true,
       );
 
-  /// Reads for one account, through its session manager. Kept alive by the
-  /// sync engine that uses it, so it goes with the engine on sign-out.
-
   ReadClientProvider call(String accountId) =>
       ReadClientProvider._(argument: accountId, from: this);
 
   @override
   String toString() => r'readClientProvider';
+}
+
+@ProviderFor(writeClient)
+final writeClientProvider = WriteClientFamily._();
+
+final class WriteClientProvider
+    extends
+        $FunctionalProvider<
+          VikunjaWriteClient,
+          VikunjaWriteClient,
+          VikunjaWriteClient
+        >
+    with $Provider<VikunjaWriteClient> {
+  WriteClientProvider._({
+    required WriteClientFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'writeClientProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$writeClientHash();
+
+  @override
+  String toString() {
+    return r'writeClientProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $ProviderElement<VikunjaWriteClient> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  VikunjaWriteClient create(Ref ref) {
+    final argument = this.argument as String;
+    return writeClient(ref, argument);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(VikunjaWriteClient value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<VikunjaWriteClient>(value),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is WriteClientProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$writeClientHash() => r'8c46173ee9a0c709b9eeeb1afae856734a3529ba';
+
+final class WriteClientFamily extends $Family
+    with $FunctionalFamilyOverride<VikunjaWriteClient, String> {
+  WriteClientFamily._()
+    : super(
+        retry: null,
+        name: r'writeClientProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  WriteClientProvider call(String accountId) =>
+      WriteClientProvider._(argument: accountId, from: this);
+
+  @override
+  String toString() => r'writeClientProvider';
 }
 
 @ProviderFor(accountDatabaseFiles)
@@ -408,6 +572,107 @@ final class SyncEngineFamily extends $Family
   String toString() => r'syncEngineProvider';
 }
 
+/// One account's outbox sender; disposed with its database on sign-out.
+/// It drains when built (app start), when the app comes back to the front
+/// and after every local write; a session that needs a new sign-in pauses
+/// it, and the sign-in resumes it.
+
+@ProviderFor(outboxSender)
+final outboxSenderProvider = OutboxSenderFamily._();
+
+/// One account's outbox sender; disposed with its database on sign-out.
+/// It drains when built (app start), when the app comes back to the front
+/// and after every local write; a session that needs a new sign-in pauses
+/// it, and the sign-in resumes it.
+
+final class OutboxSenderProvider
+    extends $FunctionalProvider<OutboxSender, OutboxSender, OutboxSender>
+    with $Provider<OutboxSender> {
+  /// One account's outbox sender; disposed with its database on sign-out.
+  /// It drains when built (app start), when the app comes back to the front
+  /// and after every local write; a session that needs a new sign-in pauses
+  /// it, and the sign-in resumes it.
+  OutboxSenderProvider._({
+    required OutboxSenderFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'outboxSenderProvider',
+         isAutoDispose: false,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$outboxSenderHash();
+
+  @override
+  String toString() {
+    return r'outboxSenderProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $ProviderElement<OutboxSender> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  OutboxSender create(Ref ref) {
+    final argument = this.argument as String;
+    return outboxSender(ref, argument);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(OutboxSender value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<OutboxSender>(value),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is OutboxSenderProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$outboxSenderHash() => r'28c572a1014179afa1ff56e0d060bf0957fee895';
+
+/// One account's outbox sender; disposed with its database on sign-out.
+/// It drains when built (app start), when the app comes back to the front
+/// and after every local write; a session that needs a new sign-in pauses
+/// it, and the sign-in resumes it.
+
+final class OutboxSenderFamily extends $Family
+    with $FunctionalFamilyOverride<OutboxSender, String> {
+  OutboxSenderFamily._()
+    : super(
+        retry: null,
+        name: r'outboxSenderProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: false,
+      );
+
+  /// One account's outbox sender; disposed with its database on sign-out.
+  /// It drains when built (app start), when the app comes back to the front
+  /// and after every local write; a session that needs a new sign-in pauses
+  /// it, and the sign-in resumes it.
+
+  OutboxSenderProvider call(String accountId) =>
+      OutboxSenderProvider._(argument: accountId, from: this);
+
+  @override
+  String toString() => r'outboxSenderProvider';
+}
+
 /// One account's repositories over its database. Kept alive by the
 /// active-account providers below, so they go when another account takes
 /// over.
@@ -570,7 +835,7 @@ final class AccountTaskRepositoryProvider
 }
 
 String _$accountTaskRepositoryHash() =>
-    r'33c00ae64038323ab1309a81776674e35e2d0846';
+    r'31a8825ec076835c852188926e3b4ff717893c9a';
 
 final class AccountTaskRepositoryFamily extends $Family
     with $FunctionalFamilyOverride<TaskRepository, String> {
@@ -687,14 +952,14 @@ final class TaskRepositoryProvider
 
 String _$taskRepositoryHash() => r'b2cd755ae2d6a7f7232b625dfb918977a210cc46';
 
-/// The last step of a sign-out: stops the account's sync engine, closes its
-/// database and deletes the files.
+/// The last step of a sign-out: stops the account's outbox sender and sync
+/// engine, closes its database and deletes the files.
 
 @ProviderFor(accountDataWiper)
 final accountDataWiperProvider = AccountDataWiperProvider._();
 
-/// The last step of a sign-out: stops the account's sync engine, closes its
-/// database and deletes the files.
+/// The last step of a sign-out: stops the account's outbox sender and sync
+/// engine, closes its database and deletes the files.
 
 final class AccountDataWiperProvider
     extends
@@ -704,8 +969,8 @@ final class AccountDataWiperProvider
           AccountDataWiper
         >
     with $Provider<AccountDataWiper> {
-  /// The last step of a sign-out: stops the account's sync engine, closes its
-  /// database and deletes the files.
+  /// The last step of a sign-out: stops the account's outbox sender and sync
+  /// engine, closes its database and deletes the files.
   AccountDataWiperProvider._()
     : super(
         from: null,
@@ -739,4 +1004,4 @@ final class AccountDataWiperProvider
   }
 }
 
-String _$accountDataWiperHash() => r'b61731548711b8b2b6539cae300e687a29bbc70e';
+String _$accountDataWiperHash() => r'40bbc19b8947379d445126e13e67edb108e590a9';

@@ -14,9 +14,16 @@ final class FakeHttpAdapter implements HttpClientAdapter {
   final Map<String, FakeRoute> routes;
   final List<RequestOptions> requests = [];
 
+  /// The encoded body of each request in [requests], null without one.
+  final List<String?> requestBodies = [];
+
   List<String> get requestedUrls => [
     for (final request in requests) request.uri.toString(),
   ];
+
+  List<Object?> get decodedBodies => requestBodies
+      .map((body) => body == null ? null : jsonDecode(body))
+      .toList();
 
   @override
   Future<ResponseBody> fetch(
@@ -25,6 +32,11 @@ final class FakeHttpAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     requests.add(options);
+    requestBodies.add(
+      requestStream == null
+          ? null
+          : utf8.decode(await requestStream.expand((chunk) => chunk).toList()),
+    );
     final route = routes[options.uri.toString()] ?? refused;
     return await route(options);
   }
