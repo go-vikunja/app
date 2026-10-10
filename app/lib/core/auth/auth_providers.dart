@@ -9,7 +9,6 @@ import 'package:vikunja_mobile/core/auth/browser_sign_in.dart';
 import 'package:vikunja_mobile/core/auth/previous_install.dart';
 import 'package:vikunja_mobile/core/auth/server_clock_offsets.dart';
 import 'package:vikunja_mobile/core/auth/session_manager.dart';
-import 'package:vikunja_mobile/core/auth/sign_out.dart';
 import 'package:vikunja_mobile/core/auth/token_store.dart';
 import 'package:vikunja_mobile/core/auth/web_authenticator.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
@@ -72,15 +71,6 @@ BrowserSignIn browserSignIn(Ref ref) => BrowserSignIn(
   tokenStore: ref.watch(tokenStoreProvider),
   registry: ref.watch(accountRegistryProvider),
   sessions: ref.watch(sessionManagersProvider),
-);
-
-@Riverpod(keepAlive: true)
-SignOut signOut(Ref ref) => SignOut(
-  registry: ref.watch(accountRegistryProvider),
-  tokenStore: ref.watch(tokenStoreProvider),
-  clockOffsets: ref.watch(serverClockOffsetsProvider),
-  sessions: ref.watch(sessionManagersProvider),
-  accountGateway: ref.watch(accountGatewayProvider),
 );
 
 /// The registry as this isolate last read or wrote it.

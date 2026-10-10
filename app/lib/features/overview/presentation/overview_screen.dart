@@ -14,6 +14,7 @@ import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dar
 import 'package:vikunja_mobile/features/overview/application/due_date_groups.dart';
 import 'package:vikunja_mobile/features/overview/application/open_tasks_provider.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
+import 'package:vikunja_mobile/features/sync/presentation/sync_progress_bar.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
 
@@ -30,19 +31,10 @@ class _OverviewScreenState extends ConsumerState<OverviewScreen>
   @override
   ProviderListenable<Object?> get repositoryProvider => taskRepositoryProvider;
 
+  // One sync run brings the project titles along.
   @override
-  Future<void>? startRefresh() {
-    final tasks = ref.read(taskRepositoryProvider);
-    if (tasks == null) return null;
-    // Project titles come along; their failure is not this screen's story.
-    unawaited(
-      ref
-          .read(projectRepositoryProvider)
-          ?.refresh()
-          .then<void>((_) {}, onError: (Object _) {}),
-    );
-    return tasks.refreshOpenTasks();
-  }
+  Future<void>? startRefresh() =>
+      ref.read(taskRepositoryProvider)?.refreshOpenTasks();
 
   @override
   Widget build(BuildContext context) {
@@ -56,6 +48,7 @@ class _OverviewScreenState extends ConsumerState<OverviewScreen>
       appBar: AppBar(
         title: Text(l10n.tabOverview),
         actions: [RefreshButton(onPressed: refreshing ? null : refresh)],
+        bottom: const SyncProgressBar(),
       ),
       body: buildRefreshable(
         tasks,

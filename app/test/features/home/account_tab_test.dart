@@ -1,12 +1,15 @@
 import 'dart:async';
 
 import 'package:cupertino_ui/cupertino_ui.dart';
+import 'package:flutter/semantics.dart' show SemanticsNode;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/sync/sync_status.dart';
+import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/home/presentation/account_header.dart';
 import 'package:vikunja_mobile/features/home/presentation/account_tab.dart';
 import 'package:vikunja_mobile/features/home/presentation/reauth_banner.dart';
@@ -18,14 +21,17 @@ import '../../helpers/auth_fakes.dart';
 import '../../helpers/fakes.dart';
 import '../../helpers/pump_app.dart';
 import '../../helpers/server_connections.dart';
+import '../../helpers/sync_fakes.dart';
 
 void main() {
   late AuthFakes auth;
+  late SyncFakes data;
   late DateTime now;
 
   setUp(() {
     auth = AuthFakes();
     now = DateTime.now().toUtc();
+    data = SyncFakes(now: now);
   });
 
   Future<void> pumpHome(
@@ -36,6 +42,7 @@ void main() {
     FakeServerConnector? connector,
     TokenSet? tokens,
     List<Override> overrides = const [],
+    String? tabLabel,
   }) async {
     await auth.seedAccount(
       connection ?? fullServer270(),
@@ -47,9 +54,10 @@ void main() {
       tester,
       auth: auth,
       connector: connector,
-      overrides: overrides,
+      sync: data,
+      overrides: [clockProvider.overrideWithValue(() => now), ...overrides],
     );
-    await openTab(tester, en.tabAccount);
+    await openTab(tester, tabLabel ?? en.tabAccount);
   }
 
   Future<void> tapSignOut(WidgetTester tester) async {
@@ -134,6 +142,161 @@ void main() {
     expect(auth.accountGateway.logoutTokens, hasLength(1));
     expect(auth.secureStore.values, isEmpty);
     expect((await auth.registry.load()).accounts, isEmpty);
+  });
+
+  testWidgets('signing out stops the sync and deletes the local database', (
+    tester,
+  ) async {
+    await pumpHome(tester);
+    final accountId = (await auth.registry.load()).activeAccountId;
+
+    await tapSignOut(tester);
+    await tester.tap(find.widgetWithText(TextButton, en.signOutDialogConfirm));
+    await tester.pumpAndSettle();
+
+    expect(data.engine.disposed, isTrue);
+    expect(data.files.deleted, [accountId]);
+  });
+
+  group('sync status', () {
+    testWidgets('shows when the account was last synced and syncs on demand', (
+      tester,
+    ) async {
+      data = SyncFakes(
+        now: now,
+        status: SyncIdle(
+          lastSyncedAt: now.subtract(const Duration(seconds: 50)),
+        ),
+      );
+      final run = Completer<void>();
+      data.engine.onRefresh = () => run.future;
+      await pumpHome(tester);
+
+      expect(find.text(en.accountLastSynced('1 minute ago')), findsOneWidget);
+      expect(data.engine.refreshCalls, 0);
+
+      await tester.tap(find.text(en.accountSyncNow));
+      await tester.pump();
+
+      expect(data.engine.refreshCalls, 1);
+      expect(find.text(en.accountSyncing), findsOneWidget);
+      expect(find.text(en.syncPhaseAccount), findsOneWidget);
+      final button = tester.widget<FilledButton>(
+        find.widgetWithText(FilledButton, en.accountSyncing),
+      );
+      expect(button.onPressed, isNull);
+
+      run.complete();
+      await tester.pumpAndSettle();
+      expect(find.text(en.accountLastSyncedJustNow), findsOneWidget);
+      expect(find.text(en.accountSyncNow), findsOneWidget);
+    });
+
+    testWidgets('"Sync now" rests for a session that needs a new sign-in', (
+      tester,
+    ) async {
+      await pumpHome(tester, needsReauth: true);
+
+      final button = tester.widget<FilledButton>(
+        find.widgetWithText(FilledButton, en.accountSyncNow),
+      );
+      expect(button.onPressed, isNull);
+      expect(data.engine.refreshCalls, 0);
+    });
+
+    testWidgets('"Sync now" rests while signing out', (tester) async {
+      final logout = Completer<void>();
+      auth.accountGateway.onLogout = (_) => logout.future;
+      await pumpHome(tester);
+
+      await tapSignOut(tester);
+      await tester.tap(
+        find.widgetWithText(TextButton, en.signOutDialogConfirm),
+      );
+      await tester.pump();
+
+      final button = tester.widget<FilledButton>(
+        find.widgetWithText(FilledButton, en.accountSyncNow),
+      );
+      expect(button.onPressed, isNull);
+
+      logout.complete();
+      await tester.pumpAndSettle();
+      expect(data.engine.refreshCalls, 0);
+    });
+
+    testWidgets('a failed sync is explained next to the last success', (
+      tester,
+    ) async {
+      data = SyncFakes(
+        now: now,
+        status: SyncFailed(
+          failure: const ServerFailure(502),
+          lastSyncedAt: now.subtract(const Duration(days: 2)),
+        ),
+      );
+      data.engine.onRefresh = () async => throw const ServerFailure(502);
+      await pumpHome(tester);
+
+      // The quiet sync at start retried and failed again.
+      expect(data.engine.refreshCalls, 1);
+      expect(find.text(en.accountSyncFailed), findsOneWidget);
+      expect(
+        find.text(en.failureUnavailableExplanation('tasks.example.org')),
+        findsOneWidget,
+      );
+      expect(find.text(en.accountLastSynced('2 days ago')), findsOneWidget);
+    });
+
+    testWidgets('the phase and a failure are live regions, the time that '
+        'ticks every minute is not', (tester) async {
+      final semantics = tester.ensureSemantics();
+      data = SyncFakes(
+        now: now,
+        status: SyncFailed(
+          failure: const ServerFailure(502),
+          lastSyncedAt: now.subtract(const Duration(days: 2)),
+        ),
+      );
+      data.engine.onRefresh = () async => throw const ServerFailure(502);
+      await pumpHome(tester);
+
+      bool inLiveRegion(Finder finder) {
+        for (
+          SemanticsNode? node = tester.getSemantics(finder);
+          node != null;
+          node = node.parent
+        ) {
+          if (node.flagsCollection.isLiveRegion) return true;
+        }
+        return false;
+      }
+
+      expect(inLiveRegion(find.text(en.accountSyncFailed)), isTrue);
+      expect(
+        inLiveRegion(find.text(en.accountLastSynced('2 days ago'))),
+        isFalse,
+      );
+
+      final run = Completer<void>();
+      data.engine.onRefresh = () => run.future;
+      await tester.tap(find.text(en.accountSyncNow));
+      await tester.pump();
+
+      expect(inLiveRegion(find.text(en.syncPhaseAccount)), isTrue);
+
+      run.completeError(const ServerFailure(502));
+      await tester.pumpAndSettle();
+      semantics.dispose();
+    });
+
+    testWidgets('is in German', (tester) async {
+      useLocale(tester, const Locale('de'));
+      await pumpHome(tester, tabLabel: de.tabAccount);
+
+      expect(find.text(de.accountLastSyncedJustNow), findsOneWidget);
+      expect(find.text(de.accountSyncNow), findsOneWidget);
+    });
   });
 
   testWidgets('system back cannot close the app while signing out', (

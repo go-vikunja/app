@@ -3,6 +3,8 @@ include: ../analysis_options.yaml
 analyzer:
   exclude:
     - "lib/l10n/generated/**"
+    # drift_dev schema generate; its header only silences lints.
+    - "test/core/db/generated/**"
     - "**/*.g.dart"
     - build/**
     - android/**

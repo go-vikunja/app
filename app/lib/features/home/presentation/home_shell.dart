@@ -7,12 +7,15 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/widgets/adaptive_navigation_bar.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/features/session/application/session_check.dart';
 import 'package:vikunja_mobile/features/session/application/sign_in_controller.dart';
 import 'package:vikunja_mobile/features/session/application/sign_out_controller.dart';
+import 'package:vikunja_mobile/features/sync/application/startup_sync.dart';
 
 /// The signed-in app: the tab bar around the Overview, Projects and Account
-/// branches, and the session check when the app opens or resumes.
+/// branches, the session check when the app opens or resumes, and the quiet
+/// sync when it opens.
 class HomeShell extends ConsumerStatefulWidget {
   const new({required this.navigationShell, super.key});
 
@@ -29,7 +32,10 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   void initState() {
     super.initState();
     _lifecycle = AppLifecycleListener(onResume: _checkSession);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _checkSession());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkSession();
+      _syncQuietly();
+    });
   }
 
   @override
@@ -46,6 +52,16 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     unawaited(ref.read(sessionCheckProvider).check(entry));
   }
 
+  void _syncQuietly() {
+    if (!mounted || ref.read(signOutControllerProvider)) return;
+    final entry = ref.read(accountsProvider).value?.activeAccount;
+    // A session that ended cannot sync; the Account tab asks to sign in.
+    if (entry == null || entry.account.needsReauth) return;
+    unawaited(
+      ref.read(startupSyncProvider).run(ref.read(syncEngineProvider(entry.id))),
+    );
+  }
+
   void _onSignInChanged(SignInState? previous, SignInState next) {
     if (next is SignInFailed) unawaited(HapticFeedback.heavyImpact());
   }
@@ -54,6 +70,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     // A failure card belongs to the account it happened for.
     ref.read(signInControllerProvider.notifier).reset();
     _checkSession();
+    _syncQuietly();
   }
 
   void _onSignOutChanged(bool? previous, bool next) {

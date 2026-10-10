@@ -490,7 +490,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String signOutDialogBody(String host) {
-    return 'Rurana meldet dich von $host ab. Du kannst dich jederzeit wieder anmelden.';
+    return 'Rurana meldet dich von $host ab und löscht die auf diesem Gerät gespeicherten Aufgaben. Du kannst dich jederzeit wieder anmelden.';
   }
 
   @override
@@ -1010,4 +1010,85 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get retry => 'Noch einmal versuchen';
+
+  @override
+  String get firstSyncTitle => 'Deine Aufgaben werden geladen';
+
+  @override
+  String firstSyncBody(String host) {
+    return 'Rurana speichert alles von $host auf diesem Gerät, damit es auch offline funktioniert.';
+  }
+
+  @override
+  String get firstSyncPreparing => 'Vorbereiten …';
+
+  @override
+  String get firstSyncCancel => 'Abbrechen und abmelden';
+
+  @override
+  String get syncPhaseAccount => 'Konto wird geprüft …';
+
+  @override
+  String get syncPhaseProjects => 'Projekte werden geladen …';
+
+  @override
+  String get syncPhaseLabels => 'Labels werden geladen …';
+
+  @override
+  String get syncPhaseTasks => 'Aufgaben werden geladen …';
+
+  @override
+  String get syncPhaseArchivedTasks => 'Archivierte Projekte werden geladen …';
+
+  @override
+  String get syncPhaseFinishing => 'Fast fertig …';
+
+  @override
+  String syncProgressOfTotal(int done, int total) {
+    final intl.NumberFormat doneNumberFormat = intl.NumberFormat.decimalPattern(
+      localeName,
+    );
+    final String doneString = doneNumberFormat.format(done);
+    final intl.NumberFormat totalNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String totalString = totalNumberFormat.format(total);
+
+    return '$doneString von $totalString';
+  }
+
+  @override
+  String syncProgressCount(int count) {
+    final intl.NumberFormat countNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String countString = countNumberFormat.format(count);
+
+    return 'Bisher $countString';
+  }
+
+  @override
+  String get syncIndicatorLabel => 'Synchronisiert mit dem Server';
+
+  @override
+  String get offlineNotice => 'Offline – gespeicherte Daten werden angezeigt';
+
+  @override
+  String accountLastSynced(String when) {
+    return 'Zuletzt synchronisiert $when';
+  }
+
+  @override
+  String get accountLastSyncedJustNow => 'Gerade eben synchronisiert';
+
+  @override
+  String get accountNeverSynced => 'Noch nicht synchronisiert';
+
+  @override
+  String get accountSyncing => 'Synchronisiert …';
+
+  @override
+  String get accountSyncFailed =>
+      'Die letzte Synchronisierung ist fehlgeschlagen.';
+
+  @override
+  String get accountSyncNow => 'Jetzt synchronisieren';
 }

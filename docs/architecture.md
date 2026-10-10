@@ -2,18 +2,18 @@
 
 This is the current, condensed architecture. It is derived from [research/synthesis.md](research/synthesis.md) §2, which has the full reasoning and the Vikunja source references. Status markers:
 
-- **[exists]**: built in step 1 or in the combined step 2+3 (HTTP core, browser sign-in, session manager; in review).
-- **[in progress, step 5]**: being built in step 5 (read client, online repositories, the first screens).
+- **[exists]**: built in step 1, in the combined step 2+3 (HTTP core, browser sign-in, session manager) or in step 5 (read client, repository interfaces, the first screens).
+- **[in progress, step 6]**: being built in step 6 (the Drift database per account, the local repositories, the initial sync).
 - **[planned, step N]**: designed, not built. N is the [roadmap](roadmap.md) step.
 
-This page reflects the owner's decisions of 2026-10-09 ([D13](decisions.md#d13-support-floor-230)–[D22](decisions.md#d22-session-keep-alive-through-background-sync)), the step 2+3 decisions ([D23](decisions.md#d23-browser-sign-in-through-flutter_web_auth_2-client-id-and-redirect-uri)–[D27](decisions.md#d27-paging-and-the-query-builder-move-to-step-5)) and the step 5 decisions ([D29](decisions.md#d29-ui-reads-through-repository-interfaces-the-online-implementation-is-replaced-by-drift-in-step-6-without-ui-changes), [D30](decisions.md#d30-kanban-board-reads-deferred-to-step-20)).
+This page reflects the owner's decisions of 2026-10-09 ([D13](decisions.md#d13-support-floor-230)–[D22](decisions.md#d22-session-keep-alive-through-background-sync)), the step 2+3 decisions ([D23](decisions.md#d23-browser-sign-in-through-flutter_web_auth_2-client-id-and-redirect-uri)–[D27](decisions.md#d27-paging-and-the-query-builder-move-to-step-5)) the step 5 decisions ([D29](decisions.md#d29-ui-reads-through-repository-interfaces-the-online-implementation-is-replaced-by-drift-in-step-6-without-ui-changes), [D30](decisions.md#d30-kanban-board-reads-deferred-to-step-20)) and the step 6 decisions ([D31](decisions.md#d31-one-drift-sqlite-file-per-account-shared-across-isolates-deleted-on-sign-out), [D32](decisions.md#d32-initial-sync-by-keyset-paging-with-per-page-checkpoints-full-re-pull-as-refresh-until-step-7)).
 
 ## 1. Principles
 
-1. **The local database is the single source of truth for the UI.** Screens read database streams. The network only feeds the database. [repository interfaces with streams in progress, step 5; the database behind them planned, steps 6–7, [D29](decisions.md#d29-ui-reads-through-repository-interfaces-the-online-implementation-is-replaced-by-drift-in-step-6-without-ui-changes)]
-2. **One domain-level API interface, two transport adapters** (`/api/v1`, `/api/v2`). The adapter is chosen from the negotiated **capabilities**, never from a version string. [negotiation, error model and authenticated transport exist; read client in progress, step 5; write adapters and the routed client planned, step 11]
+1. **The local database is the single source of truth for the UI.** Screens read database streams. The network only feeds the database. [repository interfaces with streams exist, step 5; the database and the initial sync behind them in progress, step 6 ([D29](decisions.md#d29-ui-reads-through-repository-interfaces-the-online-implementation-is-replaced-by-drift-in-step-6-without-ui-changes), [D31](decisions.md#d31-one-drift-sqlite-file-per-account-shared-across-isolates-deleted-on-sign-out)); the incremental sync planned, step 7]
+2. **One domain-level API interface, two transport adapters** (`/api/v1`, `/api/v2`). The adapter is chosen from the negotiated **capabilities**, never from a version string. [negotiation, error model, authenticated transport and read client exist; write adapters and the routed client planned, step 11]
 3. **Every mutation goes through the outbox, even when online.** The UI, notification actions and widgets share one retry, ordering and conflict path. [planned, step 11]
-4. **Every entry point builds the same object graph** with a Riverpod `ProviderContainer`. The entry points are the UI isolate, background tasks, the notification-action isolate and the widget callback. [UI exists; others planned, steps 15–18]
+4. **Every entry point builds the same object graph** with a Riverpod `ProviderContainer`. The entry points are the UI isolate, background tasks, the notification-action isolate and the widget callback. [UI exists, and the step 6 sync engine runs without a widget tree; the other entry points are planned, steps 15–18]
 5. **Secrets live only in the Keychain/Keystore.** Extensions and widgets never refresh tokens. [exists]
 6. **Pure logic lives in pure-Dart packages** and is pinned by test vectors, many ported from the web frontend's tests. [exists for domain and api]
 
@@ -21,11 +21,11 @@ This page reflects the owner's decisions of 2026-10-09 ([D13](decisions.md#d13-s
 
 The repository is a Dart pub workspace with one shared lockfile.
 
-| Package | Kind | Exists (steps 1 and 2+3) | In progress, step 5 | Planned |
+| Package | Kind | Exists (steps 1, 2+3 and 5) | In progress, step 6 | Planned |
 |---|---|---|---|---|
-| `app/` | Flutter | the "Connect to server" feature (connect, server overview); `core/auth/` (token store, account registry, session manager, browser sign-in, sign-out); the signed-in `/home`; router guards; theming, en/de localisation, redacting logging | `core/repositories/` (`ProjectRepository`, `TaskRepository`, their online implementations); `/home` as a three-tab shell: Overview, Projects (tree, project tasks, task detail), Account | all other screens, `core/` services (db, sync, notifications, widgets, background) |
-| `packages/vikunja_domain` | pure Dart | `ServerVersion`, `ApiVersion`, `ServerInfo`, `Capability`, `ServerCapabilities` + `SupportTier`, `ServerConnection`, sealed `ServerConnectionFailure`, sealed `VikunjaFailure`, `User`, `Account`, `TokenSet` | `Project`, `ProjectView`, `Label`, `Task`, `TaskReminder`, `TaskRelationKind`, `Page<T>`, `TaskQuery` | `TaskChanges` and the write-side types (step 11), buckets (step 20), saved filters (step 24) |
-| `packages/vikunja_api` | pure Dart | `normalizeServerAddress`, `parseServerInfo`, `ServerConnector` / `DioServerConnector`, `normalizeError`, retry interceptor, PKCE, `AuthorizationRequest`, `OAuthTokenClient`, `JwtClaims`, auth interceptor + `AccessTokenSource`, `AccountApi`, `createAuthenticatedDio`, `serverInfoToJson`; `/info`, error and OAuth fixtures and contract tests | `VikunjaReadClient` (`ProjectsPort`, `LabelsPort`, `TasksPort`) and `ReadClient` over v1 and v2, JSON codecs (`dto/`), paging, query builder; read fixtures and contract tests | write adapters and the routed client with route-absent downgrade (step 11), kanban reads (step 20), realtime (step 17) |
+| `app/` | Flutter | the "Connect to server" feature (connect, server overview); `core/auth/` (token store, account registry, session manager, browser sign-in, sign-out); router guards; theming, en/de localisation, redacting logging; `core/repositories/` (`ProjectRepository`, `TaskRepository`); `/home` as a three-tab shell: Overview, Projects (tree, project tasks, task detail), Account | `core/db/` (`AppDatabase`, tables, DAOs, mappers, `AccountDatabaseFiles`), `core/sync/` (`SyncEngine`, `SyncStatus`, `DefaultSyncEngine`), `core/repositories/local/`; the first-sync screen, the quiet sync indicator, "last synced" and "Sync now" in the Account tab, database deletion on sign-out | all other screens, `core/` services (notifications, widgets, background) |
+| `packages/vikunja_domain` | pure Dart | `ServerVersion`, `ApiVersion`, `ServerInfo`, `Capability`, `ServerCapabilities` + `SupportTier`, `ServerConnection`, sealed `ServerConnectionFailure`, sealed `VikunjaFailure`, `User`, `Account`, `TokenSet`; `Project`, `ProjectView`, `Label`, `Task`, `TaskReminder`, `TaskRelationKind`, `Page<T>`, `TaskQuery` | — | `TaskChanges` and the write-side types (step 11), buckets (step 20), saved filters (step 24) |
+| `packages/vikunja_api` | pure Dart | `normalizeServerAddress`, `parseServerInfo`, `ServerConnector` / `DioServerConnector`, `normalizeError`, retry interceptor, PKCE, `AuthorizationRequest`, `OAuthTokenClient`, `JwtClaims`, auth interceptor + `AccessTokenSource`, `AccountApi`, `createAuthenticatedDio`, `serverInfoToJson`; `VikunjaReadClient` (`ProjectsPort`, `LabelsPort`, `TasksPort`) and `ReadClient` over v1 and v2, JSON codecs (`dto/`), paging, query builder; `/info`, error, OAuth and read fixtures and contract tests | — | write adapters and the routed client with route-absent downgrade (step 11), kanban reads (step 20), realtime (step 17) |
 | `packages/vikunja_logic` | pure Dart | — | — | quick-add, filters, dates, positions, colours, checklists (steps 12, 13, 22, 24) |
 
 **Dependency rule:**
@@ -36,7 +36,7 @@ The repository is a Dart pub workspace with one shared lockfile.
 **Layers inside `app`:**
 - The layers are presentation → application → repositories → (DAOs, `vikunja_api` ports).
 - The UI never imports wire DTOs or adapters.
-- Since step 5, the project and task screens read through `core/repositories` (section 6). Onboarding and session code call `vikunja_api` directly (`ServerConnector`, `AccountApi`, the token client), because they run before an account exists.
+- Since step 5, the project and task screens read through `core/repositories` (section 6); since step 6 those repositories read the account's database, which the sync engine feeds (section 7). Onboarding and session code call `vikunja_api` directly (`ServerConnector`, `AccountApi`, the token client), because they run before an account exists.
 
 `vikunja_api` receives a configured `Dio`, so it never chooses a transport itself:
 - The app injects `NativeAdapter`: Cronet on Android, NSURLSession on iOS.
@@ -47,11 +47,14 @@ The repository is a Dart pub workspace with one shared lockfile.
 flowchart TD
   subgraph APP["app/ (Flutter)"]
     PRES["features/*/presentation"] --> APPL["features/*/application<br/>(Riverpod)"]
-    APPL --> REPO["core/repositories<br/>(online cache in step 5, Drift from step 6)"]
-    REPO --> DB[("Drift DB per account")]
-    REPO --> OUTBOX["core/sync: SyncEngine, outbox"]
+    APPL --> REPO["core/repositories<br/>(Drift-backed since step 6)"]
+    REPO --> DB[("core/db: Drift DB per account")]
+    REPO --> SYNC["core/sync: SyncEngine"]
+    SYNC --> DB
+    SYNC --> OUTBOX["outbox (step 11)"]
   end
   APPL --> API
+  SYNC --> API
   OUTBOX --> API
   API["packages/vikunja_api<br/>(pure Dart)"] --> DOM["packages/vikunja_domain<br/>(pure Dart)"]
   APPL --> DOM
@@ -60,10 +63,10 @@ flowchart TD
   API --> DIO["dio + injected adapter<br/>(Cronet / NSURLSession / dart:io)"]
 
   classDef planned stroke-dasharray: 5 5,color:#777
-  class DB,OUTBOX,LOGIC planned
+  class OUTBOX,LOGIC planned
 ```
 
-Dashed nodes are planned. The repositories exist from step 5 on with an in-memory cache; the database behind them comes in step 6 ([D29](decisions.md#d29-ui-reads-through-repository-interfaces-the-online-implementation-is-replaced-by-drift-in-step-6-without-ui-changes)).
+Dashed nodes are planned. The repository interfaces exist since step 5; step 6 puts the database and the sync engine behind them ([D29](decisions.md#d29-ui-reads-through-repository-interfaces-the-online-implementation-is-replaced-by-drift-in-step-6-without-ui-changes), [D31](decisions.md#d31-one-drift-sqlite-file-per-account-shared-across-isolates-deleted-on-sign-out)).
 
 ## 3. Server connection and v1/v2 negotiation [exists]
 
@@ -147,7 +150,7 @@ flowchart TD
 - `concurrent_writes`:
   - It is reported since 2.4.0 and is `false` on SQLite.
   - A missing value means "unknown", so writes are serialized.
-- Re-negotiation [planned, with the sync engine] happens at login, every 24 h, on app update, and after a "route absent" 404.
+- Re-negotiation [planned; the step 6 sync does not re-negotiate] happens at login, every 24 h, on app update, and after a "route absent" 404.
 
 **Transport rules that already apply:**
 - Only `http` and `https`.
@@ -155,9 +158,9 @@ flowchart TD
 - `Authorization`, `Cookie`, `Set-Cookie` and tokens are never logged.
 - Plain `http://` needs explicit confirmation in the app (step 7 above).
 
-## 4. API abstraction [read client in progress, step 5; routed client and writes planned, step 11]
+## 4. API abstraction [read client exists, step 5; routed client and writes planned, step 11]
 
-Step 5 builds the read half: `VikunjaReadClient` with the ports `ProjectsPort`, `LabelsPort` and `TasksPort`, created by `createReadClient(dio:, connection:)` over the account's authenticated `Dio` (section 5.2). It uses `/api/v2` when the connection reached it and `/api/v1` otherwise, and hides the version differences inside one `ReadClient` (section 6).
+Step 5 built the read half: `VikunjaReadClient` with the ports `ProjectsPort`, `LabelsPort` and `TasksPort`, created by `createReadClient(dio:, connection:)` over the account's authenticated `Dio` (section 5.2). It uses `/api/v2` when the connection reached it and `/api/v1` otherwise, and hides the version differences inside one `ReadClient` (section 6).
 
 The full `VikunjaClient` with per-area ports (tasks, projects, views, labels, comments, …) comes with the write path. A `RoutedVikunjaClient` then picks the v2 or the v1 adapter per `ApiGroup` [planned, step 11]:
 - **v2 wins whenever it exists.** It offers PATCH (no full-replace hazard), totals, ETag and problem+json.
@@ -190,9 +193,9 @@ The full `VikunjaClient` with per-area ports (tasks, projects, views, labels, co
 
 A version-aware code map for the error codes renumbered in 2.7.0 is planned.
 
-**Paging and query builder [in progress, step 5]:** `Page<T>` (`items`, `page`, `perPage`, `totalPages`, `hasMore`; `total` on v2 only) over v1 pagination headers and v2 envelopes, and `TaskQuery` (filter, sorts, expands, paging) with its translation into query parameters, are built with the read client that first uses them ([D27](decisions.md#d27-paging-and-the-query-builder-move-to-step-5); details in section 6).
+**Paging and query builder [exists, step 5]:** `Page<T>` (`items`, `page`, `perPage`, `totalPages`, `hasMore`; `total` on v2 only) over v1 pagination headers and v2 envelopes, and `TaskQuery` (filter, sorts, expands, paging) with its translation into query parameters, are built with the read client that first uses them ([D27](decisions.md#d27-paging-and-the-query-builder-move-to-step-5); details in section 6).
 
-**DTOs:** one hand-written codec layer (`lib/src/dto/`) serves both versions, because the server models are identical. Step 5 tests it against JSON captured from the 2.7.0 server and against the live server. The DTO-vs-OpenAPI contract test of [D12](decisions.md#d12-hand-written-api-adapters-and-an-openapi-spec-for-contract-tests) is still planned.
+**DTOs:** one hand-written codec layer (`lib/src/dto/`) serves both versions, because the server models are identical. It is tested against JSON captured from the 2.7.0 server and against the live server. The DTO-vs-OpenAPI contract test of [D12](decisions.md#d12-hand-written-api-adapters-and-an-openapi-spec-for-contract-tests) is still planned.
 
 ## 5. Auth and session [exists, step 2+3]
 
@@ -342,8 +345,9 @@ flowchart TD
 1. Best-effort logout: make sure the access token is valid (refresh first if needed), then `POST` logout. Network errors are ignored.
 2. Retire the account's session manager (section 5.4), so nothing in this isolate writes its tokens again.
 3. Wipe the account's secure entries, its server clock offset and its registry entry.
+4. Since step 6: close the account's database and delete its file with the WAL and journal files ([D31](decisions.md#d31-one-drift-sqlite-file-per-account-shared-across-isolates-deleted-on-sign-out)). The confirmation dialog says that the local data is deleted.
 
-When no active account remains, the router returns to onboarding. From step 6 on, sign-out also deletes the account's database and cancels its notifications ([D16](decisions.md#d16-multi-account-in-the-first-release)).
+When no active account remains, the router returns to onboarding. Cancelling the account's notifications comes with step 15 ([D16](decisions.md#d16-multi-account-in-the-first-release)).
 
 ### 5.7 Multi-account registry
 
@@ -354,7 +358,7 @@ When no active account remains, the router returns to onboarding. From step 6 on
   - the active account id;
   - each account's last server connection, with `/info` re-serialised by `serverInfoToJson`, so start-up and headless refreshes need no probe.
 - Account id: the first 32 hex characters of `sha256("${serverRoot}|${userId}")`. The same user on the same server is always the same account, so signing in again replaces its session instead of adding a duplicate.
-- Per-account objects are keyed by the account id: the session manager, the authenticated `Dio`, and later the database (step 6), the outbox (step 11) and the notification namespace (step 15).
+- Per-account objects are keyed by the account id: the session manager, the authenticated `Dio`, the database and the sync engine (step 6), and later the outbox (step 11) and the notification namespace (step 15).
 - The registry and secure storage are written separately. An account without tokens is handled like `needsReauth`: the accounts provider marks it at start (`flagAccountsWithoutTokens`), and a session manager that finds no tokens ends the session. Unreadable storage (the Keychain before the first unlock) is not taken as missing tokens.
 - Entries that cannot be decoded are left out of the state but written back unchanged; a readable entry with the same id replaces one. A registry that cannot be decoded at all is copied to `auth.account_registry.unreadable` before it is first overwritten ([D25](decisions.md#d25-account-registry-in-sharedpreferences-without-secrets)).
 - `bootstrap.dart` loads the registry before `runApp`, behind the native launch screen, so the first route is already the right one. The token-presence check runs afterwards without blocking start-up.
@@ -369,28 +373,26 @@ When no active account remains, the router returns to onboarding. From step 6 on
   - the re-read and adoption rules of section 5.4.
 - Extensions and widgets never refresh tokens (principle 5). Step 16 schedules the background refreshes; step 2+3 only has to make them possible.
 
-## 6. Read path [in progress, step 5]
+## 6. Read path [exists, step 5]
 
-Step 5 puts the first real data on screen, read-only and online. Every layer below the screens is shaped so that step 6 can put Drift under the repositories without touching the UI ([D29](decisions.md#d29-ui-reads-through-repository-interfaces-the-online-implementation-is-replaced-by-drift-in-step-6-without-ui-changes)).
+Step 5 put the first real data on screen, read-only and online, and shaped every layer below the screens so that step 6 could put Drift under the repositories without touching the UI ([D29](decisions.md#d29-ui-reads-through-repository-interfaces-the-online-implementation-is-replaced-by-drift-in-step-6-without-ui-changes)). This section has the read client, the repository contract and the screens; the database, the local repositories and the sync engine are in section 7.
 
 ```mermaid
 flowchart TD
   subgraph APP["app/ (Flutter)"]
     UI["features/*: Overview, Projects,<br/>project tasks, task detail"] --> REPO["core/repositories<br/>ProjectRepository, TaskRepository<br/>(streams + refresh + load more)"]
-    PROV["providers per active account:<br/>readClientProvider, repository providers"] --> REPO
-    REPO --> ONLINE["OnlineProjectRepository / OnlineTaskRepository<br/>(in-memory cache per account)"]
-    REPO --> DRIFT["Drift-backed repositories<br/>(step 6)"]
+    PROV["providers per active account:<br/>readClientProvider, appDatabase, syncEngine,<br/>repository providers"] --> REPO
+    REPO --> LOCAL["LocalProjectRepository / LocalTaskRepository<br/>(DAO streams; refresh = SyncEngine.refresh)"]
+    LOCAL --> DB[("Drift DB per account")]
+    SYNC["core/sync: SyncEngine"] --> DB
   end
   subgraph API["packages/vikunja_api"]
     PORTS["VikunjaReadClient<br/>ProjectsPort, LabelsPort, TasksPort"] --> RC["ReadClient<br/>(base path, search param, page shape;<br/>TaskQuery → query parameters)"]
     RC --> DTO["dto/: JSON → entities"]
   end
-  ONLINE --> PORTS
+  SYNC --> PORTS
   RC --> DIO["authenticated Dio per account<br/>(section 5.2)"]
   DTO --> DOM["packages/vikunja_domain:<br/>Project, ProjectView, Label, Task, Page, TaskQuery"]
-
-  classDef planned stroke-dasharray: 5 5,color:#777
-  class DRIFT planned
 ```
 
 **Ports and `ReadClient`** (`packages/vikunja_api/lib/src/read/`):
@@ -406,28 +408,118 @@ flowchart TD
 **Repositories** (`app/lib/core/repositories/`):
 - `ProjectRepository`: `watchAll()`, `refresh()`, `find(id)`. `TaskRepository`: `watchOpenTasks()`, `watchProjectTasks(projectId, showDone:)` (a `PagedList`: the items loaded so far and whether the server has more), `refreshOpenTasks()`, `refreshProjectTasks(...)`, `loadMoreProjectTasks(...)`.
 - The contract is streams of the current local state plus explicit refresh and load-more. A failed first load is the stream's error; a failed refresh or load-more throws the `VikunjaFailure` and leaves the stale data in the stream. Database streams and a sync trigger satisfy it as well.
-- The step 5 implementations (`online/`) keep an in-memory cache per account, filled on first subscription and on refresh through `VikunjaReadClient`; a load that is already running is joined, not repeated. The overview reads `GET /tasks` with `done = false`, sorted by due date, up to 5 pages (logged when capped); project tasks are read page by page from `GET /projects/{p}/tasks`, newest first, with `showDone` deciding the filter and one list per `(project, showDone)`; a task that moves between pages while loading is kept once.
-- Nothing survives a restart. Offline comes with step 6.
+- Since step 6 the implementations are the local ones of section 7.2: streams from the DAOs, refresh through the sync engine. The step 5 `online/` implementations (an in-memory cache per account, filled through `VikunjaReadClient`, with the overview capped at 5 pages) were removed with step 6; git history keeps them.
 
-**Providers** (`core/repositories/repository_providers.dart`): `readClientProvider(accountId)` builds the read client over `createAuthenticatedDio` with the account's session manager as token source, rebuilt only when the account's root URL or API versions change; in debug builds it logs one line per request (method, URL without query, status), never headers or bodies. `projectRepositoryProvider` and `taskRepositoryProvider` follow the active account id: null while nobody is signed in, rebuilt and the old one disposed on a switch, gone on sign-out, so an account switch never shows another account's data. The screens watch stream providers over them (`projectsProvider`, `projectByIdProvider`, `projectTasksProvider`, `openTasksProvider`), which stay loading without an account. `clockTickProvider` supplies "now" for the due-date grouping and relative dates: it re-reads `clockProvider` (which tests pin) when the app returns to the foreground and every minute while it is in front, so sections and labels do not freeze overnight.
+**Providers** (`core/repositories/repository_providers.dart`): `readClientProvider(accountId)` builds the read client over `createAuthenticatedDio` with the account's session manager as token source, rebuilt only when the account's root URL or API versions change; in debug builds it logs one line per request (method, URL without query, status), never headers or bodies. `projectRepositoryProvider` and `taskRepositoryProvider` follow the active account id: null while nobody is signed in, rebuilt and the old one disposed on a switch, gone on sign-out, so an account switch never shows another account's data; since step 6 they are built over `appDatabase(accountId)` and `syncEngine(accountId)` (section 7.4). The screens watch stream providers over them (`projectsProvider`, `projectByIdProvider`, `projectTasksProvider`, `openTasksProvider`), which stay loading without an account. `clockTickProvider` supplies "now" for the due-date grouping and relative dates: it re-reads `clockProvider` (which tests pin) when the app returns to the foreground and every minute while it is in front, so sections and labels do not freeze overnight.
 
 **Screens** (`app/lib/features/`, material_ui and cupertino_ui, `.adaptive` where available):
 - `/home` is a `StatefulShellRoute.indexedStack` (`HomeShell` in `features/home/`) with the tabs Overview (`/home/overview`), Projects (`/home/projects`, `/home/projects/:id`) and Account (`/home/account`: the step 2+3 home content, now `AccountTab`). `/home` itself redirects to the overview; the splash, connect and home redirects stay; each tab keeps its stack. The shell runs the session check on the first frame, on resume and when the active account changes, and blocks system back while a sign-in or sign-out runs; that sign-out progress lives in `SignOutController` (`features/session/`), because the shell and the Account tab both need it. The tab bar is Material 3 on Android and a `CupertinoTabBar` on iOS.
-- Overview (`features/overview/`) groups the open tasks into Overdue, Today, Next 7 days, Later and No due date in device local time, computed at build time. A row (`TaskRow` in `features/tasks/`) shows the done indicator, title, `displayIdentifier`, project title, relative due date (overdue in the error colour), priority chip for high and above, label chips (text colour by luminance, like the web's `getTextColor`) and the favourite star. Its pull-to-refresh also refreshes the projects for the titles and reports only the task failure.
-- Projects (`features/projects/`) shows favourites first, then the tree from `parentProjectId` (sorted by position, then title; archived and pseudo projects hidden; saved filters come with step 24; collapsible children with a colour dot and child count). A project opens its task list with a "Show done tasks" toggle in the overflow menu (a separate list per setting) and load more at the end of the list.
+- Overview (`features/overview/`) groups the open tasks into Overdue, Today, Next 7 days, Later and No due date in device local time, computed at build time. A row (`TaskRow` in `features/tasks/`) shows the done indicator, title, `displayIdentifier`, project title, relative due date (overdue in the error colour), priority chip for high and above, label chips (text colour by luminance, like the web's `getTextColor`) and the favourite star. Since step 6 its pull-to-refresh, like every refresh, runs `SyncEngine.refresh()`, which updates every list at once.
+- Projects (`features/projects/`) shows favourites first, then the tree from `parentProjectId` (sorted by position, then title; archived and pseudo projects hidden; saved filters come with step 24; collapsible children with a colour dot and child count). A project opens its task list with a "Show done tasks" toggle in the overflow menu (a separate list per setting). The load-more of step 5 is gone since step 6: the database holds every task.
 - Task detail (`TaskDetailSheet` in `features/tasks/`) is a modal sheet over the task from the list (a `DraggableScrollableSheet`, `showCupertinoSheet` on iOS): title, identifier and project, done state, dates (absolute, localised), priority, percent done, labels, assignees, reminders, repeat summary and the description as plain text (`htmlToPlainText` strips tags and decodes the basic entities; rich rendering is step 10).
-- Pull-to-refresh, a loading placeholder on first load, an error card with retry (`features/common/`, over `StatusCard`) and an empty state on every list. A failed first load fills the screen; a failed refresh is a notice above the stale list; a failed load-more sits where the next page would be. Read-only: no action changes anything on the server.
+- Pull-to-refresh, a loading placeholder on first load, an error card with retry (`features/common/`, over `StatusCard`) and an empty state on every list. A failed first load fills the screen; a failed refresh is a notice above the stale list, and since step 6 a `NetworkFailure` with saved rows on screen is the quieter "Offline — showing saved data" notice (section 7.4). Read-only: no action changes anything on the server.
 - The screens depend on the repository interfaces and the domain types only. They never see `Page`, the ports or DTOs.
 
-**Planned:** step 6 replaces the online repositories with Drift-backed ones behind the same interfaces and feeds the database through the same ports; step 7 adds the incremental sync; step 9 serves the lists offline and adds the Upcoming presets; step 10 renders the description; step 20 adds the kanban reads ([D30](decisions.md#d30-kanban-board-reads-deferred-to-step-20)); step 24 the saved filters.
+**Planned:** step 7 adds the incremental sync; step 9 serves the lists offline and adds the Upcoming presets; step 10 renders the description; step 20 adds the kanban reads ([D30](decisions.md#d30-kanban-board-reads-deferred-to-step-20)); step 24 the saved filters.
 
-## 7. Offline-first data layer [planned]
+## 7. Offline-first data layer [database and initial sync in progress, step 6; the rest planned]
 
-- **Database (step 6):** one Drift SQLite file per account, opened with `shareAcrossIsolates`. It is never placed in the iOS App Group container. Its DAOs sit behind the repository interfaces of section 6 ([D29](decisions.md#d29-ui-reads-through-repository-interfaces-the-online-implementation-is-replaced-by-drift-in-step-6-without-ui-changes)). Tasks carry:
-  - a stable `local_id` and a nullable `server_id`;
-  - `base_json` and `dirty_fields` for 3-way merges;
-  - a `sync_status`.
-- **Outbox (step 11):**
+Step 6 makes the database the UI's source ([D31](decisions.md#d31-one-drift-sqlite-file-per-account-shared-across-isolates-deleted-on-sign-out), [D32](decisions.md#d32-initial-sync-by-keyset-paging-with-per-page-checkpoints-full-re-pull-as-refresh-until-step-7)). After sign-in the whole account is pulled into one SQLite file, every screen reads streams from it, and the app works without the server. The incremental sync, writes and background runs are still planned (section 7.5).
+
+```mermaid
+flowchart LR
+  ENGINE["core/sync: DefaultSyncEngine<br/>(one per account, runs serialized)"] -- "GET /user, /projects, /labels,<br/>/tasks (keyset), /projects/{id}/tasks" --> PORTS["VikunjaReadClient<br/>(section 6)"]
+  ENGINE -- "upsert batches, purge,<br/>checkpoints in sync_state" --> DB[("core/db: AppDatabase<br/>vikunja.db per account")]
+  ENGINE -- "SyncStatus stream (replays)" --> STATUS["syncStatus provider"]
+  DB -- "watch…() streams" --> LOCAL["core/repositories/local"]
+  LOCAL --> UI["screens (section 6)"]
+  STATUS --> UI
+  UI -- "pull-to-refresh, Sync now: refresh()" --> ENGINE
+```
+
+### 7.1 Database (`core/db/`)
+
+`AppDatabase` (`@DriftDatabase`, schema version 1) with the tables in `core/db/tables/`. Keys are the server ids; dates are nullable UTC epoch milliseconds; every entity keeps the server's `created` and `updated`.
+
+| Table | Columns |
+|---|---|
+| `projects` | id, title, description, identifier, hex_color, parent_project_id, is_archived, is_favorite, position, owner_id?, created, updated |
+| `project_views` | id, project_id, title, kind, position, filter_json?, bucket_configuration_mode, default_bucket_id, done_bucket_id |
+| `labels` | id, title, description, hex_color, created, updated |
+| `users` | id, username, name |
+| `tasks` | id, project_id, title, description, done, done_at, due_date, start_date, end_date, priority, percent_done, hex_color, identifier, index, is_favorite, position, repeat_after, repeat_mode, bucket_id, created_by_id?, created, updated, sync_run_id? (the run that last returned the task) |
+| `task_labels`, `task_assignees` | task_id + label_id, task_id + user_id |
+| `task_reminders` | task_id, ordinal (reminders have no server id), reminder, relative_period, relative_to |
+| `task_relations` | task_id, other_task_id, kind |
+| `sync_state` | key → value: `run_id`, `phase`, `phase_done`, `phase_total`, `last_id`, `done_filter`, `archived_project_id`, `last_synced_at` |
+
+- Indexes: `tasks(project_id)`, `tasks(done, due_date)`, `project_views(project_id)`; the primary key of `task_labels` covers `task_id`. Foreign keys cascade from the task child tables to `tasks`, from `task_labels` to `labels`, `task_assignees` to `users` and `project_views` to `projects`; `tasks.project_id` and `task_relations.other_task_id` have none, because a task can arrive before its project and the other task may be unreadable.
+- Not stored: pseudo projects (Favorites `-1`, saved filters `≤ -2`; the sync skips them, step 24 decides), buckets and positions per view (step 20), comments and attachments. Related tasks are relation rows only; the mappers (`core/db/mappers/`) rebuild `Task.relatedTasks` from the rows whose other task is local, because nested related tasks carry no relations of their own.
+- DAOs with stream queries: `ProjectsDao.watchAll()`; `TasksDao.watchOpenTasks()` (`done = false`, due date ascending with nulls last, then id descending); `TasksDao.watchProjectTasks(projectId, showDone:)` (position, then id descending, as in step 5). A watched list is hydrated with its labels, assignees, reminders and relations in four batched queries per list (ids chunked by 500), never per task. Upserts run in transactions and batches; `ProjectsDao.purgeNotIn(ids)`, `LabelsDao.purgeNotIn(ids)` and `TasksDao.purgeNotInRun(runId)` serve the sync.
+- Files and opening: `AccountDatabaseFiles.pathFor(accountId)` is `<application support>/accounts/<accountId>/vikunja.db`; `deleteFor` removes it with `-wal`, `-shm` and `-journal`. The `appDatabase(accountId)` provider (keepAlive) opens it through `openAccountDatabase` (drift_flutter, `shareAcrossIsolates: true`, WAL set up in the database isolate) and closes it on dispose and on sign-out through the `OpenDatabases` registry, which lets sign-out await the close before it deletes the files: `AppDatabase.close()` only disconnects this isolate's client, and the database isolate closes sqlite and unregisters itself afterwards on its own, so the registry then polls `IsolateNameServer` (every 20 ms, up to 5 s, logged on timeout) until the `drift-db/account_<id>` mapping is gone (`awaitAccountDatabaseClosed`). A client in another isolate keeps the database isolate alive past that wait; step 16 must stop its background connection before sign-out wipes the files, or the re-opened account would write into an unlinked file. Never in the iOS App Group container.
+- Schema versioning: `app/drift_schemas/drift_schema_v1.json` is the dump of version 1, `app/test/core/db/generated/` is generated from the dumps, and a test checks that the generated schema still matches the code. Every later schema change bumps the version, adds a dump and a migration test on this harness. The commands are in the [README](../README.md#common-commands).
+
+### 7.2 Local repositories (`core/repositories/local/`)
+
+`LocalProjectRepository` and `LocalTaskRepository` implement the step 5 interfaces unchanged:
+- `watch*` are the DAO streams, so a row the sync writes is on screen with the next stream event.
+- `refresh*` call `SyncEngine.refresh()` and rethrow its `VikunjaFailure`; the stale rows stay in the stream.
+- `loadMoreProjectTasks` is a no-op and `PagedList.hasMore` is false: the database holds every task. `showDone` is a WHERE clause.
+- `find(id)` answers from the latest snapshot of the stream.
+
+### 7.3 Sync engine and status (`core/sync/`)
+
+`SyncEngine` (`status`, `currentStatus`, `ensureInitialSync()`, `refresh()`, `dispose()`) is implemented by `DefaultSyncEngine`: one per account, headless (the read client, the database, a clock and a `GET /user` source are injected; no `BuildContext`, no Riverpod inside), runs serialized per account with concurrent callers joining the running one, and a status stream that replays the current state once the stored state has been read (its events are delivered synchronously, so a status has reached its subscribers when a run's future resolves).
+
+| `SyncStatus` | Meaning |
+|---|---|
+| `SyncNeverRun` | no run has ever completed or started for this account |
+| `SyncRunning(phase, done, total?, initial)` | a run is in progress; `total` is null until the server has said; `initial` is true until the first run completes |
+| `SyncIdle(lastSyncedAt)` | the last run completed |
+| `SyncFailed(failure, lastSyncedAt?)` | the last run failed; rows from earlier runs stay readable |
+
+A run goes through the `SyncPhase`s in order:
+
+| Phase | Requests | Database |
+|---|---|---|
+| `account` | `GET /user` (through `AccountGateway.currentUser`) | `users` |
+| `projects` | `GET /projects` with `is_archived=true`, all pages; pseudo projects skipped | upsert projects and views; purge projects not returned |
+| `labels` | `GET /labels`, all pages | upsert; purge labels not returned |
+| `tasks` | two `per_page=1` requests for the total, then `GET /tasks` by keyset: `filter=done = false && id > <lastId>`, then `done = true`, `sort_by=id&order_by=asc`, `per_page = max_items_per_page`, `page: 1`. A page must be strictly ascending by id and start above the cursor, otherwise the run fails as `UnexpectedResponse` before the page is stored: a server that applied another order would make the cursor skip ids and the purge delete them | upsert batches with labels, assignees, reminders, relations, marked with the run id |
+| `archivedTasks` | the same keyset on `GET /projects/{id}/tasks` for every archived project and its descendants, because `/tasks` leaves them out | upsert |
+| `finishing` | one more keyset pass over `GET /tasks` with `filter=updated >= '<run start − 120 s>' && id > <lastId>`: a task reopened after the open pass had passed its id and completed again after the done pass had is in neither list and would be purged as gone (one request in the common case; tasks of archived projects cannot change) | mark the caught-up tasks with the run id; purge tasks not marked with this run; write `last_synced_at`, clear the checkpoint |
+
+- After every page the engine writes the checkpoint (run id and start, phase, counts, last id, done filter, archived project id) to `sync_state`. `ensureInitialSync()` resumes an interrupted first run from there and returns at once for an account that has completed one. `refresh()` starts a new run id, re-pulls everything and purges by "not seen in this run", only in `finishing`, so an interrupted run never deletes.
+- The server caps `per_page` silently, so the engine follows the returned page size. Keyset paging makes a run resumable and stable while data changes, which page numbers are not.
+- A failed request ends the run as `SyncFailed`; `refresh()` rethrows the failure to the repository that called it. The checkpoint stays, so the next `ensureInitialSync()` continues where the run stopped. A stored state that cannot be read when the engine is built (unreadable or corrupt file, failed open) is reported the same way, as `SyncFailed(UnexpectedResponse, lastSyncedAt: null)`, and the next `ensureInitialSync()`/`refresh()` reads it again before anything else, so Retry on the first-sync screen covers it.
+- Until step 7, `refresh()` is this full re-pull. The stored `updated` and the run-id purge are built for the delta sync that replaces it.
+- Tests: DAOs and streams on `NativeDatabase.memory()`, mapper round trips, the engine with a fake `VikunjaReadClient` (multi-page keyset, interruption and resume, purge on refresh, archived projects, failure mid-run, joined runs, status replay), the local repositories, `deleteFor`, and a contract test against the live 2.7.0 server (an app test tagged `contract`).
+
+### 7.4 Sign-in → first sync → shell
+
+```mermaid
+flowchart TD
+  START["app start or sign-in<br/>with an active account"] --> STATE{"SyncStatus<br/>of the account"}
+  STATE -- "SyncNeverRun, or an<br/>interrupted first run" --> FIRST["first-sync screen: logo, phase,<br/>counts, progress bar when total is known"]
+  FIRST --> RUN["ensureInitialSync()<br/>resumes from the checkpoint"]
+  RUN -- "completed" --> SHELL["/home: Overview, Projects, Account"]
+  RUN -- "SyncFailed" --> RETRY["message + Retry"] --> RUN
+  FIRST -- "Cancel" --> OUT["sign out: tokens, registry entry<br/>and database deleted"]
+  STATE -- "synced before" --> SHELL
+  SHELL --> QUIET["quiet refresh() on start,<br/>pull-to-refresh, Sync now:<br/>slim progress indicator"]
+  QUIET -- "NetworkFailure, rows on screen" --> NOTICE["'Offline — showing saved data'"]
+  QUIET -- "other failure" --> ERR["error notice above the stale list"]
+```
+
+- Providers: `appDatabase(accountId)` and `syncEngine(accountId)` are keepAlive families closed on dispose; `syncStatus` (`core/sync/sync_providers.dart`) follows the active account and has no value until its engine has reported, which the router treats like "needs the first sync" (the screen says "Preparing…"). `bootstrap.dart` waits up to 5 s for that first report behind the launch screen, so a synced account's first frame is the shell. The repository providers of section 6 are built over them. `signOutProvider` lives in `core/auth/sign_out_providers.dart`, because the data wiper it takes (`accountDataWiper`: dispose the engine, close the database, delete the files) builds on the repository providers.
+- The router (`app_router.dart`) sends a signed-in account to `/sync` from the splash and from every `/home` route while `needsFirstSync` holds (`features/sync/application/sync_status_queries.dart`: no report yet, `SyncNeverRun`, an initial `SyncRunning` or a `SyncFailed` without `lastSyncedAt`), and from `/sync` to the overview once it no longer does. The first-sync screen (`features/sync/presentation/`) calls `ensureInitialSync()` after its first frame, which is also its Retry; its cancel is a sign-out. An account that has synced before opens the shell at once; `StartupSync` (`features/sync/application/`) runs a quiet `refresh()` on the shell's first frame and on an account switch, never blocking. It decides on the engine's first reported status (a freshly built engine reports a placeholder until it has read `sync_state`), and skips a run in progress, an account synced within the last minute, and an account without a completed first run, which the first-sync screen resumes from its checkpoint.
+- The Account tab shows "Last synced <relative time>" and a "Sync now" button; the sign-out dialog says that the local data is deleted.
+- Headless use: the engine needs no widget tree, so step 16 can run it in a background isolate over the same database (`shareAcrossIsolates`) through the same `ProviderContainer` (principle 4). The status of a run in another isolate is not shared yet.
+
+### 7.5 Planned
+
+- **Incremental sync (step 7):** the `(updated, id)` delta with a 120 s overlap, started from the stored `updated`; the project diff fully pulls new and un-archived projects; count checks and id reconciliation catch deletes, because Vikunja leaves no tombstones; a cheap probe (about 2 requests) decides whether a full delta is needed. It replaces the full re-pull behind `refresh()`.
+- **Outbox (step 11):** a migration adds what offline writes need: a local id for tasks the server does not know yet, `base_json` and `dirty_fields` for 3-way merges, a `sync_status`, and the outbox table.
   - One local transaction updates the row and appends an op. Ops are coalesced:
 
     | Ops in the outbox | Sent as |
@@ -440,19 +532,13 @@ flowchart TD
   - Retry uses backoff and honours `Retry-After`.
   - Permanent failures go to a "Sync problems" list.
   - A create that timed out is looked up before it is re-sent.
-- **Sync engine (steps 6–7):**
-  - Initial keyset sync, undone tasks first.
-  - Incremental `(updated, id)` delta with a 120 s overlap.
-  - The project diff fully pulls new and un-archived projects.
-  - Count checks and id reconciliation catch deletes, because Vikunja leaves no tombstones.
-  - A cheap probe (about 2 requests) decides whether a full delta is needed.
 - **Realtime (step 17):** WebSocket in the foreground only, used as a hint to sync, never as a source of truth. Reconnects are capped, because the upgrade shares the login rate limiter.
 - **Notifications (step 15):**
   - Reminders are scheduled locally from the database, because the server does not push them.
   - Policy ([D17](decisions.md#d17-notification-policy)): only undone tasks where the user is the creator or an assignee; reminders at their time and due dates at the exact due time, as exact alarms on Android; notification and exact-alarm permissions asked during onboarding; no overdue digest.
   - The scheduler diffs the desired set against what is scheduled, keeps a rolling window (iOS ≤ 60 pending) and uses deterministic ids.
   - "Mark done" runs in a background isolate through the outbox.
-- **Background (step 16):** WorkManager periodic sync and expedited drains on Android; BGAppRefresh and BGProcessing on iOS; a session keep-alive for every account at least every 24 h.
+- **Background (step 16):** WorkManager periodic sync and expedited drains on Android; BGAppRefresh and BGProcessing on iOS; a session keep-alive for every account at least every 24 h. The background isolate opens the same database and runs the same engine.
 - **Widgets (steps 18–19):**
   - Snapshot JSON is written after every sync or local change.
   - Android uses Glance with a Dart callback.
@@ -460,7 +546,7 @@ flowchart TD
 
 ## 8. Cross-cutting
 
-- **UI:** material_ui and cupertino_ui instead of the in-SDK libraries ([D2](decisions.md#d2-material_ui-and-cupertino_ui)); dynamic colour on Android [planned, step 8]; dark mode and 200 % text scale in every step. Relative dates in list rows and absolute, localised dates in the detail come from intl, in device local time [in progress, step 5].
+- **UI:** material_ui and cupertino_ui instead of the in-SDK libraries ([D2](decisions.md#d2-material_ui-and-cupertino_ui)); dynamic colour on Android [planned, step 8]; dark mode and 200 % text scale in every step. Relative dates in list rows and absolute, localised dates in the detail come from intl, in device local time [exists, step 5].
 - **Localisation:** gen-l10n with ARB files, English and German, which is also the first-release scope ([D21](decisions.md#d21-languages-english-and-german)). Generated code lives in `app/lib/l10n/generated/`.
 - **Logging:** `package:logging` with redaction of auth headers and tokens, of `code=`, `state=`, `access_token`, `refresh_token` and `Bearer` values, and of callback URLs [exists]. A ring buffer, file rotation and diagnostics export are planned (step 35).
 - **Platform configuration:**
@@ -469,4 +555,4 @@ flowchart TD
   - Browser sign-in: on Android, flutter_web_auth_2's `CallbackActivity`, exported, with a `BROWSABLE` intent filter for the scheme `vikunja-dev.coderoftime.vikunja`. iOS needs no URL type for ASWebAuthenticationSession, verified on the simulator in step 2+3 ([D23](decisions.md#d23-browser-sign-in-through-flutter_web_auth_2-client-id-and-redirect-uri)).
   - Per-server TLS pinning, mTLS and custom headers are planned for step 35.
 - **CI:** analyze, format and tests; a check that the committed generated code is current; the Docker contract tests against the latest release; release builds (Android APK, unsigned iOS device build) ([.github/workflows/ci.yaml](../.github/workflows/ci.yaml)). The contract job starts every service of `test_servers/` and waits for all of them.
-- **Test servers:** `test_servers/docker-compose.yaml` runs one server, the latest Vikunja release (2.7.0 on port 34527), for the contract tests and manual sign-in ([D28](decisions.md#d28-test-only-the-latest-vikunja-release)). The iOS simulator uses it directly; the Android emulator after `adb reverse tcp:34527 tcp:34527`. `tool/seed_e2e_user.sh` creates the sign-in test user from `test_servers/seed/e2e-user.env`; the [README](../README.md#sign-in-on-a-device-end-to-end) has the manual run.
+- **Test servers:** `test_servers/docker-compose.yaml` runs one server, the latest Vikunja release (2.7.0 on port 34527), for the contract tests of `vikunja_api`, the sync contract test of `app/` (step 6) and manual sign-in ([D28](decisions.md#d28-test-only-the-latest-vikunja-release)). The iOS simulator uses it directly; the Android emulator after `adb reverse tcp:34527 tcp:34527`. `tool/seed_e2e_user.sh` creates the sign-in test user from `test_servers/seed/e2e-user.env`; the [README](../README.md#sign-in-on-a-device-end-to-end) has the manual run.

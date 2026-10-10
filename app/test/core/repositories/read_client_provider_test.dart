@@ -6,6 +6,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/auth/sign_out_providers.dart';
 import 'package:vikunja_mobile/core/network/dio_factory.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
@@ -14,6 +15,7 @@ import 'package:vikunja_mobile/features/projects/application/projects_provider.d
 
 import '../../helpers/auth_fakes.dart';
 import '../../helpers/server_connections.dart';
+import '../../helpers/sync_fakes.dart';
 
 /// Answers every list with an empty v2 page and records the requests.
 final class _RecordingAdapter implements HttpClientAdapter {
@@ -76,41 +78,6 @@ void main() {
     expect(auth.tokenGateway.refreshedTokens, isEmpty);
   });
 
-  test('the repositories read through the same client', () async {
-    final auth = AuthFakes();
-    await auth.seedAccount(
-      fullServer270(),
-      tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
-    );
-    final adapter = _RecordingAdapter();
-    final container = ProviderContainer(
-      overrides: [
-        ...auth.overrides,
-        dioProvider.overrideWithValue(
-          createDio(
-            userAgent: 'test',
-            httpClientAdapter: adapter,
-            logRequests: false,
-          ),
-        ),
-      ],
-    );
-    addTearDown(container.dispose);
-    await container.read(accountsProvider.future);
-
-    await container.read(projectRepositoryProvider)!.refresh();
-    await container.read(taskRepositoryProvider)!.refreshOpenTasks();
-
-    expect(adapter.requests.map((r) => r.uri.path), [
-      '/vikunja/api/v2/projects',
-      '/vikunja/api/v2/tasks',
-    ]);
-    final tasks = adapter.requests.last.uri.queryParametersAll;
-    expect(tasks['filter'], ['done = false']);
-    expect(tasks['sort_by'], ['due_date', 'id']);
-    expect(tasks['order_by'], ['asc', 'desc']);
-  });
-
   test('signing out drops the client and the repositories quietly', () async {
     final auth = AuthFakes();
     final alice = await auth.seedAccount(
@@ -120,6 +87,7 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         ...auth.overrides,
+        ...SyncFakes().overrides,
         dioProvider.overrideWithValue(
           createDio(
             userAgent: 'test',

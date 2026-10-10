@@ -4,6 +4,8 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_mobile/app/router/splash_screen.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/sync/sync_providers.dart';
+import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/home/presentation/account_tab.dart';
 import 'package:vikunja_mobile/features/home/presentation/home_shell.dart';
 import 'package:vikunja_mobile/features/onboarding/application/current_server.dart';
@@ -12,6 +14,8 @@ import 'package:vikunja_mobile/features/onboarding/presentation/overview/server_
 import 'package:vikunja_mobile/features/overview/presentation/overview_screen.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_tasks_screen.dart';
 import 'package:vikunja_mobile/features/projects/presentation/projects_screen.dart';
+import 'package:vikunja_mobile/features/sync/application/sync_status_queries.dart';
+import 'package:vikunja_mobile/features/sync/presentation/first_sync_screen.dart';
 
 part 'app_router.g.dart';
 
@@ -19,6 +23,9 @@ abstract final class AppRoutes {
   static const splash = '/splash';
   static const connect = '/';
   static const serverOverview = '/server';
+
+  /// The full pull after sign-in, before [home] can show.
+  static const firstSync = '/sync';
 
   /// The signed-in shell; it opens on [overview].
   static const home = '/home';
@@ -33,18 +40,22 @@ abstract final class AppRoutes {
 GoRouter appRouter(Ref ref) {
   final currentServer = ValueNotifier(ref.read(currentServerProvider));
   final accounts = ValueNotifier(ref.read(accountsProvider));
+  final syncStatus = ValueNotifier(ref.read(syncStatusProvider));
   ref
     ..listen(currentServerProvider, (_, next) => currentServer.value = next)
     ..listen(accountsProvider, (_, next) => accounts.value = next)
+    ..listen(syncStatusProvider, (_, next) => syncStatus.value = next)
     ..onDispose(currentServer.dispose)
-    ..onDispose(accounts.dispose);
+    ..onDispose(accounts.dispose)
+    ..onDispose(syncStatus.dispose);
 
   final router = GoRouter(
     initialLocation: AppRoutes.splash,
-    refreshListenable: Listenable.merge([currentServer, accounts]),
+    refreshListenable: Listenable.merge([currentServer, accounts, syncStatus]),
     redirect: (context, state) => _redirect(
       location: state.matchedLocation,
       accounts: accounts.value,
+      syncStatus: syncStatus.value,
       hasServer: currentServer.value != null,
     ),
     routes: [
@@ -61,6 +72,10 @@ GoRouter appRouter(Ref ref) {
             builder: (context, state) => const ServerOverviewScreen(),
           ),
         ],
+      ),
+      GoRoute(
+        path: AppRoutes.firstSync,
+        builder: (context, state) => const FirstSyncScreen(),
       ),
       GoRoute(
         path: AppRoutes.home,
@@ -115,19 +130,31 @@ GoRouter appRouter(Ref ref) {
 int? _projectId(GoRouterState state) =>
     int.tryParse(state.pathParameters['id'] ?? '');
 
-/// The account registry is local, so the start screen never waits for the
-/// network.
+/// The account registry and the sync state are local, so the start screen
+/// never waits for the network. Signed in, the shell waits for the account's
+/// first full sync (and for its engine to report at all).
 String? _redirect({
   required String location,
   required AsyncValue<AccountRegistryState> accounts,
+  required AsyncValue<SyncStatus> syncStatus,
   required bool hasServer,
 }) {
   if (accounts case AsyncLoading(hasValue: false)) return AppRoutes.splash;
   final signedIn = accounts.value?.activeAccount != null;
+  if (!signedIn) {
+    return switch (location) {
+      AppRoutes.splash || AppRoutes.firstSync => AppRoutes.connect,
+      _ when location.startsWith(AppRoutes.home) => AppRoutes.connect,
+      AppRoutes.serverOverview when !hasServer => AppRoutes.connect,
+      _ => null,
+    };
+  }
+  final synced = !needsFirstSync(syncStatus.value);
   return switch (location) {
-    AppRoutes.splash => signedIn ? AppRoutes.overview : AppRoutes.connect,
-    _ when location.startsWith(AppRoutes.home) && !signedIn =>
-      AppRoutes.connect,
+    AppRoutes.splash => synced ? AppRoutes.overview : AppRoutes.firstSync,
+    AppRoutes.firstSync when synced => AppRoutes.overview,
+    _ when location.startsWith(AppRoutes.home) && !synced =>
+      AppRoutes.firstSync,
     AppRoutes.serverOverview when !hasServer => AppRoutes.connect,
     _ => null,
   };

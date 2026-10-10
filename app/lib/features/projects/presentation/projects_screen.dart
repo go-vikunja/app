@@ -13,6 +13,7 @@ import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dar
 import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_row.dart';
+import 'package:vikunja_mobile/features/sync/presentation/sync_progress_bar.dart';
 
 class ProjectsScreen extends ConsumerStatefulWidget {
   const new({super.key});
@@ -53,6 +54,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
       appBar: AppBar(
         title: Text(l10n.tabProjects),
         actions: [RefreshButton(onPressed: refreshing ? null : refresh)],
+        bottom: const SyncProgressBar(),
       ),
       body: buildRefreshable(
         projects,

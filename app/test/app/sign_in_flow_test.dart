@@ -14,14 +14,14 @@ import 'package:vikunja_mobile/core/links/external_link_opener.dart';
 import 'package:vikunja_mobile/core/network/client_identity.dart';
 import 'package:vikunja_mobile/core/network/dio_factory.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
-import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/home/presentation/home_shell.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_server_screen.dart';
 
 import '../helpers/auth_fakes.dart';
-import '../helpers/fake_read_client.dart';
 import '../helpers/fakes.dart';
 import '../helpers/pump_app.dart';
+import '../helpers/sync_fakes.dart';
 
 // Runs sign-in and sign-out through the real gateways, OAuthTokenClient,
 // AccountApi and auth interceptor; only the HTTP transport, the browser
@@ -115,6 +115,8 @@ void main() {
           : (401, {'code': 11, 'message': 'invalid token'}),
     });
     final auth = AuthFakes();
+    // A new account: the first full sync runs before home shows.
+    final sync = SyncFakes(status: const SyncNeverRun());
 
     Future<void> launch() async {
       final dio = createDio(
@@ -135,8 +137,7 @@ void main() {
             secureStoreProvider.overrideWithValue(auth.secureStore),
             preferencesStoreProvider.overrideWithValue(auth.preferences),
             webAuthenticatorProvider.overrideWithValue(auth.webAuthenticator),
-            // The task screens are not this test's story.
-            readClientProvider.overrideWith((ref, _) => FakeReadClient()),
+            ...sync.overrides,
           ],
           child: const VikunjaApp(),
         ),
@@ -152,6 +153,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(HomeShell), findsOneWidget);
+    expect(sync.engine.ensureInitialSyncCalls, 1);
     await openTab(tester, en.tabAccount);
     expect(find.text('Alice Example'), findsOneWidget);
     final authorizeUrl = auth.webAuthenticator.urls.single;
@@ -198,5 +200,7 @@ void main() {
     ]);
     expect(auth.secureStore.values, isEmpty);
     expect((await auth.registry.load()).accounts, isEmpty);
+    expect(sync.files.deleted, [accountId]);
+    expect(sync.engine.disposed, isTrue);
   });
 }

@@ -851,7 +851,7 @@ abstract class AppLocalizations {
   /// No description provided for @signOutDialogBody.
   ///
   /// In en, this message translates to:
-  /// **'Rurana will sign you out of {host}. You can sign in again at any time.'**
+  /// **'Rurana will sign you out of {host} and delete the tasks saved on this device. You can sign in again at any time.'**
   String signOutDialogBody(String host);
 
   /// No description provided for @signOutDialogCancel.
@@ -1471,6 +1471,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Try again'**
   String get retry;
+
+  /// No description provided for @firstSyncTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Getting your tasks'**
+  String get firstSyncTitle;
+
+  /// No description provided for @firstSyncBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Rurana is saving everything from {host} on this device, so it works offline too.'**
+  String firstSyncBody(String host);
+
+  /// No description provided for @firstSyncPreparing.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing…'**
+  String get firstSyncPreparing;
+
+  /// No description provided for @firstSyncCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel and sign out'**
+  String get firstSyncCancel;
+
+  /// No description provided for @syncPhaseAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking your account…'**
+  String get syncPhaseAccount;
+
+  /// No description provided for @syncPhaseProjects.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading projects…'**
+  String get syncPhaseProjects;
+
+  /// No description provided for @syncPhaseLabels.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading labels…'**
+  String get syncPhaseLabels;
+
+  /// No description provided for @syncPhaseTasks.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading tasks…'**
+  String get syncPhaseTasks;
+
+  /// No description provided for @syncPhaseArchivedTasks.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading archived projects…'**
+  String get syncPhaseArchivedTasks;
+
+  /// No description provided for @syncPhaseFinishing.
+  ///
+  /// In en, this message translates to:
+  /// **'Finishing up…'**
+  String get syncPhaseFinishing;
+
+  /// No description provided for @syncProgressOfTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'{done} of {total}'**
+  String syncProgressOfTotal(int done, int total);
+
+  /// No description provided for @syncProgressCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} so far'**
+  String syncProgressCount(int count);
+
+  /// No description provided for @syncIndicatorLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Syncing with the server'**
+  String get syncIndicatorLabel;
+
+  /// No description provided for @offlineNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline — showing saved data'**
+  String get offlineNotice;
+
+  /// No description provided for @accountLastSynced.
+  ///
+  /// In en, this message translates to:
+  /// **'Last synced {when}'**
+  String accountLastSynced(String when);
+
+  /// No description provided for @accountLastSyncedJustNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Synced just now'**
+  String get accountLastSyncedJustNow;
+
+  /// No description provided for @accountNeverSynced.
+  ///
+  /// In en, this message translates to:
+  /// **'Not synced yet'**
+  String get accountNeverSynced;
+
+  /// No description provided for @accountSyncing.
+  ///
+  /// In en, this message translates to:
+  /// **'Syncing…'**
+  String get accountSyncing;
+
+  /// No description provided for @accountSyncFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The last sync failed.'**
+  String get accountSyncFailed;
+
+  /// No description provided for @accountSyncNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync now'**
+  String get accountSyncNow;
 }
 
 class _AppLocalizationsDelegate

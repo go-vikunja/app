@@ -8,6 +8,10 @@ import 'package:vikunja_mobile/core/logging/redaction.dart';
 
 final _log = Logger('SignOut');
 
+/// Removes what an account keeps on this device besides its tokens and its
+/// registry entry: the local database.
+typedef AccountDataWiper = Future<void> Function(String accountId);
+
 /// Ends the server session if it can, then forgets the account on this
 /// device. Signing out never fails because the server is unreachable.
 final class SignOut {
@@ -17,6 +21,7 @@ final class SignOut {
     required this._clockOffsets,
     required this._sessions,
     required this._accountGateway,
+    required this._wipeAccountData,
     this._logoutTimeout = const Duration(seconds: 15),
   });
 
@@ -25,6 +30,7 @@ final class SignOut {
   final ServerClockOffsets _clockOffsets;
   final SessionManagers _sessions;
   final AccountGateway _accountGateway;
+  final AccountDataWiper _wipeAccountData;
   final Duration _logoutTimeout;
 
   Future<void> call(String accountId) async {
@@ -55,6 +61,16 @@ final class SignOut {
       );
     }
     await _registry.remove(accountId);
+    // After the registry: nothing of this account is shown by then, so no
+    // screen holds its database open or reads it again.
+    try {
+      await _wipeAccountData(accountId);
+    } on Object catch (error) {
+      _log.warning(
+        'Could not delete the local data of account $accountId: '
+        '${error.runtimeType}',
+      );
+    }
     _log.info('Signed out account $accountId');
   }
 }

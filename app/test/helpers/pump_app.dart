@@ -8,14 +8,13 @@ import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/vikunja_app.dart';
 import 'package:vikunja_mobile/core/links/external_link_opener.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
-import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/onboarding/application/current_server.dart';
 
 import 'auth_fakes.dart';
-import 'fake_read_client.dart';
 import 'fakes.dart';
 import 'server_connections.dart';
+import 'sync_fakes.dart';
 
 final AppLocalizations en = lookupAppLocalizations(const Locale('en'));
 final AppLocalizations de = lookupAppLocalizations(const Locale('de'));
@@ -45,33 +44,31 @@ void useAccessibilityExtremes(WidgetTester tester) {
 ProviderContainer containerOf(WidgetTester tester) =>
     ProviderScope.containerOf(tester.element(find.byType(VikunjaApp)));
 
+/// Everything below the screens is faked; no network and no database.
 List<Override> appOverrides({
   FakeServerConnector? connector,
   FakeExternalLinkOpener? linkOpener,
   AuthFakes? auth,
-  FakeReadClient? readClient,
-}) {
-  final client = readClient ?? FakeReadClient();
-  return [
-    serverConnectorProvider.overrideWithValue(
-      connector ?? FakeServerConnector(),
-    ),
-    externalLinkOpenerProvider.overrideWithValue(
-      linkOpener ?? FakeExternalLinkOpener(),
-    ),
-    // Every account reads from the same fake.
-    readClientProvider.overrideWith((ref, accountId) => client),
-    ...(auth ?? AuthFakes()).overrides,
-  ];
-}
+  SyncFakes? sync,
+}) => [
+  serverConnectorProvider.overrideWithValue(connector ?? FakeServerConnector()),
+  externalLinkOpenerProvider.overrideWithValue(
+    linkOpener ?? FakeExternalLinkOpener(),
+  ),
+  ...(auth ?? AuthFakes()).overrides,
+  ...(sync ?? SyncFakes()).overrides,
+];
 
+/// With [settle] false the first screen is only pumped a few frames: for a
+/// screen with an indeterminate progress indicator, which never settles.
 Future<void> pumpVikunjaApp(
   WidgetTester tester, {
   FakeServerConnector? connector,
   FakeExternalLinkOpener? linkOpener,
   AuthFakes? auth,
-  FakeReadClient? readClient,
+  SyncFakes? sync,
   List<Override> overrides = const [],
+  bool settle = true,
 }) async {
   await tester.pumpWidget(
     ProviderScope(
@@ -80,14 +77,33 @@ Future<void> pumpVikunjaApp(
           connector: connector,
           linkOpener: linkOpener,
           auth: auth,
-          readClient: readClient,
+          sync: sync,
         ),
         ...overrides,
       ],
       child: const VikunjaApp(),
     ),
   );
-  await tester.pumpAndSettle();
+  if (settle) {
+    await tester.pumpAndSettle();
+  } else {
+    await pumpFrames(tester, 3);
+  }
+}
+
+Future<void> pumpFrames(WidgetTester tester, int count) async {
+  for (var i = 0; i < count; i++) {
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+}
+
+/// Pumps until [finder] matches; for screens that never settle.
+Future<void> pumpUntil(WidgetTester tester, Finder finder) async {
+  for (var i = 0; i < 100; i++) {
+    if (finder.evaluate().isNotEmpty) return;
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+  throw TestFailure('Nothing matched $finder within 10 s');
 }
 
 Future<void> pumpServerOverview(
@@ -109,13 +125,15 @@ Future<void> openTab(WidgetTester tester, String label) async {
   await tester.pumpAndSettle();
 }
 
-/// Starts the app signed in to a 2.7 server, reading through [readClient].
+/// Starts the app signed in to a 2.7 server whose data [sync] holds; the
+/// account counts as synced just now unless [sync] says otherwise.
 Future<AuthFakes> pumpSignedInApp(
   WidgetTester tester, {
-  FakeReadClient? readClient,
+  SyncFakes? sync,
   AuthFakes? auth,
   DateTime? now,
   List<Override> overrides = const [],
+  bool settle = true,
 }) async {
   final fakes = auth ?? AuthFakes();
   await fakes.seedAccount(
@@ -125,11 +143,12 @@ Future<AuthFakes> pumpSignedInApp(
   await pumpVikunjaApp(
     tester,
     auth: fakes,
-    readClient: readClient,
+    sync: sync ?? SyncFakes(now: now),
     overrides: [
       if (now != null) clockProvider.overrideWithValue(() => now),
       ...overrides,
     ],
+    settle: settle,
   );
   return fakes;
 }

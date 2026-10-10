@@ -4,19 +4,21 @@ Rurana (name and logo: see [branding/README.md](branding/README.md)) is an unoff
 
 ## Status
 
-Step 1 of the [roadmap](docs/roadmap.md), server connection and v1/v2 negotiation, is done. Step 2+3, the HTTP core, browser sign-in (OAuth 2.0 + PKCE) and the session manager, is in review (verified end to end on the Android emulator and the iOS simulator); see [architecture §5](docs/architecture.md#5-auth-and-session-exists-step-23). **Step 5, projects and tasks, read-only and online, is in progress**: the first screens with real data, built on repository interfaces that step 6 fills from a local database without UI changes ([D29](docs/decisions.md#d29-ui-reads-through-repository-interfaces-the-online-implementation-is-replaced-by-drift-in-step-6-without-ui-changes)); see [architecture §6](docs/architecture.md#6-read-path-in-progress-step-5). The project applies the owner's decisions of 2026-10-09 (app id, browser sign-in only, and the 2.3.0 floor that follows from them). Name and icon: Rurana with the "checkbox ears" llama (see [branding/README.md](branding/README.md)).
+Steps 1 to 6 of the [roadmap](docs/roadmap.md) are done: server connection and v1/v2 negotiation, browser sign-in (OAuth 2.0 + PKCE) with a session manager, read-only projects and tasks, and a local database per account that is filled by an initial sync so the app works offline. **Step 6 is in review**; step 7 (incremental sync and delete reconciliation) is next. The project applies the owner's decisions of 2026-10-09 (app id, browser sign-in only, the 2.3.0 floor). Name and icon: Rurana with the "checkbox ears" llama (see [branding/README.md](branding/README.md)).
 
 ### What you can see now
 
 - **Connect to a server.** The app takes an address, probes `/api/v2/info` (Vikunja 2.4.0 and newer) and `/api/v1/info` in parallel, uses v2 when both answer, and shows the server version, the API mode, the support tier and the detected capabilities. Servers older than 2.3.0 are reported as unsupported, because browser sign-in needs 2.3.0.
-- **Sign in** through the system browser. The session is refreshed transparently and survives restarts; sign-out after a confirmation.
+- **Sign in** through the system browser. The session is refreshed transparently and survives restarts; sign-out after a confirmation, which also deletes the account's local data.
+- **First sync** right after sign-in: a progress screen with the current phase and counts pulls the whole account into the local database. It resumes where it stopped if the app is killed, and shows a Retry when the server is unreachable.
+- **Offline:** every screen reads from the local database, so projects and tasks are there without the server. Pull to refresh or "Sync now" in the Account tab re-pulls everything (the incremental sync is step 7); while offline, lists show the saved data with an "Offline" notice.
 - **Overview tab:** your open tasks across all projects, grouped into Overdue, Today, Next 7 days, Later and No due date, with identifier, project, relative due date, priority, labels and favourite.
-- **Projects tab:** favourites first, then the project tree. A project opens its task list, with a "Show done tasks" toggle and load more.
+- **Projects tab:** favourites first, then the project tree. A project opens its task list, with a "Show done tasks" toggle.
 - **Task detail:** a sheet with title, identifier and project, done state, dates, priority, percent done, labels, assignees, reminders, repeat and the description as plain text.
-- **Account tab:** who is signed in on which server, a "Sign in again" banner when the session ended, sign out.
-- English and German, dark mode, large text. Pull to refresh reloads every list.
+- **Account tab:** who is signed in on which server, when the account was last synced, "Sync now", a "Sign in again" banner when the session ended, sign out.
+- English and German, dark mode, large text. A slim progress bar shows a running sync.
 
-Everything is read-only and needs the server: nothing is stored on the device yet (step 6) and nothing can be edited (step 11).
+Everything is read-only: nothing can be edited yet (step 11). Kanban buckets, comments and attachments are not synced yet.
 
 ## Goals
 
@@ -47,7 +49,7 @@ Not planned for now: the admin panel, an MCP page, time tracking (licensed), pus
 
 | Path | Contents |
 |---|---|
-| `app/` | Flutter app (feature-first: `lib/features/*`, shared code in `lib/core/`) |
+| `app/` | Flutter app (feature-first: `lib/features/*`, shared code in `lib/core/`: auth, the Drift database in `db/`, the sync engine in `sync/`, repositories). `drift_schemas/` holds the schema dumps the migration tests compare against |
 | `packages/vikunja_domain/` | Pure Dart domain model: server version, capabilities, support tier, connection result and failures; user, account, tokens, `VikunjaFailure`; projects, views, labels, tasks, reminders, `Page<T>`, `TaskQuery` |
 | `packages/vikunja_api/` | Pure Dart API client: address normalisation, `/info` parsing, parallel v2/v1 `/info` probing, error normalisation, OAuth + PKCE token client, authenticated transport, and the read client for projects, labels and tasks over v1 and v2. `test/fixtures/` holds real server responses |
 | `branding/` | Name, logo and icon sources (SVG) with the rendered PNGs |
@@ -84,13 +86,20 @@ tool/check_format.sh                  # format check as in CI; --fix formats in 
 tool/check_pure_dart_packages.sh      # packages/*/lib must not depend on Flutter (needs jq)
 ```
 
-The generated `*.g.dart` and l10n files are committed. CI regenerates them and fails when they differ from the committed ones. After you change ARB files or annotated providers, run:
+The generated `*.g.dart` and l10n files are committed. CI regenerates them and fails when they differ from the committed ones. After you change ARB files, annotated providers or Drift tables and DAOs, run:
 
 ```sh
 cd app && flutter gen-l10n && dart run build_runner build
 ```
 
-`flutter pub get` regenerates the l10n files on its own (`generate: true`), but `build_runner` only runs by hand.
+`flutter pub get` regenerates the l10n files on its own (`generate: true`), but `build_runner` (riverpod_generator and drift_dev) only runs by hand.
+
+The database schema is versioned ([D31](docs/decisions.md#d31-one-drift-sqlite-file-per-account-shared-across-isolates-deleted-on-sign-out)). `app/drift_schemas/drift_schema_v<N>.json` holds the dump of every schema version (drift_dev's file name), `app/test/core/db/generated/` is generated from the dumps, and `test/core/db/schema_test.dart` checks that the generated schema still matches the code. After a schema change, bump `schemaVersion`, dump the new version from `app/` (so drift's build options apply), regenerate the test helpers and add a migration test:
+
+```sh
+cd app && dart run drift_dev schema dump lib/core/db/app_database.dart drift_schemas/drift_schema_v2.json
+cd app && dart run drift_dev schema generate drift_schemas/ test/core/db/generated/
+```
 
 The launcher icons are generated from `branding/png/` and committed too. After you change the branding PNGs (`branding/render.sh`), run:
 
@@ -110,16 +119,19 @@ Tests:
 (cd packages/vikunja_api && flutter test --exclude-tags contract)
 ```
 
-The pure packages also use `flutter test` (see [D9](docs/decisions.md#d9-flutter_test-instead-of-packagetest-in-pure-packages)).
+The pure packages also use `flutter test` (see [D9](docs/decisions.md#d9-flutter_test-instead-of-packagetest-in-pure-packages)). The app's tests run on an in-memory SQLite, so they need no server and no device.
 
-Contract tests against real servers:
+Contract tests against the real server:
 
 ```sh
-tool/contract_tests.sh                # starts test_servers/ if needed, waits, runs --tags contract
-docker compose -f test_servers/docker-compose.yaml up -d     # or start them by hand
+tool/contract_tests.sh                # starts test_servers/ if needed, waits, runs the vikunja_api tests tagged contract
+docker compose -f test_servers/docker-compose.yaml up -d     # or start it by hand
 tool/wait_for_test_servers.sh
+(cd app && VIKUNJA_CONTRACT=1 flutter test --tags contract)  # the sync engine against the live server
 docker compose -f test_servers/docker-compose.yaml down
 ```
+
+The app's contract test registers a user, seeds projects and tasks, runs the initial sync into an in-memory database and checks the counts; it is tagged `contract` and skipped without `VIKUNJA_CONTRACT=1`.
 
 With the standalone binary (for example colima with Homebrew's docker-compose), use `docker-compose` with the same arguments. The servers listen on `127.0.0.1` only.
 
@@ -172,13 +184,13 @@ The app's minimum is iOS 15.0. Below iOS 17.4, flutter_web_auth_2 falls back to 
    adb shell input text "$(sed -n 's/^E2E_PASSWORD=//p' test_servers/seed/e2e-user.env)"
    ```
 
-5. The sheet closes and the app shows the Overview tab. The Account tab shows initials, display name, `@` username, server host and version; **Sign out** there, after a confirmation, returns to onboarding. To see tasks and projects, create some in the web app at `http://localhost:34527` with the same user, then pull to refresh.
+5. The sheet closes, the first-sync screen pulls the account, and the app shows the Overview tab. The Account tab shows initials, display name, `@` username, server host and version, when the account was last synced, and **Sync now**; **Sign out** there, after a confirmation, deletes the local data and returns to onboarding. To see tasks and projects, create some in the web app at `http://localhost:34527` with the same user, then pull to refresh or tap Sync now. Turn the network off afterwards: the lists stay, with an "Offline" notice on refresh.
 
 Every sign-in starts with an empty browser session and shows the login form ([D23](docs/decisions.md#d23-browser-sign-in-through-flutter_web_auth_2-client-id-and-redirect-uri)). On Android, Chrome before 141 (the emulator image ships 133) gets a regular Custom Tab instead, which can reuse a web login in Chrome; to see the form again there, sign out in Chrome or clear its data for the server.
 
 ## Documentation
 
-- [Architecture](docs/architecture.md): what exists after steps 1 and 2+3, what step 5 is building, and what is planned.
+- [Architecture](docs/architecture.md): what exists after steps 1, 2+3 and 5, what step 6 is building, and what is planned.
 - [Roadmap](docs/roadmap.md): all steps and milestones, with status.
 - [Decisions](docs/decisions.md): decision log.
 - [Open questions](docs/open-questions.md): the owner's answers of 2026-10-09 and the items still deferred.

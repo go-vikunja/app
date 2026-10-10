@@ -375,7 +375,7 @@
   "homeSignOut": "Sign out",
   "homeSigningOut": "Signing out…",
   "signOutDialogTitle": "Sign out?",
-  "signOutDialogBody": "Rurana will sign you out of {host}. You can sign in again at any time.",
+  "signOutDialogBody": "Rurana will sign you out of {host} and delete the tasks saved on this device. You can sign in again at any time.",
   "@signOutDialogBody": {
     "placeholders": {
       "host": {
@@ -823,5 +823,64 @@
       }
     }
   },
-  "retry": "Try again"
+  "retry": "Try again",
+  "firstSyncTitle": "Getting your tasks",
+  "firstSyncBody": "Rurana is saving everything from {host} on this device, so it works offline too.",
+  "@firstSyncBody": {
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "firstSyncPreparing": "Preparing…",
+  "firstSyncCancel": "Cancel and sign out",
+  "syncPhaseAccount": "Checking your account…",
+  "syncPhaseProjects": "Loading projects…",
+  "syncPhaseLabels": "Loading labels…",
+  "syncPhaseTasks": "Loading tasks…",
+  "syncPhaseArchivedTasks": "Loading archived projects…",
+  "syncPhaseFinishing": "Finishing up…",
+  "syncProgressOfTotal": "{done} of {total}",
+  "@syncProgressOfTotal": {
+    "placeholders": {
+      "done": {
+        "type": "int",
+        "format": "decimalPattern",
+        "example": "12"
+      },
+      "total": {
+        "type": "int",
+        "format": "decimalPattern",
+        "example": "120"
+      }
+    }
+  },
+  "syncProgressCount": "{count} so far",
+  "@syncProgressCount": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "decimalPattern",
+        "example": "12"
+      }
+    }
+  },
+  "syncIndicatorLabel": "Syncing with the server",
+  "offlineNotice": "Offline — showing saved data",
+  "accountLastSynced": "Last synced {when}",
+  "@accountLastSynced": {
+    "placeholders": {
+      "when": {
+        "type": "String",
+        "example": "5 minutes ago"
+      }
+    }
+  },
+  "accountLastSyncedJustNow": "Synced just now",
+  "accountNeverSynced": "Not synced yet",
+  "accountSyncing": "Syncing…",
+  "accountSyncFailed": "The last sync failed.",
+  "accountSyncNow": "Sync now"
 }

@@ -13,10 +13,14 @@ void main() {
   late AuthFakes fakes;
   late SessionManagers sessions;
   late SignOut signOut;
+  late List<String> wiped;
+  late Future<void> Function(String accountId) wipeAccountData;
 
   setUp(() {
     now = DateTime.utc(2026, 10, 9, 12);
     fakes = AuthFakes();
+    wiped = [];
+    wipeAccountData = (accountId) async => wiped.add(accountId);
     sessions = SessionManagers(
       tokenStore: fakes.tokenStore,
       clockOffsets: fakes.clockOffsets,
@@ -32,6 +36,7 @@ void main() {
       clockOffsets: fakes.clockOffsets,
       sessions: sessions,
       accountGateway: fakes.accountGateway,
+      wipeAccountData: (accountId) => wipeAccountData(accountId),
       logoutTimeout: const Duration(milliseconds: 50),
     );
   });
@@ -53,6 +58,38 @@ void main() {
     final registry = await fakes.registry.load();
     expect(registry.accounts.map((entry) => entry.id), [bob.id]);
     expect(registry.activeAccountId, bob.id);
+    expect(wiped, [alice.id]);
+  });
+
+  test(
+    'deletes the local data once the registry has forgotten the account',
+    () async {
+      final alice = await fakes.seedAccount(
+        fullServer270(),
+        tokens: issueTokens(issuedAt: now),
+      );
+      late bool registeredAtWipe;
+      wipeAccountData = (accountId) async {
+        registeredAtWipe = (await fakes.registry.find(accountId)) != null;
+      };
+
+      await signOut(alice.id);
+
+      expect(registeredAtWipe, isFalse);
+    },
+  );
+
+  test('a wipe that fails does not fail the sign-out', () async {
+    final alice = await fakes.seedAccount(
+      fullServer270(),
+      tokens: issueTokens(issuedAt: now),
+    );
+    wipeAccountData = (_) async => throw StateError('disk');
+
+    await signOut(alice.id);
+
+    expect(fakes.secureStore.values, isEmpty);
+    expect((await fakes.registry.load()).accounts, isEmpty);
   });
 
   test('refreshes first when the access token is about to expire', () async {

@@ -7,18 +7,18 @@ import 'package:vikunja_mobile/features/projects/presentation/projects_screen.da
 import 'package:vikunja_mobile/features/tasks/presentation/task_chips.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 
-import '../../helpers/fake_read_client.dart';
 import '../../helpers/pump_app.dart';
 import '../../helpers/sample_data.dart';
+import '../../helpers/sync_fakes.dart';
 
 void main() {
   final now = DateTime(2026, 10, 10, 12);
-  late FakeReadClient client;
+  late SyncFakes data;
 
   setUp(() {
-    client = FakeReadClient();
-    client.projects.all = [sampleProject(id: 1, title: 'Work')];
-    client.tasks.openTasks = [
+    data = SyncFakes(now: now);
+    data.projects.all = [sampleProject(id: 1, title: 'Work')];
+    data.tasks.all = [
       sampleTask(
         id: 1,
         title: 'Quarterly report',
@@ -50,7 +50,7 @@ void main() {
   Future<void> openDetail(WidgetTester tester, String title) async {
     // Tall enough for the whole sheet, which builds its rows lazily.
     usePhoneSurface(tester, logicalSize: const Size(360, 1800));
-    await pumpSignedInApp(tester, readClient: client, now: now);
+    await pumpSignedInApp(tester, sync: data, now: now);
     await tester.tap(find.text(title));
     await tester.pumpAndSettle();
   }
@@ -130,7 +130,7 @@ void main() {
 
   testWidgets('opens over the tab bar, which it blocks', (tester) async {
     usePhoneSurface(tester);
-    await pumpSignedInApp(tester, readClient: client, now: now);
+    await pumpSignedInApp(tester, sync: data, now: now);
     await tester.tap(find.text('Bare task'));
     await tester.pumpAndSettle();
 

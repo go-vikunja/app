@@ -12,7 +12,7 @@ String formatRelativeTime(
   final difference = moment.difference(now);
   final future = !difference.isNegative;
   final seconds = difference.abs().inSeconds;
-  if (seconds < 45) return l10n.relativeNow;
+  if (isJustNow(moment, now: now)) return l10n.relativeNow;
   final minutes = (seconds / 60).round();
   if (minutes < 45) {
     return future
@@ -36,6 +36,10 @@ String formatRelativeTime(
   final years = (days / 365).round();
   return future ? l10n.relativeInYears(years) : l10n.relativeYearsAgo(years);
 }
+
+/// Close enough to [now] for [formatRelativeTime] to say "now".
+bool isJustNow(DateTime moment, {required DateTime now}) =>
+    moment.difference(now).abs().inSeconds < 45;
 
 int _calendarDaysBetween(DateTime from, DateTime to) =>
     _localDate(to).difference(_localDate(from)).inDays;

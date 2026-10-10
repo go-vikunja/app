@@ -63,7 +63,7 @@ jobs:
         run: flutter test --exclude-tags contract
 
   contract:
-    name: Contract tests (Vikunja 1.0, 2.0, 2.3, 2.4, 2.7)
+    name: Contract tests (Vikunja 2.7.0)
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -87,8 +87,16 @@ jobs:
       - name: Wait for test servers
         run: tool/wait_for_test_servers.sh
 
-      - name: Run contract tests
+      - name: Run vikunja_api contract tests
         working-directory: packages/vikunja_api
+        env:
+          VIKUNJA_CONTRACT: "1"
+        run: flutter test --tags contract
+
+      # The sync engine against the live server; registers one more user,
+      # well within the server's 10 logins or registrations per minute.
+      - name: Run app contract tests
+        working-directory: app
         env:
           VIKUNJA_CONTRACT: "1"
         run: flutter test --tags contract

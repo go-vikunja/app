@@ -16,15 +16,14 @@ import 'package:vikunja_mobile/core/auth/web_authenticator.dart';
 import 'package:vikunja_mobile/core/links/external_link_opener.dart';
 import 'package:vikunja_mobile/core/network/dio_factory.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
-import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/features/home/presentation/home_shell.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_server_screen.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/overview/server_overview_screen.dart';
 
 import '../helpers/auth_fakes.dart';
-import '../helpers/fake_read_client.dart';
 import '../helpers/fakes.dart';
 import '../helpers/pump_app.dart';
+import '../helpers/sync_fakes.dart';
 
 // Everything from the overview button to the token storage is the production
 // code: AuthorizationRequest, OAuthTokenClient, AccountApi,
@@ -356,7 +355,7 @@ void main() {
                 FakeExternalLinkOpener(),
               ),
               // The task screens are not this test's story.
-              readClientProvider.overrideWith((ref, _) => FakeReadClient()),
+              ...SyncFakes().overrides,
             ],
             child: const VikunjaApp(),
           ),

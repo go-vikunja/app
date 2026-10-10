@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -5,16 +7,20 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/vikunja_app.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/sync/sync_providers.dart';
+import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/home/presentation/home_shell.dart';
 import 'package:vikunja_mobile/features/home/presentation/reauth_banner.dart';
 import 'package:vikunja_mobile/features/onboarding/application/current_server.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_server_screen.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/overview/server_overview_screen.dart';
+import 'package:vikunja_mobile/features/sync/presentation/first_sync_screen.dart';
 
 import '../helpers/auth_fakes.dart';
 import '../helpers/fakes.dart';
 import '../helpers/pump_app.dart';
 import '../helpers/server_connections.dart';
+import '../helpers/sync_fakes.dart';
 
 void main() {
   GoRouter routerOf(WidgetTester tester) =>
@@ -83,6 +89,22 @@ void main() {
       expect(auth.accountGateway.currentUserTokens, [tokens.accessToken]);
     });
 
+    testWidgets('an account that never synced opens the first-sync screen', (
+      tester,
+    ) async {
+      final auth = AuthFakes();
+      await auth.seedAccount(
+        fullServer270(),
+        tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
+      );
+      final sync = SyncFakes(status: const SyncNeverRun());
+      sync.engine.onEnsureInitialSync = () => Completer<void>().future;
+      await pumpVikunjaApp(tester, auth: auth, sync: sync, settle: false);
+      await pumpUntil(tester, find.byType(FirstSyncScreen));
+
+      expect(location(tester), AppRoutes.firstSync);
+    });
+
     testWidgets('with an account whose session ended still opens home', (
       tester,
     ) async {
@@ -140,7 +162,10 @@ void main() {
           final container = ProviderContainer(
             overrides: appOverrides(auth: auth),
           );
-          await container.read(accountsProvider.future);
+          final accounts = await container.read(accountsProvider.future);
+          if (accounts.activeAccount != null) {
+            await firstSyncStatus(container);
+          }
 
           await tester.pumpWidget(
             UncontrolledProviderScope(

@@ -46,6 +46,7 @@ Task sampleTask({
   String? identifier,
   String description = '',
   double position = 0,
+  DateTime? updated,
 }) => Task(
   id: id,
   title: title,
@@ -56,6 +57,7 @@ Task sampleTask({
   startDate: start?.toUtc(),
   endDate: end?.toUtc(),
   doneAt: doneAt?.toUtc(),
+  updated: updated?.toUtc(),
   done: done,
   priority: priority,
   percentDone: percentDone,

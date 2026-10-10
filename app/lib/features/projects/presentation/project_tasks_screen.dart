@@ -13,6 +13,7 @@ import 'package:vikunja_mobile/features/common/presentation/data_failure_card.da
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
 import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
+import 'package:vikunja_mobile/features/sync/presentation/sync_progress_bar.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
 
@@ -114,6 +115,7 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
             ],
           ),
         ],
+        bottom: const SyncProgressBar(),
       ),
       body: buildRefreshable(
         tasks,

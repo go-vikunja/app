@@ -6,17 +6,20 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/auth/web_authenticator.dart';
+import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
 import 'package:vikunja_mobile/features/home/presentation/reauth_banner.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connection_error_card.dart';
+import 'package:vikunja_mobile/features/sync/presentation/first_sync_screen.dart';
+import 'package:vikunja_mobile/features/sync/presentation/offline_notice.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 
 import '../helpers/auth_fakes.dart';
-import '../helpers/fake_read_client.dart';
 import '../helpers/fakes.dart';
 import '../helpers/pump_app.dart';
 import '../helpers/sample_data.dart';
 import '../helpers/server_connections.dart';
+import '../helpers/sync_fakes.dart';
 
 // Layout overflows are reported as test failures, so reaching the end of each
 // scenario without an exception is the assertion.
@@ -45,15 +48,15 @@ void main() {
     expect(position.extentAfter, 0);
   }
 
-  FakeReadClient richData() {
+  SyncFakes richData({SyncStatus? status}) {
     final now = DateTime.now();
     final label = sampleLabel(
       id: 1,
       title: 'A rather long label title',
       hexColor: 'ffeb10',
     );
-    final client = FakeReadClient();
-    client.projects.all = [
+    final data = SyncFakes(now: now, status: status);
+    data.projects.all = [
       sampleProject(
         id: 1,
         title: 'Work with a very long project title',
@@ -66,7 +69,7 @@ void main() {
         parent: 1,
       ),
     ];
-    client.tasks.openTasks = [
+    data.tasks.all = [
       for (var i = 1; i <= 6; i++)
         sampleTask(
           id: i,
@@ -95,16 +98,14 @@ void main() {
               '<p>Some description text that is long enough to wrap.</p>',
         ),
     ];
-    client.tasks.projectTasks = {1: client.tasks.openTasks};
-    client.tasks.perPage = 4;
-    return client;
+    return data;
   }
 
   for (final locale in locales) {
     testWidgets('overview with tasks at 200 % in dark mode '
         '(${locale.languageCode})', (tester) async {
       useWorstCase(tester, locale);
-      await pumpSignedInApp(tester, readClient: richData());
+      await pumpSignedInApp(tester, sync: richData());
 
       await scrollToEnd(tester, find.byType(CustomScrollView));
       expect(tester.takeException(), isNull);
@@ -113,7 +114,7 @@ void main() {
     testWidgets('task detail sheet at 200 % in dark mode '
         '(${locale.languageCode})', (tester) async {
       useWorstCase(tester, locale);
-      await pumpSignedInApp(tester, readClient: richData());
+      await pumpSignedInApp(tester, sync: richData());
 
       await tester.tap(find.textContaining('Task 1 ').first);
       await tester.pumpAndSettle();
@@ -126,7 +127,7 @@ void main() {
     testWidgets('project tree and project tasks at 200 % in dark mode '
         '(${locale.languageCode})', (tester) async {
       useWorstCase(tester, locale);
-      await pumpSignedInApp(tester, readClient: richData());
+      await pumpSignedInApp(tester, sync: richData());
       final l10n = lookupAppLocalizations(locale);
 
       await openTab(tester, l10n.tabProjects);
@@ -139,24 +140,90 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('overview failure states at 200 % in dark mode '
+    testWidgets('overview sync failure states at 200 % in dark mode '
         '(${locale.languageCode})', (tester) async {
       useWorstCase(tester, locale);
-      final client = richData();
-      client.tasks.onList = (_) async =>
-          throw const NetworkFailure(NetworkProblem.unreachable);
-      await pumpSignedInApp(tester, readClient: client);
-      expect(find.byType(DataFailureCard), findsOneWidget);
-      await scrollToEnd(tester, find.byType(CustomScrollView));
+      final data = richData();
+      final l10n = lookupAppLocalizations(locale);
+      await pumpSignedInApp(tester, sync: data);
 
-      client.tasks.onList = null;
-      await tester.tap(find.byType(TextButton));
+      data.engine.onRefresh = () async => throw const ServerFailure(502);
+      await tester.tap(find.byTooltip(l10n.refresh));
       await tester.pumpAndSettle();
-      client.tasks.onList = (_) async => throw const ServerFailure(502);
-      await pullToRefresh(tester, find.byType(CustomScrollView));
-
       expect(find.byType(DataFailureCard), findsOneWidget);
       await scrollToEnd(tester, find.byType(CustomScrollView));
+
+      // Back to the top, where the notice sits, without a gesture: a drag
+      // down would pull to refresh.
+      tester
+          .state<ScrollableState>(
+            find
+                .descendant(
+                  of: find.byType(CustomScrollView),
+                  matching: find.byType(Scrollable),
+                )
+                .first,
+          )
+          .position
+          .jumpTo(0);
+      await tester.pumpAndSettle();
+      data.engine.onRefresh = () async =>
+          throw const NetworkFailure(NetworkProblem.unreachable);
+      await tester.tap(find.byTooltip(l10n.refresh));
+      await tester.pumpAndSettle();
+      expect(find.byType(OfflineNotice), findsOneWidget);
+      await scrollToEnd(tester, find.byType(CustomScrollView));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('first sync running and failed at 200 % in dark mode '
+        '(${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      final data = richData(status: const SyncNeverRun());
+      final run = Completer<void>();
+      data.engine.onEnsureInitialSync = () => run.future;
+      await pumpSignedInApp(tester, sync: data, settle: false);
+      await pumpUntil(tester, find.byType(FirstSyncScreen));
+
+      // Determinate, so the screen settles.
+      data.engine.emit(
+        const SyncRunning(
+          phase: SyncPhase.archivedTasks,
+          done: 1234,
+          total: 56789,
+          initial: true,
+        ),
+      );
+      await tester.pumpAndSettle();
+      await scrollToEnd(tester, find.byType(SingleChildScrollView));
+      expect(tester.takeException(), isNull);
+
+      run.completeError(const NetworkFailure(NetworkProblem.tls));
+      await tester.pumpAndSettle();
+      expect(find.byType(DataFailureCard), findsOneWidget);
+      await scrollToEnd(tester, find.byType(SingleChildScrollView));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('account tab with a failed sync at 200 % in dark mode '
+        '(${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      final now = DateTime.now();
+      final data = SyncFakes(
+        now: now,
+        status: SyncFailed(
+          failure: const NetworkFailure(NetworkProblem.timeout),
+          lastSyncedAt: now.subtract(const Duration(days: 3)),
+        ),
+      );
+      data.engine.onRefresh = () async =>
+          throw const NetworkFailure(NetworkProblem.timeout);
+      final l10n = lookupAppLocalizations(locale);
+      await pumpSignedInApp(tester, sync: data);
+      await openTab(tester, l10n.tabAccount);
+
+      await scrollToEnd(tester, find.byType(ListView));
+      expect(find.text(l10n.accountSyncFailed), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
@@ -299,9 +366,9 @@ void main() {
       await openTab(tester, l10n.tabAccount);
 
       expect(find.byType(ReauthBanner), findsOneWidget);
-      await tester.ensureVisible(find.byType(FilledButton));
+      await tester.ensureVisible(find.byType(FilledButton).first);
       await tester.pumpAndSettle();
-      await tester.tap(find.byType(FilledButton));
+      await tester.tap(find.byType(FilledButton).first);
       await tester.pumpAndSettle();
 
       expect(find.byType(ConnectionErrorCard), findsOneWidget);

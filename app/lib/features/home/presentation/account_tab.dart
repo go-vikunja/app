@@ -8,12 +8,15 @@ import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/features/home/presentation/account_header.dart';
 import 'package:vikunja_mobile/features/home/presentation/reauth_banner.dart';
 import 'package:vikunja_mobile/features/home/presentation/sign_out_dialog.dart';
+import 'package:vikunja_mobile/features/home/presentation/sync_status_section.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connection_error_card.dart';
 import 'package:vikunja_mobile/features/session/application/sign_in_controller.dart';
 import 'package:vikunja_mobile/features/session/application/sign_out_controller.dart';
 import 'package:vikunja_mobile/features/session/presentation/sign_in_failure_message.dart';
+import 'package:vikunja_mobile/features/sync/presentation/sync_progress_bar.dart';
 
-/// Who is signed in, a session that needs a new sign-in, and sign-out.
+/// Who is signed in, a session that needs a new sign-in, the sync state,
+/// and sign-out.
 class AccountTab extends ConsumerWidget {
   const new({super.key});
 
@@ -43,7 +46,10 @@ class AccountTab extends ConsumerWidget {
     final signingOut = ref.watch(signOutControllerProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.tabAccount)),
+      appBar: AppBar(
+        title: Text(l10n.tabAccount),
+        bottom: const SyncProgressBar(),
+      ),
       body: SafeArea(
         top: false,
         child: ListView(
@@ -75,6 +81,8 @@ class AccountTab extends ConsumerWidget {
               const SizedBox(height: 16),
             ],
             AccountHeader(entry: entry),
+            const SizedBox(height: 24),
+            SyncStatusSection(entry: entry, signingOut: signingOut),
             const SizedBox(height: 32),
             OutlinedButton.icon(
               onPressed: signingOut || isSigningIn
