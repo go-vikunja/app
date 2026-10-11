@@ -270,6 +270,11 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
   final List<NewTask> creates = [];
   final List<(int, TaskChanges)> updates = [];
 
+  /// The labels and users `updateTask` can attach by id, besides those
+  /// already on a task, like the local tables; an unknown id is skipped.
+  final Map<int, Label> knownLabels = {};
+  final Map<int, User> knownUsers = {};
+
   /// Temporary id → server id, as [remapTask] records them; `watchTask`
   /// and [find] follow them like the database does.
   final Map<int, int> remaps = {};
@@ -359,10 +364,26 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
   @override
   Future<void> updateTask(int taskId, TaskChanges changes) {
     updates.add((taskId, changes));
+    final labels = {
+      for (final task in _all)
+        for (final label in task.labels) label.id: label,
+      ...knownLabels,
+    };
+    final users = {
+      for (final task in _all)
+        for (final user in task.assignees) user.id: user,
+      ...knownUsers,
+    };
     return _write(
       'update $taskId',
       (task) => task.id == (remaps[taskId] ?? taskId)
-          ? applyChangesToTask(task, changes, now: _doneAt)
+          ? applyChangesToTask(
+              task,
+              changes,
+              now: _doneAt,
+              labels: labels,
+              users: users,
+            )
           : task,
     );
   }
@@ -375,7 +396,8 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
         : task,
   );
 
-  /// The previous dates come back, like the real repository restores them.
+  /// The previous dates come back, like the real repository restores them,
+  /// and a repeating task's reminders with them.
   @override
   Future<void> undoDone(Task previous) => _write(
     'undoDone ${previous.id}',
@@ -386,6 +408,9 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
             dueDate: previous.dueDate ?? task.dueDate,
             startDate: previous.startDate ?? task.startDate,
             endDate: previous.endDate ?? task.endDate,
+            reminders: previous.repeats && previous.reminders.isNotEmpty
+                ? previous.reminders
+                : null,
           )
         : task,
   );

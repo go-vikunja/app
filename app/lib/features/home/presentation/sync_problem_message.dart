@@ -12,6 +12,8 @@ String describeSyncProblem(AppLocalizations l10n, SyncProblem problem) {
   final why = switch (problem.failure) {
     Forbidden() => l10n.syncProblemForbidden,
     NotFound(code: 3001) => l10n.syncProblemProjectMissing,
+    NotFound(code: 8002) => l10n.syncProblemLabelMissing,
+    NotFound(code: 1005) => l10n.syncProblemUserMissing,
     NotFound() => l10n.syncProblemTaskMissing,
     DomainError(code: 3008) => l10n.syncProblemProjectArchived,
     ValidationFailed() => l10n.syncProblemRejected,

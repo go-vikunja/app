@@ -8,6 +8,8 @@ import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/auth/sign_out_providers.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/outbox/outbox_sender.dart';
+import 'package:vikunja_mobile/core/repositories/local/local_label_repository.dart';
+import 'package:vikunja_mobile/core/repositories/local/local_user_repository.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
@@ -33,6 +35,7 @@ void main() {
   late List<AppDatabase> opened;
   late RecordingSyncEngine engine;
   late FakeWriteClient write;
+  late FakeSyncClient read;
   late ProviderContainer container;
 
   setUp(() {
@@ -41,6 +44,7 @@ void main() {
     opened = [];
     engine = RecordingSyncEngine(SyncIdle(lastSyncedAt: now));
     write = FakeWriteClient(clock: () => now);
+    read = FakeSyncClient()..allTasks = [task];
     container = ProviderContainer(
       overrides: [
         ...auth.overrides,
@@ -57,9 +61,7 @@ void main() {
         ),
         syncEngineProvider.overrideWith((ref, accountId) => engine),
         writeClientProvider.overrideWith((ref, accountId) => write),
-        readClientProvider.overrideWith(
-          (ref, accountId) => FakeSyncClient()..allTasks = [task],
-        ),
+        readClientProvider.overrideWith((ref, accountId) => read),
         clockProvider.overrideWithValue(() => now),
       ],
     );
@@ -106,6 +108,46 @@ void main() {
     expect(pendingIds.read().value, isEmpty);
     expect(pendingCount.read().value, 0);
     expect(engine.refreshCalls, 1);
+  });
+
+  test("the pickers' label create and people search reach the account's "
+      'database, and what they return is attached locally and sent', () async {
+    final (_, repository) = await signedIn();
+    final labels = container.read(labelRepositoryProvider);
+    final users = container.read(userRepositoryProvider);
+    expect(labels, isA<LocalLabelRepository>());
+    expect(users, isA<LocalUserRepository>());
+    const bob = User(id: 8, username: 'bob', name: 'Bob');
+    read.projectUsers[task.projectId] = [bob];
+    write.serverUsers[bob.id] = bob;
+
+    final label = await labels!.create(
+      const NewLabel(title: 'Garden', hexColor: '0ead69'),
+    );
+    final found = await users!.searchAssignees(task.projectId, ' bo ');
+
+    expect(found, [bob]);
+    expect(read.requests, contains('users ${task.projectId} bo'));
+    expect(await labels.watchAll().first, [label]);
+    expect(await users.knownUsers(), contains(bob));
+
+    await repository.updateTask(
+      task.id,
+      TaskChanges(
+        labels: IdSetChange(added: {label.id}),
+        assignees: const IdSetChange(added: {8}),
+      ),
+    );
+    final local = (await opened.single.tasksDao.find(task.id))!;
+    expect(local.labels, [label]);
+    expect(local.assignees, [bob]);
+    await pumpEventQueue();
+
+    expect(write.requests, ['create label Garden', 'update 1']);
+    final stored = write.serverTasks[task.id]!;
+    expect(stored.labels.map((l) => l.id), [label.id]);
+    expect(stored.assignees.map((u) => u.id), [bob.id]);
+    expect((await opened.single.tasksDao.find(task.id))!.labels, [label]);
   });
 
   test('signing out with an op in flight disposes the sender and wipes the '

@@ -92,6 +92,9 @@ final class _FlakyWriteClient implements VikunjaWriteClient {
 
   @override
   late final TasksWritePort tasks = _FlakyTasks(this);
+
+  @override
+  LabelsWritePort get labels => _real.labels;
 }
 
 final class _FlakyTasks implements TasksWritePort {
@@ -367,6 +370,10 @@ void main() {
           expect(sender.state, OutboxSenderState.waiting);
           expect((await db.outboxDao.all()).single.kind, 'createTask');
           await _until(() async => await db.outboxDao.count() == 0);
+          // Joins the retry's run until its refresh is through: the create's
+          // answer has an `updated` with sub-second digits that the server
+          // does not store, and the refresh replaces it.
+          await sender.drain();
 
           final serverId = await db.tasksDao.resolveId(localId);
           expect(serverId, isPositive);
@@ -510,6 +517,140 @@ void main() {
           expect(
             await db.tasksDao.countInProject(seed.projectId),
             inProject.items.length,
+          );
+          expect(await db.outboxDao.count(), 0);
+          expect(sender.state, OutboxSenderState.idle);
+        });
+
+        test('a task created offline with a reminder, labelled and assigned '
+            'before the send, reaches the server with all three; a label '
+            'comes off and back on through the outbox; undoing a repeating '
+            "task's done brings its reminder back", () async {
+          final today = DateTime.now().toUtc();
+          final due = DateTime.utc(today.year, today.month, today.day + 4, 9);
+          const hourBefore = TaskReminder(
+            relativePeriod: Duration(hours: -1),
+            relativeTo: ReminderRelativeTo.dueDate,
+          );
+          final beforeDue = due.subtract(const Duration(hours: 1));
+
+          // Offline: the create, the label and the assignee wait together.
+          sender.pause();
+          final localId = await repository.createTask(
+            NewTask(
+              projectId: seed.projectId,
+              title: 'Labelled offline',
+              dueDate: due,
+              reminders: const [hourBefore],
+            ),
+          );
+          await repository.updateTask(
+            localId,
+            TaskChanges(
+              labels: IdSetChange(added: {seed.labelId}),
+              assignees: IdSetChange(added: {user.id}),
+            ),
+          );
+          final offline = (await db.tasksDao.find(localId))!;
+          expect(offline.labels.map((l) => l.id), [seed.labelId]);
+          expect(offline.assignees.map((u) => u.id), [user.id]);
+          expect(offline.reminders.single.reminder, beforeDue);
+          expect((await db.outboxDao.all()).map((op) => op.kind), [
+            'createTask',
+            'updateTask',
+          ]);
+
+          await sender.resume();
+          await _until(() async => await db.outboxDao.count() == 0);
+
+          final serverId = await db.tasksDao.resolveId(localId);
+          expect(serverId, isPositive);
+          expect(await db.tasksDao.findRow(localId), isNull);
+          void expectComplete(Task task) {
+            expect(task.labels.map((l) => l.id), [seed.labelId]);
+            expect(task.assignees.map((u) => u.id), [user.id]);
+            expect(task.reminders, hasLength(1));
+            expect(
+              task.reminders.single.relativeTo,
+              ReminderRelativeTo.dueDate,
+            );
+            expect(
+              task.reminders.single.relativePeriod,
+              hourBefore.relativePeriod,
+            );
+            expect(task.reminders.single.reminder, _within1s(beforeDue));
+          }
+
+          expectComplete(await reads.tasks.read(serverId));
+          expectComplete((await db.tasksDao.find(serverId))!);
+
+          // The label off and on again.
+          await repository.updateTask(
+            serverId,
+            TaskChanges(labels: IdSetChange(removed: {seed.labelId})),
+          );
+          expect((await db.tasksDao.find(serverId))!.labels, isEmpty);
+          await _drainFully(sender, db);
+
+          expect((await reads.tasks.read(serverId)).labels, isEmpty);
+          expect((await db.tasksDao.find(serverId))!.labels, isEmpty);
+
+          await repository.updateTask(
+            serverId,
+            TaskChanges(labels: IdSetChange(added: {seed.labelId})),
+          );
+          await _drainFully(sender, db);
+
+          expectComplete(await reads.tasks.read(serverId));
+          expectComplete((await db.tasksDao.find(serverId))!);
+
+          // A daily task with an absolute reminder: done moves the reminder
+          // on with the date, the undo brings both back.
+          final reminderAt = DateTime.utc(
+            today.year,
+            today.month,
+            today.day + 2,
+            7,
+            30,
+          );
+          final dailyLocalId = await repository.createTask(
+            NewTask(
+              projectId: seed.projectId,
+              title: 'Daily with a reminder',
+              dueDate: due,
+              repeatAfter: const Duration(days: 1),
+              reminders: [TaskReminder(reminder: reminderAt)],
+            ),
+          );
+          await _drainFully(sender, db);
+          final dailyId = await db.tasksDao.resolveId(dailyLocalId);
+          final previous = (await db.tasksDao.find(dailyId))!;
+          expect(previous.reminders.single.reminder, _within1s(reminderAt));
+
+          await repository.setDone(dailyId, done: true);
+          await _drainFully(sender, db);
+
+          final shifted = await reads.tasks.read(dailyId);
+          expect(shifted.done, isFalse);
+          expect(
+            shifted.reminders.single.reminder,
+            _within1s(reminderAt.add(const Duration(days: 1))),
+          );
+
+          await repository.undoDone(previous);
+          expect(
+            (await db.tasksDao.find(dailyId))!.reminders.single.reminder,
+            _within1s(reminderAt),
+          );
+          await _drainFully(sender, db);
+
+          final undone = await reads.tasks.read(dailyId);
+          expect(undone.done, isFalse);
+          expect(undone.dueDate, _within1s(due));
+          expect(undone.reminders.single.reminder, _within1s(reminderAt));
+          expect(
+            (await db.tasksDao.find(dailyId))!.reminders.single.reminder,
+            _within1s(reminderAt),
           );
           expect(await db.outboxDao.count(), 0);
           expect(sender.state, OutboxSenderState.idle);

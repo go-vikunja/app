@@ -939,6 +939,8 @@
   "syncProblemForbidden": "You no longer have access to its project.",
   "syncProblemProjectMissing": "Its project no longer exists on the server.",
   "syncProblemTaskMissing": "The task no longer exists on the server.",
+  "syncProblemLabelMissing": "One of its labels no longer exists on the server.",
+  "syncProblemUserMissing": "One of its assignees no longer exists on the server.",
   "syncProblemProjectArchived": "Its project is archived.",
   "syncProblemRejected": "The server rejected the change.",
   "syncProblemUnexpected": "The server answered in an unexpected way.",
@@ -1043,6 +1045,129 @@
       "title": {
         "type": "String",
         "example": "Buy milk"
+      }
+    }
+  },
+  "taskEditAddLabel": "Add label",
+  "taskEditRemoveLabel": "Remove label {label}",
+  "@taskEditRemoveLabel": {
+    "placeholders": {
+      "label": {
+        "type": "String",
+        "example": "Finance"
+      }
+    }
+  },
+  "taskEditAssign": "Assign",
+  "taskEditUnassign": "Unassign {name}",
+  "@taskEditUnassign": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Alice Example"
+      }
+    }
+  },
+  "taskEditAddReminder": "Add reminder",
+  "taskEditEditReminder": "Edit reminder",
+  "taskEditRemoveReminder": "Remove reminder: {reminder}",
+  "@taskEditRemoveReminder": {
+    "placeholders": {
+      "reminder": {
+        "type": "String",
+        "example": "1 day before the due date"
+      }
+    }
+  },
+  "taskEditReminderDuplicate": "This reminder is already set.",
+  "reminderDueDateNotSet": "Due date is not set",
+  "reminderStartDateNotSet": "Start date is not set",
+  "reminderEndDateNotSet": "End date is not set",
+  "taskEditRemindersCoincide": "Some reminders fall on the same moment. The server keeps only one of them.",
+  "labelPickerTitle": "Choose labels",
+  "labelPickerSearch": "Search or create a label",
+  "labelPickerEmpty": "No labels yet. Type a name to create one.",
+  "labelPickerCreate": "Create label “{title}”",
+  "@labelPickerCreate": {
+    "placeholders": {
+      "title": {
+        "type": "String",
+        "example": "Groceries"
+      }
+    }
+  },
+  "labelPickerCreating": "Creating the label…",
+  "labelPickerCreateOffline": "Creating a label needs a connection to the server.",
+  "labelPickerCreateUnconfirmed": "Couldn't confirm that the label was created. Check your connection and try again.",
+  "labelPickerCreateRejected": "The server did not create the label: {message}",
+  "@labelPickerCreateRejected": {
+    "placeholders": {
+      "message": {
+        "type": "String",
+        "example": "invalid data"
+      }
+    }
+  },
+  "labelPickerCreateFailed": "The label could not be created.",
+  "labelPickerTitleTooLong": "A label title can have at most {max} characters.",
+  "@labelPickerTitleTooLong": {
+    "placeholders": {
+      "max": {
+        "type": "int",
+        "example": "250"
+      }
+    }
+  },
+  "assigneePickerTitle": "Assign people",
+  "assigneePickerSearch": "Search people",
+  "assigneePickerSearching": "Searching…",
+  "assigneePickerNoResults": "Nobody found.",
+  "assigneePickerOffline": "Offline — showing people from your synced tasks",
+  "assigneePickerFallback": "{reason} — showing people from your synced tasks",
+  "@assigneePickerFallback": {
+    "description": "After a search that failed for another reason than a missing connection; the reason is the server's message or assigneePickerSearchFailed.",
+    "placeholders": {
+      "reason": {
+        "type": "String",
+        "example": "Forbidden"
+      }
+    }
+  },
+  "assigneePickerSearchFailed": "Search failed",
+  "assigneeUsername": "@{username}",
+  "@assigneeUsername": {
+    "placeholders": {
+      "username": {
+        "type": "String",
+        "example": "alice"
+      }
+    }
+  },
+  "reminderPickerCustom": "Custom…",
+  "reminderPickerDateTime": "Date and time…",
+  "reminderPickerAlreadySet": "Already set",
+  "reminderPickerNoDateHint": "Set a due, start or end date to get quick choices here.",
+  "reminderPickerCustomTitle": "Custom reminder",
+  "reminderAmountLabel": "Amount",
+  "reminderAmountInvalid": "Enter a whole number, 0 or more.",
+  "reminderUnitCaption": "Unit",
+  "reminderDirectionCaption": "When",
+  "reminderUnitMinutes": "Minutes",
+  "reminderUnitHours": "Hours",
+  "reminderUnitDays": "Days",
+  "reminderUnitWeeks": "Weeks",
+  "reminderDirectionBefore": "Before",
+  "reminderDirectionAfter": "After",
+  "reminderRelativeToLabel": "Relative to",
+  "reminderRelativeToDueDate": "Due date",
+  "reminderRelativeToStartDate": "Start date",
+  "reminderRelativeToEndDate": "End date",
+  "reminderRelativeToUnset": "{date} (not set)",
+  "@reminderRelativeToUnset": {
+    "placeholders": {
+      "date": {
+        "type": "String",
+        "example": "Start date"
       }
     }
   }

@@ -136,6 +136,147 @@ void main() {
     });
   });
 
+  group('labels and assignees', () {
+    final finance = sampleLabel(id: 1, title: 'Finance');
+    final errand = sampleLabel(id: 2, title: 'Errand');
+    final garden = sampleLabel(id: 3, title: 'Garden');
+    const alice = User(id: 7, username: 'alice');
+    const bob = User(id: 8, username: 'bob');
+    final labelled = task.copyWith(
+      labels: [finance, errand],
+      assignees: const [alice],
+    );
+
+    test('come from the task, without the duplicates a server may send', () {
+      final draft = TaskDraft.fromTask(
+        labelled.copyWith(labels: [finance, finance, errand]),
+      );
+      expect(draft.labels, [finance, errand]);
+      expect(draft.assignees, [alice]);
+    });
+
+    test('go as the ids added and removed', () {
+      final draft = TaskDraft.fromTask(labelled)
+          .copyWith(labels: [errand, garden], assignees: const [bob]);
+      expect(
+        draft.diff(labelled),
+        const TaskChanges(
+          labels: IdSetChange(added: {3}, removed: {1}),
+          assignees: IdSetChange(added: {8}, removed: {7}),
+        ),
+      );
+    });
+
+    test('a new order or a removal undone is no change', () {
+      final draft = TaskDraft.fromTask(labelled);
+      expect(
+        draft.copyWith(labels: [errand, finance]).diff(labelled).isEmpty,
+        isTrue,
+      );
+      final undone = draft
+          .copyWith(labels: [errand])
+          .copyWith(labels: [errand, finance]);
+      expect(undone.diff(labelled).labels, isNull);
+      expect(
+        draft.copyWith(assignees: const []).copyWith(assignees: const [alice]),
+        draft,
+      );
+    });
+
+    test('removing all of them removes every id', () {
+      final draft = TaskDraft.fromTask(labelled)
+          .copyWith(labels: const [], assignees: const []);
+      expect(
+        draft.diff(labelled),
+        const TaskChanges(
+          labels: IdSetChange(removed: {1, 2}),
+          assignees: IdSetChange(removed: {7}),
+        ),
+      );
+    });
+  });
+
+  group('reminders', () {
+    final dayBefore = TaskReminder(
+      reminder: DateTime.utc(2026, 10, 11, 7, 30),
+      relativePeriod: const Duration(days: -1),
+      relativeTo: ReminderRelativeTo.dueDate,
+    );
+    final absolute = TaskReminder(reminder: DateTime.utc(2026, 10, 20, 9));
+    final reminded = task.copyWith(reminders: [dayBefore, absolute]);
+
+    test('an untouched list, a new order and a re-added one are no '
+        'change', () {
+      final draft = TaskDraft.fromTask(reminded);
+      expect(draft.diff(reminded).isEmpty, isTrue);
+      expect(
+        draft.copyWith(reminders: [absolute, dayBefore]).diff(reminded),
+        const TaskChanges(),
+      );
+      // Added again from a preset, without the instant the server stored.
+      const fromPreset = TaskReminder(
+        relativePeriod: Duration(days: -1),
+        relativeTo: ReminderRelativeTo.dueDate,
+      );
+      expect(
+        draft.copyWith(reminders: [absolute, fromPreset]).diff(reminded),
+        const TaskChanges(),
+      );
+      expect(
+        draft
+            .copyWith(
+              reminders: [TaskReminder(reminder: absolute.reminder!.toLocal())],
+            )
+            .copyWith(reminders: [dayBefore, absolute])
+            .diff(reminded)
+            .isEmpty,
+        isTrue,
+      );
+    });
+
+    test('any other list goes whole', () {
+      const weekBefore = TaskReminder(
+        relativePeriod: Duration(days: -7),
+        relativeTo: ReminderRelativeTo.dueDate,
+      );
+      final draft = TaskDraft.fromTask(reminded);
+      expect(
+        draft.copyWith(reminders: [dayBefore, weekBefore]).diff(reminded),
+        TaskChanges(reminders: [dayBefore, weekBefore]),
+      );
+      expect(
+        draft.copyWith(reminders: const []).diff(reminded),
+        const TaskChanges(reminders: []),
+      );
+      expect(
+        TaskDraft.fromTask(task)
+            .copyWith(reminders: [absolute])
+            .diff(task)
+            .reminders,
+        [absolute],
+      );
+    });
+
+    test('a duplicate on the task is kept and counts', () {
+      final twice = task.copyWith(reminders: [absolute, absolute]);
+      final draft = TaskDraft.fromTask(twice);
+      expect(draft.reminders, [absolute, absolute]);
+      expect(draft.copyWith(reminders: [absolute]).diff(twice).reminders, [
+        absolute,
+      ]);
+    });
+
+    test('absolute instants are held in UTC', () {
+      final local = task.copyWith(
+        reminders: [TaskReminder(reminder: DateTime(2026, 10, 20, 9))],
+      );
+      expect(
+        TaskDraft.fromTask(local).reminders.single.reminder!.isUtc,
+        isTrue,
+      );
+    });
+  });
+
   group('validity', () {
     test('needs a title and a repeat amount above 0', () {
       final base = TaskDraft.fromTask(task);

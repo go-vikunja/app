@@ -47,6 +47,14 @@ void main() {
       endsWith(en.syncProblemTaskMissing),
     );
     expect(
+      describe(const NotFound(code: 8002)),
+      endsWith(en.syncProblemLabelMissing),
+    );
+    expect(
+      describe(const NotFound(code: 1005)),
+      endsWith(en.syncProblemUserMissing),
+    );
+    expect(
       describe(const DomainError(412, code: 3008)),
       endsWith(en.syncProblemProjectArchived),
     );

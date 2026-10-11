@@ -3,7 +3,8 @@ import 'dart:convert';
 import 'package:vikunja_domain/vikunja_domain.dart';
 
 /// `TaskChanges` as stored in the outbox and in `tasks.pending_changes`:
-/// the wire names, absent for unchanged, an empty string for a cleared date.
+/// the wire names, absent for unchanged, an empty string for a cleared date,
+/// label and assignee deltas as `{"added": [...], "removed": [...]}`.
 String encodeTaskChanges(TaskChanges changes) =>
     jsonEncode(taskChangesToJson(changes));
 
@@ -26,6 +27,11 @@ Map<String, Object?> taskChangesToJson(TaskChanges changes) => {
   'repeat_after': ?changes.repeatAfter?.inSeconds,
   'repeat_mode': ?changes.repeatMode?.value,
   'project_id': ?changes.projectId,
+  if (changes.labels case final labels?) 'labels': _idSetJson(labels),
+  if (changes.assignees case final assignees?)
+    'assignees': _idSetJson(assignees),
+  if (changes.reminders case final reminders?)
+    'reminders': remindersToJson(reminders),
 };
 
 TaskChanges taskChangesFromJson(Map<String, Object?> json) => TaskChanges(
@@ -48,7 +54,55 @@ TaskChanges taskChangesFromJson(Map<String, Object?> json) => TaskChanges(
     _ => null,
   },
   projectId: json['project_id'] as int?,
+  labels: _idSetChange(json['labels']),
+  assignees: _idSetChange(json['assignees']),
+  reminders: switch (json['reminders']) {
+    final List<Object?> list => remindersFromJson(list),
+    _ => null,
+  },
 );
+
+/// Instants in UTC; `reminder` is absent while a relative one has none.
+List<Map<String, Object?>> remindersToJson(List<TaskReminder> reminders) => [
+  for (final reminder in reminders)
+    {
+      'reminder': ?reminder.reminder?.toUtc().toIso8601String(),
+      'relative_period': reminder.relativePeriod.inSeconds,
+      'relative_to': ?reminder.relativeTo?.wireName,
+    },
+];
+
+List<TaskReminder> remindersFromJson(List<Object?> json) => [
+  for (final item in json)
+    if (item is Map<String, Object?>)
+      TaskReminder(
+        reminder: switch (item['reminder']) {
+          final String iso => DateTime.parse(iso).toUtc(),
+          _ => null,
+        },
+        relativePeriod: Duration(seconds: item['relative_period'] as int? ?? 0),
+        relativeTo: ReminderRelativeTo.fromWire(item['relative_to'] as String?),
+      ),
+];
+
+Map<String, Object?> _idSetJson(IdSetChange change) => {
+  'added': [...change.added]..sort(),
+  'removed': [...change.removed]..sort(),
+};
+
+IdSetChange? _idSetChange(Object? value) => switch (value) {
+  final Map<String, Object?> map => IdSetChange(
+    added: _ids(map['added']),
+    removed: _ids(map['removed']),
+  ),
+  _ => null,
+};
+
+Set<int> _ids(Object? value) => {
+  if (value is List<Object?>)
+    for (final id in value)
+      if (id is int) id,
+};
 
 String _dateJson(DateChange change) => switch (change) {
   SetDate(:final value) => value.toUtc().toIso8601String(),

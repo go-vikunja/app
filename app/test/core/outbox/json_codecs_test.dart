@@ -68,6 +68,71 @@ void main() {
       );
       expect(decoded.endDate, DateChange.set(local.toUtc()));
     });
+
+    test('label and assignee changes are id deltas, reminders the whole '
+        'list', () {
+      final changes = TaskChanges(
+        labels: const IdSetChange(added: {7, 3}, removed: {9}),
+        assignees: const IdSetChange(removed: {2}),
+        reminders: [
+          TaskReminder(reminder: DateTime.utc(2026, 10, 12, 8)),
+          const TaskReminder(
+            relativePeriod: Duration(hours: -2),
+            relativeTo: ReminderRelativeTo.dueDate,
+          ),
+          TaskReminder(
+            reminder: DateTime.utc(2026, 10, 13, 9),
+            relativePeriod: const Duration(days: 1),
+            relativeTo: ReminderRelativeTo.startDate,
+          ),
+        ],
+      );
+
+      final json = encodeTaskChanges(changes);
+
+      expect(jsonDecode(json), {
+        'labels': {
+          'added': [3, 7],
+          'removed': [9],
+        },
+        'assignees': {
+          'added': <int>[],
+          'removed': [2],
+        },
+        'reminders': [
+          {'reminder': '2026-10-12T08:00:00.000Z', 'relative_period': 0},
+          {'relative_period': -7200, 'relative_to': 'due_date'},
+          {
+            'reminder': '2026-10-13T09:00:00.000Z',
+            'relative_period': 86400,
+            'relative_to': 'start_date',
+          },
+        ],
+      });
+      expect(decodeTaskChanges(json), changes);
+    });
+
+    test('an empty reminder list removes them all and stays a change', () {
+      const cleared = TaskChanges(reminders: []);
+
+      final json = encodeTaskChanges(cleared);
+
+      expect(jsonDecode(json), {'reminders': <Object?>[]});
+      final back = decodeTaskChanges(json);
+      expect(back, cleared);
+      expect(back.reminders, isEmpty);
+      expect(back.isEmpty, isFalse);
+    });
+
+    test('a payload from before step 12b changes no label, assignee or '
+        'reminder', () {
+      final old = decodeTaskChanges('{"done":true,"priority":2}');
+
+      expect(old, const TaskChanges(done: true, priority: 2));
+      expect(old.labels, isNull);
+      expect(old.assignees, isNull);
+      expect(old.reminders, isNull);
+    });
   });
 
   group('NewTask', () {
@@ -105,6 +170,35 @@ void main() {
       expect(back.startDate, DateTime(2026, 10, 12, 8).toUtc());
       expect(back.startDate!.isUtc, isTrue);
       expect(back.endDate, isNull);
+      expect(decodeNewTask(encodeNewTask(back)), back);
+    });
+
+    test('reminders go with the create in the stored form', () {
+      final task = NewTask(
+        projectId: 7,
+        title: 'Call back',
+        dueDate: DateTime.utc(2026, 10, 12, 9),
+        reminders: [
+          const TaskReminder(
+            relativePeriod: Duration(minutes: -30),
+            relativeTo: ReminderRelativeTo.dueDate,
+          ),
+          TaskReminder(reminder: DateTime(2026, 10, 11, 18)),
+        ],
+      );
+
+      final json = encodeNewTask(task);
+
+      expect((jsonDecode(json) as Map<String, Object?>)['reminders'], [
+        {'relative_period': -1800, 'relative_to': 'due_date'},
+        {
+          'reminder': DateTime(2026, 10, 11, 18).toUtc().toIso8601String(),
+          'relative_period': 0,
+        },
+      ]);
+      final back = decodeNewTask(json);
+      expect(back.reminders.last.reminder, DateTime(2026, 10, 11, 18).toUtc());
+      expect(back.reminders.first, task.reminders.first);
       expect(decodeNewTask(encodeNewTask(back)), back);
     });
 

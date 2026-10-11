@@ -1,5 +1,7 @@
 import 'package:meta/meta.dart';
+import 'package:vikunja_domain/src/task/id_set_change.dart';
 import 'package:vikunja_domain/src/task/task.dart';
+import 'package:vikunja_domain/src/task/task_reminder.dart';
 
 /// A date field edit: set to an instant or cleared. Null in [TaskChanges]
 /// means "unchanged".
@@ -53,6 +55,9 @@ final class TaskChanges {
     this.repeatAfter,
     this.repeatMode,
     this.projectId,
+    this.labels,
+    this.assignees,
+    this.reminders,
   });
 
   final String? title;
@@ -73,6 +78,16 @@ final class TaskChanges {
   /// Moves the task; the server reassigns `index` and `identifier`.
   final int? projectId;
 
+  /// Label ids to attach and detach, through the task's label endpoints.
+  final IdSetChange? labels;
+
+  /// User ids to assign and unassign, through the task's assignee
+  /// endpoints.
+  final IdSetChange? assignees;
+
+  /// The task's whole reminder list; empty removes every reminder.
+  final List<TaskReminder>? reminders;
+
   bool get isEmpty =>
       title == null &&
       description == null &&
@@ -86,7 +101,10 @@ final class TaskChanges {
       endDate == null &&
       repeatAfter == null &&
       repeatMode == null &&
-      projectId == null;
+      projectId == null &&
+      (labels?.isEmpty ?? true) &&
+      (assignees?.isEmpty ?? true) &&
+      reminders == null;
 
   /// [later] wins where both set a field.
   TaskChanges merge(TaskChanges later) => TaskChanges(
@@ -103,7 +121,17 @@ final class TaskChanges {
     repeatAfter: later.repeatAfter ?? repeatAfter,
     repeatMode: later.repeatMode ?? repeatMode,
     projectId: later.projectId ?? projectId,
+    labels: _mergeSets(labels, later.labels),
+    assignees: _mergeSets(assignees, later.assignees),
+    reminders: later.reminders ?? reminders,
   );
+
+  static IdSetChange? _mergeSets(IdSetChange? earlier, IdSetChange? later) =>
+      switch ((earlier, later)) {
+        (final earlier?, final later?) => earlier.merge(later),
+        (final earlier, null) => earlier,
+        (null, final later) => later,
+      };
 
   @override
   bool operator ==(Object other) =>
@@ -120,7 +148,19 @@ final class TaskChanges {
       other.endDate == endDate &&
       other.repeatAfter == repeatAfter &&
       other.repeatMode == repeatMode &&
-      other.projectId == projectId;
+      other.projectId == projectId &&
+      other.labels == labels &&
+      other.assignees == assignees &&
+      _sameReminders(other.reminders, reminders);
+
+  static bool _sameReminders(List<TaskReminder>? a, List<TaskReminder>? b) {
+    if (a == null || b == null) return a == b;
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
 
   @override
   int get hashCode => Object.hash(
@@ -137,5 +177,11 @@ final class TaskChanges {
     repeatAfter,
     repeatMode,
     projectId,
+    labels,
+    assignees,
+    switch (reminders) {
+      final list? => Object.hashAll(list),
+      null => null,
+    },
   );
 }

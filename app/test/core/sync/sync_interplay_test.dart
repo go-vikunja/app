@@ -204,6 +204,57 @@ void main() {
     expect((await db.projectsDao.loadAll()).map((p) => p.id), [1]);
   });
 
+  test('a pull keeps queued labels, assignees and reminders over the '
+      "server's", () async {
+    final urgent = sampleLabel(id: 10, title: 'urgent');
+    final home = sampleLabel(id: 11, title: 'home');
+    const ana = User(id: 20, username: 'ana');
+    client.allLabels = [urgent, home];
+    editOnServer(
+      1,
+      (task) =>
+          copyTask(task, labels: [urgent], assignees: [ana], updated: edited),
+    );
+    await engine().refresh();
+    expect((await db.tasksDao.find(1))!.labels, [urgent]);
+    const hourBefore = TaskReminder(
+      relativePeriod: Duration(hours: -1),
+      relativeTo: ReminderRelativeTo.dueDate,
+    );
+    await queue(
+      1,
+      const TaskChanges(
+        labels: IdSetChange(added: {11}, removed: {10}),
+        assignees: IdSetChange(removed: {20}),
+        reminders: [hourBefore],
+      ),
+    );
+    editOnServer(
+      1,
+      (task) => copyTask(
+        task,
+        title: 'One, renamed',
+        reminders: [TaskReminder(reminder: monday)],
+        updated: edited.add(const Duration(minutes: 1)),
+      ),
+    );
+
+    await engine().refresh();
+
+    final one = (await db.tasksDao.find(1))!;
+    expect(one.title, 'One, renamed');
+    expect(one.labels, [home]);
+    expect(one.assignees, isEmpty);
+    expect(one.reminders, [
+      TaskReminder(
+        reminder: monday.subtract(const Duration(hours: 1)),
+        relativePeriod: hourBefore.relativePeriod,
+        relativeTo: hourBefore.relativeTo,
+      ),
+    ]);
+    expect(await db.outboxDao.count(), 1);
+  });
+
   test("once sent, the next pull takes the server's row as it is", () async {
     await queue(1, done);
     final write = FakeWriteClient(clock: () => now)

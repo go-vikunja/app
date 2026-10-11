@@ -373,6 +373,44 @@ void main() {
       },
     );
 
+    // An update answer lists the reminders from before the server merged
+    // those a date change put on one instant, with the `updated` of the
+    // stored task.
+    test('reminders the server merged without a newer updated replace the '
+        'local ones', () async {
+      final sync = await synced();
+      const onTheDay = TaskReminder(relativeTo: ReminderRelativeTo.dueDate);
+      const dayBefore = TaskReminder(
+        relativePeriod: Duration(days: -1),
+        relativeTo: ReminderRelativeTo.dueDate,
+      );
+      final answered = sampleTask(
+        id: 30,
+        title: 'Task 30',
+        projectId: 2,
+        reminders: const [onTheDay, dayBefore],
+        updated: newest,
+      );
+      await db.tasksDao.upsertAll([answered]);
+      client.allTasks = [
+        for (final t in client.allTasks)
+          if (t.id == 30)
+            sampleTask(
+              id: 30,
+              title: 'Task 30',
+              projectId: 2,
+              reminders: const [dayBefore],
+              updated: newest,
+            )
+          else
+            t,
+      ];
+
+      await sync.refresh();
+
+      expect((await db.tasksDao.find(30))!.reminders, [dayBefore]);
+    });
+
     test('continues a page boundary inside one second by id', () async {
       final sync = await synced(perPage: 4);
       for (var id = 1; id <= 10; id++) {

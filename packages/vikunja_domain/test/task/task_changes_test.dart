@@ -36,9 +36,24 @@ void main() {
         const TaskChanges(repeatAfter: Duration.zero),
         const TaskChanges(repeatMode: RepeatMode.afterAmount),
         const TaskChanges(projectId: 1),
+        const TaskChanges(labels: IdSetChange(added: {1})),
+        const TaskChanges(labels: IdSetChange(removed: {1})),
+        const TaskChanges(assignees: IdSetChange(added: {1})),
+        const TaskChanges(assignees: IdSetChange(removed: {1})),
+        const TaskChanges(reminders: []),
       ];
 
       expect(singles.map((c) => c.isEmpty), everyElement(isFalse));
+    });
+
+    test('is true with empty id-set changes', () {
+      expect(
+        const TaskChanges(
+          labels: IdSetChange(),
+          assignees: IdSetChange(),
+        ).isEmpty,
+        isTrue,
+      );
     });
   });
 
@@ -141,6 +156,81 @@ void main() {
     });
   });
 
+  group('TaskChanges.merge of labels, assignees and reminders', () {
+    final morning = TaskReminder(reminder: monday);
+    const hourBefore = TaskReminder(
+      relativePeriod: Duration(hours: -1),
+      relativeTo: ReminderRelativeTo.dueDate,
+    );
+
+    test('id-set changes merge per id, the later one winning', () {
+      const earlier = TaskChanges(
+        labels: IdSetChange(added: {1, 2}),
+        assignees: IdSetChange(removed: {7}),
+      );
+      const later = TaskChanges(
+        labels: IdSetChange(removed: {2}),
+        assignees: IdSetChange(added: {7, 8}),
+      );
+
+      expect(
+        earlier.merge(later),
+        const TaskChanges(
+          labels: IdSetChange(added: {1}, removed: {2}),
+          assignees: IdSetChange(added: {7, 8}),
+        ),
+      );
+    });
+
+    test('a label added, then removed, then added again stays added', () {
+      final merged = const TaskChanges(labels: IdSetChange(added: {1}))
+          .merge(const TaskChanges(labels: IdSetChange(removed: {1})))
+          .merge(const TaskChanges(labels: IdSetChange(added: {1})));
+
+      expect(merged.labels, const IdSetChange(added: {1}));
+    });
+
+    test('an id-set change on one side only is kept', () {
+      const labels = TaskChanges(labels: IdSetChange(added: {1}));
+      const assignees = TaskChanges(assignees: IdSetChange(removed: {7}));
+
+      expect(
+        labels.merge(assignees),
+        const TaskChanges(
+          labels: IdSetChange(added: {1}),
+          assignees: IdSetChange(removed: {7}),
+        ),
+      );
+      expect(labels.merge(const TaskChanges(title: 't')).labels, labels.labels);
+      expect(const TaskChanges(title: 't').merge(labels).labels, labels.labels);
+    });
+
+    test('reminders are a whole list: the later one replaces it', () {
+      final earlier = TaskChanges(reminders: [morning, hourBefore]);
+      const later = TaskChanges(reminders: [hourBefore]);
+
+      expect(earlier.merge(later).reminders, [hourBefore]);
+      expect(
+        earlier.merge(const TaskChanges(reminders: [])).reminders,
+        isEmpty,
+      );
+      expect(earlier.merge(const TaskChanges(title: 't')).reminders, [
+        morning,
+        hourBefore,
+      ]);
+      expect(const TaskChanges().merge(earlier).reminders, earlier.reminders);
+    });
+
+    test('an add and its removal merge into a change with an empty side, '
+        'which is not empty as a whole', () {
+      final merged = const TaskChanges(labels: IdSetChange(added: {1}))
+          .merge(const TaskChanges(labels: IdSetChange(removed: {1})));
+
+      expect(merged.isEmpty, isFalse);
+      expect(merged.labels, const IdSetChange(removed: {1}));
+    });
+  });
+
   group('equality', () {
     test('compares every field', () {
       expect(
@@ -170,6 +260,65 @@ void main() {
       expect(
         const TaskChanges(projectId: 1),
         isNot(const TaskChanges(projectId: 2)),
+      );
+    });
+
+    test('compares id-set changes by content', () {
+      expect(
+        const TaskChanges(labels: IdSetChange(added: {1, 2})),
+        const TaskChanges(labels: IdSetChange(added: {2, 1})),
+      );
+      expect(
+        const TaskChanges(labels: IdSetChange(added: {1, 2})).hashCode,
+        const TaskChanges(labels: IdSetChange(added: {2, 1})).hashCode,
+      );
+      expect(
+        const TaskChanges(labels: IdSetChange(added: {1})),
+        isNot(const TaskChanges(assignees: IdSetChange(added: {1}))),
+      );
+      expect(
+        const TaskChanges(labels: IdSetChange(added: {1})),
+        isNot(const TaskChanges(labels: IdSetChange(removed: {1}))),
+      );
+    });
+
+    test('compares reminders element by element', () {
+      final morning = TaskReminder(reminder: monday);
+      const hourBefore = TaskReminder(
+        relativePeriod: Duration(hours: -1),
+        relativeTo: ReminderRelativeTo.dueDate,
+      );
+
+      expect(
+        TaskChanges(reminders: [morning, hourBefore]),
+        TaskChanges(
+          reminders: [
+            TaskReminder(reminder: monday),
+            hourBefore,
+          ],
+        ),
+      );
+      expect(
+        TaskChanges(reminders: [morning, hourBefore]).hashCode,
+        TaskChanges(
+          reminders: [
+            TaskReminder(reminder: monday),
+            hourBefore,
+          ],
+        ).hashCode,
+      );
+      expect(
+        TaskChanges(reminders: [morning]),
+        isNot(TaskChanges(reminders: [TaskReminder(reminder: friday)])),
+      );
+      expect(
+        TaskChanges(reminders: [morning]),
+        isNot(TaskChanges(reminders: [morning, morning])),
+      );
+      expect(const TaskChanges(reminders: []), isNot(const TaskChanges()));
+      expect(
+        const TaskChanges(reminders: []),
+        const TaskChanges(reminders: []),
       );
     });
   });

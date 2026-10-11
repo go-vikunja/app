@@ -39,16 +39,20 @@ List<TaskAssigneeRow> taskAssigneeRows(Task task) => [
     TaskAssigneeRow(taskId: task.id, userId: user.id),
 ];
 
-List<TaskReminderRow> taskReminderRows(Task task) => [
-  for (final (ordinal, reminder) in task.reminders.indexed)
-    TaskReminderRow(
-      taskId: task.id,
-      ordinal: ordinal,
-      reminder: reminder.reminder,
-      relativePeriod: reminder.relativePeriod.inSeconds,
-      relativeTo: reminder.relativeTo?.wireName,
-    ),
-];
+List<TaskReminderRow> taskReminderRows(Task task) =>
+    reminderRows(task.id, task.reminders);
+
+List<TaskReminderRow> reminderRows(int taskId, List<TaskReminder> reminders) =>
+    [
+      for (final (ordinal, reminder) in reminders.indexed)
+        TaskReminderRow(
+          taskId: taskId,
+          ordinal: ordinal,
+          reminder: reminder.reminder,
+          relativePeriod: reminder.relativePeriod.inSeconds,
+          relativeTo: reminder.relativeTo?.wireName,
+        ),
+    ];
 
 /// Only the edges; the related tasks themselves are rows of their own.
 List<TaskRelationRow> taskRelationRows(Task task) => [

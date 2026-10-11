@@ -6,6 +6,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/auth/web_authenticator.dart';
+import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
 import 'package:vikunja_mobile/features/home/presentation/reauth_banner.dart';
@@ -14,10 +15,13 @@ import 'package:vikunja_mobile/features/sync/presentation/first_sync_screen.dart
 import 'package:vikunja_mobile/features/sync/presentation/offline_notice.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/task_edit_page.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/pickers/assignee_picker.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 
+import '../features/tasks/edit_page_harness.dart';
 import '../helpers/auth_fakes.dart';
 import '../helpers/fakes.dart';
+import '../helpers/label_user_fakes.dart';
 import '../helpers/pump_app.dart';
 import '../helpers/sample_data.dart';
 import '../helpers/server_connections.dart';
@@ -195,6 +199,195 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
     });
+
+    testWidgets('label, people and reminder pickers at 200 % in dark mode '
+        '(${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      const longName = User(
+        id: 2,
+        username: 'konstantin',
+        name: 'Konstantin Langername-Mustermann',
+      );
+      await pumpSignedInApp(
+        tester,
+        sync: richData(),
+        overrides: [
+          labelRepositoryProvider.overrideWithValue(
+            FakeLabelRepository(
+              labels: [
+                sampleLabel(
+                  id: 1,
+                  title: 'A rather long label title',
+                  hexColor: 'ffeb10',
+                ),
+                sampleLabel(id: 2, title: 'Another label that goes on'),
+              ],
+            ),
+          ),
+          userRepositoryProvider.overrideWithValue(
+            FakeUserRepository(
+              projectUsers: {
+                1: const [longName],
+              },
+            ),
+          ),
+        ],
+      );
+      final l10n = lookupAppLocalizations(locale);
+      await tapRow(tester, 'Task 1 ');
+      await tester.tap(find.byTooltip(l10n.taskEdit));
+      await tester.pumpAndSettle();
+
+      Future<void> open(String action) async {
+        // The form builds lazily; at this scale the sections start below
+        // the fold.
+        await tester.scrollUntilVisible(
+          find.text(action),
+          200,
+          scrollable: find
+              .descendant(
+                of: find.byType(ListView),
+                matching: find.byType(Scrollable),
+              )
+              .first,
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.text(action));
+        await tester.pumpAndSettle();
+      }
+
+      Future<void> close() async {
+        await tester.binding.handlePopRoute();
+        await tester.pumpAndSettle();
+      }
+
+      await open(l10n.taskEditAddLabel);
+      await tester.enterText(find.byType(TextField).last, 'A new label');
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.labelPickerCreate('A new label')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await close();
+
+      await open(l10n.taskEditAssign);
+      await tester.scrollUntilVisible(
+        find.text(longName.name),
+        200,
+        scrollable: find
+            .descendant(
+              of: find.byType(AssigneePicker),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      expect(find.text(longName.name), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await close();
+
+      await open(l10n.taskEditAddReminder);
+      expect(tester.takeException(), isNull);
+      await tester.ensureVisible(find.text(l10n.reminderPickerCustom));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(l10n.reminderPickerCustom));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.reminderPickerCustomTitle), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await close();
+      expect(find.byType(TaskEditPage), findsOneWidget);
+    });
+
+    // The keyboard takes most of the height in landscape or at a large text
+    // size; the search field and the notices scroll with the rows.
+    for (final (name, size, keyboard, textScale) in const [
+      ('landscape', Size(740, 360), 200.0, 1.0),
+      ('portrait at 200 %', Size(360, 740), 300.0, 2.0),
+      ('small portrait at 200 %', Size(320, 640), 260.0, 2.0),
+    ]) {
+      testWidgets(
+        'label and people pickers with the keyboard up, offline, '
+        '$name (${locale.languageCode})',
+        (tester) async {
+          useLocale(tester, locale);
+          tester.platformDispatcher.textScaleFactorTestValue = textScale;
+          addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+          final now = DateTime(2026, 10, 10, 12);
+          const longName = User(
+            id: 2,
+            username: 'konstantin',
+            name: 'Konstantin Langername-Mustermann',
+          );
+          final label = sampleLabel(id: 1, title: 'A rather long label title');
+          final data = SyncFakes(now: now);
+          data.projects.all = [sampleProject(id: 1, title: 'Work')];
+          data.tasks.all = [
+            sampleTask(
+              id: 1,
+              title: 'Task 1',
+              labels: [label],
+              assignees: const [longName],
+            ),
+          ];
+          await openEditPageWith(
+            tester,
+            data: data,
+            taskId: 1,
+            now: now,
+            size: size,
+            labels: FakeLabelRepository(labels: [label]),
+            users: FakeUserRepository(
+              known: const [longName],
+            )..searchFailure = const NetworkFailure(NetworkProblem.unreachable),
+          );
+          final l10n = lookupAppLocalizations(locale);
+
+          Future<void> openWithKeyboard(String action) async {
+            await tapVisible(tester, find.text(action));
+            tester.view.viewInsets = FakeViewPadding(bottom: keyboard * 3);
+            await tester.pumpAndSettle();
+            expect(tester.takeException(), isNull);
+          }
+
+          Future<void> close() async {
+            tester.view.resetViewInsets();
+            await tester.binding.handlePopRoute();
+            await tester.pumpAndSettle();
+          }
+
+          await openWithKeyboard(l10n.taskEditAddLabel);
+          await tester.enterText(find.byType(TextField).last, 'A new label');
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
+          await close();
+
+          await openWithKeyboard(l10n.taskEditAssign);
+          final list = find
+              .descendant(
+                of: find.byType(AssigneePicker),
+                matching: find.byType(Scrollable),
+              )
+              .first;
+          // Jumps rather than drags: on iOS a drag that starts on the
+          // search field selects text instead of scrolling.
+          final position = tester.state<ScrollableState>(list).position;
+          for (final text in [l10n.assigneePickerOffline, longName.name]) {
+            final row = find.descendant(of: list, matching: find.text(text));
+            while (row.evaluate().isEmpty &&
+                position.pixels < position.maxScrollExtent) {
+              position.jumpTo(
+                (position.pixels + 40).clamp(0, position.maxScrollExtent),
+              );
+              await tester.pump();
+            }
+            expect(row, findsOneWidget);
+          }
+          expect(tester.takeException(), isNull);
+          await close();
+        },
+        variant: const TargetPlatformVariant({
+          TargetPlatform.android,
+          TargetPlatform.iOS,
+        }),
+      );
+    }
 
     testWidgets('project tree and project tasks at 200 % in dark mode '
         '(${locale.languageCode})', (tester) async {

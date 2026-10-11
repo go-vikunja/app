@@ -1736,6 +1736,18 @@ abstract class AppLocalizations {
   /// **'The task no longer exists on the server.'**
   String get syncProblemTaskMissing;
 
+  /// No description provided for @syncProblemLabelMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'One of its labels no longer exists on the server.'**
+  String get syncProblemLabelMissing;
+
+  /// No description provided for @syncProblemUserMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'One of its assignees no longer exists on the server.'**
+  String get syncProblemUserMissing;
+
   /// No description provided for @syncProblemProjectArchived.
   ///
   /// In en, this message translates to:
@@ -2107,6 +2119,306 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Added “{title}”'**
   String newTaskCreated(String title);
+
+  /// No description provided for @taskEditAddLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Add label'**
+  String get taskEditAddLabel;
+
+  /// No description provided for @taskEditRemoveLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove label {label}'**
+  String taskEditRemoveLabel(String label);
+
+  /// No description provided for @taskEditAssign.
+  ///
+  /// In en, this message translates to:
+  /// **'Assign'**
+  String get taskEditAssign;
+
+  /// No description provided for @taskEditUnassign.
+  ///
+  /// In en, this message translates to:
+  /// **'Unassign {name}'**
+  String taskEditUnassign(String name);
+
+  /// No description provided for @taskEditAddReminder.
+  ///
+  /// In en, this message translates to:
+  /// **'Add reminder'**
+  String get taskEditAddReminder;
+
+  /// No description provided for @taskEditEditReminder.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit reminder'**
+  String get taskEditEditReminder;
+
+  /// No description provided for @taskEditRemoveReminder.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove reminder: {reminder}'**
+  String taskEditRemoveReminder(String reminder);
+
+  /// No description provided for @taskEditReminderDuplicate.
+  ///
+  /// In en, this message translates to:
+  /// **'This reminder is already set.'**
+  String get taskEditReminderDuplicate;
+
+  /// No description provided for @reminderDueDateNotSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Due date is not set'**
+  String get reminderDueDateNotSet;
+
+  /// No description provided for @reminderStartDateNotSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Start date is not set'**
+  String get reminderStartDateNotSet;
+
+  /// No description provided for @reminderEndDateNotSet.
+  ///
+  /// In en, this message translates to:
+  /// **'End date is not set'**
+  String get reminderEndDateNotSet;
+
+  /// No description provided for @taskEditRemindersCoincide.
+  ///
+  /// In en, this message translates to:
+  /// **'Some reminders fall on the same moment. The server keeps only one of them.'**
+  String get taskEditRemindersCoincide;
+
+  /// No description provided for @labelPickerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose labels'**
+  String get labelPickerTitle;
+
+  /// No description provided for @labelPickerSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search or create a label'**
+  String get labelPickerSearch;
+
+  /// No description provided for @labelPickerEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No labels yet. Type a name to create one.'**
+  String get labelPickerEmpty;
+
+  /// No description provided for @labelPickerCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Create label “{title}”'**
+  String labelPickerCreate(String title);
+
+  /// No description provided for @labelPickerCreating.
+  ///
+  /// In en, this message translates to:
+  /// **'Creating the label…'**
+  String get labelPickerCreating;
+
+  /// No description provided for @labelPickerCreateOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Creating a label needs a connection to the server.'**
+  String get labelPickerCreateOffline;
+
+  /// No description provided for @labelPickerCreateUnconfirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t confirm that the label was created. Check your connection and try again.'**
+  String get labelPickerCreateUnconfirmed;
+
+  /// No description provided for @labelPickerCreateRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'The server did not create the label: {message}'**
+  String labelPickerCreateRejected(String message);
+
+  /// No description provided for @labelPickerCreateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The label could not be created.'**
+  String get labelPickerCreateFailed;
+
+  /// No description provided for @labelPickerTitleTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'A label title can have at most {max} characters.'**
+  String labelPickerTitleTooLong(int max);
+
+  /// No description provided for @assigneePickerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Assign people'**
+  String get assigneePickerTitle;
+
+  /// No description provided for @assigneePickerSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search people'**
+  String get assigneePickerSearch;
+
+  /// No description provided for @assigneePickerSearching.
+  ///
+  /// In en, this message translates to:
+  /// **'Searching…'**
+  String get assigneePickerSearching;
+
+  /// No description provided for @assigneePickerNoResults.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody found.'**
+  String get assigneePickerNoResults;
+
+  /// No description provided for @assigneePickerOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline — showing people from your synced tasks'**
+  String get assigneePickerOffline;
+
+  /// After a search that failed for another reason than a missing connection; the reason is the server's message or assigneePickerSearchFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'{reason} — showing people from your synced tasks'**
+  String assigneePickerFallback(String reason);
+
+  /// No description provided for @assigneePickerSearchFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Search failed'**
+  String get assigneePickerSearchFailed;
+
+  /// No description provided for @assigneeUsername.
+  ///
+  /// In en, this message translates to:
+  /// **'@{username}'**
+  String assigneeUsername(String username);
+
+  /// No description provided for @reminderPickerCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom…'**
+  String get reminderPickerCustom;
+
+  /// No description provided for @reminderPickerDateTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Date and time…'**
+  String get reminderPickerDateTime;
+
+  /// No description provided for @reminderPickerAlreadySet.
+  ///
+  /// In en, this message translates to:
+  /// **'Already set'**
+  String get reminderPickerAlreadySet;
+
+  /// No description provided for @reminderPickerNoDateHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Set a due, start or end date to get quick choices here.'**
+  String get reminderPickerNoDateHint;
+
+  /// No description provided for @reminderPickerCustomTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom reminder'**
+  String get reminderPickerCustomTitle;
+
+  /// No description provided for @reminderAmountLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount'**
+  String get reminderAmountLabel;
+
+  /// No description provided for @reminderAmountInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a whole number, 0 or more.'**
+  String get reminderAmountInvalid;
+
+  /// No description provided for @reminderUnitCaption.
+  ///
+  /// In en, this message translates to:
+  /// **'Unit'**
+  String get reminderUnitCaption;
+
+  /// No description provided for @reminderDirectionCaption.
+  ///
+  /// In en, this message translates to:
+  /// **'When'**
+  String get reminderDirectionCaption;
+
+  /// No description provided for @reminderUnitMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'Minutes'**
+  String get reminderUnitMinutes;
+
+  /// No description provided for @reminderUnitHours.
+  ///
+  /// In en, this message translates to:
+  /// **'Hours'**
+  String get reminderUnitHours;
+
+  /// No description provided for @reminderUnitDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Days'**
+  String get reminderUnitDays;
+
+  /// No description provided for @reminderUnitWeeks.
+  ///
+  /// In en, this message translates to:
+  /// **'Weeks'**
+  String get reminderUnitWeeks;
+
+  /// No description provided for @reminderDirectionBefore.
+  ///
+  /// In en, this message translates to:
+  /// **'Before'**
+  String get reminderDirectionBefore;
+
+  /// No description provided for @reminderDirectionAfter.
+  ///
+  /// In en, this message translates to:
+  /// **'After'**
+  String get reminderDirectionAfter;
+
+  /// No description provided for @reminderRelativeToLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Relative to'**
+  String get reminderRelativeToLabel;
+
+  /// No description provided for @reminderRelativeToDueDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Due date'**
+  String get reminderRelativeToDueDate;
+
+  /// No description provided for @reminderRelativeToStartDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Start date'**
+  String get reminderRelativeToStartDate;
+
+  /// No description provided for @reminderRelativeToEndDate.
+  ///
+  /// In en, this message translates to:
+  /// **'End date'**
+  String get reminderRelativeToEndDate;
+
+  /// No description provided for @reminderRelativeToUnset.
+  ///
+  /// In en, this message translates to:
+  /// **'{date} (not set)'**
+  String reminderRelativeToUnset(String date);
 }
 
 class _AppLocalizationsDelegate

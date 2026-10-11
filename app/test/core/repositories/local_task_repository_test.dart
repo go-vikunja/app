@@ -195,6 +195,56 @@ void main() {
       expect(await db.outboxDao.count(), 0);
     });
 
+    test('undoing a repeating task also restores the reminders the server '
+        'moved on with the dates', () async {
+      final reminderAt = monday.subtract(const Duration(hours: 2));
+      const halfHourBefore = TaskReminder(
+        relativePeriod: Duration(minutes: -30),
+        relativeTo: ReminderRelativeTo.dueDate,
+      );
+      final withReminders = sampleTask(
+        id: 6,
+        title: 'Daily with reminders',
+        projectId: 7,
+        due: monday,
+        repeatAfter: const Duration(days: 1),
+        reminders: [
+          TaskReminder(reminder: reminderAt),
+          TaskReminder(
+            reminder: monday.subtract(const Duration(minutes: 30)),
+            relativePeriod: halfHourBefore.relativePeriod,
+            relativeTo: halfHourBefore.relativeTo,
+          ),
+        ],
+      );
+      await db.tasksDao.upsertAll([withReminders], syncRunId: 'run');
+      write.serverTasks[6] = withReminders;
+      final previous = (await db.tasksDao.find(6))!;
+      await repository.setDone(6, done: true);
+      await pumpEventQueue();
+      final shifted = (await db.tasksDao.find(6))!;
+      expect(
+        shifted.reminders.first.reminder,
+        reminderAt.add(const Duration(days: 1)),
+      );
+
+      await repository.undoDone(previous);
+      expect((await db.tasksDao.find(6))!.reminders, previous.reminders);
+      await pumpEventQueue();
+
+      expect(write.updates.last, (
+        6,
+        TaskChanges(
+          done: false,
+          dueDate: DateChange.set(monday),
+          reminders: previous.reminders,
+        ),
+      ));
+      expect(write.serverTasks[6]!.reminders, previous.reminders);
+      expect((await db.tasksDao.find(6))!.reminders, previous.reminders);
+      expect(await db.outboxDao.count(), 0);
+    });
+
     test('undoing a task that does not repeat sends done only', () async {
       final previous = (await db.tasksDao.find(2))!;
       await repository.setDone(2, done: true);

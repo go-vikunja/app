@@ -14,3 +14,11 @@ Label parseLabel(Object? json) {
     updated: dateOf(map['updated']),
   );
 }
+
+/// v1 and v2 create body; empty optional fields are left out.
+Map<String, Object?> encodeNewLabel(NewLabel label) => {
+  'title': label.title,
+  if (hexColorWire(label.hexColor) case final hexColor when hexColor.isNotEmpty)
+    'hex_color': hexColor,
+  if (label.description.isNotEmpty) 'description': label.description,
+};

@@ -40,36 +40,41 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
 
   final _random = Random.secure();
 
-  /// Inserts the task under the next temporary id and queues its create;
-  /// returns that id. The row has no `updated`: that is a server time, and
-  /// the sync's watermark must not take a device time.
+  /// Inserts the task under the next temporary id, with its reminders, and
+  /// queues its create; returns that id. The row has no `updated`: that is
+  /// a server time, and the sync's watermark must not take a device time.
   Future<int> queueCreate(NewTask task, {required DateTime now}) =>
       transaction(() async {
         final id = await _nextLocalId();
-        await into(tasks).insert(
-          TaskRow(
-            id: id,
-            projectId: task.projectId,
-            title: task.title,
-            description: task.description,
-            done: false,
-            dueDate: task.dueDate?.toUtc(),
-            startDate: task.startDate?.toUtc(),
-            endDate: task.endDate?.toUtc(),
-            priority: task.priority.value,
-            percentDone: task.percentDone,
-            hexColor: task.hexColor,
-            identifier: '',
-            taskIndex: 0,
-            isFavorite: task.isFavorite,
-            position: 0,
-            repeatAfter: task.repeatAfter.inSeconds,
-            repeatMode: task.repeatMode.value,
-            bucketId: 0,
-            created: now.toUtc(),
-            pendingDelete: false,
-          ),
+        final row = TaskRow(
+          id: id,
+          projectId: task.projectId,
+          title: task.title,
+          description: task.description,
+          done: false,
+          dueDate: task.dueDate?.toUtc(),
+          startDate: task.startDate?.toUtc(),
+          endDate: task.endDate?.toUtc(),
+          priority: task.priority.value,
+          percentDone: task.percentDone,
+          hexColor: task.hexColor,
+          identifier: '',
+          taskIndex: 0,
+          isFavorite: task.isFavorite,
+          position: 0,
+          repeatAfter: task.repeatAfter.inSeconds,
+          repeatMode: task.repeatMode.value,
+          bucketId: 0,
+          created: now.toUtc(),
+          pendingDelete: false,
         );
+        await into(tasks).insert(row);
+        if (task.reminders.isNotEmpty) {
+          await attachedDatabase.tasksDao.applyChildChanges(
+            row,
+            TaskChanges(reminders: task.reminders),
+          );
+        }
         await _insert(
           kind: OutboxOperationKind.createTask,
           taskId: id,
@@ -79,11 +84,13 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
         return id;
       });
 
-  /// Applies [changes] to the row and queues them, merged into the task's
-  /// unsent update op when there is one, or into its create while that has
-  /// not left the device. A temporary id whose create was answered
-  /// meanwhile is followed to the server id. False when the task is
-  /// unknown here or queued for deletion.
+  /// Applies [changes] to the row and its labels, assignees and reminders
+  /// and queues them, merged into the task's unsent update op when there is
+  /// one, or into its create while that has not left the device: reminders
+  /// fold into the create, while labels, assignees and done, which need the
+  /// task's id on the server, stay queued behind it. A temporary id whose
+  /// create was answered meanwhile is followed to the server id. False when
+  /// the task is unknown here or queued for deletion.
   Future<bool> queueUpdate(
     int localOrServerId,
     TaskChanges changes, {
@@ -123,13 +130,13 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
       }
       pending = pending.merge(queued);
     }
-    await update(tasks).replace(
-      applyTaskChanges(row, changes, now: now).copyWith(
-        pendingChanges: Value(
-          pending.isEmpty ? null : encodeTaskChanges(pending),
-        ),
+    final applied = applyTaskChanges(row, changes, now: now).copyWith(
+      pendingChanges: Value(
+        pending.isEmpty ? null : encodeTaskChanges(pending),
       ),
     );
+    await update(tasks).replace(applied);
+    await attachedDatabase.tasksDao.applyChildChanges(applied, changes);
     return true;
   });
 
@@ -267,8 +274,9 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
   /// send in either order, and a Retry can never overwrite a newer edit.
   /// A rejected create takes the edit queued behind it while it was in
   /// flight, so that edit cannot revert a later one folded into the
-  /// create; only a done stays queued behind it. A delete behind it
-  /// cancels it: the server never had the task, so both go.
+  /// create; only done, labels and assignees stay queued behind it. A
+  /// delete behind it cancels it: the server never had the task, so both
+  /// go.
   Future<void> markFailed(String id, VikunjaFailure failure) =>
       transaction(() async {
         final op = await find(id);
@@ -329,6 +337,44 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
         }
         await remove(op.id);
       });
+
+  /// Labels gone from the server for this user (deleted, or no longer
+  /// visible) can never be attached or detached, so their ids leave every
+  /// unsent update: an add of one would otherwise fail the op for good and
+  /// hold back every edit merged into it. An op left empty goes; a failed
+  /// one that changed goes back to the queue, since what failed may have
+  /// been that label.
+  Future<void> forgetLabels(Set<int> labelIds) => transaction(() async {
+    if (labelIds.isEmpty) return;
+    final ops =
+        await (select(outbox)..where(
+              (o) =>
+                  o.kind.equals(OutboxOperationKind.updateTask.name) &
+                  o.state.equals(OutboxState.sending.name).not(),
+            ))
+            .get();
+    for (final op in ops) {
+      final changes = decodeTaskChanges(op.payload);
+      final labels = changes.labels;
+      if (labels == null ||
+          (!labels.added.any(labelIds.contains) &&
+              !labels.removed.any(labelIds.contains))) {
+        continue;
+      }
+      final kept = withoutLabels(changes, labelIds);
+      if (kept.isEmpty) {
+        await (delete(outbox)..where((o) => o.id.equals(op.id))).go();
+      } else if (op.state == OutboxState.failed.name) {
+        await _write(op.id, _retaken(encodeTaskChanges(kept)));
+      } else {
+        await _write(
+          op.id,
+          OutboxCompanion(payload: Value(encodeTaskChanges(kept))),
+        );
+      }
+      await _refreshPendingChanges(op.taskId);
+    }
+  });
 
   /// A failed op goes back to the queue with a clean slate.
   Future<void> retry(String id) => _write(
@@ -403,9 +449,9 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
 
   /// The server has the task as [created]: the row moves to the server id
   /// with the response applied, the ops queued behind the create follow
-  /// (their fields stay on top of the response), the remap is recorded and
-  /// the create op goes. A row the sync pulled meanwhile under the server
-  /// id is replaced.
+  /// (their fields, labels, assignees and reminders stay on top of the
+  /// response), the remap is recorded and the create op goes. A row the
+  /// sync pulled meanwhile under the server id is replaced.
   Future<void> completeCreate(
     String operationId,
     Task created, {
@@ -428,14 +474,16 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
       if (pending != null) {
         row = applyTaskChanges(row, pending, now: local?.doneAt ?? at);
       }
-      await update(tasks).replace(
-        row.copyWith(
-          pendingChanges: Value(
-            pending == null ? null : encodeTaskChanges(pending),
-          ),
-          pendingDelete: deleting,
+      row = row.copyWith(
+        pendingChanges: Value(
+          pending == null ? null : encodeTaskChanges(pending),
         ),
+        pendingDelete: deleting,
       );
+      await update(tasks).replace(row);
+      if (pending != null) {
+        await attachedDatabase.tasksDao.applyChildChanges(row, pending);
+      }
     }
     await into(taskIdRemaps).insert(
       TaskIdRemapRow(localId: localId, serverId: created.id, at: at.toUtc()),

@@ -160,10 +160,10 @@ void main() {
                 connection: only,
                 tokens: StaticJwt(user.jwt),
               );
-              writes = createWriteClient(
-                dio: authenticated,
-                connection: only,
-              ).tasks;
+              // Other test files write to the same SQLite server meanwhile.
+              writes = RetryingTasksWrites(
+                createWriteClient(dio: authenticated, connection: only).tasks,
+              );
               reads = createReadClient(
                 dio: authenticated,
                 connection: only,
@@ -482,6 +482,154 @@ void main() {
                 throwsA(isA<NotFound>().having((f) => f.code, 'code', 4002)),
               );
               await expectLater(writes.delete(seed.doomedId), completes);
+            });
+
+            test('reminders set as absolute and relative ones, the server '
+                'computing the relative instants, then cleared', () async {
+              final due = DateTime.utc(2030, 1, 2, 3, 4, 5);
+              final absolute = DateTime.utc(2030, 1, 1, 18);
+              final task = await writes.create(
+                NewTask(projectId: projectId, title: 'Remind me', dueDate: due),
+              );
+
+              final set = await writes.update(
+                task.id,
+                TaskChanges(
+                  reminders: [
+                    TaskReminder(reminder: absolute),
+                    const TaskReminder(
+                      relativePeriod: Duration(hours: -1),
+                      relativeTo: ReminderRelativeTo.dueDate,
+                    ),
+                    const TaskReminder(relativeTo: ReminderRelativeTo.dueDate),
+                    // No start date: kept, without an instant.
+                    const TaskReminder(
+                      relativePeriod: Duration(hours: 2),
+                      relativeTo: ReminderRelativeTo.startDate,
+                    ),
+                  ],
+                ),
+              );
+
+              final expected = unorderedEquals([
+                TaskReminder(reminder: absolute),
+                TaskReminder(
+                  reminder: due.subtract(const Duration(hours: 1)),
+                  relativePeriod: const Duration(hours: -1),
+                  relativeTo: ReminderRelativeTo.dueDate,
+                ),
+                TaskReminder(
+                  reminder: due,
+                  relativeTo: ReminderRelativeTo.dueDate,
+                ),
+                const TaskReminder(
+                  relativePeriod: Duration(hours: 2),
+                  relativeTo: ReminderRelativeTo.startDate,
+                ),
+              ]);
+              expect(set.reminders, expected);
+              expect((await reads.read(task.id)).reminders, expected);
+
+              final cleared = await writes.update(
+                task.id,
+                const TaskChanges(reminders: []),
+              );
+              expect(cleared.reminders, isEmpty);
+              expect((await reads.read(task.id)).reminders, isEmpty);
+            });
+
+            // The update answers with the list as sent; the read-back shows
+            // what was stored.
+            test('reminders on the same instant are stored once', () async {
+              final due = DateTime.utc(2030, 1, 2, 3, 4, 5);
+              final task = await writes.create(
+                NewTask(projectId: projectId, title: 'Twice', dueDate: due),
+              );
+              final hourBefore = due.subtract(const Duration(hours: 1));
+
+              final response = await writes.update(
+                task.id,
+                TaskChanges(
+                  reminders: [
+                    TaskReminder(reminder: hourBefore),
+                    TaskReminder(reminder: hourBefore),
+                    const TaskReminder(
+                      relativePeriod: Duration(hours: -1),
+                      relativeTo: ReminderRelativeTo.dueDate,
+                    ),
+                  ],
+                ),
+              );
+
+              final stored = (await reads.read(task.id)).reminders;
+              expect(stored, hasLength(1));
+              expect(stored.single.reminder, hourBefore);
+              expect(stored.single.relativeTo, ReminderRelativeTo.dueDate);
+              expect(response.reminders, stored);
+            });
+
+            // Every reminder relative to a cleared date falls on the zero
+            // instant, where the server keeps one. The update answers with
+            // both; the read-back shows what was stored.
+            test('clearing the date of two relative reminders leaves the '
+                'one the server kept', () async {
+              final due = DateTime.utc(2030, 1, 2, 3, 4, 5);
+              final task = await writes.create(
+                NewTask(
+                  projectId: projectId,
+                  title: 'Undated',
+                  dueDate: due,
+                  reminders: const [
+                    TaskReminder(relativeTo: ReminderRelativeTo.dueDate),
+                    TaskReminder(
+                      relativePeriod: Duration(days: -1),
+                      relativeTo: ReminderRelativeTo.dueDate,
+                    ),
+                  ],
+                ),
+              );
+              expect(task.reminders, hasLength(2));
+
+              final cleared = await writes.update(
+                task.id,
+                const TaskChanges(dueDate: DateChange.clear()),
+              );
+
+              final stored = (await reads.read(task.id)).reminders;
+              expect(stored, hasLength(1));
+              expect(stored.single.reminder, isNull);
+              expect(cleared.reminders, stored);
+            });
+
+            test('create with reminders', () async {
+              final due = DateTime.utc(2030, 1, 2, 3, 4, 5);
+              final absolute = DateTime.utc(2030, 1, 1, 18);
+
+              final created = await writes.create(
+                NewTask(
+                  projectId: projectId,
+                  title: 'Created with reminders',
+                  dueDate: due,
+                  reminders: [
+                    TaskReminder(reminder: absolute),
+                    const TaskReminder(
+                      relativePeriod: Duration(days: -1),
+                      relativeTo: ReminderRelativeTo.dueDate,
+                    ),
+                  ],
+                ),
+              );
+
+              final expected = unorderedEquals([
+                TaskReminder(reminder: absolute),
+                TaskReminder(
+                  reminder: due.subtract(const Duration(days: 1)),
+                  relativePeriod: const Duration(days: -1),
+                  relativeTo: ReminderRelativeTo.dueDate,
+                ),
+              ]);
+              expect(created.reminders, expected);
+              expect((await reads.read(created.id)).reminders, expected);
             });
           });
         }

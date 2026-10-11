@@ -50,7 +50,8 @@ Task parseTask(Object? json) {
 const mergePatchContentType = 'application/merge-patch+json';
 
 /// The set fields of [changes] under their wire names: a v2 merge-patch, or
-/// the overlay for a v1 full replace. The zero date clears a date.
+/// the overlay for a v1 full replace. The zero date clears a date. Labels
+/// and assignees are not body fields; they have their own endpoints.
 Map<String, Object?> encodeTaskChanges(TaskChanges changes) => {
   'title': ?changes.title,
   'description': ?changes.description,
@@ -59,7 +60,7 @@ Map<String, Object?> encodeTaskChanges(TaskChanges changes) => {
   'priority': ?changes.priority,
   'percent_done': ?changes.percentDone,
   if (changes.hexColor case final hexColor?)
-    'hex_color': _hexColorWire(hexColor),
+    'hex_color': hexColorWire(hexColor),
   if (changes.dueDate case final dueDate?)
     'due_date': _encodeDateChange(dueDate),
   if (changes.startDate case final startDate?)
@@ -69,6 +70,8 @@ Map<String, Object?> encodeTaskChanges(TaskChanges changes) => {
   'repeat_after': ?changes.repeatAfter?.inSeconds,
   'repeat_mode': ?changes.repeatMode?.value,
   'project_id': ?changes.projectId,
+  if (changes.reminders case final reminders?)
+    'reminders': [for (final reminder in reminders) _encodeReminder(reminder)],
 };
 
 /// The create body for both versions. The project is only in the path: a
@@ -82,19 +85,38 @@ Map<String, Object?> encodeNewTask(NewTask task) => {
   if (task.endDate case final endDate?) 'end_date': encodeDate(endDate),
   'priority': task.priority.value,
   'percent_done': task.percentDone,
-  'hex_color': _hexColorWire(task.hexColor),
+  'hex_color': hexColorWire(task.hexColor),
   'repeat_after': task.repeatAfter.inSeconds,
   'repeat_mode': task.repeatMode.value,
   'is_favorite': task.isFavorite,
+  if (task.reminders.isNotEmpty)
+    'reminders': [
+      for (final reminder in task.reminders) _encodeReminder(reminder),
+    ],
 };
-
-String _hexColorWire(String hexColor) =>
-    hexColor.startsWith('#') ? hexColor.substring(1) : hexColor;
 
 String _encodeDateChange(DateChange change) => switch (change) {
   SetDate(:final value) => encodeDate(value),
   ClearDate() => zeroDate,
 };
+
+/// A relative reminder leaves `reminder` out: the server computes it from
+/// the referenced date.
+Map<String, Object?> _encodeReminder(TaskReminder reminder) =>
+    switch (reminder.relativeTo) {
+      final relativeTo? => {
+        'relative_period': reminder.relativePeriod.inSeconds,
+        'relative_to': relativeTo.wireName,
+      },
+      null => {
+        'reminder': switch (reminder.reminder) {
+          final instant? => encodeDate(instant),
+          null => zeroDate,
+        },
+        'relative_period': 0,
+        'relative_to': '',
+      },
+    };
 
 TaskReminder parseReminder(Object? json) {
   final map = objectOf(json, 'reminder');

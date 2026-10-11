@@ -41,10 +41,20 @@ abstract interface class TasksPort {
   Future<Task> read(int id, {Set<TaskExpand> expand = const {}});
 }
 
+abstract interface class UsersPort {
+  /// The users who can be assigned to tasks of [projectId]: owner, shares
+  /// and team members, matched by [query] on username and name (and email
+  /// where the user allows it); an empty query lists them all. v2
+  /// `GET /projects/{id}/users/search?q=`, v1
+  /// `GET /projects/{id}/projectusers?s=`. One page, never paged.
+  Future<List<User>> searchProjectUsers(int projectId, {String query = ''});
+}
+
 abstract interface class VikunjaReadClient {
   ProjectsPort get projects;
   LabelsPort get labels;
   TasksPort get tasks;
+  UsersPort get users;
 }
 
 /// [dio] is an authenticated client from `createAuthenticatedDio`; the

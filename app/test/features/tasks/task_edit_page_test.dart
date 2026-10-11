@@ -567,6 +567,9 @@ void main() {
     expect(find.text(de.shortcutTomorrow), findsNWidgets(3));
     expect(find.text(de.repeatModeMonthly), findsOneWidget);
     expect(find.text('12. Okt. 2026 09:30'), findsOneWidget);
+    expect(find.text(de.taskEditAddLabel), findsOneWidget);
+    expect(find.text(de.taskEditAssign), findsOneWidget);
+    expect(find.text(de.taskEditAddReminder), findsOneWidget);
   });
 
   testWidgets('Return confirms the title instead of adding a line', (

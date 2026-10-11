@@ -321,12 +321,14 @@ final class IncrementalRun {
 
   /// Every change bumps a task's `updated` (asynchronously for comments,
   /// attachments, relations and assignees, which the overlap re-reads), so
-  /// a row equal to the local one has nothing new.
+  /// a row equal to the local one has nothing new. Reminders are compared
+  /// too: a date change can make the server merge reminders without a
+  /// newer `updated` than the answer the row took them from.
   Future<void> _upsertChanged(List<Task> items) async {
     final local = await _db.tasksDao.findAll(items.map((task) => task.id));
     final changed = [
       for (final task in items)
-        if (local[task.id] != task) task,
+        if (!_unchanged(local[task.id], task)) task,
     ];
     if (changed.isNotEmpty) {
       await _db.tasksDao.upsertAll(changed, syncRunId: runId);
@@ -368,6 +370,11 @@ final class IncrementalRun {
     Forbidden(code: int()) => true,
     _ => false,
   };
+
+  static bool _unchanged(Task? stored, Task incoming) =>
+      stored != null &&
+      stored == incoming &&
+      sameReminders(stored.reminders, incoming.reminders);
 
   static Set<int> _parseIds(String? csv) => {
     for (final part in csv?.split(',') ?? const <String>[]) ?int.tryParse(part),

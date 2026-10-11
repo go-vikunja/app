@@ -1,5 +1,6 @@
 import 'package:meta/meta.dart';
 import 'package:vikunja_domain/src/task/task.dart';
+import 'package:vikunja_domain/src/task/task_reminder.dart';
 
 /// What the app sends to create a task; the server assigns id, index,
 /// identifier and timestamps.
@@ -18,6 +19,7 @@ final class NewTask {
     this.repeatAfter = Duration.zero,
     this.repeatMode = RepeatMode.afterAmount,
     this.isFavorite = false,
+    this.reminders = const [],
   });
 
   final int projectId;
@@ -35,6 +37,11 @@ final class NewTask {
   final RepeatMode repeatMode;
   final bool isFavorite;
 
+  /// Sent with the create on both API versions. Labels and assignees are
+  /// not: the server ignores labels in a create body, and both go through
+  /// their own endpoints once the task exists.
+  final List<TaskReminder> reminders;
+
   @override
   bool operator ==(Object other) =>
       other is NewTask &&
@@ -49,7 +56,16 @@ final class NewTask {
       other.hexColor == hexColor &&
       other.repeatAfter == repeatAfter &&
       other.repeatMode == repeatMode &&
-      other.isFavorite == isFavorite;
+      other.isFavorite == isFavorite &&
+      _sameReminders(other.reminders, reminders);
+
+  static bool _sameReminders(List<TaskReminder> a, List<TaskReminder> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
 
   @override
   int get hashCode => Object.hash(
@@ -65,5 +81,6 @@ final class NewTask {
     repeatAfter,
     repeatMode,
     isFavorite,
+    Object.hashAll(reminders),
   );
 }

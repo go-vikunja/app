@@ -5,6 +5,7 @@ import 'package:vikunja_api/src/dto/json_values.dart';
 import 'package:vikunja_api/src/dto/label_codec.dart';
 import 'package:vikunja_api/src/dto/project_codec.dart';
 import 'package:vikunja_api/src/dto/task_codec.dart';
+import 'package:vikunja_api/src/dto/user_codec.dart';
 import 'package:vikunja_api/src/errors/normalize_error.dart';
 import 'package:vikunja_api/src/read/read_ports.dart';
 import 'package:vikunja_api/src/read/task_query_params.dart';
@@ -20,7 +21,8 @@ final class ReadClient implements VikunjaReadClient {
   new _(_ReadTransport transport)
     : projects = _ProjectsApi(transport),
       labels = _LabelsApi(transport),
-      tasks = _TasksApi(transport);
+      tasks = _TasksApi(transport),
+      users = _UsersApi(transport);
 
   @override
   final ProjectsPort projects;
@@ -30,6 +32,42 @@ final class ReadClient implements VikunjaReadClient {
 
   @override
   final TasksPort tasks;
+
+  @override
+  final UsersPort users;
+}
+
+final class _UsersApi implements UsersPort {
+  new(this._transport);
+
+  final _ReadTransport _transport;
+
+  @override
+  Future<List<User>> searchProjectUsers(
+    int projectId, {
+    String query = '',
+  }) async {
+    final search = query.trim();
+    final version = _transport.version;
+    final response = await _transport.get(
+      switch (version) {
+        ApiVersion.v2 => '/projects/$projectId/users/search',
+        ApiVersion.v1 => '/projects/$projectId/projectusers',
+      },
+      query: {if (search.isNotEmpty) searchParameterName(version): search},
+    );
+    // Both answer with every match at once: v2 in a page envelope, v1 as a
+    // bare array, or null when nothing matches.
+    final items = switch ((version, response.data)) {
+      (ApiVersion.v2, {'items': final List<Object?>? items}) => items,
+      (ApiVersion.v1, final List<Object?>? items) => items,
+      _ => throw UnexpectedResponse(
+        response.statusCode,
+        message: 'not a user list',
+      ),
+    };
+    return List.unmodifiable(objectListOf(items).map(parseUser).nonNulls);
+  }
 }
 
 final class _ProjectsApi implements ProjectsPort {

@@ -38,6 +38,11 @@ final class FakeSyncClient implements VikunjaReadClient {
   late final FakeLabelsPort labels = FakeLabelsPort(this);
   @override
   late final FakeTasksPort tasks = FakeTasksPort(this);
+  @override
+  late final FakeUsersPort users = FakeUsersPort(this);
+
+  /// The users with access per project, for the assignee search.
+  final Map<int, List<User>> projectUsers = {};
 
   Future<void> _request(String description) async {
     requests.add(description);
@@ -114,10 +119,22 @@ final class FakeLabelsPort implements LabelsPort {
 
   final FakeSyncClient _client;
 
+  /// [search] matches titles by substring, ignoring case, as on the
+  /// server.
   @override
   Future<Page<Label>> list({int page = 1, int? perPage, String? search}) async {
-    await _client._request('labels page $page');
-    return _client._page(_client.allLabels, page: page, perPage: perPage);
+    await _client._request(
+      'labels page $page${search == null ? '' : ' search $search'}',
+    );
+    final needle = search?.toLowerCase() ?? '';
+    return _client._page(
+      [
+        for (final label in _client.allLabels)
+          if (label.title.toLowerCase().contains(needle)) label,
+      ],
+      page: page,
+      perPage: perPage,
+    );
   }
 
   @override
@@ -324,5 +341,26 @@ final class RequestGate {
     for (final completer in waiting) {
       completer.complete();
     }
+  }
+}
+
+final class FakeUsersPort implements UsersPort {
+  new(this._client);
+
+  final FakeSyncClient _client;
+
+  @override
+  Future<List<User>> searchProjectUsers(
+    int projectId, {
+    String query = '',
+  }) async {
+    await _client._request('users $projectId $query');
+    final needle = query.toLowerCase();
+    return [
+      for (final user in _client.projectUsers[projectId] ?? const <User>[])
+        if (user.username.toLowerCase().contains(needle) ||
+            user.name.toLowerCase().contains(needle))
+          user,
+    ];
   }
 }

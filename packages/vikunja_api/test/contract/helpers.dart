@@ -27,6 +27,13 @@ Dio contractDio() => Dio(
   ),
 );
 
+// Parallel test files wait out the same limit and would wake up and collide
+// together again.
+final Random _jitter = Random();
+
+Duration _spread(Duration wait) =>
+    wait + Duration(milliseconds: _jitter.nextInt(3000));
+
 Future<T> patiently<T>(Future<T> Function() call) async {
   for (var attempt = 1; ; attempt++) {
     try {
@@ -39,8 +46,10 @@ Future<T> patiently<T>(Future<T> Function() call) async {
       };
       if (failure is! RateLimited || attempt == 8) rethrow;
       await Future<void>.delayed(
-        (failure.retryAfter ?? const Duration(seconds: 10)) +
-            const Duration(seconds: 1),
+        _spread(
+          (failure.retryAfter ?? const Duration(seconds: 10)) +
+              const Duration(seconds: 1),
+        ),
       );
     }
   }
@@ -81,16 +90,52 @@ Future<TestUser> registerAndLogin(Dio dio, ServerConnection connection) async {
 /// Test files run in parallel and register at the same moment, and a write
 /// right after an assignee change collides with the server's own listener
 /// that bumps the task; the SQLite test server answers a lost write race
-/// with a 500.
+/// with a 500. Raw dio calls throw it as a `DioException`, the clients as a
+/// `ServerFailure`.
 Future<T> despiteWriteRaces<T>(Future<T> Function() call) async {
   for (var attempt = 1; ; attempt++) {
     try {
       return await patiently(call);
-    } on DioException catch (error) {
-      if (normalizeError(error) is! ServerFailure || attempt == 5) rethrow;
-      await Future<void>.delayed(Duration(seconds: attempt));
+    } on Object catch (error) {
+      final failure = switch (error) {
+        final VikunjaFailure failure => failure,
+        final DioException exception => normalizeError(exception),
+        _ => null,
+      };
+      if (failure is! ServerFailure || attempt == 8) rethrow;
+      await Future<void>.delayed(_spread(Duration(seconds: attempt)));
     }
   }
+}
+
+/// Retries every call over the lost write races of [despiteWriteRaces]. A
+/// write the SQLite server refused with "database is locked" changed
+/// nothing, and an update is safe to repeat anyway.
+final class RetryingTasksWrites implements TasksWritePort {
+  new(this._writes);
+
+  final TasksWritePort _writes;
+
+  @override
+  Future<Task> create(NewTask task) =>
+      despiteWriteRaces(() => _writes.create(task));
+
+  @override
+  Future<Task> update(int id, TaskChanges changes) =>
+      despiteWriteRaces(() => _writes.update(id, changes));
+
+  @override
+  Future<void> delete(int id) => despiteWriteRaces(() => _writes.delete(id));
+}
+
+final class RetryingLabelsWrites implements LabelsWritePort {
+  new(this._labels);
+
+  final LabelsWritePort _labels;
+
+  @override
+  Future<Label> create(NewLabel label) =>
+      despiteWriteRaces(() => _labels.create(label));
 }
 
 /// [connection] restricted to [version], so a client built over it uses

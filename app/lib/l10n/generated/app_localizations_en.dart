@@ -1179,6 +1179,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'The task no longer exists on the server.';
 
   @override
+  String get syncProblemLabelMissing =>
+      'One of its labels no longer exists on the server.';
+
+  @override
+  String get syncProblemUserMissing =>
+      'One of its assignees no longer exists on the server.';
+
+  @override
   String get syncProblemProjectArchived => 'Its project is archived.';
 
   @override
@@ -1373,5 +1381,178 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String newTaskCreated(String title) {
     return 'Added “$title”';
+  }
+
+  @override
+  String get taskEditAddLabel => 'Add label';
+
+  @override
+  String taskEditRemoveLabel(String label) {
+    return 'Remove label $label';
+  }
+
+  @override
+  String get taskEditAssign => 'Assign';
+
+  @override
+  String taskEditUnassign(String name) {
+    return 'Unassign $name';
+  }
+
+  @override
+  String get taskEditAddReminder => 'Add reminder';
+
+  @override
+  String get taskEditEditReminder => 'Edit reminder';
+
+  @override
+  String taskEditRemoveReminder(String reminder) {
+    return 'Remove reminder: $reminder';
+  }
+
+  @override
+  String get taskEditReminderDuplicate => 'This reminder is already set.';
+
+  @override
+  String get reminderDueDateNotSet => 'Due date is not set';
+
+  @override
+  String get reminderStartDateNotSet => 'Start date is not set';
+
+  @override
+  String get reminderEndDateNotSet => 'End date is not set';
+
+  @override
+  String get taskEditRemindersCoincide =>
+      'Some reminders fall on the same moment. The server keeps only one of them.';
+
+  @override
+  String get labelPickerTitle => 'Choose labels';
+
+  @override
+  String get labelPickerSearch => 'Search or create a label';
+
+  @override
+  String get labelPickerEmpty => 'No labels yet. Type a name to create one.';
+
+  @override
+  String labelPickerCreate(String title) {
+    return 'Create label “$title”';
+  }
+
+  @override
+  String get labelPickerCreating => 'Creating the label…';
+
+  @override
+  String get labelPickerCreateOffline =>
+      'Creating a label needs a connection to the server.';
+
+  @override
+  String get labelPickerCreateUnconfirmed =>
+      'Couldn\'t confirm that the label was created. Check your connection and try again.';
+
+  @override
+  String labelPickerCreateRejected(String message) {
+    return 'The server did not create the label: $message';
+  }
+
+  @override
+  String get labelPickerCreateFailed => 'The label could not be created.';
+
+  @override
+  String labelPickerTitleTooLong(int max) {
+    return 'A label title can have at most $max characters.';
+  }
+
+  @override
+  String get assigneePickerTitle => 'Assign people';
+
+  @override
+  String get assigneePickerSearch => 'Search people';
+
+  @override
+  String get assigneePickerSearching => 'Searching…';
+
+  @override
+  String get assigneePickerNoResults => 'Nobody found.';
+
+  @override
+  String get assigneePickerOffline =>
+      'Offline — showing people from your synced tasks';
+
+  @override
+  String assigneePickerFallback(String reason) {
+    return '$reason — showing people from your synced tasks';
+  }
+
+  @override
+  String get assigneePickerSearchFailed => 'Search failed';
+
+  @override
+  String assigneeUsername(String username) {
+    return '@$username';
+  }
+
+  @override
+  String get reminderPickerCustom => 'Custom…';
+
+  @override
+  String get reminderPickerDateTime => 'Date and time…';
+
+  @override
+  String get reminderPickerAlreadySet => 'Already set';
+
+  @override
+  String get reminderPickerNoDateHint =>
+      'Set a due, start or end date to get quick choices here.';
+
+  @override
+  String get reminderPickerCustomTitle => 'Custom reminder';
+
+  @override
+  String get reminderAmountLabel => 'Amount';
+
+  @override
+  String get reminderAmountInvalid => 'Enter a whole number, 0 or more.';
+
+  @override
+  String get reminderUnitCaption => 'Unit';
+
+  @override
+  String get reminderDirectionCaption => 'When';
+
+  @override
+  String get reminderUnitMinutes => 'Minutes';
+
+  @override
+  String get reminderUnitHours => 'Hours';
+
+  @override
+  String get reminderUnitDays => 'Days';
+
+  @override
+  String get reminderUnitWeeks => 'Weeks';
+
+  @override
+  String get reminderDirectionBefore => 'Before';
+
+  @override
+  String get reminderDirectionAfter => 'After';
+
+  @override
+  String get reminderRelativeToLabel => 'Relative to';
+
+  @override
+  String get reminderRelativeToDueDate => 'Due date';
+
+  @override
+  String get reminderRelativeToStartDate => 'Start date';
+
+  @override
+  String get reminderRelativeToEndDate => 'End date';
+
+  @override
+  String reminderRelativeToUnset(String date) {
+    return '$date (not set)';
   }
 }

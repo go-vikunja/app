@@ -235,54 +235,177 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
   /// Upserts the tasks with the users and labels they carry, replacing their
   /// labels, assignees, reminders and relations; marks them seen in
   /// [syncRunId], or leaves the run a row has when null. A row with queued
-  /// changes keeps those fields over the incoming values, and a row queued
-  /// for deletion stays hidden.
-  Future<void> upsertAll(List<Task> all, {String? syncRunId}) async {
-    final ids = [for (final task in all) task.id];
-    final queued = await _queuedRows(ids);
-    TasksCompanion row(Task task) {
-      var stored = taskRow(task, syncRunId: syncRunId);
-      if (queued[task.id] case final local?) {
-        stored = _keepQueued(stored, local);
-      }
-      final companion = stored.toCompanion(false);
-      return syncRunId == null
-          ? companion.copyWith(syncRunId: const Value.absent())
-          : companion;
-    }
+  /// changes keeps those fields over the incoming values, its queued label
+  /// and assignee changes apply to the incoming sets and its queued
+  /// reminders replace the incoming list; a row queued for deletion stays
+  /// hidden. One transaction, so that a change queued meanwhile is not
+  /// overwritten with the queue as it was read.
+  Future<void> upsertAll(List<Task> all, {String? syncRunId}) =>
+      transaction(() async {
+        final ids = [for (final task in all) task.id];
+        final queued = await _queuedRows(ids);
+        final pending = {
+          for (final row in queued.values)
+            if (row.pendingChanges case final json?)
+              row.id: decodeTaskChanges(json),
+        };
+        final knownLabels = {
+          for (final task in all) ...task.labels.map((label) => label.id),
+          ...await _existingLabelIds({
+            for (final changes in pending.values) ...?changes.labels?.added,
+          }),
+        };
+        final knownUsers = {
+          for (final task in all) ...task.assignees.map((user) => user.id),
+          ...await _existingUserIds({
+            for (final changes in pending.values) ...?changes.assignees?.added,
+          }),
+        };
+        final taskRows = <TasksCompanion>[];
+        final labelRows = <TaskLabelRow>[];
+        final assigneeRows = <TaskAssigneeRow>[];
+        final reminders = <TaskReminderRow>[];
+        for (final task in all) {
+          var stored = taskRow(task, syncRunId: syncRunId);
+          if (queued[task.id] case final local?) {
+            stored = _keepQueued(stored, local);
+          }
+          final companion = stored.toCompanion(false);
+          taskRows.add(
+            syncRunId == null
+                ? companion.copyWith(syncRunId: const Value.absent())
+                : companion,
+          );
+          final changes = pending[task.id];
+          if (changes == null) {
+            labelRows.addAll(taskLabelRows(task));
+            assigneeRows.addAll(taskAssigneeRows(task));
+            reminders.addAll(taskReminderRows(task));
+            continue;
+          }
+          labelRows.addAll([
+            for (final id in _applied(
+              changes.labels,
+              task.labels.map((label) => label.id),
+            ))
+              if (knownLabels.contains(id))
+                TaskLabelRow(taskId: task.id, labelId: id),
+          ]);
+          assigneeRows.addAll([
+            for (final id in _applied(
+              changes.assignees,
+              task.assignees.map((user) => user.id),
+            ))
+              if (knownUsers.contains(id))
+                TaskAssigneeRow(taskId: task.id, userId: id),
+          ]);
+          reminders.addAll(
+            reminderRows(
+              task.id,
+              _remindersFor(
+                stored,
+                changes,
+                current: changes.reminders ?? task.reminders,
+              ),
+            ),
+          );
+        }
 
-    await batch((b) {
-      b
-        ..insertAllOnConflictUpdate(users, [
-          for (final task in all) ...[
-            if (task.createdBy case final user?) userRow(user),
-            ...task.assignees.map(userRow),
-          ],
-        ])
-        ..insertAllOnConflictUpdate(labels, [
-          for (final task in all)
-            for (final label in task.labels) labelRow(label).toCompanion(false),
-        ])
-        ..insertAllOnConflictUpdate(tasks, [for (final task in all) row(task)])
-        ..deleteWhere(taskLabels, (t) => t.taskId.isIn(ids))
-        ..deleteWhere(taskAssignees, (t) => t.taskId.isIn(ids))
-        ..deleteWhere(taskReminders, (t) => t.taskId.isIn(ids))
-        ..deleteWhere(taskRelations, (t) => t.taskId.isIn(ids))
-        ..insertAllOnConflictUpdate(taskLabels, [
-          for (final task in all) ...taskLabelRows(task),
-        ])
-        ..insertAllOnConflictUpdate(taskAssignees, [
-          for (final task in all) ...taskAssigneeRows(task),
-        ])
-        ..insertAllOnConflictUpdate(taskReminders, [
-          for (final task in all)
-            for (final reminder in taskReminderRows(task))
-              reminder.toCompanion(false),
-        ])
-        ..insertAllOnConflictUpdate(taskRelations, [
-          for (final task in all) ...taskRelationRows(task),
-        ]);
-    });
+        await batch((b) {
+          b
+            ..insertAllOnConflictUpdate(users, [
+              for (final task in all) ...[
+                if (task.createdBy case final user?) userRow(user),
+                ...task.assignees.map(userRow),
+              ],
+            ])
+            ..insertAllOnConflictUpdate(labels, [
+              for (final task in all)
+                for (final label in task.labels)
+                  labelRow(label).toCompanion(false),
+            ])
+            ..insertAllOnConflictUpdate(tasks, taskRows)
+            ..deleteWhere(taskLabels, (t) => t.taskId.isIn(ids))
+            ..deleteWhere(taskAssignees, (t) => t.taskId.isIn(ids))
+            ..deleteWhere(taskReminders, (t) => t.taskId.isIn(ids))
+            ..deleteWhere(taskRelations, (t) => t.taskId.isIn(ids))
+            ..insertAllOnConflictUpdate(taskLabels, labelRows)
+            ..insertAllOnConflictUpdate(taskAssignees, assigneeRows)
+            ..insertAllOnConflictUpdate(taskReminders, [
+              for (final reminder in reminders) reminder.toCompanion(false),
+            ])
+            ..insertAllOnConflictUpdate(taskRelations, [
+              for (final task in all) ...taskRelationRows(task),
+            ]);
+        });
+      });
+
+  /// The child rows of the task stored as [row], which already carries the
+  /// rest of [changes]: the label and assignee changes applied, the
+  /// reminder list replaced, and the instants of relative reminders
+  /// computed from the row's dates whenever the list or a date changes.
+  /// A label or user this device has no row for is skipped here (the
+  /// foreign keys need the row); the change still goes to the server.
+  Future<void> applyChildChanges(TaskRow row, TaskChanges changes) async {
+    final taskId = row.id;
+    if (changes.labels case final delta?) {
+      if (delta.removed.isNotEmpty) {
+        await (delete(taskLabels)..where(
+              (t) => t.taskId.equals(taskId) & t.labelId.isIn(delta.removed),
+            ))
+            .go();
+      }
+      final added = await _existingLabelIds(delta.added);
+      if (added.isNotEmpty) {
+        await batch(
+          (b) => b.insertAll(taskLabels, [
+            for (final id in added) TaskLabelRow(taskId: taskId, labelId: id),
+          ], mode: InsertMode.insertOrIgnore),
+        );
+      }
+    }
+    if (changes.assignees case final delta?) {
+      if (delta.removed.isNotEmpty) {
+        await (delete(taskAssignees)..where(
+              (t) => t.taskId.equals(taskId) & t.userId.isIn(delta.removed),
+            ))
+            .go();
+      }
+      final added = await _existingUserIds(delta.added);
+      if (added.isNotEmpty) {
+        await batch(
+          (b) => b.insertAll(taskAssignees, [
+            for (final id in added) TaskAssigneeRow(taskId: taskId, userId: id),
+          ], mode: InsertMode.insertOrIgnore),
+        );
+      }
+    }
+    if (changes.reminders == null && !changesDates(changes)) return;
+    final current =
+        changes.reminders ??
+        [
+          for (final reminder
+              in await (select(taskReminders)
+                    ..where((r) => r.taskId.equals(taskId))
+                    ..orderBy([(r) => OrderingTerm.asc(r.ordinal)]))
+                  .get())
+            reminderFromRow(reminder),
+        ];
+    await (delete(taskReminders)..where((r) => r.taskId.equals(taskId))).go();
+    await batch(
+      (b) => b.insertAll(
+        taskReminders,
+        reminderRows(
+          taskId,
+          withLocalInstants(
+            current,
+            dueDate: row.dueDate,
+            startDate: row.startDate,
+            endDate: row.endDate,
+          ),
+        ),
+      ),
+    );
   }
 
   /// Removes every task that [syncRunId] did not return; their labels,
@@ -305,6 +428,40 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
     )..where((t) => t.id.isIn(ids) & _purgeable.not())).get();
     return {for (final row in rows) row.id: row};
   }
+
+  Future<Set<int>> _existingLabelIds(Set<int> ids) async {
+    if (ids.isEmpty) return const {};
+    final query = selectOnly(labels)
+      ..addColumns([labels.id])
+      ..where(labels.id.isIn(ids));
+    return {for (final row in await query.get()) row.read(labels.id)!};
+  }
+
+  Future<Set<int>> _existingUserIds(Set<int> ids) async {
+    if (ids.isEmpty) return const {};
+    final query = selectOnly(users)
+      ..addColumns([users.id])
+      ..where(users.id.isIn(ids));
+    return {for (final row in await query.get()) row.read(users.id)!};
+  }
+
+  static Iterable<int> _applied(IdSetChange? change, Iterable<int> current) =>
+      change?.applyTo(current) ?? current;
+
+  /// [current] with the relative instants computed from [row]'s dates when
+  /// [changes] set the list or a date; otherwise as it is.
+  static List<TaskReminder> _remindersFor(
+    TaskRow row,
+    TaskChanges changes, {
+    required List<TaskReminder> current,
+  }) => changes.reminders != null || changesDates(changes)
+      ? withLocalInstants(
+          current,
+          dueDate: row.dueDate,
+          startDate: row.startDate,
+          endDate: row.endDate,
+        )
+      : current;
 
   /// [incoming] with the queued fields of [local] on top; a queued done
   /// keeps the moment it was done here.

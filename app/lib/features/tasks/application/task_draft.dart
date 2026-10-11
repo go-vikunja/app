@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/features/tasks/application/reminder_editing.dart';
 import 'package:vikunja_mobile/features/tasks/application/repeat_editor.dart';
 
 /// The web colour picker's defaults, six lowercase hex digits without `#`.
@@ -26,6 +27,9 @@ final class TaskDraft {
     required this.percentDone,
     required this.hexColor,
     required this.repeat,
+    required this.labels,
+    required this.assignees,
+    required this.reminders,
   });
 
   factory fromTask(Task task) => TaskDraft(
@@ -38,6 +42,16 @@ final class TaskDraft {
     percentDone: task.percentDone,
     hexColor: task.hexColor.toLowerCase(),
     repeat: RepeatSetting.fromTask(task),
+    labels: _distinctById(task.labels, (label) => label.id),
+    assignees: _distinctById(task.assignees, (user) => user.id),
+    reminders: [
+      for (final reminder in task.reminders)
+        TaskReminder(
+          reminder: reminder.reminder?.toUtc(),
+          relativePeriod: reminder.relativePeriod,
+          relativeTo: reminder.relativeTo,
+        ),
+    ],
   );
 
   final String title;
@@ -53,6 +67,12 @@ final class TaskDraft {
   /// Six lowercase hex digits without `#`, or empty.
   final String hexColor;
   final RepeatSetting repeat;
+  final List<Label> labels;
+  final List<User> assignees;
+  final List<TaskReminder> reminders;
+
+  ReminderDates get reminderDates =>
+      (due: dueDate, start: startDate, end: endDate);
 
   bool get hasTitle => title.trim().isNotEmpty;
 
@@ -70,6 +90,9 @@ final class TaskDraft {
     double? percentDone,
     String? hexColor,
     RepeatSetting? repeat,
+    List<Label>? labels,
+    List<User>? assignees,
+    List<TaskReminder>? reminders,
   }) => TaskDraft(
     title: title ?? this.title,
     projectId: projectId ?? this.projectId,
@@ -80,7 +103,18 @@ final class TaskDraft {
     percentDone: percentDone ?? this.percentDone,
     hexColor: hexColor?.toLowerCase() ?? this.hexColor,
     repeat: repeat ?? this.repeat,
+    labels: labels ?? this.labels,
+    assignees: assignees ?? this.assignees,
+    reminders: reminders ?? this.reminders,
   );
+
+  static List<T> _distinctById<T>(List<T> items, int Function(T item) id) {
+    final seen = <int>{};
+    return [
+      for (final item in items)
+        if (seen.add(id(item))) item,
+    ];
+  }
 
   static DateTime? _date(Object? given, DateTime? current) => switch (given) {
     _unset => current,
@@ -96,7 +130,9 @@ final class TaskDraft {
 
   /// Only what differs from [original]; empty when nothing does. A changed
   /// repeat sends the seconds and the mode that differ from the task's
-  /// own, so removing a repeat is `0` and mode `0`.
+  /// own, so removing a repeat is `0` and mode `0`. Labels and assignees
+  /// go as the ids added and removed; reminders as the whole list, once it
+  /// holds other reminders than the task's in any order.
   TaskChanges diff(Task original) {
     final base = TaskDraft.fromTask(original);
     final trimmedTitle = normalizedTitle;
@@ -118,7 +154,26 @@ final class TaskDraft {
       repeatMode: repeatChanged && repeatMode != original.repeatMode
           ? repeatMode
           : null,
+      labels: _idSetChange(
+        [for (final label in labels) label.id],
+        [for (final label in original.labels) label.id],
+      ),
+      assignees: _idSetChange(
+        [for (final user in assignees) user.id],
+        [for (final user in original.assignees) user.id],
+      ),
+      reminders: sameReminders(reminders, original.reminders)
+          ? null
+          : reminders,
     );
+  }
+
+  static IdSetChange? _idSetChange(List<int> draft, List<int> original) {
+    final change = IdSetChange(
+      added: draft.toSet().difference(original.toSet()),
+      removed: original.toSet().difference(draft.toSet()),
+    );
+    return change.isEmpty ? null : change;
   }
 
   static DateChange? _dateChange(DateTime? value, DateTime? base) {
@@ -137,7 +192,10 @@ final class TaskDraft {
       other.priority == priority &&
       other.percentDone == percentDone &&
       other.hexColor == hexColor &&
-      other.repeat == repeat;
+      other.repeat == repeat &&
+      listEquals(other.labels, labels) &&
+      listEquals(other.assignees, assignees) &&
+      listEquals(other.reminders, reminders);
 
   @override
   int get hashCode => Object.hash(
@@ -150,5 +208,8 @@ final class TaskDraft {
     percentDone,
     hexColor,
     repeat,
+    Object.hashAll(labels),
+    Object.hashAll(assignees),
+    Object.hashAll(reminders),
   );
 }

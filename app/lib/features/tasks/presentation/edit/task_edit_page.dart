@@ -6,20 +6,28 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/tasks/application/date_shortcuts.dart';
+import 'package:vikunja_mobile/features/tasks/application/reminder_editing.dart';
 import 'package:vikunja_mobile/features/tasks/application/task_draft.dart';
 import 'package:vikunja_mobile/features/tasks/application/task_providers.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/edit/assignees_section.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/color_row.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/date_field.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/discard_changes_dialog.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/edit/labels_section.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/priority_chips.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/edit/reminders_section.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/repeat_section.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/pickers/assignee_picker.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/pickers/label_picker.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/project_picker.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/pickers/reminder_picker.dart';
 
 /// Edits the core properties of one task. The draft starts from the row as
 /// it was when the page opened and Save sends only the fields that differ
@@ -80,6 +88,49 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
     }
   }
 
+  Future<void> _pickLabels() async {
+    final picked = await pickLabels(context, selected: _draft!.labels);
+    if (picked != null && mounted) {
+      _update((draft) => draft.copyWith(labels: picked));
+    }
+  }
+
+  Future<void> _pickAssignees() async {
+    final draft = _draft!;
+    final picked = await pickAssignees(
+      context,
+      projectId: draft.projectId,
+      selected: draft.assignees,
+    );
+    if (picked != null && mounted) {
+      _update((draft) => draft.copyWith(assignees: picked));
+    }
+  }
+
+  /// Adds a reminder, or replaces the one at [index]; one the list already
+  /// has is not added twice.
+  Future<void> _pickReminder({int? index}) async {
+    final draft = _draft!;
+    final messenger = ScaffoldMessenger.of(context);
+    final l10n = context.l10n;
+    final picked = await pickReminder(
+      context,
+      dates: draft.reminderDates,
+      now: ref.read(clockProvider)(),
+      editing: index == null ? null : draft.reminders[index],
+      existing: draft.reminders,
+    );
+    if (picked == null || !mounted) return;
+    final reminders = withReminder(_draft!.reminders, picked, replacing: index);
+    if (reminders == null) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(l10n.taskEditReminderDuplicate)),
+      );
+      return;
+    }
+    _update((draft) => draft.copyWith(reminders: reminders));
+  }
+
   Future<void> _save() async {
     final repository = ref.read(taskRepositoryProvider);
     final draft = _draft;
@@ -134,6 +185,9 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
                 ?.title,
             onChanged: _update,
             onPickProject: () => unawaited(_pickProject()),
+            onPickLabels: () => unawaited(_pickLabels()),
+            onPickAssignees: () => unawaited(_pickAssignees()),
+            onPickReminder: ({index}) => unawaited(_pickReminder(index: index)),
           ),
           (null, AsyncValue(hasValue: true)) => CenteredScrollView(
             child: EmptyState(
@@ -158,6 +212,9 @@ class _Form extends ConsumerWidget {
     required this.projectTitle,
     required this.onChanged,
     required this.onPickProject,
+    required this.onPickLabels,
+    required this.onPickAssignees,
+    required this.onPickReminder,
   });
 
   final TaskDraft draft;
@@ -165,6 +222,9 @@ class _Form extends ConsumerWidget {
   final String? projectTitle;
   final void Function(TaskDraft Function(TaskDraft draft) change) onChanged;
   final VoidCallback onPickProject;
+  final VoidCallback onPickLabels;
+  final VoidCallback onPickAssignees;
+  final void Function({int? index}) onPickReminder;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -204,7 +264,39 @@ class _Form extends ConsumerWidget {
           trailing: const Icon(Icons.arrow_drop_down),
           onTap: onPickProject,
         ),
-        const SizedBox(height: 8),
+        _SectionTitle(l10n.taskDetailLabels),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: LabelsSection(
+            labels: draft.labels,
+            onRemove: (label) => onChanged(
+              (draft) => draft.copyWith(
+                labels: [
+                  for (final kept in draft.labels)
+                    if (kept.id != label.id) kept,
+                ],
+              ),
+            ),
+            onAdd: onPickLabels,
+          ),
+        ),
+        _SectionTitle(l10n.taskDetailAssignees),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: AssigneesSection(
+            assignees: draft.assignees,
+            onRemove: (user) => onChanged(
+              (draft) => draft.copyWith(
+                assignees: [
+                  for (final kept in draft.assignees)
+                    if (kept.id != user.id) kept,
+                ],
+              ),
+            ),
+            onAdd: onPickAssignees,
+          ),
+        ),
+        const SizedBox(height: 16),
         DateField(
           label: l10n.taskDetailDueDate,
           clearLabel: l10n.taskEditClearDueDate,
@@ -234,6 +326,18 @@ class _Form extends ConsumerWidget {
           shortcuts: shortcuts,
           onChanged: (value) =>
               onChanged((draft) => draft.copyWith(endDate: value)),
+        ),
+        _SectionTitle(l10n.taskDetailReminders),
+        RemindersSection(
+          reminders: draft.reminders,
+          dates: draft.reminderDates,
+          onEdit: (index) => onPickReminder(index: index),
+          onRemove: (index) => onChanged(
+            (draft) => draft.copyWith(
+              reminders: [...draft.reminders]..removeAt(index),
+            ),
+          ),
+          onAdd: onPickReminder,
         ),
         _SectionTitle(l10n.taskDetailPriority),
         Padding(

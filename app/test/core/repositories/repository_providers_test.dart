@@ -38,6 +38,8 @@ void main() {
     expect(container.read(activeAccountIdProvider), isNull);
     expect(container.read(projectRepositoryProvider), isNull);
     expect(container.read(taskRepositoryProvider), isNull);
+    expect(container.read(labelRepositoryProvider), isNull);
+    expect(container.read(userRepositoryProvider), isNull);
     final projects = container.listen(projectsProvider, (_, _) {});
     expect(projects.read(), const AsyncLoading<List<Project>>());
     final status = container.listen(syncStatusProvider, (_, _) {});

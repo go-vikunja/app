@@ -1283,4 +1283,180 @@ void main() {
       );
     });
   });
+
+  group('labels, assignees and reminders', () {
+    final urgent = sampleLabel(id: 10, title: 'urgent');
+    final home = sampleLabel(id: 11, title: 'home');
+    const ana = User(id: 20, username: 'ana', name: 'Ana');
+    const hourBeforeDue = TaskReminder(
+      relativePeriod: Duration(hours: -1),
+      relativeTo: ReminderRelativeTo.dueDate,
+    );
+    final beforeMonday = monday.subtract(const Duration(hours: 1));
+
+    setUp(() async {
+      await db.labelsDao.upsertAll([urgent, home]);
+      await db.usersDao.upsertAll([ana]);
+      write.serverLabels[10] = urgent;
+      write.serverUsers[20] = ana;
+    });
+
+    test('reach the server, and the answer lands in the child rows', () async {
+      const changes = TaskChanges(
+        labels: IdSetChange(added: {10}),
+        assignees: IdSetChange(added: {20}),
+        reminders: [hourBeforeDue],
+      );
+      await queue(1, changes);
+
+      await sender().drain();
+
+      expect(write.requests, ['update 1']);
+      expect(write.updates.single, (1, changes));
+      final server = write.serverTasks[1]!;
+      expect(server.labels, [urgent]);
+      expect(server.assignees, [ana]);
+      expect(server.reminders.single.reminder, beforeMonday);
+      final local = (await db.tasksDao.find(1))!;
+      expect(local.labels, [urgent]);
+      expect(local.assignees, [ana]);
+      expect(local.reminders, server.reminders);
+      expect((await db.tasksDao.findRow(1))!.pendingChanges, isNull);
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    test('a task created with a reminder, then labelled and assigned before '
+        'the send: the create carries the reminder, the labels and the '
+        'assignee follow under the server id, and the local rows survive '
+        'the remap', () async {
+      final id = await db.outboxDao.queueCreate(
+        NewTask(
+          projectId: 7,
+          title: 'Call back',
+          dueDate: monday,
+          reminders: const [hourBeforeDue],
+        ),
+        now: now,
+      );
+      await queue(
+        id,
+        const TaskChanges(
+          labels: IdSetChange(added: {10}),
+          assignees: IdSetChange(added: {20}),
+        ),
+      );
+      final local = (await db.tasksDao.find(id))!;
+      expect(local.labels, [urgent]);
+      expect(local.assignees, [ana]);
+      expect(local.reminders.single.reminder, beforeMonday);
+
+      await sender().drain();
+
+      expect(write.requests, ['create Call back', 'update 100']);
+      expect(write.creates.single.reminders, [hourBeforeDue]);
+      expect(write.updates.single, (
+        100,
+        const TaskChanges(
+          labels: IdSetChange(added: {10}),
+          assignees: IdSetChange(added: {20}),
+        ),
+      ));
+      final server = write.serverTasks[100]!;
+      expect(server.labels, [urgent]);
+      expect(server.assignees, [ana]);
+      expect(server.reminders.single.reminder, beforeMonday);
+      expect(await db.tasksDao.resolveId(id), 100);
+      final created = (await db.tasksDao.find(100))!;
+      expect(created.labels, [urgent]);
+      expect(created.assignees, [ana]);
+      expect(created.reminders, server.reminders);
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    test('labels picked while the create is in flight are still shown after '
+        'the remap, before their own update is sent', () async {
+      final id = await db.outboxDao.queueCreate(
+        const NewTask(projectId: 7, title: 'Call back'),
+        now: now,
+      );
+      final gate = RequestGate()..pattern = RegExp('create|update');
+      write.beforeRequest = gate.call;
+      final outbox = sender();
+      final drain = outbox.drain();
+      await pumpEventQueue();
+      await queue(id, const TaskChanges(labels: IdSetChange(added: {10})));
+      expect((await db.tasksDao.find(id))!.labels, [urgent]);
+
+      gate.release();
+      await pumpEventQueue();
+
+      expect(write.requests, ['create Call back', 'update 100']);
+      expect((await db.tasksDao.find(100))!.labels, [urgent]);
+      expect(write.serverTasks[100]!.labels, isEmpty);
+
+      gate.release();
+      await drain;
+
+      expect(write.serverTasks[100]!.labels, [urgent]);
+      expect((await db.tasksDao.find(100))!.labels, [urgent]);
+    });
+
+    test('a label the server no longer has is a sync problem under the task '
+        'title; discard brings back what the server has', () async {
+      await queue(1, const TaskChanges(labels: IdSetChange(added: {11})));
+      final outbox = sender();
+
+      await outbox.drain();
+
+      final problem = (await db.outboxDao.loadProblems()).single;
+      expect(problem.kind, OutboxOperationKind.updateTask);
+      expect(problem.taskTitle, 'One');
+      expect(problem.failure, isA<NotFound>());
+      expect(problem.failure.code, 8002);
+      expect((await db.tasksDao.find(1))!.labels, [home]);
+      expect(write.serverTasks[1]!.labels, isEmpty);
+
+      await outbox.discard(problem.operationId);
+
+      expect(await db.outboxDao.count(), 0);
+      final restored = (await db.tasksDao.find(1))!;
+      expect(restored.labels, isEmpty);
+      expect((await db.tasksDao.findRow(1))!.pendingChanges, isNull);
+    });
+
+    for (final failure in <VikunjaFailure>[
+      const NotFound(code: 8002),
+      const NotFound(code: 1005),
+      const Forbidden(code: 7003),
+      const Forbidden(),
+    ]) {
+      test('$failure on a label or assignee change is final and keeps the '
+          'task and the change', () async {
+        write.beforeRequest = (request) {
+          if (request == 'update 1') fail(failure);
+          return Future.value();
+        };
+        await queue(
+          1,
+          const TaskChanges(
+            labels: IdSetChange(added: {10}),
+            assignees: IdSetChange(added: {20}),
+          ),
+        );
+        final outbox = sender();
+
+        await outbox.drain();
+
+        final problem = (await db.outboxDao.loadProblems()).single;
+        expect(problem.taskId, 1);
+        expect(problem.failure.runtimeType, failure.runtimeType);
+        expect(problem.failure.code, failure.code);
+        expect(timers.active, isEmpty);
+        final local = (await db.tasksDao.find(1))!;
+        expect(local.labels, [urgent]);
+        expect(local.assignees, [ana]);
+        expect(await db.outboxDao.count(), 1);
+      });
+    }
+  });
 }

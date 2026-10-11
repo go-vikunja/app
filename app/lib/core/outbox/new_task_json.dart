@@ -1,9 +1,10 @@
 import 'dart:convert';
 
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/outbox/task_changes_json.dart';
 
 /// A `NewTask` as stored in a create's outbox op: the wire names, dates in
-/// UTC, the repeat in seconds.
+/// UTC, the repeat in seconds, reminders as in a stored `TaskChanges`.
 String encodeNewTask(NewTask task) => jsonEncode(newTaskToJson(task));
 
 NewTask decodeNewTask(String json) => switch (jsonDecode(json)) {
@@ -24,6 +25,7 @@ Map<String, Object?> newTaskToJson(NewTask task) => {
   'repeat_after': task.repeatAfter.inSeconds,
   'repeat_mode': task.repeatMode.value,
   'is_favorite': task.isFavorite,
+  if (task.reminders.isNotEmpty) 'reminders': remindersToJson(task.reminders),
 };
 
 NewTask newTaskFromJson(Map<String, Object?> json) => NewTask(
@@ -39,6 +41,10 @@ NewTask newTaskFromJson(Map<String, Object?> json) => NewTask(
   repeatAfter: Duration(seconds: json['repeat_after'] as int? ?? 0),
   repeatMode: RepeatMode.fromValue(json['repeat_mode'] as int? ?? 0),
   isFavorite: json['is_favorite'] as bool? ?? false,
+  reminders: switch (json['reminders']) {
+    final List<Object?> list => remindersFromJson(list),
+    _ => const [],
+  },
 );
 
 DateTime? _date(Object? value) => switch (value) {

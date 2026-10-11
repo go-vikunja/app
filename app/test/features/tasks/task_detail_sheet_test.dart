@@ -221,6 +221,60 @@ void main() {
     );
   });
 
+  testWidgets('labels, assignees and reminders follow the row after a save', (
+    tester,
+  ) async {
+    await openDetail(tester, 'Bare task');
+    final sheet = find.byType(TaskDetailSheet);
+    Finder inSheet(Finder finder) =>
+        find.descendant(of: sheet, matching: finder);
+    expect(inSheet(find.byType(LabelChip)), findsNothing);
+
+    // Only the child rows change, as a local save of these fields does.
+    data.tasks.all = [
+      data.tasks.all.first,
+      data.tasks
+          .find(2)!
+          .copyWith(
+            labels: [sampleLabel(id: 3, title: 'Errand')],
+            assignees: const [User(id: 7, username: 'alice', name: 'Alice')],
+            reminders: const [
+              TaskReminder(
+                relativePeriod: Duration(days: -1),
+                relativeTo: ReminderRelativeTo.dueDate,
+              ),
+            ],
+          ),
+    ];
+    await tester.pumpAndSettle();
+
+    expect(inSheet(find.text('Errand')), findsOneWidget);
+    expect(inSheet(find.text('Alice')), findsOneWidget);
+    expect(
+      inSheet(
+        find.text(en.reminderBefore('1 day', en.reminderReferenceDueDate)),
+      ),
+      findsOneWidget,
+    );
+
+    data.tasks.all = [
+      data.tasks.all.first,
+      data.tasks
+          .find(2)!
+          .copyWith(
+            labels: const [],
+            assignees: const [],
+            reminders: const [],
+            repeatAfter: const Duration(days: 1),
+          ),
+    ];
+    await tester.pumpAndSettle();
+
+    expect(inSheet(find.text('Errand')), findsNothing);
+    expect(inSheet(find.text('Alice')), findsNothing);
+    expect(inSheet(find.text(en.repeatEveryDays(1))), findsOneWidget);
+  });
+
   testWidgets('dates are localized in German', (tester) async {
     useLocale(tester, const Locale('de'));
     await openDetail(tester, 'Quarterly report');

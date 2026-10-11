@@ -9,12 +9,12 @@ import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
-import 'package:vikunja_mobile/features/home/presentation/account_header.dart';
 import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
 import 'package:vikunja_mobile/features/tasks/application/html_to_text.dart';
 import 'package:vikunja_mobile/features/tasks/application/task_providers.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/delete_task_dialog.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/favourite_button.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/initials_avatar.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/moment_format.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_chips.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_formatting.dart';
@@ -432,30 +432,17 @@ class _Assignee extends StatelessWidget {
   final User user;
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        ExcludeSemantics(
-          child: CircleAvatar(
-            radius: 14,
-            backgroundColor: colors.secondaryContainer,
-            child: Text(
-              initialsOf(user.displayName),
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: colors.onSecondaryContainer,
-              ),
-              textScaler: TextScaler.noScaling,
-            ),
-          ),
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      InitialsAvatar(user: user),
+      const SizedBox(width: 6),
+      Flexible(
+        child: Text(
+          user.displayName,
+          style: Theme.of(context).textTheme.bodyMedium,
         ),
-        const SizedBox(width: 6),
-        Flexible(
-          child: Text(user.displayName, style: theme.textTheme.bodyMedium),
-        ),
-      ],
-    );
-  }
+      ),
+    ],
+  );
 }

@@ -76,7 +76,8 @@ Task taskWithId(Task task, int id) => Task(
 );
 
 /// What the server stores for a create: [id] and [index] assigned, the
-/// identifier `-<index>` of a project without a prefix, timestamps [now].
+/// identifier `-<index>` of a project without a prefix, timestamps [now],
+/// the instants of relative reminders computed.
 Task taskFromNewTask(
   NewTask task, {
   required int id,
@@ -98,43 +99,123 @@ Task taskFromNewTask(
   isFavorite: task.isFavorite,
   repeatAfter: task.repeatAfter,
   repeatMode: task.repeatMode,
+  reminders: _withInstants(
+    task.reminders,
+    due: task.dueDate,
+    start: task.startDate,
+    end: task.endDate,
+  ),
   created: now.toUtc(),
   updated: now.toUtc(),
 );
 
-/// [changes] applied as the server stores them.
+/// [changes] applied as the server stores them: a label or assignee added
+/// is taken from [labels] or [users], else from the task; an id found in
+/// neither is skipped. Reminders are replaced, and the instants of relative
+/// ones follow the dates.
 Task applyChangesToTask(
   Task task,
   TaskChanges changes, {
   required DateTime now,
-}) => copyTask(
-  task,
-  title: changes.title,
-  projectId: changes.projectId,
-  description: changes.description,
-  done: changes.done,
-  doneAt: switch (changes.done) {
-    null => _unset,
-    true => task.doneAt ?? now,
-    false => null,
-  },
-  dueDate: _changed(changes.dueDate),
-  startDate: _changed(changes.startDate),
-  endDate: _changed(changes.endDate),
-  priority: switch (changes.priority) {
-    final value? => TaskPriority.fromValue(value),
-    null => null,
-  },
-  percentDone: changes.percentDone,
-  hexColor: changes.hexColor,
-  isFavorite: changes.isFavorite,
-  repeatAfter: changes.repeatAfter,
-  repeatMode: changes.repeatMode,
-  updated: now,
-);
+  Map<int, Label> labels = const {},
+  Map<int, User> users = const {},
+}) {
+  final changed = _applyFields(task, changes, now: now);
+  return changed.copyWith(
+    labels: _applyIds(changes.labels, task.labels, (label) => label.id, labels),
+    assignees: _applyIds(
+      changes.assignees,
+      task.assignees,
+      (user) => user.id,
+      users,
+    ),
+    reminders:
+        changes.reminders == null &&
+            changes.dueDate == null &&
+            changes.startDate == null &&
+            changes.endDate == null
+        ? task.reminders
+        : _withInstants(
+            changes.reminders ?? task.reminders,
+            due: changed.dueDate,
+            start: changed.startDate,
+            end: changed.endDate,
+          ),
+  );
+}
+
+Task _applyFields(Task task, TaskChanges changes, {required DateTime now}) =>
+    copyTask(
+      task,
+      title: changes.title,
+      projectId: changes.projectId,
+      description: changes.description,
+      done: changes.done,
+      doneAt: switch (changes.done) {
+        null => _unset,
+        true => task.doneAt ?? now,
+        false => null,
+      },
+      dueDate: _changed(changes.dueDate),
+      startDate: _changed(changes.startDate),
+      endDate: _changed(changes.endDate),
+      priority: switch (changes.priority) {
+        final value? => TaskPriority.fromValue(value),
+        null => null,
+      },
+      percentDone: changes.percentDone,
+      hexColor: changes.hexColor,
+      isFavorite: changes.isFavorite,
+      repeatAfter: changes.repeatAfter,
+      repeatMode: changes.repeatMode,
+      updated: now,
+    );
+
+List<T> _applyIds<T>(
+  IdSetChange? change,
+  List<T> current,
+  int Function(T item) idOf,
+  Map<int, T> known,
+) {
+  if (change == null) return current;
+  final kept = [
+    for (final item in current)
+      if (!change.removed.contains(idOf(item))) item,
+  ];
+  return [
+    ...kept,
+    for (final id in change.added.toList()..sort())
+      if (!kept.any((item) => idOf(item) == id))
+        ?(known[id] ?? current.where((item) => idOf(item) == id).firstOrNull),
+  ];
+}
+
+/// The server's rule: a relative reminder's instant is its date plus the
+/// period, none while that date is unset.
+List<TaskReminder> _withInstants(
+  List<TaskReminder> reminders, {
+  required DateTime? due,
+  required DateTime? start,
+  required DateTime? end,
+}) => [
+  for (final reminder in reminders)
+    if (reminder.relativeTo case final relativeTo?)
+      TaskReminder(
+        reminder: switch (relativeTo) {
+          ReminderRelativeTo.dueDate => due,
+          ReminderRelativeTo.startDate => start,
+          ReminderRelativeTo.endDate => end,
+        }?.toUtc().add(reminder.relativePeriod),
+        relativePeriod: reminder.relativePeriod,
+        relativeTo: relativeTo,
+      )
+    else
+      TaskReminder(reminder: reminder.reminder?.toUtc()),
+];
 
 /// What the server does to a repeating task marked done: open again with
-/// the dates moved on, `done_at` set to now.
+/// the dates and absolute reminders moved on, relative reminders following
+/// the dates, `done_at` set to now.
 Task reopenRepeating(Task task, {required DateTime now}) {
   DateTime? shifted(DateTime? date) {
     if (date == null) return null;
@@ -152,7 +233,7 @@ Task reopenRepeating(Task task, {required DateTime now}) {
     };
   }
 
-  return copyTask(
+  final reopened = copyTask(
     task,
     done: false,
     doneAt: now,
@@ -160,6 +241,20 @@ Task reopenRepeating(Task task, {required DateTime now}) {
     startDate: shifted(task.startDate),
     endDate: shifted(task.endDate),
     updated: now,
+  );
+  return reopened.copyWith(
+    reminders: _withInstants(
+      [
+        for (final reminder in task.reminders)
+          if (reminder.isRelative)
+            reminder
+          else
+            TaskReminder(reminder: shifted(reminder.reminder)),
+      ],
+      due: reopened.dueDate,
+      start: reopened.startDate,
+      end: reopened.endDate,
+    ),
   );
 }
 

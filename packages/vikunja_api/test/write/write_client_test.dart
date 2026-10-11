@@ -24,6 +24,39 @@ FakeRoute _noContent() =>
 FakeRoute _notFound(int code) =>
     json({'code': code, 'message': 'The task does not exist.'}, status: 404);
 
+FakeRoute _byMethod(Map<String, FakeRoute> routes) =>
+    (request) => (routes[request.method] ?? refused)(request);
+
+FakeRoute _domainError(int status, int code) =>
+    json({'code': code, 'message': 'Vikunja code $code'}, status: status);
+
+FakeRoute _forbiddenWithoutCode() =>
+    json({'code': 0, 'message': 'Forbidden'}, status: 403);
+
+FakeRoute _created(Map<String, Object?> body) => json(body, status: 201);
+
+Map<String, Object?> _taskWith({
+  List<int> labels = const [],
+  List<int> assignees = const [],
+  Map<String, Object?> overrides = const {},
+}) => taskJson(
+  42,
+  overrides: {
+    'labels': labels.isEmpty
+        ? null
+        : [for (final id in labels) labelJson(id, 'label $id')],
+    'assignees': assignees.isEmpty
+        ? null
+        : [for (final id in assignees) userJson(id, 'user$id')],
+    ...overrides,
+  },
+);
+
+List<String> _calls(Dio dio) => [
+  for (final request in adapterOf(dio).requests)
+    '${request.method} ${request.uri}',
+];
+
 /// A task with everything a v1 replace could lose: assignees, reminders,
 /// labels, dates, a repeat, a colour and a cover image.
 final Map<String, Object?> _richTask = taskJson(
@@ -176,11 +209,19 @@ void main() {
         final task = await _client(dio).tasks.update(42, changes);
 
         final adapter = adapterOf(dio);
-        final request = adapter.requests.single;
+        final request = adapter.requests.first;
         expect(request.method, 'PATCH');
         expect(request.headers['content-type'], 'application/merge-patch+json');
         expect(request.headers['Accept'], 'application/json');
-        expect(adapter.decodedBodies.single, body);
+        expect(adapter.decodedBodies.first, body);
+        final changesDates =
+            changes.dueDate != null ||
+            changes.startDate != null ||
+            changes.endDate != null;
+        expect(_calls(dio), [
+          'PATCH $_v2/tasks/42',
+          if (changesDates) 'GET $_v2/tasks/42',
+        ]);
         expect(task.id, 42);
         expect(task.title, 'Milk');
       });
@@ -193,7 +234,7 @@ void main() {
       await _client(dio).tasks
           .update(42, TaskChanges(dueDate: DateChange.set(local)));
 
-      expect(adapterOf(dio).decodedBodies.single, {
+      expect(adapterOf(dio).decodedBodies.first, {
         'due_date': local.toUtc().toIso8601String(),
       });
     });
@@ -432,7 +473,12 @@ void main() {
           ),
         );
 
-        final body = adapterOf(dio).decodedBodies.last! as Map<String, Object?>;
+        expect(_calls(dio), [
+          'GET $_v1/tasks/42',
+          'POST $_v1/tasks/42',
+          'GET $_v1/tasks/42',
+        ]);
+        final body = adapterOf(dio).decodedBodies[1]! as Map<String, Object?>;
         expect(body['title'], 'Renamed');
         expect(body['description'], '');
         expect(body['is_favorite'], isFalse);
@@ -720,6 +766,41 @@ void main() {
       final body = adapterOf(dio).decodedBodies.single! as Map<String, Object?>;
       expect(body['due_date'], local.toUtc().toIso8601String());
     });
+
+    for (final (hasV2, base) in [(true, _v2), (false, _v1)]) {
+      test(
+        '${hasV2 ? 'v2' : 'v1'} sends reminders in their wire form',
+        () async {
+          final dio = fakeDio({'$base/projects/7/tasks': json(created)});
+
+          await _client(dio, hasV2: hasV2).tasks.create(
+            NewTask(
+              projectId: 7,
+              title: 'Milk',
+              dueDate: due,
+              reminders: [
+                TaskReminder(reminder: DateTime.utc(2030, 1, 1, 18)),
+                const TaskReminder(
+                  relativePeriod: Duration(hours: -2),
+                  relativeTo: ReminderRelativeTo.dueDate,
+                ),
+              ],
+            ),
+          );
+
+          final body =
+              adapterOf(dio).decodedBodies.single! as Map<String, Object?>;
+          expect(body['reminders'], [
+            {
+              'reminder': '2030-01-01T18:00:00.000Z',
+              'relative_period': 0,
+              'relative_to': '',
+            },
+            {'relative_period': -7200, 'relative_to': 'due_date'},
+          ]);
+        },
+      );
+    }
 
     test('the colour loses its hash', () async {
       final dio = fakeDio({'$_v2/projects/7/tasks': json(created)});
@@ -1046,6 +1127,767 @@ void main() {
         throwsA(cancelled),
       );
       await expectLater(_client(dio).tasks.delete(42), throwsA(cancelled));
+    });
+  });
+
+  group('reminders', () {
+    final absolute = TaskReminder(reminder: DateTime.utc(2026, 10, 12, 9));
+    final absoluteWire = <String, Object?>{
+      'reminder': '2026-10-12T09:00:00.000Z',
+      'relative_period': 0,
+      'relative_to': '',
+    };
+    final cases = <(String, List<TaskReminder>, List<Object?>)>[
+      ('absolute', [absolute], [absoluteWire]),
+      (
+        'relative, before the due date',
+        const [
+          TaskReminder(
+            relativePeriod: Duration(hours: -1),
+            relativeTo: ReminderRelativeTo.dueDate,
+          ),
+        ],
+        [
+          {'relative_period': -3600, 'relative_to': 'due_date'},
+        ],
+      ),
+      (
+        'relative, after the start date',
+        const [
+          TaskReminder(
+            relativePeriod: Duration(days: 2),
+            relativeTo: ReminderRelativeTo.startDate,
+          ),
+        ],
+        [
+          {'relative_period': 172800, 'relative_to': 'start_date'},
+        ],
+      ),
+      (
+        'on the end date, with the instant the server computed before',
+        [
+          TaskReminder(
+            reminder: DateTime.utc(2026, 10, 16, 17),
+            relativeTo: ReminderRelativeTo.endDate,
+          ),
+        ],
+        [
+          {'relative_period': 0, 'relative_to': 'end_date'},
+        ],
+      ),
+      ('all removed', const [], []),
+      (
+        'absolute without an instant as the zero date',
+        const [TaskReminder()],
+        [
+          {'reminder': zeroDateJson, 'relative_period': 0, 'relative_to': ''},
+        ],
+      ),
+    ];
+
+    for (final (name, reminders, wire) in cases) {
+      test('v2 patches the whole list: $name', () async {
+        final dio = fakeDio({'$_v2/tasks/42': json(taskJson(42))});
+
+        await _client(dio).tasks.update(42, TaskChanges(reminders: reminders));
+
+        expect(adapterOf(dio).decodedBodies.first, {'reminders': wire});
+      });
+    }
+
+    test('a local instant is sent as UTC', () async {
+      final dio = fakeDio({'$_v2/tasks/42': json(taskJson(42))});
+      final local = DateTime(2026, 10, 12, 9);
+
+      await _client(dio).tasks
+          .update(42, TaskChanges(reminders: [TaskReminder(reminder: local)]));
+
+      final body = adapterOf(dio).decodedBodies.first! as Map<String, Object?>;
+      expect(
+        (body['reminders']! as List<Object?>).single,
+        containsPair('reminder', local.toUtc().toIso8601String()),
+      );
+    });
+
+    // The server answers an update with the reminders as sent but stores
+    // only the last one per instant.
+    test('v2 reads the task back for the stored list', () async {
+      final stored = {
+        'reminder': '2026-10-12T09:00:00Z',
+        'relative_period': 0,
+        'relative_to': '',
+      };
+      final dio = fakeDio({
+        '$_v2/tasks/42': _byMethod({
+          'PATCH': json(
+            taskJson(
+              42,
+              overrides: {
+                'reminders': [stored, stored],
+              },
+            ),
+          ),
+          'GET': json(
+            taskJson(
+              42,
+              overrides: {
+                'reminders': [stored],
+              },
+            ),
+          ),
+        }),
+      });
+
+      final task = await _client(dio).tasks
+          .update(42, TaskChanges(reminders: [absolute, absolute]));
+
+      expect(_calls(dio), ['PATCH $_v2/tasks/42', 'GET $_v2/tasks/42']);
+      expect(task.reminders, [absolute]);
+    });
+
+    test('v1 replaces the reminders as read and keeps the assignees', () async {
+      final dio = fakeDio({'$_v1/tasks/42': json(_richTask)});
+
+      await _client(
+        dio,
+        hasV2: false,
+      ).tasks.update(42, TaskChanges(reminders: [absolute]));
+
+      expect(_calls(dio), [
+        'GET $_v1/tasks/42',
+        'POST $_v1/tasks/42',
+        'GET $_v1/tasks/42',
+      ]);
+      final body = adapterOf(dio).decodedBodies[1]! as Map<String, Object?>;
+      expect(body['reminders'], [absoluteWire]);
+      expect(body['assignees'], _richTask['assignees']);
+      expect(body['title'], _richTask['title']);
+    });
+
+    // Clearing the date puts both relative reminders on the zero instant:
+    // the answer still lists both, the server keeps one.
+    for (final hasV2 in [true, false]) {
+      test('${hasV2 ? 'v2' : 'v1'} reads a date change back for the reminders '
+          'the server merged', () async {
+        final base = hasV2 ? _v2 : _v1;
+        Map<String, Object?> relative(int seconds) => {
+          'reminder': zeroDateJson,
+          'relative_period': seconds,
+          'relative_to': 'due_date',
+        };
+        final answered = taskJson(
+          42,
+          overrides: {
+            'reminders': [relative(0), relative(-86400)],
+          },
+        );
+        final stored = taskJson(
+          42,
+          overrides: {
+            'reminders': [relative(-86400)],
+          },
+        );
+        final dio = fakeDio({
+          '$base/tasks/42': hasV2
+              ? _byMethod({'PATCH': json(answered), 'GET': json(stored)})
+              : sequence([json(answered), json(answered), json(stored)]),
+        });
+
+        final task = await _client(
+          dio,
+          hasV2: hasV2,
+        ).tasks.update(42, const TaskChanges(dueDate: DateChange.clear()));
+
+        expect(_calls(dio), [
+          if (!hasV2) 'GET $base/tasks/42',
+          '${hasV2 ? 'PATCH' : 'POST'} $base/tasks/42',
+          'GET $base/tasks/42',
+        ]);
+        expect(task.reminders, const [
+          TaskReminder(
+            relativePeriod: Duration(days: -1),
+            relativeTo: ReminderRelativeTo.dueDate,
+          ),
+        ]);
+      });
+    }
+
+    test('v1 clears them with an empty list', () async {
+      final dio = fakeDio({'$_v1/tasks/42': json(_richTask)});
+
+      await _client(
+        dio,
+        hasV2: false,
+      ).tasks.update(42, const TaskChanges(reminders: []));
+
+      final body = adapterOf(dio).decodedBodies[1]! as Map<String, Object?>;
+      expect(body['reminders'], isEmpty);
+      expect(body['assignees'], _richTask['assignees']);
+    });
+  });
+
+  group('labels and assignees', () {
+    test('are never body fields', () async {
+      final dio = fakeDio({
+        '$_v2/tasks/42': json(_taskWith(labels: [4], assignees: [13])),
+      });
+
+      await _client(dio).tasks.update(
+        42,
+        const TaskChanges(
+          title: 'Milk',
+          labels: IdSetChange(added: {4}),
+          assignees: IdSetChange(added: {13}),
+        ),
+      );
+
+      expect(adapterOf(dio).decodedBodies.single, {'title': 'Milk'});
+    });
+
+    for (final (hasV2, base, add, deleted) in [
+      (true, _v2, 'POST', _noContent()),
+      (false, _v1, 'PUT', json({'message': 'Successfully deleted.'})),
+    ]) {
+      final version = hasV2 ? 'v2' : 'v1';
+
+      test('$version reads the task and sends only the missing label '
+          'requests, then reads it again', () async {
+        final dio = fakeDio({
+          '$base/tasks/42': sequence([
+            json(_taskWith(labels: [4, 6])),
+            json(_taskWith(labels: [4, 5])),
+          ]),
+          '$base/tasks/42/labels/6': deleted,
+          '$base/tasks/42/labels': _created({'label_id': 5}),
+        });
+
+        final task = await _client(dio, hasV2: hasV2).tasks.update(
+          42,
+          const TaskChanges(
+            labels: IdSetChange(added: {5, 4}, removed: {6, 7}),
+          ),
+        );
+
+        expect(_calls(dio), [
+          'GET $base/tasks/42',
+          'DELETE $base/tasks/42/labels/6',
+          '$add $base/tasks/42/labels',
+          'GET $base/tasks/42',
+        ]);
+        expect(adapterOf(dio).decodedBodies, [
+          null,
+          null,
+          {'label_id': 5},
+          null,
+        ]);
+        expect(task.labels.map((l) => l.id), [4, 5]);
+      });
+
+      test('$version assignee requests go to the assignee endpoints', () async {
+        final dio = fakeDio({
+          '$base/tasks/42': sequence([
+            json(_taskWith(assignees: [13])),
+            json(_taskWith(assignees: [14])),
+          ]),
+          '$base/tasks/42/assignees/13': deleted,
+          '$base/tasks/42/assignees': _created({'user_id': 14}),
+        });
+
+        final task = await _client(dio, hasV2: hasV2).tasks.update(
+          42,
+          const TaskChanges(
+            assignees: IdSetChange(added: {14}, removed: {13}),
+          ),
+        );
+
+        expect(_calls(dio), [
+          'GET $base/tasks/42',
+          'DELETE $base/tasks/42/assignees/13',
+          '$add $base/tasks/42/assignees',
+          'GET $base/tasks/42',
+        ]);
+        expect(adapterOf(dio).decodedBodies[2], {'user_id': 14});
+        expect(task.assignees.map((u) => u.id), [14]);
+      });
+    }
+
+    test('v2 with body fields: the patch answer is the state to diff, and '
+        'the order is label removes, label adds, assignee removes, '
+        'assignee adds', () async {
+      final dio = fakeDio({
+        '$_v2/tasks/42': _byMethod({
+          'PATCH': json(
+            _taskWith(
+              labels: [4, 6],
+              assignees: [13, 15],
+              overrides: {'title': 'Milk'},
+            ),
+          ),
+          'GET': json(
+            _taskWith(
+              labels: [5, 7],
+              assignees: [14, 16],
+              overrides: {'title': 'Milk'},
+            ),
+          ),
+        }),
+        '$_v2/tasks/42/labels/4': _noContent(),
+        '$_v2/tasks/42/labels/6': _noContent(),
+        '$_v2/tasks/42/labels': _created({}),
+        '$_v2/tasks/42/assignees/13': _noContent(),
+        '$_v2/tasks/42/assignees/15': _noContent(),
+        '$_v2/tasks/42/assignees': _created({}),
+      });
+
+      final task = await _client(dio).tasks.update(
+        42,
+        const TaskChanges(
+          title: 'Milk',
+          labels: IdSetChange(added: {5, 7}, removed: {4, 6}),
+          assignees: IdSetChange(added: {14, 16}, removed: {13, 15}),
+        ),
+      );
+
+      expect(_calls(dio), [
+        'PATCH $_v2/tasks/42',
+        'DELETE $_v2/tasks/42/labels/4',
+        'DELETE $_v2/tasks/42/labels/6',
+        'POST $_v2/tasks/42/labels',
+        'POST $_v2/tasks/42/labels',
+        'DELETE $_v2/tasks/42/assignees/13',
+        'DELETE $_v2/tasks/42/assignees/15',
+        'POST $_v2/tasks/42/assignees',
+        'POST $_v2/tasks/42/assignees',
+        'GET $_v2/tasks/42',
+      ]);
+      expect(adapterOf(dio).decodedBodies, [
+        {'title': 'Milk'},
+        null,
+        null,
+        {'label_id': 5},
+        {'label_id': 7},
+        null,
+        null,
+        {'user_id': 14},
+        {'user_id': 16},
+        null,
+      ]);
+      expect(task.labels.map((l) => l.id), [5, 7]);
+      expect(task.assignees.map((u) => u.id), [14, 16]);
+    });
+
+    test('v1 with body fields: the posted body keeps the assignees as read, '
+        'the endpoints change them afterwards', () async {
+      final before = _taskWith(labels: [4], assignees: [13]);
+      final dio = fakeDio({
+        '$_v1/tasks/42': _byMethod({
+          'GET': sequence([
+            json(before),
+            json(_taskWith(labels: [5], assignees: [14])),
+          ]),
+          // The v1 update answers without the labels.
+          'POST': json({...before, 'title': 'Milk', 'labels': null}),
+        }),
+        '$_v1/tasks/42/labels/4': json({'message': 'Successfully deleted.'}),
+        '$_v1/tasks/42/labels': _created({}),
+        '$_v1/tasks/42/assignees/13': json({
+          'message': 'Successfully deleted.',
+        }),
+        '$_v1/tasks/42/assignees': _created({}),
+      });
+
+      final task = await _client(dio, hasV2: false).tasks.update(
+        42,
+        const TaskChanges(
+          title: 'Milk',
+          labels: IdSetChange(added: {5}, removed: {4}),
+          assignees: IdSetChange(added: {14}, removed: {13}),
+        ),
+      );
+
+      expect(_calls(dio), [
+        'GET $_v1/tasks/42',
+        'POST $_v1/tasks/42',
+        'DELETE $_v1/tasks/42/labels/4',
+        'PUT $_v1/tasks/42/labels',
+        'DELETE $_v1/tasks/42/assignees/13',
+        'PUT $_v1/tasks/42/assignees',
+        'GET $_v1/tasks/42',
+      ]);
+      final posted = adapterOf(dio).decodedBodies[1]! as Map<String, Object?>;
+      expect(posted['title'], 'Milk');
+      expect(posted['assignees'], before['assignees']);
+      expect(posted.containsKey('labels'), isFalse);
+      expect(adapterOf(dio).decodedBodies[3], {'label_id': 5});
+      expect(adapterOf(dio).decodedBodies[5], {'user_id': 14});
+      expect(task.labels.map((l) => l.id), [5]);
+      expect(task.assignees.map((u) => u.id), [14]);
+    });
+
+    test(
+      'nothing is sent when the server already matches: only the read',
+      () async {
+        final dio = fakeDio({
+          '$_v2/tasks/42': json(_taskWith(labels: [4], assignees: [13])),
+        });
+
+        final task = await _client(dio).tasks.update(
+          42,
+          const TaskChanges(
+            labels: IdSetChange(added: {4}, removed: {6}),
+            assignees: IdSetChange(added: {13}, removed: {15}),
+          ),
+        );
+
+        expect(_calls(dio), ['GET $_v2/tasks/42']);
+        expect(task.labels.map((l) => l.id), [4]);
+        expect(task.assignees.map((u) => u.id), [13]);
+      },
+    );
+
+    test('with body fields and a matching server only the patch is sent '
+        'and its answer returned', () async {
+      final dio = fakeDio({
+        '$_v2/tasks/42': json(
+          _taskWith(labels: [4], overrides: {'title': 'Milk'}),
+        ),
+      });
+
+      final task = await _client(dio).tasks.update(
+        42,
+        const TaskChanges(
+          title: 'Milk',
+          labels: IdSetChange(added: {4}),
+        ),
+      );
+
+      expect(_calls(dio), ['PATCH $_v2/tasks/42']);
+      expect(task.title, 'Milk');
+    });
+
+    test('empty id-set changes are no changes: only the read', () async {
+      final dio = fakeDio({
+        '$_v2/tasks/42': json(_taskWith(labels: [4])),
+      });
+
+      await _client(dio).tasks.update(
+        42,
+        const TaskChanges(labels: IdSetChange(), assignees: IdSetChange()),
+      );
+
+      expect(_calls(dio), ['GET $_v2/tasks/42']);
+    });
+
+    test('an id both added and removed ends up added', () async {
+      final dio = fakeDio({
+        '$_v2/tasks/42': sequence([
+          json(_taskWith()),
+          json(_taskWith(labels: [5])),
+        ]),
+        '$_v2/tasks/42/labels': _created({}),
+      });
+
+      await _client(dio).tasks.update(
+        42,
+        const TaskChanges(
+          labels: IdSetChange(added: {5}, removed: {5}),
+        ),
+      );
+
+      expect(_calls(dio), [
+        'GET $_v2/tasks/42',
+        'POST $_v2/tasks/42/labels',
+        'GET $_v2/tasks/42',
+      ]);
+    });
+
+    group('races a retry can meet', () {
+      test(
+        'a label already on the task (400 code 8001) counts as added',
+        () async {
+          final dio = fakeDio({
+            '$_v2/tasks/42': json(_taskWith()),
+            '$_v2/tasks/42/labels': _domainError(400, 8001),
+            '$_v2/tasks/42/assignees': _created({}),
+          });
+
+          await _client(dio).tasks.update(
+            42,
+            const TaskChanges(
+              labels: IdSetChange(added: {5}),
+              assignees: IdSetChange(added: {14}),
+            ),
+          );
+
+          expect(_calls(dio), [
+            'GET $_v2/tasks/42',
+            'POST $_v2/tasks/42/labels',
+            'POST $_v2/tasks/42/assignees',
+            'GET $_v2/tasks/42',
+          ]);
+        },
+      );
+
+      test(
+        'a user already assigned (400 code 4021) counts as assigned',
+        () async {
+          final dio = fakeDio({
+            '$_v1/tasks/42': json(_taskWith()),
+            '$_v1/tasks/42/assignees': _domainError(400, 4021),
+          });
+
+          await _client(dio, hasV2: false).tasks.update(
+            42,
+            const TaskChanges(assignees: IdSetChange(added: {14})),
+          );
+
+          expect(_calls(dio), [
+            'GET $_v1/tasks/42',
+            'PUT $_v1/tasks/42/assignees',
+            'GET $_v1/tasks/42',
+          ]);
+        },
+      );
+
+      test('a label remove answered 403 counts as done when a read shows the '
+          'label gone', () async {
+        final dio = fakeDio({
+          '$_v2/tasks/42': sequence([
+            json(_taskWith(labels: [4, 6])),
+            json(_taskWith(labels: [4])),
+          ]),
+          '$_v2/tasks/42/labels/6': _forbiddenWithoutCode(),
+          '$_v2/tasks/42/labels/4': _noContent(),
+        });
+
+        final task = await _client(dio).tasks.update(
+          42,
+          const TaskChanges(labels: IdSetChange(removed: {6, 4})),
+        );
+
+        expect(_calls(dio), [
+          'GET $_v2/tasks/42',
+          'DELETE $_v2/tasks/42/labels/6',
+          'GET $_v2/tasks/42',
+          'DELETE $_v2/tasks/42/labels/4',
+          'GET $_v2/tasks/42',
+        ]);
+        expect(task.labels.map((l) => l.id), [4]);
+      });
+
+      test('a label remove answered 403 fails when the label is still on '
+          'the task, and nothing after it is sent', () async {
+        final dio = fakeDio({
+          '$_v2/tasks/42': json(_taskWith(labels: [6])),
+          '$_v2/tasks/42/labels/6': _forbiddenWithoutCode(),
+          '$_v2/tasks/42/labels': _created({}),
+        });
+
+        await expectLater(
+          _client(dio).tasks.update(
+            42,
+            const TaskChanges(
+              labels: IdSetChange(added: {5}, removed: {6}),
+            ),
+          ),
+          throwsA(isA<Forbidden>().having((f) => f.code, 'code', isNull)),
+        );
+        expect(_calls(dio), [
+          'GET $_v2/tasks/42',
+          'DELETE $_v2/tasks/42/labels/6',
+          'GET $_v2/tasks/42',
+        ]);
+      });
+    });
+
+    group('failures propagate and stop the requests after them', () {
+      final cases = <(String, String, FakeRoute, Matcher)>[
+        (
+          'a label that does not exist',
+          'labels',
+          _domainError(404, 8002),
+          isA<NotFound>().having((f) => f.code, 'code', 8002),
+        ),
+        (
+          "another user's label",
+          'labels',
+          _forbiddenWithoutCode(),
+          isA<Forbidden>().having((f) => f.code, 'code', isNull),
+        ),
+        (
+          'a label add that loses a write race',
+          'labels',
+          json({'message': 'Internal Server Error'}, status: 500),
+          isA<ServerFailure>(),
+        ),
+        (
+          'a user without access to the project',
+          'assignees',
+          _domainError(403, 7003),
+          isA<Forbidden>().having((f) => f.code, 'code', 7003),
+        ),
+        (
+          'a user that does not exist',
+          'assignees',
+          _domainError(404, 1005),
+          isA<NotFound>().having((f) => f.code, 'code', 1005),
+        ),
+      ];
+
+      for (final (name, endpoint, route, failure) in cases) {
+        test(name, () async {
+          final dio = fakeDio({
+            '$_v2/tasks/42': json(_taskWith()),
+            '$_v2/tasks/42/labels': endpoint == 'labels' ? route : _created({}),
+            '$_v2/tasks/42/assignees': endpoint == 'assignees'
+                ? route
+                : _created({}),
+          });
+
+          await expectLater(
+            _client(dio).tasks.update(
+              42,
+              const TaskChanges(
+                labels: IdSetChange(added: {5}),
+                assignees: IdSetChange(added: {14}),
+              ),
+            ),
+            throwsA(failure),
+          );
+          expect(_calls(dio).last, 'POST $_v2/tasks/42/$endpoint');
+          expect(
+            _calls(dio).where((call) => call == 'GET $_v2/tasks/42'),
+            hasLength(1),
+          );
+        });
+      }
+
+      test('a failed patch sends no label request', () async {
+        final dio = fakeDio({
+          '$_v2/tasks/42': errorFixture('v2_403_project_2.7.0'),
+          '$_v2/tasks/42/labels': _created({}),
+        });
+
+        await expectLater(
+          _client(dio).tasks.update(
+            42,
+            const TaskChanges(
+              title: 'Milk',
+              labels: IdSetChange(added: {5}),
+            ),
+          ),
+          throwsA(isA<Forbidden>()),
+        );
+        expect(_calls(dio), ['PATCH $_v2/tasks/42']);
+      });
+    });
+  });
+
+  group('label create', () {
+    final created = labelJson(9, 'Groceries', hexColor: 'fb5607');
+
+    for (final (hasV2, base, method) in [
+      (true, _v2, 'POST'),
+      (false, _v1, 'PUT'),
+    ]) {
+      final version = hasV2 ? 'v2' : 'v1';
+
+      test('$version sends $method /labels and parses the label', () async {
+        final dio = fakeDio({
+          '$base/labels': json({
+            ...created,
+            'description': 'Shop runs',
+          }, status: 201),
+        });
+
+        final label = await _client(dio, hasV2: hasV2).labels.create(
+          const NewLabel(
+            title: 'Groceries',
+            hexColor: 'fb5607',
+            description: 'Shop runs',
+          ),
+        );
+
+        final request = adapterOf(dio).requests.single;
+        expect(request.method, method);
+        expect(request.uri.toString(), '$base/labels');
+        expect(request.headers['content-type'], 'application/json');
+        expect(adapterOf(dio).decodedBodies.single, {
+          'title': 'Groceries',
+          'hex_color': 'fb5607',
+          'description': 'Shop runs',
+        });
+        expect(label.id, 9);
+        expect(label.title, 'Groceries');
+        expect(label.hexColor, 'fb5607');
+        expect(label.description, 'Shop runs');
+      });
+
+      test('$version leaves out an empty colour and description', () async {
+        final dio = fakeDio({'$base/labels': json(created, status: 201)});
+
+        await _client(
+          dio,
+          hasV2: hasV2,
+        ).labels.create(const NewLabel(title: 'Groceries'));
+
+        expect(adapterOf(dio).decodedBodies.single, {'title': 'Groceries'});
+      });
+    }
+
+    test('the colour loses its hash', () async {
+      final dio = fakeDio({'$_v2/labels': json(created, status: 201)});
+
+      await _client(dio).labels
+          .create(const NewLabel(title: 'Groceries', hexColor: '#fb5607'));
+
+      expect(adapterOf(dio).decodedBodies.single, {
+        'title': 'Groceries',
+        'hex_color': 'fb5607',
+      });
+    });
+
+    test('a response that is not a label is unexpected', () async {
+      final dio = fakeDio({
+        '$_v2/labels': json({'title': 'no id'}, status: 201),
+      });
+
+      await expectLater(
+        _client(dio).labels.create(const NewLabel(title: 'Groceries')),
+        throwsA(
+          isA<UnexpectedResponse>().having(
+            (f) => f.message,
+            'message',
+            'label without id',
+          ),
+        ),
+      );
+    });
+
+    test('errors are normalized', () async {
+      final dio = fakeDio({
+        '$_v2/labels': json({
+          'status': 422,
+          'title': 'Unprocessable Entity',
+          'detail': 'validation failed',
+          'errors': [
+            {'location': 'body.title', 'message': 'expected length <= 250'},
+          ],
+        }, status: 422),
+      });
+
+      await expectLater(
+        _client(dio).labels.create(NewLabel(title: 'x' * 251)),
+        throwsA(
+          isA<ValidationFailed>().having((f) => f.fieldErrors, 'fieldErrors', {
+            'title': ['expected length <= 250'],
+          }),
+        ),
+      );
+      await expectLater(
+        _client(fakeDio({})).labels.create(const NewLabel(title: 'Groceries')),
+        throwsA(isA<NetworkFailure>()),
+      );
     });
   });
 }

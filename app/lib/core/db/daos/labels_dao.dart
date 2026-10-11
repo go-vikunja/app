@@ -47,6 +47,16 @@ final class LabelsDao extends DatabaseAccessor<AppDatabase>
     });
   }
 
-  Future<int> purgeNotIn(Iterable<int> ids) =>
-      (delete(labels)..where((l) => l.id.isNotIn(ids))).go();
+  /// Removes the labels not in [ids], and their ids from the queued edits,
+  /// see `OutboxDao.forgetLabels`.
+  Future<int> purgeNotIn(Iterable<int> ids) => transaction(() async {
+    final query = selectOnly(labels)
+      ..addColumns([labels.id])
+      ..where(labels.id.isNotIn(ids));
+    final gone = await query.map((row) => row.read(labels.id)!).get();
+    if (gone.isEmpty) return 0;
+    await (delete(labels)..where((l) => l.id.isIn(gone))).go();
+    await attachedDatabase.outboxDao.forgetLabels(gone.toSet());
+    return gone.length;
+  });
 }

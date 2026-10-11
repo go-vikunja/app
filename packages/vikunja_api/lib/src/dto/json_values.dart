@@ -89,3 +89,7 @@ String hexColorOf(Object? value) {
   }
   return _sixHexDigits.hasMatch(hex) ? hex : '';
 }
+
+/// Vikunja stores and expects the colour without `#`.
+String hexColorWire(String hexColor) =>
+    hexColor.startsWith('#') ? hexColor.substring(1) : hexColor;

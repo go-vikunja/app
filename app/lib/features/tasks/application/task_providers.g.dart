@@ -12,16 +12,13 @@ part of 'task_providers.dart';
 /// its id change; null once the row is gone. Stays loading without an
 /// account.
 
-@ProviderFor(taskById)
+@ProviderFor(TaskById)
 final taskByIdProvider = TaskByIdFamily._();
 
 /// One task as the local row knows it, following a queued create across
 /// its id change; null once the row is gone. Stays loading without an
 /// account.
-
-final class TaskByIdProvider
-    extends $FunctionalProvider<AsyncValue<Task?>, Task?, Stream<Task?>>
-    with $FutureModifier<Task?>, $StreamProvider<Task?> {
+final class TaskByIdProvider extends $StreamNotifierProvider<TaskById, Task?> {
   /// One task as the local row knows it, following a queued create across
   /// its id change; null once the row is gone. Stays loading without an
   /// account.
@@ -48,14 +45,7 @@ final class TaskByIdProvider
 
   @$internal
   @override
-  $StreamProviderElement<Task?> $createElement($ProviderPointer pointer) =>
-      $StreamProviderElement(pointer);
-
-  @override
-  Stream<Task?> create(Ref ref) {
-    final argument = this.argument as int;
-    return taskById(ref, argument);
-  }
+  TaskById create() => TaskById();
 
   @override
   bool operator ==(Object other) {
@@ -68,14 +58,21 @@ final class TaskByIdProvider
   }
 }
 
-String _$taskByIdHash() => r'0cdcda90e52828d231951059dc1f581f6ddf5ae1';
+String _$taskByIdHash() => r'41835a421f1890b86c90615f97b644c3bc665441';
 
 /// One task as the local row knows it, following a queued create across
 /// its id change; null once the row is gone. Stays loading without an
 /// account.
 
 final class TaskByIdFamily extends $Family
-    with $FunctionalFamilyOverride<Stream<Task?>, int> {
+    with
+        $ClassFamilyOverride<
+          TaskById,
+          AsyncValue<Task?>,
+          Task?,
+          Stream<Task?>,
+          int
+        > {
   TaskByIdFamily._()
     : super(
         retry: null,
@@ -94,4 +91,29 @@ final class TaskByIdFamily extends $Family
 
   @override
   String toString() => r'taskByIdProvider';
+}
+
+/// One task as the local row knows it, following a queued create across
+/// its id change; null once the row is gone. Stays loading without an
+/// account.
+
+abstract class _$TaskById extends $StreamNotifier<Task?> {
+  late final _$args = ref.$arg as int;
+  int get taskId => _$args;
+
+  Stream<Task?> build(int taskId);
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<AsyncValue<Task?>, Task?>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<AsyncValue<Task?>, Task?>,
+              AsyncValue<Task?>,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, () => build(_$args));
+  }
 }

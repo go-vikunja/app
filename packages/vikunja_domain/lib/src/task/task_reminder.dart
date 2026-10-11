@@ -41,3 +41,25 @@ final class TaskReminder {
   @override
   int get hashCode => Object.hash(reminder, relativePeriod, relativeTo);
 }
+
+/// The same reminder for the user: a relative one by its date and period
+/// (the stored instant is derived), an absolute one by its instant.
+bool sameReminder(TaskReminder a, TaskReminder b) {
+  if (a.relativeTo != b.relativeTo) return false;
+  if (a.isRelative) return a.relativePeriod == b.relativePeriod;
+  return a.reminder?.toUtc() == b.reminder?.toUtc();
+}
+
+/// Equal as multisets under [sameReminder]; order does not matter.
+bool sameReminders(List<TaskReminder> a, List<TaskReminder> b) {
+  if (a.length != b.length) return false;
+  final unmatched = [...b];
+  for (final reminder in a) {
+    final index = unmatched.indexWhere(
+      (other) => sameReminder(reminder, other),
+    );
+    if (index < 0) return false;
+    unmatched.removeAt(index);
+  }
+  return true;
+}

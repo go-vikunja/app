@@ -855,6 +855,164 @@ final class AccountTaskRepositoryFamily extends $Family
   String toString() => r'accountTaskRepositoryProvider';
 }
 
+@ProviderFor(accountLabelRepository)
+final accountLabelRepositoryProvider = AccountLabelRepositoryFamily._();
+
+final class AccountLabelRepositoryProvider
+    extends
+        $FunctionalProvider<LabelRepository, LabelRepository, LabelRepository>
+    with $Provider<LabelRepository> {
+  AccountLabelRepositoryProvider._({
+    required AccountLabelRepositoryFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'accountLabelRepositoryProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$accountLabelRepositoryHash();
+
+  @override
+  String toString() {
+    return r'accountLabelRepositoryProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $ProviderElement<LabelRepository> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  LabelRepository create(Ref ref) {
+    final argument = this.argument as String;
+    return accountLabelRepository(ref, argument);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(LabelRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<LabelRepository>(value),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is AccountLabelRepositoryProvider &&
+        other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$accountLabelRepositoryHash() =>
+    r'036fd0b3b3fdf00f3e40287a9d09d9036c73a6cd';
+
+final class AccountLabelRepositoryFamily extends $Family
+    with $FunctionalFamilyOverride<LabelRepository, String> {
+  AccountLabelRepositoryFamily._()
+    : super(
+        retry: null,
+        name: r'accountLabelRepositoryProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  AccountLabelRepositoryProvider call(String accountId) =>
+      AccountLabelRepositoryProvider._(argument: accountId, from: this);
+
+  @override
+  String toString() => r'accountLabelRepositoryProvider';
+}
+
+@ProviderFor(accountUserRepository)
+final accountUserRepositoryProvider = AccountUserRepositoryFamily._();
+
+final class AccountUserRepositoryProvider
+    extends $FunctionalProvider<UserRepository, UserRepository, UserRepository>
+    with $Provider<UserRepository> {
+  AccountUserRepositoryProvider._({
+    required AccountUserRepositoryFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'accountUserRepositoryProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$accountUserRepositoryHash();
+
+  @override
+  String toString() {
+    return r'accountUserRepositoryProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $ProviderElement<UserRepository> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  UserRepository create(Ref ref) {
+    final argument = this.argument as String;
+    return accountUserRepository(ref, argument);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(UserRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<UserRepository>(value),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is AccountUserRepositoryProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$accountUserRepositoryHash() =>
+    r'bb746e84d6aa63db4a2b90e606dce974b872b5a3';
+
+final class AccountUserRepositoryFamily extends $Family
+    with $FunctionalFamilyOverride<UserRepository, String> {
+  AccountUserRepositoryFamily._()
+    : super(
+        retry: null,
+        name: r'accountUserRepositoryProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  AccountUserRepositoryProvider call(String accountId) =>
+      AccountUserRepositoryProvider._(argument: accountId, from: this);
+
+  @override
+  String toString() => r'accountUserRepositoryProvider';
+}
+
 /// The active account's projects; replaced when the active account changes.
 /// Null while no account is signed in.
 
@@ -951,6 +1109,94 @@ final class TaskRepositoryProvider
 }
 
 String _$taskRepositoryHash() => r'b2cd755ae2d6a7f7232b625dfb918977a210cc46';
+
+@ProviderFor(labelRepository)
+final labelRepositoryProvider = LabelRepositoryProvider._();
+
+final class LabelRepositoryProvider
+    extends
+        $FunctionalProvider<
+          LabelRepository?,
+          LabelRepository?,
+          LabelRepository?
+        >
+    with $Provider<LabelRepository?> {
+  LabelRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'labelRepositoryProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$labelRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<LabelRepository?> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  LabelRepository? create(Ref ref) {
+    return labelRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(LabelRepository? value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<LabelRepository?>(value),
+    );
+  }
+}
+
+String _$labelRepositoryHash() => r'ceb155f0e97c9b7eb23abc594f6ee22762b4eaa3';
+
+@ProviderFor(userRepository)
+final userRepositoryProvider = UserRepositoryProvider._();
+
+final class UserRepositoryProvider
+    extends
+        $FunctionalProvider<UserRepository?, UserRepository?, UserRepository?>
+    with $Provider<UserRepository?> {
+  UserRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'userRepositoryProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$userRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<UserRepository?> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  UserRepository? create(Ref ref) {
+    return userRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(UserRepository? value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<UserRepository?>(value),
+    );
+  }
+}
+
+String _$userRepositoryHash() => r'28da8498a99ef2100dbc72f90b776490a8e9c948';
 
 /// The last step of a sign-out: stops the account's outbox sender and sync
 /// engine, closes its database and deletes the files.

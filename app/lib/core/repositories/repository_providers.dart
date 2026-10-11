@@ -17,10 +17,14 @@ import 'package:vikunja_mobile/core/db/open_account_database.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
 import 'package:vikunja_mobile/core/network/request_log_interceptor.dart';
 import 'package:vikunja_mobile/core/outbox/outbox_sender.dart';
+import 'package:vikunja_mobile/core/repositories/label_repository.dart';
+import 'package:vikunja_mobile/core/repositories/local/local_label_repository.dart';
 import 'package:vikunja_mobile/core/repositories/local/local_project_repository.dart';
 import 'package:vikunja_mobile/core/repositories/local/local_task_repository.dart';
+import 'package:vikunja_mobile/core/repositories/local/local_user_repository.dart';
 import 'package:vikunja_mobile/core/repositories/project_repository.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
+import 'package:vikunja_mobile/core/repositories/user_repository.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine_impl.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
@@ -274,6 +278,27 @@ TaskRepository accountTaskRepository(Ref ref, String accountId) {
   return repository;
 }
 
+@riverpod
+LabelRepository accountLabelRepository(Ref ref, String accountId) {
+  final repository = LocalLabelRepository(
+    ref.watch(appDatabaseProvider(accountId)),
+    ref.watch(writeClientProvider(accountId)),
+    ref.watch(readClientProvider(accountId)),
+  );
+  ref.onDispose(repository.dispose);
+  return repository;
+}
+
+@riverpod
+UserRepository accountUserRepository(Ref ref, String accountId) {
+  final repository = LocalUserRepository(
+    ref.watch(appDatabaseProvider(accountId)),
+    ref.watch(readClientProvider(accountId)),
+  );
+  ref.onDispose(repository.dispose);
+  return repository;
+}
+
 /// The active account's projects; replaced when the active account changes.
 /// Null while no account is signed in.
 @Riverpod(keepAlive: true)
@@ -288,6 +313,20 @@ TaskRepository? taskRepository(Ref ref) {
   final accountId = ref.watch(activeAccountIdProvider);
   if (accountId == null) return null;
   return ref.watch(accountTaskRepositoryProvider(accountId));
+}
+
+@Riverpod(keepAlive: true)
+LabelRepository? labelRepository(Ref ref) {
+  final accountId = ref.watch(activeAccountIdProvider);
+  if (accountId == null) return null;
+  return ref.watch(accountLabelRepositoryProvider(accountId));
+}
+
+@Riverpod(keepAlive: true)
+UserRepository? userRepository(Ref ref) {
+  final accountId = ref.watch(activeAccountIdProvider);
+  if (accountId == null) return null;
+  return ref.watch(accountUserRepositoryProvider(accountId));
 }
 
 /// The last step of a sign-out: stops the account's outbox sender and sync

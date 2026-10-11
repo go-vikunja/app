@@ -49,6 +49,7 @@ void main() {
       expect(task.repeatAfter, Duration.zero);
       expect(task.repeatMode, RepeatMode.afterAmount);
       expect(task.isFavorite, isFalse);
+      expect(task.reminders, isEmpty);
     });
 
     test('equal field by field', () {
@@ -79,6 +80,37 @@ void main() {
       for (final MapEntry(key: field, value: variant) in variants.entries) {
         expect(variant, isNot(_task()), reason: field);
       }
+    });
+
+    test('reminders are compared element by element', () {
+      final morning = TaskReminder(reminder: _monday);
+      const hourBefore = TaskReminder(
+        relativePeriod: Duration(hours: -1),
+        relativeTo: ReminderRelativeTo.dueDate,
+      );
+      NewTask withReminders(List<TaskReminder> reminders) =>
+          NewTask(projectId: 7, title: 'Milk', reminders: reminders);
+
+      expect(
+        withReminders([morning, hourBefore]),
+        withReminders([TaskReminder(reminder: _monday), hourBefore]),
+      );
+      expect(
+        withReminders([morning, hourBefore]).hashCode,
+        withReminders([TaskReminder(reminder: _monday), hourBefore]).hashCode,
+      );
+      expect(
+        withReminders([morning]),
+        isNot(const NewTask(projectId: 7, title: 'Milk')),
+      );
+      expect(
+        withReminders([morning]),
+        isNot(withReminders([TaskReminder(reminder: _friday)])),
+      );
+      expect(
+        withReminders([morning, hourBefore]),
+        isNot(withReminders([hourBefore, morning])),
+      );
     });
 
     test('a set date differs from none', () {

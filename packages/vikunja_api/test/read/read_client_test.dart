@@ -902,4 +902,157 @@ void main() {
       );
     });
   });
+
+  group('users', () {
+    final alice = _user(1, 'alice');
+    final bob = {..._user(2, 'bob'), 'name': 'Bob Builder'};
+
+    test('v2 lists every user with access without a query', () async {
+      final dio = fakeDio({
+        '$_v2/projects/7/users/search': json(
+          _v2Page([alice, bob], totalPages: 1),
+        ),
+      });
+
+      final users = await _client(dio).users.searchProjectUsers(7);
+
+      final request = adapterOf(dio).requests.single;
+      expect(request.method, 'GET');
+      expect(request.uri.queryParameters, isEmpty);
+      expect(request.headers['Accept'], 'application/json');
+      expect(users, const [
+        User(id: 1, username: 'alice'),
+        User(id: 2, username: 'bob', name: 'Bob Builder'),
+      ]);
+    });
+
+    test('v2 searches with q', () async {
+      final dio = fakeDio({
+        '$_v2/projects/7/users/search?q=bo': json(
+          _v2Page([bob], totalPages: 1),
+        ),
+      });
+
+      final users = await _client(dio).users.searchProjectUsers(7, query: 'bo');
+
+      expect(users.single.displayName, 'Bob Builder');
+    });
+
+    test('v1 lists every user with access without a query', () async {
+      final dio = fakeDio({
+        '$_v1/projects/7/projectusers': _v1List([alice, bob]),
+      });
+
+      final users = await _client(
+        dio,
+        hasV2: false,
+      ).users.searchProjectUsers(7);
+
+      expect(adapterOf(dio).requests.single.uri.queryParameters, isEmpty);
+      expect(users.map((u) => u.username), ['alice', 'bob']);
+    });
+
+    test('v1 searches with s', () async {
+      final dio = fakeDio({
+        '$_v1/projects/7/projectusers?s=bo': _v1List([bob]),
+      });
+
+      final users = await _client(
+        dio,
+        hasV2: false,
+      ).users.searchProjectUsers(7, query: 'bo');
+
+      expect(users.map((u) => u.id), [2]);
+    });
+
+    test('a query is trimmed, a blank one is left out', () async {
+      final dio = fakeDio({
+        '$_v2/projects/7/users/search?q=bo': json(
+          _v2Page([bob], totalPages: 1),
+        ),
+        '$_v2/projects/7/users/search': json(
+          _v2Page([alice, bob], totalPages: 1),
+        ),
+      });
+      final users = _client(dio).users;
+
+      expect(await users.searchProjectUsers(7, query: '  bo '), hasLength(1));
+      expect(await users.searchProjectUsers(7, query: '   '), hasLength(2));
+    });
+
+    // v1 answers a search without matches with `null`.
+    test('no match is an empty list on both versions', () async {
+      final dio = fakeDio({
+        '$_v2/projects/7/users/search?q=zz': json({
+          'items': <Object?>[],
+          'total': 0,
+          'page': 1,
+          'per_page': 0,
+          'total_pages': 0,
+        }),
+        '$_v1/projects/7/projectusers?s=zz': json(null),
+      });
+
+      expect(
+        await _client(dio).users.searchProjectUsers(7, query: 'zz'),
+        isEmpty,
+      );
+      expect(
+        await _client(
+          dio,
+          hasV2: false,
+        ).users.searchProjectUsers(7, query: 'zz'),
+        isEmpty,
+      );
+    });
+
+    test('entries that are not users are skipped', () async {
+      final dio = fakeDio({
+        '$_v1/projects/7/projectusers': _v1List([
+          alice,
+          {'id': 3},
+          'carol',
+        ]),
+      });
+
+      final users = await _client(
+        dio,
+        hasV2: false,
+      ).users.searchProjectUsers(7);
+
+      expect(users.map((u) => u.id), [1]);
+    });
+
+    test('a body that is not a user list is unexpected', () async {
+      final dio = fakeDio({
+        '$_v2/projects/7/users/search': json([alice]),
+        '$_v1/projects/7/projectusers': json({'items': <Object?>[]}),
+      });
+
+      await expectLater(
+        _client(dio).users.searchProjectUsers(7),
+        throwsA(isA<UnexpectedResponse>()),
+      );
+      await expectLater(
+        _client(dio, hasV2: false).users.searchProjectUsers(7),
+        throwsA(isA<UnexpectedResponse>()),
+      );
+    });
+
+    test('errors are normalized', () async {
+      final dio = fakeDio({
+        '$_v2/projects/7/users/search': errorFixture('v2_403_project_2.7.0'),
+        '$_v1/projects/7/projectusers': errorFixture('v1_404_project_2.7.0'),
+      });
+
+      await expectLater(
+        _client(dio).users.searchProjectUsers(7),
+        throwsA(isA<Forbidden>()),
+      );
+      await expectLater(
+        _client(dio, hasV2: false).users.searchProjectUsers(7),
+        throwsA(isA<NotFound>().having((f) => f.code, 'code', 3001)),
+      );
+    });
+  });
 }
