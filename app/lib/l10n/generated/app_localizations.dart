@@ -836,6 +836,12 @@ abstract class AppLocalizations {
   /// **'Sign out'**
   String get homeSignOut;
 
+  /// No description provided for @homeSignOutOfThisAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out of this account'**
+  String get homeSignOutOfThisAccount;
+
   /// No description provided for @homeSigningOut.
   ///
   /// In en, this message translates to:
@@ -851,8 +857,20 @@ abstract class AppLocalizations {
   /// No description provided for @signOutDialogBody.
   ///
   /// In en, this message translates to:
-  /// **'Rurana will sign you out of {host} and delete the tasks saved on this device. You can sign in again at any time.'**
-  String signOutDialogBody(String host);
+  /// **'Rurana will sign {account} out of {host} and delete this account’s tasks saved on this device. You can sign in again at any time.'**
+  String signOutDialogBody(String account, String host);
+
+  /// How the sign-out dialog names an account whose display name differs from its username.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} (@{username})'**
+  String signOutDialogAccount(String name, String username);
+
+  /// No description provided for @signOutDialogSwitchesTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Rurana then switches to {name}.'**
+  String signOutDialogSwitchesTo(String name);
 
   /// No description provided for @signOutDialogPendingChanges.
   ///
@@ -871,6 +889,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sign out'**
   String get signOutDialogConfirm;
+
+  /// No description provided for @removeAccountDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove account?'**
+  String get removeAccountDialogTitle;
+
+  /// No description provided for @removeAccountDialogConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get removeAccountDialogConfirm;
+
+  /// No description provided for @removeAccountDialogPendingChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{One change has not been sent to the server yet and will be lost; switch to this account and tap Send now first to keep it.} other{{count} changes have not been sent to the server yet and will be lost; switch to this account and tap Send now first to keep them.}}'**
+  String removeAccountDialogPendingChanges(int count);
+
+  /// No description provided for @removeAccountDialogPendingChangesSignInFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{One change has not been sent to the server yet and will be lost; switch to this account, sign in again and tap Send now first to keep it.} other{{count} changes have not been sent to the server yet and will be lost; switch to this account, sign in again and tap Send now first to keep them.}}'**
+  String removeAccountDialogPendingChangesSignInFirst(int count);
 
   /// No description provided for @reauthTitle.
   ///
@@ -907,6 +949,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Account'**
   String get tabAccount;
+
+  /// No description provided for @accountsHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'Accounts'**
+  String get accountsHeading;
+
+  /// Screen reader label of the avatar button that opens the account switcher.
+  ///
+  /// In en, this message translates to:
+  /// **'Accounts, signed in as {name} on {host}'**
+  String accountSwitcherButton(String name, String host);
+
+  /// No description provided for @accountCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'Current'**
+  String get accountCurrent;
+
+  /// No description provided for @accountSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'@{username} · {host}'**
+  String accountSubtitle(String username, String host);
+
+  /// No description provided for @accountBadgeSignInAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in again'**
+  String get accountBadgeSignInAgain;
+
+  /// Badge on an account with changes that have not reached the server yet.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} unsent'**
+  String accountBadgeUnsent(int count);
+
+  /// No description provided for @accountAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add account'**
+  String get accountAdd;
+
+  /// No description provided for @accountManage.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage accounts'**
+  String get accountManage;
+
+  /// No description provided for @accountMoreActions.
+  ///
+  /// In en, this message translates to:
+  /// **'More for {name}'**
+  String accountMoreActions(String name);
+
+  /// No description provided for @accountRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove…'**
+  String get accountRemove;
+
+  /// No description provided for @accountSwitchedTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Switched to {name}'**
+  String accountSwitchedTo(String name);
+
+  /// No description provided for @accountSignedOutOf.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed out of {name}'**
+  String accountSignedOutOf(String name);
+
+  /// No description provided for @addAccountTagline.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with another account, on one of your servers or a new one.'**
+  String get addAccountTagline;
+
+  /// No description provided for @addAccountYourServers.
+  ///
+  /// In en, this message translates to:
+  /// **'Your servers'**
+  String get addAccountYourServers;
+
+  /// No description provided for @addAccountAlreadyAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'You’re already signed in to this account — switched to it'**
+  String get addAccountAlreadyAdded;
+
+  /// No description provided for @addAccountAlreadyActive.
+  ///
+  /// In en, this message translates to:
+  /// **'You’re already signed in to this account'**
+  String get addAccountAlreadyActive;
 
   /// No description provided for @overviewLoading.
   ///

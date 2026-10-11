@@ -102,7 +102,8 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
       projectTasksProvider(widget.projectId, showDone: _showDone),
     );
     final now = ref.watch(clockTickProvider);
-    final pendingIds = ref.watch(pendingTaskIdsProvider).value ?? const {};
+    final pendingIds =
+        ref.watch(pendingTaskIdsProvider).unwrapPrevious().value ?? const {};
 
     return Scaffold(
       appBar: AppBar(

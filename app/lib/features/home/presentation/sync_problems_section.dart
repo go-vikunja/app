@@ -22,7 +22,8 @@ class SyncProblemsSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final problems = ref.watch(syncProblemsProvider).value ?? const [];
+    final problems =
+        ref.watch(syncProblemsProvider).unwrapPrevious().value ?? const [];
     if (problems.isEmpty) return const SizedBox.shrink();
 
     final l10n = context.l10n;

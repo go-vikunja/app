@@ -11,6 +11,8 @@ import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
+import 'package:vikunja_mobile/features/accounts/application/account_switcher.dart';
+import 'package:vikunja_mobile/features/sync/application/inactive_outboxes.dart';
 
 import 'task_edits.dart';
 
@@ -286,6 +288,11 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
   /// Thrown by `discardSyncProblem`, like a server read that failed.
   VikunjaFailure? discardFailure;
 
+  /// While it has not completed, the pending changes, the sync problems and
+  /// the pending ids stay silent, like database queries that have not
+  /// returned yet.
+  Future<void>? outboxLoaded;
+
   final _pendingChanges = StreamController<int>.broadcast();
   final _problems = StreamController<List<SyncProblem>>.broadcast();
   final _pendingIds = StreamController<Set<int>>.broadcast();
@@ -427,15 +434,22 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
 
   @override
   Stream<int> watchPendingChanges() =>
-      _replaying(() => _pendingCount, _pendingChanges.stream);
+      _outbox(() => _pendingCount, _pendingChanges.stream);
 
   @override
   Stream<List<SyncProblem>> watchSyncProblems() =>
-      _replaying(() => _problemList, _problems.stream);
+      _outbox(() => _problemList, _problems.stream);
 
   @override
   Stream<Set<int>> watchPendingTaskIds() =>
-      _replaying(() => _pendingTaskIds, _pendingIds.stream);
+      _outbox(() => _pendingTaskIds, _pendingIds.stream);
+
+  Stream<T> _outbox<T>(T Function() current, Stream<T> updates) {
+    final loaded = outboxLoaded;
+    final stream = _replaying(current, updates);
+    if (loaded == null) return stream;
+    return Stream.fromFuture(loaded).asyncExpand((_) => stream);
+  }
 
   @override
   Future<void> retrySyncProblem(String operationId) async {
@@ -491,11 +505,44 @@ final class FakeAccountDatabaseFiles implements AccountDatabaseFiles {
   Future<void> deleteFor(String accountId) async => deleted.add(accountId);
 }
 
-/// One account's local data: an engine and the repositories over it.
+/// Queued ops per account as [queuedOps] counts them (none by default);
+/// counts and drains are recorded.
+final class FakeAccountOutboxes implements AccountOutboxes {
+  new([int Function(String accountId)? queuedOps])
+    : _queuedOps = queuedOps ?? ((_) => 0);
+
+  final int Function(String accountId) _queuedOps;
+  final List<String> counted = [];
+  final List<String> drained = [];
+
+  /// Lets a test hold a count open or fail it.
+  Future<void> Function(String accountId)? beforeCount;
+
+  /// Lets a test fail a drain.
+  Future<void> Function(String accountId)? onDrain;
+
+  @override
+  Future<int> queuedOps(String accountId) async {
+    counted.add(accountId);
+    await beforeCount?.call(accountId);
+    return _queuedOps(accountId);
+  }
+
+  @override
+  Future<void> drain(String accountId) async {
+    drained.add(accountId);
+    await onDrain?.call(accountId);
+  }
+}
+
+/// One account's local data: an engine and the repositories over it. With
+/// `restored` false the engine stays silent until it emits, like one that
+/// has not read its stored state yet.
 final class AccountDataFakes {
-  new({required DateTime now, SyncStatus? status}) {
+  new({required DateTime now, SyncStatus? status, bool restored = true}) {
     engine = FakeSyncEngine(
       initialStatus: status ?? SyncIdle(lastSyncedAt: now),
+      restored: restored,
       clock: () => now,
     );
     projects = FakeProjectRepository(engine);
@@ -519,6 +566,12 @@ final class SyncFakes {
   final accounts = <String, AccountDataFakes>{};
   final files = FakeAccountDatabaseFiles();
 
+  /// The outboxes of inactive accounts: an account's queued ops are the
+  /// pending changes of its task repository.
+  late final outboxes = FakeAccountOutboxes(
+    (accountId) => forAccount(accountId).tasks.pendingChanges,
+  );
+
   FakeSyncEngine get engine => shared.engine;
   FakeProjectRepository get projects => shared.projects;
   FakeTaskRepository get tasks => shared.tasks;
@@ -528,6 +581,7 @@ final class SyncFakes {
 
   List<Override> get overrides => [
     accountDatabaseFilesProvider.overrideWithValue(files),
+    accountOutboxesProvider.overrideWithValue(outboxes),
     syncEngineProvider.overrideWith(
       (ref, accountId) => forAccount(accountId).engine,
     ),
@@ -536,6 +590,10 @@ final class SyncFakes {
     ),
     accountTaskRepositoryProvider.overrideWith(
       (ref, accountId) => forAccount(accountId).tasks,
+    ),
+    // The real one opens the account's database.
+    accountPendingChangesProvider.overrideWith(
+      (ref, accountId) => forAccount(accountId).tasks.watchPendingChanges(),
     ),
   ];
 }

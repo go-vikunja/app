@@ -478,14 +478,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeSignOut => 'Sign out';
 
   @override
+  String get homeSignOutOfThisAccount => 'Sign out of this account';
+
+  @override
   String get homeSigningOut => 'Signing out…';
 
   @override
   String get signOutDialogTitle => 'Sign out?';
 
   @override
-  String signOutDialogBody(String host) {
-    return 'Rurana will sign you out of $host and delete the tasks saved on this device. You can sign in again at any time.';
+  String signOutDialogBody(String account, String host) {
+    return 'Rurana will sign $account out of $host and delete this account’s tasks saved on this device. You can sign in again at any time.';
+  }
+
+  @override
+  String signOutDialogAccount(String name, String username) {
+    return '$name (@$username)';
+  }
+
+  @override
+  String signOutDialogSwitchesTo(String name) {
+    return 'Rurana then switches to $name.';
   }
 
   @override
@@ -507,6 +520,36 @@ class AppLocalizationsEn extends AppLocalizations {
   String get signOutDialogConfirm => 'Sign out';
 
   @override
+  String get removeAccountDialogTitle => 'Remove account?';
+
+  @override
+  String get removeAccountDialogConfirm => 'Remove';
+
+  @override
+  String removeAccountDialogPendingChanges(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count changes have not been sent to the server yet and will be lost; switch to this account and tap Send now first to keep them.',
+      one: 'One change has not been sent to the server yet and will be lost; switch to this account and tap Send now first to keep it.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String removeAccountDialogPendingChangesSignInFirst(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count changes have not been sent to the server yet and will be lost; switch to this account, sign in again and tap Send now first to keep them.',
+      one: 'One change has not been sent to the server yet and will be lost; switch to this account, sign in again and tap Send now first to keep it.',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get reauthTitle => 'Signed out by the server';
 
   @override
@@ -525,6 +568,69 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tabAccount => 'Account';
+
+  @override
+  String get accountsHeading => 'Accounts';
+
+  @override
+  String accountSwitcherButton(String name, String host) {
+    return 'Accounts, signed in as $name on $host';
+  }
+
+  @override
+  String get accountCurrent => 'Current';
+
+  @override
+  String accountSubtitle(String username, String host) {
+    return '@$username · $host';
+  }
+
+  @override
+  String get accountBadgeSignInAgain => 'Sign in again';
+
+  @override
+  String accountBadgeUnsent(int count) {
+    return '$count unsent';
+  }
+
+  @override
+  String get accountAdd => 'Add account';
+
+  @override
+  String get accountManage => 'Manage accounts';
+
+  @override
+  String accountMoreActions(String name) {
+    return 'More for $name';
+  }
+
+  @override
+  String get accountRemove => 'Remove…';
+
+  @override
+  String accountSwitchedTo(String name) {
+    return 'Switched to $name';
+  }
+
+  @override
+  String accountSignedOutOf(String name) {
+    return 'Signed out of $name';
+  }
+
+  @override
+  String get addAccountTagline =>
+      'Sign in with another account, on one of your servers or a new one.';
+
+  @override
+  String get addAccountYourServers => 'Your servers';
+
+  @override
+  String get addAccountAlreadyAdded =>
+      'You’re already signed in to this account — switched to it';
+
+  @override
+  String get addAccountAlreadyActive =>
+      'You’re already signed in to this account';
 
   @override
   String get overviewLoading => 'Loading your tasks…';

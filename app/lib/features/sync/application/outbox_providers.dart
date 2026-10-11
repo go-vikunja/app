@@ -5,6 +5,9 @@ import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 
 part 'outbox_providers.g.dart';
 
+// After a switch, until the next account's stream has emitted, these carry
+// the previous account's value; screens read them through unwrapPrevious().
+
 /// Queued changes of the active account; 0 while nobody is signed in.
 @Riverpod(keepAlive: true)
 Stream<int> pendingChanges(Ref ref) =>

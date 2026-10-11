@@ -163,8 +163,8 @@ void main() {
             overrides: appOverrides(auth: auth),
           );
           final accounts = await container.read(accountsProvider.future);
-          if (accounts.activeAccount != null) {
-            await firstSyncStatus(container);
+          if (accounts.activeAccount case final entry?) {
+            await firstSyncStatus(container, entry.id);
           }
 
           await tester.pumpWidget(

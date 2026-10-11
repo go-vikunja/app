@@ -1,6 +1,8 @@
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:vikunja_mobile/app/router/account_bound_screen.dart';
+import 'package:vikunja_mobile/app/router/root_modal_routes.dart';
 import 'package:vikunja_mobile/app/router/splash_screen.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
@@ -38,11 +40,23 @@ abstract final class AppRoutes {
 
   /// Full screen over the shell, from the detail sheet or a new task.
   static String taskEdit(int id) => '$home/tasks/$id/edit';
+
+  /// The connect screen and the server overview over the shell, for
+  /// signing in to another account; pushed, so back returns to the shell.
+  static const addAccount = '$home/accounts/add';
+  static const addAccountServer = '$addAccount/server';
 }
+
+/// Observes the root navigator, whose dialogs and sheets an account switch
+/// closes.
+@Riverpod(keepAlive: true)
+RootModalRoutes rootModalRoutes(Ref ref) => RootModalRoutes();
 
 @Riverpod(keepAlive: true)
 GoRouter appRouter(Ref ref) {
   final currentServer = ValueNotifier(ref.read(currentServerProvider));
+  // Only what triggers a redirect; it reads the registry and the status
+  // itself, because a listener notified before these may already route.
   final accounts = ValueNotifier(ref.read(accountsProvider));
   final syncStatus = ValueNotifier(ref.read(syncStatusProvider));
   ref
@@ -57,13 +71,17 @@ GoRouter appRouter(Ref ref) {
   final router = GoRouter(
     navigatorKey: rootNavigatorKey,
     initialLocation: AppRoutes.splash,
+    observers: [ref.watch(rootModalRoutesProvider)],
     refreshListenable: Listenable.merge([currentServer, accounts, syncStatus]),
-    redirect: (context, state) => _redirect(
-      location: state.matchedLocation,
-      accounts: accounts.value,
-      syncStatus: syncStatus.value,
-      hasServer: currentServer.value != null,
-    ),
+    redirect: (context, state) {
+      final registry = ref.read(accountsProvider);
+      return _redirect(
+        location: state.matchedLocation,
+        accounts: registry,
+        syncStatus: _syncStatusOfActive(ref, registry),
+        hasServer: currentServer.value != null,
+      );
+    },
     routes: [
       GoRoute(
         path: AppRoutes.splash,
@@ -81,7 +99,16 @@ GoRouter appRouter(Ref ref) {
       ),
       GoRoute(
         path: AppRoutes.firstSync,
-        builder: (context, state) => const FirstSyncScreen(),
+        // The shell this replaces stays mounted until the page above it has
+        // finished its entrance, and the shell's global keys allow only one
+        // shell at a time: a first sync that ends within an animated
+        // entrance would return to a second shell beside the first.
+        pageBuilder: (context, state) => NoTransitionPage(
+          key: state.pageKey,
+          name: state.path,
+          restorationId: state.pageKey.value,
+          child: const FirstSyncScreen(),
+        ),
       ),
       GoRoute(
         path: AppRoutes.home,
@@ -93,7 +120,21 @@ GoRouter appRouter(Ref ref) {
         parentNavigatorKey: rootNavigatorKey,
         redirect: (context, state) =>
             _idParam(state) == null ? AppRoutes.overview : null,
-        builder: (context, state) => TaskEditPage(taskId: _idParam(state)!),
+        builder: (context, state) =>
+            AccountBoundScreen(child: TaskEditPage(taskId: _idParam(state)!)),
+      ),
+      GoRoute(
+        path: AppRoutes.addAccount,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const ConnectServerScreen(adding: true),
+        routes: [
+          GoRoute(
+            path: 'server',
+            parentNavigatorKey: rootNavigatorKey,
+            builder: (context, state) =>
+                const ServerOverviewScreen(adding: true),
+          ),
+        ],
       ),
       // Each tab keeps its own navigation stack and scroll position.
       StatefulShellRoute.indexedStack(
@@ -145,6 +186,17 @@ GoRouter appRouter(Ref ref) {
 /// not yet sent.
 int? _idParam(GoRouterState state) =>
     int.tryParse(state.pathParameters['id'] ?? '');
+
+/// Not [syncStatusProvider], which follows a change of the active account
+/// only once it rebuilds.
+AsyncValue<SyncStatus> _syncStatusOfActive(
+  Ref ref,
+  AsyncValue<AccountRegistryState> accounts,
+) => switch (accounts.value?.activeAccount) {
+  final entry? =>
+    ref.read(accountSyncStatusProvider(entry.id)).unwrapPrevious(),
+  null => const AsyncLoading(),
+};
 
 /// The account registry and the sync state are local, so the start screen
 /// never waits for the network. Signed in, the shell waits for the account's

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/widgets/adaptive_navigation_bar.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
@@ -12,12 +13,14 @@ import 'package:vikunja_mobile/features/session/application/session_check.dart';
 import 'package:vikunja_mobile/features/session/application/sign_in_controller.dart';
 import 'package:vikunja_mobile/features/session/application/sign_out_controller.dart';
 import 'package:vikunja_mobile/features/sync/application/foreground_sync_scheduler_providers.dart';
+import 'package:vikunja_mobile/features/sync/application/inactive_outboxes.dart';
 import 'package:vikunja_mobile/features/sync/application/startup_sync.dart';
 
 /// The signed-in app: the tab bar around the Overview, Projects and Account
 /// branches, the session check when the app opens or resumes, the quiet
-/// sync when it opens and the scheduler that keeps syncing while it is in
-/// front.
+/// sync when it opens, the scheduler that keeps syncing while it is in
+/// front, the other accounts' outboxes, and the switch from one account to
+/// another.
 class HomeShell extends ConsumerStatefulWidget {
   const new({required this.navigationShell, super.key});
 
@@ -29,6 +32,10 @@ class HomeShell extends ConsumerStatefulWidget {
 
 class _HomeShellState extends ConsumerState<HomeShell> {
   late final AppLifecycleListener _lifecycle;
+
+  /// For the one frame after an account switch in which the tabs are left
+  /// out.
+  var _resettingTabs = false;
 
   @override
   void initState() {
@@ -71,13 +78,32 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   void _onActiveAccountChanged(String? previous, String? next) {
     // A failure card belongs to the account it happened for.
     ref.read(signInControllerProvider.notifier).reset();
+    if (previous != null && next != null) _closePreviousAccount();
     _checkSession();
     _syncQuietly();
   }
 
+  /// Runs before the next frame, so no screen of the previous account is
+  /// built with the new account's data: dialogs and sheets close without
+  /// an exit animation, pages over the shell go (blank while they animate
+  /// out), and every tab starts at its root. A tab's navigator keeps its
+  /// stack and the shell each tab's last location; leaving them out of
+  /// one frame disposes both.
+  void _closePreviousAccount() {
+    ref.read(rootModalRoutesProvider).closeAll();
+    GoRouter.of(context).go(AppRoutes.overview);
+    setState(() => _resettingTabs = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _resettingTabs = false);
+    });
+  }
+
   void _onSignOutChanged(bool? previous, bool next) {
     // Another account may have become active meanwhile.
-    if (previous == true && !next) _checkSession();
+    if (previous == true && !next) {
+      _checkSession();
+      _syncQuietly();
+    }
   }
 
   void _selectTab(int index) => widget.navigationShell.goBranch(
@@ -95,9 +121,10 @@ class _HomeShellState extends ConsumerState<HomeShell> {
         _onActiveAccountChanged,
       )
       ..listen(signOutControllerProvider, _onSignOutChanged)
-      // A provider nobody listens to is paused; the scheduler runs while
-      // the shell is up.
-      ..listen(foregroundSyncSchedulerProvider, (_, _) {});
+      // A provider nobody listens to is paused; these run while the shell
+      // is up.
+      ..listen(foregroundSyncSchedulerProvider, (_, _) {})
+      ..listen(inactiveOutboxesProvider, (_, _) {});
     final signedIn = ref.watch(
       accountsProvider.select(
         (accounts) => accounts.value?.activeAccount != null,
@@ -123,7 +150,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
         }
       },
       child: Scaffold(
-        body: widget.navigationShell,
+        body: _resettingTabs ? const SizedBox.expand() : widget.navigationShell,
         bottomNavigationBar: AdaptiveNavigationBar(
           selectedIndex: widget.navigationShell.currentIndex,
           onDestinationSelected: _selectTab,

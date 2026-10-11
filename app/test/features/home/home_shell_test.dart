@@ -39,6 +39,22 @@ void main() {
           .uri
           .toString();
 
+  Future<void> tapInAccountTab(WidgetTester tester, String label) async {
+    await tester.scrollUntilVisible(
+      find.text(label),
+      100,
+      scrollable: find
+          .descendant(
+            of: find.byType(AccountTab),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await tester.pump();
+    await tester.tap(find.text(label));
+    await tester.pumpAndSettle();
+  }
+
   Finder progressBar(Finder screen) => find.descendant(
     of: find.descendant(of: screen, matching: find.byType(SyncProgressBar)),
     matching: find.byType(LinearProgressIndicator),
@@ -361,8 +377,7 @@ void main() {
     testWidgets('signing out stops it', (tester) async {
       await pumpSignedInApp(tester, sync: data, now: now);
       await openTab(tester, en.tabAccount);
-      await tester.tap(find.text(en.homeSignOut));
-      await tester.pumpAndSettle();
+      await tapInAccountTab(tester, en.homeSignOut);
       await tester.tap(
         find.widgetWithText(TextButton, en.signOutDialogConfirm),
       );
@@ -409,8 +424,7 @@ void main() {
       await pumpSignedInApp(tester, sync: data, auth: auth, now: now);
 
       await openTab(tester, en.tabAccount);
-      await tester.tap(find.text(en.homeSignOut));
-      await tester.pumpAndSettle();
+      await tapInAccountTab(tester, en.homeSignOutOfThisAccount);
       await tester.tap(
         find.widgetWithText(TextButton, en.signOutDialogConfirm),
       );
@@ -418,8 +432,13 @@ void main() {
       expect(find.byType(FirstSyncScreen), findsOneWidget);
       expect(find.byType(HomeShell), findsNothing);
       expect(bobData.engine.ensureInitialSyncCalls, 1);
+      expect(find.text(en.accountSignedOutOf('Alice Example')), findsOneWidget);
 
+      // The snackbar covers the button.
+      ScaffoldMessenger.of(tester.element(find.byType(FirstSyncScreen)))
+          .removeCurrentSnackBar();
       await tester.ensureVisible(find.text(en.firstSyncCancel));
+      await tester.pumpAndSettle();
       await tester.tap(find.text(en.firstSyncCancel));
       await tester.pumpAndSettle();
       await tester.tap(

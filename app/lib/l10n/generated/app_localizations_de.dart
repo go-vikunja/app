@@ -483,14 +483,27 @@ class AppLocalizationsDe extends AppLocalizations {
   String get homeSignOut => 'Abmelden';
 
   @override
+  String get homeSignOutOfThisAccount => 'Von diesem Konto abmelden';
+
+  @override
   String get homeSigningOut => 'Wird abgemeldet …';
 
   @override
   String get signOutDialogTitle => 'Abmelden?';
 
   @override
-  String signOutDialogBody(String host) {
-    return 'Rurana meldet dich von $host ab und löscht die auf diesem Gerät gespeicherten Aufgaben. Du kannst dich jederzeit wieder anmelden.';
+  String signOutDialogBody(String account, String host) {
+    return 'Rurana meldet $account von $host ab und löscht die auf diesem Gerät gespeicherten Aufgaben dieses Kontos. Du kannst dich jederzeit wieder anmelden.';
+  }
+
+  @override
+  String signOutDialogAccount(String name, String username) {
+    return '$name (@$username)';
+  }
+
+  @override
+  String signOutDialogSwitchesTo(String name) {
+    return 'Danach wechselt Rurana zu $name.';
   }
 
   @override
@@ -512,6 +525,36 @@ class AppLocalizationsDe extends AppLocalizations {
   String get signOutDialogConfirm => 'Abmelden';
 
   @override
+  String get removeAccountDialogTitle => 'Konto entfernen?';
+
+  @override
+  String get removeAccountDialogConfirm => 'Entfernen';
+
+  @override
+  String removeAccountDialogPendingChanges(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count Änderungen wurden noch nicht an den Server gesendet und gehen verloren; wechsle vorher zu diesem Konto und tippe auf „Jetzt senden“, um sie zu behalten.',
+      one: 'Eine Änderung wurde noch nicht an den Server gesendet und geht verloren; wechsle vorher zu diesem Konto und tippe auf „Jetzt senden“, um sie zu behalten.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String removeAccountDialogPendingChangesSignInFirst(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count Änderungen wurden noch nicht an den Server gesendet und gehen verloren; wechsle vorher zu diesem Konto, melde dich erneut an und tippe auf „Jetzt senden“, um sie zu behalten.',
+      one: 'Eine Änderung wurde noch nicht an den Server gesendet und geht verloren; wechsle vorher zu diesem Konto, melde dich erneut an und tippe auf „Jetzt senden“, um sie zu behalten.',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get reauthTitle => 'Vom Server abgemeldet';
 
   @override
@@ -530,6 +573,69 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get tabAccount => 'Konto';
+
+  @override
+  String get accountsHeading => 'Konten';
+
+  @override
+  String accountSwitcherButton(String name, String host) {
+    return 'Konten, angemeldet als $name auf $host';
+  }
+
+  @override
+  String get accountCurrent => 'Aktuell';
+
+  @override
+  String accountSubtitle(String username, String host) {
+    return '@$username · $host';
+  }
+
+  @override
+  String get accountBadgeSignInAgain => 'Erneut anmelden';
+
+  @override
+  String accountBadgeUnsent(int count) {
+    return '$count nicht gesendet';
+  }
+
+  @override
+  String get accountAdd => 'Konto hinzufügen';
+
+  @override
+  String get accountManage => 'Konten verwalten';
+
+  @override
+  String accountMoreActions(String name) {
+    return 'Mehr zu $name';
+  }
+
+  @override
+  String get accountRemove => 'Entfernen …';
+
+  @override
+  String accountSwitchedTo(String name) {
+    return 'Zu $name gewechselt';
+  }
+
+  @override
+  String accountSignedOutOf(String name) {
+    return '$name abgemeldet';
+  }
+
+  @override
+  String get addAccountTagline =>
+      'Melde dich mit einem weiteren Konto an – auf einem deiner Server oder einem neuen.';
+
+  @override
+  String get addAccountYourServers => 'Deine Server';
+
+  @override
+  String get addAccountAlreadyAdded =>
+      'Bei diesem Konto bist du schon angemeldet – Rurana ist zu ihm gewechselt';
+
+  @override
+  String get addAccountAlreadyActive =>
+      'Bei diesem Konto bist du schon angemeldet';
 
   @override
   String get overviewLoading => 'Deine Aufgaben werden geladen …';

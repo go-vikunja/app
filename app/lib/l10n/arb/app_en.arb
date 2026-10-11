@@ -373,14 +373,42 @@
     }
   },
   "homeSignOut": "Sign out",
+  "homeSignOutOfThisAccount": "Sign out of this account",
   "homeSigningOut": "Signing out…",
   "signOutDialogTitle": "Sign out?",
-  "signOutDialogBody": "Rurana will sign you out of {host} and delete the tasks saved on this device. You can sign in again at any time.",
+  "signOutDialogBody": "Rurana will sign {account} out of {host} and delete this account’s tasks saved on this device. You can sign in again at any time.",
   "@signOutDialogBody": {
     "placeholders": {
+      "account": {
+        "type": "String",
+        "example": "Alice Example (@alice)"
+      },
       "host": {
         "type": "String",
         "example": "vikunja.example.com"
+      }
+    }
+  },
+  "signOutDialogAccount": "{name} (@{username})",
+  "@signOutDialogAccount": {
+    "description": "How the sign-out dialog names an account whose display name differs from its username.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Alice Example"
+      },
+      "username": {
+        "type": "String",
+        "example": "alice"
+      }
+    }
+  },
+  "signOutDialogSwitchesTo": "Rurana then switches to {name}.",
+  "@signOutDialogSwitchesTo": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Bob"
       }
     }
   },
@@ -394,6 +422,24 @@
   },
   "signOutDialogCancel": "Cancel",
   "signOutDialogConfirm": "Sign out",
+  "removeAccountDialogTitle": "Remove account?",
+  "removeAccountDialogConfirm": "Remove",
+  "removeAccountDialogPendingChanges": "{count, plural, =1{One change has not been sent to the server yet and will be lost; switch to this account and tap Send now first to keep it.} other{{count} changes have not been sent to the server yet and will be lost; switch to this account and tap Send now first to keep them.}}",
+  "@removeAccountDialogPendingChanges": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "removeAccountDialogPendingChangesSignInFirst": "{count, plural, =1{One change has not been sent to the server yet and will be lost; switch to this account, sign in again and tap Send now first to keep it.} other{{count} changes have not been sent to the server yet and will be lost; switch to this account, sign in again and tap Send now first to keep them.}}",
+  "@removeAccountDialogPendingChangesSignInFirst": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "reauthTitle": "Signed out by the server",
   "reauthBody": "{host} ended your session. Sign in again to keep your tasks in sync. Nothing on this device is lost.",
   "@reauthBody": {
@@ -408,6 +454,79 @@
   "tabOverview": "Overview",
   "tabProjects": "Projects",
   "tabAccount": "Account",
+  "accountsHeading": "Accounts",
+  "accountSwitcherButton": "Accounts, signed in as {name} on {host}",
+  "@accountSwitcherButton": {
+    "description": "Screen reader label of the avatar button that opens the account switcher.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Alice Example"
+      },
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "accountCurrent": "Current",
+  "accountSubtitle": "@{username} · {host}",
+  "@accountSubtitle": {
+    "placeholders": {
+      "username": {
+        "type": "String",
+        "example": "alice"
+      },
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "accountBadgeSignInAgain": "Sign in again",
+  "accountBadgeUnsent": "{count} unsent",
+  "@accountBadgeUnsent": {
+    "description": "Badge on an account with changes that have not reached the server yet.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "accountAdd": "Add account",
+  "accountManage": "Manage accounts",
+  "accountMoreActions": "More for {name}",
+  "@accountMoreActions": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Bob"
+      }
+    }
+  },
+  "accountRemove": "Remove…",
+  "accountSwitchedTo": "Switched to {name}",
+  "@accountSwitchedTo": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Bob"
+      }
+    }
+  },
+  "accountSignedOutOf": "Signed out of {name}",
+  "@accountSignedOutOf": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Bob"
+      }
+    }
+  },
+  "addAccountTagline": "Sign in with another account, on one of your servers or a new one.",
+  "addAccountYourServers": "Your servers",
+  "addAccountAlreadyAdded": "You’re already signed in to this account — switched to it",
+  "addAccountAlreadyActive": "You’re already signed in to this account",
   "overviewLoading": "Loading your tasks…",
   "overviewEmptyTitle": "All done",
   "overviewEmptyBody": "No open tasks right now. Enjoy the quiet, or add some on the web.",

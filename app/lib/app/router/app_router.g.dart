@@ -8,6 +8,55 @@ part of 'app_router.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
+/// Observes the root navigator, whose dialogs and sheets an account switch
+/// closes.
+
+@ProviderFor(rootModalRoutes)
+final rootModalRoutesProvider = RootModalRoutesProvider._();
+
+/// Observes the root navigator, whose dialogs and sheets an account switch
+/// closes.
+
+final class RootModalRoutesProvider
+    extends
+        $FunctionalProvider<RootModalRoutes, RootModalRoutes, RootModalRoutes>
+    with $Provider<RootModalRoutes> {
+  /// Observes the root navigator, whose dialogs and sheets an account switch
+  /// closes.
+  RootModalRoutesProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'rootModalRoutesProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$rootModalRoutesHash();
+
+  @$internal
+  @override
+  $ProviderElement<RootModalRoutes> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  RootModalRoutes create(Ref ref) {
+    return rootModalRoutes(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(RootModalRoutes value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<RootModalRoutes>(value),
+    );
+  }
+}
+
+String _$rootModalRoutesHash() => r'255be473fc2f430716d2ce192c908c9a02d81559';
 
 @ProviderFor(appRouter)
 final appRouterProvider = AppRouterProvider._();
@@ -48,4 +97,4 @@ final class AppRouterProvider
   }
 }
 
-String _$appRouterHash() => r'b9c446eaf4ab31570f00f919c73820bdab04c816';
+String _$appRouterHash() => r'25e250df113e46581136232606569a61e78e3281';

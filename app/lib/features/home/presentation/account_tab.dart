@@ -5,10 +5,11 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/features/accounts/presentation/account_actions.dart';
+import 'package:vikunja_mobile/features/accounts/presentation/accounts_section.dart';
 import 'package:vikunja_mobile/features/home/presentation/account_header.dart';
 import 'package:vikunja_mobile/features/home/presentation/pending_changes_line.dart';
 import 'package:vikunja_mobile/features/home/presentation/reauth_banner.dart';
-import 'package:vikunja_mobile/features/home/presentation/sign_out_dialog.dart';
 import 'package:vikunja_mobile/features/home/presentation/sync_problems_section.dart';
 import 'package:vikunja_mobile/features/home/presentation/sync_status_section.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connection_error_card.dart';
@@ -18,8 +19,9 @@ import 'package:vikunja_mobile/features/session/presentation/sign_in_failure_mes
 import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
 import 'package:vikunja_mobile/features/sync/presentation/sync_progress_bar.dart';
 
-/// Who is signed in, a session that needs a new sign-in, the sync state,
-/// the changes still waiting for the server, and sign-out.
+/// Who is signed in, a session that needs a new sign-in, the other
+/// accounts, the sync state, the changes still waiting for the server, and
+/// sign-out.
 class AccountTab extends ConsumerWidget {
   const new({super.key});
 
@@ -27,27 +29,31 @@ class AccountTab extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     RegisteredAccount entry,
-  ) async {
-    final confirmed = await confirmSignOut(
-      context,
-      serverRoot: entry.connection.rootUri,
-      pendingChanges: ref.read(pendingChangesProvider).value ?? 0,
-    );
-    if (!confirmed || !context.mounted) return;
-    await ref.read(signOutControllerProvider.notifier).signOut(entry.id);
-  }
+  ) => removeAccount(
+    context,
+    ref,
+    entry,
+    pendingChanges:
+        ref.read(pendingChangesProvider).unwrapPrevious().value ?? 0,
+  );
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final entry = ref.watch(accountsProvider).value?.activeAccount;
+    final accounts = ref.watch(accountsProvider).value;
+    final entry = accounts?.activeAccount;
     // Briefly null while the shell animates out after signing out.
-    if (entry == null) return const Scaffold();
+    if (accounts == null || entry == null) return const Scaffold();
 
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final signIn = ref.watch(signInControllerProvider);
     final isSigningIn = signIn is SignInInProgress;
     final signingOut = ref.watch(signOutControllerProvider);
+    final signOutLabel = switch ((signingOut, accounts.accounts.length > 1)) {
+      (true, _) => l10n.homeSigningOut,
+      (false, true) => l10n.homeSignOutOfThisAccount,
+      (false, false) => l10n.homeSignOut,
+    };
 
     return Scaffold(
       appBar: AppBar(
@@ -86,6 +92,8 @@ class AccountTab extends ConsumerWidget {
             ],
             AccountHeader(entry: entry),
             const SizedBox(height: 24),
+            AccountsSection(busy: signingOut || isSigningIn),
+            const SizedBox(height: 24),
             SyncStatusSection(entry: entry, signingOut: signingOut),
             PendingChangesLine(
               entry: entry,
@@ -103,7 +111,7 @@ class AccountTab extends ConsumerWidget {
                       child: CircularProgressIndicator.adaptive(strokeWidth: 2),
                     )
                   : const Icon(Icons.logout),
-              label: Text(signingOut ? l10n.homeSigningOut : l10n.homeSignOut),
+              label: Text(signOutLabel),
             ),
           ],
         ),

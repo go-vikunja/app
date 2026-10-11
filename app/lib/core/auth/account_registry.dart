@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
@@ -29,12 +30,26 @@ final class RegisteredAccount {
 
 @immutable
 final class AccountRegistryState {
-  const new({this.accounts = const [], this.activeAccountId});
+  const new({
+    this.accounts = const [],
+    this.activeAccountId,
+    this.recentAccountIds = const [],
+  });
 
+  /// In the order they were added.
   final List<RegisteredAccount> accounts;
   final String? activeAccountId;
 
+  /// The order in which the accounts were last active, most recent first.
+  final List<String> recentAccountIds;
+
   RegisteredAccount? get activeAccount => find(activeAccountId);
+
+  /// The active account first, then the others from the most recently
+  /// active; accounts [recentAccountIds] misses follow in stored order.
+  List<RegisteredAccount> get accountsByRecency => [
+    for (final id in _recencyOrder) find(id)!,
+  ];
 
   RegisteredAccount? find(String? accountId) {
     if (accountId == null) return null;
@@ -43,15 +58,42 @@ final class AccountRegistryState {
     }
     return null;
   }
+
+  List<String> get _recencyOrder {
+    final ids = {for (final entry in accounts) entry.id};
+    return {
+      if (activeAccount != null) activeAccountId!,
+      for (final id in recentAccountIds)
+        if (ids.contains(id)) id,
+      ...ids,
+    }.toList();
+  }
 }
+
+/// A state whose recency names every account once, the active one first.
+AccountRegistryState _ordered({
+  required List<RegisteredAccount> accounts,
+  required String? activeAccountId,
+  required List<String> recentAccountIds,
+}) => AccountRegistryState(
+  accounts: List.unmodifiable(accounts),
+  activeAccountId: activeAccountId,
+  recentAccountIds: List.unmodifiable(
+    AccountRegistryState(
+      accounts: accounts,
+      activeAccountId: activeAccountId,
+      recentAccountIds: recentAccountIds,
+    )._recencyOrder,
+  ),
+);
 
 /// Accounts and the active account id, without secrets. Storage is the
 /// source of truth (other isolates may write it), so every operation reads
 /// it again; writes within this isolate run one at a time.
 ///
 /// Entries this version cannot read are left out of the state but written
-/// back unchanged, so a write never erases an account (whose tokens are
-/// still stored) just because a field changed shape.
+/// back unchanged and in their place, so a write never erases an account
+/// (whose tokens are still stored) just because a field changed shape.
 final class AccountRegistry {
   new(this._store);
 
@@ -78,38 +120,48 @@ final class AccountRegistry {
   Future<AccountRegistryState> upsert(
     RegisteredAccount entry, {
     bool activate = false,
-  }) => _update((state) {
-    final accounts = [
-      for (final existing in state.accounts)
-        if (existing.id == entry.id) entry else existing,
-      if (state.find(entry.id) == null) entry,
-    ];
-    return AccountRegistryState(
-      accounts: accounts,
+  }) => _update(
+    (state) => _ordered(
+      accounts: [
+        for (final existing in state.accounts)
+          if (existing.id == entry.id) entry else existing,
+        if (state.find(entry.id) == null) entry,
+      ],
       activeAccountId: activate || state.activeAccountId == null
           ? entry.id
           : state.activeAccountId,
-    );
-  });
+      recentAccountIds: state.recentAccountIds,
+    ),
+  );
 
-  /// Removing the active account activates the first remaining one.
+  /// Removing the active account activates the most recently active one of
+  /// the rest.
   Future<AccountRegistryState> remove(String accountId) => _update((state) {
-    final accounts = [
-      for (final entry in state.accounts)
-        if (entry.id != accountId) entry,
-    ];
-    final active = state.activeAccountId == accountId
-        ? accounts.firstOrNull?.id
-        : state.activeAccountId;
-    return AccountRegistryState(accounts: accounts, activeAccountId: active);
+    final rest = _ordered(
+      accounts: [
+        for (final entry in state.accounts)
+          if (entry.id != accountId) entry,
+      ],
+      activeAccountId: state.activeAccountId == accountId
+          ? null
+          : state.activeAccountId,
+      recentAccountIds: state.recentAccountIds,
+    );
+    if (rest.activeAccountId != null) return rest;
+    return _ordered(
+      accounts: rest.accounts,
+      activeAccountId: rest.recentAccountIds.firstOrNull,
+      recentAccountIds: rest.recentAccountIds,
+    );
   });
 
   Future<AccountRegistryState> setActive(String accountId) => _update(
     (state) => state.find(accountId) == null
         ? state
-        : AccountRegistryState(
+        : _ordered(
             accounts: state.accounts,
             activeAccountId: accountId,
+            recentAccountIds: state.recentAccountIds,
           ),
   );
 
@@ -123,6 +175,7 @@ final class AccountRegistry {
             entry,
       ],
       activeAccountId: state.activeAccountId,
+      recentAccountIds: state.recentAccountIds,
     ),
   );
 
@@ -142,12 +195,20 @@ final class AccountRegistry {
       for (final entry in [...stored.state.accounts, ...next.accounts])
         entry.id,
     };
-    final json = encodeRegistry(next);
-    json['accounts'] = [
-      ...json['accounts']! as List<Object?>,
-      for (final raw in stored.unreadableEntries)
-        if (!readableIds.contains(raw['id'])) raw,
+    final kept = [
+      for (final (index, raw) in stored.unreadableEntries)
+        if (!readableIds.contains(raw['id'])) (index, raw),
     ];
+    final keptIds = {for (final (_, raw) in kept) raw['id']};
+    final json = encodeRegistry(next);
+    json['accounts'] = _insertKept(json['accounts']! as List<Object?>, kept);
+    json['recent_account_ids'] = _insertKept(
+      json['recent_account_ids']! as List<Object?>,
+      [
+        for (final (index, id) in stored.storedRecentIds.indexed)
+          if (keptIds.contains(id)) (index, id),
+      ],
+    );
     await _store.setString(storageKey, jsonEncode(json));
     if (!_changes.isClosed) _changes.add(next);
     return next;
@@ -163,11 +224,7 @@ final class AccountRegistry {
     final raw = await _store.getString(storageKey);
     if (raw == null || raw.isEmpty) return const _StoredRegistry();
     try {
-      final decoded = _decodeRegistry(jsonDecode(raw));
-      return _StoredRegistry(
-        state: decoded.state,
-        unreadableEntries: decoded.unreadableEntries,
-      );
+      return _decodeRegistry(jsonDecode(raw));
     } on FormatException catch (error) {
       _log.severe(
         'Account registry is unreadable, starting empty: ${error.runtimeType}',
@@ -181,18 +238,35 @@ final class _StoredRegistry {
   const new({
     this.state = const AccountRegistryState(),
     this.unreadableEntries = const [],
+    this.storedRecentIds = const [],
     this.unreadableRegistry,
   });
 
   final AccountRegistryState state;
-  final List<Map<String, Object?>> unreadableEntries;
+
+  /// With their index in the stored list, where a write puts them back.
+  final List<(int, Map<String, Object?>)> unreadableEntries;
+
+  /// The stored recency, unreadable entries included.
+  final List<String> storedRecentIds;
   final String? unreadableRegistry;
+}
+
+/// Puts entries this version cannot read back at their stored index, so
+/// writes keep their place.
+List<Object?> _insertKept(List<Object?> written, List<(int, Object?)> kept) {
+  final result = [...written];
+  for (final (index, value) in kept) {
+    result.insert(math.min(index, result.length), value);
+  }
+  return result;
 }
 
 @visibleForTesting
 Map<String, Object?> encodeRegistry(AccountRegistryState state) => {
   'version': AccountRegistry._schemaVersion,
   'active_account_id': state.activeAccountId,
+  'recent_account_ids': state._recencyOrder,
   'accounts': [for (final entry in state.accounts) _encodeAccount(entry)],
 };
 
@@ -202,8 +276,7 @@ Map<String, Object?> encodeRegistry(AccountRegistryState state) => {
 AccountRegistryState decodeRegistry(Object? json) =>
     _decodeRegistry(json).state;
 
-({AccountRegistryState state, List<Map<String, Object?>> unreadableEntries})
-_decodeRegistry(Object? json) {
+_StoredRegistry _decodeRegistry(Object? json) {
   if (json is! Map<String, Object?>) {
     throw const FormatException('Account registry is not a JSON object');
   }
@@ -213,24 +286,44 @@ _decodeRegistry(Object? json) {
     _ => throw const FormatException('Stored accounts are not a list'),
   };
   final accounts = <RegisteredAccount>[];
-  final unreadable = <Map<String, Object?>>[];
-  for (final entry in entries) {
+  final unreadable = <(int, Map<String, Object?>)>[];
+  for (final (index, entry) in entries.indexed) {
     try {
       accounts.add(_decodeAccount(entry));
     } on Object catch (error) {
       _log.warning('Skipping unreadable account entry: ${error.runtimeType}');
-      if (entry is Map<String, Object?>) unreadable.add(entry);
+      if (entry is Map<String, Object?>) unreadable.add((index, entry));
     }
   }
-  final active = json['active_account_id'];
-  return (
-    state: AccountRegistryState(
-      accounts: List.unmodifiable(accounts),
-      activeAccountId: accounts.any((entry) => entry.id == active)
-          ? active! as String
-          : accounts.firstOrNull?.id,
+  final storedActive = json['active_account_id'];
+  // Registries written before the recency was stored: the stored order,
+  // with the active account first.
+  final storedRecent = switch (json['recent_account_ids']) {
+    final List<Object?> ids => [
+      for (final id in ids)
+        if (id is String) id,
+    ],
+    _ => {
+      if (storedActive is String) storedActive,
+      for (final entry in entries)
+        if (entry case {'id': final String id}) id,
+    }.toList(),
+  };
+  final byRecency = _ordered(
+    accounts: accounts,
+    activeAccountId: null,
+    recentAccountIds: storedRecent,
+  );
+  return _StoredRegistry(
+    state: _ordered(
+      accounts: accounts,
+      activeAccountId:
+          byRecency.find(storedActive is String ? storedActive : null)?.id ??
+          byRecency.recentAccountIds.firstOrNull,
+      recentAccountIds: byRecency.recentAccountIds,
     ),
     unreadableEntries: unreadable,
+    storedRecentIds: storedRecent,
   );
 }
 

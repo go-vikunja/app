@@ -21,9 +21,12 @@ Future<void> bootstrap() async {
     // Behind the native launch screen, so the router starts on its first
     // real screen instead of animating it in over the empty splash route.
     final accounts = await container.read(accountsProvider.future);
-    if (accounts.activeAccount != null) {
+    if (accounts.activeAccount case final entry?) {
       // The shell or the first-sync screen: decided by the stored sync state.
-      await firstSyncStatus(container).timeout(const Duration(seconds: 5));
+      await firstSyncStatus(
+        container,
+        entry.id,
+      ).timeout(const Duration(seconds: 5));
     }
   } on Object catch (error) {
     _log.severe('Could not load the local state: ${error.runtimeType}');

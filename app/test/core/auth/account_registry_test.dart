@@ -258,6 +258,196 @@ void main() {
     expect((await registry.load()).accounts, isEmpty);
   });
 
+  group('recency', () {
+    Map<String, Object?> storedJson() =>
+        jsonDecode(preferences.values[AccountRegistry.storageKey]!)
+            as Map<String, Object?>;
+
+    List<String> idsOf(Iterable<RegisteredAccount> entries) => [
+      for (final entry in entries) entry.id,
+    ];
+
+    Future<void> seedThree() async {
+      await registry.upsert(_entry('a1', fullServer270()));
+      await registry.upsert(_entry('b2', oauthServer230(), userId: 8));
+      await registry.upsert(_entry('c3', insecureServer(), userId: 9));
+    }
+
+    test('activating moves an account to the front, and the stored order '
+        'stays as added', () async {
+      await seedThree();
+      expect(idsOf((await registry.load()).accountsByRecency), [
+        'a1',
+        'b2',
+        'c3',
+      ]);
+
+      await registry.setActive('c3');
+      await registry.upsert(
+        _entry('b2', oauthServer230(), userId: 8),
+        activate: true,
+      );
+
+      final state = await AccountRegistry(preferences).load();
+      expect(state.activeAccountId, 'b2');
+      expect(idsOf(state.accountsByRecency), ['b2', 'c3', 'a1']);
+      expect(state.recentAccountIds, ['b2', 'c3', 'a1']);
+      expect(idsOf(state.accounts), ['a1', 'b2', 'c3']);
+      expect(storedJson()['recent_account_ids'], ['b2', 'c3', 'a1']);
+    });
+
+    test('an upsert without activation keeps the place, and a new account '
+        'comes last', () async {
+      await seedThree();
+      await registry.setActive('c3');
+
+      await registry.upsert(
+        _entry('a1', fullServer270(), displayName: 'Alice Renamed'),
+      );
+      await registry.upsert(_entry('d4', fullServer270(), userId: 10));
+
+      expect(idsOf((await registry.load()).accountsByRecency), [
+        'c3',
+        'a1',
+        'b2',
+        'd4',
+      ]);
+    });
+
+    test('removing the active account activates the most recently active '
+        'of the rest, not the first stored one', () async {
+      await seedThree();
+      await registry.setActive('c3');
+      await registry.setActive('a1');
+
+      final state = await registry.remove('a1');
+
+      expect(state.activeAccountId, 'c3');
+      expect(idsOf(state.accountsByRecency), ['c3', 'b2']);
+      expect((await AccountRegistry(preferences).load()).activeAccountId, 'c3');
+      expect(storedJson()['recent_account_ids'], ['c3', 'b2']);
+    });
+
+    test('removing an inactive account leaves the active one', () async {
+      await seedThree();
+      await registry.setActive('b2');
+
+      final state = await registry.remove('c3');
+
+      expect(state.activeAccountId, 'b2');
+      expect(idsOf(state.accountsByRecency), ['b2', 'a1']);
+      expect(storedJson()['recent_account_ids'], ['b2', 'a1']);
+    });
+
+    test('a registry stored without recency reads as the stored order with '
+        'the active account first', () async {
+      await seedThree();
+      final json = storedJson()
+        ..remove('recent_account_ids')
+        ..['active_account_id'] = 'b2';
+      preferences.values[AccountRegistry.storageKey] = jsonEncode(json);
+
+      final state = await registry.load();
+      expect(state.activeAccountId, 'b2');
+      expect(idsOf(state.accountsByRecency), ['b2', 'a1', 'c3']);
+
+      final afterRemove = await registry.remove('b2');
+      expect(afterRemove.activeAccountId, 'a1');
+      expect(storedJson()['recent_account_ids'], ['a1', 'c3']);
+    });
+
+    test('ids that are unknown or no strings are skipped, and accounts the '
+        'recency misses come last in stored order', () async {
+      await seedThree();
+      preferences.values[AccountRegistry.storageKey] = jsonEncode({
+        ...storedJson(),
+        'active_account_id': 'c3',
+        'recent_account_ids': ['gone', 42, 'b2'],
+      });
+
+      expect(idsOf((await registry.load()).accountsByRecency), [
+        'c3',
+        'b2',
+        'a1',
+      ]);
+    });
+
+    test('a recency that is not a list reads like none', () async {
+      await seedThree();
+      preferences.values[AccountRegistry.storageKey] = jsonEncode({
+        ...storedJson(),
+        'active_account_id': 'c3',
+        'recent_account_ids': 'b2',
+      });
+
+      expect(idsOf((await registry.load()).accountsByRecency), [
+        'c3',
+        'a1',
+        'b2',
+      ]);
+    });
+
+    test('an unreadable entry keeps its place in the accounts and the '
+        'recency while the others move', () async {
+      await seedThree();
+      await registry.setActive('c3');
+      final json = storedJson();
+      final accounts = json['accounts']! as List<Object?>;
+      final broken = accounts[1]! as Map<String, Object?>;
+      (broken['connection']! as Map<String, Object?>)['api_versions'] =
+          <Object?>[];
+      json['recent_account_ids'] = ['c3', 'b2', 'a1'];
+      preferences.values[AccountRegistry.storageKey] = jsonEncode(json);
+
+      final state = await registry.setActive('a1');
+
+      expect(idsOf(state.accounts), ['a1', 'c3']);
+      expect(idsOf(state.accountsByRecency), ['a1', 'c3']);
+      final stored = storedJson();
+      expect(
+        [
+          for (final entry in stored['accounts']! as List<Object?>)
+            (entry! as Map<String, Object?>)['id'],
+        ],
+        ['a1', 'b2', 'c3'],
+      );
+      expect((stored['accounts']! as List<Object?>)[1], equals(broken));
+      expect(stored['recent_account_ids'], ['a1', 'b2', 'c3']);
+    });
+
+    test('an unreadable active entry hands over to the most recent readable '
+        'account', () async {
+      await seedThree();
+      await registry.setActive('c3');
+      final json = storedJson();
+      final accounts = json['accounts']! as List<Object?>;
+      ((accounts[2]! as Map<String, Object?>)['connection']!
+              as Map<String, Object?>)['api_versions'] =
+          <Object?>[];
+      json['recent_account_ids'] = ['c3', 'b2', 'a1'];
+      preferences.values[AccountRegistry.storageKey] = jsonEncode(json);
+
+      final state = await registry.load();
+
+      expect(state.activeAccountId, 'b2');
+      expect(idsOf(state.accountsByRecency), ['b2', 'a1']);
+    });
+
+    test('a state built without recency lists the active account first, then '
+        'the stored order', () {
+      final state = AccountRegistryState(
+        accounts: [
+          _entry('a1', fullServer270()),
+          _entry('b2', oauthServer230()),
+          _entry('c3', insecureServer()),
+        ],
+        activeAccountId: 'b2',
+      );
+
+      expect(idsOf(state.accountsByRecency), ['b2', 'a1', 'c3']);
+    });
+  });
+
   group('entries this version cannot read', () {
     Map<String, Object?> storedJson() =>
         jsonDecode(preferences.values[AccountRegistry.storageKey]!)

@@ -59,12 +59,15 @@ final class BrowserSignIn {
   final Duration _logoutTimeout;
 
   /// Signs in and makes the account active. Null when the user closed the
-  /// browser. With [expectedAccount], only that user is accepted. Throws
-  /// `VikunjaFailure`, `AuthorizationCallbackException`,
-  /// [WebAuthenticationFailed] or [SignedInAsDifferentUser].
+  /// browser. With [expectedAccount], only that user is accepted.
+  /// [beforeActivatingExisting] runs for an account already on this device
+  /// before it becomes active again. Throws `VikunjaFailure`,
+  /// `AuthorizationCallbackException`, [WebAuthenticationFailed] or
+  /// [SignedInAsDifferentUser].
   Future<RegisteredAccount?> signIn(
     ServerConnection connection, {
     Account? expectedAccount,
+    Future<void> Function(String accountId)? beforeActivatingExisting,
   }) async {
     final request = _createRequest(connection, _client);
     _log.info('Opening sign-in page at ${describeUriForLog(request.url)}');
@@ -114,6 +117,7 @@ final class BrowserSignIn {
     await _sessions.signedIn(accountId, tokens, receivedAt: receivedAt);
 
     final existing = await _registry.find(accountId);
+    if (existing != null) await beforeActivatingExisting?.call(accountId);
     final entry = RegisteredAccount(
       account: Account(
         id: accountId,

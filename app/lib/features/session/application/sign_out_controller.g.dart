@@ -47,7 +47,7 @@ final class SignOutControllerProvider
   }
 }
 
-String _$signOutControllerHash() => r'53f951dbb3abbd4dceee14380d164514bd00f144';
+String _$signOutControllerHash() => r'0ed28005303d74a14b1618c3b0d68988cf0ba076';
 
 /// True while a sign-out runs. The shell and the account tab both need it:
 /// one blocks system back, the other shows the progress.

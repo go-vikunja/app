@@ -163,6 +163,7 @@ void main() {
 
     await containerOf(tester).read(accountRegistryProvider).setActive(bob.id);
     await tester.pumpAndSettle();
+    await openTab(tester, en.tabProjects);
 
     expect(find.byType(DataFailureCard), findsNothing);
     expect(rowTitles(tester), ['Bob project']);

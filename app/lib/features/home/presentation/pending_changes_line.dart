@@ -55,9 +55,10 @@ class _PendingChangesLineState extends ConsumerState<PendingChangesLine> {
 
   @override
   Widget build(BuildContext context) {
-    final count = ref.watch(pendingChangesProvider).value ?? 0;
+    final count = ref.watch(pendingChangesProvider).unwrapPrevious().value ?? 0;
     if (count == 0) return const SizedBox.shrink();
-    final problems = ref.watch(syncProblemsProvider).value?.length ?? 0;
+    final problems =
+        ref.watch(syncProblemsProvider).unwrapPrevious().value?.length ?? 0;
     final sendable = count > problems;
 
     final l10n = context.l10n;

@@ -1,7 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
-import 'package:vikunja_mobile/features/tasks/presentation/initials_avatar.dart';
+import 'package:vikunja_mobile/features/common/presentation/initials_avatar.dart';
 
 /// The draft's assignees, each removable, and the way to the people
 /// picker.
@@ -27,7 +27,7 @@ class AssigneesSection extends StatelessWidget {
       children: [
         for (final user in assignees)
           InputChip(
-            avatar: InitialsAvatar(user: user, radius: 12),
+            avatar: InitialsAvatar(name: user.displayName, radius: 12),
             label: Text(
               user.displayName,
               maxLines: 2,

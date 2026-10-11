@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
+import 'package:vikunja_mobile/features/common/presentation/initials_avatar.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/server_address_display.dart';
 
 class AccountHeader extends StatelessWidget {
@@ -21,21 +22,7 @@ class AccountHeader extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ExcludeSemantics(
-          child: CircleAvatar(
-            radius: 36,
-            backgroundColor: colors.primaryContainer,
-            foregroundColor: colors.onPrimaryContainer,
-            child: Text(
-              initialsOf(account.displayName),
-              style: theme.textTheme.headlineSmall?.copyWith(
-                color: colors.onPrimaryContainer,
-              ),
-              // The avatar has a fixed size; the name below scales instead.
-              textScaler: TextScaler.noScaling,
-            ),
-          ),
-        ),
+        InitialsAvatar(name: account.displayName, radius: 36, primary: true),
         const SizedBox(height: 16),
         Semantics(
           container: true,
@@ -99,16 +86,4 @@ class AccountHeader extends StatelessWidget {
       ],
     );
   }
-}
-
-String initialsOf(String name) {
-  final words = name
-      .trim()
-      .split(RegExp(r'\s+'))
-      .where((word) => word.isNotEmpty)
-      .toList();
-  if (words.isEmpty) return '?';
-  final first = words.first.characters.first;
-  final last = words.length > 1 ? words.last.characters.first : '';
-  return (first + last).toUpperCase();
 }

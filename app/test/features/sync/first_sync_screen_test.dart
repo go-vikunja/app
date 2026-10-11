@@ -169,7 +169,12 @@ void main() {
     await tester.tap(find.text(en.firstSyncCancel));
     await pumpUntil(tester, find.text(en.signOutDialogTitle));
     expect(
-      find.text(en.signOutDialogBody('tasks.example.org')),
+      find.text(
+        en.signOutDialogBody(
+          en.signOutDialogAccount('Alice Example', 'alice'),
+          'tasks.example.org',
+        ),
+      ),
       findsOneWidget,
     );
     await tester.tap(find.widgetWithText(TextButton, en.signOutDialogConfirm));

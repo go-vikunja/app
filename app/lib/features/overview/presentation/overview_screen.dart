@@ -7,6 +7,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
+import 'package:vikunja_mobile/features/accounts/presentation/account_switcher_button.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
@@ -52,12 +53,16 @@ class _OverviewScreenState extends ConsumerState<OverviewScreen>
     final projects = ref.watch(projectsProvider).value ?? const <Project>[];
     final projectsById = {for (final project in projects) project.id: project};
     final now = ref.watch(clockTickProvider);
-    final pendingIds = ref.watch(pendingTaskIdsProvider).value ?? const {};
+    final pendingIds =
+        ref.watch(pendingTaskIdsProvider).unwrapPrevious().value ?? const {};
 
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.tabOverview),
-        actions: [RefreshButton(onPressed: refreshing ? null : refresh)],
+        actions: [
+          RefreshButton(onPressed: refreshing ? null : refresh),
+          const AccountSwitcherButton(),
+        ],
         bottom: const SyncProgressBar(),
       ),
       floatingActionButton: FloatingActionButton.extended(

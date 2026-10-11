@@ -5,8 +5,8 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/features/common/presentation/initials_avatar.dart';
 import 'package:vikunja_mobile/features/tasks/application/people_search.dart';
-import 'package:vikunja_mobile/features/tasks/presentation/initials_avatar.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/picker_sheet.dart';
 
 /// Lets the user tick the people of [projectId] to assign, found on the
@@ -223,7 +223,7 @@ class _AssigneePickerState extends ConsumerState<AssigneePicker> {
                 CheckboxListTile.adaptive(
                   value: _isSelected(user),
                   onChanged: (_) => _toggle(user),
-                  secondary: InitialsAvatar(user: user, radius: 18),
+                  secondary: InitialsAvatar(name: user.displayName, radius: 18),
                   title: Text(user.displayName),
                   subtitle: Text(l10n.assigneeUsername(user.username)),
                 ),

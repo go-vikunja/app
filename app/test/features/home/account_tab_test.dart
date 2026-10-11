@@ -10,11 +10,11 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
-import 'package:vikunja_mobile/features/home/presentation/account_header.dart';
 import 'package:vikunja_mobile/features/home/presentation/account_tab.dart';
 import 'package:vikunja_mobile/features/home/presentation/reauth_banner.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_server_screen.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connection_error_card.dart';
+import 'package:vikunja_mobile/features/overview/presentation/overview_screen.dart';
 import 'package:vikunja_mobile/features/session/application/session_check.dart';
 
 import '../../helpers/auth_fakes.dart';
@@ -22,6 +22,11 @@ import '../../helpers/fakes.dart';
 import '../../helpers/pump_app.dart';
 import '../../helpers/server_connections.dart';
 import '../../helpers/sync_fakes.dart';
+
+final String aliceSignOutBody = en.signOutDialogBody(
+  en.signOutDialogAccount('Alice Example', 'alice'),
+  'tasks.example.org',
+);
 
 void main() {
   late AuthFakes auth;
@@ -60,8 +65,24 @@ void main() {
     await openTab(tester, tabLabel ?? en.tabAccount);
   }
 
-  Future<void> tapSignOut(WidgetTester tester) async {
-    final button = find.widgetWithText(OutlinedButton, en.homeSignOut);
+  /// The Accounts section pushes the sync section below the fold.
+  Future<void> scrollTo(WidgetTester tester, Finder finder) async {
+    await tester.scrollUntilVisible(
+      finder,
+      100,
+      scrollable: find
+          .descendant(
+            of: find.byType(AccountTab),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await tester.pump();
+  }
+
+  /// [label] is the button's text, which differs with other accounts left.
+  Future<void> tapSignOut(WidgetTester tester, {String? label}) async {
+    final button = find.widgetWithText(OutlinedButton, label ?? en.homeSignOut);
     await tester.scrollUntilVisible(
       button,
       100,
@@ -72,6 +93,8 @@ void main() {
           )
           .first,
     );
+    // The scroll lays out on the next frame.
+    await tester.pump();
     await tester.tap(button);
     await tester.pumpAndSettle();
   }
@@ -119,10 +142,7 @@ void main() {
 
     await tapSignOut(tester);
     expect(find.text(en.signOutDialogTitle), findsOneWidget);
-    expect(
-      find.text(en.signOutDialogBody('tasks.example.org')),
-      findsOneWidget,
-    );
+    expect(find.text(aliceSignOutBody), findsOneWidget);
     await tester.tap(find.text(en.signOutDialogCancel));
     await tester.pumpAndSettle();
 
@@ -140,10 +160,7 @@ void main() {
     await tapSignOut(tester);
 
     expect(
-      find.text(
-        '${en.signOutDialogBody('tasks.example.org')} '
-        '${en.signOutDialogPendingChanges(2)}',
-      ),
+      find.text('$aliceSignOutBody ${en.signOutDialogPendingChanges(2)}'),
       findsOneWidget,
     );
   });
@@ -213,6 +230,7 @@ void main() {
       tester,
     ) async {
       await pumpHome(tester, needsReauth: true);
+      await scrollTo(tester, find.text(en.accountSyncNow));
 
       final button = tester.widget<FilledButton>(
         find.widgetWithText(FilledButton, en.accountSyncNow),
@@ -257,6 +275,7 @@ void main() {
       tester,
     ) async {
       await pumpHome(tester, needsReauth: true);
+      await scrollTo(tester, find.text(en.accountFullResync));
 
       final button = tester.widget<TextButton>(
         find.widgetWithText(TextButton, en.accountFullResync),
@@ -343,6 +362,7 @@ void main() {
 
       final run = Completer<void>();
       data.engine.onRefresh = () => run.future;
+      await scrollTo(tester, find.text(en.accountSyncNow));
       await tester.tap(find.text(en.accountSyncNow));
       await tester.pump();
 
@@ -458,12 +478,20 @@ void main() {
     );
     await pumpHome(tester);
 
-    await tapSignOut(tester);
+    await tapSignOut(tester, label: en.homeSignOutOfThisAccount);
+    expect(
+      find.text('$aliceSignOutBody ${en.signOutDialogSwitchesTo('Bob')}'),
+      findsOneWidget,
+    );
     await tester.tap(find.widgetWithText(TextButton, en.signOutDialogConfirm));
     await tester.pumpAndSettle();
 
-    expect(find.byType(AccountTab), findsOneWidget);
+    // Like every switch, it starts on the overview.
+    expect(find.byType(OverviewScreen), findsOneWidget);
+    expect(find.text(en.accountSignedOutOf('Alice Example')), findsOneWidget);
+    await openTab(tester, en.tabAccount);
     expect(find.text('Bob'), findsOneWidget);
+    expect(find.text(en.homeSignOut), findsOneWidget);
   });
 
   group('session check', () {
@@ -665,11 +693,12 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(ConnectionErrorCard), findsOneWidget);
 
-      await tapSignOut(tester);
+      await tapSignOut(tester, label: en.homeSignOutOfThisAccount);
       await tester.tap(
         find.widgetWithText(TextButton, en.signOutDialogConfirm),
       );
       await tester.pumpAndSettle();
+      await openTab(tester, en.tabAccount);
 
       expect(find.text('Bob'), findsOneWidget);
       expect(find.byType(ConnectionErrorCard), findsNothing);
@@ -689,16 +718,6 @@ void main() {
 
       expect(auth.webAuthenticator.urls, isEmpty);
       expect(find.text(en.failureUnreachableTitle), findsOneWidget);
-    });
-  });
-
-  group('initialsOf', () {
-    test('takes the first letters of the first and last word', () {
-      expect(initialsOf('Alice Mary Example'), 'AE');
-      expect(initialsOf('  bob  '), 'B');
-      expect(initialsOf('élodie durand'), 'ÉD');
-      expect(initialsOf('👩‍💻 Dev'), '👩‍💻D');
-      expect(initialsOf(''), '?');
     });
   });
 }

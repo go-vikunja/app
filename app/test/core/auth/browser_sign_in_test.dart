@@ -274,6 +274,23 @@ void main() {
     expect(bob?.account.displayName, 'bob');
   });
 
+  test('an account already here is prepared before it becomes active '
+      'again; a new one is not', () async {
+    final prepared = <(String, String?)>[];
+    Future<void> prepare(String id) async =>
+        prepared.add((id, (await fakes.registry.load()).activeAccountId));
+    await signIn.signIn(connection, beforeActivatingExisting: prepare);
+    expect(prepared, isEmpty);
+    fakes.serveUser(const User(id: 8, username: 'bob'), now: now);
+    final bob = await signIn.signIn(connection);
+    fakes.serveUser(_alice, now: now);
+
+    await signIn.signIn(connection, beforeActivatingExisting: prepare);
+
+    expect(prepared, [(accountId, bob!.id)]);
+    expect((await fakes.registry.load()).activeAccountId, accountId);
+  });
+
   group('signing in again as a given account', () {
     test(
       'refuses another user, stores nothing and ends that session',

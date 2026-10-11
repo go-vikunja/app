@@ -7,16 +7,25 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/core/auth/account_registry.dart';
+import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/features/onboarding/application/connect_server_controller.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_button.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_header.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connection_error_card.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/failure_message.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/insecure_connection_dialog.dart';
+import 'package:vikunja_mobile/features/onboarding/presentation/connect/known_servers.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/server_address_field.dart';
+import 'package:vikunja_mobile/features/session/application/sign_in_controller.dart';
 
 class ConnectServerScreen extends ConsumerStatefulWidget {
-  const new({super.key});
+  const new({this.adding = false, super.key});
+
+  /// Over the shell, for another account: with a close button and the
+  /// servers of the accounts on this device, and the server overview is
+  /// pushed, so that back leads here and then to the shell.
+  final bool adding;
 
   @override
   ConsumerState<ConnectServerScreen> createState() =>
@@ -30,6 +39,19 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
 
   ConnectServerController get _controller =>
       ref.read(connectServerControllerProvider.notifier);
+
+  @override
+  void initState() {
+    super.initState();
+    // The shell keeps the sign-in state, so a failure of the active
+    // account's "Sign in again" would otherwise show on the new server's
+    // overview.
+    if (widget.adding) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) ref.read(signInControllerProvider.notifier).reset();
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -48,6 +70,11 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
     _submit();
   }
 
+  void _useKnownServer(Uri server) {
+    _address.text = server.toString();
+    _submit();
+  }
+
   void _onAddressChanged(String _) {
     if (ref.read(connectServerControllerProvider) is ConnectServerFailed) {
       _controller.reset();
@@ -60,6 +87,8 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
         unawaited(HapticFeedback.heavyImpact());
       case ConnectServerAwaitingInsecureConsent(:final connection):
         unawaited(_askForInsecureConsent(connection));
+      case ConnectServerConnected() when widget.adding:
+        unawaited(context.push(AppRoutes.addAccountServer));
       case ConnectServerConnected():
         context.go(AppRoutes.serverOverview);
       case ConnectServerIdle() || ConnectServerConnecting():
@@ -98,13 +127,21 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
     final isConnecting = state is ConnectServerConnecting;
     final l10n = context.l10n;
     final theme = Theme.of(context);
+    final accounts = widget.adding
+        ? ref.watch(accountsProvider).value?.accountsByRecency
+        : null;
+    final knownServers = {
+      for (final entry in accounts ?? const <RegisteredAccount>[])
+        entry.connection.rootUri,
+    }.toList();
 
     return Scaffold(
+      appBar: widget.adding ? AppBar(leading: const CloseButton()) : null,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+            padding: EdgeInsets.fromLTRB(24, widget.adding ? 8 : 32, 24, 24),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 480),
               child: Form(
@@ -112,7 +149,10 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const ConnectHeader(),
+                    ConnectHeader(
+                      title: widget.adding ? l10n.accountAdd : null,
+                      tagline: widget.adding ? l10n.addAccountTagline : null,
+                    ),
                     const SizedBox(height: 32),
                     ServerAddressField(
                       controller: _address,
@@ -120,6 +160,14 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
                       onSubmitted: _submit,
                       onChanged: _onAddressChanged,
                     ),
+                    if (knownServers.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      KnownServers(
+                        servers: knownServers,
+                        enabled: !isConnecting,
+                        onSelected: _useKnownServer,
+                      ),
+                    ],
                     AnimatedSize(
                       duration: const Duration(milliseconds: 200),
                       alignment: Alignment.topCenter,

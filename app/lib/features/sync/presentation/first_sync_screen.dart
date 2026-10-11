@@ -9,9 +9,9 @@ import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
+import 'package:vikunja_mobile/features/accounts/presentation/account_actions.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
 import 'package:vikunja_mobile/features/home/presentation/reauth_banner.dart';
-import 'package:vikunja_mobile/features/home/presentation/sign_out_dialog.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_header.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connection_error_card.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/server_address_display.dart';
@@ -55,14 +55,9 @@ class _FirstSyncScreenState extends ConsumerState<FirstSyncScreen> {
     if (next is SignInSucceeded) _start();
   }
 
-  Future<void> _cancel(RegisteredAccount entry) async {
-    final confirmed = await confirmSignOut(
-      context,
-      serverRoot: entry.connection.rootUri,
-    );
-    if (!confirmed || !mounted) return;
-    await ref.read(signOutControllerProvider.notifier).signOut(entry.id);
-  }
+  /// Another account, if any, becomes active again and opens its shell.
+  Future<void> _cancel(RegisteredAccount entry) =>
+      removeAccount(context, ref, entry, pendingChanges: 0);
 
   @override
   Widget build(BuildContext context) {

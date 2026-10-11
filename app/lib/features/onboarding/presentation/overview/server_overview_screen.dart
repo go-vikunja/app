@@ -21,7 +21,11 @@ import 'package:vikunja_mobile/features/session/application/sign_in_controller.d
 import 'package:vikunja_mobile/features/session/presentation/sign_in_failure_message.dart';
 
 class ServerOverviewScreen extends ConsumerStatefulWidget {
-  const new({super.key});
+  const new({this.adding = false, super.key});
+
+  /// Pushed over the connect screen of another account, which "Use a
+  /// different server" returns to.
+  final bool adding;
 
   @override
   ConsumerState<ServerOverviewScreen> createState() =>
@@ -41,7 +45,23 @@ class _ServerOverviewScreenState extends ConsumerState<ServerOverviewScreen> {
 
   void _onSignInChanged(SignInState? previous, SignInState next) {
     switch (next) {
-      case SignInSucceeded():
+      case SignInSucceeded(:final isNewAccount, :final wasActive):
+        if (!isNewAccount) {
+          final l10n = context.l10n;
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(
+              SnackBar(
+                content: Text(
+                  wasActive
+                      ? l10n.addAccountAlreadyActive
+                      : l10n.addAccountAlreadyAdded,
+                ),
+              ),
+            );
+        }
+        // The router sends an account that has not synced yet on to its
+        // first sync.
         context.go(AppRoutes.home);
       case SignInFailed():
         unawaited(HapticFeedback.heavyImpact());
@@ -85,13 +105,25 @@ class _ServerOverviewScreenState extends ConsumerState<ServerOverviewScreen> {
       canSignIn: signInMethod != null,
       isSigningIn: isSigningIn,
       onContinue: () => _signIn(connection),
-      onUseDifferentServer: () => context.go(AppRoutes.connect),
+      onUseDifferentServer: () =>
+          widget.adding ? context.pop() : context.go(AppRoutes.connect),
     );
 
     // Once the browser has returned, the code is being exchanged and the
     // account stored; leaving now would strand a half-finished sign-in.
     return PopScope(
       canPop: !isSigningIn,
+      // Over the shell, which keeps the sign-in state alive, a failure here
+      // would otherwise show up on the active account's Account tab. Only
+      // a failure: the router also pops this page, during a build, once a
+      // sign-in has succeeded.
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop &&
+            widget.adding &&
+            ref.read(signInControllerProvider) is SignInFailed) {
+          ref.read(signInControllerProvider.notifier).reset();
+        }
+      },
       child: Scaffold(
         appBar: AppBar(
           // Shown disabled rather than hidden, so the title does not jump and

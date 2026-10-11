@@ -18,6 +18,7 @@ import 'package:vikunja_mobile/features/tasks/presentation/edit/task_edit_page.d
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/assignee_picker.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 
+import '../features/accounts/accounts_harness.dart';
 import '../features/tasks/edit_page_harness.dart';
 import '../helpers/auth_fakes.dart';
 import '../helpers/fakes.dart';
@@ -657,6 +658,84 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byWidgetPredicate((w) => w is AlertDialog), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    Future<ThreeAccounts> longAccounts() async {
+      final accounts = ThreeAccounts();
+      await accounts.seed(
+        aliceName: 'Maximiliane Musterfrau-Beispielhausen',
+        bobName: 'Bartholomäus Langername-Doppelname',
+        bobNeedsReauth: true,
+      );
+      accounts.bobData.tasks.pendingChanges = 12;
+      return accounts;
+    }
+
+    testWidgets('account switcher at 200 % in dark mode '
+        '(${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      final accounts = await longAccounts();
+      await accounts.pump(tester);
+
+      await openSwitcher(tester);
+      await scrollToEnd(tester, switcherSheet);
+
+      expect(find.text(l10n.accountManage), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('accounts section and removal at 200 % in dark mode '
+        '(${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      final accounts = await longAccounts();
+      await accounts.pump(tester);
+      await openTab(tester, l10n.tabAccount);
+
+      await scrollToEnd(tester, find.byType(ListView));
+      expect(find.text(l10n.homeSignOutOfThisAccount), findsOneWidget);
+      final menu = find.byTooltip(
+        l10n.accountMoreActions('Bartholomäus Langername-Doppelname'),
+      );
+      await tester.scrollUntilVisible(
+        menu,
+        -200,
+        scrollable: find
+            .descendant(
+              of: find.byType(ListView),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(menu);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(l10n.accountRemove));
+      await tester.pumpAndSettle();
+
+      expect(find.text(l10n.removeAccountDialogTitle), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('add account with server chips at 200 % in dark mode '
+        '(${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      final accounts = await longAccounts();
+      await seedUser(
+        accounts.auth,
+        oauthServer230(root: 'https://a-rather-long-host-name.example.org'),
+        userId: 11,
+        username: 'erin',
+        displayName: 'Erin',
+      );
+      await accounts.pump(tester);
+      await openSwitcher(tester);
+      await scrollToEnd(tester, switcherSheet);
+      await tester.tap(inSheet(find.text(l10n.accountAdd)));
+      await tester.pumpAndSettle();
+
+      await scrollToEnd(tester, find.byType(SingleChildScrollView));
+      expect(find.text(l10n.addAccountYourServers), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   }
