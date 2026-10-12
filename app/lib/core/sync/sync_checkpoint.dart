@@ -22,6 +22,10 @@ abstract final class SyncStateKeys {
   /// run clears the key.
   static const pendingWholePull = 'pending_whole_pull';
 
+  /// The account's `UserSettings` from the account phase of the last run,
+  /// see `encodeUserSettings`. Absent before the first run.
+  static const userSettings = 'user_settings';
+
   static const runId = 'run_id';
   static const runNewestUpdated = 'run_newest_updated';
   static const phase = 'phase';

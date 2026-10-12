@@ -200,7 +200,10 @@ void main() {
             db: db,
             client: reads,
             perPage: only.info.maxItemsPerPage,
-            currentUser: AccountApi(authenticated, only).currentUser,
+            currentUser: AccountApi(
+              authenticated,
+              only,
+            ).currentUserWithSettings,
           );
           addTearDown(engine.dispose);
           sender = OutboxSender(

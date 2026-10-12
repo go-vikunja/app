@@ -1167,6 +1167,328 @@
       }
     }
   },
+  "newTaskAddMany": "{count, plural, =1{Add 1 task} other{Add {count} tasks}}",
+  "@newTaskAddMany": {
+    "description": "The Add button once several lines are pasted.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "newTaskCreatedMany": "{count, plural, =1{Added 1 task} other{Added {count} tasks}}",
+  "@newTaskCreatedMany": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "newTaskLabelsNotCreated": "These labels could not be created and were not added: {labels}",
+  "@newTaskLabelsNotCreated": {
+    "placeholders": {
+      "labels": {
+        "type": "String",
+        "example": "urgent, car"
+      }
+    }
+  },
+  "newTaskNamesKept": "Nobody found for {names}, so they stay in the title.",
+  "@newTaskNamesKept": {
+    "placeholders": {
+      "names": {
+        "type": "String",
+        "example": "@sam, @alex"
+      }
+    }
+  },
+  "newTaskNoProjectError": "There's no project to add tasks to yet. Create one on the web first.",
+  "newTaskAddFailed": "The task could not be added: {reason}",
+  "@newTaskAddFailed": {
+    "placeholders": {
+      "reason": {
+        "type": "String",
+        "example": "Forbidden"
+      }
+    }
+  },
+  "newTaskAddFailedUnknown": "The task could not be added.",
+  "newTaskLineCountOnly": "{count, plural, =1{1 task} other{{count} tasks, one per line}}",
+  "@newTaskLineCountOnly": {
+    "description": "Above the preview once several lines are pasted and the first line has nothing to preview.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "newTaskAddedPartly": "{added} of {total} tasks were added; the others are still here.",
+  "@newTaskAddedPartly": {
+    "description": "Error under the field when adding several lines failed partway; the lines added are removed from the text.",
+    "placeholders": {
+      "added": {
+        "type": "int",
+        "example": "2"
+      },
+      "total": {
+        "type": "int",
+        "example": "5"
+      }
+    }
+  },
+  "newTaskLineCount": "{count, plural, =1{1 task} other{{count} tasks, one per line}} · the first one:",
+  "@newTaskLineCount": {
+    "description": "Above the preview of the first line once several lines are pasted.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "quickAddMagicOnly": "Only magic words, so nothing is recognised: the task will be called “{title}”.",
+  "@quickAddMagicOnly": {
+    "placeholders": {
+      "title": {
+        "type": "String",
+        "example": "*urgent"
+      }
+    }
+  },
+  "quickAddDueLabel": "{date} · {relative}",
+  "@quickAddDueLabel": {
+    "placeholders": {
+      "date": {
+        "type": "String",
+        "example": "Tue, Oct 13 9:00 AM"
+      },
+      "relative": {
+        "type": "String",
+        "example": "in 21 hours"
+      }
+    }
+  },
+  "quickAddDueSemantics": "Due {date}, {relative}",
+  "@quickAddDueSemantics": {
+    "placeholders": {
+      "date": {
+        "type": "String",
+        "example": "Tue, Oct 13 9:00 AM"
+      },
+      "relative": {
+        "type": "String",
+        "example": "in 21 hours"
+      }
+    }
+  },
+  "quickAddRepeatSemantics": "Repeats: {repeat}",
+  "@quickAddRepeatSemantics": {
+    "placeholders": {
+      "repeat": {
+        "type": "String",
+        "example": "Every week"
+      }
+    }
+  },
+  "quickAddProjectAmbiguous": "Several projects are called “{project}”. Remove it and choose the project below.",
+  "@quickAddProjectAmbiguous": {
+    "description": "Warning chip for a +project whose title several projects share and that nothing else tells apart; the first is used.",
+    "placeholders": {
+      "project": {
+        "type": "String",
+        "example": "Backlog"
+      }
+    }
+  },
+  "quickAddProjectNotFound": "Project “{project}” not found",
+  "@quickAddProjectNotFound": {
+    "description": "Warning chip for a +project that matches no project; the text stays in the title.",
+    "placeholders": {
+      "project": {
+        "type": "String",
+        "example": "Hme"
+      }
+    }
+  },
+  "quickAddNewLabel": "{label} · new",
+  "@quickAddNewLabel": {
+    "placeholders": {
+      "label": {
+        "type": "String",
+        "example": "car"
+      }
+    }
+  },
+  "quickAddNewLabelSemantics": "New label {label}, created when you add the task",
+  "@quickAddNewLabelSemantics": {
+    "placeholders": {
+      "label": {
+        "type": "String",
+        "example": "car"
+      }
+    }
+  },
+  "quickAddAssigneeSemantics": "Assigned to {name}",
+  "@quickAddAssigneeSemantics": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Sam Example"
+      }
+    }
+  },
+  "quickAddLookedUp": "{name} · will be looked up",
+  "@quickAddLookedUp": {
+    "description": "A person not found on this device yet; the server is searched when the task is added.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "@sam"
+      }
+    }
+  },
+  "quickAddLookedUpSemantics": "{name}, will be looked up when you add the task",
+  "@quickAddLookedUpSemantics": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "@sam"
+      }
+    }
+  },
+  "quickAddReminderSemantics": "Reminder: {reminder}",
+  "@quickAddReminderSemantics": {
+    "placeholders": {
+      "reminder": {
+        "type": "String",
+        "example": "1 day before the due date"
+      }
+    }
+  },
+  "quickAddRemovePart": "Remove {part}",
+  "@quickAddRemovePart": {
+    "description": "Tooltip and screen reader name of the remove button on a quick-add preview chip; removes that part from the text.",
+    "placeholders": {
+      "part": {
+        "type": "String",
+        "example": "Label: urgent"
+      }
+    }
+  },
+  "quickAddSuggestions": "Suggestions",
+  "quickAddInsertLabel": "Add a label ({prefix})",
+  "@quickAddInsertLabel": {
+    "placeholders": {
+      "prefix": {
+        "type": "String",
+        "example": "*"
+      }
+    }
+  },
+  "quickAddInsertProject": "Choose a project ({prefix})",
+  "@quickAddInsertProject": {
+    "placeholders": {
+      "prefix": {
+        "type": "String",
+        "example": "+"
+      }
+    }
+  },
+  "quickAddInsertAssignee": "Assign someone ({prefix})",
+  "@quickAddInsertAssignee": {
+    "placeholders": {
+      "prefix": {
+        "type": "String",
+        "example": "@"
+      }
+    }
+  },
+  "quickAddSetPriority": "Set priority ({prefix})",
+  "@quickAddSetPriority": {
+    "placeholders": {
+      "prefix": {
+        "type": "String",
+        "example": "!"
+      }
+    }
+  },
+  "quickAddHelp": "How Quick Add Magic works",
+  "quickAddHelpTitle": "Quick Add Magic",
+  "quickAddHelpIntro": "Write the whole task in one line. These parts are recognised, marked in colour and taken out of the title:",
+  "quickAddHelpLabelsTitle": "Labels",
+  "quickAddHelpLabelsBody": "A word starting with {prefix}. Labels that don't exist yet are created when you add the task. Use quotes for spaces.",
+  "@quickAddHelpLabelsBody": {
+    "placeholders": {
+      "prefix": {
+        "type": "String",
+        "example": "*"
+      }
+    }
+  },
+  "quickAddHelpProjectTitle": "Project",
+  "quickAddHelpProjectBody": "{prefix} and a project's title or identifier. Without one, the task goes to the project shown below the field.",
+  "@quickAddHelpProjectBody": {
+    "placeholders": {
+      "prefix": {
+        "type": "String",
+        "example": "+"
+      }
+    }
+  },
+  "quickAddHelpPriorityTitle": "Priority",
+  "quickAddHelpPriorityBody": "{prefix} and a number from 1 (low) to 5 (do now).",
+  "@quickAddHelpPriorityBody": {
+    "placeholders": {
+      "prefix": {
+        "type": "String",
+        "example": "!"
+      }
+    }
+  },
+  "quickAddHelpPeopleTitle": "People",
+  "quickAddHelpPeopleBody": "{prefix} and a username or name. Anyone who isn't found stays in the title.",
+  "@quickAddHelpPeopleBody": {
+    "placeholders": {
+      "prefix": {
+        "type": "String",
+        "example": "@"
+      }
+    }
+  },
+  "quickAddHelpDatesTitle": "Dates and times",
+  "quickAddHelpDatesBody": "For example:",
+  "quickAddHelpTimesBody": "Add a time with “at”:",
+  "quickAddHelpRepeatsTitle": "Repeats",
+  "quickAddHelpRepeatsBody": "A repeat without a date makes the task due today.",
+  "quickAddHelpEnglish": "Date and repeat words are always English, as on the web.",
+  "quickAddHelpMoreTitle": "Good to know",
+  "quickAddHelpQuotes": "Put the whole title in quotes to switch the magic off for one task.",
+  "quickAddHelpLines": "Paste several lines to add one task per line.",
+  "quickAddHelpExampleTitle": "Example",
+  "quickAddHelpExampleTask": "Change tyres",
+  "@quickAddHelpExampleTask": {
+    "description": "The title part of the example line in the quick-add help."
+  },
+  "quickAddHelpExampleLabel": "car",
+  "@quickAddHelpExampleLabel": {
+    "description": "A label title in the example line; one word."
+  },
+  "quickAddHelpExampleProject": "Home",
+  "@quickAddHelpExampleProject": {
+    "description": "A project title in the example line; one word."
+  },
+  "quickAddHelpMode": "These are the {mode} prefixes, as set in your Vikunja settings on the web.",
+  "@quickAddHelpMode": {
+    "placeholders": {
+      "mode": {
+        "type": "String",
+        "example": "Vikunja"
+      }
+    }
+  },
   "taskEditAddLabel": "Add label",
   "taskEditRemoveLabel": "Remove label {label}",
   "@taskEditRemoveLabel": {

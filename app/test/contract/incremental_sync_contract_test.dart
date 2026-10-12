@@ -146,7 +146,10 @@ void main() {
             ],
           );
           final client = createReadClient(dio: authenticated, connection: only);
-          final currentUser = AccountApi(authenticated, only).currentUser;
+          final currentUser = AccountApi(
+            authenticated,
+            only,
+          ).currentUserWithSettings;
           final db = testDatabase();
           // Five per page, so the delta of the seed spans many keyset pages.
           final log = <String>[];
@@ -389,7 +392,9 @@ void main() {
 
           await quiet.refresh();
 
+          // Every run reads the user's settings first.
           expect(requests.map((uri) => uri.pathSegments.last), [
+            'user',
             'projects',
             'labels',
             'tasks',

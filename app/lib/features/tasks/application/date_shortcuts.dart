@@ -1,4 +1,7 @@
 import 'package:flutter/foundation.dart';
+import 'package:vikunja_logic/vikunja_logic.dart';
+
+export 'package:vikunja_logic/vikunja_logic.dart' show nearestBreakpointHour;
 
 /// The web's `buildDateShortcuts` keys, in its order.
 enum DateShortcut {
@@ -34,20 +37,6 @@ final class DateShortcutOption {
   String toString() => 'DateShortcutOption(${shortcut.name}, $day)';
 }
 
-/// Day intervals of the web's `calculateDayInterval`; [weekday] is JS
-/// `getDay()`, 0 for Sunday.
-int _daysUntil(DateShortcut shortcut, int weekday) => switch (shortcut) {
-  DateShortcut.today => 0,
-  DateShortcut.tomorrow => 1,
-  DateShortcut.nextMonday => (weekday + (8 - 2 * weekday)) % 7,
-  DateShortcut.thisWeekend => (6 - weekday) % 6,
-  DateShortcut.laterThisWeek => weekday >= 5 || weekday == 0 ? 0 : 2,
-  DateShortcut.nextWeek => 7,
-  // The Saturday after this week's; on Sunday the very next one.
-  DateShortcut.nextWeekend => weekday == 0 ? 6 : (6 - weekday) % 6 + 7,
-  DateShortcut.endOfMonth || DateShortcut.inAMonth => 0,
-};
-
 DateTime _startOfDay(DateTime moment) =>
     DateTime(moment.year, moment.month, moment.day);
 
@@ -66,6 +55,8 @@ List<DateShortcutOption> buildDateShortcuts(DateTime now) {
   final lateInTheDay = now.hour >= 21;
   final seen = <DateTime>{};
   final options = <DateShortcutOption>[];
+  DateTime after(DayInterval interval) =>
+      _addDays(today, calculateDayInterval(interval, now));
   for (final shortcut in DateShortcut.values) {
     if (shortcut == DateShortcut.today && lateInTheDay) continue;
     if (shortcut == DateShortcut.thisWeekend && weekday == 0) continue;
@@ -80,23 +71,17 @@ List<DateShortcutOption> buildDateShortcuts(DateTime now) {
         today.month + 1,
         today.day.clamp(1, _lastDayOfMonth(today.year, today.month + 1)),
       ),
-      _ => _addDays(today, _daysUntil(shortcut, weekday)),
+      DateShortcut.today => after(DayInterval.today),
+      DateShortcut.tomorrow => after(DayInterval.tomorrow),
+      DateShortcut.nextMonday => after(DayInterval.nextMonday),
+      DateShortcut.thisWeekend => after(DayInterval.thisWeekend),
+      DateShortcut.laterThisWeek => after(DayInterval.laterThisWeek),
+      DateShortcut.nextWeek => after(DayInterval.nextWeek),
+      DateShortcut.nextWeekend => after(DayInterval.nextWeekend),
     };
     if (seen.add(day)) options.add(DateShortcutOption(shortcut, day));
   }
   return options;
-}
-
-const _breakpoints = [9, 12, 15, 18, 21];
-
-/// The web's `calculateNearestHours`: the next breakpoint of 9, 12, 15,
-/// 18 or 21, a full hour counting as its own breakpoint; after 21:00 it is
-/// 9, on the same day.
-int nearestBreakpointHour(DateTime now) {
-  for (final hour in _breakpoints) {
-    if (now.hour < hour || (now.hour == hour && now.minute == 0)) return hour;
-  }
-  return _breakpoints.first;
 }
 
 /// [day] at a time of day: the one [current] already has, else the

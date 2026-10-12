@@ -25,6 +25,10 @@ final class RootModalRoutes extends NavigatorObserver {
     if (newRoute != null && newRoute.settings is! Page) _routes.add(newRoute);
   }
 
+  /// Whether a route pushed with [name] in its settings is open.
+  bool isOpen(String name) =>
+      _routes.any((route) => route.isActive && route.settings.name == name);
+
   /// Without animation, the topmost first; their futures complete with null.
   void closeAll() {
     for (final route in _routes.reversed.toList()) {

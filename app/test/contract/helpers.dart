@@ -137,8 +137,13 @@ final class Seeder {
 
   Uri get _v2 => _connection.apiBaseUri(ApiVersion.v2);
 
+  Future<Map<String, Object?>> get(String path) => _send('GET', path, null);
+
   Future<Map<String, Object?>> post(String path, Map<String, Object?> body) =>
       _send('POST', path, body);
+
+  Future<Map<String, Object?>> put(String path, Map<String, Object?> body) =>
+      _send('PUT', path, body);
 
   /// JSON merge patch, which v2 generates for every resource with GET + PUT.
   Future<Map<String, Object?>> patch(String path, Map<String, Object?> body) =>
@@ -166,14 +171,14 @@ final class Seeder {
   Future<Map<String, Object?>> _send(
     String method,
     String path,
-    Map<String, Object?> body, {
+    Map<String, Object?>? body, {
     String contentType = Headers.jsonContentType,
   }) async {
     try {
       final response = await _despiteWriteRaces(
         () => _dio.requestUri<Map<String, Object?>>(
           _v2.replace(path: '${_v2.path}$path'),
-          data: jsonEncode(body),
+          data: body == null ? null : jsonEncode(body),
           options: Options(
             method: method,
             contentType: contentType,

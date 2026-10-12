@@ -1,8 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 
-/// `account` to `archivedTasks` belong to a full run, `delta` and `reconcile`
-/// to an incremental one; `projects`, `labels` and `finishing` are shared.
+/// `tasks` and `archivedTasks` belong to a full run, `delta` and `reconcile`
+/// to an incremental one; `account`, `projects`, `labels` and `finishing`
+/// are shared.
 enum SyncPhase {
   account,
   projects,

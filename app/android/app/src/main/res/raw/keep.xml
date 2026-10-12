@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- quick_actions looks the shortcut icon up by name at runtime, which
+     resource shrinking cannot see. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/shortcut_new_task" />

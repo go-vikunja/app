@@ -148,10 +148,13 @@ final class FakeTokenGateway implements TokenGateway {
 }
 
 /// Asks the token source like the auth interceptor does and records which
-/// access token each call carried.
+/// access token each call carried. Both reads of `GET /user` count as
+/// [currentUserTokens] and answer with [onCurrentUser]; the one with
+/// settings adds [settings].
 final class FakeAccountGateway implements AccountGateway {
   Future<User> Function(String accessToken)? onCurrentUser;
   Future<void> Function(String accessToken)? onLogout;
+  UserSettings settings = const UserSettings();
   final List<String> currentUserTokens = [];
   final List<String> logoutTokens = [];
 
@@ -166,6 +169,12 @@ final class FakeAccountGateway implements AccountGateway {
     if (handler == null) throw StateError('no GET /user expected');
     return await handler(token);
   }
+
+  @override
+  Future<UserWithSettings> currentUserWithSettings(
+    ServerConnection connection,
+    AccessTokenSource tokens,
+  ) async => (user: await currentUser(connection, tokens), settings: settings);
 
   @override
   Future<void> logout(

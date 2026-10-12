@@ -548,7 +548,7 @@ final class SyncEngineProvider
   }
 }
 
-String _$syncEngineHash() => r'34ffa10980c72700f650abd2ee10e515f89a4465';
+String _$syncEngineHash() => r'd7fddaa6ee253efaf8893af011111e7e5d98d8b3';
 
 /// One account's sync engine; disposed with its database on sign-out.
 

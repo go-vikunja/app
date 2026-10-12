@@ -1,0 +1,17 @@
+name: vikunja_logic
+description: Pure-Dart client logic of the Vikunja web frontend, ported (quick add, later filters, positions, checklists).
+publish_to: none
+version: 0.1.0
+resolution: workspace
+
+environment:
+  sdk: ^3.13.0
+
+dependencies:
+  meta: ^1.16.0
+  vikunja_domain:
+    path: ../vikunja_domain
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter

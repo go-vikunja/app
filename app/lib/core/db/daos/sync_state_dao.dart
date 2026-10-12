@@ -13,6 +13,13 @@ final class SyncStateDao extends DatabaseAccessor<AppDatabase>
     for (final row in await select(syncState).get()) row.key: row.value,
   };
 
+  /// Emits on every write to the table; callers that only care about a
+  /// change of the value deduplicate.
+  Stream<String?> watchValue(String key) =>
+      (select(syncState)..where((s) => s.key.equals(key)))
+          .map((row) => row.value)
+          .watchSingleOrNull();
+
   /// A null value removes the key.
   Future<void> write(Map<String, String?> values) => batch((b) {
     for (final MapEntry(:key, :value) in values.entries) {

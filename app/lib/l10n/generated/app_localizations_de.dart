@@ -1503,6 +1503,256 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String newTaskAddMany(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Aufgaben hinzufügen',
+      one: '1 Aufgabe hinzufügen',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String newTaskCreatedMany(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Aufgaben hinzugefügt',
+      one: '1 Aufgabe hinzugefügt',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String newTaskLabelsNotCreated(String labels) {
+    return 'Diese Labels konnten nicht angelegt werden und fehlen deshalb: $labels';
+  }
+
+  @override
+  String newTaskNamesKept(String names) {
+    return 'Für $names wurde niemand gefunden; der Text bleibt im Titel.';
+  }
+
+  @override
+  String get newTaskNoProjectError =>
+      'Es gibt noch kein Projekt für neue Aufgaben. Leg zuerst im Web eins an.';
+
+  @override
+  String newTaskAddFailed(String reason) {
+    return 'Die Aufgabe konnte nicht hinzugefügt werden: $reason';
+  }
+
+  @override
+  String get newTaskAddFailedUnknown =>
+      'Die Aufgabe konnte nicht hinzugefügt werden.';
+
+  @override
+  String newTaskLineCountOnly(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Aufgaben, eine pro Zeile',
+      one: '1 Aufgabe',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String newTaskAddedPartly(int added, int total) {
+    return '$added von $total Aufgaben wurden hinzugefügt; die übrigen stehen noch hier.';
+  }
+
+  @override
+  String newTaskLineCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Aufgaben, eine pro Zeile',
+      one: '1 Aufgabe',
+    );
+    return '$_temp0 · die erste:';
+  }
+
+  @override
+  String quickAddMagicOnly(String title) {
+    return 'Nur magische Wörter, deshalb wird nichts erkannt: Die Aufgabe heißt dann „$title“.';
+  }
+
+  @override
+  String quickAddDueLabel(String date, String relative) {
+    return '$date · $relative';
+  }
+
+  @override
+  String quickAddDueSemantics(String date, String relative) {
+    return 'Fällig $date, $relative';
+  }
+
+  @override
+  String quickAddRepeatSemantics(String repeat) {
+    return 'Wiederholung: $repeat';
+  }
+
+  @override
+  String quickAddProjectAmbiguous(String project) {
+    return 'Mehrere Projekte heißen „$project“. Entferne es und wähl das Projekt unten.';
+  }
+
+  @override
+  String quickAddProjectNotFound(String project) {
+    return 'Projekt „$project“ nicht gefunden';
+  }
+
+  @override
+  String quickAddNewLabel(String label) {
+    return '$label · neu';
+  }
+
+  @override
+  String quickAddNewLabelSemantics(String label) {
+    return 'Neues Label $label, wird beim Hinzufügen angelegt';
+  }
+
+  @override
+  String quickAddAssigneeSemantics(String name) {
+    return 'Zugewiesen an $name';
+  }
+
+  @override
+  String quickAddLookedUp(String name) {
+    return '$name · wird gesucht';
+  }
+
+  @override
+  String quickAddLookedUpSemantics(String name) {
+    return '$name, wird beim Hinzufügen gesucht';
+  }
+
+  @override
+  String quickAddReminderSemantics(String reminder) {
+    return 'Erinnerung: $reminder';
+  }
+
+  @override
+  String quickAddRemovePart(String part) {
+    return '$part entfernen';
+  }
+
+  @override
+  String get quickAddSuggestions => 'Vorschläge';
+
+  @override
+  String quickAddInsertLabel(String prefix) {
+    return 'Label hinzufügen ($prefix)';
+  }
+
+  @override
+  String quickAddInsertProject(String prefix) {
+    return 'Projekt wählen ($prefix)';
+  }
+
+  @override
+  String quickAddInsertAssignee(String prefix) {
+    return 'Jemanden zuweisen ($prefix)';
+  }
+
+  @override
+  String quickAddSetPriority(String prefix) {
+    return 'Priorität setzen ($prefix)';
+  }
+
+  @override
+  String get quickAddHelp => 'So funktioniert Quick Add Magic';
+
+  @override
+  String get quickAddHelpTitle => 'Quick Add Magic';
+
+  @override
+  String get quickAddHelpIntro =>
+      'Schreib die ganze Aufgabe in eine Zeile. Diese Teile werden erkannt, farbig markiert und aus dem Titel genommen:';
+
+  @override
+  String get quickAddHelpLabelsTitle => 'Labels';
+
+  @override
+  String quickAddHelpLabelsBody(String prefix) {
+    return 'Ein Wort, das mit $prefix beginnt. Labels, die es noch nicht gibt, werden beim Hinzufügen angelegt. Für Leerzeichen nimm Anführungszeichen.';
+  }
+
+  @override
+  String get quickAddHelpProjectTitle => 'Projekt';
+
+  @override
+  String quickAddHelpProjectBody(String prefix) {
+    return '$prefix und Titel oder Kennung eines Projekts. Ohne landet die Aufgabe im Projekt, das unter dem Feld steht.';
+  }
+
+  @override
+  String get quickAddHelpPriorityTitle => 'Priorität';
+
+  @override
+  String quickAddHelpPriorityBody(String prefix) {
+    return '$prefix und eine Zahl von 1 (niedrig) bis 5 (sofort).';
+  }
+
+  @override
+  String get quickAddHelpPeopleTitle => 'Personen';
+
+  @override
+  String quickAddHelpPeopleBody(String prefix) {
+    return '$prefix und ein Benutzername oder Name. Wer nicht gefunden wird, bleibt im Titel.';
+  }
+
+  @override
+  String get quickAddHelpDatesTitle => 'Datum und Uhrzeit';
+
+  @override
+  String get quickAddHelpDatesBody => 'Zum Beispiel:';
+
+  @override
+  String get quickAddHelpTimesBody => 'Eine Uhrzeit hängst du mit „at“ an:';
+
+  @override
+  String get quickAddHelpRepeatsTitle => 'Wiederholungen';
+
+  @override
+  String get quickAddHelpRepeatsBody =>
+      'Eine Wiederholung ohne Datum macht die Aufgabe heute fällig.';
+
+  @override
+  String get quickAddHelpEnglish =>
+      'Wörter für Datum und Wiederholung sind immer Englisch, wie im Web.';
+
+  @override
+  String get quickAddHelpMoreTitle => 'Gut zu wissen';
+
+  @override
+  String get quickAddHelpQuotes =>
+      'Setz den ganzen Titel in Anführungszeichen, um die Magie für eine Aufgabe auszuschalten.';
+
+  @override
+  String get quickAddHelpLines =>
+      'Füg mehrere Zeilen ein, um pro Zeile eine Aufgabe anzulegen.';
+
+  @override
+  String get quickAddHelpExampleTitle => 'Beispiel';
+
+  @override
+  String get quickAddHelpExampleTask => 'Reifen wechseln';
+
+  @override
+  String get quickAddHelpExampleLabel => 'Auto';
+
+  @override
+  String get quickAddHelpExampleProject => 'Zuhause';
+
+  @override
+  String quickAddHelpMode(String mode) {
+    return 'Das sind die $mode-Präfixe, wie in deinen Vikunja-Einstellungen im Web festgelegt.';
+  }
+
+  @override
   String get taskEditAddLabel => 'Label hinzufügen';
 
   @override

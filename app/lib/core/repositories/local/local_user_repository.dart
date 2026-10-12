@@ -24,5 +24,8 @@ final class LocalUserRepository implements UserRepository {
   Future<List<User>> knownUsers() => _db.usersDao.loadAll();
 
   @override
+  Stream<List<User>> watchKnownUsers() => _db.usersDao.watchAll();
+
+  @override
   void dispose() {}
 }

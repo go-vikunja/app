@@ -54,5 +54,49 @@ void main() {
 
       expect(await db.syncStateDao.readAll(), {'last_id': '20'});
     });
+
+    test('one value is watched until it is removed', () async {
+      final seen = <String?>[];
+      final subscription = db.syncStateDao
+          .watchValue('user_settings')
+          .listen(seen.add);
+      addTearDown(subscription.cancel);
+      await pumpEventQueue();
+
+      await db.syncStateDao.write({'user_settings': '{}'});
+      await pumpEventQueue();
+      await db.syncStateDao.write({'user_settings': null});
+      await pumpEventQueue();
+
+      expect(seen, [null, '{}', null]);
+    });
+  });
+
+  group('users', () {
+    const ana = User(id: 20, username: 'ana', name: 'Ana Lima');
+
+    test('found by id, without the email, which is not stored', () async {
+      await db.usersDao.upsertAll([
+        const User(id: 20, username: 'ana', name: 'Ana Lima', email: 'a@x.io'),
+      ]);
+
+      expect(await db.usersDao.find(20), ana);
+      expect(await db.usersDao.find(21), isNull);
+    });
+
+    test('the stream follows changes, ordered by id', () async {
+      final seen = <List<User>>[];
+      final subscription = db.usersDao.watchAll().listen(seen.add);
+      addTearDown(subscription.cancel);
+      await pumpEventQueue();
+
+      await db.usersDao.upsertAll(const [User(id: 30, username: 'zoe'), ana]);
+      await pumpEventQueue();
+
+      expect(seen, [
+        isEmpty,
+        [ana, const User(id: 30, username: 'zoe')],
+      ]);
+    });
   });
 }

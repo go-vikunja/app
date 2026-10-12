@@ -5,6 +5,7 @@ import 'package:logging/logging.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/settings/user_settings_json.dart';
 import 'package:vikunja_mobile/core/sync/archived_projects.dart';
 import 'package:vikunja_mobile/core/sync/incremental_run.dart';
 import 'package:vikunja_mobile/core/sync/stable_pages.dart';
@@ -16,17 +17,18 @@ import 'package:vikunja_mobile/core/sync/task_filters.dart';
 final _log = Logger('SyncEngine');
 
 /// `GET /user`, which the read client does not cover.
-typedef CurrentUserSource = Future<User> Function();
+typedef CurrentUserSource = Future<UserWithSettings> Function();
 
-/// The sync of one account. A full run goes account → projects → labels →
-/// tasks → archived projects' tasks → finishing: tasks are pulled keyset by
-/// id (`id > lastId`, sorted by id, one page per request), open ones first,
-/// every page is checkpointed in `sync_state` so a killed app resumes where
-/// it stopped, and tasks the run did not return are purged at the end. A
-/// refresh is an [IncrementalRun] from the stored watermark, unless no full
-/// run completed within [fullResyncInterval]. Runs are serialized: a call
-/// joins the run in progress, except that a full run asked for during an
-/// incremental one follows it.
+/// The sync of one account. Every run first stores the current user and
+/// their settings (`GET /user`). A full run goes account → projects →
+/// labels → tasks → archived projects' tasks → finishing: tasks are pulled
+/// keyset by id (`id > lastId`, sorted by id, one page per request), open
+/// ones first, every page is checkpointed in `sync_state` so a killed app
+/// resumes where it stopped, and tasks the run did not return are purged at
+/// the end. A refresh is an [IncrementalRun] from the stored watermark,
+/// unless no full run completed within [fullResyncInterval]. Runs are
+/// serialized: a call joins the run in progress, except that a full run
+/// asked for during an incremental one follows it.
 ///
 /// The first status event arrives once the stored state has been read; the
 /// stream replays the current status to every subscriber after that.
@@ -205,6 +207,12 @@ final class DefaultSyncEngine implements SyncEngine {
     );
     _log.info('Starting incremental sync run $runId from ${_watermark!}');
     await _guarded(runId, () => run.phase.name, () async {
+      if (_currentUser != null) {
+        _emit(
+          const SyncRunning(phase: SyncPhase.account, done: 0, initial: false),
+        );
+        await _storeCurrentUser();
+      }
       await run.execute();
       _checkDisposed();
       final finishedAt = _now().toUtc();
@@ -271,12 +279,30 @@ final class DefaultSyncEngine implements SyncEngine {
 
   Future<SyncCheckpoint> _syncAccount(SyncCheckpoint checkpoint) async {
     _report(checkpoint);
-    if (_currentUser case final currentUser?) {
-      final user = await currentUser();
-      _checkDisposed();
-      await _db.usersDao.upsertAll([user]);
-    }
+    await _storeCurrentUser();
     return await _advance(checkpoint, SyncPhase.projects);
+  }
+
+  /// The user joins the known people, so `@me` resolves offline; the
+  /// settings change on the web at any time, so every run reads them. What
+  /// is unchanged is not written, so the lists on screen are not reloaded.
+  Future<void> _storeCurrentUser() async {
+    final currentUser = _currentUser;
+    if (currentUser == null) return;
+    final (:user, :settings) = await currentUser();
+    _checkDisposed();
+    final encoded = encodeUserSettings(settings);
+    await _db.transaction(() async {
+      final stored = await _db.usersDao.find(user.id);
+      // The email is not stored.
+      if (stored?.username != user.username || stored?.name != user.name) {
+        await _db.usersDao.upsertAll([user]);
+      }
+      final state = await _db.syncStateDao.readAll();
+      if (state[SyncStateKeys.userSettings] != encoded) {
+        await _db.syncStateDao.write({SyncStateKeys.userSettings: encoded});
+      }
+    });
   }
 
   /// All pages, archived projects included, in one list; the pseudo projects

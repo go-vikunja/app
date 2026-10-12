@@ -1,16 +1,22 @@
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 
-/// Where a new task goes unless the user picks: [currentProjectId] when it
-/// is a project the task can live in, else the user's Inbox (the server's
-/// `default_project_id` is not synced yet), else the first project of the
-/// tree. Null without any project.
-Project? defaultProjectFor(List<Project> projects, {int? currentProjectId}) {
+/// Where a new task goes unless the user picks: [currentProjectId], else
+/// the user's [defaultProjectId] (`UserSettings.defaultProjectId`), each
+/// only when it is a project the task can live in, else the project titled
+/// Inbox, else the first project of the tree. Null without any project.
+Project? defaultProjectFor(
+  List<Project> projects, {
+  int? currentProjectId,
+  int? defaultProjectId,
+}) {
   final tree = buildProjectTree(projects);
   if (tree.isEmpty) return null;
   final candidates = [for (final node in tree) ..._flatten(node)];
-  for (final project in candidates) {
-    if (project.id == currentProjectId) return project;
+  for (final preferred in [currentProjectId, defaultProjectId].nonNulls) {
+    for (final project in candidates) {
+      if (project.id == preferred) return project;
+    }
   }
   for (final project in candidates) {
     if (project.title.trim().toLowerCase() == 'inbox') return project;

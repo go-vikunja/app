@@ -50,6 +50,32 @@ final class LocalLabelRepository implements LabelRepository {
     }
   }
 
+  @override
+  Future<Label> findOrCreate(NewLabel label) async {
+    if (await _titled(label.title) case final found?) {
+      return await _store(found);
+    }
+    return await create(label);
+  }
+
+  /// The server's label titled [title], ignoring case; of several the one
+  /// with the same case, else the oldest.
+  Future<Label?> _titled(String title) async {
+    final lower = title.toLowerCase();
+    final matches = <Label>[];
+    for (var page = 1; ; page++) {
+      final current = await _read.labels.list(page: page, search: title);
+      matches.addAll(
+        current.items.where((label) => label.title.toLowerCase() == lower),
+      );
+      if (!current.hasMore) break;
+    }
+    if (matches.isEmpty) return null;
+    matches.sort((a, b) => a.id.compareTo(b.id));
+    return matches.where((label) => label.title == title).firstOrNull ??
+        matches.first;
+  }
+
   Future<Label> _store(Label label) async {
     _unconfirmed.remove(label.title);
     await _db.labelsDao.upsertAll([label]);

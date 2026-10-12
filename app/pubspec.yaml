@@ -29,6 +29,7 @@ dependencies:
   package_info_plus: ^10.2.2
   path: ^1.9.1
   path_provider: ^2.1.6
+  quick_actions: ^1.1.1
   riverpod_annotation: ^4.0.7
   shared_preferences: ^2.5.6
   sqlite3: ^3.7.0
@@ -37,6 +38,8 @@ dependencies:
     path: ../packages/vikunja_api
   vikunja_domain:
     path: ../packages/vikunja_domain
+  vikunja_logic:
+    path: ../packages/vikunja_logic
 
 dev_dependencies:
   build_runner: ^2.16.2

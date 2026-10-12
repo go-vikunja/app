@@ -1490,6 +1490,255 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String newTaskAddMany(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Add $count tasks',
+      one: 'Add 1 task',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String newTaskCreatedMany(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Added $count tasks',
+      one: 'Added 1 task',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String newTaskLabelsNotCreated(String labels) {
+    return 'These labels could not be created and were not added: $labels';
+  }
+
+  @override
+  String newTaskNamesKept(String names) {
+    return 'Nobody found for $names, so they stay in the title.';
+  }
+
+  @override
+  String get newTaskNoProjectError =>
+      'There\'s no project to add tasks to yet. Create one on the web first.';
+
+  @override
+  String newTaskAddFailed(String reason) {
+    return 'The task could not be added: $reason';
+  }
+
+  @override
+  String get newTaskAddFailedUnknown => 'The task could not be added.';
+
+  @override
+  String newTaskLineCountOnly(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tasks, one per line',
+      one: '1 task',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String newTaskAddedPartly(int added, int total) {
+    return '$added of $total tasks were added; the others are still here.';
+  }
+
+  @override
+  String newTaskLineCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tasks, one per line',
+      one: '1 task',
+    );
+    return '$_temp0 · the first one:';
+  }
+
+  @override
+  String quickAddMagicOnly(String title) {
+    return 'Only magic words, so nothing is recognised: the task will be called “$title”.';
+  }
+
+  @override
+  String quickAddDueLabel(String date, String relative) {
+    return '$date · $relative';
+  }
+
+  @override
+  String quickAddDueSemantics(String date, String relative) {
+    return 'Due $date, $relative';
+  }
+
+  @override
+  String quickAddRepeatSemantics(String repeat) {
+    return 'Repeats: $repeat';
+  }
+
+  @override
+  String quickAddProjectAmbiguous(String project) {
+    return 'Several projects are called “$project”. Remove it and choose the project below.';
+  }
+
+  @override
+  String quickAddProjectNotFound(String project) {
+    return 'Project “$project” not found';
+  }
+
+  @override
+  String quickAddNewLabel(String label) {
+    return '$label · new';
+  }
+
+  @override
+  String quickAddNewLabelSemantics(String label) {
+    return 'New label $label, created when you add the task';
+  }
+
+  @override
+  String quickAddAssigneeSemantics(String name) {
+    return 'Assigned to $name';
+  }
+
+  @override
+  String quickAddLookedUp(String name) {
+    return '$name · will be looked up';
+  }
+
+  @override
+  String quickAddLookedUpSemantics(String name) {
+    return '$name, will be looked up when you add the task';
+  }
+
+  @override
+  String quickAddReminderSemantics(String reminder) {
+    return 'Reminder: $reminder';
+  }
+
+  @override
+  String quickAddRemovePart(String part) {
+    return 'Remove $part';
+  }
+
+  @override
+  String get quickAddSuggestions => 'Suggestions';
+
+  @override
+  String quickAddInsertLabel(String prefix) {
+    return 'Add a label ($prefix)';
+  }
+
+  @override
+  String quickAddInsertProject(String prefix) {
+    return 'Choose a project ($prefix)';
+  }
+
+  @override
+  String quickAddInsertAssignee(String prefix) {
+    return 'Assign someone ($prefix)';
+  }
+
+  @override
+  String quickAddSetPriority(String prefix) {
+    return 'Set priority ($prefix)';
+  }
+
+  @override
+  String get quickAddHelp => 'How Quick Add Magic works';
+
+  @override
+  String get quickAddHelpTitle => 'Quick Add Magic';
+
+  @override
+  String get quickAddHelpIntro =>
+      'Write the whole task in one line. These parts are recognised, marked in colour and taken out of the title:';
+
+  @override
+  String get quickAddHelpLabelsTitle => 'Labels';
+
+  @override
+  String quickAddHelpLabelsBody(String prefix) {
+    return 'A word starting with $prefix. Labels that don\'t exist yet are created when you add the task. Use quotes for spaces.';
+  }
+
+  @override
+  String get quickAddHelpProjectTitle => 'Project';
+
+  @override
+  String quickAddHelpProjectBody(String prefix) {
+    return '$prefix and a project\'s title or identifier. Without one, the task goes to the project shown below the field.';
+  }
+
+  @override
+  String get quickAddHelpPriorityTitle => 'Priority';
+
+  @override
+  String quickAddHelpPriorityBody(String prefix) {
+    return '$prefix and a number from 1 (low) to 5 (do now).';
+  }
+
+  @override
+  String get quickAddHelpPeopleTitle => 'People';
+
+  @override
+  String quickAddHelpPeopleBody(String prefix) {
+    return '$prefix and a username or name. Anyone who isn\'t found stays in the title.';
+  }
+
+  @override
+  String get quickAddHelpDatesTitle => 'Dates and times';
+
+  @override
+  String get quickAddHelpDatesBody => 'For example:';
+
+  @override
+  String get quickAddHelpTimesBody => 'Add a time with “at”:';
+
+  @override
+  String get quickAddHelpRepeatsTitle => 'Repeats';
+
+  @override
+  String get quickAddHelpRepeatsBody =>
+      'A repeat without a date makes the task due today.';
+
+  @override
+  String get quickAddHelpEnglish =>
+      'Date and repeat words are always English, as on the web.';
+
+  @override
+  String get quickAddHelpMoreTitle => 'Good to know';
+
+  @override
+  String get quickAddHelpQuotes =>
+      'Put the whole title in quotes to switch the magic off for one task.';
+
+  @override
+  String get quickAddHelpLines =>
+      'Paste several lines to add one task per line.';
+
+  @override
+  String get quickAddHelpExampleTitle => 'Example';
+
+  @override
+  String get quickAddHelpExampleTask => 'Change tyres';
+
+  @override
+  String get quickAddHelpExampleLabel => 'car';
+
+  @override
+  String get quickAddHelpExampleProject => 'Home';
+
+  @override
+  String quickAddHelpMode(String mode) {
+    return 'These are the $mode prefixes, as set in your Vikunja settings on the web.';
+  }
+
+  @override
   String get taskEditAddLabel => 'Add label';
 
   @override

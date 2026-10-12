@@ -18,6 +18,18 @@ final class UsersDao extends DatabaseAccessor<AppDatabase>
     return rows.map(userFromRow).toList(growable: false);
   }
 
+  Future<User?> find(int id) async {
+    final row = await (select(
+      users,
+    )..where((u) => u.id.equals(id))).getSingleOrNull();
+    return row == null ? null : userFromRow(row);
+  }
+
+  Stream<List<User>> watchAll() =>
+      (select(users)..orderBy([(u) => OrderingTerm.asc(u.id)])).watch().map(
+        (rows) => rows.map(userFromRow).toList(growable: false),
+      );
+
   Future<void> upsertAll(Iterable<User> all) => batch(
     (b) => b.insertAllOnConflictUpdate(users, all.map(userRow).toList()),
   );

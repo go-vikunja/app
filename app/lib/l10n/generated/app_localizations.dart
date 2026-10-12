@@ -2258,6 +2258,324 @@ abstract class AppLocalizations {
   /// **'Added “{title}”'**
   String newTaskCreated(String title);
 
+  /// The Add button once several lines are pasted.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Add 1 task} other{Add {count} tasks}}'**
+  String newTaskAddMany(int count);
+
+  /// No description provided for @newTaskCreatedMany.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Added 1 task} other{Added {count} tasks}}'**
+  String newTaskCreatedMany(int count);
+
+  /// No description provided for @newTaskLabelsNotCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'These labels could not be created and were not added: {labels}'**
+  String newTaskLabelsNotCreated(String labels);
+
+  /// No description provided for @newTaskNamesKept.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody found for {names}, so they stay in the title.'**
+  String newTaskNamesKept(String names);
+
+  /// No description provided for @newTaskNoProjectError.
+  ///
+  /// In en, this message translates to:
+  /// **'There\'s no project to add tasks to yet. Create one on the web first.'**
+  String get newTaskNoProjectError;
+
+  /// No description provided for @newTaskAddFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The task could not be added: {reason}'**
+  String newTaskAddFailed(String reason);
+
+  /// No description provided for @newTaskAddFailedUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'The task could not be added.'**
+  String get newTaskAddFailedUnknown;
+
+  /// Above the preview once several lines are pasted and the first line has nothing to preview.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 task} other{{count} tasks, one per line}}'**
+  String newTaskLineCountOnly(int count);
+
+  /// Error under the field when adding several lines failed partway; the lines added are removed from the text.
+  ///
+  /// In en, this message translates to:
+  /// **'{added} of {total} tasks were added; the others are still here.'**
+  String newTaskAddedPartly(int added, int total);
+
+  /// Above the preview of the first line once several lines are pasted.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 task} other{{count} tasks, one per line}} · the first one:'**
+  String newTaskLineCount(int count);
+
+  /// No description provided for @quickAddMagicOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Only magic words, so nothing is recognised: the task will be called “{title}”.'**
+  String quickAddMagicOnly(String title);
+
+  /// No description provided for @quickAddDueLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{date} · {relative}'**
+  String quickAddDueLabel(String date, String relative);
+
+  /// No description provided for @quickAddDueSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Due {date}, {relative}'**
+  String quickAddDueSemantics(String date, String relative);
+
+  /// No description provided for @quickAddRepeatSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeats: {repeat}'**
+  String quickAddRepeatSemantics(String repeat);
+
+  /// Warning chip for a +project whose title several projects share and that nothing else tells apart; the first is used.
+  ///
+  /// In en, this message translates to:
+  /// **'Several projects are called “{project}”. Remove it and choose the project below.'**
+  String quickAddProjectAmbiguous(String project);
+
+  /// Warning chip for a +project that matches no project; the text stays in the title.
+  ///
+  /// In en, this message translates to:
+  /// **'Project “{project}” not found'**
+  String quickAddProjectNotFound(String project);
+
+  /// No description provided for @quickAddNewLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{label} · new'**
+  String quickAddNewLabel(String label);
+
+  /// No description provided for @quickAddNewLabelSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'New label {label}, created when you add the task'**
+  String quickAddNewLabelSemantics(String label);
+
+  /// No description provided for @quickAddAssigneeSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Assigned to {name}'**
+  String quickAddAssigneeSemantics(String name);
+
+  /// A person not found on this device yet; the server is searched when the task is added.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} · will be looked up'**
+  String quickAddLookedUp(String name);
+
+  /// No description provided for @quickAddLookedUpSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}, will be looked up when you add the task'**
+  String quickAddLookedUpSemantics(String name);
+
+  /// No description provided for @quickAddReminderSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminder: {reminder}'**
+  String quickAddReminderSemantics(String reminder);
+
+  /// Tooltip and screen reader name of the remove button on a quick-add preview chip; removes that part from the text.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {part}'**
+  String quickAddRemovePart(String part);
+
+  /// No description provided for @quickAddSuggestions.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggestions'**
+  String get quickAddSuggestions;
+
+  /// No description provided for @quickAddInsertLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a label ({prefix})'**
+  String quickAddInsertLabel(String prefix);
+
+  /// No description provided for @quickAddInsertProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a project ({prefix})'**
+  String quickAddInsertProject(String prefix);
+
+  /// No description provided for @quickAddInsertAssignee.
+  ///
+  /// In en, this message translates to:
+  /// **'Assign someone ({prefix})'**
+  String quickAddInsertAssignee(String prefix);
+
+  /// No description provided for @quickAddSetPriority.
+  ///
+  /// In en, this message translates to:
+  /// **'Set priority ({prefix})'**
+  String quickAddSetPriority(String prefix);
+
+  /// No description provided for @quickAddHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'How Quick Add Magic works'**
+  String get quickAddHelp;
+
+  /// No description provided for @quickAddHelpTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick Add Magic'**
+  String get quickAddHelpTitle;
+
+  /// No description provided for @quickAddHelpIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Write the whole task in one line. These parts are recognised, marked in colour and taken out of the title:'**
+  String get quickAddHelpIntro;
+
+  /// No description provided for @quickAddHelpLabelsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Labels'**
+  String get quickAddHelpLabelsTitle;
+
+  /// No description provided for @quickAddHelpLabelsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'A word starting with {prefix}. Labels that don\'t exist yet are created when you add the task. Use quotes for spaces.'**
+  String quickAddHelpLabelsBody(String prefix);
+
+  /// No description provided for @quickAddHelpProjectTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Project'**
+  String get quickAddHelpProjectTitle;
+
+  /// No description provided for @quickAddHelpProjectBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{prefix} and a project\'s title or identifier. Without one, the task goes to the project shown below the field.'**
+  String quickAddHelpProjectBody(String prefix);
+
+  /// No description provided for @quickAddHelpPriorityTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Priority'**
+  String get quickAddHelpPriorityTitle;
+
+  /// No description provided for @quickAddHelpPriorityBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{prefix} and a number from 1 (low) to 5 (do now).'**
+  String quickAddHelpPriorityBody(String prefix);
+
+  /// No description provided for @quickAddHelpPeopleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'People'**
+  String get quickAddHelpPeopleTitle;
+
+  /// No description provided for @quickAddHelpPeopleBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{prefix} and a username or name. Anyone who isn\'t found stays in the title.'**
+  String quickAddHelpPeopleBody(String prefix);
+
+  /// No description provided for @quickAddHelpDatesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Dates and times'**
+  String get quickAddHelpDatesTitle;
+
+  /// No description provided for @quickAddHelpDatesBody.
+  ///
+  /// In en, this message translates to:
+  /// **'For example:'**
+  String get quickAddHelpDatesBody;
+
+  /// No description provided for @quickAddHelpTimesBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a time with “at”:'**
+  String get quickAddHelpTimesBody;
+
+  /// No description provided for @quickAddHelpRepeatsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeats'**
+  String get quickAddHelpRepeatsTitle;
+
+  /// No description provided for @quickAddHelpRepeatsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'A repeat without a date makes the task due today.'**
+  String get quickAddHelpRepeatsBody;
+
+  /// No description provided for @quickAddHelpEnglish.
+  ///
+  /// In en, this message translates to:
+  /// **'Date and repeat words are always English, as on the web.'**
+  String get quickAddHelpEnglish;
+
+  /// No description provided for @quickAddHelpMoreTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Good to know'**
+  String get quickAddHelpMoreTitle;
+
+  /// No description provided for @quickAddHelpQuotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Put the whole title in quotes to switch the magic off for one task.'**
+  String get quickAddHelpQuotes;
+
+  /// No description provided for @quickAddHelpLines.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste several lines to add one task per line.'**
+  String get quickAddHelpLines;
+
+  /// No description provided for @quickAddHelpExampleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Example'**
+  String get quickAddHelpExampleTitle;
+
+  /// The title part of the example line in the quick-add help.
+  ///
+  /// In en, this message translates to:
+  /// **'Change tyres'**
+  String get quickAddHelpExampleTask;
+
+  /// A label title in the example line; one word.
+  ///
+  /// In en, this message translates to:
+  /// **'car'**
+  String get quickAddHelpExampleLabel;
+
+  /// A project title in the example line; one word.
+  ///
+  /// In en, this message translates to:
+  /// **'Home'**
+  String get quickAddHelpExampleProject;
+
+  /// No description provided for @quickAddHelpMode.
+  ///
+  /// In en, this message translates to:
+  /// **'These are the {mode} prefixes, as set in your Vikunja settings on the web.'**
+  String quickAddHelpMode(String mode);
+
   /// No description provided for @taskEditAddLabel.
   ///
   /// In en, this message translates to:

@@ -6,10 +6,14 @@ import 'package:vikunja_mobile/core/repositories/user_repository.dart';
 
 /// Labels in memory; [createFailure] makes the next creates throw, like an
 /// offline device, and [beforeCreate] holds a create until it completes.
+/// [serverOnly] are labels the server has that this device has not synced.
 final class FakeLabelRepository implements LabelRepository {
-  new({List<Label> labels = const []}) : _labels = [...labels];
+  new({List<Label> labels = const [], this.serverOnly = const []})
+    : _labels = [...labels];
 
   final List<Label> _labels;
+  final List<Label> serverOnly;
+  final List<String> lookups = [];
   final _changes = StreamController<List<Label>>.broadcast();
   final List<NewLabel> created = [];
   VikunjaFailure? createFailure;
@@ -40,6 +44,22 @@ final class FakeLabelRepository implements LabelRepository {
     return stored;
   }
 
+  @override
+  Future<Label> findOrCreate(NewLabel label) async {
+    lookups.add(label.title);
+    final lower = label.title.toLowerCase();
+    final found = [
+      ..._labels,
+      ...serverOnly,
+    ].where((known) => known.title.toLowerCase() == lower).firstOrNull;
+    if (found == null) return await create(label);
+    if (!_labels.contains(found)) {
+      _labels.add(found);
+      _changes.add(_sorted());
+    }
+    return found;
+  }
+
   List<Label> _sorted() => [..._labels]
     ..sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
 
@@ -59,6 +79,7 @@ final class FakeUserRepository implements UserRepository {
 
   final Map<int, List<User>> _projectUsers;
   final List<User> _known;
+  final _knownChanges = StreamController<List<User>>.broadcast();
   final List<(int, String)> searches = [];
   VikunjaFailure? searchFailure;
   Future<void> Function(String query)? beforeAnswer;
@@ -75,8 +96,12 @@ final class FakeUserRepository implements UserRepository {
             user.name.toLowerCase().contains(needle))
           user,
     ];
+    final before = _known.length;
     for (final user in found) {
       if (!_known.any((known) => known.id == user.id)) _known.add(user);
+    }
+    if (_known.length != before && !_knownChanges.isClosed) {
+      _knownChanges.add(List.unmodifiable(_known));
     }
     return found;
   }
@@ -85,5 +110,11 @@ final class FakeUserRepository implements UserRepository {
   Future<List<User>> knownUsers() async => List.unmodifiable(_known);
 
   @override
-  void dispose() {}
+  Stream<List<User>> watchKnownUsers() async* {
+    yield List.unmodifiable(_known);
+    yield* _knownChanges.stream;
+  }
+
+  @override
+  void dispose() => unawaited(_knownChanges.close());
 }

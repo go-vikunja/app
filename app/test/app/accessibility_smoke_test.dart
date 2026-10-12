@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/auth/web_authenticator.dart';
@@ -11,6 +12,10 @@ import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
 import 'package:vikunja_mobile/features/home/presentation/reauth_banner.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connection_error_card.dart';
+import 'package:vikunja_mobile/features/quick_add/application/quick_add_plan.dart';
+import 'package:vikunja_mobile/features/quick_add/application/quick_add_service_provider.dart';
+import 'package:vikunja_mobile/features/quick_add/presentation/magic_suggestions.dart';
+import 'package:vikunja_mobile/features/quick_add/presentation/quick_add_help_sheet.dart';
 import 'package:vikunja_mobile/features/sync/presentation/first_sync_screen.dart';
 import 'package:vikunja_mobile/features/sync/presentation/offline_notice.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
@@ -21,6 +26,7 @@ import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dar
 import '../features/accounts/accounts_harness.dart';
 import '../features/tasks/edit_page_harness.dart';
 import '../helpers/auth_fakes.dart';
+import '../helpers/fake_quick_add_service.dart';
 import '../helpers/fakes.dart';
 import '../helpers/label_user_fakes.dart';
 import '../helpers/pump_app.dart';
@@ -188,7 +194,56 @@ void main() {
     testWidgets('new task sheet at 200 % in dark mode '
         '(${locale.languageCode})', (tester) async {
       useWorstCase(tester, locale);
-      await pumpSignedInApp(tester, sync: richData());
+      final data = richData();
+      final project = data.projects.all.first;
+      final label = sampleLabel(
+        id: 1,
+        title: 'A rather long label title',
+        hexColor: 'ffeb10',
+      );
+      const person = User(
+        id: 1,
+        username: 'maximiliane',
+        name: 'Maximiliane Musterfrau-Beispielhausen',
+      );
+      final service = FakeQuickAddService(
+        planner: (line, {fallbackProjectId, fallbackDueDate}) {
+          final parsed = parseTaskText(line, now: DateTime.now());
+          return QuickAddPlan(
+            input: line,
+            parsed: parsed,
+            title: parsed.text,
+            project: project,
+            unmatchedProject: parsed.project,
+            labels: [label],
+            newLabels: const ['ein ziemlich langes neues Label'],
+            assignees: const [person],
+            unresolvedAssignees: const ['jemand-mit-langem-namen'],
+            dueDate: parsed.date?.toUtc(),
+            repeat: parsed.repeats,
+            priority: parsed.priority,
+            reminders: const [
+              TaskReminder(
+                relativePeriod: Duration(days: -2),
+                relativeTo: ReminderRelativeTo.dueDate,
+              ),
+            ],
+          );
+        },
+      );
+      await pumpSignedInApp(
+        tester,
+        sync: data,
+        overrides: [
+          quickAddServiceProvider.overrideWithValue(service),
+          labelRepositoryProvider.overrideWithValue(
+            FakeLabelRepository(labels: [label]),
+          ),
+          userRepositoryProvider.overrideWithValue(
+            FakeUserRepository(known: const [person]),
+          ),
+        ],
+      );
       final l10n = lookupAppLocalizations(locale);
 
       await tester.tap(find.byType(FloatingActionButton));
@@ -196,8 +251,26 @@ void main() {
       expect(find.byType(NewTaskSheet), findsOneWidget);
 
       await tester.enterText(find.byType(TextField), 'A new task');
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text(l10n.shortcutTomorrow));
+      await tester.pumpAndSettle();
       await tester.tap(find.text(l10n.shortcutTomorrow));
       await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      await tester.enterText(
+        find.byType(TextField),
+        'A new task with a long title *"A rather long label title" '
+        '+Unbekannt @maximiliane !5 tomorrow at 9:00 every 2 weeks\n'
+        'A second line *a',
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(MagicSuggestions), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(find.byTooltip(l10n.quickAddHelp));
+      await tester.pumpAndSettle();
+      await scrollToEnd(tester, find.byType(QuickAddHelpSheet));
       expect(tester.takeException(), isNull);
     });
 

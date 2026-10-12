@@ -16,6 +16,41 @@ void main() {
     expect(defaultProjectFor(projects, currentProjectId: 6)?.id, 6);
   });
 
+  test("the current project wins over the user's default project", () {
+    expect(
+      defaultProjectFor(projects, currentProjectId: 6, defaultProjectId: 3)?.id,
+      6,
+    );
+  });
+
+  test("without a usable current project it is the user's default "
+      'project', () {
+    expect(defaultProjectFor(projects, defaultProjectId: 6)?.id, 6);
+    expect(
+      defaultProjectFor(projects, currentProjectId: 5, defaultProjectId: 3)?.id,
+      3,
+    );
+    expect(
+      defaultProjectFor(
+        projects,
+        currentProjectId: -1,
+        defaultProjectId: 3,
+      )?.id,
+      3,
+    );
+  });
+
+  test('a default project the task cannot live in is passed over', () {
+    // Archived, a pseudo project, or one this device does not know.
+    for (final id in [5, -1, 99]) {
+      expect(
+        defaultProjectFor(projects, defaultProjectId: id)?.id,
+        4,
+        reason: '$id',
+      );
+    }
+  });
+
   test('without a usable current project it is the Inbox', () {
     expect(defaultProjectFor(projects)?.id, 4);
     expect(defaultProjectFor(projects, currentProjectId: 5)?.id, 4);
@@ -28,10 +63,12 @@ void main() {
         if (project.id != 4) project,
     ];
     expect(defaultProjectFor(noInbox)?.id, 3);
+    expect(defaultProjectFor(noInbox, defaultProjectId: 5)?.id, 3);
   });
 
   test('null without projects', () {
     expect(defaultProjectFor(const []), isNull);
+    expect(defaultProjectFor(const [], defaultProjectId: 4), isNull);
     expect(
       defaultProjectFor([sampleProject(id: 5, title: 'A', archived: true)]),
       isNull,

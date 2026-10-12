@@ -184,6 +184,41 @@ void main() {
       await repository.create(const NewLabel(title: 'errand'));
       expect(read.requests, hasLength(2));
     });
+
+    test('findOrCreate adopts a label the server has under that title, '
+        'ignoring case, instead of making a second one', () async {
+      read.allLabels = [
+        serverLabel(40, 'einkaufen', created: now),
+        serverLabel(41, 'Einkauf', created: now),
+        serverLabel(42, 'einkauf', created: now),
+      ];
+
+      final found = await repository.findOrCreate(
+        const NewLabel(title: 'EINKAUF'),
+      );
+
+      expect(found.id, 41);
+      expect(write.requests, isEmpty);
+      expect(read.requests, ['labels page 1 search EINKAUF']);
+      expect(
+        (await repository.watchAll().first).map((label) => label.id),
+        contains(41),
+      );
+      expect(
+        (await repository.findOrCreate(const NewLabel(title: 'einkauf'))).id,
+        42,
+      );
+    });
+
+    test('findOrCreate creates a label the server does not have', () async {
+      final created = await repository.findOrCreate(
+        const NewLabel(title: 'errand'),
+      );
+
+      expect(created.id, 900);
+      expect(read.requests, ['labels page 1 search errand']);
+      expect(write.requests, ['create label errand']);
+    });
   });
 
   group('LocalUserRepository', () {
@@ -222,6 +257,24 @@ void main() {
       );
 
       expect(await repository.knownUsers(), [ben]);
+    });
+
+    test('the known users stream follows searches and syncs', () async {
+      final seen = <List<User>>[];
+      final subscription = repository.watchKnownUsers().listen(seen.add);
+      addTearDown(subscription.cancel);
+      await pumpEventQueue();
+
+      await repository.searchAssignees(7, 'ana');
+      await pumpEventQueue();
+      await db.usersDao.upsertAll([ben]);
+      await pumpEventQueue();
+
+      expect(seen, [
+        isEmpty,
+        [ana],
+        [ana, ben],
+      ]);
     });
   });
 }

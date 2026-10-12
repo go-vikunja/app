@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:logging/logging.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/settings/user_settings_json.dart';
 import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine_impl.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
@@ -15,7 +16,15 @@ void main() {
   late AppDatabase db;
   late FakeSyncClient client;
   late DateTime now;
-  const me = User(id: 7, username: 'alice', name: 'Alice');
+  // `GET /user` carries the email, which is not stored: an unchanged user
+  // must not count as a change.
+  const me = User(
+    id: 7,
+    username: 'alice',
+    name: 'Alice',
+    email: 'alice@example.com',
+  );
+  var settings = const UserSettings(defaultProjectId: 2);
   const urgent = Label(id: 3, title: 'urgent');
   const later = Label(id: 4, title: 'later');
   // Everything was last changed at 9:00 except task 30 at 9:30, the
@@ -135,7 +144,7 @@ void main() {
       db: db,
       client: client,
       perPage: perPage,
-      currentUser: () async => me,
+      currentUser: () async => (user: me, settings: settings),
       now: () => now,
     );
     addTearDown(engine.dispose);
@@ -160,7 +169,9 @@ void main() {
     return seen;
   }
 
-  Future<Map<String, String>> state() => db.syncStateDao.readAll();
+  // The settings every run stores have tests of their own.
+  Future<Map<String, String>> state() async =>
+      (await db.syncStateDao.readAll())..remove(SyncStateKeys.userSettings);
 
   Iterable<String> requestsFor(String prefix) =>
       client.requests.where((r) => r.startsWith(prefix));
@@ -185,6 +196,7 @@ void main() {
   setUp(() {
     db = testDatabase();
     now = DateTime.utc(2026, 10, 10, 12);
+    settings = const UserSettings(defaultProjectId: 2);
     client = FakeSyncClient()
       ..allProjects = projects()
       ..pseudoProjects = [
@@ -234,6 +246,7 @@ void main() {
       final running = seen.whereType<SyncRunning>().toList();
       expect(running.every((s) => !s.initial), isTrue);
       expect(running.map((s) => s.phase).toSet(), {
+        SyncPhase.account,
         SyncPhase.projects,
         SyncPhase.labels,
         SyncPhase.delta,
@@ -292,6 +305,45 @@ void main() {
         (await state())[SyncStateKeys.watermark],
         newest.toIso8601String(),
       );
+    });
+
+    test('reads the user and the settings again first', () async {
+      final sync = await synced();
+      settings = const UserSettings(
+        quickAddMagicMode: QuickAddMagicMode.disabled,
+        quickAddDefaultReminders: [Duration(hours: -1)],
+      );
+      final seen = record(sync);
+
+      await sync.refresh();
+
+      final stored = await db.syncStateDao.readAll();
+      expect(decodeUserSettings(stored[SyncStateKeys.userSettings]), settings);
+      expect(client.requests, quietRun);
+      expect(
+        seen.whereType<SyncRunning>().first,
+        const SyncRunning(phase: SyncPhase.account, done: 0, initial: false),
+      );
+    });
+
+    test('a failing user read fails the refresh before the projects', () async {
+      final sync = DefaultSyncEngine(
+        db: db,
+        client: client,
+        perPage: 50,
+        currentUser: () async =>
+            throw const NetworkFailure(NetworkProblem.timeout),
+        now: () => now,
+      );
+      addTearDown(sync.dispose);
+      await engine().ensureInitialSync();
+      client.requests.clear();
+      now = DateTime.utc(2026, 10, 10, 13);
+
+      await expectLater(sync.refresh(), throwsA(isA<NetworkFailure>()));
+
+      expect(client.requests, isEmpty);
+      expect(sync.currentStatus, isA<SyncFailed>());
     });
 
     test('reports the projects phase before its first request', () async {

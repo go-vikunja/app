@@ -12,5 +12,10 @@ abstract interface class LabelRepository {
   /// `VikunjaFailure`.
   Future<Label> create(NewLabel label);
 
+  /// The label the server already has under [label]'s title, ignoring
+  /// case, which this device may not have synced yet; else [create]s it.
+  /// Needs a connection; throws the `VikunjaFailure`.
+  Future<Label> findOrCreate(NewLabel label);
+
   void dispose();
 }

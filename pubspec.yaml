@@ -8,6 +8,7 @@ workspace:
   - app
   - packages/vikunja_domain
   - packages/vikunja_api
+  - packages/vikunja_logic
 
 dev_dependencies:
   very_good_analysis: ^11.0.0

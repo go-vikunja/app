@@ -9,6 +9,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/settings/user_settings_json.dart';
 import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine_impl.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
@@ -22,6 +23,7 @@ void main() {
   late FakeSyncClient client;
   late DateTime now;
   const me = User(id: 7, username: 'alice', name: 'Alice');
+  var settings = const UserSettings(defaultProjectId: 2);
   const urgent = Label(id: 3, title: 'urgent');
   const later = Label(id: 4, title: 'later');
 
@@ -58,7 +60,7 @@ void main() {
       db: db,
       client: client,
       perPage: perPage,
-      currentUser: withUser ? () async => me : null,
+      currentUser: withUser ? () async => (user: me, settings: settings) : null,
       now: () => now,
     );
     addTearDown(engine.dispose);
@@ -72,11 +74,14 @@ void main() {
     return seen;
   }
 
-  Future<Map<String, String>> state() => db.syncStateDao.readAll();
+  // The settings every run stores have tests of their own.
+  Future<Map<String, String>> state() async =>
+      (await db.syncStateDao.readAll())..remove(SyncStateKeys.userSettings);
 
   setUp(() {
     db = testDatabase();
     now = DateTime.utc(2026, 10, 10, 12);
+    settings = const UserSettings(defaultProjectId: 2);
     client = FakeSyncClient()
       ..allProjects = projects
       ..pseudoProjects = [
@@ -274,6 +279,43 @@ void main() {
       expect(ids, hasLength(59));
       expect(ids, isNot(contains(3)));
       expect(ids, contains(51));
+    });
+
+    test('the account phase stores the user settings', () async {
+      settings = const UserSettings(
+        defaultProjectId: 2,
+        weekStart: 1,
+        quickAddMagicMode: QuickAddMagicMode.todoist,
+        quickAddDefaultReminders: [Duration(minutes: -30)],
+      );
+
+      await engine().ensureInitialSync();
+
+      final stored = await db.syncStateDao.readAll();
+      expect(decodeUserSettings(stored[SyncStateKeys.userSettings]), settings);
+    });
+
+    test('a failing user read fails the run before the projects', () async {
+      final sync = DefaultSyncEngine(
+        db: db,
+        client: client,
+        perPage: 50,
+        currentUser: () async =>
+            throw const NetworkFailure(NetworkProblem.unreachable),
+        now: () => now,
+      );
+      addTearDown(sync.dispose);
+
+      await expectLater(
+        sync.ensureInitialSync(),
+        throwsA(isA<NetworkFailure>()),
+      );
+
+      expect(client.requests, isEmpty);
+      expect(
+        (await db.syncStateDao.readAll())[SyncStateKeys.userSettings],
+        isNull,
+      );
     });
 
     test('works without a current user source', () async {

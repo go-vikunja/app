@@ -18,7 +18,7 @@ String shortcutLabel(AppLocalizations l10n, DateShortcut shortcut) =>
 /// Date shortcut toggles: the chip whose day the current value falls on is
 /// selected, and tapping it again clears ([onSelected] gets null). Each
 /// chip reads out its day. One row scrolling sideways, or with [wrap] as
-/// many rows as the width takes.
+/// many rows as the width takes. Without [enabled] they only show the value.
 class DateShortcutChips extends StatelessWidget {
   const new({
     required this.options,
@@ -26,6 +26,7 @@ class DateShortcutChips extends StatelessWidget {
     required this.onSelected,
     this.trailing = const [],
     this.wrap = false,
+    this.enabled = true,
     super.key,
   });
 
@@ -36,6 +37,7 @@ class DateShortcutChips extends StatelessWidget {
   final ValueChanged<DateShortcutOption?> onSelected;
   final List<Widget> trailing;
   final bool wrap;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +54,9 @@ class DateShortcutChips extends StatelessWidget {
             ),
           ),
           selected: option.day == selectedDay,
-          onSelected: (selected) => onSelected(selected ? option : null),
+          onSelected: enabled
+              ? (selected) => onSelected(selected ? option : null)
+              : null,
         ),
       ...trailing,
     ];

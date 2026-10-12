@@ -58,6 +58,10 @@ jobs:
         working-directory: packages/vikunja_domain
         run: flutter test
 
+      - name: Test vikunja_logic
+        working-directory: packages/vikunja_logic
+        run: flutter test
+
       - name: Test vikunja_api (without contract tests)
         working-directory: packages/vikunja_api
         run: flutter test --exclude-tags contract

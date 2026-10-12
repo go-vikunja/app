@@ -11,5 +11,8 @@ abstract interface class UserRepository {
   /// for suggestions while offline.
   Future<List<User>> knownUsers();
 
+  /// [knownUsers] and its changes.
+  Stream<List<User>> watchKnownUsers();
+
   void dispose();
 }

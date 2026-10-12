@@ -6,6 +6,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/settings/user_settings_json.dart';
+import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine_impl.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 
@@ -116,7 +118,7 @@ void main() {
           db: db,
           client: createReadClient(dio: authenticated, connection: only),
           perPage: only.info.maxItemsPerPage,
-          currentUser: AccountApi(authenticated, only).currentUser,
+          currentUser: AccountApi(authenticated, only).currentUserWithSettings,
         );
         addTearDown(engine.dispose);
         final seen = <SyncStatus>[];
@@ -212,8 +214,25 @@ void main() {
           await db.tasksDao.loadProjectTasks(seed.liveId, showDone: false),
           hasLength(_liveOpen),
         );
-        // Last run, last full run and the watermark; no checkpoint.
-        expect(await db.syncStateDao.readAll(), hasLength(3));
+        // Last run, last full run, the watermark and the user's settings;
+        // no checkpoint.
+        final state = await db.syncStateDao.readAll();
+        expect(state.keys.toSet(), {
+          SyncStateKeys.lastSyncedAt,
+          SyncStateKeys.lastFullSyncAt,
+          SyncStateKeys.watermark,
+          SyncStateKeys.userSettings,
+        });
+        expect(
+          decodeUserSettings(state[SyncStateKeys.userSettings]),
+          isA<UserSettings>()
+              .having((s) => s.defaultProjectId, 'default project', isNotNull)
+              .having(
+                (s) => s.quickAddMagicMode,
+                'mode',
+                QuickAddMagicMode.vikunja,
+              ),
+        );
 
         // A second run changes nothing.
         await engine.refresh();

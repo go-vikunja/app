@@ -194,7 +194,7 @@ SyncEngine syncEngine(Ref ref, String accountId) {
       if (entry == null) {
         throw StateError('Account $accountId is not registered');
       }
-      return gateway.currentUser(
+      return gateway.currentUserWithSettings(
         entry.connection,
         sessions.forAccount(accountId),
       );
