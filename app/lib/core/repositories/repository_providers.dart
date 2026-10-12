@@ -16,6 +16,8 @@ import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/db/open_account_database.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
 import 'package:vikunja_mobile/core/network/request_log_interceptor.dart';
+import 'package:vikunja_mobile/core/notifications/notification_providers.dart';
+import 'package:vikunja_mobile/core/notifications/notification_schedulers.dart';
 import 'package:vikunja_mobile/core/outbox/outbox_sender.dart';
 import 'package:vikunja_mobile/core/repositories/label_repository.dart';
 import 'package:vikunja_mobile/core/repositories/local/local_label_repository.dart';
@@ -138,22 +140,26 @@ final class OpenDatabases {
   AppDatabase open(String accountId) =>
       _open[accountId] ??= _openDatabase(accountId, _files);
 
-  /// Completes once the database isolate has closed sqlite; immediately when
-  /// the database is not open.
+  /// Disconnects this isolate's client; immediately when the database is
+  /// not open. The isolate closes sqlite once its last client is gone,
+  /// which another isolate's client may hold off.
   Future<void> close(String accountId) {
     final database = _open.remove(accountId);
     if (database == null) return _closing[accountId] ?? Future.value();
     late final Future<void> closing;
-    closing = database
-        .close()
-        // close() only disconnects; the isolate closes sqlite afterwards.
-        .then((_) => awaitAccountDatabaseClosed(accountId))
-        .whenComplete(() {
-          if (identical(_closing[accountId], closing)) {
-            unawaited(_closing.remove(accountId));
-          }
-        });
+    closing = database.close().whenComplete(() {
+      if (identical(_closing[accountId], closing)) {
+        unawaited(_closing.remove(accountId));
+      }
+    });
     return _closing[accountId] = closing;
+  }
+
+  /// Sign-out: [close], then wait until the database isolate has closed
+  /// sqlite, so the files can go.
+  Future<void> closeForDeletion(String accountId) async {
+    await close(accountId);
+    await awaitAccountDatabaseClosed(accountId);
   }
 }
 
@@ -329,10 +335,21 @@ UserRepository? userRepository(Ref ref) {
   return ref.watch(accountUserRepositoryProvider(accountId));
 }
 
-/// The last step of a sign-out: stops the account's outbox sender and sync
-/// engine, closes its database and deletes the files.
+/// The last step of a sign-out: cancels the account's notifications and
+/// forgets their preferences, stops its outbox sender and sync engine,
+/// closes its database and deletes the files.
 @Riverpod(keepAlive: true)
 AccountDataWiper accountDataWiper(Ref ref) => (accountId) async {
+  await _disposeQuietly(
+    'Notification scheduler',
+    accountId,
+    () => ref.read(notificationSchedulersProvider).cancelAll(accountId),
+  );
+  await _disposeQuietly(
+    'Notification preferences',
+    accountId,
+    () => ref.read(notificationPreferencesStoreProvider).delete(accountId),
+  );
   if (ref.exists(outboxSenderProvider(accountId))) {
     await _disposeQuietly(
       'Outbox sender',
@@ -347,7 +364,7 @@ AccountDataWiper accountDataWiper(Ref ref) => (accountId) async {
       () => ref.read(syncEngineProvider(accountId)).dispose(),
     );
   }
-  await ref.read(openDatabasesProvider).close(accountId);
+  await ref.read(openDatabasesProvider).closeForDeletion(accountId);
   await ref.read(accountDatabaseFilesProvider).deleteFor(accountId);
 };
 

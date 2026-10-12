@@ -1611,5 +1611,91 @@
         "example": "Start date"
       }
     }
+  },
+  "notificationSetupTitle": "Stay on top of your tasks",
+  "notificationSetupBody": "Rurana can notify you on this phone, without the server having to send anything:",
+  "notificationSetupReminders": "Reminders at their time",
+  "notificationSetupDueDates": "Due dates at the exact time",
+  "notificationSetupOnlyYours": "Only for tasks you created or are assigned to",
+  "notificationSetupTurnOn": "Turn on notifications",
+  "notificationSetupNotNow": "Not now",
+  "notificationSetupExactTitle": "Reminders right on time",
+  "notificationSetupExactBody": "Without exact alarms, Android may show reminders minutes late. You can allow them in the system settings; the app works either way.",
+  "notificationSetupExactAllow": "Allow exact alarms",
+  "notificationSetupSkip": "Skip",
+  "notificationsHeading": "Notifications",
+  "notificationsReminders": "Reminders",
+  "notificationsRemindersSubtitle": "At the time of each reminder",
+  "notificationsDueDates": "Due dates",
+  "notificationsDueDatesSubtitle": "At the exact due time",
+  "notificationsOff": "Notifications are off",
+  "notificationsOpenSettings": "Open settings",
+  "notificationsTurnOn": "Turn on",
+  "notificationsMayBeLate": "Reminders may be late",
+  "notificationsAllowExactAlarms": "Allow exact alarms",
+  "notificationsScheduled": "{count, plural, =0{Nothing scheduled} =1{1 scheduled} other{{count} scheduled}}",
+  "@notificationsScheduled": {
+    "description": "How many notifications the OS holds for this account.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "12"
+      }
+    }
+  },
+  "notificationsSendTest": "Send a test notification",
+  "notificationTestTitle": "Test notification",
+  "notificationTestBody": "Notifications from Rurana work on this phone.",
+  "notificationTaskGone": "This task is gone",
+  "notificationTestReceived": "Notifications work",
+  "@notificationTestReceived": {
+    "description": "Snackbar after tapping the test notification while the Account tab, which sent it, is already open."
+  },
+  "notificationChannelReminders": "Reminders",
+  "@notificationChannelReminders": {
+    "description": "Name of the Android notification channel for task reminders and due dates."
+  },
+  "notificationChannelRemindersDescription": "Reminders and due dates of your tasks",
+  "notificationActionDone": "Done",
+  "@notificationActionDone": {
+    "description": "Notification action that marks the task done."
+  },
+  "notificationActionSnooze10Minutes": "Snooze 10 min",
+  "notificationActionSnooze1Hour": "Snooze 1 h",
+  "notificationReminderBody": "Reminder · {project}",
+  "@notificationReminderBody": {
+    "description": "Body of a reminder notification; the title is the task's title.",
+    "placeholders": {
+      "project": {
+        "type": "String",
+        "example": "Work"
+      }
+    }
+  },
+  "notificationReminderBodyNoProject": "Reminder",
+  "notificationDueBody": "Due now · {project}",
+  "@notificationDueBody": {
+    "description": "Body of a due-date notification, shown at the due time.",
+    "placeholders": {
+      "project": {
+        "type": "String",
+        "example": "Work"
+      }
+    }
+  },
+  "notificationDueBodyNoProject": "Due now",
+  "notificationBodyWithIdentifier": "{body} · {identifier}",
+  "@notificationBodyWithIdentifier": {
+    "description": "A notification body followed by the task's identifier, when its project has a prefix.",
+    "placeholders": {
+      "body": {
+        "type": "String",
+        "example": "Reminder · Work"
+      },
+      "identifier": {
+        "type": "String",
+        "example": "WORK-12"
+      }
+    }
   }
 }

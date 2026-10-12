@@ -6,6 +6,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/widgets/status_card.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
+import 'package:vikunja_mobile/features/home/presentation/account_tab.dart';
 import 'package:vikunja_mobile/features/home/presentation/sync_problem_message.dart';
 
 import '../../helpers/auth_fakes.dart';
@@ -297,9 +298,24 @@ void main() {
     ];
     await pumpAccountTab(tester);
 
-    expect(find.text(en.accountPendingChanges(12)), findsOneWidget);
-    expect(find.text(en.accountSendNow), findsOneWidget);
-    expect(find.text(en.syncProblemDiscard), findsOneWidget);
+    // The list builds lazily; at this size the lines sit below the fold.
+    for (final text in [
+      en.accountPendingChanges(12),
+      en.accountSendNow,
+      en.syncProblemDiscard,
+    ]) {
+      await tester.scrollUntilVisible(
+        find.text(text),
+        100,
+        scrollable: find
+            .descendant(
+              of: find.byType(AccountTab),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      expect(find.text(text), findsOneWidget);
+    }
     expect(tester.takeException(), isNull);
   });
 

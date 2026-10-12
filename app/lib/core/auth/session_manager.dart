@@ -22,6 +22,12 @@ Future<void> _delay(Duration duration) => Future<void>.delayed(duration);
 /// Vikunja rotates the refresh token on every refresh and has no grace period
 /// for the old one, so a refresh must never run twice with the same token and
 /// its result must be persisted before anything uses it.
+///
+/// With `refreshes` false the manager never calls the server: it hands out
+/// the stored access token while it is valid and otherwise fails the
+/// request as a rejected token, so that a short-lived isolate (a
+/// notification action, D26 and architecture §5.8) leaves the rotation to
+/// the app; a token a sibling isolate stored meanwhile is still adopted.
 final class SessionManager implements AccessTokenSource {
   new({
     required this.accountId,
@@ -31,6 +37,7 @@ final class SessionManager implements AccessTokenSource {
     this._clockOffsets,
     this._clock = DateTime.now,
     this._sleep = _delay,
+    this._refreshes = true,
   });
 
   static const refreshMargin = Duration(seconds: 60);
@@ -57,6 +64,7 @@ final class SessionManager implements AccessTokenSource {
   final ServerClockOffsets? _clockOffsets;
   final Clock _clock;
   final Sleep _sleep;
+  final bool _refreshes;
 
   _Session? _session;
   Duration _serverClockOffset = Duration.zero;
@@ -79,6 +87,7 @@ final class SessionManager implements AccessTokenSource {
     try {
       final session = await _currentSession(epoch);
       if (!_expiresSoon(session)) return session.accessToken;
+      if (!_refreshes) return await _withoutRefresh(session, epoch);
       try {
         return (await _refreshFrom(session)).accessToken;
       } on VikunjaFailure catch (failure) {
@@ -99,10 +108,29 @@ final class SessionManager implements AccessTokenSource {
     try {
       final session = await _currentSession(epoch);
       if (session.accessToken != rejectedToken) return session.accessToken;
+      if (!_refreshes) {
+        final stored = await _readStored(epoch);
+        if (stored.accessToken == rejectedToken) return null;
+        return (_session = _Session.fromStored(stored)).accessToken;
+      }
       return (await _refreshFrom(session)).accessToken;
     } on _Retired {
       return null;
     }
+  }
+
+  /// The stored token while it lasts; afterwards the request fails like a
+  /// rejected token, which the outbox retries later from an isolate that
+  /// refreshes. A sibling's newer token in storage is taken instead.
+  Future<String> _withoutRefresh(_Session snapshot, int epoch) async {
+    final stored = await _readStored(epoch);
+    final session = stored.refreshToken == snapshot.refreshToken
+        ? snapshot
+        : _session = _Session.fromStored(stored);
+    if (!_isExpired(session)) return session.accessToken;
+    throw const TokenRejected(
+      message: 'the access token has expired and this isolate does not refresh',
+    );
   }
 
   /// Tokens that were just persisted by a new sign-in. [receivedAt] is the
@@ -442,7 +470,8 @@ final class SessionManager implements AccessTokenSource {
       failure is UnexpectedResponse;
 }
 
-/// One [SessionManager] per account for this isolate.
+/// One [SessionManager] per account for this isolate. With `refreshes`
+/// false none of them ever refreshes (see [SessionManager]).
 final class SessionManagers {
   new({
     required this._tokenStore,
@@ -452,6 +481,7 @@ final class SessionManagers {
     required this._markNeedsReauth,
     this._clock = DateTime.now,
     this._sleep = _delay,
+    this._refreshes = true,
   });
 
   final TokenStore _tokenStore;
@@ -461,6 +491,7 @@ final class SessionManagers {
   final Future<void> Function(String accountId) _markNeedsReauth;
   final Clock _clock;
   final Sleep _sleep;
+  final bool _refreshes;
   final _managers = <String, SessionManager>{};
 
   SessionManager forAccount(String accountId) =>
@@ -498,6 +529,7 @@ final class SessionManagers {
     onSessionEnded: (_) => _markNeedsReauth(accountId),
     clock: _clock,
     sleep: _sleep,
+    refreshes: _refreshes,
   );
 }
 

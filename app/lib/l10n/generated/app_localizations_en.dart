@@ -1910,4 +1910,135 @@ class AppLocalizationsEn extends AppLocalizations {
   String reminderRelativeToUnset(String date) {
     return '$date (not set)';
   }
+
+  @override
+  String get notificationSetupTitle => 'Stay on top of your tasks';
+
+  @override
+  String get notificationSetupBody =>
+      'Rurana can notify you on this phone, without the server having to send anything:';
+
+  @override
+  String get notificationSetupReminders => 'Reminders at their time';
+
+  @override
+  String get notificationSetupDueDates => 'Due dates at the exact time';
+
+  @override
+  String get notificationSetupOnlyYours =>
+      'Only for tasks you created or are assigned to';
+
+  @override
+  String get notificationSetupTurnOn => 'Turn on notifications';
+
+  @override
+  String get notificationSetupNotNow => 'Not now';
+
+  @override
+  String get notificationSetupExactTitle => 'Reminders right on time';
+
+  @override
+  String get notificationSetupExactBody =>
+      'Without exact alarms, Android may show reminders minutes late. You can allow them in the system settings; the app works either way.';
+
+  @override
+  String get notificationSetupExactAllow => 'Allow exact alarms';
+
+  @override
+  String get notificationSetupSkip => 'Skip';
+
+  @override
+  String get notificationsHeading => 'Notifications';
+
+  @override
+  String get notificationsReminders => 'Reminders';
+
+  @override
+  String get notificationsRemindersSubtitle => 'At the time of each reminder';
+
+  @override
+  String get notificationsDueDates => 'Due dates';
+
+  @override
+  String get notificationsDueDatesSubtitle => 'At the exact due time';
+
+  @override
+  String get notificationsOff => 'Notifications are off';
+
+  @override
+  String get notificationsOpenSettings => 'Open settings';
+
+  @override
+  String get notificationsTurnOn => 'Turn on';
+
+  @override
+  String get notificationsMayBeLate => 'Reminders may be late';
+
+  @override
+  String get notificationsAllowExactAlarms => 'Allow exact alarms';
+
+  @override
+  String notificationsScheduled(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count scheduled',
+      one: '1 scheduled',
+      zero: 'Nothing scheduled',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get notificationsSendTest => 'Send a test notification';
+
+  @override
+  String get notificationTestTitle => 'Test notification';
+
+  @override
+  String get notificationTestBody =>
+      'Notifications from Rurana work on this phone.';
+
+  @override
+  String get notificationTaskGone => 'This task is gone';
+
+  @override
+  String get notificationTestReceived => 'Notifications work';
+
+  @override
+  String get notificationChannelReminders => 'Reminders';
+
+  @override
+  String get notificationChannelRemindersDescription =>
+      'Reminders and due dates of your tasks';
+
+  @override
+  String get notificationActionDone => 'Done';
+
+  @override
+  String get notificationActionSnooze10Minutes => 'Snooze 10 min';
+
+  @override
+  String get notificationActionSnooze1Hour => 'Snooze 1 h';
+
+  @override
+  String notificationReminderBody(String project) {
+    return 'Reminder · $project';
+  }
+
+  @override
+  String get notificationReminderBodyNoProject => 'Reminder';
+
+  @override
+  String notificationDueBody(String project) {
+    return 'Due now · $project';
+  }
+
+  @override
+  String get notificationDueBodyNoProject => 'Due now';
+
+  @override
+  String notificationBodyWithIdentifier(String body, String identifier) {
+    return '$body · $identifier';
+  }
 }

@@ -34,13 +34,13 @@ void main() {
   SendPort? isolatePort() =>
       IsolateNameServer.lookupPortByName(accountDatabasePortName(accountId));
 
-  test('closing resolves once the database isolate has closed sqlite, so the '
-      'wipe after it deletes a closed database', () async {
+  test('closing for deletion resolves once the database isolate has closed '
+      'sqlite, so the wipe after it deletes a closed database', () async {
     final db = databases.open(accountId);
     await db.syncStateDao.write({'phase': 'tasks'});
     expect(isolatePort(), isNotNull);
 
-    await databases.close(accountId);
+    await databases.closeForDeletion(accountId);
 
     expect(isolatePort(), isNull);
     final path = await files.pathFor(accountId);
@@ -64,6 +64,7 @@ void main() {
 
   test('closing what is not open completes at once', () async {
     await databases.close(accountId);
+    await databases.closeForDeletion(accountId);
   });
 }
 

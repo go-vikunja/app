@@ -5662,6 +5662,659 @@ class TaskIdRemapsCompanion extends UpdateCompanion<TaskIdRemapRow> {
   }
 }
 
+class $ScheduledNotificationsTable extends ScheduledNotifications
+    with TableInfo<$ScheduledNotificationsTable, ScheduledNotificationRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ScheduledNotificationsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _keyMeta = const VerificationMeta('key');
+  @override
+  late final GeneratedColumn<String> key = GeneratedColumn<String>(
+    'key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _osIdMeta = const VerificationMeta('osId');
+  @override
+  late final GeneratedColumn<int> osId = GeneratedColumn<int>(
+    'os_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _taskIdMeta = const VerificationMeta('taskId');
+  @override
+  late final GeneratedColumn<int> taskId = GeneratedColumn<int>(
+    'task_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+    'kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<DateTime, int> fireAt =
+      GeneratedColumn<int>(
+        'fire_at',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: true,
+      ).withConverter<DateTime>($ScheduledNotificationsTable.$converterfireAt);
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _bodyMeta = const VerificationMeta('body');
+  @override
+  late final GeneratedColumn<String> body = GeneratedColumn<String>(
+    'body',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<DateTime?, int> snoozedUntil =
+      GeneratedColumn<int>(
+        'snoozed_until',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      ).withConverter<DateTime?>(
+        $ScheduledNotificationsTable.$convertersnoozedUntiln,
+      );
+  @override
+  late final GeneratedColumnWithTypeConverter<DateTime?, int>
+  snoozeOriginalFireAt =
+      GeneratedColumn<int>(
+        'snooze_original_fire_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      ).withConverter<DateTime?>(
+        $ScheduledNotificationsTable.$convertersnoozeOriginalFireAtn,
+      );
+  static const VerificationMeta _exactMeta = const VerificationMeta('exact');
+  @override
+  late final GeneratedColumn<bool> exact = GeneratedColumn<bool>(
+    'exact',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("exact" IN (0, 1))',
+    ),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    key,
+    osId,
+    taskId,
+    kind,
+    fireAt,
+    title,
+    body,
+    snoozedUntil,
+    snoozeOriginalFireAt,
+    exact,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'scheduled_notifications';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ScheduledNotificationRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('key')) {
+      context.handle(
+        _keyMeta,
+        key.isAcceptableOrUnknown(data['key']!, _keyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_keyMeta);
+    }
+    if (data.containsKey('os_id')) {
+      context.handle(
+        _osIdMeta,
+        osId.isAcceptableOrUnknown(data['os_id']!, _osIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_osIdMeta);
+    }
+    if (data.containsKey('task_id')) {
+      context.handle(
+        _taskIdMeta,
+        taskId.isAcceptableOrUnknown(data['task_id']!, _taskIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_taskIdMeta);
+    }
+    if (data.containsKey('kind')) {
+      context.handle(
+        _kindMeta,
+        kind.isAcceptableOrUnknown(data['kind']!, _kindMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_kindMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('body')) {
+      context.handle(
+        _bodyMeta,
+        body.isAcceptableOrUnknown(data['body']!, _bodyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_bodyMeta);
+    }
+    if (data.containsKey('exact')) {
+      context.handle(
+        _exactMeta,
+        exact.isAcceptableOrUnknown(data['exact']!, _exactMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_exactMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {key};
+  @override
+  ScheduledNotificationRow map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ScheduledNotificationRow(
+      key: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}key'],
+      )!,
+      osId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}os_id'],
+      )!,
+      taskId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}task_id'],
+      )!,
+      kind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kind'],
+      )!,
+      fireAt: $ScheduledNotificationsTable.$converterfireAt.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}fire_at'],
+        )!,
+      ),
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      body: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}body'],
+      )!,
+      snoozedUntil: $ScheduledNotificationsTable.$convertersnoozedUntiln
+          .fromSql(
+            attachedDatabase.typeMapping.read(
+              DriftSqlType.int,
+              data['${effectivePrefix}snoozed_until'],
+            ),
+          ),
+      snoozeOriginalFireAt: $ScheduledNotificationsTable
+          .$convertersnoozeOriginalFireAtn
+          .fromSql(
+            attachedDatabase.typeMapping.read(
+              DriftSqlType.int,
+              data['${effectivePrefix}snooze_original_fire_at'],
+            ),
+          ),
+      exact: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}exact'],
+      )!,
+    );
+  }
+
+  @override
+  $ScheduledNotificationsTable createAlias(String alias) {
+    return $ScheduledNotificationsTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<DateTime, int> $converterfireAt = const EpochMillis();
+  static TypeConverter<DateTime, int> $convertersnoozedUntil =
+      const EpochMillis();
+  static TypeConverter<DateTime?, int?> $convertersnoozedUntiln =
+      NullAwareTypeConverter.wrap($convertersnoozedUntil);
+  static TypeConverter<DateTime, int> $convertersnoozeOriginalFireAt =
+      const EpochMillis();
+  static TypeConverter<DateTime?, int?> $convertersnoozeOriginalFireAtn =
+      NullAwareTypeConverter.wrap($convertersnoozeOriginalFireAt);
+}
+
+class ScheduledNotificationRow extends DataClass
+    implements Insertable<ScheduledNotificationRow> {
+  final String key;
+  final int osId;
+  final int taskId;
+
+  /// `ScheduledNotificationKind.name`.
+  final String kind;
+
+  /// When the OS will show it: the task's instant, or [snoozedUntil].
+  final DateTime fireAt;
+  final String title;
+  final String body;
+
+  /// A snooze the user chose from the notification; it holds until the
+  /// task's own instant no longer equals [snoozeOriginalFireAt].
+  final DateTime? snoozedUntil;
+  final DateTime? snoozeOriginalFireAt;
+
+  /// Whether the OS was given an exact alarm. Part of the diff: a granted
+  /// or revoked exact-alarm permission re-registers the whole window.
+  final bool exact;
+  const ScheduledNotificationRow({
+    required this.key,
+    required this.osId,
+    required this.taskId,
+    required this.kind,
+    required this.fireAt,
+    required this.title,
+    required this.body,
+    this.snoozedUntil,
+    this.snoozeOriginalFireAt,
+    required this.exact,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['key'] = Variable<String>(key);
+    map['os_id'] = Variable<int>(osId);
+    map['task_id'] = Variable<int>(taskId);
+    map['kind'] = Variable<String>(kind);
+    {
+      map['fire_at'] = Variable<int>(
+        $ScheduledNotificationsTable.$converterfireAt.toSql(fireAt),
+      );
+    }
+    map['title'] = Variable<String>(title);
+    map['body'] = Variable<String>(body);
+    if (!nullToAbsent || snoozedUntil != null) {
+      map['snoozed_until'] = Variable<int>(
+        $ScheduledNotificationsTable.$convertersnoozedUntiln.toSql(
+          snoozedUntil,
+        ),
+      );
+    }
+    if (!nullToAbsent || snoozeOriginalFireAt != null) {
+      map['snooze_original_fire_at'] = Variable<int>(
+        $ScheduledNotificationsTable.$convertersnoozeOriginalFireAtn.toSql(
+          snoozeOriginalFireAt,
+        ),
+      );
+    }
+    map['exact'] = Variable<bool>(exact);
+    return map;
+  }
+
+  ScheduledNotificationsCompanion toCompanion(bool nullToAbsent) {
+    return ScheduledNotificationsCompanion(
+      key: Value(key),
+      osId: Value(osId),
+      taskId: Value(taskId),
+      kind: Value(kind),
+      fireAt: Value(fireAt),
+      title: Value(title),
+      body: Value(body),
+      snoozedUntil: snoozedUntil == null && nullToAbsent
+          ? const Value.absent()
+          : Value(snoozedUntil),
+      snoozeOriginalFireAt: snoozeOriginalFireAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(snoozeOriginalFireAt),
+      exact: Value(exact),
+    );
+  }
+
+  factory ScheduledNotificationRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ScheduledNotificationRow(
+      key: serializer.fromJson<String>(json['key']),
+      osId: serializer.fromJson<int>(json['osId']),
+      taskId: serializer.fromJson<int>(json['taskId']),
+      kind: serializer.fromJson<String>(json['kind']),
+      fireAt: serializer.fromJson<DateTime>(json['fireAt']),
+      title: serializer.fromJson<String>(json['title']),
+      body: serializer.fromJson<String>(json['body']),
+      snoozedUntil: serializer.fromJson<DateTime?>(json['snoozedUntil']),
+      snoozeOriginalFireAt: serializer.fromJson<DateTime?>(
+        json['snoozeOriginalFireAt'],
+      ),
+      exact: serializer.fromJson<bool>(json['exact']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'key': serializer.toJson<String>(key),
+      'osId': serializer.toJson<int>(osId),
+      'taskId': serializer.toJson<int>(taskId),
+      'kind': serializer.toJson<String>(kind),
+      'fireAt': serializer.toJson<DateTime>(fireAt),
+      'title': serializer.toJson<String>(title),
+      'body': serializer.toJson<String>(body),
+      'snoozedUntil': serializer.toJson<DateTime?>(snoozedUntil),
+      'snoozeOriginalFireAt': serializer.toJson<DateTime?>(
+        snoozeOriginalFireAt,
+      ),
+      'exact': serializer.toJson<bool>(exact),
+    };
+  }
+
+  ScheduledNotificationRow copyWith({
+    String? key,
+    int? osId,
+    int? taskId,
+    String? kind,
+    DateTime? fireAt,
+    String? title,
+    String? body,
+    Value<DateTime?> snoozedUntil = const Value.absent(),
+    Value<DateTime?> snoozeOriginalFireAt = const Value.absent(),
+    bool? exact,
+  }) => ScheduledNotificationRow(
+    key: key ?? this.key,
+    osId: osId ?? this.osId,
+    taskId: taskId ?? this.taskId,
+    kind: kind ?? this.kind,
+    fireAt: fireAt ?? this.fireAt,
+    title: title ?? this.title,
+    body: body ?? this.body,
+    snoozedUntil: snoozedUntil.present ? snoozedUntil.value : this.snoozedUntil,
+    snoozeOriginalFireAt: snoozeOriginalFireAt.present
+        ? snoozeOriginalFireAt.value
+        : this.snoozeOriginalFireAt,
+    exact: exact ?? this.exact,
+  );
+  ScheduledNotificationRow copyWithCompanion(
+    ScheduledNotificationsCompanion data,
+  ) {
+    return ScheduledNotificationRow(
+      key: data.key.present ? data.key.value : this.key,
+      osId: data.osId.present ? data.osId.value : this.osId,
+      taskId: data.taskId.present ? data.taskId.value : this.taskId,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      fireAt: data.fireAt.present ? data.fireAt.value : this.fireAt,
+      title: data.title.present ? data.title.value : this.title,
+      body: data.body.present ? data.body.value : this.body,
+      snoozedUntil: data.snoozedUntil.present
+          ? data.snoozedUntil.value
+          : this.snoozedUntil,
+      snoozeOriginalFireAt: data.snoozeOriginalFireAt.present
+          ? data.snoozeOriginalFireAt.value
+          : this.snoozeOriginalFireAt,
+      exact: data.exact.present ? data.exact.value : this.exact,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ScheduledNotificationRow(')
+          ..write('key: $key, ')
+          ..write('osId: $osId, ')
+          ..write('taskId: $taskId, ')
+          ..write('kind: $kind, ')
+          ..write('fireAt: $fireAt, ')
+          ..write('title: $title, ')
+          ..write('body: $body, ')
+          ..write('snoozedUntil: $snoozedUntil, ')
+          ..write('snoozeOriginalFireAt: $snoozeOriginalFireAt, ')
+          ..write('exact: $exact')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    key,
+    osId,
+    taskId,
+    kind,
+    fireAt,
+    title,
+    body,
+    snoozedUntil,
+    snoozeOriginalFireAt,
+    exact,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ScheduledNotificationRow &&
+          other.key == this.key &&
+          other.osId == this.osId &&
+          other.taskId == this.taskId &&
+          other.kind == this.kind &&
+          other.fireAt == this.fireAt &&
+          other.title == this.title &&
+          other.body == this.body &&
+          other.snoozedUntil == this.snoozedUntil &&
+          other.snoozeOriginalFireAt == this.snoozeOriginalFireAt &&
+          other.exact == this.exact);
+}
+
+class ScheduledNotificationsCompanion
+    extends UpdateCompanion<ScheduledNotificationRow> {
+  final Value<String> key;
+  final Value<int> osId;
+  final Value<int> taskId;
+  final Value<String> kind;
+  final Value<DateTime> fireAt;
+  final Value<String> title;
+  final Value<String> body;
+  final Value<DateTime?> snoozedUntil;
+  final Value<DateTime?> snoozeOriginalFireAt;
+  final Value<bool> exact;
+  final Value<int> rowid;
+  const ScheduledNotificationsCompanion({
+    this.key = const Value.absent(),
+    this.osId = const Value.absent(),
+    this.taskId = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.fireAt = const Value.absent(),
+    this.title = const Value.absent(),
+    this.body = const Value.absent(),
+    this.snoozedUntil = const Value.absent(),
+    this.snoozeOriginalFireAt = const Value.absent(),
+    this.exact = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ScheduledNotificationsCompanion.insert({
+    required String key,
+    required int osId,
+    required int taskId,
+    required String kind,
+    required DateTime fireAt,
+    required String title,
+    required String body,
+    this.snoozedUntil = const Value.absent(),
+    this.snoozeOriginalFireAt = const Value.absent(),
+    required bool exact,
+    this.rowid = const Value.absent(),
+  }) : key = Value(key),
+       osId = Value(osId),
+       taskId = Value(taskId),
+       kind = Value(kind),
+       fireAt = Value(fireAt),
+       title = Value(title),
+       body = Value(body),
+       exact = Value(exact);
+  static Insertable<ScheduledNotificationRow> custom({
+    Expression<String>? key,
+    Expression<int>? osId,
+    Expression<int>? taskId,
+    Expression<String>? kind,
+    Expression<int>? fireAt,
+    Expression<String>? title,
+    Expression<String>? body,
+    Expression<int>? snoozedUntil,
+    Expression<int>? snoozeOriginalFireAt,
+    Expression<bool>? exact,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (key != null) 'key': key,
+      if (osId != null) 'os_id': osId,
+      if (taskId != null) 'task_id': taskId,
+      if (kind != null) 'kind': kind,
+      if (fireAt != null) 'fire_at': fireAt,
+      if (title != null) 'title': title,
+      if (body != null) 'body': body,
+      if (snoozedUntil != null) 'snoozed_until': snoozedUntil,
+      if (snoozeOriginalFireAt != null)
+        'snooze_original_fire_at': snoozeOriginalFireAt,
+      if (exact != null) 'exact': exact,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ScheduledNotificationsCompanion copyWith({
+    Value<String>? key,
+    Value<int>? osId,
+    Value<int>? taskId,
+    Value<String>? kind,
+    Value<DateTime>? fireAt,
+    Value<String>? title,
+    Value<String>? body,
+    Value<DateTime?>? snoozedUntil,
+    Value<DateTime?>? snoozeOriginalFireAt,
+    Value<bool>? exact,
+    Value<int>? rowid,
+  }) {
+    return ScheduledNotificationsCompanion(
+      key: key ?? this.key,
+      osId: osId ?? this.osId,
+      taskId: taskId ?? this.taskId,
+      kind: kind ?? this.kind,
+      fireAt: fireAt ?? this.fireAt,
+      title: title ?? this.title,
+      body: body ?? this.body,
+      snoozedUntil: snoozedUntil ?? this.snoozedUntil,
+      snoozeOriginalFireAt: snoozeOriginalFireAt ?? this.snoozeOriginalFireAt,
+      exact: exact ?? this.exact,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (key.present) {
+      map['key'] = Variable<String>(key.value);
+    }
+    if (osId.present) {
+      map['os_id'] = Variable<int>(osId.value);
+    }
+    if (taskId.present) {
+      map['task_id'] = Variable<int>(taskId.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (fireAt.present) {
+      map['fire_at'] = Variable<int>(
+        $ScheduledNotificationsTable.$converterfireAt.toSql(fireAt.value),
+      );
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (body.present) {
+      map['body'] = Variable<String>(body.value);
+    }
+    if (snoozedUntil.present) {
+      map['snoozed_until'] = Variable<int>(
+        $ScheduledNotificationsTable.$convertersnoozedUntiln.toSql(
+          snoozedUntil.value,
+        ),
+      );
+    }
+    if (snoozeOriginalFireAt.present) {
+      map['snooze_original_fire_at'] = Variable<int>(
+        $ScheduledNotificationsTable.$convertersnoozeOriginalFireAtn.toSql(
+          snoozeOriginalFireAt.value,
+        ),
+      );
+    }
+    if (exact.present) {
+      map['exact'] = Variable<bool>(exact.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ScheduledNotificationsCompanion(')
+          ..write('key: $key, ')
+          ..write('osId: $osId, ')
+          ..write('taskId: $taskId, ')
+          ..write('kind: $kind, ')
+          ..write('fireAt: $fireAt, ')
+          ..write('title: $title, ')
+          ..write('body: $body, ')
+          ..write('snoozedUntil: $snoozedUntil, ')
+          ..write('snoozeOriginalFireAt: $snoozeOriginalFireAt, ')
+          ..write('exact: $exact, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -5677,6 +6330,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $SyncStateTable syncState = $SyncStateTable(this);
   late final $OutboxTable outbox = $OutboxTable(this);
   late final $TaskIdRemapsTable taskIdRemaps = $TaskIdRemapsTable(this);
+  late final $ScheduledNotificationsTable scheduledNotifications =
+      $ScheduledNotificationsTable(this);
   late final Index projectViewsProject = Index(
     'project_views_project',
     'CREATE INDEX project_views_project ON project_views (project_id)',
@@ -5699,6 +6354,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final TasksDao tasksDao = TasksDao(this as AppDatabase);
   late final SyncStateDao syncStateDao = SyncStateDao(this as AppDatabase);
   late final OutboxDao outboxDao = OutboxDao(this as AppDatabase);
+  late final ScheduledNotificationsDao scheduledNotificationsDao =
+      ScheduledNotificationsDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -5716,6 +6373,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     syncState,
     outbox,
     taskIdRemaps,
+    scheduledNotifications,
     projectViewsProject,
     tasksProject,
     tasksDoneDue,
@@ -10115,6 +10773,341 @@ typedef $$TaskIdRemapsTableProcessedTableManager =
       TaskIdRemapRow,
       PrefetchHooks Function()
     >;
+typedef $$ScheduledNotificationsTableCreateCompanionBuilder =
+    ScheduledNotificationsCompanion Function({
+      required String key,
+      required int osId,
+      required int taskId,
+      required String kind,
+      required DateTime fireAt,
+      required String title,
+      required String body,
+      Value<DateTime?> snoozedUntil,
+      Value<DateTime?> snoozeOriginalFireAt,
+      required bool exact,
+      Value<int> rowid,
+    });
+typedef $$ScheduledNotificationsTableUpdateCompanionBuilder =
+    ScheduledNotificationsCompanion Function({
+      Value<String> key,
+      Value<int> osId,
+      Value<int> taskId,
+      Value<String> kind,
+      Value<DateTime> fireAt,
+      Value<String> title,
+      Value<String> body,
+      Value<DateTime?> snoozedUntil,
+      Value<DateTime?> snoozeOriginalFireAt,
+      Value<bool> exact,
+      Value<int> rowid,
+    });
+
+class $$ScheduledNotificationsTableFilterComposer
+    extends Composer<_$AppDatabase, $ScheduledNotificationsTable> {
+  $$ScheduledNotificationsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get key => $composableBuilder(
+    column: $table.key,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get osId => $composableBuilder(
+    column: $table.osId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get taskId => $composableBuilder(
+    column: $table.taskId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<DateTime, DateTime, int> get fireAt =>
+      $composableBuilder(
+        column: $table.fireAt,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get body => $composableBuilder(
+    column: $table.body,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<DateTime?, DateTime, int> get snoozedUntil =>
+      $composableBuilder(
+        column: $table.snoozedUntil,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnWithTypeConverterFilters<DateTime?, DateTime, int>
+  get snoozeOriginalFireAt => $composableBuilder(
+    column: $table.snoozeOriginalFireAt,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<bool> get exact => $composableBuilder(
+    column: $table.exact,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ScheduledNotificationsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ScheduledNotificationsTable> {
+  $$ScheduledNotificationsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get key => $composableBuilder(
+    column: $table.key,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get osId => $composableBuilder(
+    column: $table.osId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get taskId => $composableBuilder(
+    column: $table.taskId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get fireAt => $composableBuilder(
+    column: $table.fireAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get body => $composableBuilder(
+    column: $table.body,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get snoozedUntil => $composableBuilder(
+    column: $table.snoozedUntil,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get snoozeOriginalFireAt => $composableBuilder(
+    column: $table.snoozeOriginalFireAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get exact => $composableBuilder(
+    column: $table.exact,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ScheduledNotificationsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ScheduledNotificationsTable> {
+  $$ScheduledNotificationsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get key =>
+      $composableBuilder(column: $table.key, builder: (column) => column);
+
+  GeneratedColumn<int> get osId =>
+      $composableBuilder(column: $table.osId, builder: (column) => column);
+
+  GeneratedColumn<int> get taskId =>
+      $composableBuilder(column: $table.taskId, builder: (column) => column);
+
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<DateTime, int> get fireAt =>
+      $composableBuilder(column: $table.fireAt, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get body =>
+      $composableBuilder(column: $table.body, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<DateTime?, int> get snoozedUntil =>
+      $composableBuilder(
+        column: $table.snoozedUntil,
+        builder: (column) => column,
+      );
+
+  GeneratedColumnWithTypeConverter<DateTime?, int> get snoozeOriginalFireAt =>
+      $composableBuilder(
+        column: $table.snoozeOriginalFireAt,
+        builder: (column) => column,
+      );
+
+  GeneratedColumn<bool> get exact =>
+      $composableBuilder(column: $table.exact, builder: (column) => column);
+}
+
+class $$ScheduledNotificationsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ScheduledNotificationsTable,
+          ScheduledNotificationRow,
+          $$ScheduledNotificationsTableFilterComposer,
+          $$ScheduledNotificationsTableOrderingComposer,
+          $$ScheduledNotificationsTableAnnotationComposer,
+          $$ScheduledNotificationsTableCreateCompanionBuilder,
+          $$ScheduledNotificationsTableUpdateCompanionBuilder,
+          (
+            ScheduledNotificationRow,
+            BaseReferences<
+              _$AppDatabase,
+              $ScheduledNotificationsTable,
+              ScheduledNotificationRow
+            >,
+          ),
+          ScheduledNotificationRow,
+          PrefetchHooks Function()
+        > {
+  $$ScheduledNotificationsTableTableManager(
+    _$AppDatabase db,
+    $ScheduledNotificationsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ScheduledNotificationsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$ScheduledNotificationsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$ScheduledNotificationsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> key = const Value.absent(),
+                Value<int> osId = const Value.absent(),
+                Value<int> taskId = const Value.absent(),
+                Value<String> kind = const Value.absent(),
+                Value<DateTime> fireAt = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String> body = const Value.absent(),
+                Value<DateTime?> snoozedUntil = const Value.absent(),
+                Value<DateTime?> snoozeOriginalFireAt = const Value.absent(),
+                Value<bool> exact = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ScheduledNotificationsCompanion(
+                key: key,
+                osId: osId,
+                taskId: taskId,
+                kind: kind,
+                fireAt: fireAt,
+                title: title,
+                body: body,
+                snoozedUntil: snoozedUntil,
+                snoozeOriginalFireAt: snoozeOriginalFireAt,
+                exact: exact,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String key,
+                required int osId,
+                required int taskId,
+                required String kind,
+                required DateTime fireAt,
+                required String title,
+                required String body,
+                Value<DateTime?> snoozedUntil = const Value.absent(),
+                Value<DateTime?> snoozeOriginalFireAt = const Value.absent(),
+                required bool exact,
+                Value<int> rowid = const Value.absent(),
+              }) => ScheduledNotificationsCompanion.insert(
+                key: key,
+                osId: osId,
+                taskId: taskId,
+                kind: kind,
+                fireAt: fireAt,
+                title: title,
+                body: body,
+                snoozedUntil: snoozedUntil,
+                snoozeOriginalFireAt: snoozeOriginalFireAt,
+                exact: exact,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<
+                    $ScheduledNotificationsTable,
+                    ScheduledNotificationRow
+                  >(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $ScheduledNotificationsTable,
+                    ScheduledNotificationRow
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ScheduledNotificationsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ScheduledNotificationsTable,
+      ScheduledNotificationRow,
+      $$ScheduledNotificationsTableFilterComposer,
+      $$ScheduledNotificationsTableOrderingComposer,
+      $$ScheduledNotificationsTableAnnotationComposer,
+      $$ScheduledNotificationsTableCreateCompanionBuilder,
+      $$ScheduledNotificationsTableUpdateCompanionBuilder,
+      (
+        ScheduledNotificationRow,
+        BaseReferences<
+          _$AppDatabase,
+          $ScheduledNotificationsTable,
+          ScheduledNotificationRow
+        >,
+      ),
+      ScheduledNotificationRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -10143,4 +11136,9 @@ class $AppDatabaseManager {
       $$OutboxTableTableManager(_db, _db.outbox);
   $$TaskIdRemapsTableTableManager get taskIdRemaps =>
       $$TaskIdRemapsTableTableManager(_db, _db.taskIdRemaps);
+  $$ScheduledNotificationsTableTableManager get scheduledNotifications =>
+      $$ScheduledNotificationsTableTableManager(
+        _db,
+        _db.scheduledNotifications,
+      );
 }

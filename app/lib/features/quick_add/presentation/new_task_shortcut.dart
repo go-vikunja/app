@@ -33,12 +33,6 @@ class _NewTaskShortcutListenerState
   bool _opening = false;
   Future<void>? _shownSheet;
 
-  static const List<String> _tabs = [
-    AppRoutes.overview,
-    AppRoutes.projects,
-    AppRoutes.account,
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -102,7 +96,7 @@ class _NewTaskShortcutListenerState
     _opening = true;
     ref.read(rootModalRoutesProvider).closeAll();
     // A page over the shell (the edit page) stays; the sheet opens over it.
-    if (_tabs.any(location.startsWith) && location != AppRoutes.overview) {
+    if (AppRoutes.isTab(location) && location != AppRoutes.overview) {
       _router.go(AppRoutes.overview);
     }
     _showAfterFrame();

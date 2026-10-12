@@ -491,6 +491,7 @@ void main() {
     expect(find.text(en.accountSignedOutOf('Alice Example')), findsOneWidget);
     await openTab(tester, en.tabAccount);
     expect(find.text('Bob'), findsOneWidget);
+    await scrollTo(tester, find.text(en.homeSignOut));
     expect(find.text(en.homeSignOut), findsOneWidget);
   });
 

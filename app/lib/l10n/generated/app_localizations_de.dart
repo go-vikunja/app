@@ -1926,4 +1926,135 @@ class AppLocalizationsDe extends AppLocalizations {
   String reminderRelativeToUnset(String date) {
     return '$date (nicht gesetzt)';
   }
+
+  @override
+  String get notificationSetupTitle => 'Behalte deine Aufgaben im Blick';
+
+  @override
+  String get notificationSetupBody =>
+      'Rurana kann dich auf diesem Handy benachrichtigen, ohne dass der Server etwas senden muss:';
+
+  @override
+  String get notificationSetupReminders => 'Erinnerungen zu ihrer Zeit';
+
+  @override
+  String get notificationSetupDueDates => 'Fälligkeiten zur genauen Uhrzeit';
+
+  @override
+  String get notificationSetupOnlyYours =>
+      'Nur für Aufgaben, die du erstellt hast oder die dir zugewiesen sind';
+
+  @override
+  String get notificationSetupTurnOn => 'Benachrichtigungen einschalten';
+
+  @override
+  String get notificationSetupNotNow => 'Jetzt nicht';
+
+  @override
+  String get notificationSetupExactTitle => 'Erinnerungen auf die Minute';
+
+  @override
+  String get notificationSetupExactBody =>
+      'Ohne genaue Alarme zeigt Android Erinnerungen unter Umständen Minuten zu spät. Du kannst sie in den Systemeinstellungen erlauben; die App funktioniert so oder so.';
+
+  @override
+  String get notificationSetupExactAllow => 'Genaue Alarme erlauben';
+
+  @override
+  String get notificationSetupSkip => 'Überspringen';
+
+  @override
+  String get notificationsHeading => 'Benachrichtigungen';
+
+  @override
+  String get notificationsReminders => 'Erinnerungen';
+
+  @override
+  String get notificationsRemindersSubtitle => 'Zum Zeitpunkt jeder Erinnerung';
+
+  @override
+  String get notificationsDueDates => 'Fälligkeiten';
+
+  @override
+  String get notificationsDueDatesSubtitle => 'Zur genauen Fälligkeitszeit';
+
+  @override
+  String get notificationsOff => 'Benachrichtigungen sind aus';
+
+  @override
+  String get notificationsOpenSettings => 'Einstellungen öffnen';
+
+  @override
+  String get notificationsTurnOn => 'Einschalten';
+
+  @override
+  String get notificationsMayBeLate => 'Erinnerungen können sich verspäten';
+
+  @override
+  String get notificationsAllowExactAlarms => 'Genaue Alarme erlauben';
+
+  @override
+  String notificationsScheduled(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count geplant',
+      one: '1 geplant',
+      zero: 'Nichts geplant',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get notificationsSendTest => 'Testbenachrichtigung senden';
+
+  @override
+  String get notificationTestTitle => 'Testbenachrichtigung';
+
+  @override
+  String get notificationTestBody =>
+      'Benachrichtigungen von Rurana funktionieren auf diesem Handy.';
+
+  @override
+  String get notificationTaskGone => 'Diese Aufgabe gibt es nicht mehr';
+
+  @override
+  String get notificationTestReceived => 'Benachrichtigungen funktionieren';
+
+  @override
+  String get notificationChannelReminders => 'Erinnerungen';
+
+  @override
+  String get notificationChannelRemindersDescription =>
+      'Erinnerungen und Fälligkeiten deiner Aufgaben';
+
+  @override
+  String get notificationActionDone => 'Erledigt';
+
+  @override
+  String get notificationActionSnooze10Minutes => '10 Min. später';
+
+  @override
+  String get notificationActionSnooze1Hour => '1 Std. später';
+
+  @override
+  String notificationReminderBody(String project) {
+    return 'Erinnerung · $project';
+  }
+
+  @override
+  String get notificationReminderBodyNoProject => 'Erinnerung';
+
+  @override
+  String notificationDueBody(String project) {
+    return 'Jetzt fällig · $project';
+  }
+
+  @override
+  String get notificationDueBodyNoProject => 'Jetzt fällig';
+
+  @override
+  String notificationBodyWithIdentifier(String body, String identifier) {
+    return '$body · $identifier';
+  }
 }

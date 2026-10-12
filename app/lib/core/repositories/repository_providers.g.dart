@@ -1198,14 +1198,16 @@ final class UserRepositoryProvider
 
 String _$userRepositoryHash() => r'28da8498a99ef2100dbc72f90b776490a8e9c948';
 
-/// The last step of a sign-out: stops the account's outbox sender and sync
-/// engine, closes its database and deletes the files.
+/// The last step of a sign-out: cancels the account's notifications and
+/// forgets their preferences, stops its outbox sender and sync engine,
+/// closes its database and deletes the files.
 
 @ProviderFor(accountDataWiper)
 final accountDataWiperProvider = AccountDataWiperProvider._();
 
-/// The last step of a sign-out: stops the account's outbox sender and sync
-/// engine, closes its database and deletes the files.
+/// The last step of a sign-out: cancels the account's notifications and
+/// forgets their preferences, stops its outbox sender and sync engine,
+/// closes its database and deletes the files.
 
 final class AccountDataWiperProvider
     extends
@@ -1215,8 +1217,9 @@ final class AccountDataWiperProvider
           AccountDataWiper
         >
     with $Provider<AccountDataWiper> {
-  /// The last step of a sign-out: stops the account's outbox sender and sync
-  /// engine, closes its database and deletes the files.
+  /// The last step of a sign-out: cancels the account's notifications and
+  /// forgets their preferences, stops its outbox sender and sync engine,
+  /// closes its database and deletes the files.
   AccountDataWiperProvider._()
     : super(
         from: null,
@@ -1250,4 +1253,4 @@ final class AccountDataWiperProvider
   }
 }
 
-String _$accountDataWiperHash() => r'40bbc19b8947379d445126e13e67edb108e590a9';
+String _$accountDataWiperHash() => r'bab7b3294b9e425b7d80cdd0579effce5882d233';

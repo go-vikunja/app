@@ -1,0 +1,262 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/notifications/notification_actions.dart';
+import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
+import 'package:vikunja_mobile/core/notifications/notification_preferences.dart';
+import 'package:vikunja_mobile/features/home/presentation/account_tab.dart';
+import 'package:vikunja_mobile/features/notifications/presentation/notifications_section.dart';
+
+import '../../helpers/auth_fakes.dart';
+import '../../helpers/notification_ui_fakes.dart';
+import '../../helpers/pump_app.dart';
+import '../../helpers/server_connections.dart';
+
+const granted = NotificationCapabilities(
+  permission: NotificationPermission.granted,
+  exactAlarms: true,
+);
+
+void main() {
+  late AuthFakes auth;
+  late NotificationFakes notifications;
+
+  setUp(() {
+    auth = AuthFakes();
+    notifications = NotificationFakes(scheduledCount: 12);
+  });
+
+  String accountId(WidgetTester tester) =>
+      containerOf(tester).read(accountsProvider).value!.activeAccountId!;
+
+  Future<void> pumpSection(WidgetTester tester) async {
+    await auth.seedAccount(
+      fullServer270(),
+      tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
+    );
+    await pumpVikunjaApp(tester, auth: auth, notifications: notifications);
+    await openTab(tester, en.tabAccount);
+    await tester.scrollUntilVisible(
+      find.byType(NotificationsSection),
+      100,
+      scrollable: find
+          .descendant(
+            of: find.byType(AccountTab),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await tester.pumpAndSettle();
+  }
+
+  Finder switchFor(String title) => find.ancestor(
+    of: find.text(title),
+    matching: find.byType(SwitchListTile),
+  );
+
+  bool switchValue(WidgetTester tester, String title) =>
+      tester.widget<SwitchListTile>(switchFor(title)).value;
+
+  testWidgets('shows both switches on, and how many are scheduled', (
+    tester,
+  ) async {
+    await pumpSection(tester);
+
+    expect(find.text(en.notificationsHeading), findsOneWidget);
+    expect(switchValue(tester, en.notificationsReminders), isTrue);
+    expect(switchValue(tester, en.notificationsDueDates), isTrue);
+    expect(find.text(en.notificationsScheduled(12)), findsOneWidget);
+    expect(find.text(en.notificationsOff), findsNothing);
+    expect(find.text(en.notificationsMayBeLate), findsNothing);
+  });
+
+  testWidgets('a switch writes the account preference', (tester) async {
+    await pumpSection(tester);
+
+    await tester.tap(switchFor(en.notificationsReminders));
+    await tester.pumpAndSettle();
+
+    expect(
+      notifications.preferences.values[accountId(tester)],
+      const NotificationPreferences(reminders: false),
+    );
+    expect(switchValue(tester, en.notificationsReminders), isFalse);
+    expect(switchValue(tester, en.notificationsDueDates), isTrue);
+
+    await tester.tap(switchFor(en.notificationsDueDates));
+    await tester.pumpAndSettle();
+
+    expect(
+      notifications.preferences.values[accountId(tester)],
+      const NotificationPreferences(reminders: false, dueDates: false),
+    );
+  });
+
+  testWidgets('shows the stored preferences', (tester) async {
+    await auth.seedAccount(
+      fullServer270(),
+      tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
+    );
+    final entry = (await auth.registry.load()).activeAccount!;
+    notifications.preferences.values[entry.id] = const NotificationPreferences(
+      dueDates: false,
+    );
+    await pumpSection(tester);
+
+    expect(switchValue(tester, en.notificationsReminders), isTrue);
+    expect(switchValue(tester, en.notificationsDueDates), isFalse);
+  });
+
+  testWidgets('nothing scheduled', (tester) async {
+    notifications.scheduledCount = 0;
+    await pumpSection(tester);
+
+    expect(find.text(en.notificationsScheduled(0)), findsOneWidget);
+  });
+
+  testWidgets('denied at the OS level: off, with the settings', (tester) async {
+    notifications.gateway.current = const NotificationCapabilities(
+      permission: NotificationPermission.denied,
+      exactAlarms: false,
+    );
+    await pumpSection(tester);
+
+    expect(find.text(en.notificationsOff), findsOneWidget);
+    expect(find.text(en.notificationsMayBeLate), findsNothing);
+
+    await tester.tap(find.text(en.notificationsOpenSettings));
+    await tester.pumpAndSettle();
+    expect(notifications.calls('openNotificationSettings'), 1);
+
+    final testButton = tester.widget<TextButton>(
+      find.ancestor(
+        of: find.text(en.notificationsSendTest),
+        matching: find.byType(TextButton),
+      ),
+    );
+    expect(testButton.onPressed, isNull);
+  });
+
+  testWidgets('never asked: off, with a request', (tester) async {
+    notifications.gateway.current = const NotificationCapabilities(
+      permission: NotificationPermission.notAsked,
+      exactAlarms: false,
+    );
+    notifications.answerRequestWith(granted);
+    await pumpSection(tester);
+
+    expect(find.text(en.notificationsOff), findsOneWidget);
+
+    await tester.tap(find.text(en.notificationsTurnOn));
+    await tester.pumpAndSettle();
+
+    expect(notifications.calls('requestPermission'), 1);
+    expect(find.text(en.notificationsOff), findsNothing);
+  });
+
+  testWidgets('without exact alarms: may be late, with the setting', (
+    tester,
+  ) async {
+    notifications.gateway.current = const NotificationCapabilities(
+      permission: NotificationPermission.granted,
+      exactAlarms: false,
+    );
+    await pumpSection(tester);
+
+    expect(find.text(en.notificationsMayBeLate), findsOneWidget);
+    expect(find.text(en.notificationsOff), findsNothing);
+
+    await tester.tap(find.text(en.notificationsAllowExactAlarms));
+    await tester.pumpAndSettle();
+    expect(notifications.calls('openExactAlarmSettings'), 1);
+  });
+
+  testWidgets('re-reads what the OS allows when the app resumes', (
+    tester,
+  ) async {
+    notifications.gateway.current = const NotificationCapabilities(
+      permission: NotificationPermission.denied,
+      exactAlarms: false,
+    );
+    await pumpSection(tester);
+    expect(find.text(en.notificationsOff), findsOneWidget);
+
+    notifications.gateway.current = granted;
+    [
+      AppLifecycleState.inactive,
+      AppLifecycleState.hidden,
+      AppLifecycleState.paused,
+      AppLifecycleState.hidden,
+      AppLifecycleState.inactive,
+      AppLifecycleState.resumed,
+    ].forEach(tester.binding.handleAppLifecycleStateChanged);
+    await tester.pumpAndSettle();
+
+    expect(find.text(en.notificationsOff), findsNothing);
+  });
+
+  testWidgets('a read that fails on resume keeps the previous answer', (
+    tester,
+  ) async {
+    await pumpSection(tester);
+    expect(find.text(en.notificationsOff), findsNothing);
+    notifications.gateway.beforeCall = (call) async {
+      if (call == 'capabilities') throw StateError('channel');
+    };
+
+    [
+      AppLifecycleState.inactive,
+      AppLifecycleState.hidden,
+      AppLifecycleState.paused,
+      AppLifecycleState.hidden,
+      AppLifecycleState.inactive,
+      AppLifecycleState.resumed,
+    ].forEach(tester.binding.handleAppLifecycleStateChanged);
+    await tester.pumpAndSettle();
+
+    expect(find.text(en.notificationsOff), findsNothing);
+    expect(find.text(en.notificationsScheduled(12)), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('sends a test notification for this account', (tester) async {
+    await pumpSection(tester);
+
+    await tester.tap(find.text(en.notificationsSendTest));
+    await tester.pumpAndSettle();
+
+    expect(notifications.gateway.shown, hasLength(1));
+    final shown = notifications.gateway.shown.single;
+    expect(shown.osId, testNotificationOsId);
+    expect(shown.title, en.notificationTestTitle);
+    expect(shown.body, en.notificationTestBody);
+    final payload = NotificationPayload.fromJson(shown.payload);
+    expect(payload.accountId, accountId(tester));
+    expect(payload.taskId, testNotificationTaskId);
+  });
+
+  testWidgets('in German', (tester) async {
+    useLocale(tester, const Locale('de'));
+    await auth.seedAccount(
+      fullServer270(),
+      tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
+    );
+    await pumpVikunjaApp(tester, auth: auth, notifications: notifications);
+    await openTab(tester, de.tabAccount);
+    await tester.scrollUntilVisible(
+      find.byType(NotificationsSection),
+      100,
+      scrollable: find
+          .descendant(
+            of: find.byType(AccountTab),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text(de.notificationsHeading), findsOneWidget);
+    expect(find.text(de.notificationsReminders), findsOneWidget);
+    expect(find.text(de.notificationsScheduled(12)), findsOneWidget);
+  });
+}

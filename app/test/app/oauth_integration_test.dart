@@ -17,11 +17,13 @@ import 'package:vikunja_mobile/core/links/external_link_opener.dart';
 import 'package:vikunja_mobile/core/network/dio_factory.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
 import 'package:vikunja_mobile/features/home/presentation/home_shell.dart';
+import 'package:vikunja_mobile/features/notifications/application/notifications_onboarding.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_server_screen.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/overview/server_overview_screen.dart';
 
 import '../helpers/auth_fakes.dart';
 import '../helpers/fakes.dart';
+import '../helpers/notification_ui_fakes.dart';
 import '../helpers/pump_app.dart';
 import '../helpers/sync_fakes.dart';
 
@@ -326,7 +328,9 @@ void main() {
     (tester) async {
       usePhoneSurface(tester, logicalSize: const Size(400, 1600));
       final secureStore = MemorySecureStore();
-      final preferences = MemoryPreferencesStore();
+      // The notification setup is not this test's story either.
+      final preferences = MemoryPreferencesStore()
+        ..values[notificationsOnboardedKey] = 'true';
       final accountId = accountIdFor(_root, _userId);
       final refreshTokenKey = 'account.$accountId.refresh_token';
       final accessTokenKey = 'account.$accountId.access_token';
@@ -356,6 +360,7 @@ void main() {
               ),
               // The task screens are not this test's story.
               ...SyncFakes().overrides,
+              ...NotificationFakes().overrides,
             ],
             child: const VikunjaApp(),
           ),

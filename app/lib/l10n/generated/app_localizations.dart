@@ -2875,6 +2875,228 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{date} (not set)'**
   String reminderRelativeToUnset(String date);
+
+  /// No description provided for @notificationSetupTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Stay on top of your tasks'**
+  String get notificationSetupTitle;
+
+  /// No description provided for @notificationSetupBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Rurana can notify you on this phone, without the server having to send anything:'**
+  String get notificationSetupBody;
+
+  /// No description provided for @notificationSetupReminders.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminders at their time'**
+  String get notificationSetupReminders;
+
+  /// No description provided for @notificationSetupDueDates.
+  ///
+  /// In en, this message translates to:
+  /// **'Due dates at the exact time'**
+  String get notificationSetupDueDates;
+
+  /// No description provided for @notificationSetupOnlyYours.
+  ///
+  /// In en, this message translates to:
+  /// **'Only for tasks you created or are assigned to'**
+  String get notificationSetupOnlyYours;
+
+  /// No description provided for @notificationSetupTurnOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on notifications'**
+  String get notificationSetupTurnOn;
+
+  /// No description provided for @notificationSetupNotNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get notificationSetupNotNow;
+
+  /// No description provided for @notificationSetupExactTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminders right on time'**
+  String get notificationSetupExactTitle;
+
+  /// No description provided for @notificationSetupExactBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Without exact alarms, Android may show reminders minutes late. You can allow them in the system settings; the app works either way.'**
+  String get notificationSetupExactBody;
+
+  /// No description provided for @notificationSetupExactAllow.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow exact alarms'**
+  String get notificationSetupExactAllow;
+
+  /// No description provided for @notificationSetupSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get notificationSetupSkip;
+
+  /// No description provided for @notificationsHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get notificationsHeading;
+
+  /// No description provided for @notificationsReminders.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminders'**
+  String get notificationsReminders;
+
+  /// No description provided for @notificationsRemindersSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'At the time of each reminder'**
+  String get notificationsRemindersSubtitle;
+
+  /// No description provided for @notificationsDueDates.
+  ///
+  /// In en, this message translates to:
+  /// **'Due dates'**
+  String get notificationsDueDates;
+
+  /// No description provided for @notificationsDueDatesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'At the exact due time'**
+  String get notificationsDueDatesSubtitle;
+
+  /// No description provided for @notificationsOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications are off'**
+  String get notificationsOff;
+
+  /// No description provided for @notificationsOpenSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open settings'**
+  String get notificationsOpenSettings;
+
+  /// No description provided for @notificationsTurnOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on'**
+  String get notificationsTurnOn;
+
+  /// No description provided for @notificationsMayBeLate.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminders may be late'**
+  String get notificationsMayBeLate;
+
+  /// No description provided for @notificationsAllowExactAlarms.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow exact alarms'**
+  String get notificationsAllowExactAlarms;
+
+  /// How many notifications the OS holds for this account.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{Nothing scheduled} =1{1 scheduled} other{{count} scheduled}}'**
+  String notificationsScheduled(int count);
+
+  /// No description provided for @notificationsSendTest.
+  ///
+  /// In en, this message translates to:
+  /// **'Send a test notification'**
+  String get notificationsSendTest;
+
+  /// No description provided for @notificationTestTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Test notification'**
+  String get notificationTestTitle;
+
+  /// No description provided for @notificationTestBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications from Rurana work on this phone.'**
+  String get notificationTestBody;
+
+  /// No description provided for @notificationTaskGone.
+  ///
+  /// In en, this message translates to:
+  /// **'This task is gone'**
+  String get notificationTaskGone;
+
+  /// Snackbar after tapping the test notification while the Account tab, which sent it, is already open.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications work'**
+  String get notificationTestReceived;
+
+  /// Name of the Android notification channel for task reminders and due dates.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminders'**
+  String get notificationChannelReminders;
+
+  /// No description provided for @notificationChannelRemindersDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminders and due dates of your tasks'**
+  String get notificationChannelRemindersDescription;
+
+  /// Notification action that marks the task done.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get notificationActionDone;
+
+  /// No description provided for @notificationActionSnooze10Minutes.
+  ///
+  /// In en, this message translates to:
+  /// **'Snooze 10 min'**
+  String get notificationActionSnooze10Minutes;
+
+  /// No description provided for @notificationActionSnooze1Hour.
+  ///
+  /// In en, this message translates to:
+  /// **'Snooze 1 h'**
+  String get notificationActionSnooze1Hour;
+
+  /// Body of a reminder notification; the title is the task's title.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminder · {project}'**
+  String notificationReminderBody(String project);
+
+  /// No description provided for @notificationReminderBodyNoProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminder'**
+  String get notificationReminderBodyNoProject;
+
+  /// Body of a due-date notification, shown at the due time.
+  ///
+  /// In en, this message translates to:
+  /// **'Due now · {project}'**
+  String notificationDueBody(String project);
+
+  /// No description provided for @notificationDueBodyNoProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Due now'**
+  String get notificationDueBodyNoProject;
+
+  /// A notification body followed by the task's identifier, when its project has a prefix.
+  ///
+  /// In en, this message translates to:
+  /// **'{body} · {identifier}'**
+  String notificationBodyWithIdentifier(String body, String identifier);
 }
 
 class _AppLocalizationsDelegate

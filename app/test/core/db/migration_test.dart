@@ -123,4 +123,62 @@ void main() {
     expect((await db.tasksDao.find(50))!.title, 'Created after the upgrade');
     expect(await db.outboxDao.count(), 1);
   });
+
+  test('v3 → v4 keeps the tasks with their reminders and remaps and adds '
+      'the scheduled notifications', () async {
+    final verifier = SchemaVerifier(GeneratedHelper());
+    final schema = await verifier.schemaAt(3);
+    schema.rawDatabase
+      ..execute(
+        'INSERT INTO tasks (id, project_id, title, description, done, done_at, '
+        'due_date, start_date, end_date, priority, percent_done, hex_color, '
+        'identifier, "index", is_favorite, position, repeat_after, '
+        'repeat_mode, bucket_id, created_by_id, created, updated, '
+        'sync_run_id, pending_changes, pending_delete) '
+        "VALUES (50, 7, 'Remind me', '', 0, NULL, 1760000000000, NULL, NULL, "
+        "0, 0.0, '', '-1', 1, 0, 0.0, 0, 0, 0, NULL, NULL, 1759000000000, "
+        "'run-1', NULL, 0)",
+      )
+      ..execute(
+        'INSERT INTO task_reminders (task_id, ordinal, reminder, '
+        'relative_period, relative_to) '
+        'VALUES (50, 0, 1759990000000, 0, NULL), '
+        "(50, 1, 1759996400000, -3600, 'due_date')",
+      )
+      ..execute(
+        'INSERT INTO task_id_remaps (local_id, server_id, at) '
+        'VALUES (-1, 50, 1759500000000)',
+      );
+    final db = AppDatabase(schema.newConnection());
+    addTearDown(db.close);
+
+    await verifier.migrateAndValidate(db, 4);
+
+    final task = (await db.tasksDao.find(50))!;
+    expect(task.title, 'Remind me');
+    expect(task.reminders, [
+      TaskReminder(reminder: DateTime.utc(2025, 10, 9, 6, 6, 40)),
+      TaskReminder(
+        reminder: DateTime.utc(2025, 10, 9, 7, 53, 20),
+        relativePeriod: const Duration(hours: -1),
+        relativeTo: ReminderRelativeTo.dueDate,
+      ),
+    ]);
+    expect(await db.tasksDao.resolveId(-1), 50);
+    expect(await db.scheduledNotificationsDao.all(), isEmpty);
+    await db.scheduledNotificationsDao.replaceAll([
+      ScheduledNotificationRow(
+        key: '50:reminder:0',
+        osId: 1234,
+        taskId: 50,
+        kind: 'reminder',
+        fireAt: DateTime.utc(2025, 10, 9, 6, 6, 40),
+        title: 'Remind me',
+        body: 'Reminder',
+        exact: false,
+      ),
+    ]);
+    expect(await db.scheduledNotificationsDao.osIds(), {1234});
+    expect((await db.scheduledNotificationsDao.all()).single.exact, isFalse);
+  });
 }

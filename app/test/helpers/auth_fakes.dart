@@ -13,6 +13,7 @@ import 'package:vikunja_mobile/core/auth/token_store.dart';
 import 'package:vikunja_mobile/core/auth/web_authenticator.dart';
 import 'package:vikunja_mobile/core/storage/preferences_store.dart';
 import 'package:vikunja_mobile/core/storage/secure_store.dart';
+import 'package:vikunja_mobile/features/notifications/application/notifications_onboarding.dart';
 
 final class MemorySecureStore implements SecureStore {
   final Map<String, String> values = {};
@@ -217,6 +218,14 @@ WebAuthenticationHandler completingSignIn({String code = 'auth-code'}) =>
 
 /// Fakes for everything sign-in touches, with the providers to override.
 final class AuthFakes {
+  /// The notification setup has been shown on this device unless a test
+  /// says otherwise, so the signed-in app opens on the shell.
+  new({bool notificationsOnboarded = true}) {
+    if (notificationsOnboarded) {
+      preferences.values[notificationsOnboardedKey] = 'true';
+    }
+  }
+
   final secureStore = MemorySecureStore();
   final preferences = MemoryPreferencesStore();
   final webAuthenticator = FakeWebAuthenticator();

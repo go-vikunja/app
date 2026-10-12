@@ -11,6 +11,7 @@ import 'package:vikunja_mobile/core/sync/sync_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/home/presentation/home_shell.dart';
 import 'package:vikunja_mobile/features/home/presentation/reauth_banner.dart';
+import 'package:vikunja_mobile/features/notifications/application/notifications_onboarding.dart';
 import 'package:vikunja_mobile/features/onboarding/application/current_server.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_server_screen.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/overview/server_overview_screen.dart';
@@ -28,6 +29,27 @@ void main() {
 
   String location(WidgetTester tester) =>
       routerOf(tester).routerDelegate.currentConfiguration.uri.toString();
+
+  test('a tab is matched on a path segment, so the pages over the shell '
+      'are not tabs', () {
+    for (final location in [
+      AppRoutes.overview,
+      AppRoutes.projects,
+      AppRoutes.project(1),
+      AppRoutes.account,
+    ]) {
+      expect(AppRoutes.isTab(location), isTrue, reason: location);
+    }
+    for (final location in [
+      AppRoutes.home,
+      AppRoutes.taskEdit(7),
+      AppRoutes.addAccount,
+      AppRoutes.addAccountServer,
+      AppRoutes.connect,
+    ]) {
+      expect(AppRoutes.isTab(location), isFalse, reason: location);
+    }
+  });
 
   testWidgets('starts on the connect screen', (tester) async {
     await pumpVikunjaApp(tester);
@@ -165,6 +187,7 @@ void main() {
           final accounts = await container.read(accountsProvider.future);
           if (accounts.activeAccount case final entry?) {
             await firstSyncStatus(container, entry.id);
+            await container.read(notificationsOnboardingProvider.future);
           }
 
           await tester.pumpWidget(
@@ -210,6 +233,18 @@ void main() {
     expect(location(tester), AppRoutes.connect);
     expect(find.byType(HomeShell), findsNothing);
   });
+
+  testWidgets(
+    'the notification setup redirects to connect without an account',
+    (tester) async {
+      await pumpVikunjaApp(tester);
+
+      routerOf(tester).go(AppRoutes.notificationsSetup);
+      await tester.pumpAndSettle();
+
+      expect(location(tester), AppRoutes.connect);
+    },
+  );
 
   testWidgets('signed in, the connect screen stays reachable', (tester) async {
     final auth = AuthFakes();

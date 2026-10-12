@@ -96,6 +96,21 @@ void main() {
     expect(find.byType(TaskEditPage), findsOneWidget);
   });
 
+  testWidgets('opens over the add-account screen without leaving it', (
+    tester,
+  ) async {
+    await harness.pumpApp(tester);
+    unawaited(routerOf(tester).push(AppRoutes.addAccount));
+    await tester.pumpAndSettle();
+
+    harness.shortcuts.trigger(newTaskShortcutType);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(NewTaskSheet), findsOneWidget);
+    expect(location(tester), AppRoutes.addAccount);
+    expect(find.byType(ConnectServerScreen), findsOneWidget);
+  });
+
   testWidgets('other shortcut types are ignored', (tester) async {
     await harness.pumpApp(tester);
 

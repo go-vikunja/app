@@ -13,6 +13,7 @@ import 'package:vikunja_mobile/features/onboarding/application/current_server.da
 
 import 'auth_fakes.dart';
 import 'fakes.dart';
+import 'notification_ui_fakes.dart';
 import 'server_connections.dart';
 import 'sync_fakes.dart';
 
@@ -44,12 +45,14 @@ void useAccessibilityExtremes(WidgetTester tester) {
 ProviderContainer containerOf(WidgetTester tester) =>
     ProviderScope.containerOf(tester.element(find.byType(VikunjaApp)));
 
-/// Everything below the screens is faked; no network and no database.
+/// Everything below the screens is faked; no network, no database and no
+/// notification plugin.
 List<Override> appOverrides({
   FakeServerConnector? connector,
   FakeExternalLinkOpener? linkOpener,
   AuthFakes? auth,
   SyncFakes? sync,
+  NotificationFakes? notifications,
 }) => [
   serverConnectorProvider.overrideWithValue(connector ?? FakeServerConnector()),
   externalLinkOpenerProvider.overrideWithValue(
@@ -57,6 +60,7 @@ List<Override> appOverrides({
   ),
   ...(auth ?? AuthFakes()).overrides,
   ...(sync ?? SyncFakes()).overrides,
+  ...(notifications ?? NotificationFakes()).overrides,
 ];
 
 /// With [settle] false the first screen is only pumped a few frames: for a
@@ -67,6 +71,7 @@ Future<void> pumpVikunjaApp(
   FakeExternalLinkOpener? linkOpener,
   AuthFakes? auth,
   SyncFakes? sync,
+  NotificationFakes? notifications,
   List<Override> overrides = const [],
   bool settle = true,
 }) async {
@@ -78,6 +83,7 @@ Future<void> pumpVikunjaApp(
           linkOpener: linkOpener,
           auth: auth,
           sync: sync,
+          notifications: notifications,
         ),
         ...overrides,
       ],
@@ -131,6 +137,7 @@ Future<AuthFakes> pumpSignedInApp(
   WidgetTester tester, {
   SyncFakes? sync,
   AuthFakes? auth,
+  NotificationFakes? notifications,
   DateTime? now,
   List<Override> overrides = const [],
   bool settle = true,
@@ -144,6 +151,7 @@ Future<AuthFakes> pumpSignedInApp(
     tester,
     auth: fakes,
     sync: sync ?? SyncFakes(now: now),
+    notifications: notifications,
     overrides: [
       if (now != null) clockProvider.overrideWithValue(() => now),
       ...overrides,

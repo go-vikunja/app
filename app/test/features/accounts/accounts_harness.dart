@@ -11,6 +11,7 @@ import 'package:vikunja_mobile/features/accounts/presentation/account_switcher_s
 import '../../helpers/auth_fakes.dart';
 import '../../helpers/fakes.dart';
 import '../../helpers/label_user_fakes.dart';
+import '../../helpers/notification_ui_fakes.dart';
 import '../../helpers/pump_app.dart';
 import '../../helpers/server_connections.dart';
 import '../../helpers/sync_fakes.dart';
@@ -70,6 +71,7 @@ final class ThreeAccounts {
   Future<void> pump(
     WidgetTester tester, {
     FakeServerConnector? connector,
+    NotificationFakes? notifications,
     List<Override> overrides = const [],
     bool settle = true,
   }) => pumpVikunjaApp(
@@ -77,6 +79,7 @@ final class ThreeAccounts {
     auth: auth,
     sync: data,
     connector: connector,
+    notifications: notifications,
     settle: settle,
     overrides: [
       clockProvider.overrideWithValue(() => now),

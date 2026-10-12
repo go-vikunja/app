@@ -10,6 +10,8 @@ import 'package:vikunja_mobile/core/sync/sync_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/home/presentation/account_tab.dart';
 import 'package:vikunja_mobile/features/home/presentation/home_shell.dart';
+import 'package:vikunja_mobile/features/notifications/application/notifications_onboarding.dart';
+import 'package:vikunja_mobile/features/notifications/presentation/notification_setup_screen.dart';
 import 'package:vikunja_mobile/features/onboarding/application/current_server.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_server_screen.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/overview/server_overview_screen.dart';
@@ -30,6 +32,9 @@ abstract final class AppRoutes {
   /// The full pull after sign-in, before [home] can show.
   static const firstSync = '/sync';
 
+  /// The notification permissions, once per device after the first sync.
+  static const notificationsSetup = '/notifications-setup';
+
   /// The signed-in shell; it opens on [overview].
   static const home = '/home';
   static const overview = '/home/overview';
@@ -45,6 +50,13 @@ abstract final class AppRoutes {
   /// signing in to another account; pushed, so back returns to the shell.
   static const addAccount = '$home/accounts/add';
   static const addAccountServer = '$addAccount/server';
+
+  static const List<String> _tabs = [overview, projects, account];
+
+  /// Whether [location] is inside one of the shell's tabs rather than a
+  /// page over the shell; `/home/accounts/add` is not the Account tab.
+  static bool isTab(String location) =>
+      _tabs.any((tab) => location == tab || location.startsWith('$tab/'));
 }
 
 /// Observes the root navigator, whose dialogs and sheets an account switch
@@ -59,26 +71,38 @@ GoRouter appRouter(Ref ref) {
   // itself, because a listener notified before these may already route.
   final accounts = ValueNotifier(ref.read(accountsProvider));
   final syncStatus = ValueNotifier(ref.read(syncStatusProvider));
+  final onboarded = ValueNotifier(ref.read(notificationsOnboardingProvider));
   ref
     ..listen(currentServerProvider, (_, next) => currentServer.value = next)
     ..listen(accountsProvider, (_, next) => accounts.value = next)
     ..listen(syncStatusProvider, (_, next) => syncStatus.value = next)
+    ..listen(
+      notificationsOnboardingProvider,
+      (_, next) => onboarded.value = next,
+    )
     ..onDispose(currentServer.dispose)
     ..onDispose(accounts.dispose)
-    ..onDispose(syncStatus.dispose);
+    ..onDispose(syncStatus.dispose)
+    ..onDispose(onboarded.dispose);
 
   final rootNavigatorKey = GlobalKey<NavigatorState>();
   final router = GoRouter(
     navigatorKey: rootNavigatorKey,
     initialLocation: AppRoutes.splash,
     observers: [ref.watch(rootModalRoutesProvider)],
-    refreshListenable: Listenable.merge([currentServer, accounts, syncStatus]),
+    refreshListenable: Listenable.merge([
+      currentServer,
+      accounts,
+      syncStatus,
+      onboarded,
+    ]),
     redirect: (context, state) {
       final registry = ref.read(accountsProvider);
       return _redirect(
         location: state.matchedLocation,
         accounts: registry,
         syncStatus: _syncStatusOfActive(ref, registry),
+        notificationsOnboarded: onboarded.value,
         hasServer: currentServer.value != null,
       );
     },
@@ -109,6 +133,10 @@ GoRouter appRouter(Ref ref) {
           restorationId: state.pageKey.value,
           child: const FirstSyncScreen(),
         ),
+      ),
+      GoRoute(
+        path: AppRoutes.notificationsSetup,
+        builder: (context, state) => const NotificationSetupScreen(),
       ),
       GoRoute(
         path: AppRoutes.home,
@@ -198,31 +226,52 @@ AsyncValue<SyncStatus> _syncStatusOfActive(
   null => const AsyncLoading(),
 };
 
-/// The account registry and the sync state are local, so the start screen
-/// never waits for the network. Signed in, the shell waits for the account's
-/// first full sync (and for its engine to report at all).
+/// The account registry, the sync state and the onboarding flag are local,
+/// so the start screen never waits for the network. Signed in, the shell
+/// waits for the account's first full sync (and for its engine to report
+/// at all), then for the notification setup, once per device; the splash
+/// holds until the flag is read, which bootstrap does before the first
+/// frame.
 String? _redirect({
   required String location,
   required AsyncValue<AccountRegistryState> accounts,
   required AsyncValue<SyncStatus> syncStatus,
+  required AsyncValue<bool> notificationsOnboarded,
   required bool hasServer,
 }) {
   if (accounts case AsyncLoading(hasValue: false)) return AppRoutes.splash;
   final signedIn = accounts.value?.activeAccount != null;
   if (!signedIn) {
     return switch (location) {
-      AppRoutes.splash || AppRoutes.firstSync => AppRoutes.connect,
+      AppRoutes.splash ||
+      AppRoutes.firstSync ||
+      AppRoutes.notificationsSetup => AppRoutes.connect,
       _ when location.startsWith(AppRoutes.home) => AppRoutes.connect,
       AppRoutes.serverOverview when !hasServer => AppRoutes.connect,
       _ => null,
     };
   }
   final synced = !needsFirstSync(syncStatus.value);
+  // An unreadable flag counts as onboarded: a setup screen the user cannot
+  // leave would be worse than none.
+  final onboarded = notificationsOnboarded.hasError
+      ? true
+      : notificationsOnboarded.value;
   return switch (location) {
-    AppRoutes.splash => synced ? AppRoutes.overview : AppRoutes.firstSync,
-    AppRoutes.firstSync when synced => AppRoutes.overview,
+    AppRoutes.splash when !synced => AppRoutes.firstSync,
+    AppRoutes.splash => switch (onboarded) {
+      null => null,
+      false => AppRoutes.notificationsSetup,
+      true => AppRoutes.overview,
+    },
+    AppRoutes.firstSync when synced =>
+      onboarded == false ? AppRoutes.notificationsSetup : AppRoutes.overview,
+    AppRoutes.notificationsSetup when !synced => AppRoutes.firstSync,
+    AppRoutes.notificationsSetup when onboarded ?? true => AppRoutes.overview,
     _ when location.startsWith(AppRoutes.home) && !synced =>
       AppRoutes.firstSync,
+    _ when location.startsWith(AppRoutes.home) && onboarded == false =>
+      AppRoutes.notificationsSetup,
     AppRoutes.serverOverview when !hasServer => AppRoutes.connect,
     _ => null,
   };

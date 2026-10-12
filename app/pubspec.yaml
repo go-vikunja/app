@@ -16,6 +16,7 @@ dependencies:
   drift_flutter: ^0.3.1
   flutter:
     sdk: flutter
+  flutter_local_notifications: ^22.3.2
   flutter_localizations:
     sdk: flutter
   flutter_riverpod: ^3.4.3
@@ -33,6 +34,7 @@ dependencies:
   riverpod_annotation: ^4.0.7
   shared_preferences: ^2.5.6
   sqlite3: ^3.7.0
+  timezone: ^0.11.2
   url_launcher: ^6.3.3
   vikunja_api:
     path: ../packages/vikunja_api

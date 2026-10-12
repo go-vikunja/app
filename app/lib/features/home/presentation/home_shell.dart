@@ -8,6 +8,7 @@ import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/widgets/adaptive_navigation_bar.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/notifications/notification_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/features/session/application/session_check.dart';
 import 'package:vikunja_mobile/features/session/application/sign_in_controller.dart';
@@ -19,8 +20,8 @@ import 'package:vikunja_mobile/features/sync/application/startup_sync.dart';
 /// The signed-in app: the tab bar around the Overview, Projects and Account
 /// branches, the session check when the app opens or resumes, the quiet
 /// sync when it opens, the scheduler that keeps syncing while it is in
-/// front, the other accounts' outboxes, and the switch from one account to
-/// another.
+/// front, the other accounts' outboxes, the notification schedulers of
+/// every signed-in account, and the switch from one account to another.
 class HomeShell extends ConsumerStatefulWidget {
   const new({required this.navigationShell, super.key});
 
@@ -124,7 +125,8 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       // A provider nobody listens to is paused; these run while the shell
       // is up.
       ..listen(foregroundSyncSchedulerProvider, (_, _) {})
-      ..listen(inactiveOutboxesProvider, (_, _) {});
+      ..listen(inactiveOutboxesProvider, (_, _) {})
+      ..listen(accountNotificationSchedulersProvider, (_, _) {});
     final signedIn = ref.watch(
       accountsProvider.select(
         (accounts) => accounts.value?.activeAccount != null,

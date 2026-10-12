@@ -20,6 +20,7 @@ import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_
 
 import '../helpers/auth_fakes.dart';
 import '../helpers/fakes.dart';
+import '../helpers/notification_ui_fakes.dart';
 import '../helpers/pump_app.dart';
 import '../helpers/sync_fakes.dart';
 
@@ -138,6 +139,7 @@ void main() {
             preferencesStoreProvider.overrideWithValue(auth.preferences),
             webAuthenticatorProvider.overrideWithValue(auth.webAuthenticator),
             ...sync.overrides,
+            ...NotificationFakes().overrides,
           ],
           child: const VikunjaApp(),
         ),

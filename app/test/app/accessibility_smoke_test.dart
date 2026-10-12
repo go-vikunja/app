@@ -561,8 +561,20 @@ void main() {
       await pumpSignedInApp(tester, sync: data);
       await openTab(tester, l10n.tabAccount);
 
-      await scrollToEnd(tester, find.byType(ListView));
+      // The list builds lazily: the sync section is gone from the tree once
+      // the sections below it fill the screen.
+      await tester.scrollUntilVisible(
+        find.text(l10n.accountSyncFailed),
+        100,
+        scrollable: find
+            .descendant(
+              of: find.byType(ListView),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
       expect(find.text(l10n.accountSyncFailed), findsOneWidget);
+      await scrollToEnd(tester, find.byType(ListView));
       expect(tester.takeException(), isNull);
     });
 
