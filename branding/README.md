@@ -2,9 +2,9 @@
 
 Name and logo of **Rurana**, an unofficial Vikunja mobile client. Its `applicationId` and bundle id are `dev.coderoftime.vikunja`.
 
-Chosen by the owner on 2026-10-09 from the round-2 candidates in [`explorations-v2/`](explorations-v2/README.md) (logo C, "checkbox ears") and the name shortlist in [`explorations-v2/names.md`](explorations-v2/names.md).
+The name was chosen by the owner on 2026-10-09 from the shortlist in [`explorations-v2/names.md`](explorations-v2/names.md). The logo is the illustrated llama with a check badge the owner chose on 2026-10-13 ([D42](../docs/decisions.md#d42-app-icon-the-illustrated-llama-with-a-check-badge-adaptive-themed-and-ios-18-variants-derived-by-script)); it replaced the "checkbox ears" icon of 2026-10-09, whose sources stay in [`explorations-v2/checkbox-ears/final/`](explorations-v2/checkbox-ears/final/).
 
-![Preview: iOS squircle, Android circle, rounded square and squircle masks, themed icon, at 256, 96 and 48 px; logo mark on light and dark](png/preview-sheet.png)
+![Preview: iOS light, dark and tinted; Android circle, squircle and teardrop masks; the themed icon in light and dark; 96 and 48 px; the status bar icon at 48 and 24 px; the in-app logo](png/preview-sheet.png)
 
 ## Name: Rurana
 
@@ -22,67 +22,62 @@ Rejected names and the reasons are in [`explorations-v2/names.md`](explorations-
 
 **No formal trademark search was done** (EUIPO, DPMA, USPTO). Do one before the first store release.
 
-## Logo: checkbox ears
+## Logo: llama with a check badge
 
-The llama's head is a rounded checkbox with a bold check, crowned by an apricot wool tuft and two tall banana-shaped ears: a llama for Vikunja and a checkbox for tasks.
+A white, front-facing llama bust with tall ears on a blue-to-teal gradient, and an orange check badge on the lower right: a camelid for Vikunja and a done task for a to-do app.
 
-- **Blind test** (three viewers each, no context; details in [`explorations-v2/README.md`](explorations-v2/README.md)): read as a llama/alpaca by 3 of 3, legible at 48 px by 3 of 3. Named risks: at a glance some see a bunny (long ears) or a sheep (wool tuft).
-- **Why this one** among the four finalists: the most distinctive, says "to-do app" immediately, and is the furthest from the Ollama logo and generic front-facing llama heads.
-- **Distinct from Vikunja's artwork:** a checkbox-shaped head instead of an illustrated face with a neck, flat geometric shapes, a gradient squircle instead of a flat circle. The lean comes from the camelid and the blue family.
-- The round-1 "check-llama" was rejected because it read as a serpent (Dratini); it is kept in [`explorations-v1/`](explorations-v1/).
+- **Source:** [`source/logo-llama.jpg`](source/logo-llama.jpg), a 2000 × 2000 px raster illustration supplied by the owner. There is no vector source; every other asset is derived from it by [`build-icons.sh`](build-icons.sh).
+- **Derived layers:** the background is modelled as a four-corner gradient, so the llama comes off it with soft edges and without a blue fringe (the edge colours are un-mixed against the model); the badge is cut out as an anti-aliased disk.
+- **Monochrome glyph** (Android themed icon, status bar icon): the llama silhouette with the eyes, the muzzle (keeping nose and mouth) and the inner ears cut out, and the badge as a disk with the check cut out. The system tints it: dark on light in light mode, light on dark in dark mode.
+- **Risk to weigh before the store release:** an illustrated front-facing llama head is closer to Vikunja's own artwork and to other llama logos (Ollama) than the previous checkbox-ears icon was; D15's check with the Vikunja maintainers covers it.
 
 ### Colours
 
 | Token | Hex | Use |
 |---|---|---|
-| Blue light | `#3A86FF` | Gradient start (top left) |
-| Blue dark | `#1252E6` | Gradient end (bottom right); colour used to flatten alpha in PNGs |
-| Logo outline | `#196AFF` | Outline and check of `logo-mark.svg` (in-app logo) |
-| Ink | `#163679` | Eyes and check on the icon |
-| Wool | `#FFD9AE` | Tuft |
-| Ears / cheeks | `#FFBFA3`, `#FFD2C2` | Inner ears, cheeks |
-| White | `#FFFFFF` | Head |
-| Theme seed | `#1973FF` | `AppTheme.seedColor` in `app/lib/app/theme/app_theme.dart` |
-
-The in-app logo mark is multi-coloured and has its own outline, so it is shown unchanged on light and dark backgrounds (never tinted).
+| Gradient top left | `#3266DE` | Background, from the source (`rgb(50,102,222)`) |
+| Gradient top right / bottom left | `#2092C4` / `#1E90C2` | Background corners |
+| Gradient bottom right | `#0AAFAB` | Background, teal end |
+| Wool | `#F7F3ED` | The llama |
+| Muzzle | `#C8C9CD` | Muzzle grey |
+| Badge | `#FF8130` | Check badge |
+| Theme seed | `#1973FF` | `AppTheme.seedColor` in `app/lib/app/theme/app_theme.dart` (unchanged; blue fits the gradient) |
 
 ## Files
 
 | File | What it is |
 |---|---|
-| `logo-mark.svg` | The mark alone on a transparent background, for in-app use (connect screen, about page). |
-| `icon-foreground.svg` | Android adaptive icon foreground: 108 × 108 canvas, mark inside the central 66 dp safe zone, transparent. |
-| `icon-background.svg` | Android adaptive icon background: 108 × 108 blue gradient. |
-| `icon-monochrome.svg` | Android 13+ themed icon layer. Only alpha counts; the system tints it. |
-| `icon-ios.svg` | iOS app icon: 1024 × 1024 full bleed, opaque. iOS applies the squircle mask. |
-| `png/icon-ios-1024.png` | RGB, **no alpha channel** (App Store requirement) |
-| `png/icon-foreground-1024.png` | RGBA, transparent |
-| `png/icon-background-1024.png` | RGB |
-| `png/icon-monochrome-1024.png` | RGBA |
+| `source/logo-llama.jpg` | The logo as supplied, 2000 × 2000 px; the only source |
+| `build-icons.sh` | Regenerates every PNG in `png/` from the source (ImageMagick 7 and python3) |
+| `preview.sh` | Renders `png/preview-sheet.png` from the PNGs (ImageMagick 7 and a TrueType font) |
+| `png/icon-foreground-1024.png` | Android adaptive icon foreground, RGBA: 108 dp canvas, the head inside the 66 dp safe zone, the neck running past the bottom, the badge on the lower right |
+| `png/icon-background-1024.png` | Android adaptive icon background, RGB: the gradient |
+| `png/icon-monochrome-1024.png` | Android 13+ themed icon layer, white with alpha (only alpha counts), same layout as the foreground |
 | `png/icon-android-legacy-1024.png` | RGBA: the visible 72 dp of the adaptive layers as a rounded square, for Android 7 launchers without adaptive icons |
-| `png/logo-mark-1024.png` | RGBA |
-| `png/preview-sheet.png` | Preview of the masks, sizes, themed icon and the logo mark on light and dark |
-| `explorations-v2/` | Round 2: six concepts, blind tests, the four finalists, `comparison.png`, `homescreen-mock.png`, `names.md` |
+| `png/icon-ios-1024.png` | iOS icon, RGB, **no alpha channel** (App Store requirement): the illustration itself |
+| `png/icon-ios-dark-1024.png` | iOS 18 dark icon, RGBA: llama and badge on transparency (the system adds the dark background); also the source of the tinted icon |
+| `png/logo-1024.png` | In-app logo: the illustration as a rounded square |
+| `png/notification-960.png` | Status bar icon source: the monochrome head, white on transparent, inside the 22 dp live area |
+| `png/preview-sheet.png` | Preview of every variant |
+| `explorations-v2/` | Round 2 of the first branding: six concepts, blind tests, the four finalists, the checkbox-ears sources, `names.md` |
 | `explorations-v1/` | Round 1 (rejected) |
-| `render.sh` | Regenerates every PNG in `png/` from the SVGs |
 
-## Regenerating the PNGs
+## Regenerating
 
 ```sh
-./branding/render.sh
+./branding/build-icons.sh
+./branding/preview.sh
 ```
-
-Needs the Inkscape 1.x CLI (`inkscape` on `PATH`, or `/Applications/Inkscape.app/Contents/MacOS/inkscape`; override with `INKSCAPE=...`) and ImageMagick 7 (`magick`). ImageMagick here has no librsvg delegate and its internal MSVG renderer paints gradients black, so Inkscape rasterises and ImageMagick only flattens, resizes and composes previews.
 
 ## Using the assets in the app
 
-The icons are wired up with `flutter_launcher_icons` (config in `app/pubspec.yaml`); the generated files are committed. After changing the PNGs here:
+The launcher icons are wired up with `flutter_launcher_icons` (config in `app/pubspec.yaml`); the generated files are committed. After changing the PNGs:
 
 ```sh
 cd app && dart run flutter_launcher_icons
 ```
 
-flutter_launcher_icons 0.14.4 rewrites `ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS` to `AppIcon` in the Debug and Release configurations of `app/ios/Runner.xcodeproj/project.pbxproj`. Set it back to `YES` afterwards; `app/test/app/xcode_project_test.dart` fails until you do.
+flutter_launcher_icons 0.14.4 rewrites `ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS` to `AppIcon` in the Debug and Release configurations of `app/ios/Runner.xcodeproj/project.pbxproj`. Set it back to `YES` afterwards. It also writes `"scale" : "1x"` into the three universal 1024 × 1024 entries of `app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Contents.json`; remove the key there (the `ios-marketing` entry keeps it), or actool warns about missing 60 and 76 pt icons and leaves out `CFBundleIconFiles`. `app/test/app/xcode_project_test.dart` fails until both are fixed, and also when the set references a missing PNG or the folder holds an unreferenced one.
 
 | Platform icon | Source |
 |---|---|
@@ -90,18 +85,21 @@ flutter_launcher_icons 0.14.4 rewrites `ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASS
 | Android 13+ themed icon | `icon-monochrome-1024.png` |
 | Android 7 (API 24–25) legacy icon | `icon-android-legacy-1024.png` |
 | iOS | `icon-ios-1024.png`, with `remove_alpha_ios: true` |
+| iOS 18 dark | `icon-ios-dark-1024.png` (`image_path_ios_dark_transparent`) |
+| iOS 18 tinted | `icon-ios-dark-1024.png`, desaturated by the tool (`image_path_ios_tinted_grayscale`, `desaturate_tinted_to_grayscale_ios: true`) |
 
-The connect screen shows the logo mark at 72 × 72 pt from `app/assets/branding/`:
+The connect, first-sync and notification setup screens show the logo at 72 × 72 pt from `app/assets/branding/logo.png`, and the notifications use the status bar icon from `app/android/app/src/main/res/drawable-*dpi/ic_notification.png`:
 
 ```sh
 cd app
-magick ../branding/png/logo-mark-1024.png -filter Lanczos -resize 72x72 -strip -define png:color-type=6 assets/branding/logo_mark.png
-magick ../branding/png/logo-mark-1024.png -filter Lanczos -resize 144x144 -strip -define png:color-type=6 assets/branding/2.0x/logo_mark.png
-magick ../branding/png/logo-mark-1024.png -filter Lanczos -resize 216x216 -strip -define png:color-type=6 assets/branding/3.0x/logo_mark.png
+for s in 1:72 2:144 3:216; do f=${s%%:*}; px=${s##*:}; dir=assets/branding; [ "$f" != 1 ] && dir=assets/branding/$f.0x
+  magick ../branding/png/logo-1024.png -filter Lanczos -resize ${px}x${px} -strip -define png:color-type=6 $dir/logo.png; done
+for d in mdpi:24 hdpi:36 xhdpi:48 xxhdpi:72 xxxhdpi:96; do n=${d%%:*}; px=${d##*:}
+  magick ../branding/png/notification-960.png -filter Lanczos -resize ${px}x${px} -strip -define png:color-type=6 android/app/src/main/res/drawable-$n/ic_notification.png; done
 ```
 
 ## Open points
 
 - **Vikunja maintainers:** [D15](../docs/decisions.md#d15-app-id-devcoderoftimevikunja) says to check the use of the name and logo with them before the store release (step 37).
-- **iOS 18 icon variants:** dark and tinted variants are not made yet; the monochrome layer is a good start for the tinted one.
-- **Licence:** no licence is chosen for these assets ([Q3](../docs/open-questions.md#q3-licence-and-distribution) is deferred).
+- **A vector source** would keep the small sizes and the glyph crisper than a raster derivation; worth commissioning before the store release.
+- **Licence:** no licence is chosen for these assets ([Q3](../docs/open-questions.md#q3-licence-and-distribution) is deferred); the owner confirms the rights to the illustration.

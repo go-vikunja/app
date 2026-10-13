@@ -66,7 +66,7 @@ final class LocalNotificationGateway implements NotificationGateway {
   /// change to the actions needs a new identifier.
   static const darwinCategoryId = 'task';
 
-  /// `res/drawable/ic_notification.xml`, kept by `res/raw/keep.xml`.
+  /// `res/drawable-*dpi/ic_notification.png`, kept by `res/raw/keep.xml`.
   static const androidIcon = 'ic_notification';
 
   /// Neither platform reports "never asked", so the gateway remembers it.

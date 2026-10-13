@@ -8,7 +8,7 @@ class ConnectHeader extends StatelessWidget {
   final String? title;
   final String? tagline;
 
-  static const logoAsset = 'assets/branding/logo_mark.png';
+  static const logoAsset = 'assets/branding/logo.png';
 
   @override
   Widget build(BuildContext context) {

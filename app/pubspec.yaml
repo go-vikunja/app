@@ -71,3 +71,8 @@ flutter_launcher_icons:
   ios: true
   image_path_ios: ../branding/png/icon-ios-1024.png
   remove_alpha_ios: true
+  # iOS 18: the dark variant is transparent (the system adds the dark
+  # background); the tinted one is desaturated from it.
+  image_path_ios_dark_transparent: ../branding/png/icon-ios-dark-1024.png
+  image_path_ios_tinted_grayscale: ../branding/png/icon-ios-dark-1024.png
+  desaturate_tinted_to_grayscale_ios: true

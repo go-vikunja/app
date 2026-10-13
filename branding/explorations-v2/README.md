@@ -219,7 +219,7 @@ These observations come from the two sheets above:
 ## Files
 
 Each concept's `final/` folder has the same set:
-Each finalist's `final/` folder keeps the SVG sources (`icon-ios.svg`, `icon-foreground.svg`, `icon-background.svg`, `icon-monochrome.svg`, `logo-mark.svg`); the iteration renders and PNG exports were not kept in git. Render them with `../render.sh`-style Inkscape commands if needed. The chosen concept's assets are the top-level files in `branding/`.
+Each finalist's `final/` folder keeps the SVG sources (`icon-ios.svg`, `icon-foreground.svg`, `icon-background.svg`, `icon-monochrome.svg`, `logo-mark.svg`); the iteration renders and PNG exports were not kept in git. Render them with Inkscape if needed. The checkbox-ears concept was the app icon from 2026-10-09 to 2026-10-13; the current icon is derived from `../source/logo-llama.jpg` by `../build-icons.sh` (see [../README.md](../README.md)).
 
 Older versions stay at the top level of each concept folder. Build sources and iterations:
 - **Woolly cloud:** `woolly-cloud/refine/build.py`, iterations in `woolly-cloud/iterations/`
