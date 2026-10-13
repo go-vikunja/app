@@ -106,20 +106,8 @@ void main() {
       expect(open, hasLength(123));
       expect(open.where((t) => t.labels.isNotEmpty), hasLength(24));
       expect(open.singleWhere((t) => t.id == 5).assignees, [me]);
-      expect(
-        (await db.tasksDao.loadProjectTasks(
-          3,
-          showDone: true,
-        )).map((t) => t.id),
-        [203, 202, 201],
-      );
-      expect(
-        (await db.tasksDao.loadProjectTasks(
-          4,
-          showDone: true,
-        )).map((t) => t.id),
-        [302, 301],
-      );
+      expect((await projectTasksIn(db, 3)).map((t) => t.id), [203, 202, 201]);
+      expect((await projectTasksIn(db, 4)).map((t) => t.id), [302, 301]);
 
       expect(seen.first, const SyncNeverRun());
       final running = seen.whereType<SyncRunning>().toList();

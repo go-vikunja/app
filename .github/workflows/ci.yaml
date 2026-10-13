@@ -62,6 +62,13 @@ jobs:
         working-directory: packages/vikunja_logic
         run: flutter test
 
+      # The datemath cases around a DST change need a zone that has one.
+      - name: Test vikunja_logic date math in Europe/Berlin
+        working-directory: packages/vikunja_logic
+        env:
+          TZ: Europe/Berlin
+        run: flutter test test/time
+
       - name: Test vikunja_api (without contract tests)
         working-directory: packages/vikunja_api
         run: flutter test --exclude-tags contract
@@ -103,6 +110,8 @@ jobs:
         working-directory: app
         env:
           VIKUNJA_CONTRACT: "1"
+          # Upcoming is compared with the server's filter strings in this zone.
+          TZ: Europe/Berlin
         run: flutter test --tags contract
 
       - name: Dump test server state and logs

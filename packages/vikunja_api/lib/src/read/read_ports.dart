@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 import 'package:vikunja_api/src/read/read_client.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
@@ -66,6 +68,26 @@ abstract interface class SubscriptionsPort {
   Future<Subscription?> forProject(int projectId);
 }
 
+abstract interface class AvatarsPort {
+  /// `GET /avatar/{username}?size=`: the user's avatar in whatever format
+  /// their avatar provider makes (PNG, JPEG, or SVG for some providers).
+  /// An unknown username gets the server's placeholder; an answer that is
+  /// not an image (`image/*` or `application/octet-stream`) or is empty
+  /// throws `UnexpectedResponse`.
+  Future<AvatarImage> fetch(String username, {required int size});
+}
+
+final class AvatarImage {
+  const new({required this.bytes, required this.contentType});
+
+  final Uint8List bytes;
+
+  /// The response's media type without parameters, e.g. `image/png`.
+  final String contentType;
+
+  bool get isSvg => contentType == 'image/svg+xml';
+}
+
 abstract interface class VikunjaReadClient {
   ProjectsPort get projects;
   LabelsPort get labels;
@@ -73,6 +95,7 @@ abstract interface class VikunjaReadClient {
   UsersPort get users;
   NotificationsPort get notifications;
   SubscriptionsPort get subscriptions;
+  AvatarsPort get avatars;
 }
 
 /// [dio] is an authenticated client from `createAuthenticatedDio`; the

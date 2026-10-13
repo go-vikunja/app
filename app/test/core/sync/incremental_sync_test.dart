@@ -497,10 +497,7 @@ void main() {
 
       expect((await db.tasksDao.find(5))!.projectId, 2);
       expect(
-        (await db.tasksDao.loadProjectTasks(
-          1,
-          showDone: true,
-        )).map((t) => t.id),
+        (await projectTasksIn(db, 1)).map((t) => t.id),
         isNot(contains(5)),
       );
       expect(await db.tasksDao.countInProject(2), 16);
@@ -527,13 +524,7 @@ void main() {
           4,
           9,
         ]);
-        expect(
-          (await db.tasksDao.loadProjectTasks(
-            9,
-            showDone: true,
-          )).map((t) => t.id),
-          [902, 901],
-        );
+        expect((await projectTasksIn(db, 9)).map((t) => t.id), [902, 901]);
         expect(requestsFor('project 9 tasks'), [
           'project 9 tasks id > 0 per_page=50 page=1',
         ]);
@@ -551,13 +542,7 @@ void main() {
         (p) => p.id == 3,
       );
       expect(old.isArchived, isFalse);
-      expect(
-        (await db.tasksDao.loadProjectTasks(
-          3,
-          showDone: true,
-        )).map((t) => t.id),
-        [203, 202, 201],
-      );
+      expect((await projectTasksIn(db, 3)).map((t) => t.id), [203, 202, 201]);
       expect(requestsFor('project 3 tasks'), [
         'project 3 tasks id > 0 per_page=50 page=1',
       ]);
@@ -594,13 +579,7 @@ void main() {
 
       await sync.refresh();
 
-      expect(
-        (await db.tasksDao.loadProjectTasks(
-          9,
-          showDone: true,
-        )).map((t) => t.id),
-        [902, 901],
-      );
+      expect((await projectTasksIn(db, 9)).map((t) => t.id), [902, 901]);
       expect(requestsFor('project 9 tasks'), [
         'project 9 tasks id > 0 per_page=50 page=1',
       ]);

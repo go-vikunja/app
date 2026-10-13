@@ -1061,7 +1061,7 @@ abstract class AppLocalizations {
   /// No description provided for @overviewEmptyBody.
   ///
   /// In en, this message translates to:
-  /// **'No open tasks right now. Enjoy the quiet, or add some on the web.'**
+  /// **'No open tasks right now. Enjoy the quiet, or add one with New task.'**
   String get overviewEmptyBody;
 
   /// No description provided for @sectionOverdue.
@@ -1165,18 +1165,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Loading tasks…'**
   String get projectTasksLoading;
-
-  /// No description provided for @projectTasksLoadMore.
-  ///
-  /// In en, this message translates to:
-  /// **'Load more'**
-  String get projectTasksLoadMore;
-
-  /// No description provided for @projectTasksLoadingMore.
-  ///
-  /// In en, this message translates to:
-  /// **'Loading more tasks…'**
-  String get projectTasksLoadingMore;
 
   /// No description provided for @projectTasksEmptyTitle.
   ///
@@ -3785,6 +3773,456 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =1{1 task} other{{count} tasks}}, {subtasks, plural, =1{1 as a subtask} other{{subtasks} as subtasks}}'**
   String newTaskTreeCountOnly(int count, int subtasks);
+
+  /// No description provided for @tabUpcoming.
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming'**
+  String get tabUpcoming;
+
+  /// No description provided for @upcomingEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to do — have a nice day!'**
+  String get upcomingEmptyTitle;
+
+  /// No description provided for @upcomingEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'No open task is due in this date range.'**
+  String get upcomingEmptyBody;
+
+  /// No description provided for @upcomingShowOverdue.
+  ///
+  /// In en, this message translates to:
+  /// **'Show overdue tasks'**
+  String get upcomingShowOverdue;
+
+  /// No description provided for @upcomingShowWithoutDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Show tasks without date'**
+  String get upcomingShowWithoutDate;
+
+  /// No description provided for @upcomingSelectRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a date range'**
+  String get upcomingSelectRange;
+
+  /// No description provided for @upcomingRangeCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get upcomingRangeCustom;
+
+  /// The last entry of the date range sheet; opens a date range picker.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom…'**
+  String get upcomingRangeCustomEntry;
+
+  /// Under the date range's name: its first and last day, both included.
+  ///
+  /// In en, this message translates to:
+  /// **'{from} – {to}'**
+  String upcomingRangeDates(String from, String to);
+
+  /// No description provided for @upcomingRangeSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Date range {name}, {dates}'**
+  String upcomingRangeSemantics(String name, String dates);
+
+  /// No description provided for @upcomingRangeFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'From'**
+  String get upcomingRangeFrom;
+
+  /// No description provided for @upcomingRangeTo.
+  ///
+  /// In en, this message translates to:
+  /// **'To'**
+  String get upcomingRangeTo;
+
+  /// No description provided for @rangeToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get rangeToday;
+
+  /// No description provided for @rangeTomorrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Tomorrow'**
+  String get rangeTomorrow;
+
+  /// No description provided for @rangeLastWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'Last Week'**
+  String get rangeLastWeek;
+
+  /// No description provided for @rangeThisWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'This Week'**
+  String get rangeThisWeek;
+
+  /// No description provided for @rangeRestOfThisWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'The Rest of This Week'**
+  String get rangeRestOfThisWeek;
+
+  /// No description provided for @rangeNextWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'Next Week'**
+  String get rangeNextWeek;
+
+  /// No description provided for @rangeNext7Days.
+  ///
+  /// In en, this message translates to:
+  /// **'Next 7 Days'**
+  String get rangeNext7Days;
+
+  /// No description provided for @rangeLastMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Last Month'**
+  String get rangeLastMonth;
+
+  /// No description provided for @rangeThisMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'This Month'**
+  String get rangeThisMonth;
+
+  /// No description provided for @rangeRestOfThisMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'The Rest of This Month'**
+  String get rangeRestOfThisMonth;
+
+  /// No description provided for @rangeNextMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Next Month'**
+  String get rangeNextMonth;
+
+  /// No description provided for @rangeNext30Days.
+  ///
+  /// In en, this message translates to:
+  /// **'Next 30 Days'**
+  String get rangeNext30Days;
+
+  /// No description provided for @rangeThisYear.
+  ///
+  /// In en, this message translates to:
+  /// **'This Year'**
+  String get rangeThisYear;
+
+  /// No description provided for @rangeRestOfThisYear.
+  ///
+  /// In en, this message translates to:
+  /// **'The Rest of This Year'**
+  String get rangeRestOfThisYear;
+
+  /// No description provided for @sectionTomorrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Tomorrow'**
+  String get sectionTomorrow;
+
+  /// Under the Overview's title when it shows the saved filter picked for it on the web.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter: {title}'**
+  String overviewFilterSubtitle(String title);
+
+  /// No description provided for @overviewFilterNotLoadedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'This filter loads once you\'re online'**
+  String get overviewFilterNotLoadedTitle;
+
+  /// No description provided for @overviewFilterNotLoadedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your Overview shows the saved filter “{title}”, picked on the web. Its tasks download with the next sync.'**
+  String overviewFilterNotLoadedBody(String title);
+
+  /// No description provided for @overviewFilterEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The saved filter “{title}” has no open tasks.'**
+  String overviewFilterEmptyBody(String title);
+
+  /// A project view whose title is exactly "List", the server's default name.
+  ///
+  /// In en, this message translates to:
+  /// **'List'**
+  String get projectViewList;
+
+  /// No description provided for @projectViewSwitch.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch view'**
+  String get projectViewSwitch;
+
+  /// No description provided for @projectSort.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort'**
+  String get projectSort;
+
+  /// The sort button's tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Sorted: {sort}'**
+  String projectSortCurrent(String sort);
+
+  /// No description provided for @sortManual.
+  ///
+  /// In en, this message translates to:
+  /// **'Manually'**
+  String get sortManual;
+
+  /// No description provided for @sortTitleAsc.
+  ///
+  /// In en, this message translates to:
+  /// **'Title (A–Z)'**
+  String get sortTitleAsc;
+
+  /// No description provided for @sortTitleDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Title (Z–A)'**
+  String get sortTitleDesc;
+
+  /// No description provided for @sortPriorityDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Priority (Highest first)'**
+  String get sortPriorityDesc;
+
+  /// No description provided for @sortPriorityAsc.
+  ///
+  /// In en, this message translates to:
+  /// **'Priority (Lowest first)'**
+  String get sortPriorityAsc;
+
+  /// No description provided for @sortDueDateAsc.
+  ///
+  /// In en, this message translates to:
+  /// **'Due date (Earliest first)'**
+  String get sortDueDateAsc;
+
+  /// No description provided for @sortDueDateDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Due date (Latest first)'**
+  String get sortDueDateDesc;
+
+  /// No description provided for @sortStartDateAsc.
+  ///
+  /// In en, this message translates to:
+  /// **'Start date (Earliest first)'**
+  String get sortStartDateAsc;
+
+  /// No description provided for @sortStartDateDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Start date (Latest first)'**
+  String get sortStartDateDesc;
+
+  /// No description provided for @sortEndDateAsc.
+  ///
+  /// In en, this message translates to:
+  /// **'End date (Earliest first)'**
+  String get sortEndDateAsc;
+
+  /// No description provided for @sortEndDateDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'End date (Latest first)'**
+  String get sortEndDateDesc;
+
+  /// No description provided for @sortPercentDoneDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'% done (Most done first)'**
+  String get sortPercentDoneDesc;
+
+  /// No description provided for @sortPercentDoneAsc.
+  ///
+  /// In en, this message translates to:
+  /// **'% done (Least done first)'**
+  String get sortPercentDoneAsc;
+
+  /// No description provided for @sortCreatedDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Created (Newest first)'**
+  String get sortCreatedDesc;
+
+  /// No description provided for @sortCreatedAsc.
+  ///
+  /// In en, this message translates to:
+  /// **'Created (Oldest first)'**
+  String get sortCreatedAsc;
+
+  /// No description provided for @sortUpdatedDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Updated (Newest first)'**
+  String get sortUpdatedDesc;
+
+  /// No description provided for @sortUpdatedAsc.
+  ///
+  /// In en, this message translates to:
+  /// **'Updated (Oldest first)'**
+  String get sortUpdatedAsc;
+
+  /// No description provided for @projectTasksDoneSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get projectTasksDoneSection;
+
+  /// No description provided for @projectTasksEmptyDoneTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No done tasks'**
+  String get projectTasksEmptyDoneTitle;
+
+  /// No description provided for @projectTasksEmptyDoneBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing in this view is done yet.'**
+  String get projectTasksEmptyDoneBody;
+
+  /// No description provided for @projectViewFilterNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'The server applies this view\'s filter “{filter}”. Shown as of {when}; changes made elsewhere appear after the next download.'**
+  String projectViewFilterNotice(String filter, String when);
+
+  /// No description provided for @projectViewNotLoadedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'This view loads once you\'re online'**
+  String get projectViewNotLoadedTitle;
+
+  /// No description provided for @projectViewNotLoadedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The server applies this view\'s filter “{filter}”. Its tasks download when you open it online.'**
+  String projectViewNotLoadedBody(String filter);
+
+  /// No description provided for @projectViewEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching tasks'**
+  String get projectViewEmptyTitle;
+
+  /// No description provided for @projectViewEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing matched this view\'s filter at the last download.'**
+  String get projectViewEmptyBody;
+
+  /// No description provided for @taskDoneSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get taskDoneSemantics;
+
+  /// No description provided for @taskAssigneesSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Assigned to {names}'**
+  String taskAssigneesSemantics(String names);
+
+  /// After the first three assignee avatars of a task row.
+  ///
+  /// In en, this message translates to:
+  /// **'+{count}'**
+  String taskMoreAssignees(int count);
+
+  /// The checkboxes in a task's description, some still open.
+  ///
+  /// In en, this message translates to:
+  /// **'{checked} of {total} tasks'**
+  String taskChecklistProgress(int checked, int total);
+
+  /// The checkboxes in a task's description, all checked.
+  ///
+  /// In en, this message translates to:
+  /// **'{total, plural, =1{1 task} other{{total} tasks}}'**
+  String taskChecklistAllDone(int total);
+
+  /// No description provided for @taskHasDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Has a description'**
+  String get taskHasDescription;
+
+  /// No description provided for @taskRepeats.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeats'**
+  String get taskRepeats;
+
+  /// The default saved filter every user gets, whose title the server sends as exactly "My Open Tasks".
+  ///
+  /// In en, this message translates to:
+  /// **'My Open Tasks'**
+  String get savedFilterMyOpenTasks;
+
+  /// Above the Overview when it shows the last download of the saved filter picked for it on the web.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter: {title}, as of {when}. Tasks created here show after the next sync.'**
+  String overviewFilterNotice(String title, String when);
+
+  /// No description provided for @overviewFilterNotDownloadedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'This filter hasn\'t downloaded yet'**
+  String get overviewFilterNotDownloadedTitle;
+
+  /// No description provided for @projectViewDownloadingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading this view…'**
+  String get projectViewDownloadingTitle;
+
+  /// No description provided for @projectViewDownloadingBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The server applies this view\'s filter “{filter}”. Its tasks are on their way.'**
+  String projectViewDownloadingBody(String filter);
+
+  /// No description provided for @projectViewDownloadFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t download this view'**
+  String get projectViewDownloadFailedTitle;
+
+  /// No description provided for @projectViewDownloadFailedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The server applies this view\'s filter “{filter}”. Pull down to try again.'**
+  String projectViewDownloadFailedBody(String filter);
+
+  /// Read by screen readers for a task nested under another in a project list.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtask of {parent}'**
+  String taskSubtaskOfSemantics(String parent);
 }
 
 class _AppLocalizationsDelegate

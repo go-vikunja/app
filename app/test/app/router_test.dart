@@ -34,6 +34,7 @@ void main() {
       'are not tabs', () {
     for (final location in [
       AppRoutes.overview,
+      AppRoutes.upcoming,
       AppRoutes.projects,
       AppRoutes.project(1),
       AppRoutes.account,

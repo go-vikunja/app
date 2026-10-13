@@ -6785,6 +6785,702 @@ class ServerNotificationsCompanion
   }
 }
 
+class $ListSnapshotsTable extends ListSnapshots
+    with TableInfo<$ListSnapshotsTable, ListSnapshotRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ListSnapshotsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _listKeyMeta = const VerificationMeta(
+    'listKey',
+  );
+  @override
+  late final GeneratedColumn<String> listKey = GeneratedColumn<String>(
+    'list_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<DateTime, int> loadedAt =
+      GeneratedColumn<int>(
+        'loaded_at',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: true,
+      ).withConverter<DateTime>($ListSnapshotsTable.$converterloadedAt);
+  @override
+  List<GeneratedColumn> get $columns => [listKey, loadedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'list_snapshots';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ListSnapshotRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('list_key')) {
+      context.handle(
+        _listKeyMeta,
+        listKey.isAcceptableOrUnknown(data['list_key']!, _listKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_listKeyMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {listKey};
+  @override
+  ListSnapshotRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ListSnapshotRow(
+      listKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}list_key'],
+      )!,
+      loadedAt: $ListSnapshotsTable.$converterloadedAt.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}loaded_at'],
+        )!,
+      ),
+    );
+  }
+
+  @override
+  $ListSnapshotsTable createAlias(String alias) {
+    return $ListSnapshotsTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<DateTime, int> $converterloadedAt = const EpochMillis();
+}
+
+class ListSnapshotRow extends DataClass implements Insertable<ListSnapshotRow> {
+  final String listKey;
+  final DateTime loadedAt;
+  const ListSnapshotRow({required this.listKey, required this.loadedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['list_key'] = Variable<String>(listKey);
+    {
+      map['loaded_at'] = Variable<int>(
+        $ListSnapshotsTable.$converterloadedAt.toSql(loadedAt),
+      );
+    }
+    return map;
+  }
+
+  ListSnapshotsCompanion toCompanion(bool nullToAbsent) {
+    return ListSnapshotsCompanion(
+      listKey: Value(listKey),
+      loadedAt: Value(loadedAt),
+    );
+  }
+
+  factory ListSnapshotRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ListSnapshotRow(
+      listKey: serializer.fromJson<String>(json['listKey']),
+      loadedAt: serializer.fromJson<DateTime>(json['loadedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'listKey': serializer.toJson<String>(listKey),
+      'loadedAt': serializer.toJson<DateTime>(loadedAt),
+    };
+  }
+
+  ListSnapshotRow copyWith({String? listKey, DateTime? loadedAt}) =>
+      ListSnapshotRow(
+        listKey: listKey ?? this.listKey,
+        loadedAt: loadedAt ?? this.loadedAt,
+      );
+  ListSnapshotRow copyWithCompanion(ListSnapshotsCompanion data) {
+    return ListSnapshotRow(
+      listKey: data.listKey.present ? data.listKey.value : this.listKey,
+      loadedAt: data.loadedAt.present ? data.loadedAt.value : this.loadedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ListSnapshotRow(')
+          ..write('listKey: $listKey, ')
+          ..write('loadedAt: $loadedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(listKey, loadedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ListSnapshotRow &&
+          other.listKey == this.listKey &&
+          other.loadedAt == this.loadedAt);
+}
+
+class ListSnapshotsCompanion extends UpdateCompanion<ListSnapshotRow> {
+  final Value<String> listKey;
+  final Value<DateTime> loadedAt;
+  final Value<int> rowid;
+  const ListSnapshotsCompanion({
+    this.listKey = const Value.absent(),
+    this.loadedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ListSnapshotsCompanion.insert({
+    required String listKey,
+    required DateTime loadedAt,
+    this.rowid = const Value.absent(),
+  }) : listKey = Value(listKey),
+       loadedAt = Value(loadedAt);
+  static Insertable<ListSnapshotRow> custom({
+    Expression<String>? listKey,
+    Expression<int>? loadedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (listKey != null) 'list_key': listKey,
+      if (loadedAt != null) 'loaded_at': loadedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ListSnapshotsCompanion copyWith({
+    Value<String>? listKey,
+    Value<DateTime>? loadedAt,
+    Value<int>? rowid,
+  }) {
+    return ListSnapshotsCompanion(
+      listKey: listKey ?? this.listKey,
+      loadedAt: loadedAt ?? this.loadedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (listKey.present) {
+      map['list_key'] = Variable<String>(listKey.value);
+    }
+    if (loadedAt.present) {
+      map['loaded_at'] = Variable<int>(
+        $ListSnapshotsTable.$converterloadedAt.toSql(loadedAt.value),
+      );
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ListSnapshotsCompanion(')
+          ..write('listKey: $listKey, ')
+          ..write('loadedAt: $loadedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ListSnapshotTasksTable extends ListSnapshotTasks
+    with TableInfo<$ListSnapshotTasksTable, ListSnapshotTaskRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ListSnapshotTasksTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _listKeyMeta = const VerificationMeta(
+    'listKey',
+  );
+  @override
+  late final GeneratedColumn<String> listKey = GeneratedColumn<String>(
+    'list_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _taskIdMeta = const VerificationMeta('taskId');
+  @override
+  late final GeneratedColumn<int> taskId = GeneratedColumn<int>(
+    'task_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _positionMeta = const VerificationMeta(
+    'position',
+  );
+  @override
+  late final GeneratedColumn<double> position = GeneratedColumn<double>(
+    'position',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [listKey, taskId, position];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'list_snapshot_tasks';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ListSnapshotTaskRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('list_key')) {
+      context.handle(
+        _listKeyMeta,
+        listKey.isAcceptableOrUnknown(data['list_key']!, _listKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_listKeyMeta);
+    }
+    if (data.containsKey('task_id')) {
+      context.handle(
+        _taskIdMeta,
+        taskId.isAcceptableOrUnknown(data['task_id']!, _taskIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_taskIdMeta);
+    }
+    if (data.containsKey('position')) {
+      context.handle(
+        _positionMeta,
+        position.isAcceptableOrUnknown(data['position']!, _positionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_positionMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {listKey, taskId};
+  @override
+  ListSnapshotTaskRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ListSnapshotTaskRow(
+      listKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}list_key'],
+      )!,
+      taskId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}task_id'],
+      )!,
+      position: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}position'],
+      )!,
+    );
+  }
+
+  @override
+  $ListSnapshotTasksTable createAlias(String alias) {
+    return $ListSnapshotTasksTable(attachedDatabase, alias);
+  }
+}
+
+class ListSnapshotTaskRow extends DataClass
+    implements Insertable<ListSnapshotTaskRow> {
+  final String listKey;
+  final int taskId;
+  final double position;
+  const ListSnapshotTaskRow({
+    required this.listKey,
+    required this.taskId,
+    required this.position,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['list_key'] = Variable<String>(listKey);
+    map['task_id'] = Variable<int>(taskId);
+    map['position'] = Variable<double>(position);
+    return map;
+  }
+
+  ListSnapshotTasksCompanion toCompanion(bool nullToAbsent) {
+    return ListSnapshotTasksCompanion(
+      listKey: Value(listKey),
+      taskId: Value(taskId),
+      position: Value(position),
+    );
+  }
+
+  factory ListSnapshotTaskRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ListSnapshotTaskRow(
+      listKey: serializer.fromJson<String>(json['listKey']),
+      taskId: serializer.fromJson<int>(json['taskId']),
+      position: serializer.fromJson<double>(json['position']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'listKey': serializer.toJson<String>(listKey),
+      'taskId': serializer.toJson<int>(taskId),
+      'position': serializer.toJson<double>(position),
+    };
+  }
+
+  ListSnapshotTaskRow copyWith({
+    String? listKey,
+    int? taskId,
+    double? position,
+  }) => ListSnapshotTaskRow(
+    listKey: listKey ?? this.listKey,
+    taskId: taskId ?? this.taskId,
+    position: position ?? this.position,
+  );
+  ListSnapshotTaskRow copyWithCompanion(ListSnapshotTasksCompanion data) {
+    return ListSnapshotTaskRow(
+      listKey: data.listKey.present ? data.listKey.value : this.listKey,
+      taskId: data.taskId.present ? data.taskId.value : this.taskId,
+      position: data.position.present ? data.position.value : this.position,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ListSnapshotTaskRow(')
+          ..write('listKey: $listKey, ')
+          ..write('taskId: $taskId, ')
+          ..write('position: $position')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(listKey, taskId, position);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ListSnapshotTaskRow &&
+          other.listKey == this.listKey &&
+          other.taskId == this.taskId &&
+          other.position == this.position);
+}
+
+class ListSnapshotTasksCompanion extends UpdateCompanion<ListSnapshotTaskRow> {
+  final Value<String> listKey;
+  final Value<int> taskId;
+  final Value<double> position;
+  final Value<int> rowid;
+  const ListSnapshotTasksCompanion({
+    this.listKey = const Value.absent(),
+    this.taskId = const Value.absent(),
+    this.position = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ListSnapshotTasksCompanion.insert({
+    required String listKey,
+    required int taskId,
+    required double position,
+    this.rowid = const Value.absent(),
+  }) : listKey = Value(listKey),
+       taskId = Value(taskId),
+       position = Value(position);
+  static Insertable<ListSnapshotTaskRow> custom({
+    Expression<String>? listKey,
+    Expression<int>? taskId,
+    Expression<double>? position,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (listKey != null) 'list_key': listKey,
+      if (taskId != null) 'task_id': taskId,
+      if (position != null) 'position': position,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ListSnapshotTasksCompanion copyWith({
+    Value<String>? listKey,
+    Value<int>? taskId,
+    Value<double>? position,
+    Value<int>? rowid,
+  }) {
+    return ListSnapshotTasksCompanion(
+      listKey: listKey ?? this.listKey,
+      taskId: taskId ?? this.taskId,
+      position: position ?? this.position,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (listKey.present) {
+      map['list_key'] = Variable<String>(listKey.value);
+    }
+    if (taskId.present) {
+      map['task_id'] = Variable<int>(taskId.value);
+    }
+    if (position.present) {
+      map['position'] = Variable<double>(position.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ListSnapshotTasksCompanion(')
+          ..write('listKey: $listKey, ')
+          ..write('taskId: $taskId, ')
+          ..write('position: $position, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ListPreferenceEntriesTable extends ListPreferenceEntries
+    with TableInfo<$ListPreferenceEntriesTable, ListPreferenceRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ListPreferenceEntriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _keyMeta = const VerificationMeta('key');
+  @override
+  late final GeneratedColumn<String> key = GeneratedColumn<String>(
+    'key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _valueMeta = const VerificationMeta('value');
+  @override
+  late final GeneratedColumn<String> value = GeneratedColumn<String>(
+    'value',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [key, value];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'list_preferences';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ListPreferenceRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('key')) {
+      context.handle(
+        _keyMeta,
+        key.isAcceptableOrUnknown(data['key']!, _keyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_keyMeta);
+    }
+    if (data.containsKey('value')) {
+      context.handle(
+        _valueMeta,
+        value.isAcceptableOrUnknown(data['value']!, _valueMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_valueMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {key};
+  @override
+  ListPreferenceRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ListPreferenceRow(
+      key: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}key'],
+      )!,
+      value: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}value'],
+      )!,
+    );
+  }
+
+  @override
+  $ListPreferenceEntriesTable createAlias(String alias) {
+    return $ListPreferenceEntriesTable(attachedDatabase, alias);
+  }
+}
+
+class ListPreferenceRow extends DataClass
+    implements Insertable<ListPreferenceRow> {
+  final String key;
+  final String value;
+  const ListPreferenceRow({required this.key, required this.value});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['key'] = Variable<String>(key);
+    map['value'] = Variable<String>(value);
+    return map;
+  }
+
+  ListPreferenceEntriesCompanion toCompanion(bool nullToAbsent) {
+    return ListPreferenceEntriesCompanion(key: Value(key), value: Value(value));
+  }
+
+  factory ListPreferenceRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ListPreferenceRow(
+      key: serializer.fromJson<String>(json['key']),
+      value: serializer.fromJson<String>(json['value']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'key': serializer.toJson<String>(key),
+      'value': serializer.toJson<String>(value),
+    };
+  }
+
+  ListPreferenceRow copyWith({String? key, String? value}) =>
+      ListPreferenceRow(key: key ?? this.key, value: value ?? this.value);
+  ListPreferenceRow copyWithCompanion(ListPreferenceEntriesCompanion data) {
+    return ListPreferenceRow(
+      key: data.key.present ? data.key.value : this.key,
+      value: data.value.present ? data.value.value : this.value,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ListPreferenceRow(')
+          ..write('key: $key, ')
+          ..write('value: $value')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(key, value);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ListPreferenceRow &&
+          other.key == this.key &&
+          other.value == this.value);
+}
+
+class ListPreferenceEntriesCompanion
+    extends UpdateCompanion<ListPreferenceRow> {
+  final Value<String> key;
+  final Value<String> value;
+  final Value<int> rowid;
+  const ListPreferenceEntriesCompanion({
+    this.key = const Value.absent(),
+    this.value = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ListPreferenceEntriesCompanion.insert({
+    required String key,
+    required String value,
+    this.rowid = const Value.absent(),
+  }) : key = Value(key),
+       value = Value(value);
+  static Insertable<ListPreferenceRow> custom({
+    Expression<String>? key,
+    Expression<String>? value,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (key != null) 'key': key,
+      if (value != null) 'value': value,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ListPreferenceEntriesCompanion copyWith({
+    Value<String>? key,
+    Value<String>? value,
+    Value<int>? rowid,
+  }) {
+    return ListPreferenceEntriesCompanion(
+      key: key ?? this.key,
+      value: value ?? this.value,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (key.present) {
+      map['key'] = Variable<String>(key.value);
+    }
+    if (value.present) {
+      map['value'] = Variable<String>(value.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ListPreferenceEntriesCompanion(')
+          ..write('key: $key, ')
+          ..write('value: $value, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -6804,6 +7500,11 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $ScheduledNotificationsTable(this);
   late final $ServerNotificationsTable serverNotifications =
       $ServerNotificationsTable(this);
+  late final $ListSnapshotsTable listSnapshots = $ListSnapshotsTable(this);
+  late final $ListSnapshotTasksTable listSnapshotTasks =
+      $ListSnapshotTasksTable(this);
+  late final $ListPreferenceEntriesTable listPreferenceEntries =
+      $ListPreferenceEntriesTable(this);
   late final Index projectViewsProject = Index(
     'project_views_project',
     'CREATE INDEX project_views_project ON project_views (project_id)',
@@ -6830,6 +7531,12 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       ScheduledNotificationsDao(this as AppDatabase);
   late final ServerNotificationsDao serverNotificationsDao =
       ServerNotificationsDao(this as AppDatabase);
+  late final ListSnapshotsDao listSnapshotsDao = ListSnapshotsDao(
+    this as AppDatabase,
+  );
+  late final ListPreferencesDao listPreferencesDao = ListPreferencesDao(
+    this as AppDatabase,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -6849,6 +7556,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     taskIdRemaps,
     scheduledNotifications,
     serverNotifications,
+    listSnapshots,
+    listSnapshotTasks,
+    listPreferenceEntries,
     projectViewsProject,
     tasksProject,
     tasksDoneDue,
@@ -11846,6 +12556,518 @@ typedef $$ServerNotificationsTableProcessedTableManager =
       ServerNotificationRow,
       PrefetchHooks Function()
     >;
+typedef $$ListSnapshotsTableCreateCompanionBuilder =
+    ListSnapshotsCompanion Function({
+      required String listKey,
+      required DateTime loadedAt,
+      Value<int> rowid,
+    });
+typedef $$ListSnapshotsTableUpdateCompanionBuilder =
+    ListSnapshotsCompanion Function({
+      Value<String> listKey,
+      Value<DateTime> loadedAt,
+      Value<int> rowid,
+    });
+
+class $$ListSnapshotsTableFilterComposer
+    extends Composer<_$AppDatabase, $ListSnapshotsTable> {
+  $$ListSnapshotsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get listKey => $composableBuilder(
+    column: $table.listKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<DateTime, DateTime, int> get loadedAt =>
+      $composableBuilder(
+        column: $table.loadedAt,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+}
+
+class $$ListSnapshotsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ListSnapshotsTable> {
+  $$ListSnapshotsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get listKey => $composableBuilder(
+    column: $table.listKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get loadedAt => $composableBuilder(
+    column: $table.loadedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ListSnapshotsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ListSnapshotsTable> {
+  $$ListSnapshotsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get listKey =>
+      $composableBuilder(column: $table.listKey, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<DateTime, int> get loadedAt =>
+      $composableBuilder(column: $table.loadedAt, builder: (column) => column);
+}
+
+class $$ListSnapshotsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ListSnapshotsTable,
+          ListSnapshotRow,
+          $$ListSnapshotsTableFilterComposer,
+          $$ListSnapshotsTableOrderingComposer,
+          $$ListSnapshotsTableAnnotationComposer,
+          $$ListSnapshotsTableCreateCompanionBuilder,
+          $$ListSnapshotsTableUpdateCompanionBuilder,
+          (
+            ListSnapshotRow,
+            BaseReferences<_$AppDatabase, $ListSnapshotsTable, ListSnapshotRow>,
+          ),
+          ListSnapshotRow,
+          PrefetchHooks Function()
+        > {
+  $$ListSnapshotsTableTableManager(_$AppDatabase db, $ListSnapshotsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ListSnapshotsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ListSnapshotsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ListSnapshotsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> listKey = const Value.absent(),
+                Value<DateTime> loadedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ListSnapshotsCompanion(
+                listKey: listKey,
+                loadedAt: loadedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String listKey,
+                required DateTime loadedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => ListSnapshotsCompanion.insert(
+                listKey: listKey,
+                loadedAt: loadedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$ListSnapshotsTable, ListSnapshotRow>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $ListSnapshotsTable,
+                    ListSnapshotRow
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ListSnapshotsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ListSnapshotsTable,
+      ListSnapshotRow,
+      $$ListSnapshotsTableFilterComposer,
+      $$ListSnapshotsTableOrderingComposer,
+      $$ListSnapshotsTableAnnotationComposer,
+      $$ListSnapshotsTableCreateCompanionBuilder,
+      $$ListSnapshotsTableUpdateCompanionBuilder,
+      (
+        ListSnapshotRow,
+        BaseReferences<_$AppDatabase, $ListSnapshotsTable, ListSnapshotRow>,
+      ),
+      ListSnapshotRow,
+      PrefetchHooks Function()
+    >;
+typedef $$ListSnapshotTasksTableCreateCompanionBuilder =
+    ListSnapshotTasksCompanion Function({
+      required String listKey,
+      required int taskId,
+      required double position,
+      Value<int> rowid,
+    });
+typedef $$ListSnapshotTasksTableUpdateCompanionBuilder =
+    ListSnapshotTasksCompanion Function({
+      Value<String> listKey,
+      Value<int> taskId,
+      Value<double> position,
+      Value<int> rowid,
+    });
+
+class $$ListSnapshotTasksTableFilterComposer
+    extends Composer<_$AppDatabase, $ListSnapshotTasksTable> {
+  $$ListSnapshotTasksTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get listKey => $composableBuilder(
+    column: $table.listKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get taskId => $composableBuilder(
+    column: $table.taskId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ListSnapshotTasksTableOrderingComposer
+    extends Composer<_$AppDatabase, $ListSnapshotTasksTable> {
+  $$ListSnapshotTasksTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get listKey => $composableBuilder(
+    column: $table.listKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get taskId => $composableBuilder(
+    column: $table.taskId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ListSnapshotTasksTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ListSnapshotTasksTable> {
+  $$ListSnapshotTasksTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get listKey =>
+      $composableBuilder(column: $table.listKey, builder: (column) => column);
+
+  GeneratedColumn<int> get taskId =>
+      $composableBuilder(column: $table.taskId, builder: (column) => column);
+
+  GeneratedColumn<double> get position =>
+      $composableBuilder(column: $table.position, builder: (column) => column);
+}
+
+class $$ListSnapshotTasksTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ListSnapshotTasksTable,
+          ListSnapshotTaskRow,
+          $$ListSnapshotTasksTableFilterComposer,
+          $$ListSnapshotTasksTableOrderingComposer,
+          $$ListSnapshotTasksTableAnnotationComposer,
+          $$ListSnapshotTasksTableCreateCompanionBuilder,
+          $$ListSnapshotTasksTableUpdateCompanionBuilder,
+          (
+            ListSnapshotTaskRow,
+            BaseReferences<
+              _$AppDatabase,
+              $ListSnapshotTasksTable,
+              ListSnapshotTaskRow
+            >,
+          ),
+          ListSnapshotTaskRow,
+          PrefetchHooks Function()
+        > {
+  $$ListSnapshotTasksTableTableManager(
+    _$AppDatabase db,
+    $ListSnapshotTasksTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ListSnapshotTasksTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ListSnapshotTasksTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ListSnapshotTasksTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> listKey = const Value.absent(),
+                Value<int> taskId = const Value.absent(),
+                Value<double> position = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ListSnapshotTasksCompanion(
+                listKey: listKey,
+                taskId: taskId,
+                position: position,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String listKey,
+                required int taskId,
+                required double position,
+                Value<int> rowid = const Value.absent(),
+              }) => ListSnapshotTasksCompanion.insert(
+                listKey: listKey,
+                taskId: taskId,
+                position: position,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$ListSnapshotTasksTable, ListSnapshotTaskRow>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $ListSnapshotTasksTable,
+                    ListSnapshotTaskRow
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ListSnapshotTasksTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ListSnapshotTasksTable,
+      ListSnapshotTaskRow,
+      $$ListSnapshotTasksTableFilterComposer,
+      $$ListSnapshotTasksTableOrderingComposer,
+      $$ListSnapshotTasksTableAnnotationComposer,
+      $$ListSnapshotTasksTableCreateCompanionBuilder,
+      $$ListSnapshotTasksTableUpdateCompanionBuilder,
+      (
+        ListSnapshotTaskRow,
+        BaseReferences<
+          _$AppDatabase,
+          $ListSnapshotTasksTable,
+          ListSnapshotTaskRow
+        >,
+      ),
+      ListSnapshotTaskRow,
+      PrefetchHooks Function()
+    >;
+typedef $$ListPreferenceEntriesTableCreateCompanionBuilder =
+    ListPreferenceEntriesCompanion Function({
+      required String key,
+      required String value,
+      Value<int> rowid,
+    });
+typedef $$ListPreferenceEntriesTableUpdateCompanionBuilder =
+    ListPreferenceEntriesCompanion Function({
+      Value<String> key,
+      Value<String> value,
+      Value<int> rowid,
+    });
+
+class $$ListPreferenceEntriesTableFilterComposer
+    extends Composer<_$AppDatabase, $ListPreferenceEntriesTable> {
+  $$ListPreferenceEntriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get key => $composableBuilder(
+    column: $table.key,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get value => $composableBuilder(
+    column: $table.value,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ListPreferenceEntriesTableOrderingComposer
+    extends Composer<_$AppDatabase, $ListPreferenceEntriesTable> {
+  $$ListPreferenceEntriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get key => $composableBuilder(
+    column: $table.key,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get value => $composableBuilder(
+    column: $table.value,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ListPreferenceEntriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ListPreferenceEntriesTable> {
+  $$ListPreferenceEntriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get key =>
+      $composableBuilder(column: $table.key, builder: (column) => column);
+
+  GeneratedColumn<String> get value =>
+      $composableBuilder(column: $table.value, builder: (column) => column);
+}
+
+class $$ListPreferenceEntriesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ListPreferenceEntriesTable,
+          ListPreferenceRow,
+          $$ListPreferenceEntriesTableFilterComposer,
+          $$ListPreferenceEntriesTableOrderingComposer,
+          $$ListPreferenceEntriesTableAnnotationComposer,
+          $$ListPreferenceEntriesTableCreateCompanionBuilder,
+          $$ListPreferenceEntriesTableUpdateCompanionBuilder,
+          (
+            ListPreferenceRow,
+            BaseReferences<
+              _$AppDatabase,
+              $ListPreferenceEntriesTable,
+              ListPreferenceRow
+            >,
+          ),
+          ListPreferenceRow,
+          PrefetchHooks Function()
+        > {
+  $$ListPreferenceEntriesTableTableManager(
+    _$AppDatabase db,
+    $ListPreferenceEntriesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ListPreferenceEntriesTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$ListPreferenceEntriesTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$ListPreferenceEntriesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> key = const Value.absent(),
+                Value<String> value = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ListPreferenceEntriesCompanion(
+                key: key,
+                value: value,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String key,
+                required String value,
+                Value<int> rowid = const Value.absent(),
+              }) => ListPreferenceEntriesCompanion.insert(
+                key: key,
+                value: value,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$ListPreferenceEntriesTable, ListPreferenceRow>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $ListPreferenceEntriesTable,
+                    ListPreferenceRow
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ListPreferenceEntriesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ListPreferenceEntriesTable,
+      ListPreferenceRow,
+      $$ListPreferenceEntriesTableFilterComposer,
+      $$ListPreferenceEntriesTableOrderingComposer,
+      $$ListPreferenceEntriesTableAnnotationComposer,
+      $$ListPreferenceEntriesTableCreateCompanionBuilder,
+      $$ListPreferenceEntriesTableUpdateCompanionBuilder,
+      (
+        ListPreferenceRow,
+        BaseReferences<
+          _$AppDatabase,
+          $ListPreferenceEntriesTable,
+          ListPreferenceRow
+        >,
+      ),
+      ListPreferenceRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -11881,4 +13103,10 @@ class $AppDatabaseManager {
       );
   $$ServerNotificationsTableTableManager get serverNotifications =>
       $$ServerNotificationsTableTableManager(_db, _db.serverNotifications);
+  $$ListSnapshotsTableTableManager get listSnapshots =>
+      $$ListSnapshotsTableTableManager(_db, _db.listSnapshots);
+  $$ListSnapshotTasksTableTableManager get listSnapshotTasks =>
+      $$ListSnapshotTasksTableTableManager(_db, _db.listSnapshotTasks);
+  $$ListPreferenceEntriesTableTableManager get listPreferenceEntries =>
+      $$ListPreferenceEntriesTableTableManager(_db, _db.listPreferenceEntries);
 }

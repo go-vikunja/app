@@ -375,7 +375,8 @@ void main() {
           expect(localId, isNegative);
           expect((await db.tasksDao.find(localId))!.title, 'Created offline');
           expect(
-            (await db.tasksDao.loadProjectTasks(
+            (await projectTasksIn(
+              db,
               seed.projectId,
               showDone: false,
             )).first.id,

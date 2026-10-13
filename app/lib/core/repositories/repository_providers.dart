@@ -286,11 +286,20 @@ ProjectRepository accountProjectRepository(Ref ref, String accountId) {
 
 @riverpod
 TaskRepository accountTaskRepository(Ref ref, String accountId) {
+  final perPage = ref.watch(
+    accountsProvider.select(
+      (accounts) =>
+          accounts.value?.find(accountId)?.connection.info.maxItemsPerPage,
+    ),
+  );
+  if (perPage == null) throw StateError('Account $accountId is not registered');
   final repository = LocalTaskRepository(
     ref.watch(appDatabaseProvider(accountId)),
     ref.watch(syncEngineProvider(accountId)),
     ref.watch(outboxSenderProvider(accountId)),
     ref.watch(writeClientProvider(accountId)),
+    read: ref.watch(readClientProvider(accountId)),
+    perPage: perPage,
     now: ref.watch(clockProvider),
   );
   ref.onDispose(repository.dispose);

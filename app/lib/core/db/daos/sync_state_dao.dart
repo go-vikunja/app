@@ -20,6 +20,12 @@ final class SyncStateDao extends DatabaseAccessor<AppDatabase>
           .map((row) => row.value)
           .watchSingleOrNull();
 
+  /// The stored values of [keys], on every write to the table.
+  Stream<Map<String, String>> watchValues(Set<String> keys) =>
+      (select(syncState)..where((s) => s.key.isIn(keys))).watch().map(
+        (rows) => {for (final row in rows) row.key: row.value},
+      );
+
   /// A null value removes the key.
   Future<void> write(Map<String, String?> values) => batch((b) {
     for (final MapEntry(:key, :value) in values.entries) {

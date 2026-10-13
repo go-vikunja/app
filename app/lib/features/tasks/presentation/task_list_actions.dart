@@ -49,6 +49,17 @@ mixin TaskListActions<W extends ConsumerStatefulWidget> on ConsumerState<W> {
     return place;
   }
 
+  /// For a list that places its rows itself (a project's, with its done
+  /// part), by id: the done copies of the tasks marked done here whose Undo
+  /// is still offered, which keep their place among the open rows
+  /// meanwhile; after Undo the open copy, until [listed] has the task open
+  /// again, as a list that loads only the done tasks it shows may not have
+  /// it until then.
+  Map<int, Task> leavingTasksIn(Map<int, Task> listed) {
+    _leaving.removeWhere((id, copy) => !copy.done && listed[id]?.done == false);
+    return Map.unmodifiable(_leaving);
+  }
+
   /// For an account switch: the copies belong to the old list.
   void clearLeavingTasks() {
     _leaving.clear();

@@ -1,8 +1,8 @@
 import 'package:drift/drift.dart';
 import 'package:vikunja_mobile/core/db/epoch_millis.dart';
 
-/// Real projects only; the pseudo projects (Favorites, saved filters) are
-/// not stored in step 6.
+/// Real projects only; of the pseudo projects (Favorites, saved filters)
+/// only the saved filters' names are kept, in `sync_state`.
 @DataClassName('ProjectRow')
 class Projects extends Table {
   IntColumn get id => integer()();

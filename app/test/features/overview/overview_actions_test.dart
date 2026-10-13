@@ -310,10 +310,15 @@ void main() {
     data.tasks.pendingTaskIds = {2};
     await pumpOverview(tester);
 
+    final semantics = tester.ensureSemantics();
     final mark = inRow('Call mum', find.byIcon(Icons.cloud_off_outlined));
     expect(mark, findsOneWidget);
-    expect(tester.widget<Icon>(mark).semanticLabel, en.taskNotYetSynced);
+    expect(
+      tester.getSemantics(find.text('Call mum')).label,
+      contains(en.taskNotYetSynced),
+    );
     expect(find.byIcon(Icons.cloud_off_outlined), findsOneWidget);
+    semantics.dispose();
 
     data.tasks.pendingTaskIds = {};
     await tester.pumpAndSettle();

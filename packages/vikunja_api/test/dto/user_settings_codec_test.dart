@@ -18,6 +18,8 @@ void main() {
           {'relative_period': 3600},
         ],
         'play_sound_when_done': false,
+        'filter_id_used_on_overview': -553,
+        'minimum_priority': 3,
       },
       'extra_settings_links': null,
     });
@@ -31,8 +33,24 @@ void main() {
         language: 'de-DE',
         quickAddMagicMode: QuickAddMagicMode.todoist,
         quickAddDefaultReminders: [Duration(minutes: -15), Duration(hours: 1)],
+        filterIdUsedOnOverview: -553,
+        minimumPriority: 3,
       ),
     );
+    expect(settings.effectiveMinimumPriority, 3);
+  });
+
+  test('the web writes null for no overview filter', () {
+    final settings = parseUserSettings({
+      'frontend_settings': {
+        'filter_id_used_on_overview': null,
+        'minimum_priority': null,
+      },
+    });
+
+    expect(settings.filterIdUsedOnOverview, isNull);
+    expect(settings.minimumPriority, 0);
+    expect(settings.effectiveMinimumPriority, 2);
   });
 
   test('frontend settings null, as for a user who never saved any', () {
@@ -143,6 +161,44 @@ void main() {
         Duration(minutes: -10),
         Duration.zero,
       ]);
+    });
+
+    test('an overview filter that is no saved filter is none', () {
+      for (final id in <Object?>[-1, 0, 5, -553.0, '-553', true, <Object?>[]]) {
+        expect(
+          parseUserSettings({
+            'frontend_settings': {'filter_id_used_on_overview': id},
+          }).filterIdUsedOnOverview,
+          isNull,
+          reason: '$id',
+        );
+      }
+      expect(
+        parseUserSettings({
+          'frontend_settings': {'filter_id_used_on_overview': -2},
+        }).filterIdUsedOnOverview,
+        -2,
+      );
+    });
+
+    test('a minimum priority outside 1..5 is unset', () {
+      for (final priority in <Object?>[0, -1, 6, 2.0, '3', false]) {
+        expect(
+          parseUserSettings({
+            'frontend_settings': {'minimum_priority': priority},
+          }).minimumPriority,
+          0,
+          reason: '$priority',
+        );
+      }
+      for (final priority in [1, 5]) {
+        expect(
+          parseUserSettings({
+            'frontend_settings': {'minimum_priority': priority},
+          }).minimumPriority,
+          priority,
+        );
+      }
     });
 
     test('default reminders that are not a list', () {

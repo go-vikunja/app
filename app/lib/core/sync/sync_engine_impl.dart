@@ -9,6 +9,8 @@ import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/settings/user_settings_json.dart';
 import 'package:vikunja_mobile/core/sync/archived_projects.dart';
 import 'package:vikunja_mobile/core/sync/incremental_run.dart';
+import 'package:vikunja_mobile/core/sync/list_downloads.dart';
+import 'package:vikunja_mobile/core/sync/saved_filters.dart';
 import 'package:vikunja_mobile/core/sync/stable_pages.dart';
 import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine.dart';
@@ -26,10 +28,12 @@ typedef CurrentUserSource = Future<UserWithSettings> Function();
 /// keyset by id (`id > lastId`, sorted by id, one page per request), open
 /// ones first, every page is checkpointed in `sync_state` so a killed app
 /// resumes where it stopped, and tasks the run did not return are purged at
-/// the end. A refresh is an [IncrementalRun] from the stored watermark,
-/// unless no full run completed within [fullResyncInterval]. Runs are
-/// serialized: a call joins the run in progress, except that a full run
-/// asked for during an incremental one follows it.
+/// the end, after the Overview's saved filter is downloaded
+/// (`downloadOverviewFilter`). A refresh is an [IncrementalRun] from the
+/// stored watermark, unless no full run completed within
+/// [fullResyncInterval]. Runs are serialized: a call joins the run in
+/// progress, except that a full run asked for during an incremental one
+/// follows it.
 ///
 /// Engines of the same account in other isolates (a background run, a
 /// notification action) share the database, so a run first takes the
@@ -330,6 +334,7 @@ final class DefaultSyncEngine implements SyncEngine {
       perPage: _perPage,
       runId: runId,
       since: _watermark!.subtract(catchUpOverlap),
+      now: _now,
       checkActive: _checkDisposed,
       keepLease: () => _db.transaction(_holdLease),
       report: (phase, {done = 0, total}) => _emit(
@@ -447,12 +452,16 @@ final class DefaultSyncEngine implements SyncEngine {
   }
 
   /// All pages, archived projects included, in one list; the pseudo projects
-  /// (Favorites, saved filters) repeat on every page and are skipped.
+  /// (Favorites, saved filters) repeat on every page and are not stored as
+  /// projects, only the saved filters' names.
   Future<SyncCheckpoint> _syncProjects(SyncCheckpoint checkpoint) async {
     var current = checkpoint;
+    final pseudo = <Project>[];
     final byId = await collectPages<Project>(
       fetch: (page) async {
         _checkDisposed();
+        // A walk that starts over starts at page 1.
+        if (page == 1) pseudo.clear();
         await _db.transaction(_holdLease);
         return await _client.projects.list(
           page: page,
@@ -461,7 +470,10 @@ final class DefaultSyncEngine implements SyncEngine {
         );
       },
       idOf: (project) => project.id,
-      skip: (project) => project.isPseudo,
+      skip: (project) {
+        if (project.isPseudo) pseudo.add(project);
+        return project.isPseudo;
+      },
       onPage: (collected, page) {
         current = current.copyWith(done: collected.length, total: page.total);
         _report(current);
@@ -471,6 +483,7 @@ final class DefaultSyncEngine implements SyncEngine {
     await _db.transaction(() async {
       await _db.projectsDao.upsertAll(byId.values);
       await _db.projectsDao.purgeNotIn(byId.keys);
+      await storeSavedFilters(_db, savedFiltersIn(pseudo));
     });
     _log.info('Sync run ${current.runId}: ${byId.length} projects');
     return await _advance(current, SyncPhase.labels);
@@ -558,6 +571,18 @@ final class DefaultSyncEngine implements SyncEngine {
       (query) => _client.tasks.list(query),
       changedSince: since,
       report: false,
+    );
+    await downloadOverviewFilter(
+      db: _db,
+      client: _client,
+      perPage: _perPage,
+      runId: checkpoint.runId,
+      now: _now,
+      request: (send) async {
+        _checkDisposed();
+        await _db.transaction(_holdLease);
+        return await send();
+      },
     );
     _checkDisposed();
     final finishedAt = _now().toUtc();

@@ -6,6 +6,8 @@ import 'package:vikunja_mobile/core/db/mappers/label_mappers.dart';
 import 'package:vikunja_mobile/core/db/mappers/task_mappers.dart';
 import 'package:vikunja_mobile/core/db/mappers/user_mappers.dart';
 import 'package:vikunja_mobile/core/db/tables/labels.dart';
+import 'package:vikunja_mobile/core/db/tables/lists.dart';
+import 'package:vikunja_mobile/core/db/tables/projects.dart';
 import 'package:vikunja_mobile/core/db/tables/task_id_remaps.dart';
 import 'package:vikunja_mobile/core/db/tables/tasks.dart';
 import 'package:vikunja_mobile/core/db/tables/users.dart';
@@ -13,6 +15,8 @@ import 'package:vikunja_mobile/core/db/watch_tables.dart';
 import 'package:vikunja_mobile/core/outbox/apply_task_changes.dart';
 import 'package:vikunja_mobile/core/outbox/task_changes_json.dart';
 import 'package:vikunja_mobile/core/outbox/task_relation_inverse.dart';
+import 'package:vikunja_mobile/core/repositories/task_lists.dart';
+import 'package:vikunja_mobile/core/sync/archived_projects.dart';
 
 part 'tasks_dao.g.dart';
 
@@ -28,6 +32,9 @@ typedef _TaskRows = ({TaskRow task, UserRow? createdBy});
     Labels,
     Users,
     TaskIdRemaps,
+    Projects,
+    ListSnapshots,
+    ListSnapshotTasks,
   ],
 )
 final class TasksDao extends DatabaseAccessor<AppDatabase>
@@ -74,34 +81,157 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
   Stream<List<Task>> watchOpenTasks() =>
       watchTables(_readTables, loadOpenTasks);
 
-  Future<List<Task>> loadOpenTasks() => _load(
-    where: tasks.done.equals(false) & _visible,
-    orderBy: [
-      OrderingTerm.asc(tasks.dueDate, nulls: NullsOrder.last),
-      ..._newestFirst,
-    ],
-  );
+  Future<List<Task>> loadOpenTasks() =>
+      _load(where: tasks.done.equals(false) & _visible, orderBy: _byDueDate);
 
-  /// The web's default order: position, then newest first.
-  Stream<List<Task>> watchProjectTasks(
-    int projectId, {
-    required bool showDone,
-  }) => watchTables(
-    _readTables,
-    () => loadProjectTasks(projectId, showDone: showDone),
-  );
+  List<OrderingTerm> get _byDueDate => [
+    OrderingTerm.asc(tasks.dueDate, nulls: NullsOrder.last),
+    ..._newestFirst,
+  ];
 
-  Future<List<Task>> loadProjectTasks(
-    int projectId, {
-    required bool showDone,
-  }) => _load(
-    where: showDone
-        ? tasks.projectId.equals(projectId) & _visible
-        : tasks.projectId.equals(projectId) &
-              tasks.done.equals(false) &
+  /// [watchOpenTasks] without the tasks of archived projects and their
+  /// subprojects, which `GET /tasks` leaves out too.
+  Stream<List<Task>> watchActiveOpenTasks() =>
+      watchTables({..._readTables, projects}, loadActiveOpenTasks);
+
+  Future<List<Task>> loadActiveOpenTasks() async {
+    final archived = await _archivedProjectIds();
+    return await _load(
+      where: archived.isEmpty
+          ? tasks.done.equals(false) & _visible
+          : tasks.done.equals(false) &
+                _visible &
+                tasks.projectId.isNotIn(archived),
+      orderBy: _byDueDate,
+    );
+  }
+
+  Future<List<int>> _archivedProjectIds() async {
+    final query = selectOnly(
+      projects,
+    )..addColumns([projects.id, projects.parentProjectId, projects.isArchived]);
+    return archivedProjectIds([
+      for (final row in await query.get())
+        Project(
+          id: row.read(projects.id)!,
+          title: '',
+          parentProjectId: row.read(projects.parentProjectId)!,
+          isArchived: row.read(projects.isArchived)!,
+        ),
+    ]);
+  }
+
+  /// The open tasks among a list's last download ([listKey]), as
+  /// [watchOpenTasks] orders them; one done or deleted here leaves at once.
+  Stream<({List<Task> tasks, DateTime? loadedAt})> watchOpenTasksInList(
+    String listKey,
+  ) => watchTables({
+    ..._readTables,
+    listSnapshots,
+    listSnapshotTasks,
+  }, () => loadOpenTasksInList(listKey));
+
+  Future<({List<Task> tasks, DateTime? loadedAt})> loadOpenTasksInList(
+    String listKey,
+  ) async {
+    final header = await (select(
+      listSnapshots,
+    )..where((s) => s.listKey.equals(listKey))).getSingleOrNull();
+    if (header == null) return (tasks: const <Task>[], loadedAt: null);
+    final open = await _load(
+      where:
+          tasks.id.isInQuery(_snapshotTaskIds(listKey)) &
+          tasks.done.equals(false) &
+          _visible,
+      orderBy: _byDueDate,
+    );
+    return (tasks: open, loadedAt: header.loadedAt);
+  }
+
+  /// What a project's list view is built from: the project's tasks (done
+  /// ones only with [includeDone] or when the view's last download has
+  /// them), every task reachable from them as a subtask in any project, and
+  /// the view's last download ([listKey]).
+  Stream<ProjectListSource> watchProjectList(
+    int projectId,
+    String listKey, {
+    bool includeDone = true,
+  }) => watchTables({
+    ..._readTables,
+    listSnapshots,
+    listSnapshotTasks,
+  }, () => loadProjectList(projectId, listKey, includeDone: includeDone));
+
+  Future<ProjectListSource> loadProjectList(
+    int projectId,
+    String listKey, {
+    bool includeDone = true,
+  }) async {
+    final inProject = tasks.projectId.equals(projectId) & _visible;
+    final projectTasks = await _load(
+      where: includeDone
+          ? inProject
+          : inProject &
+                (tasks.done.equals(false) |
+                    tasks.id.isInQuery(_snapshotTaskIds(listKey))),
+      orderBy: _newestFirst,
+    );
+    final byId = {for (final task in projectTasks) task.id: task};
+    // The hydrated relations only name local tasks that are not queued for
+    // deletion, so every id asked for here exists.
+    var frontier = projectTasks;
+    while (frontier.isNotEmpty) {
+      final missing = {
+        for (final task in frontier)
+          for (final subtask in task.subtasks)
+            if (!byId.containsKey(subtask.id)) subtask.id,
+      };
+      frontier = await _loadIds(missing);
+      for (final task in frontier) {
+        byId[task.id] = task;
+      }
+    }
+    return ProjectListSource(
+      projectTasks: projectTasks,
+      tasksById: byId,
+      snapshot: await attachedDatabase.listSnapshotsDao.load(listKey),
+      omitsDoneTasks:
+          !includeDone && await _hasDoneTasksOutside(projectId, listKey),
+    );
+  }
+
+  Future<bool> _hasDoneTasksOutside(int projectId, String listKey) async {
+    final query = selectOnly(tasks)
+      ..addColumns([tasks.id])
+      ..where(
+        tasks.projectId.equals(projectId) &
+            _visible &
+            tasks.done.equals(true) &
+            tasks.id.isNotInQuery(_snapshotTaskIds(listKey)),
+      )
+      ..limit(1);
+    return (await query.get()).isNotEmpty;
+  }
+
+  BaseSelectStatement<TypedResult> _snapshotTaskIds(String listKey) =>
+      selectOnly(listSnapshotTasks)
+        ..addColumns([listSnapshotTasks.taskId])
+        ..where(listSnapshotTasks.listKey.equals(listKey));
+
+  Future<List<Task>> _loadIds(Set<int> ids) async {
+    final all = ids.toList();
+    return [
+      for (var start = 0; start < all.length; start += _chunkSize)
+        ...await _load(
+          where:
+              tasks.id.isIn(
+                all.sublist(start, (start + _chunkSize).clamp(0, all.length)),
+              ) &
               _visible,
-    orderBy: [OrderingTerm.asc(tasks.position), ..._newestFirst],
-  );
+          orderBy: const [],
+        ),
+    ];
+  }
 
   /// Every task, newest first, without the labels, assignees, reminders
   /// and relations the other reads load; so it re-runs only when the tasks
@@ -561,22 +691,33 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
         TaskRelationRef(inverseRelationKind(kind), row.taskId),
       );
     }
+    final wanted = [
+      for (final MapEntry(key: id, value: refs) in edges.entries)
+        for (final ref in queuedRelations[id]?.applyTo(refs) ?? refs)
+          if (pulled.contains(ref.otherTaskId))
+            TaskRelationRow(
+              taskId: id,
+              otherTaskId: ref.otherTaskId,
+              kind: ref.kind.wireName,
+            ),
+    ];
+    final stored = await (select(
+      taskRelations,
+    )..where((r) => r.taskId.isIn(others) & r.otherTaskId.isIn(pulled))).get();
+    final stale = stored.toSet().difference(wanted.toSet());
+    // An edge that stays keeps its row, and with it its place among the
+    // other task's relations.
     await batch((b) {
-      b
-        ..deleteWhere(
+      for (final row in stale) {
+        b.deleteWhere(
           taskRelations,
-          (r) => r.taskId.isIn(others) & r.otherTaskId.isIn(pulled),
-        )
-        ..insertAll(taskRelations, [
-          for (final MapEntry(key: id, value: refs) in edges.entries)
-            for (final ref in queuedRelations[id]?.applyTo(refs) ?? refs)
-              if (pulled.contains(ref.otherTaskId))
-                TaskRelationRow(
-                  taskId: id,
-                  otherTaskId: ref.otherTaskId,
-                  kind: ref.kind.wireName,
-                ),
-        ], mode: InsertMode.insertOrIgnore);
+          (r) =>
+              r.taskId.equals(row.taskId) &
+              r.otherTaskId.equals(row.otherTaskId) &
+              r.kind.equals(row.kind),
+        );
+      }
+      b.insertAll(taskRelations, wanted, mode: InsertMode.insertOrIgnore);
     });
   }
 
@@ -814,7 +955,8 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
 
   /// Only relations whose other task is local and not queued for deletion;
   /// the nested task carries no labels, assignees, reminders or relations
-  /// of its own.
+  /// of its own. In the order the edges were stored, which is the server's
+  /// order for a pulled task: the web nests subtasks in that order.
   Future<void> _loadRelations(
     List<int> ids,
     Map<int, Map<TaskRelationKind, List<Task>>> into,
@@ -824,7 +966,7 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
             innerJoin(tasks, tasks.id.equalsExp(taskRelations.otherTaskId)),
           ])
           ..where(taskRelations.taskId.isIn(ids) & _visible)
-          ..orderBy([OrderingTerm.asc(tasks.id)]);
+          ..orderBy([OrderingTerm.asc(taskRelations.rowId)]);
     for (final row in await query.get()) {
       final relation = row.readTable(taskRelations);
       final kind = TaskRelationKind.fromWire(relation.kind);

@@ -37,5 +37,15 @@ UserSettings parseUserSettings(Object? json) {
       ]),
       _ => const [],
     },
+    // A saved filter's pseudo project id: -1 is Favorites, 0 and up real
+    // projects.
+    filterIdUsedOnOverview: switch (frontend['filter_id_used_on_overview']) {
+      final int id when id <= -2 => id,
+      _ => null,
+    },
+    minimumPriority: switch (frontend['minimum_priority']) {
+      final int priority when priority >= 1 && priority <= 5 => priority,
+      _ => 0,
+    },
   );
 }

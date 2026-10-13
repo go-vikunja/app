@@ -4,6 +4,8 @@ import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/sync/archived_projects.dart';
+import 'package:vikunja_mobile/core/sync/list_downloads.dart';
+import 'package:vikunja_mobile/core/sync/saved_filters.dart';
 import 'package:vikunja_mobile/core/sync/stable_pages.dart';
 import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
@@ -32,7 +34,8 @@ typedef _ProjectDiff = ({
 /// a change within the second a sync last saw. A project's tasks are purged
 /// only once its ids are complete, so a failed run never deletes. Rows that
 /// equal the local ones are not written, so a run that finds nothing new
-/// leaves the database's watchers alone.
+/// leaves the database's watchers alone. Last comes the Overview's saved
+/// filter, see `downloadOverviewFilter`.
 final class IncrementalRun {
   new({
     required this._db,
@@ -40,6 +43,7 @@ final class IncrementalRun {
     required this._perPage,
     required this.runId,
     required this._since,
+    required this._now,
     required this._checkActive,
     required this._keepLease,
     required this._report,
@@ -49,6 +53,7 @@ final class IncrementalRun {
   final VikunjaReadClient _client;
   final int _perPage;
   final DateTime _since;
+  final DateTime Function() _now;
   final void Function() _checkActive;
 
   /// Before every request: renews the run's hold on the account, or throws
@@ -99,31 +104,48 @@ final class IncrementalRun {
         _report(SyncPhase.reconcile, done: ++examined, total: total);
       }
     }
+    await downloadOverviewFilter(
+      db: _db,
+      client: _client,
+      perPage: _perPage,
+      runId: runId,
+      now: _now,
+      request: _request,
+    );
     _log.fine('Sync run $runId: $requests requests');
   }
 
   /// All pages, archived projects included; pseudo projects repeat on every
-  /// page and are skipped. One the server no longer lists is gone with its
-  /// tasks. Added and un-archived projects are pulled whole, and so are the
-  /// ones a failed run left pending; an archived project whose `updated`
-  /// differs, or that is newly archived (itself or through a parent, which
-  /// takes its tasks out of `GET /tasks`), gets its delta through the
-  /// project. Only rows that differ from the local ones are written.
+  /// page and are skipped, only the saved filters' names are kept. One the
+  /// server no longer lists is gone with its tasks. Added and un-archived
+  /// projects are pulled whole, and so are the ones a failed run left
+  /// pending; an archived project whose `updated` differs, or that is newly
+  /// archived (itself or through a parent, which takes its tasks out of
+  /// `GET /tasks`), gets its delta through the project. Only rows that
+  /// differ from the local ones are written.
   Future<_ProjectDiff> _syncProjects() async {
     final local = {for (final p in await _db.projectsDao.loadAll()) p.id: p};
     final pendingBefore = _parseIds(
       (await _db.syncStateDao.readAll())[SyncStateKeys.pendingWholePull],
     );
+    final pseudo = <Project>[];
     final remote = await collectPages<Project>(
-      fetch: (page) => _request(
-        () => _client.projects.list(
-          page: page,
-          perPage: _perPage,
-          includeArchived: true,
-        ),
-      ),
+      fetch: (page) {
+        // A walk that starts over starts at page 1.
+        if (page == 1) pseudo.clear();
+        return _request(
+          () => _client.projects.list(
+            page: page,
+            perPage: _perPage,
+            includeArchived: true,
+          ),
+        );
+      },
       idOf: (project) => project.id,
-      skip: (project) => project.isPseudo,
+      skip: (project) {
+        if (project.isPseudo) pseudo.add(project);
+        return project.isPseudo;
+      },
       onPage: (collected, page) => _report(
         SyncPhase.projects,
         done: collected.length,
@@ -159,6 +181,7 @@ final class IncrementalRun {
     }
     await _db.transaction(() async {
       if (changed.isNotEmpty) await _db.projectsDao.upsertAll(changed);
+      await storeSavedFilters(_db, savedFiltersIn(pseudo));
       if (removed.isNotEmpty) {
         await _db.projectsDao.purge(removed);
         await _db.tasksDao.purgeInProjects(removed);

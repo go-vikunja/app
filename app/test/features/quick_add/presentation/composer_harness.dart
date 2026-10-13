@@ -5,7 +5,6 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/platform/app_shortcuts.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
-import 'package:vikunja_mobile/core/settings/user_settings_providers.dart';
 import 'package:vikunja_mobile/features/quick_add/application/local_quick_add_service.dart';
 import 'package:vikunja_mobile/features/quick_add/application/quick_add_plan.dart';
 import 'package:vikunja_mobile/features/quick_add/application/quick_add_service_provider.dart';
@@ -92,7 +91,8 @@ final class ComposerHarness {
 
   /// Whom plans resolve `@names` to, like the service's known people.
   List<User> knownUsers = [sam];
-  UserSettings settings = const UserSettings();
+  UserSettings get settings => data.shared.settings;
+  set settings(UserSettings settings) => data.shared.settings = settings;
   late final service = FakeQuickAddService(planner: _plan);
 
   QuickAddPlan _plan(
@@ -119,7 +119,6 @@ final class ComposerHarness {
 
   List<Override> get overrides => [
     quickAddServiceProvider.overrideWithValue(service),
-    userSettingsProvider.overrideWith((ref) => Stream.value(settings)),
     labelRepositoryProvider.overrideWithValue(labels),
     userRepositoryProvider.overrideWithValue(users),
     appShortcutsProvider.overrideWithValue(shortcuts),

@@ -6,7 +6,9 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/settings/user_settings_json.dart';
+import 'package:vikunja_mobile/core/sync/saved_filters.dart';
 import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine_impl.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
@@ -183,10 +185,7 @@ void main() {
         expect(assigned.updated, isNotNull);
         expect(assigned.identifier, isNotEmpty);
 
-        final archived = await db.tasksDao.loadProjectTasks(
-          seed.archivedId,
-          showDone: true,
-        );
+        final archived = await projectTasksIn(db, seed.archivedId);
         expect(archived, hasLength(_archivedOpen + _archivedDone));
         expect(archived.map((t) => t.id).toSet(), seed.archivedTaskIds.toSet());
         expect(archived.where((t) => t.done), hasLength(_archivedDone));
@@ -205,24 +204,27 @@ void main() {
           'done = false && id > ${openIds[perPage - 1]}',
           'done = true && id > 0',
         ]);
-        final liveDone = await db.tasksDao.loadProjectTasks(
-          seed.liveId,
-          showDone: true,
-        );
+        final liveDone = await projectTasksIn(db, seed.liveId);
         expect(liveDone, hasLength(_liveOpen + _liveDone));
         expect(
-          await db.tasksDao.loadProjectTasks(seed.liveId, showDone: false),
+          await projectTasksIn(db, seed.liveId, showDone: false),
           hasLength(_liveOpen),
         );
-        // Last run, last full run, the watermark and the user's settings;
-        // no checkpoint.
+        // Last run, last full run, the watermark, the user's settings and
+        // the saved filter every new user gets; no checkpoint.
         final state = await db.syncStateDao.readAll();
         expect(state.keys.toSet(), {
           SyncStateKeys.lastSyncedAt,
           SyncStateKeys.lastFullSyncAt,
           SyncStateKeys.watermark,
           SyncStateKeys.userSettings,
+          SyncStateKeys.savedFilters,
         });
+        expect(decodeSavedFilters(state[SyncStateKeys.savedFilters]), [
+          isA<SavedFilterRef>()
+              .having((f) => f.projectId, 'pseudo project', lessThan(-1))
+              .having((f) => f.title, 'title', 'My Open Tasks'),
+        ]);
         expect(
           decodeUserSettings(state[SyncStateKeys.userSettings]),
           isA<UserSettings>()

@@ -7,18 +7,24 @@ import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/outbox/outbox_sender.dart';
 import 'package:vikunja_mobile/core/outbox/pending_task_ids_source.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
-import 'package:vikunja_mobile/core/repositories/paged_list.dart';
+import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
+import 'package:vikunja_mobile/core/repositories/local/shared_latest.dart';
+import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
+import 'package:vikunja_mobile/core/sync/list_downloads.dart';
+import 'package:vikunja_mobile/core/sync/saved_filters.dart';
+import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine.dart';
 
 final _log = Logger('AccountData');
 
 /// Tasks from the account's database. The whole account is local, so a
-/// project list is never paged and every refresh is a full sync run. A
-/// write lands in the database and the outbox in one transaction, then the
-/// sender drains; a create gets a temporary negative id that the sender
-/// remaps once the server has named the task. A duplicate is made by the
-/// server and is online only.
+/// list is never paged and every refresh is a sync run. A write lands in
+/// the database and the outbox in one transaction, then the sender drains;
+/// a create gets a temporary negative id that the sender remaps once the
+/// server has named the task. A duplicate is made by the server and is
+/// online only, and so is a view's download, which needs `read` (`perPage`
+/// is the server's page size).
 final class LocalTaskRepository
     implements TaskRepository, PendingTaskIdsSource {
   new(
@@ -26,6 +32,8 @@ final class LocalTaskRepository
     this._sync,
     this._outbox,
     this._write, {
+    this._read,
+    this._perPage = 50,
     DateTime Function()? now,
   }) : _now = now ?? DateTime.now;
 
@@ -33,7 +41,14 @@ final class LocalTaskRepository
   final SyncEngine _sync;
   final OutboxSender _outbox;
   final VikunjaWriteClient _write;
+  final VikunjaReadClient? _read;
+  final int _perPage;
   final DateTime Function() _now;
+
+  // Upcoming and the Overview without a saved filter watch the same tasks.
+  late final SharedLatest<List<Task>> _activeOpenTasks = SharedLatest(
+    _db.tasksDao.watchActiveOpenTasks,
+  );
 
   @override
   Stream<List<Task>> watchOpenTasks() => _db.tasksDao.watchOpenTasks();
@@ -43,23 +58,58 @@ final class LocalTaskRepository
       _db.tasksDao.watchSearchableTasks();
 
   @override
-  Stream<PagedList<Task>> watchProjectTasks(
+  Stream<List<Task>> watchActiveOpenTasks() => _activeOpenTasks.stream;
+
+  @override
+  Stream<OverviewTasks> watchOverviewTasks() => _switchLatest(
+    _db.syncStateDao
+        .watchValues({SyncStateKeys.userSettings, SyncStateKeys.savedFilters})
+        .map(overviewFilterIn)
+        .distinct(),
+    (filter) => filter == null
+        ? watchActiveOpenTasks().map((tasks) => OverviewTasks(tasks: tasks))
+        : _db.tasksDao
+              .watchOpenTasksInList(overviewSnapshotKey(filter.projectId))
+              .map(
+                (list) => OverviewTasks(
+                  tasks: list.tasks,
+                  filter: filter,
+                  filterLoadedAt: list.loadedAt,
+                ),
+              ),
+  );
+
+  @override
+  Stream<ProjectListSource> watchProjectList(
     int projectId, {
-    required bool showDone,
-  }) => _db.tasksDao
-      .watchProjectTasks(projectId, showDone: showDone)
-      .map((tasks) => PagedList(items: tasks, hasMore: false));
+    required int viewId,
+    bool includeDone = true,
+  }) => _db.tasksDao.watchProjectList(
+    projectId,
+    listKeyFor(projectId: projectId, viewId: viewId),
+    includeDone: includeDone,
+  );
+
+  @override
+  Future<void> refreshProjectList(int projectId, {required int viewId}) async {
+    await _sync.refresh();
+    if (viewId == 0) return;
+    final read = _read;
+    if (read == null) {
+      throw StateError('A view download needs the read client');
+    }
+    await downloadViewSnapshot(
+      db: _db,
+      client: read,
+      perPage: _perPage,
+      projectId: projectId,
+      viewId: viewId,
+      now: _now,
+    );
+  }
 
   @override
   Future<void> refreshOpenTasks() => _sync.refresh();
-
-  @override
-  Future<void> refreshProjectTasks(int projectId, {required bool showDone}) =>
-      _sync.refresh();
-
-  @override
-  Future<void> loadMoreProjectTasks(int projectId, {required bool showDone}) =>
-      Future.value();
 
   @override
   Stream<Task?> watchTask(int taskId) => _db.tasksDao.watchTask(taskId);
@@ -175,3 +225,37 @@ final class LocalTaskRepository
     ),
   );
 }
+
+/// The stream [inner] makes for the newest event of [source]; the previous
+/// one is cancelled.
+Stream<T> _switchLatest<S, T>(
+  Stream<S> source,
+  Stream<T> Function(S value) inner,
+) => Stream.multi((subscriber) {
+  StreamSubscription<T>? current;
+  var sourceDone = false;
+  var innerDone = true;
+  final outer = source.listen(
+    (value) {
+      unawaited(current?.cancel());
+      innerDone = false;
+      current = inner(value).listen(
+        subscriber.add,
+        onError: subscriber.addError,
+        onDone: () {
+          innerDone = true;
+          if (sourceDone) unawaited(subscriber.close());
+        },
+      );
+    },
+    onError: subscriber.addError,
+    onDone: () {
+      sourceDone = true;
+      if (innerDone) unawaited(subscriber.close());
+    },
+  );
+  subscriber.onCancel = () async {
+    await current?.cancel();
+    await outer.cancel();
+  };
+});

@@ -640,7 +640,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get overviewEmptyBody =>
-      'No open tasks right now. Enjoy the quiet, or add some on the web.';
+      'No open tasks right now. Enjoy the quiet, or add one with New task.';
 
   @override
   String get sectionOverdue => 'Overdue';
@@ -705,12 +705,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get projectTasksLoading => 'Loading tasks…';
-
-  @override
-  String get projectTasksLoadMore => 'Load more';
-
-  @override
-  String get projectTasksLoadingMore => 'Loading more tasks…';
 
   @override
   String get projectTasksEmptyTitle => 'No open tasks';
@@ -2518,5 +2512,271 @@ class AppLocalizationsEn extends AppLocalizations {
       one: '1 as a subtask',
     );
     return '$_temp0, $_temp1';
+  }
+
+  @override
+  String get tabUpcoming => 'Upcoming';
+
+  @override
+  String get upcomingEmptyTitle => 'Nothing to do — have a nice day!';
+
+  @override
+  String get upcomingEmptyBody => 'No open task is due in this date range.';
+
+  @override
+  String get upcomingShowOverdue => 'Show overdue tasks';
+
+  @override
+  String get upcomingShowWithoutDate => 'Show tasks without date';
+
+  @override
+  String get upcomingSelectRange => 'Select a date range';
+
+  @override
+  String get upcomingRangeCustom => 'Custom';
+
+  @override
+  String get upcomingRangeCustomEntry => 'Custom…';
+
+  @override
+  String upcomingRangeDates(String from, String to) {
+    return '$from – $to';
+  }
+
+  @override
+  String upcomingRangeSemantics(String name, String dates) {
+    return 'Date range $name, $dates';
+  }
+
+  @override
+  String get upcomingRangeFrom => 'From';
+
+  @override
+  String get upcomingRangeTo => 'To';
+
+  @override
+  String get rangeToday => 'Today';
+
+  @override
+  String get rangeTomorrow => 'Tomorrow';
+
+  @override
+  String get rangeLastWeek => 'Last Week';
+
+  @override
+  String get rangeThisWeek => 'This Week';
+
+  @override
+  String get rangeRestOfThisWeek => 'The Rest of This Week';
+
+  @override
+  String get rangeNextWeek => 'Next Week';
+
+  @override
+  String get rangeNext7Days => 'Next 7 Days';
+
+  @override
+  String get rangeLastMonth => 'Last Month';
+
+  @override
+  String get rangeThisMonth => 'This Month';
+
+  @override
+  String get rangeRestOfThisMonth => 'The Rest of This Month';
+
+  @override
+  String get rangeNextMonth => 'Next Month';
+
+  @override
+  String get rangeNext30Days => 'Next 30 Days';
+
+  @override
+  String get rangeThisYear => 'This Year';
+
+  @override
+  String get rangeRestOfThisYear => 'The Rest of This Year';
+
+  @override
+  String get sectionTomorrow => 'Tomorrow';
+
+  @override
+  String overviewFilterSubtitle(String title) {
+    return 'Filter: $title';
+  }
+
+  @override
+  String get overviewFilterNotLoadedTitle =>
+      'This filter loads once you\'re online';
+
+  @override
+  String overviewFilterNotLoadedBody(String title) {
+    return 'Your Overview shows the saved filter “$title”, picked on the web. Its tasks download with the next sync.';
+  }
+
+  @override
+  String overviewFilterEmptyBody(String title) {
+    return 'The saved filter “$title” has no open tasks.';
+  }
+
+  @override
+  String get projectViewList => 'List';
+
+  @override
+  String get projectViewSwitch => 'Switch view';
+
+  @override
+  String get projectSort => 'Sort';
+
+  @override
+  String projectSortCurrent(String sort) {
+    return 'Sorted: $sort';
+  }
+
+  @override
+  String get sortManual => 'Manually';
+
+  @override
+  String get sortTitleAsc => 'Title (A–Z)';
+
+  @override
+  String get sortTitleDesc => 'Title (Z–A)';
+
+  @override
+  String get sortPriorityDesc => 'Priority (Highest first)';
+
+  @override
+  String get sortPriorityAsc => 'Priority (Lowest first)';
+
+  @override
+  String get sortDueDateAsc => 'Due date (Earliest first)';
+
+  @override
+  String get sortDueDateDesc => 'Due date (Latest first)';
+
+  @override
+  String get sortStartDateAsc => 'Start date (Earliest first)';
+
+  @override
+  String get sortStartDateDesc => 'Start date (Latest first)';
+
+  @override
+  String get sortEndDateAsc => 'End date (Earliest first)';
+
+  @override
+  String get sortEndDateDesc => 'End date (Latest first)';
+
+  @override
+  String get sortPercentDoneDesc => '% done (Most done first)';
+
+  @override
+  String get sortPercentDoneAsc => '% done (Least done first)';
+
+  @override
+  String get sortCreatedDesc => 'Created (Newest first)';
+
+  @override
+  String get sortCreatedAsc => 'Created (Oldest first)';
+
+  @override
+  String get sortUpdatedDesc => 'Updated (Newest first)';
+
+  @override
+  String get sortUpdatedAsc => 'Updated (Oldest first)';
+
+  @override
+  String get projectTasksDoneSection => 'Done';
+
+  @override
+  String get projectTasksEmptyDoneTitle => 'No done tasks';
+
+  @override
+  String get projectTasksEmptyDoneBody => 'Nothing in this view is done yet.';
+
+  @override
+  String projectViewFilterNotice(String filter, String when) {
+    return 'The server applies this view\'s filter “$filter”. Shown as of $when; changes made elsewhere appear after the next download.';
+  }
+
+  @override
+  String get projectViewNotLoadedTitle => 'This view loads once you\'re online';
+
+  @override
+  String projectViewNotLoadedBody(String filter) {
+    return 'The server applies this view\'s filter “$filter”. Its tasks download when you open it online.';
+  }
+
+  @override
+  String get projectViewEmptyTitle => 'No matching tasks';
+
+  @override
+  String get projectViewEmptyBody =>
+      'Nothing matched this view\'s filter at the last download.';
+
+  @override
+  String get taskDoneSemantics => 'Done';
+
+  @override
+  String taskAssigneesSemantics(String names) {
+    return 'Assigned to $names';
+  }
+
+  @override
+  String taskMoreAssignees(int count) {
+    return '+$count';
+  }
+
+  @override
+  String taskChecklistProgress(int checked, int total) {
+    return '$checked of $total tasks';
+  }
+
+  @override
+  String taskChecklistAllDone(int total) {
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: '$total tasks',
+      one: '1 task',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get taskHasDescription => 'Has a description';
+
+  @override
+  String get taskRepeats => 'Repeats';
+
+  @override
+  String get savedFilterMyOpenTasks => 'My Open Tasks';
+
+  @override
+  String overviewFilterNotice(String title, String when) {
+    return 'Filter: $title, as of $when. Tasks created here show after the next sync.';
+  }
+
+  @override
+  String get overviewFilterNotDownloadedTitle =>
+      'This filter hasn\'t downloaded yet';
+
+  @override
+  String get projectViewDownloadingTitle => 'Downloading this view…';
+
+  @override
+  String projectViewDownloadingBody(String filter) {
+    return 'The server applies this view\'s filter “$filter”. Its tasks are on their way.';
+  }
+
+  @override
+  String get projectViewDownloadFailedTitle => 'Couldn\'t download this view';
+
+  @override
+  String projectViewDownloadFailedBody(String filter) {
+    return 'The server applies this view\'s filter “$filter”. Pull down to try again.';
+  }
+
+  @override
+  String taskSubtaskOfSemantics(String parent) {
+    return 'Subtask of $parent';
   }
 }

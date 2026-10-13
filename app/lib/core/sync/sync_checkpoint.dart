@@ -26,6 +26,10 @@ abstract final class SyncStateKeys {
   /// see `encodeUserSettings`. Absent before the first run.
   static const userSettings = 'user_settings';
 
+  /// The saved filters the last project list named, see
+  /// `encodeSavedFilters`; absent while it named none.
+  static const savedFilters = 'saved_filters';
+
   /// When the activity sync last completed, ISO 8601 UTC. Absent until its
   /// first run, which stores what it finds without showing any of it.
   static const activitySyncedAt = 'activity_synced_at';

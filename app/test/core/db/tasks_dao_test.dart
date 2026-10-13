@@ -210,46 +210,6 @@ void main() {
     });
   });
 
-  group('project tasks', () {
-    setUp(
-      () => upsert([
-        sampleTask(id: 1, title: 'Open A', projectId: 5, position: 10),
-        sampleTask(id: 2, title: 'Done', projectId: 5, done: true, position: 5),
-        sampleTask(id: 3, title: 'Open B', projectId: 5, position: 10),
-        sampleTask(id: 4, title: 'Other project', projectId: 6),
-      ]),
-    );
-
-    test('without done tasks, by position then newest first', () async {
-      final tasks = await db.tasksDao.loadProjectTasks(5, showDone: false);
-
-      expect(tasks.map((t) => t.id), [3, 1]);
-    });
-
-    test('with done tasks', () async {
-      final tasks = await db.tasksDao.loadProjectTasks(5, showDone: true);
-
-      expect(tasks.map((t) => t.id), [2, 3, 1]);
-    });
-
-    test('the stream follows changes', () async {
-      final seen = <List<Task>>[];
-      final subscription = db.tasksDao
-          .watchProjectTasks(5, showDone: false)
-          .listen(seen.add);
-      addTearDown(subscription.cancel);
-      await pumpEventQueue();
-      expect(seen.single.map((t) => t.id), [3, 1]);
-
-      await upsert([
-        sampleTask(id: 3, title: 'Open B', projectId: 5, done: true),
-      ]);
-      await pumpEventQueue();
-
-      expect(seen.last.map((t) => t.id), [1]);
-    });
-  });
-
   test('searchable tasks are every visible task, done ones included, newest '
       'first and without their child rows', () async {
     await upsert(const [
@@ -379,7 +339,7 @@ void main() {
       );
 
       final open = await db.tasksDao.loadOpenTasks();
-      final project = await db.tasksDao.loadProjectTasks(5, showDone: false);
+      final project = await projectTasksIn(db, 5, showDone: false);
 
       expect(open.map((t) => t.id), [dated, 2, second, first, 3, 1]);
       expect(project.map((t) => t.id), [dated, second, first, 2, 1]);

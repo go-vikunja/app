@@ -76,6 +76,13 @@ void main() {
       expect(find.text('Open 3'), findsOneWidget);
       expect(decorationOf(tester, 'Open 3'), TextDecoration.lineThrough);
       expect(find.byType(TaskRow), findsNWidgets(4));
+      // Now in the done part, below its header.
+      expect(
+        tester.getTopLeft(find.text('Open 3')).dy,
+        greaterThan(
+          tester.getTopLeft(find.text(en.projectTasksDoneSection)).dy,
+        ),
+      );
 
       await tester.tap(inRow('Done 4', find.byTooltip(en.taskMarkNotDone)));
       await tester.pumpAndSettle();
@@ -84,6 +91,25 @@ void main() {
       expect(find.text(en.taskMarkedDone), findsNothing);
     },
   );
+
+  testWidgets('a subtask marked done stays under its parent', (tester) async {
+    data.tasks.all = [
+      sampleTask(id: 1, title: 'Parent', subtaskIds: [2]),
+      sampleTask(id: 2, title: 'Child', parentIds: [1]),
+    ];
+    await pumpProject(tester);
+
+    await tester.tap(inRow('Child', find.byTooltip(en.taskMarkDone)));
+    await tester.pumpAndSettle();
+    await tester.pump(markedDoneSnackBarDuration);
+    await tester.pumpAndSettle();
+
+    expect(decorationOf(tester, 'Child'), TextDecoration.lineThrough);
+    expect(
+      tester.widget<TaskRow>(find.widgetWithText(TaskRow, 'Child')).depth,
+      1,
+    );
+  });
 
   testWidgets('the star and the not-yet-synced mark work in a project list', (
     tester,

@@ -7,7 +7,9 @@ import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/auth/web_authenticator.dart';
+import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
 import 'package:vikunja_mobile/features/home/presentation/reauth_banner.dart';
@@ -23,6 +25,7 @@ import 'package:vikunja_mobile/features/tasks/presentation/edit/task_edit_page.d
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/assignee_picker.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/relations/add_relation_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
+import 'package:vikunja_mobile/features/upcoming/presentation/upcoming_screen.dart';
 
 import '../features/accounts/accounts_harness.dart';
 import '../features/tasks/edit_page_harness.dart';
@@ -541,6 +544,191 @@ void main() {
       containerOf(tester).read(appRouterProvider).go(AppRoutes.project(1));
       await tester.pumpAndSettle();
       await scrollToEnd(tester, find.byType(CustomScrollView));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('upcoming with every section and its sheets at 200 % in '
+        'dark mode (${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      final data = richData();
+      data.listPreferences.setUpcoming(
+        const UpcomingPreferences(
+          preset: DateRangePreset.restOfThisMonth,
+          showWithoutDueDate: true,
+        ),
+      );
+      await pumpSignedInApp(tester, sync: data);
+      final l10n = lookupAppLocalizations(locale);
+
+      await openTab(tester, l10n.tabUpcoming);
+      await scrollToEnd(tester, find.byType(CustomScrollView));
+      expect(tester.takeException(), isNull);
+
+      // The range button scrolls with the rows.
+      tester
+          .state<ScrollableState>(
+            find
+                .descendant(
+                  of: find.byType(CustomScrollView),
+                  matching: find.byType(Scrollable),
+                )
+                .first,
+          )
+          .position
+          .jumpTo(0);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(l10n.rangeRestOfThisMonth));
+      await tester.pumpAndSettle();
+      await scrollToEnd(tester, find.byType(ListView).last);
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.text(l10n.upcomingRangeCustomEntry));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('upcoming in landscape at 200 % leaves room to read '
+        '(${locale.languageCode})', (tester) async {
+      const landscape = Size(800, 360);
+      usePhoneSurface(tester, logicalSize: landscape);
+      useAccessibilityExtremes(tester);
+      useLocale(tester, locale);
+      await pumpSignedInApp(tester, sync: richData());
+      final l10n = lookupAppLocalizations(locale);
+
+      await openTab(tester, l10n.tabUpcoming);
+
+      // The range button scrolls with the rows rather than above them.
+      final list = find.descendant(
+        of: find.byType(UpcomingScreen),
+        matching: find.byType(CustomScrollView),
+      );
+      expect(
+        tester.getSize(list).height,
+        greaterThanOrEqualTo(landscape.height * 0.5),
+      );
+      expect(
+        find.descendant(of: list, matching: find.byType(OutlinedButton)),
+        findsOneWidget,
+      );
+      await scrollToEnd(tester, list);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a nested project list with views, its sort sheet and the '
+        'done part at 200 % in dark mode (${locale.languageCode})', (
+      tester,
+    ) async {
+      useWorstCase(tester, locale);
+      final data = richData();
+      data.projects.all = [
+        sampleProject(
+          id: 1,
+          title: 'Work with a very long project title',
+          views: [
+            sampleListView(id: 11, projectId: 1),
+            sampleListView(
+              id: 12,
+              projectId: 1,
+              title: 'A view with a rather long title',
+              position: 200,
+              filter: '',
+            ),
+            sampleListView(
+              id: 13,
+              projectId: 1,
+              title: 'Filtered',
+              position: 300,
+              filter: 'priority >= 4 && labels in 3, 4',
+            ),
+          ],
+        ),
+        sampleProject(id: 2, title: 'Another long project', hexColor: 'e8445a'),
+      ];
+      data.tasks.all = [
+        ...data.tasks.all,
+        for (var level = 0; level <= 5; level++)
+          sampleTask(
+            id: 100 + level,
+            title: 'Subtask level $level with a long title to wrap',
+            projectId: level == 3 ? 2 : 1,
+            parentIds: [if (level > 0) 99 + level],
+            subtaskIds: [if (level < 5) 101 + level],
+            assignees: const [
+              User(id: 1, username: 'a', name: 'Anna'),
+              User(id: 2, username: 'b', name: 'Ben'),
+              User(id: 3, username: 'c', name: 'Cleo'),
+              User(id: 4, username: 'd', name: 'Dan'),
+            ],
+            description: [
+              '<ul data-type="taskList">',
+              '<li data-checked="true">x</li>',
+              '<li data-checked="false">y</li>',
+              '</ul>',
+            ].join(),
+            done: level == 2,
+          ),
+        sampleTask(id: 200, title: 'Done a while ago', done: true),
+      ];
+      data.tasks.setSnapshot(
+        'view:13',
+        ListSnapshot(positions: const {1: 1, 2: 2}, loadedAt: DateTime.now()),
+      );
+      data.listPreferences.setView(
+        'view:11',
+        const ViewPreferences(showDone: true),
+      );
+      await pumpSignedInApp(tester, sync: data);
+      final l10n = lookupAppLocalizations(locale);
+
+      // Rows four levels deep are narrow and tall at this size: further
+      // than [scrollToEnd]'s drags reach.
+      Future<void> jumpToEnd() async {
+        final position = tester
+            .state<ScrollableState>(
+              find
+                  .descendant(
+                    of: find.byType(CustomScrollView),
+                    matching: find.byType(Scrollable),
+                  )
+                  .first,
+            )
+            .position;
+        for (var i = 0; i < 200 && position.extentAfter > 0; i++) {
+          position.jumpTo(
+            (position.pixels + 400).clamp(0, position.maxScrollExtent),
+          );
+          await tester.pump();
+        }
+        expect(position.extentAfter, 0);
+      }
+
+      containerOf(tester).read(appRouterProvider).go(AppRoutes.project(1));
+      await tester.pumpAndSettle();
+      await jumpToEnd();
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(find.byIcon(Icons.sort));
+      await tester.pumpAndSettle();
+      await scrollToEnd(tester, find.byType(ListView).last);
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.text(l10n.sortTitleAsc));
+      await tester.pumpAndSettle();
+
+      tester
+          .state<ScrollableState>(
+            find
+                .descendant(
+                  of: find.byType(CustomScrollView),
+                  matching: find.byType(Scrollable),
+                )
+                .first,
+          )
+          .position
+          .jumpTo(0);
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ChoiceChip, 'Filtered'));
+      await tester.pumpAndSettle();
+      await jumpToEnd();
       expect(tester.takeException(), isNull);
     });
 

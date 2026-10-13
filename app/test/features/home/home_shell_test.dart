@@ -15,6 +15,7 @@ import 'package:vikunja_mobile/features/projects/presentation/project_tasks_scre
 import 'package:vikunja_mobile/features/projects/presentation/projects_screen.dart';
 import 'package:vikunja_mobile/features/sync/presentation/first_sync_screen.dart';
 import 'package:vikunja_mobile/features/sync/presentation/sync_progress_bar.dart';
+import 'package:vikunja_mobile/features/upcoming/presentation/upcoming_screen.dart';
 
 import '../../helpers/auth_fakes.dart';
 import '../../helpers/pump_app.dart';
@@ -68,7 +69,13 @@ void main() {
     expect(find.byType(HomeShell), findsOneWidget);
     expect(find.byType(OverviewScreen), findsOneWidget);
     expect(find.byType(NavigationBar), findsOneWidget);
+    expect(find.byType(NavigationDestination), findsNWidgets(4));
     expect(location(tester), AppRoutes.overview);
+
+    await openTab(tester, en.tabUpcoming);
+    expect(find.byType(UpcomingScreen), findsOneWidget);
+    expect(find.byType(OverviewScreen), findsNothing);
+    expect(location(tester), AppRoutes.upcoming);
 
     await openTab(tester, en.tabProjects);
     expect(find.byType(ProjectsScreen), findsOneWidget);
@@ -188,6 +195,7 @@ void main() {
     await pumpSignedInApp(tester, sync: data, now: now);
 
     expect(find.text(de.tabOverview), findsAtLeast(1));
+    expect(find.text(de.tabUpcoming), findsOneWidget);
     expect(find.text(de.tabProjects), findsOneWidget);
     expect(find.text(de.tabAccount), findsOneWidget);
   });

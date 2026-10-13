@@ -51,12 +51,18 @@ mixin RefreshableList<W extends ConsumerStatefulWidget> on ConsumerState<W> {
   /// For the subclass's own `setState`, when the list it showed goes away.
   void clearRefreshFailure() => _refreshFailure = null;
 
+  /// The failure of the last refresh the user started, while its notice
+  /// shows.
+  Object? get refreshFailure => _refreshFailure;
+
   /// [builder] gets the data and, after a failed refresh or offline, the
-  /// notice to show above it.
+  /// notice to show above it. [header] stays above the loading and failure
+  /// states, for controls that must survive them.
   Widget buildRefreshable<T>(
     AsyncValue<T> data, {
     required String loadingLabel,
     required Widget Function(T value, Widget? notice) builder,
+    Widget? header,
   }) {
     ref.listen(repositoryProvider, (_, _) => setState(onRepositoryReplaced));
     final offline = ref.watch(
@@ -68,6 +74,7 @@ mixin RefreshableList<W extends ConsumerStatefulWidget> on ConsumerState<W> {
         // Loading again after an account switch still carries the old
         // value, which must not show.
         AsyncLoading() => CenteredScrollView(
+          header: header,
           child: LoadingPlaceholder(label: loadingLabel),
         ),
         AsyncValue(:final value?) => builder(value, switch (_refreshFailure) {
@@ -80,9 +87,11 @@ mixin RefreshableList<W extends ConsumerStatefulWidget> on ConsumerState<W> {
           null => offline ? const OfflineNotice() : null,
         }),
         AsyncError(:final error) when !_refreshing => CenteredScrollView(
+          header: header,
           child: DataFailureCard(error: error, stale: false, onRetry: refresh),
         ),
         AsyncError() => CenteredScrollView(
+          header: header,
           child: LoadingPlaceholder(label: loadingLabel),
         ),
       },

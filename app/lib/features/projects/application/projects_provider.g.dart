@@ -52,12 +52,20 @@ final class ProjectsProvider
 
 String _$projectsHash() => r'4d4dcdc6f5d47bbcb899f0078c1c3a3b41d4e2d3';
 
+/// Leaves out a change of the project's views alone (`Project ==` ignores
+/// them); read the views from [projectsProvider].
+
 @ProviderFor(projectById)
 final projectByIdProvider = ProjectByIdFamily._();
+
+/// Leaves out a change of the project's views alone (`Project ==` ignores
+/// them); read the views from [projectsProvider].
 
 final class ProjectByIdProvider
     extends $FunctionalProvider<Project?, Project?, Project?>
     with $Provider<Project?> {
+  /// Leaves out a change of the project's views alone (`Project ==` ignores
+  /// them); read the views from [projectsProvider].
   ProjectByIdProvider._({
     required ProjectByIdFamily super.from,
     required int super.argument,
@@ -111,6 +119,9 @@ final class ProjectByIdProvider
 
 String _$projectByIdHash() => r'4a521960f41ee2afd73dbd9cd1855b608ef400e9';
 
+/// Leaves out a change of the project's views alone (`Project ==` ignores
+/// them); read the views from [projectsProvider].
+
 final class ProjectByIdFamily extends $Family
     with $FunctionalFamilyOverride<Project?, int> {
   ProjectByIdFamily._()
@@ -122,6 +133,9 @@ final class ProjectByIdFamily extends $Family
         isAutoDispose: true,
       );
 
+  /// Leaves out a change of the project's views alone (`Project ==` ignores
+  /// them); read the views from [projectsProvider].
+
   ProjectByIdProvider call(int id) =>
       ProjectByIdProvider._(argument: id, from: this);
 
@@ -129,53 +143,68 @@ final class ProjectByIdFamily extends $Family
   String toString() => r'projectByIdProvider';
 }
 
-@ProviderFor(projectTasks)
-final projectTasksProvider = ProjectTasksFamily._();
+/// Stays loading while no account is signed in. [includeDone] as in
+/// `TaskRepository.watchProjectList`.
 
-final class ProjectTasksProvider
+@ProviderFor(projectListSource)
+final projectListSourceProvider = ProjectListSourceFamily._();
+
+/// Stays loading while no account is signed in. [includeDone] as in
+/// `TaskRepository.watchProjectList`.
+
+final class ProjectListSourceProvider
     extends
         $FunctionalProvider<
-          AsyncValue<PagedList<Task>>,
-          PagedList<Task>,
-          Stream<PagedList<Task>>
+          AsyncValue<ProjectListSource>,
+          ProjectListSource,
+          Stream<ProjectListSource>
         >
-    with $FutureModifier<PagedList<Task>>, $StreamProvider<PagedList<Task>> {
-  ProjectTasksProvider._({
-    required ProjectTasksFamily super.from,
-    required (int, {bool showDone}) super.argument,
+    with
+        $FutureModifier<ProjectListSource>,
+        $StreamProvider<ProjectListSource> {
+  /// Stays loading while no account is signed in. [includeDone] as in
+  /// `TaskRepository.watchProjectList`.
+  ProjectListSourceProvider._({
+    required ProjectListSourceFamily super.from,
+    required (int, {int viewId, bool includeDone}) super.argument,
   }) : super(
          retry: null,
-         name: r'projectTasksProvider',
+         name: r'projectListSourceProvider',
          isAutoDispose: true,
          dependencies: null,
          $allTransitiveDependencies: null,
        );
 
   @override
-  String debugGetCreateSourceHash() => _$projectTasksHash();
+  String debugGetCreateSourceHash() => _$projectListSourceHash();
 
   @override
   String toString() {
-    return r'projectTasksProvider'
+    return r'projectListSourceProvider'
         ''
         '$argument';
   }
 
   @$internal
   @override
-  $StreamProviderElement<PagedList<Task>> $createElement(
+  $StreamProviderElement<ProjectListSource> $createElement(
     $ProviderPointer pointer,
   ) => $StreamProviderElement(pointer);
 
   @override
-  Stream<PagedList<Task>> create(Ref ref) {
-    final argument = this.argument as (int, {bool showDone});
-    return projectTasks(ref, argument.$1, showDone: argument.showDone);
+  Stream<ProjectListSource> create(Ref ref) {
+    final argument = this.argument as (int, {int viewId, bool includeDone});
+    return projectListSource(
+      ref,
+      argument.$1,
+      viewId: argument.viewId,
+      includeDone: argument.includeDone,
+    );
   }
 
   @override
   bool operator ==(Object other) {
-    return other is ProjectTasksProvider && other.argument == argument;
+    return other is ProjectListSourceProvider && other.argument == argument;
   }
 
   @override
@@ -184,29 +213,122 @@ final class ProjectTasksProvider
   }
 }
 
-String _$projectTasksHash() => r'5953790a9155663d4213b82079c98d99fdad5150';
+String _$projectListSourceHash() => r'1ddbf42a7399d946f9a7b70c83a8c40a44af2813';
 
-final class ProjectTasksFamily extends $Family
+/// Stays loading while no account is signed in. [includeDone] as in
+/// `TaskRepository.watchProjectList`.
+
+final class ProjectListSourceFamily extends $Family
     with
         $FunctionalFamilyOverride<
-          Stream<PagedList<Task>>,
-          (int, {bool showDone})
+          Stream<ProjectListSource>,
+          (int, {int viewId, bool includeDone})
         > {
-  ProjectTasksFamily._()
+  ProjectListSourceFamily._()
     : super(
         retry: null,
-        name: r'projectTasksProvider',
+        name: r'projectListSourceProvider',
         dependencies: null,
         $allTransitiveDependencies: null,
         isAutoDispose: true,
       );
 
-  ProjectTasksProvider call(int projectId, {required bool showDone}) =>
-      ProjectTasksProvider._(
-        argument: (projectId, showDone: showDone),
-        from: this,
-      );
+  /// Stays loading while no account is signed in. [includeDone] as in
+  /// `TaskRepository.watchProjectList`.
+
+  ProjectListSourceProvider call(
+    int projectId, {
+    required int viewId,
+    required bool includeDone,
+  }) => ProjectListSourceProvider._(
+    argument: (projectId, viewId: viewId, includeDone: includeDone),
+    from: this,
+  );
 
   @override
-  String toString() => r'projectTasksProvider';
+  String toString() => r'projectListSourceProvider';
+}
+
+/// [listKey] from `listKeyFor`; the defaults while nobody is signed in.
+
+@ProviderFor(viewPreferences)
+final viewPreferencesProvider = ViewPreferencesFamily._();
+
+/// [listKey] from `listKeyFor`; the defaults while nobody is signed in.
+
+final class ViewPreferencesProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<ViewPreferences>,
+          ViewPreferences,
+          Stream<ViewPreferences>
+        >
+    with $FutureModifier<ViewPreferences>, $StreamProvider<ViewPreferences> {
+  /// [listKey] from `listKeyFor`; the defaults while nobody is signed in.
+  ViewPreferencesProvider._({
+    required ViewPreferencesFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'viewPreferencesProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$viewPreferencesHash();
+
+  @override
+  String toString() {
+    return r'viewPreferencesProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $StreamProviderElement<ViewPreferences> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<ViewPreferences> create(Ref ref) {
+    final argument = this.argument as String;
+    return viewPreferences(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is ViewPreferencesProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$viewPreferencesHash() => r'76c06654cc7099430c9e197b89b66bff0ba54acf';
+
+/// [listKey] from `listKeyFor`; the defaults while nobody is signed in.
+
+final class ViewPreferencesFamily extends $Family
+    with $FunctionalFamilyOverride<Stream<ViewPreferences>, String> {
+  ViewPreferencesFamily._()
+    : super(
+        retry: null,
+        name: r'viewPreferencesProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// [listKey] from `listKeyFor`; the defaults while nobody is signed in.
+
+  ViewPreferencesProvider call(String listKey) =>
+      ViewPreferencesProvider._(argument: listKey, from: this);
+
+  @override
+  String toString() => r'viewPreferencesProvider';
 }

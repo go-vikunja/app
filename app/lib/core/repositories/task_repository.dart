@@ -1,28 +1,45 @@
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
-import 'package:vikunja_mobile/core/repositories/paged_list.dart';
+import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 
 /// Tasks as this device knows them; the same stream and error rules as
-/// `ProjectRepository`. Project tasks are paged: [loadMoreProjectTasks]
-/// appends the next page and throws on failure.
+/// `ProjectRepository`.
 abstract interface class TaskRepository {
   /// Open tasks across all projects, nearest due date first.
   Stream<List<Task>> watchOpenTasks();
-
-  Stream<PagedList<Task>> watchProjectTasks(
-    int projectId, {
-    required bool showDone,
-  });
 
   /// Every task, done ones included, without labels, assignees, reminders
   /// or relations: enough to search titles and identifiers.
   Stream<List<Task>> watchSearchableTasks();
 
+  /// Open tasks outside archived projects and their subprojects, nearest
+  /// due date first (none last), then newest first: Upcoming's source.
+  Stream<List<Task>> watchActiveOpenTasks();
+
+  /// [watchActiveOpenTasks], or the open tasks of the saved filter the user
+  /// picked for the Overview on the web, as of its last download (the sync
+  /// downloads it each run) with this device's changes on top: a task done
+  /// or deleted here leaves at once, a task created here appears after the
+  /// next download.
+  Stream<OverviewTasks> watchOverviewTasks();
+
+  /// What a project's list view is built from; [viewId] 0 stands for a
+  /// project without a list view. Without [includeDone] the project's done
+  /// tasks are left out unless the view's last download has them (as
+  /// subtasks they still come along), for a view that would not show them:
+  /// a long-lived project holds far more done tasks than open ones.
+  Stream<ProjectListSource> watchProjectList(
+    int projectId, {
+    required int viewId,
+    bool includeDone = true,
+  });
+
+  /// Runs the sync and downloads the view's tasks and their positions.
+  /// Throws the `VikunjaFailure` of the download; a [viewId] of 0 only
+  /// syncs.
+  Future<void> refreshProjectList(int projectId, {required int viewId});
+
   Future<void> refreshOpenTasks();
-
-  Future<void> refreshProjectTasks(int projectId, {required bool showDone});
-
-  Future<void> loadMoreProjectTasks(int projectId, {required bool showDone});
 
   /// Writes apply to the local row at once and are queued for the server;
   /// they never throw for network reasons. [setDone] on a repeating task

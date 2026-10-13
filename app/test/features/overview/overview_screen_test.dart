@@ -5,6 +5,7 @@ import 'package:flutter/semantics.dart' show SemanticsAction;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
@@ -113,15 +114,15 @@ void main() {
     expect(upcoming.style?.color, isNot(Theme.of(context).colorScheme.error));
   });
 
-  testWidgets('shows priority chips for high and up, labels in their colour', (
+  testWidgets('shows priority chips from medium up, labels in their colour', (
     tester,
   ) async {
     await pumpOverview(tester);
 
-    expect(find.byType(PriorityChip), findsNWidgets(2));
+    expect(find.byType(PriorityChip), findsNWidgets(3));
     expect(find.text(en.priorityUrgent), findsOneWidget);
     expect(find.text(en.priorityHigh), findsOneWidget);
-    expect(find.text(en.priorityMedium), findsNothing);
+    expect(find.text(en.priorityMedium), findsOneWidget);
     expect(find.byType(LabelChip), findsNWidgets(2));
     final sunny = tester.widget<Text>(find.text('Sunny'));
     expect(sunny.style?.color, const Color(0xFF000000));
@@ -166,6 +167,154 @@ void main() {
       Tristate.isTrue,
     );
     semantics.dispose();
+  });
+
+  testWidgets('the minimum priority setting decides which chips show', (
+    tester,
+  ) async {
+    data.shared.settings = const UserSettings(minimumPriority: 4);
+    await pumpOverview(tester);
+
+    expect(find.byType(PriorityChip), findsOneWidget);
+    expect(find.text(en.priorityUrgent), findsOneWidget);
+  });
+
+  testWidgets('tasks of archived projects stay out', (tester) async {
+    data.tasks.archivedProjectIds = {2};
+    await pumpOverview(tester);
+
+    expect(find.text('Call mum'), findsNothing);
+    expect(find.byType(TaskRow), findsNWidgets(4));
+  });
+
+  group('with a saved filter picked for it on the web', () {
+    const filter = SavedFilterRef(projectId: -14, title: 'My Open Tasks');
+
+    testWidgets("shows the filter's open tasks under a note naming it and "
+        'when they were downloaded', (tester) async {
+      data.tasks
+        ..overviewFilter = filter
+        ..overviewSnapshot = ListSnapshot(
+          positions: const {1: 0, 3: 0, 6: 0},
+          loadedAt: now.subtract(const Duration(minutes: 5)),
+        );
+      await pumpOverview(tester);
+
+      expect(
+        find.text(en.overviewFilterNotice('My Open Tasks', '5 minutes ago')),
+        findsOneWidget,
+      );
+      expect(sectionTitles(tester), [
+        en.sectionOverdue,
+        en.sectionNextSevenDays,
+      ]);
+      expect(find.byType(TaskRow), findsNWidgets(2));
+      expect(find.text('Call mum'), findsNothing);
+      expect(find.text('Already done'), findsNothing);
+    });
+
+    testWidgets('a download that finished after the last tick reads as now', (
+      tester,
+    ) async {
+      data.tasks
+        ..overviewFilter = filter
+        ..overviewSnapshot = ListSnapshot(
+          positions: const {1: 0},
+          loadedAt: now.add(const Duration(seconds: 50)),
+        );
+      await pumpOverview(tester);
+
+      expect(
+        find.text(en.overviewFilterNotice('My Open Tasks', en.relativeNow)),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('never downloaded, online it has not downloaded yet', (
+      tester,
+    ) async {
+      data.tasks.overviewFilter = filter;
+      await pumpOverview(tester);
+
+      expect(find.text(en.overviewFilterNotDownloadedTitle), findsOneWidget);
+      expect(find.text(en.overviewFilterNotLoadedTitle), findsNothing);
+      expect(
+        find.text(en.overviewFilterNotLoadedBody('My Open Tasks')),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('never downloaded, offline it says it loads once online', (
+      tester,
+    ) async {
+      // The quiet sync at start finds no connection.
+      data = SyncFakes(
+        now: now,
+        status: SyncIdle(lastSyncedAt: now.subtract(const Duration(hours: 2))),
+      );
+      data.engine.onRefresh = () async =>
+          throw const NetworkFailure(NetworkProblem.unreachable);
+      data.tasks.overviewFilter = filter;
+      await pumpOverview(tester);
+
+      expect(find.text(en.overviewFilterNotLoadedTitle), findsOneWidget);
+      expect(
+        find.text(en.overviewFilterNotLoadedBody('My Open Tasks')),
+        findsOneWidget,
+      );
+      expect(
+        find.text(en.overviewFilterSubtitle('My Open Tasks')),
+        findsOneWidget,
+      );
+      expect(find.byType(TaskRow), findsNothing);
+    });
+
+    testWidgets('downloaded without open tasks, it is all done', (
+      tester,
+    ) async {
+      data.tasks
+        ..overviewFilter = filter
+        ..overviewSnapshot = ListSnapshot(loadedAt: now);
+      await pumpOverview(tester);
+
+      expect(find.text(en.overviewEmptyTitle), findsOneWidget);
+      expect(
+        find.text(en.overviewFilterEmptyBody('My Open Tasks')),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('in German, the default filter by its German name', (
+      tester,
+    ) async {
+      useLocale(tester, const Locale('de'));
+      data.tasks.overviewFilter = filter;
+      await pumpOverview(tester);
+
+      expect(find.text(de.overviewFilterNotDownloadedTitle), findsOneWidget);
+      expect(
+        find.text(de.overviewFilterSubtitle('Meine offenen Aufgaben')),
+        findsOneWidget,
+      );
+      expect(
+        find.text(de.overviewFilterNotLoadedBody('Meine offenen Aufgaben')),
+        findsOneWidget,
+      );
+      expect(find.textContaining('My Open Tasks'), findsNothing);
+    });
+
+    testWidgets('another saved filter keeps its own title', (tester) async {
+      useLocale(tester, const Locale('de'));
+      data.tasks
+        ..overviewFilter = const SavedFilterRef(
+          projectId: -15,
+          title: 'Errands',
+        )
+        ..overviewSnapshot = ListSnapshot(loadedAt: now);
+      await pumpOverview(tester);
+
+      expect(find.text(de.overviewFilterEmptyBody('Errands')), findsOneWidget);
+    });
   });
 
   testWidgets('tapping a row opens the detail sheet', (tester) async {

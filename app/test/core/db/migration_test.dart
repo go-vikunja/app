@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift_dev/api/migrations_native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
@@ -237,4 +239,83 @@ void main() {
     expect(stored.isRead, isFalse);
     expect(await db.serverNotificationsDao.unreadCount(), 1);
   });
+
+  test('v5 → v6 keeps the tasks, the projects and the sync state and adds '
+      'the list snapshots and preferences', () async {
+    final verifier = SchemaVerifier(GeneratedHelper());
+    final schema = await verifier.schemaAt(5);
+    schema.rawDatabase
+      ..execute(
+        'INSERT INTO projects (id, title, description, identifier, hex_color, '
+        'parent_project_id, is_archived, is_favorite, position, owner_id, '
+        'created, updated) '
+        "VALUES (7, 'Work', '', '', '', 0, 0, 0, 1.0, NULL, NULL, NULL)",
+      )
+      ..execute(
+        'INSERT INTO project_views (id, project_id, title, kind, position, '
+        'filter_json, bucket_configuration_mode, default_bucket_id, '
+        'done_bucket_id) '
+        'VALUES (70, 7, ?, ?, 100.0, ?, ?, 0, 0)',
+        ['List', 'list', _listViewFilter, 'none'],
+      )
+      ..execute(
+        'INSERT INTO tasks (id, project_id, title, description, done, done_at, '
+        'due_date, start_date, end_date, priority, percent_done, hex_color, '
+        'identifier, "index", is_favorite, position, repeat_after, '
+        'repeat_mode, bucket_id, created_by_id, created, updated, '
+        'sync_run_id, pending_changes, pending_delete) '
+        "VALUES (60, 7, 'Parent', '', 0, NULL, NULL, NULL, NULL, "
+        "0, 0.0, '', '-1', 1, 0, 0.0, 0, 0, 0, NULL, NULL, 1759000000000, "
+        "'run-1', NULL, 0), "
+        "(61, 7, 'Child', '', 0, NULL, NULL, NULL, NULL, "
+        "0, 0.0, '', '-2', 2, 0, 0.0, 0, 0, 0, NULL, NULL, 1759000000000, "
+        "'run-1', NULL, 0)",
+      )
+      ..execute(
+        'INSERT INTO task_relations (task_id, other_task_id, kind) '
+        "VALUES (60, 61, 'subtask'), (61, 60, 'parenttask')",
+      )
+      ..execute(
+        'INSERT INTO sync_state (key, value) '
+        "VALUES ('last_synced_at', '2026-10-13T12:00:00.000Z'), "
+        "('last_full_sync_at', '2026-10-13T11:00:00.000Z')",
+      );
+    final db = AppDatabase(schema.newConnection());
+    addTearDown(db.close);
+
+    await verifier.migrateAndValidate(db, 6);
+
+    final parent = (await db.tasksDao.find(60))!;
+    expect(parent.subtasks.map((task) => task.id), [61]);
+    final project = (await db.projectsDao.loadAll()).single;
+    expect(project.views.single.filter?.filter, 'done = false');
+    expect(
+      (await db.syncStateDao.readAll())[SyncStateKeys.lastSyncedAt],
+      '2026-10-13T12:00:00.000Z',
+    );
+    expect(
+      await db.syncStateDao.readAll(),
+      isNot(contains(SyncStateKeys.lastFullSyncAt)),
+      reason: 'the first run after the upgrade is a full one',
+    );
+    expect((await db.listSnapshotsDao.load('view:70')).loadedAt, isNull);
+    await db.listSnapshotsDao.replace('view:70', {
+      61: 1,
+      60: 2,
+    }, loadedAt: DateTime.utc(2026, 10, 13, 13));
+    final snapshot = await db.listSnapshotsDao.load('view:70');
+    expect(snapshot.positions, {61: 1, 60: 2});
+    expect(snapshot.loadedAt, DateTime.utc(2026, 10, 13, 13));
+    expect(await db.listPreferencesDao.read('upcoming'), isNull);
+    await db.listPreferencesDao.write('upcoming', '{}');
+    expect(await db.listPreferencesDao.read('upcoming'), '{}');
+  });
 }
+
+final String _listViewFilter = jsonEncode({
+  'filter': 'done = false',
+  's': '',
+  'sort_by': null,
+  'order_by': null,
+  'filter_include_nulls': false,
+});

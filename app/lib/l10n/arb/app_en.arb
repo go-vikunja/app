@@ -529,7 +529,7 @@
   "addAccountAlreadyActive": "You’re already signed in to this account",
   "overviewLoading": "Loading your tasks…",
   "overviewEmptyTitle": "All done",
-  "overviewEmptyBody": "No open tasks right now. Enjoy the quiet, or add some on the web.",
+  "overviewEmptyBody": "No open tasks right now. Enjoy the quiet, or add one with New task.",
   "sectionOverdue": "Overdue",
   "sectionToday": "Today",
   "sectionNextSevenDays": "Next 7 days",
@@ -578,8 +578,6 @@
   },
   "projectTasksShowDone": "Show done tasks",
   "projectTasksLoading": "Loading tasks…",
-  "projectTasksLoadMore": "Load more",
-  "projectTasksLoadingMore": "Loading more tasks…",
   "projectTasksEmptyTitle": "No open tasks",
   "projectTasksEmptyBody": "Everything in this project is done. Turn on “Show done tasks” to see them.",
   "projectTasksEmptyAllTitle": "No tasks",
@@ -2287,6 +2285,246 @@
       },
       "subtasks": {
         "type": "int"
+      }
+    }
+  },
+  "tabUpcoming": "Upcoming",
+  "upcomingEmptyTitle": "Nothing to do — have a nice day!",
+  "upcomingEmptyBody": "No open task is due in this date range.",
+  "upcomingShowOverdue": "Show overdue tasks",
+  "upcomingShowWithoutDate": "Show tasks without date",
+  "upcomingSelectRange": "Select a date range",
+  "upcomingRangeCustom": "Custom",
+  "upcomingRangeCustomEntry": "Custom…",
+  "@upcomingRangeCustomEntry": {
+    "description": "The last entry of the date range sheet; opens a date range picker."
+  },
+  "upcomingRangeDates": "{from} – {to}",
+  "@upcomingRangeDates": {
+    "description": "Under the date range's name: its first and last day, both included.",
+    "placeholders": {
+      "from": {
+        "type": "String",
+        "example": "Oct 13"
+      },
+      "to": {
+        "type": "String",
+        "example": "Oct 20"
+      }
+    }
+  },
+  "upcomingRangeSemantics": "Date range {name}, {dates}",
+  "@upcomingRangeSemantics": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Next 7 Days"
+      },
+      "dates": {
+        "type": "String",
+        "example": "Oct 13 – Oct 20"
+      }
+    }
+  },
+  "upcomingRangeFrom": "From",
+  "upcomingRangeTo": "To",
+  "rangeToday": "Today",
+  "rangeTomorrow": "Tomorrow",
+  "rangeLastWeek": "Last Week",
+  "rangeThisWeek": "This Week",
+  "rangeRestOfThisWeek": "The Rest of This Week",
+  "rangeNextWeek": "Next Week",
+  "rangeNext7Days": "Next 7 Days",
+  "rangeLastMonth": "Last Month",
+  "rangeThisMonth": "This Month",
+  "rangeRestOfThisMonth": "The Rest of This Month",
+  "rangeNextMonth": "Next Month",
+  "rangeNext30Days": "Next 30 Days",
+  "rangeThisYear": "This Year",
+  "rangeRestOfThisYear": "The Rest of This Year",
+  "sectionTomorrow": "Tomorrow",
+  "overviewFilterSubtitle": "Filter: {title}",
+  "@overviewFilterSubtitle": {
+    "description": "Under the Overview's title when it shows the saved filter picked for it on the web.",
+    "placeholders": {
+      "title": {
+        "type": "String",
+        "example": "My Open Tasks"
+      }
+    }
+  },
+  "overviewFilterNotLoadedTitle": "This filter loads once you're online",
+  "overviewFilterNotLoadedBody": "Your Overview shows the saved filter “{title}”, picked on the web. Its tasks download with the next sync.",
+  "@overviewFilterNotLoadedBody": {
+    "placeholders": {
+      "title": {
+        "type": "String",
+        "example": "My Open Tasks"
+      }
+    }
+  },
+  "overviewFilterEmptyBody": "The saved filter “{title}” has no open tasks.",
+  "@overviewFilterEmptyBody": {
+    "placeholders": {
+      "title": {
+        "type": "String",
+        "example": "My Open Tasks"
+      }
+    }
+  },
+  "projectViewList": "List",
+  "@projectViewList": {
+    "description": "A project view whose title is exactly \"List\", the server's default name."
+  },
+  "projectViewSwitch": "Switch view",
+  "projectSort": "Sort",
+  "projectSortCurrent": "Sorted: {sort}",
+  "@projectSortCurrent": {
+    "description": "The sort button's tooltip.",
+    "placeholders": {
+      "sort": {
+        "type": "String",
+        "example": "Manually"
+      }
+    }
+  },
+  "sortManual": "Manually",
+  "sortTitleAsc": "Title (A–Z)",
+  "sortTitleDesc": "Title (Z–A)",
+  "sortPriorityDesc": "Priority (Highest first)",
+  "sortPriorityAsc": "Priority (Lowest first)",
+  "sortDueDateAsc": "Due date (Earliest first)",
+  "sortDueDateDesc": "Due date (Latest first)",
+  "sortStartDateAsc": "Start date (Earliest first)",
+  "sortStartDateDesc": "Start date (Latest first)",
+  "sortEndDateAsc": "End date (Earliest first)",
+  "sortEndDateDesc": "End date (Latest first)",
+  "sortPercentDoneDesc": "% done (Most done first)",
+  "sortPercentDoneAsc": "% done (Least done first)",
+  "sortCreatedDesc": "Created (Newest first)",
+  "sortCreatedAsc": "Created (Oldest first)",
+  "sortUpdatedDesc": "Updated (Newest first)",
+  "sortUpdatedAsc": "Updated (Oldest first)",
+  "projectTasksDoneSection": "Done",
+  "projectTasksEmptyDoneTitle": "No done tasks",
+  "projectTasksEmptyDoneBody": "Nothing in this view is done yet.",
+  "projectViewFilterNotice": "The server applies this view's filter “{filter}”. Shown as of {when}; changes made elsewhere appear after the next download.",
+  "@projectViewFilterNotice": {
+    "placeholders": {
+      "filter": {
+        "type": "String",
+        "example": "priority >= 3"
+      },
+      "when": {
+        "type": "String",
+        "example": "5 minutes ago"
+      }
+    }
+  },
+  "projectViewNotLoadedTitle": "This view loads once you're online",
+  "projectViewNotLoadedBody": "The server applies this view's filter “{filter}”. Its tasks download when you open it online.",
+  "@projectViewNotLoadedBody": {
+    "placeholders": {
+      "filter": {
+        "type": "String",
+        "example": "priority >= 3"
+      }
+    }
+  },
+  "projectViewEmptyTitle": "No matching tasks",
+  "projectViewEmptyBody": "Nothing matched this view's filter at the last download.",
+  "taskDoneSemantics": "Done",
+  "taskAssigneesSemantics": "Assigned to {names}",
+  "@taskAssigneesSemantics": {
+    "placeholders": {
+      "names": {
+        "type": "String",
+        "example": "Anna, Ben"
+      }
+    }
+  },
+  "taskMoreAssignees": "+{count}",
+  "@taskMoreAssignees": {
+    "description": "After the first three assignee avatars of a task row.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "2"
+      }
+    }
+  },
+  "taskChecklistProgress": "{checked} of {total} tasks",
+  "@taskChecklistProgress": {
+    "description": "The checkboxes in a task's description, some still open.",
+    "placeholders": {
+      "checked": {
+        "type": "int",
+        "example": "2"
+      },
+      "total": {
+        "type": "int",
+        "example": "5"
+      }
+    }
+  },
+  "taskChecklistAllDone": "{total, plural, =1{1 task} other{{total} tasks}}",
+  "@taskChecklistAllDone": {
+    "description": "The checkboxes in a task's description, all checked.",
+    "placeholders": {
+      "total": {
+        "type": "int",
+        "example": "5"
+      }
+    }
+  },
+  "taskHasDescription": "Has a description",
+  "taskRepeats": "Repeats",
+  "savedFilterMyOpenTasks": "My Open Tasks",
+  "@savedFilterMyOpenTasks": {
+    "description": "The default saved filter every user gets, whose title the server sends as exactly \"My Open Tasks\"."
+  },
+  "overviewFilterNotice": "Filter: {title}, as of {when}. Tasks created here show after the next sync.",
+  "@overviewFilterNotice": {
+    "description": "Above the Overview when it shows the last download of the saved filter picked for it on the web.",
+    "placeholders": {
+      "title": {
+        "type": "String",
+        "example": "My Open Tasks"
+      },
+      "when": {
+        "type": "String",
+        "example": "5 minutes ago"
+      }
+    }
+  },
+  "overviewFilterNotDownloadedTitle": "This filter hasn't downloaded yet",
+  "projectViewDownloadingTitle": "Downloading this view…",
+  "projectViewDownloadingBody": "The server applies this view's filter “{filter}”. Its tasks are on their way.",
+  "@projectViewDownloadingBody": {
+    "placeholders": {
+      "filter": {
+        "type": "String",
+        "example": "priority >= 3"
+      }
+    }
+  },
+  "projectViewDownloadFailedTitle": "Couldn't download this view",
+  "projectViewDownloadFailedBody": "The server applies this view's filter “{filter}”. Pull down to try again.",
+  "@projectViewDownloadFailedBody": {
+    "placeholders": {
+      "filter": {
+        "type": "String",
+        "example": "priority >= 3"
+      }
+    }
+  },
+  "taskSubtaskOfSemantics": "Subtask of {parent}",
+  "@taskSubtaskOfSemantics": {
+    "description": "Read by screen readers for a task nested under another in a project list.",
+    "placeholders": {
+      "parent": {
+        "type": "String",
+        "example": "Plan the trip"
       }
     }
   }

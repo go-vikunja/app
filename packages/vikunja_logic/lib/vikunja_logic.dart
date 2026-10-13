@@ -1,5 +1,12 @@
+export 'src/lists/task_list_sort.dart';
+export 'src/lists/task_tree.dart';
+export 'src/lists/upcoming_selection.dart';
+export 'src/lists/view_filter_kind.dart';
 export 'src/quick_add/indented_lines.dart';
 export 'src/quick_add/parsed_task_text.dart';
 export 'src/quick_add/quick_add_parser.dart';
+export 'src/text/checklist.dart';
+export 'src/time/date_range_preset.dart';
+export 'src/time/datemath.dart';
 export 'src/time/day_interval.dart';
 export 'src/time/default_time.dart';

@@ -22,6 +22,7 @@ import 'package:vikunja_mobile/features/projects/presentation/projects_screen.da
 import 'package:vikunja_mobile/features/sync/application/sync_status_queries.dart';
 import 'package:vikunja_mobile/features/sync/presentation/first_sync_screen.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/task_edit_page.dart';
+import 'package:vikunja_mobile/features/upcoming/presentation/upcoming_screen.dart';
 
 part 'app_router.g.dart';
 
@@ -39,6 +40,7 @@ abstract final class AppRoutes {
   /// The signed-in shell; it opens on [overview].
   static const home = '/home';
   static const overview = '/home/overview';
+  static const upcoming = '/home/upcoming';
   static const projects = '/home/projects';
   static const account = '/home/account';
 
@@ -55,7 +57,7 @@ abstract final class AppRoutes {
   static const addAccount = '$home/accounts/add';
   static const addAccountServer = '$addAccount/server';
 
-  static const List<String> _tabs = [overview, projects, account];
+  static const List<String> _tabs = [overview, upcoming, projects, account];
 
   /// Whether [location] is inside one of the shell's tabs rather than a
   /// page over the shell; `/home/accounts/add` is not the Account tab.
@@ -184,6 +186,14 @@ GoRouter appRouter(Ref ref) {
               GoRoute(
                 path: AppRoutes.overview,
                 builder: (context, state) => const OverviewScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.upcoming,
+                builder: (context, state) => const UpcomingScreen(),
               ),
             ],
           ),

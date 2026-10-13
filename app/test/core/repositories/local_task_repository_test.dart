@@ -4,7 +4,7 @@ import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/outbox/outbox_sender.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/repositories/local/local_task_repository.dart';
-import 'package:vikunja_mobile/core/repositories/paged_list.dart';
+import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 
 import '../../helpers/fake_sync_client.dart';
@@ -79,31 +79,13 @@ void main() {
     expect(seen.last.map((t) => t.id), [2, 4]);
   });
 
-  test('project tasks are one unpaged list per show-done setting', () async {
-    final open = <PagedList<Task>>[];
-    final all = <PagedList<Task>>[];
-    repository.watchProjectTasks(7, showDone: false).listen(open.add);
-    repository.watchProjectTasks(7, showDone: true).listen(all.add);
-    await pumpEventQueue();
-
-    expect(open.single.items.map((t) => t.id), [2, 1]);
-    expect(all.single.items.map((t) => t.id), [3, 2, 1]);
-    expect(open.single.hasMore, isFalse);
-    expect(all.single.hasMore, isFalse);
-
-    await repository.loadMoreProjectTasks(7, showDone: false);
-    await pumpEventQueue();
-    expect(open, hasLength(1));
-    expect(sync.refreshCalls, 0);
-  });
-
   test('every refresh is a sync run whose failure passes through', () async {
     final errors = <Object>[];
     repository.watchOpenTasks().listen((_) {}, onError: errors.add);
     await pumpEventQueue();
 
     await repository.refreshOpenTasks();
-    await repository.refreshProjectTasks(7, showDone: true);
+    await repository.refreshProjectList(7, viewId: 0);
     expect(sync.refreshCalls, 2);
 
     sync.error = const ServerFailure(502);
@@ -112,7 +94,7 @@ void main() {
       throwsA(isA<ServerFailure>()),
     );
     await expectLater(
-      repository.refreshProjectTasks(7, showDone: false),
+      repository.refreshProjectList(7, viewId: 0),
       throwsA(isA<ServerFailure>()),
     );
 
@@ -331,10 +313,10 @@ void main() {
     test('a new task is on screen at once under a temporary id, then under '
         'the server id once the create is answered', () async {
       final open = <List<Task>>[];
-      final project = <PagedList<Task>>[];
+      final project = <ProjectListSource>[];
       final pendingIds = <Set<int>>[];
       repository.watchOpenTasks().listen(open.add);
-      repository.watchProjectTasks(7, showDone: false).listen(project.add);
+      repository.watchProjectList(7, viewId: 0).listen(project.add);
       repository.watchPendingTaskIds().listen(pendingIds.add);
       await pumpEventQueue();
       final gate = RequestGate()..pattern = 'create';
@@ -347,7 +329,7 @@ void main() {
 
       expect(id, -1);
       expect(open.last.map((t) => t.id), [2, -1, 4, 1]);
-      expect(project.last.items.map((t) => t.id), [-1, 2, 1]);
+      expect(project.last.projectTasks.map((t) => t.id), [-1, 3, 2, 1]);
       expect(pendingIds.last, {-1});
       expect(watched.single!.title, 'Buy milk');
       expect(watched.single!.identifier, '');
@@ -357,7 +339,7 @@ void main() {
       await pumpEventQueue();
 
       expect(open.last.map((t) => t.id), [2, 100, 4, 1]);
-      expect(project.last.items.map((t) => t.id), [100, 2, 1]);
+      expect(project.last.projectTasks.map((t) => t.id), [100, 3, 2, 1]);
       expect(pendingIds.last, isEmpty);
       expect(watched.last!.id, 100);
       expect(watched.last!.identifier, '-100');

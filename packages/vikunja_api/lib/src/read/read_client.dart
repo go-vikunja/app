@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:vikunja_api/src/dto/json_values.dart';
@@ -26,7 +27,8 @@ final class ReadClient implements VikunjaReadClient {
       tasks = _TasksApi(transport),
       users = _UsersApi(transport),
       notifications = _NotificationsApi(transport),
-      subscriptions = _SubscriptionsApi(transport);
+      subscriptions = _SubscriptionsApi(transport),
+      avatars = _AvatarsApi(transport);
 
   @override
   final ProjectsPort projects;
@@ -45,6 +47,44 @@ final class ReadClient implements VikunjaReadClient {
 
   @override
   final SubscriptionsPort subscriptions;
+
+  @override
+  final AvatarsPort avatars;
+}
+
+final class _AvatarsApi implements AvatarsPort {
+  new(this._transport);
+
+  final _ReadTransport _transport;
+
+  @override
+  Future<AvatarImage> fetch(String username, {required int size}) async {
+    final response = await _transport.getBytes(
+      '/avatar/${Uri.encodeComponent(username)}',
+      query: {'size': size},
+      accept: 'image/*',
+    );
+    final contentType =
+        (response.headers.value(Headers.contentTypeHeader) ?? '')
+            .split(';')
+            .first
+            .trim()
+            .toLowerCase();
+    final bytes = response.data;
+    final isImage =
+        contentType.startsWith('image/') ||
+        contentType == 'application/octet-stream';
+    if (!isImage || bytes == null || bytes.isEmpty) {
+      throw UnexpectedResponse(
+        response.statusCode,
+        message: 'not an image: $contentType',
+      );
+    }
+    return AvatarImage(
+      bytes: bytes is Uint8List ? bytes : Uint8List.fromList(bytes),
+      contentType: contentType,
+    );
+  }
 }
 
 final class _SubscriptionsApi implements SubscriptionsPort {
@@ -275,6 +315,26 @@ final class _ReadTransport {
           responseType: ResponseType.json,
           headers: {'Accept': 'application/json'},
           listFormat: ListFormat.multi,
+        ),
+      );
+    } on DioException catch (error) {
+      if (error.type == DioExceptionType.cancel) rethrow;
+      throw normalizeError(error);
+    }
+  }
+
+  Future<Response<List<int>>> getBytes(
+    String path, {
+    required Map<String, Object?> query,
+    required String accept,
+  }) async {
+    try {
+      return await _dio.get<List<int>>(
+        _base.replace(path: '${_base.path}$path').toString(),
+        queryParameters: query,
+        options: Options(
+          responseType: ResponseType.bytes,
+          headers: {'Accept': accept},
         ),
       );
     } on DioException catch (error) {

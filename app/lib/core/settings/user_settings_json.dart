@@ -14,6 +14,8 @@ String encodeUserSettings(UserSettings settings) => jsonEncode({
   'quick_add_default_reminders': [
     for (final period in settings.quickAddDefaultReminders) period.inSeconds,
   ],
+  'filter_id_used_on_overview': ?settings.filterIdUsedOnOverview,
+  'minimum_priority': settings.minimumPriority,
 });
 
 UserSettings decodeUserSettings(String? stored) {
@@ -48,6 +50,14 @@ UserSettings decodeUserSettings(String? stored) {
           Duration(seconds: seconds),
       ]),
       _ => const [],
+    },
+    filterIdUsedOnOverview: switch (json['filter_id_used_on_overview']) {
+      final int id when id < Project.favoritesId => id,
+      _ => null,
+    },
+    minimumPriority: switch (json['minimum_priority']) {
+      final int priority when priority >= 1 && priority <= 5 => priority,
+      _ => 0,
     },
   );
 }

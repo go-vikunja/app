@@ -17,11 +17,11 @@ import 'package:vikunja_mobile/features/sync/application/foreground_sync_schedul
 import 'package:vikunja_mobile/features/sync/application/inactive_outboxes.dart';
 import 'package:vikunja_mobile/features/sync/application/startup_sync.dart';
 
-/// The signed-in app: the tab bar around the Overview, Projects and Account
-/// branches, the session check when the app opens or resumes, the quiet
-/// sync when it opens, the scheduler that keeps syncing while it is in
-/// front, the other accounts' outboxes, the notification schedulers of
-/// every signed-in account, and the switch from one account to another.
+/// The signed-in app: the tab bar around the Overview, Upcoming, Projects
+/// and Account branches, the session check when the app opens or resumes,
+/// the quiet sync when it opens, the scheduler that keeps syncing while it
+/// is in front, the other accounts' outboxes, the notification schedulers
+/// of every signed-in account, and the switch from one account to another.
 class HomeShell extends ConsumerStatefulWidget {
   const new({required this.navigationShell, super.key});
 
@@ -161,6 +161,11 @@ class _HomeShellState extends ConsumerState<HomeShell> {
               icon: Icons.task_alt_outlined,
               selectedIcon: Icons.task_alt,
               label: l10n.tabOverview,
+            ),
+            AdaptiveDestination(
+              icon: Icons.event_outlined,
+              selectedIcon: Icons.event,
+              label: l10n.tabUpcoming,
             ),
             AdaptiveDestination(
               icon: Icons.folder_outlined,

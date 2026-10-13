@@ -1,5 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:vikunja_mobile/core/db/daos/labels_dao.dart';
+import 'package:vikunja_mobile/core/db/daos/list_preferences_dao.dart';
+import 'package:vikunja_mobile/core/db/daos/list_snapshots_dao.dart';
 import 'package:vikunja_mobile/core/db/daos/outbox_dao.dart';
 import 'package:vikunja_mobile/core/db/daos/projects_dao.dart';
 import 'package:vikunja_mobile/core/db/daos/scheduled_notifications_dao.dart';
@@ -9,6 +11,7 @@ import 'package:vikunja_mobile/core/db/daos/tasks_dao.dart';
 import 'package:vikunja_mobile/core/db/daos/users_dao.dart';
 import 'package:vikunja_mobile/core/db/epoch_millis.dart';
 import 'package:vikunja_mobile/core/db/tables/labels.dart';
+import 'package:vikunja_mobile/core/db/tables/lists.dart';
 import 'package:vikunja_mobile/core/db/tables/outbox.dart';
 import 'package:vikunja_mobile/core/db/tables/projects.dart';
 import 'package:vikunja_mobile/core/db/tables/scheduled_notifications.dart';
@@ -38,6 +41,9 @@ part 'app_database.g.dart';
     TaskIdRemaps,
     ScheduledNotifications,
     ServerNotifications,
+    ListSnapshots,
+    ListSnapshotTasks,
+    ListPreferenceEntries,
   ],
   daos: [
     ProjectsDao,
@@ -48,13 +54,15 @@ part 'app_database.g.dart';
     OutboxDao,
     ScheduledNotificationsDao,
     ServerNotificationsDao,
+    ListSnapshotsDao,
+    ListPreferencesDao,
   ],
 )
 final class AppDatabase extends _$AppDatabase {
   new(super.e);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -72,6 +80,17 @@ final class AppDatabase extends _$AppDatabase {
       }
       if (from < 4) await m.createTable(scheduledNotifications);
       if (from < 5) await m.createTable(serverNotifications);
+      if (from < 6) {
+        await m.createTable(listSnapshots);
+        await m.createTable(listSnapshotTasks);
+        await m.createTable(listPreferenceEntries);
+        // Before v6 a child's pull could move its edge to the end of the
+        // parent's relations; the next run is a full one, so every parent
+        // gets its subtasks back in the server's order.
+        await (delete(
+          syncState,
+        )..where((row) => row.key.equals('last_full_sync_at'))).go();
+      }
     },
     beforeOpen: (_) => customStatement('PRAGMA foreign_keys = ON'),
   );

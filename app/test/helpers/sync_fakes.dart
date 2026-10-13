@@ -8,17 +8,21 @@ import 'package:vikunja_mobile/core/db/account_database_files.dart';
 import 'package:vikunja_mobile/core/outbox/pending_task_ids_source.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/repositories/activity_repository_providers.dart';
-import 'package:vikunja_mobile/core/repositories/paged_list.dart';
+import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
+import 'package:vikunja_mobile/core/repositories/list_preferences_providers.dart';
 import 'package:vikunja_mobile/core/repositories/project_repository.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/subscription_repository_providers.dart';
+import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
+import 'package:vikunja_mobile/core/settings/user_settings_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/accounts/application/account_switcher.dart';
 import 'package:vikunja_mobile/features/sync/application/inactive_outboxes.dart';
 
 import 'activity_fakes.dart';
+import 'list_preferences_fakes.dart';
 import 'subscription_fakes.dart';
 import 'task_edits.dart';
 
@@ -189,8 +193,8 @@ final class FakeProjectRepository implements ProjectRepository {
 }
 
 /// Tasks as a local database would hold them, with the DAO orders: open
-/// tasks by due date (nulls last) then newest first, project tasks by
-/// position then newest first.
+/// tasks by due date (nulls last) then newest first, project tasks newest
+/// first.
 final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
   new(this._engine);
 
@@ -198,11 +202,6 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
   final _changes = StreamController<List<Task>>.broadcast();
   List<Task> _all = const [];
   bool disposed = false;
-
-  /// What `watchProjectTasks` reports; a local list never has more.
-  bool hasMore = false;
-  Future<void> Function()? onLoadMore;
-  int loadMoreCalls = 0;
 
   List<Task> get all => _all;
 
@@ -227,31 +226,9 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
     });
   }
 
-  List<Task> projectTasks(int projectId, {required bool showDone}) {
-    final tasks = [
-      for (final task in _all)
-        if (task.projectId == projectId && (showDone || !task.done)) task,
-    ];
-    return tasks..sort((a, b) {
-      final byPosition = a.position.compareTo(b.position);
-      return byPosition != 0 ? byPosition : b.id.compareTo(a.id);
-    });
-  }
-
   @override
   Stream<List<Task>> watchOpenTasks() =>
       _replaying(() => _all, _changes.stream).map((_) => openTasks);
-
-  @override
-  Stream<PagedList<Task>> watchProjectTasks(
-    int projectId, {
-    required bool showDone,
-  }) => _replaying(() => _all, _changes.stream).map(
-    (_) => PagedList(
-      items: projectTasks(projectId, showDone: showDone),
-      hasMore: hasMore,
-    ),
-  );
 
   @override
   Stream<List<Task>> watchSearchableTasks() =>
@@ -259,18 +236,172 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
         (_) => [for (final task in _all) task.copyWith(relatedTasks: const {})],
       );
 
+  /// The archived projects whose tasks `watchActiveOpenTasks` leaves out;
+  /// the test lists their subprojects too.
+  Set<int> get archivedProjectIds => _archivedProjectIds;
+
+  set archivedProjectIds(Set<int> ids) {
+    _archivedProjectIds = Set.unmodifiable(ids);
+    _notify();
+  }
+
+  Set<int> _archivedProjectIds = const {};
+
+  /// The saved filter the Overview shows; null shows the active open tasks.
+  SavedFilterRef? get overviewFilter => _overviewFilter;
+
+  set overviewFilter(SavedFilterRef? filter) {
+    _overviewFilter = filter;
+    _notify();
+  }
+
+  SavedFilterRef? _overviewFilter;
+
+  /// The overview filter's last download: its tasks that are in [all] and
+  /// open show, like the local database's.
+  ListSnapshot get overviewSnapshot => _overviewSnapshot;
+
+  set overviewSnapshot(ListSnapshot snapshot) {
+    _overviewSnapshot = snapshot;
+    _notify();
+  }
+
+  ListSnapshot _overviewSnapshot = const ListSnapshot();
+
+  /// Each list's last download, by `listKeyFor` key; see [setSnapshot].
+  Map<String, ListSnapshot> get snapshots => Map.unmodifiable(_snapshots);
+  final Map<String, ListSnapshot> _snapshots = {};
+
+  void setSnapshot(String listKey, ListSnapshot snapshot) {
+    _snapshots[listKey] = snapshot;
+    _notify();
+  }
+
+  /// Every `refreshProjectList` as `(projectId, viewId)`. Each runs a sync
+  /// through the engine, then [onRefreshProjectList], then throws
+  /// [refreshProjectListFailure] when one is set.
+  final List<(int, int)> projectListRefreshes = [];
+  Future<void> Function(int projectId, int viewId)? onRefreshProjectList;
+  VikunjaFailure? refreshProjectListFailure;
+
+  void _notify() {
+    if (!_changes.isClosed) _changes.add(_all);
+  }
+
+  /// Like the database: a task created here first, then newest first.
+  static int _newestFirst(Task a, Task b) {
+    if ((a.id < 0) != (b.id < 0)) return a.id < 0 ? -1 : 1;
+    return b.id.abs().compareTo(a.id.abs());
+  }
+
+  static int _byDueThenNewest(Task a, Task b) {
+    final byDue = switch ((a.dueDate, b.dueDate)) {
+      (null, null) => 0,
+      (null, _) => 1,
+      (_, null) => -1,
+      (final a?, final b?) => a.compareTo(b),
+    };
+    return byDue != 0 ? byDue : _newestFirst(a, b);
+  }
+
+  List<Task> get activeOpenTasks => [
+    for (final task in _all)
+      if (!task.done && !_archivedProjectIds.contains(task.projectId)) task,
+  ]..sort(_byDueThenNewest);
+
+  OverviewTasks get overviewTasks {
+    final filter = _overviewFilter;
+    if (filter == null) return OverviewTasks(tasks: activeOpenTasks);
+    final listed = _overviewSnapshot.positions;
+    return OverviewTasks(
+      tasks: [
+        for (final task in _all)
+          if (!task.done && listed.containsKey(task.id)) task,
+      ]..sort(_byDueThenNewest),
+      filter: filter,
+      filterLoadedAt: _overviewSnapshot.loadedAt,
+    );
+  }
+
+  /// Like the database: without [includeDone], the done tasks the view's
+  /// download lacks stay out.
+  ProjectListSource projectList(
+    int projectId, {
+    required int viewId,
+    bool includeDone = true,
+  }) {
+    final byId = {for (final task in _all) task.id: task};
+    final snapshot =
+        _snapshots[listKeyFor(projectId: projectId, viewId: viewId)] ??
+        const ListSnapshot();
+    bool loaded(Task task) =>
+        includeDone || !task.done || snapshot.positions.containsKey(task.id);
+    final inProject = [
+      for (final task in _all)
+        if (task.projectId == projectId) task,
+    ];
+    final projectTasks = inProject.where(loaded).toList()..sort(_newestFirst);
+    final reachable = {for (final task in projectTasks) task.id: task};
+    var frontier = projectTasks;
+    while (frontier.isNotEmpty) {
+      final next = <Task>[];
+      for (final task in frontier) {
+        for (final subtask in task.subtasks) {
+          final child = byId[subtask.id];
+          if (child == null || reachable.containsKey(child.id)) continue;
+          reachable[child.id] = child;
+          next.add(child);
+        }
+      }
+      frontier = next;
+    }
+    return ProjectListSource(
+      projectTasks: projectTasks,
+      tasksById: reachable,
+      snapshot: snapshot,
+      omitsDoneTasks: inProject.any((task) => !loaded(task)),
+    );
+  }
+
+  @override
+  Stream<List<Task>> watchActiveOpenTasks() =>
+      _replaying(() => _all, _changes.stream).map((_) => activeOpenTasks);
+
+  @override
+  Stream<OverviewTasks> watchOverviewTasks() =>
+      _replaying(() => _all, _changes.stream).map((_) => overviewTasks);
+
+  /// Every `watchProjectList` as `(projectId, viewId, includeDone)`.
+  final List<(int, int, bool)> projectListWatches = [];
+
+  /// The error `watchProjectList` fails with, by view id.
+  final Map<int, Object> projectListErrors = {};
+
+  @override
+  Stream<ProjectListSource> watchProjectList(
+    int projectId, {
+    required int viewId,
+    bool includeDone = true,
+  }) {
+    projectListWatches.add((projectId, viewId, includeDone));
+    if (projectListErrors[viewId] case final error?) {
+      return Stream.error(error);
+    }
+    return _replaying(() => _all, _changes.stream).map(
+      (_) => projectList(projectId, viewId: viewId, includeDone: includeDone),
+    );
+  }
+
+  @override
+  Future<void> refreshProjectList(int projectId, {required int viewId}) async {
+    projectListRefreshes.add((projectId, viewId));
+    await _engine.refresh();
+    await onRefreshProjectList?.call(projectId, viewId);
+    if (refreshProjectListFailure case final failure?) throw failure;
+  }
+
   @override
   Future<void> refreshOpenTasks() => _engine.refresh();
-
-  @override
-  Future<void> refreshProjectTasks(int projectId, {required bool showDone}) =>
-      _engine.refresh();
-
-  @override
-  Future<void> loadMoreProjectTasks(int projectId, {required bool showDone}) {
-    loadMoreCalls++;
-    return onLoadMore?.call() ?? Future.value();
-  }
 
   /// Every write, in order, as `create -1 Title`, `update 1`,
   /// `setDone 1 true`, `undoDone 1`, `setFavorite 2 false`, `delete 3`,
@@ -607,8 +738,23 @@ final class AccountDataFakes {
   late final FakeSyncEngine engine;
   late final FakeProjectRepository projects;
   late final FakeTaskRepository tasks;
+  final listPreferences = FakeListPreferences();
   final activity = FakeActivityRepository();
   final subscriptions = FakeSubscriptionRepository();
+
+  /// What `userSettingsProvider` reports while the account is active.
+  UserSettings get settings => _settings;
+
+  set settings(UserSettings settings) {
+    _settings = settings;
+    _settingsChanges.add(settings);
+  }
+
+  UserSettings _settings = const UserSettings();
+  final _settingsChanges = StreamController<UserSettings>.broadcast();
+
+  Stream<UserSettings> watchSettings() =>
+      _replaying(() => _settings, _settingsChanges.stream);
 }
 
 /// The data layer under the screens, without a database: every account
@@ -633,6 +779,7 @@ final class SyncFakes {
   FakeProjectRepository get projects => shared.projects;
   FakeTaskRepository get tasks => shared.tasks;
   FakeActivityRepository get activity => shared.activity;
+  FakeListPreferences get listPreferences => shared.listPreferences;
   FakeSubscriptionRepository get subscriptions => shared.subscriptions;
 
   AccountDataFakes forAccount(String accountId) =>
@@ -650,6 +797,9 @@ final class SyncFakes {
     accountTaskRepositoryProvider.overrideWith(
       (ref, accountId) => forAccount(accountId).tasks,
     ),
+    accountListPreferencesProvider.overrideWith(
+      (ref, accountId) => forAccount(accountId).listPreferences,
+    ),
     accountActivityRepositoryProvider.overrideWith(
       (ref, accountId) => forAccount(accountId).activity,
     ),
@@ -665,5 +815,11 @@ final class SyncFakes {
     accountPendingChangesProvider.overrideWith(
       (ref, accountId) => forAccount(accountId).tasks.watchPendingChanges(),
     ),
+    // The real one opens the account's database; every list reads it.
+    userSettingsProvider.overrideWith((ref) {
+      final accountId = ref.watch(activeAccountIdProvider);
+      if (accountId == null) return Stream.value(const UserSettings());
+      return forAccount(accountId).watchSettings();
+    }),
   ];
 }

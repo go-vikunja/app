@@ -645,7 +645,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get overviewEmptyBody =>
-      'Gerade gibt es keine offenen Aufgaben. Genieß die Ruhe oder leg im Browser neue an.';
+      'Gerade gibt es keine offenen Aufgaben. Genieß die Ruhe oder leg mit „Neue Aufgabe“ eine an.';
 
   @override
   String get sectionOverdue => 'Überfällig';
@@ -710,12 +710,6 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get projectTasksLoading => 'Aufgaben werden geladen …';
-
-  @override
-  String get projectTasksLoadMore => 'Mehr laden';
-
-  @override
-  String get projectTasksLoadingMore => 'Weitere Aufgaben werden geladen …';
 
   @override
   String get projectTasksEmptyTitle => 'Keine offenen Aufgaben';
@@ -2540,5 +2534,275 @@ class AppLocalizationsDe extends AppLocalizations {
       one: '1 davon als Unteraufgabe',
     );
     return '$_temp0, $_temp1';
+  }
+
+  @override
+  String get tabUpcoming => 'Anstehend';
+
+  @override
+  String get upcomingEmptyTitle => 'Nichts zu tun – einen schönen Tag noch!';
+
+  @override
+  String get upcomingEmptyBody =>
+      'In diesem Zeitraum ist keine offene Aufgabe fällig.';
+
+  @override
+  String get upcomingShowOverdue => 'Überfällige Aufgaben anzeigen';
+
+  @override
+  String get upcomingShowWithoutDate => 'Aufgaben ohne Datum anzeigen';
+
+  @override
+  String get upcomingSelectRange => 'Datumsbereich wählen';
+
+  @override
+  String get upcomingRangeCustom => 'Benutzerdefiniert';
+
+  @override
+  String get upcomingRangeCustomEntry => 'Benutzerdefiniert …';
+
+  @override
+  String upcomingRangeDates(String from, String to) {
+    return '$from – $to';
+  }
+
+  @override
+  String upcomingRangeSemantics(String name, String dates) {
+    return 'Zeitraum $name, $dates';
+  }
+
+  @override
+  String get upcomingRangeFrom => 'Von';
+
+  @override
+  String get upcomingRangeTo => 'Bis';
+
+  @override
+  String get rangeToday => 'Heute';
+
+  @override
+  String get rangeTomorrow => 'Morgen';
+
+  @override
+  String get rangeLastWeek => 'Letzte Woche';
+
+  @override
+  String get rangeThisWeek => 'Diese Woche';
+
+  @override
+  String get rangeRestOfThisWeek => 'Der Rest dieser Woche';
+
+  @override
+  String get rangeNextWeek => 'Nächste Woche';
+
+  @override
+  String get rangeNext7Days => 'Nächste 7 Tage';
+
+  @override
+  String get rangeLastMonth => 'Letzter Monat';
+
+  @override
+  String get rangeThisMonth => 'Dieser Monat';
+
+  @override
+  String get rangeRestOfThisMonth => 'Der Rest dieses Monats';
+
+  @override
+  String get rangeNextMonth => 'Nächster Monat';
+
+  @override
+  String get rangeNext30Days => 'Nächste 30 Tage';
+
+  @override
+  String get rangeThisYear => 'Dieses Jahr';
+
+  @override
+  String get rangeRestOfThisYear => 'Der Rest des Jahres';
+
+  @override
+  String get sectionTomorrow => 'Morgen';
+
+  @override
+  String overviewFilterSubtitle(String title) {
+    return 'Filter: $title';
+  }
+
+  @override
+  String get overviewFilterNotLoadedTitle =>
+      'Dieser Filter lädt, sobald du online bist';
+
+  @override
+  String overviewFilterNotLoadedBody(String title) {
+    return 'Dein Überblick zeigt den gespeicherten Filter „$title“, den du im Web gewählt hast. Seine Aufgaben kommen mit der nächsten Synchronisierung.';
+  }
+
+  @override
+  String overviewFilterEmptyBody(String title) {
+    return 'Der gespeicherte Filter „$title“ hat keine offenen Aufgaben.';
+  }
+
+  @override
+  String get projectViewList => 'Liste';
+
+  @override
+  String get projectViewSwitch => 'Ansicht wechseln';
+
+  @override
+  String get projectSort => 'Sortieren';
+
+  @override
+  String projectSortCurrent(String sort) {
+    return 'Sortiert: $sort';
+  }
+
+  @override
+  String get sortManual => 'Manuell';
+
+  @override
+  String get sortTitleAsc => 'Titel (A–Z)';
+
+  @override
+  String get sortTitleDesc => 'Titel (Z–A)';
+
+  @override
+  String get sortPriorityDesc => 'Priorität (höchste zuerst)';
+
+  @override
+  String get sortPriorityAsc => 'Priorität (niedrigste zuerst)';
+
+  @override
+  String get sortDueDateAsc => 'Fälligkeitsdatum (frühestes zuerst)';
+
+  @override
+  String get sortDueDateDesc => 'Fälligkeitsdatum (spätestes zuerst)';
+
+  @override
+  String get sortStartDateAsc => 'Startdatum (frühestes zuerst)';
+
+  @override
+  String get sortStartDateDesc => 'Startdatum (spätestes zuerst)';
+
+  @override
+  String get sortEndDateAsc => 'Enddatum (frühestes zuerst)';
+
+  @override
+  String get sortEndDateDesc => 'Enddatum (spätestes zuerst)';
+
+  @override
+  String get sortPercentDoneDesc => '% erledigt (am meisten erledigt zuerst)';
+
+  @override
+  String get sortPercentDoneAsc => '% erledigt (am wenigsten erledigt zuerst)';
+
+  @override
+  String get sortCreatedDesc => 'Erstellt (neueste zuerst)';
+
+  @override
+  String get sortCreatedAsc => 'Erstellt (älteste zuerst)';
+
+  @override
+  String get sortUpdatedDesc => 'Aktualisiert (neueste zuerst)';
+
+  @override
+  String get sortUpdatedAsc => 'Aktualisiert (älteste zuerst)';
+
+  @override
+  String get projectTasksDoneSection => 'Erledigt';
+
+  @override
+  String get projectTasksEmptyDoneTitle => 'Keine erledigten Aufgaben';
+
+  @override
+  String get projectTasksEmptyDoneBody =>
+      'In dieser Ansicht ist noch nichts erledigt.';
+
+  @override
+  String projectViewFilterNotice(String filter, String when) {
+    return 'Der Server wendet den Filter „$filter“ dieser Ansicht an. Stand: $when; Änderungen von anderswo erscheinen nach dem nächsten Laden.';
+  }
+
+  @override
+  String get projectViewNotLoadedTitle =>
+      'Diese Ansicht lädt, sobald du online bist';
+
+  @override
+  String projectViewNotLoadedBody(String filter) {
+    return 'Der Server wendet den Filter „$filter“ dieser Ansicht an. Ihre Aufgaben laden, wenn du sie online öffnest.';
+  }
+
+  @override
+  String get projectViewEmptyTitle => 'Keine passenden Aufgaben';
+
+  @override
+  String get projectViewEmptyBody =>
+      'Beim letzten Laden passte nichts zum Filter dieser Ansicht.';
+
+  @override
+  String get taskDoneSemantics => 'Erledigt';
+
+  @override
+  String taskAssigneesSemantics(String names) {
+    return 'Zugewiesen an $names';
+  }
+
+  @override
+  String taskMoreAssignees(int count) {
+    return '+$count';
+  }
+
+  @override
+  String taskChecklistProgress(int checked, int total) {
+    return '$checked von $total Aufgaben';
+  }
+
+  @override
+  String taskChecklistAllDone(int total) {
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: '$total Aufgaben',
+      one: '1 Aufgabe',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get taskHasDescription => 'Hat eine Beschreibung';
+
+  @override
+  String get taskRepeats => 'Wiederholt sich';
+
+  @override
+  String get savedFilterMyOpenTasks => 'Meine offenen Aufgaben';
+
+  @override
+  String overviewFilterNotice(String title, String when) {
+    return 'Filter: $title, Stand: $when. Hier erstellte Aufgaben erscheinen nach der nächsten Synchronisierung.';
+  }
+
+  @override
+  String get overviewFilterNotDownloadedTitle =>
+      'Dieser Filter ist noch nicht geladen';
+
+  @override
+  String get projectViewDownloadingTitle => 'Diese Ansicht wird geladen …';
+
+  @override
+  String projectViewDownloadingBody(String filter) {
+    return 'Der Server wendet den Filter „$filter“ dieser Ansicht an. Ihre Aufgaben sind unterwegs.';
+  }
+
+  @override
+  String get projectViewDownloadFailedTitle =>
+      'Diese Ansicht ließ sich nicht laden';
+
+  @override
+  String projectViewDownloadFailedBody(String filter) {
+    return 'Der Server wendet den Filter „$filter“ dieser Ansicht an. Zieh nach unten, um es erneut zu versuchen.';
+  }
+
+  @override
+  String taskSubtaskOfSemantics(String parent) {
+    return 'Unteraufgabe von $parent';
   }
 }

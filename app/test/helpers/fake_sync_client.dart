@@ -27,6 +27,14 @@ final class FakeSyncClient implements VikunjaReadClient {
   List<Task> allTasks = [];
   User? currentUser;
 
+  /// The tasks each saved filter matches, by its pseudo project id:
+  /// `listInProject` on a pseudo project in [pseudoProjects] serves them.
+  final Map<int, Set<int>> savedFilterTasks = {};
+
+  /// Each view's task positions (`task_positions`); a task without one is
+  /// at 0, and only a view's task list shows them.
+  final Map<int, Map<int, double>> viewPositions = {};
+
   /// Called before every request with its description; throwing fails the
   /// request, awaiting holds it.
   Future<void> Function(String request)? beforeRequest;
@@ -44,6 +52,9 @@ final class FakeSyncClient implements VikunjaReadClient {
   late final FakeNotificationsPort notifications = FakeNotificationsPort(this);
   @override
   late final FakeSubscriptionsPort subscriptions = FakeSubscriptionsPort(this);
+
+  @override
+  AvatarsPort get avatars => throw UnimplementedError();
 
   /// The subscription each task / project shows on a single read.
   final Map<int, Subscription> taskSubscriptions = {};
@@ -189,12 +200,22 @@ final class FakeTasksPort implements TasksPort {
     ], query);
   }
 
-  /// A project the server does not have answers like a deleted one.
+  /// A project the server does not have answers like a deleted one; a
+  /// saved filter's pseudo project serves the filter's tasks.
   @override
   Future<Page<Task>> listInProject(int projectId, TaskQuery query) async {
     await _client._request('project $projectId tasks ${_describe(query)}');
     if (_client.forbiddenProjects.contains(projectId)) {
       throw const Forbidden(code: 7003);
+    }
+    if (projectId < Project.favoritesId) {
+      final listed = _client.pseudoProjects.any((p) => p.id == projectId);
+      final matching = _client.savedFilterTasks[projectId];
+      if (!listed || matching == null) throw const NotFound(code: 3001);
+      return _serve([
+        for (final task in _client.allTasks)
+          if (matching.contains(task.id)) task,
+      ], query);
     }
     if (!_client.allProjects.any((project) => project.id == projectId)) {
       throw const NotFound(code: 3001);
@@ -205,9 +226,30 @@ final class FakeTasksPort implements TasksPort {
     ], query);
   }
 
+  /// The view's filter applies on top of the query's, and the tasks carry
+  /// their positions in the view.
   @override
-  Future<Page<Task>> listInView(int projectId, int viewId, TaskQuery query) =>
-      listInProject(projectId, query);
+  Future<Page<Task>> listInView(
+    int projectId,
+    int viewId,
+    TaskQuery query,
+  ) async {
+    await _client._request(
+      'project $projectId view $viewId tasks ${_describe(query)}',
+    );
+    final project = _client.allProjects
+        .where((project) => project.id == projectId)
+        .firstOrNull;
+    final view = project?.views.where((view) => view.id == viewId).firstOrNull;
+    if (view == null) throw const NotFound(code: 3001);
+    final inView = _predicate(view.filter?.filter);
+    final positions = _client.viewPositions[viewId] ?? const {};
+    return _serve([
+      for (final task in _client.allTasks)
+        if (task.projectId == projectId && inView(task))
+          task.copyWith(position: positions[task.id] ?? 0),
+    ], query);
+  }
 
   /// A task the server does not have answers like a deleted one.
   @override
@@ -243,6 +285,13 @@ final class FakeTasksPort implements TasksPort {
             a.created,
           ).compareTo(_epoch(b.created)),
           TaskSortField.position => a.position.compareTo(b.position),
+          TaskSortField.dueDate => switch ((a.dueDate, b.dueDate)) {
+            (null, null) => 0,
+            // Nulls last in both directions, like the server.
+            (null, _) => sort.descending ? -1 : 1,
+            (_, null) => sort.descending ? 1 : -1,
+            (final a?, final b?) => a.compareTo(b),
+          },
           _ => throw StateError('unsupported task sort: ${sort.field}'),
         };
         if (order != 0) return sort.descending ? -order : order;

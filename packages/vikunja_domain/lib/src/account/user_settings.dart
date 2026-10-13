@@ -25,6 +25,8 @@ final class UserSettings {
     this.language = '',
     this.quickAddMagicMode = QuickAddMagicMode.vikunja,
     this.quickAddDefaultReminders = const [],
+    this.filterIdUsedOnOverview,
+    this.minimumPriority = 0,
   });
 
   /// Null when unset (the server's 0).
@@ -40,6 +42,17 @@ final class UserSettings {
   /// the due date, negative before it.
   final List<Duration> quickAddDefaultReminders;
 
+  /// `frontend_settings.filter_id_used_on_overview`: the pseudo project id
+  /// (-2 or lower) of the saved filter the Overview shows; null when unset.
+  final int? filterIdUsedOnOverview;
+
+  /// `frontend_settings.minimum_priority`; 0 when unset.
+  final int minimumPriority;
+
+  /// The lowest priority a task row shows; the web reads an unset value
+  /// as medium.
+  int get effectiveMinimumPriority => minimumPriority > 0 ? minimumPriority : 2;
+
   @override
   bool operator ==(Object other) =>
       other is UserSettings &&
@@ -48,7 +61,12 @@ final class UserSettings {
       other.timezone == timezone &&
       other.language == language &&
       other.quickAddMagicMode == quickAddMagicMode &&
-      _sameDurations(other.quickAddDefaultReminders, quickAddDefaultReminders);
+      _sameDurations(
+        other.quickAddDefaultReminders,
+        quickAddDefaultReminders,
+      ) &&
+      other.filterIdUsedOnOverview == filterIdUsedOnOverview &&
+      other.minimumPriority == minimumPriority;
 
   @override
   int get hashCode => Object.hash(
@@ -58,6 +76,8 @@ final class UserSettings {
     language,
     quickAddMagicMode,
     Object.hashAll(quickAddDefaultReminders),
+    filterIdUsedOnOverview,
+    minimumPriority,
   );
 
   static bool _sameDurations(List<Duration> a, List<Duration> b) {
