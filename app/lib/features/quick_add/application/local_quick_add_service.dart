@@ -157,12 +157,16 @@ final class LocalQuickAddService implements QuickAddService {
     int? fallbackProjectId,
     DateTime? fallbackDueDate,
   }) async {
-    final lines = splitQuickAddLines(text);
+    final lines = quickAddTaskLines(
+      text,
+      mode: _snapshot.settings.quickAddMagicMode,
+      parse: _grammar.subtasks,
+    );
     final plans = [
       for (final line in lines)
         plan(
-          line,
-          fallbackProjectId: fallbackProjectId,
+          line.text,
+          fallbackProjectId: _inheritedProjectId(line) ?? fallbackProjectId,
           fallbackDueDate: fallbackDueDate,
         ),
     ];
@@ -190,7 +194,7 @@ final class LocalQuickAddService implements QuickAddService {
         QuickAddPartlyFailed(
           createdTaskIds: List.unmodifiable(ids),
           lineCount: lines.length,
-          remainingText: lines.skip(line).join('\n'),
+          remainingText: _remainingText(lines, line),
           cause: error,
         ),
         stackTrace,
@@ -226,8 +230,14 @@ final class LocalQuickAddService implements QuickAddService {
           ?submission.createdLabel(newLabel)?.id,
       };
       final assigneeIds = {for (final user in assignees) user.id};
-      if (labelIds.isNotEmpty || assigneeIds.isNotEmpty) {
+      final parentId = switch (lines[index].parentIndex) {
+        final parent? => ids[parent],
+        null => null,
+      };
+      if (labelIds.isNotEmpty || assigneeIds.isNotEmpty || parentId != null) {
         try {
+          // Like the web, the child names its parent; the server keeps the
+          // parent's subtask edge.
           await _tasks.updateTask(
             id,
             TaskChanges(
@@ -235,6 +245,13 @@ final class LocalQuickAddService implements QuickAddService {
               assignees: assigneeIds.isEmpty
                   ? null
                   : IdSetChange(added: assigneeIds),
+              relations: parentId == null
+                  ? null
+                  : RelationChange(
+                      added: {
+                        TaskRelationRef(TaskRelationKind.parentTask, parentId),
+                      },
+                    ),
             ),
           );
         } on Object catch (error, stackTrace) {
@@ -253,6 +270,36 @@ final class LocalQuickAddService implements QuickAddService {
       unresolvedAssignees: unresolved,
     );
   }
+
+  /// The lines from [from] on, for another try: a line stays indented
+  /// under the remaining lines it is a subtask of, while one whose parent
+  /// was created already starts a tree of its own.
+  static String _remainingText(List<IndentedLine> lines, int from) => [
+    for (final (index, line) in lines.indexed.skip(from))
+      '${'  ' * _depthWithin(lines, index, from)}${line.text}',
+  ].join('\n');
+
+  static int _depthWithin(List<IndentedLine> lines, int index, int from) {
+    var depth = 0;
+    for (
+      var parent = lines[index].parentIndex;
+      parent != null && parent >= from;
+      parent = lines[parent].parentIndex
+    ) {
+      depth++;
+    }
+    return depth;
+  }
+
+  /// The project a subtask line inherits from its parent line when it
+  /// names none of its own, matched like a `+project`; null when no
+  /// project a task can go to has that name, and the line's fallback
+  /// applies.
+  int? _inheritedProjectId(IndentedLine line) =>
+      switch (line.inheritedProject) {
+        final name? => projectsNamed(name, _selectableProjects).firstOrNull?.id,
+        null => null,
+      };
 
   /// Every name looked up on the server in the task's project, also the
   /// ones the plan resolved: a known user may have no access there. Only

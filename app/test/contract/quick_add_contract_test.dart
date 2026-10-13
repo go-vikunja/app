@@ -37,6 +37,9 @@ final class _SwitchableWriteClient implements VikunjaWriteClient {
   @override
   NotificationsWritePort get notifications => _real.notifications;
 
+  @override
+  SubscriptionsWritePort get subscriptions => _real.subscriptions;
+
   void _check() {
     if (offline) throw const NetworkFailure(NetworkProblem.unreachable);
   }
@@ -63,6 +66,12 @@ final class _SwitchableTasks implements TasksWritePort {
   Future<void> delete(int id) {
     _client._check();
     return _client._real.tasks.delete(id);
+  }
+
+  @override
+  Future<Task> duplicate(int id) {
+    _client._check();
+    return _client._real.tasks.duplicate(id);
   }
 }
 
@@ -186,7 +195,7 @@ void main() {
             sync: engine,
           );
           addTearDown(sender.dispose);
-          tasks = LocalTaskRepository(db, engine, sender);
+          tasks = LocalTaskRepository(db, engine, sender, writes);
           addTearDown(tasks.dispose);
           labels = LocalLabelRepository(db, writes, reads);
           users = _SwitchableUsers(LocalUserRepository(db, reads), writes);

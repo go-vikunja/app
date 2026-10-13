@@ -14,6 +14,10 @@ abstract interface class TaskRepository {
     required bool showDone,
   });
 
+  /// Every task, done ones included, without labels, assignees, reminders
+  /// or relations: enough to search titles and identifiers.
+  Stream<List<Task>> watchSearchableTasks();
+
   Future<void> refreshOpenTasks();
 
   Future<void> refreshProjectTasks(int projectId, {required bool showDone});
@@ -47,6 +51,14 @@ abstract interface class TaskRepository {
   /// already deleted counts as success.
   Future<void> deleteTask(int taskId);
 
+  /// Asks the server for a copy (labels, assignees, attachments and
+  /// reminders included, plus a `copiedfrom` relation), so it needs a
+  /// connection and the task's queued changes sent first; stores the copy
+  /// and returns its id. Throws the `VikunjaFailure`; while the task's
+  /// changes cannot be sent, the one the queue waits out (offline a
+  /// `NetworkFailure`), else [TaskNotSyncedYet].
+  Future<int> duplicateTask(int taskId);
+
   /// Queued changes not yet accepted by the server, failed ones included.
   Stream<int> watchPendingChanges();
 
@@ -64,4 +76,16 @@ abstract interface class TaskRepository {
   Future<VikunjaFailure?> sendPendingChanges();
 
   void dispose();
+}
+
+/// The task has changes this device could not send yet (its create, or a
+/// change the server refused), and the action needs the task as the
+/// server has it: available once they are synced.
+final class TaskNotSyncedYet implements Exception {
+  const new(this.taskId);
+
+  final int taskId;
+
+  @override
+  String toString() => 'TaskNotSyncedYet($taskId)';
 }

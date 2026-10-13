@@ -19,6 +19,8 @@ export 'src/server/server_info.dart';
 export 'src/server/server_version.dart';
 export 'src/task/id_set_change.dart';
 export 'src/task/new_task.dart';
+export 'src/task/relation_change.dart';
+export 'src/task/subscription.dart';
 export 'src/task/task.dart';
 export 'src/task/task_changes.dart';
 export 'src/task/task_relation_kind.dart';

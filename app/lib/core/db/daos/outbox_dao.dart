@@ -28,7 +28,9 @@ enum OutboxState { pending, sending, failed }
 /// create is answered. While the create has not left the device an edit
 /// folds into it and a delete cancels it; once it may be on the server
 /// (in flight, or without an answer) later ops queue behind it under the
-/// temporary id, which [completeCreate] rewrites to the server id.
+/// temporary id, which [completeCreate] rewrites to the server id. A
+/// relation may name such a task as the other task too: the remap rewrites
+/// those references, and an op that still names a temporary id waits.
 @DriftAccessor(tables: [Outbox, Tasks, TaskIdRemaps, SyncState])
 final class OutboxDao extends DatabaseAccessor<AppDatabase>
     with _$OutboxDaoMixin {
@@ -84,19 +86,21 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
         return id;
       });
 
-  /// Applies [changes] to the row and its labels, assignees and reminders
-  /// and queues them, merged into the task's unsent update op when there is
-  /// one, or into its create while that has not left the device: reminders
-  /// fold into the create, while labels, assignees and done, which need the
-  /// task's id on the server, stay queued behind it. A temporary id whose
-  /// create was answered meanwhile is followed to the server id. False when
-  /// the task is unknown here or queued for deletion.
+  /// Applies [requested] to the row and its labels, assignees, reminders
+  /// and relations and queues it, merged into the task's unsent update op
+  /// when there is one, or into its create while that has not left the
+  /// device: reminders fold into the create, while labels, assignees,
+  /// relations and done, which need the task's id on the server, stay
+  /// queued behind it. A temporary id whose create was answered meanwhile
+  /// is followed to the server id, the task's own and those its relations
+  /// name. False when the task is unknown here or queued for deletion.
   Future<bool> queueUpdate(
     int localOrServerId,
-    TaskChanges changes, {
+    TaskChanges requested, {
     required DateTime now,
   }) => transaction(() async {
     final taskId = await attachedDatabase.tasksDao.resolveId(localOrServerId);
+    final changes = await _withResolvedRelations(requested);
     final row = await _row(taskId);
     if (row == null || row.pendingDelete) return false;
     var queued = changes;
@@ -185,18 +189,47 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
   /// its `next_attempt_at`; the sender waits for that itself. It may be
   /// `sending`, in another isolate or left by a run that died, and then
   /// nothing may overtake it. An update or delete under a temporary id
-  /// waits for its create, which is ahead of it or failed.
-  Future<OutboxRow?> nextInLine() =>
-      (select(outbox)
-            ..where(
-              (o) =>
-                  o.state.equals(OutboxState.failed.name).not() &
-                  (o.taskId.isBiggerThanValue(0) |
-                      o.kind.equals(OutboxOperationKind.createTask.name)),
-            )
-            ..orderBy([(o) => OrderingTerm.asc(o.sequence)])
-            ..limit(1))
-          .getSingleOrNull();
+  /// waits for its create, which is ahead of it or failed; so does an
+  /// update whose relations name a task whose create has not been
+  /// answered, wherever that create is.
+  Future<OutboxRow?> nextInLine() async {
+    var after = 0;
+    while (true) {
+      final op =
+          await (select(outbox)
+                ..where(
+                  (o) =>
+                      o.sequence.isBiggerThanValue(after) &
+                      o.state.equals(OutboxState.failed.name).not() &
+                      (o.taskId.isBiggerThanValue(0) |
+                          o.kind.equals(OutboxOperationKind.createTask.name)),
+                )
+                ..orderBy([(o) => OrderingTerm.asc(o.sequence)])
+                ..limit(1))
+              .getSingleOrNull();
+      if (op == null ||
+          op.state != OutboxState.pending.name ||
+          !await waitsForRelatedCreate(op)) {
+        return op;
+      }
+      after = op.sequence;
+    }
+  }
+
+  /// Whether [op] names in its relations a task created here whose create
+  /// has not been answered.
+  Future<bool> waitsForRelatedCreate(OutboxRow op) async {
+    if (op.kind != OutboxOperationKind.updateTask.name ||
+        !op.payload.contains('"relations"')) {
+      return false;
+    }
+    for (final id in relatedTaskIds(decodeTaskChanges(op.payload))) {
+      if (id < 0 && await attachedDatabase.tasksDao.resolveId(id) < 0) {
+        return true;
+      }
+    }
+    return false;
+  }
 
   Future<OutboxRow?> find(String id) =>
       (select(outbox)..where((o) => o.id.equals(id))).getSingleOrNull();
@@ -232,6 +265,13 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
       return claimed == 0 ? null : await find(id);
     },
   );
+
+  /// A claimed op that cannot go yet goes back to the queue as it was.
+  Future<void> unclaim(String id) =>
+      (update(outbox)..where(
+            (o) => o.id.equals(id) & o.state.equals(OutboxState.sending.name),
+          ))
+          .write(OutboxCompanion(state: Value(OutboxState.pending.name)));
 
   /// [attempts] is the count including the one that just failed.
   Future<void> scheduleRetry(
@@ -277,18 +317,29 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
   /// flight, so that edit cannot revert a later one folded into the
   /// create; only done, labels and assignees stay queued behind it. A
   /// delete behind it cancels it: the server never had the task, so both
-  /// go.
+  /// go. A related task the server no longer has is forgotten (see
+  /// [forgetRelatedTasks]), in this op too, which stays failed to say why
+  /// the edge is gone: the write client tried every other request of the
+  /// op first, so it holds nothing back, and an edit merged into it later
+  /// goes out without that edge.
   Future<void> markFailed(String id, VikunjaFailure failure) =>
       transaction(() async {
         final op = await find(id);
         if (op == null) return;
+        var payload = op.payload;
+        if (failure case RelatedTaskMissing(:final otherTaskId)
+            when op.kind == OutboxOperationKind.updateTask.name) {
+          await _forgetRelatedTasks({otherTaskId}, except: op.id);
+          payload = encodeTaskChanges(
+            withoutRelatedTasks(decodeTaskChanges(payload), {otherTaskId}),
+          );
+        }
         final newer = await _newerUnsent(op);
         if (op.kind == OutboxOperationKind.createTask.name) {
           if (newer?.kind == OutboxOperationKind.deleteTask.name) {
             await cancelCreate(op.taskId);
             return;
           }
-          var payload = op.payload;
           if (newer != null) {
             final edit = decodeTaskChanges(newer.payload);
             payload = encodeNewTask(
@@ -321,15 +372,17 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
           await _write(
             id,
             OutboxCompanion(
+              payload: Value(payload),
               state: Value(OutboxState.failed.name),
               nextAttemptAt: const Value(null),
               lastError: Value(encodeFailure(failure)),
             ),
           );
+          await _refreshPendingChanges(op.taskId);
           return;
         }
         if (newer.kind == OutboxOperationKind.updateTask.name) {
-          final folded = decodeTaskChanges(op.payload)
+          final folded = decodeTaskChanges(payload)
               .merge(decodeTaskChanges(newer.payload));
           await _write(
             newer.id,
@@ -376,6 +429,43 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
       await _refreshPendingChanges(op.taskId);
     }
   });
+
+  /// Tasks the server no longer has for this user (deleted, or no longer
+  /// visible) can never be related to, so edges naming them leave every
+  /// unsent update and every stored row, as [forgetLabels] does for
+  /// labels. An op left empty goes; a failed one that changed goes back to
+  /// the queue, since what failed may have been that edge.
+  Future<void> forgetRelatedTasks(Set<int> taskIds) =>
+      transaction(() => _forgetRelatedTasks(taskIds));
+
+  Future<void> _forgetRelatedTasks(Set<int> taskIds, {String? except}) async {
+    if (taskIds.isEmpty) return;
+    final query = select(outbox)
+      ..where(
+        (o) =>
+            o.kind.equals(OutboxOperationKind.updateTask.name) &
+            o.payload.like('%"relations"%') &
+            o.state.equals(OutboxState.sending.name).not(),
+      );
+    if (except != null) query.where((o) => o.id.equals(except).not());
+    for (final op in await query.get()) {
+      final changes = decodeTaskChanges(op.payload);
+      if (!relatedTaskIds(changes).any(taskIds.contains)) continue;
+      final kept = withoutRelatedTasks(changes, taskIds);
+      if (kept.isEmpty) {
+        await (delete(outbox)..where((o) => o.id.equals(op.id))).go();
+      } else if (op.state == OutboxState.failed.name) {
+        await _write(op.id, _retaken(encodeTaskChanges(kept)));
+      } else {
+        await _write(
+          op.id,
+          OutboxCompanion(payload: Value(encodeTaskChanges(kept))),
+        );
+      }
+      await _refreshPendingChanges(op.taskId);
+    }
+    await attachedDatabase.tasksDao.forgetRelatedTasks(taskIds);
+  }
 
   /// A failed op goes back to the queue with a clean slate.
   Future<void> retry(String id) => _write(
@@ -458,17 +548,23 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
       (delete(outbox)..where((o) => o.taskId.equals(taskId))).go();
 
   /// A task created here that the server will never be asked for: the
-  /// row and every op go, nothing is sent.
+  /// row and every op go, nothing is sent, and relations of other tasks
+  /// that name it are dropped from their queued changes, which would
+  /// otherwise wait for it forever.
   Future<void> cancelCreate(int localId) => transaction(() async {
     await removeAllOf(localId);
     await (delete(tasks)..where((t) => t.id.equals(localId))).go();
+    await _rewriteRelationRefs(localId, null);
+    await attachedDatabase.tasksDao.forgetRelatedTasks({localId});
   });
 
   /// The server has the task as [created]: the row moves to the server id
   /// with the response applied, the ops queued behind the create follow
-  /// (their fields, labels, assignees and reminders stay on top of the
-  /// response), the remap is recorded and the create op goes. A row the
-  /// sync pulled meanwhile under the server id is replaced.
+  /// (their fields, labels, assignees, reminders and relations stay on top
+  /// of the response), the remap is recorded and the create op goes. A row
+  /// the sync pulled meanwhile under the server id is replaced. Relations
+  /// of other tasks that name the temporary id, queued or stored, name the
+  /// server id from now on.
   Future<void> completeCreate(
     String operationId,
     Task created, {
@@ -482,6 +578,8 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
     await (update(outbox)..where((o) => o.taskId.equals(localId))).write(
       OutboxCompanion(taskId: Value(created.id)),
     );
+    await _rewriteRelationRefs(localId, created.id);
+    await attachedDatabase.tasksDao.remapRelatedTask(localId, created.id);
     await (delete(tasks)..where((t) => t.id.equals(localId))).go();
     await attachedDatabase.tasksDao.upsertAll([created]);
     final pending = await pendingChangesFor(created.id);
@@ -507,6 +605,15 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
       mode: InsertMode.insertOrReplace,
     );
   });
+
+  Future<bool> hasQueuedOps(int taskId) async {
+    final op =
+        await (select(outbox)
+              ..where((o) => o.taskId.equals(taskId))
+              ..limit(1))
+            .getSingleOrNull();
+    return op != null;
+  }
 
   Future<void> clearPendingDelete(int taskId) =>
       (update(tasks)..where((t) => t.id.equals(taskId))).write(
@@ -578,6 +685,70 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
       failure: decodeFailure(error),
       failedAt: op.lastAttemptAt ?? op.createdAt,
     );
+  }
+
+  /// [changes] with every other-task id of its relations followed to the
+  /// server id when its create was answered meanwhile.
+  ///
+  /// A temporary id with neither a row nor a remap is a create that was
+  /// cancelled; an edge to it is dropped, as it would wait forever.
+  Future<TaskChanges> _withResolvedRelations(TaskChanges changes) async {
+    final relations = changes.relations;
+    if (relations == null) return changes;
+    final resolved = <int, int>{};
+    for (final id in relatedTaskIds(changes)) {
+      final serverId = await attachedDatabase.tasksDao.resolveId(id);
+      if (serverId > 0 || await _row(serverId) != null) {
+        resolved[id] = serverId;
+      }
+    }
+    bool known(TaskRelationRef ref) => resolved.containsKey(ref.otherTaskId);
+    return withRelations(
+      changes,
+      RelationChange(
+        added: relations.added.where(known).toSet(),
+        removed: relations.removed.where(known).toSet(),
+      ).mapTaskIds((id) => resolved[id]!),
+    );
+  }
+
+  /// Every queued relation that names the task [from] names [to] instead,
+  /// or is dropped when [to] is null; an update left empty goes. The
+  /// tasks' `pending_changes` follow.
+  Future<void> _rewriteRelationRefs(int from, int? to) async {
+    final ops =
+        await (select(outbox)..where(
+              (o) =>
+                  o.kind.equals(OutboxOperationKind.updateTask.name) &
+                  o.payload.like('%"relations"%'),
+            ))
+            .get();
+    final touched = <int>{};
+    for (final op in ops) {
+      final changes = decodeTaskChanges(op.payload);
+      final relations = changes.relations;
+      if (relations == null || !relatedTaskIds(changes).contains(from)) {
+        continue;
+      }
+      final rewritten = to == null
+          ? withoutRelatedTasks(changes, {from})
+          : withRelations(
+              changes,
+              relations.mapTaskIds((id) => id == from ? to : id),
+            );
+      if (rewritten.isEmpty) {
+        await (delete(outbox)..where((o) => o.id.equals(op.id))).go();
+      } else {
+        await _write(
+          op.id,
+          OutboxCompanion(payload: Value(encodeTaskChanges(rewritten))),
+        );
+      }
+      touched.add(op.taskId);
+    }
+    for (final taskId in touched) {
+      await _refreshPendingChanges(taskId);
+    }
   }
 
   Future<TaskRow?> _row(int taskId) =>

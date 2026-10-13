@@ -1,4 +1,5 @@
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/outbox/task_relation_inverse.dart';
 
 const _unset = Object();
 
@@ -269,3 +270,62 @@ Object? _changed(DateChange? change) => switch (change) {
   SetDate(:final value) => value,
   ClearDate() => null,
 };
+
+/// [all] with [change] applied to the task [taskId] and its inverse to the
+/// other tasks it names, as the server stores relations; a related task
+/// appears shallow (without relations of its own), and an edge to a task
+/// not in [all] is skipped.
+List<Task> applyRelationChange(
+  List<Task> all,
+  int taskId,
+  RelationChange change,
+) {
+  final byId = {for (final task in all) task.id: task};
+  final source = byId[taskId];
+  if (source == null) return all;
+  Task edges(Task task, RelationChange delta, Task? Function(int id) find) {
+    final related = {
+      for (final MapEntry(:key, :value) in task.relatedTasks.entries)
+        key: [...value],
+    };
+    for (final ref in delta.removed) {
+      related[ref.kind]?.removeWhere((other) => other.id == ref.otherTaskId);
+    }
+    for (final ref in delta.added) {
+      final other = find(ref.otherTaskId);
+      final list = related.putIfAbsent(ref.kind, () => []);
+      if (other == null || list.any((known) => known.id == other.id)) {
+        continue;
+      }
+      list.add(other.copyWith(relatedTasks: const {}));
+    }
+    related.removeWhere((_, others) => others.isEmpty);
+    return task.copyWith(relatedTasks: related);
+  }
+
+  RelationChange inverseFor(int otherId) => RelationChange(
+    added: {
+      for (final ref in change.added)
+        if (ref.otherTaskId == otherId)
+          TaskRelationRef(inverseRelationKind(ref.kind), taskId),
+    },
+    removed: {
+      for (final ref in change.removed)
+        if (ref.otherTaskId == otherId)
+          TaskRelationRef(inverseRelationKind(ref.kind), taskId),
+    },
+  );
+
+  final named = {
+    for (final ref in [...change.added, ...change.removed]) ref.otherTaskId,
+  };
+  return [
+    for (final task in all)
+      if (task.id == taskId)
+        edges(task, change, (id) => byId[id])
+      else if (named.contains(task.id) && task.id != taskId)
+        edges(task, inverseFor(task.id), (id) => id == taskId ? source : null)
+      else
+        task,
+  ];
+}

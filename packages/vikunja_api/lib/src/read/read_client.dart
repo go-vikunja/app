@@ -5,6 +5,7 @@ import 'package:vikunja_api/src/dto/json_values.dart';
 import 'package:vikunja_api/src/dto/label_codec.dart';
 import 'package:vikunja_api/src/dto/notification_codec.dart';
 import 'package:vikunja_api/src/dto/project_codec.dart';
+import 'package:vikunja_api/src/dto/subscription_codec.dart';
 import 'package:vikunja_api/src/dto/task_codec.dart';
 import 'package:vikunja_api/src/dto/user_codec.dart';
 import 'package:vikunja_api/src/errors/normalize_error.dart';
@@ -24,7 +25,8 @@ final class ReadClient implements VikunjaReadClient {
       labels = _LabelsApi(transport),
       tasks = _TasksApi(transport),
       users = _UsersApi(transport),
-      notifications = _NotificationsApi(transport);
+      notifications = _NotificationsApi(transport),
+      subscriptions = _SubscriptionsApi(transport);
 
   @override
   final ProjectsPort projects;
@@ -40,6 +42,32 @@ final class ReadClient implements VikunjaReadClient {
 
   @override
   final NotificationsPort notifications;
+
+  @override
+  final SubscriptionsPort subscriptions;
+}
+
+final class _SubscriptionsApi implements SubscriptionsPort {
+  new(this._transport);
+
+  final _ReadTransport _transport;
+
+  @override
+  Future<Subscription?> forTask(int taskId) =>
+      _subscriptionOf('/tasks/$taskId', 'task');
+
+  @override
+  Future<Subscription?> forProject(int projectId) =>
+      _subscriptionOf('/projects/$projectId', 'project');
+
+  // Only the single reads carry the subscription.
+  Future<Subscription?> _subscriptionOf(String path, String what) async {
+    final response = await _transport.get(path);
+    return _transport.decode<Subscription?>(
+      response,
+      (json) => subscriptionOf(objectOf(json, what)),
+    );
+  }
 }
 
 final class _NotificationsApi implements NotificationsPort {

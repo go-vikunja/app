@@ -5,6 +5,7 @@ import 'package:vikunja_mobile/core/outbox/outbox_sender.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/repositories/local/local_task_repository.dart';
 import 'package:vikunja_mobile/core/repositories/paged_list.dart';
+import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 
 import '../../helpers/fake_sync_client.dart';
 import '../../helpers/fake_timers.dart';
@@ -55,7 +56,7 @@ void main() {
       random: ZeroRandom(),
     );
     addTearDown(sender.dispose);
-    repository = LocalTaskRepository(db, sync, sender, now: () => now);
+    repository = LocalTaskRepository(db, sync, sender, write, now: () => now);
     addTearDown(repository.dispose);
     await db.tasksDao.upsertAll(tasks, syncRunId: 'run');
     write.serverTasks.addEntries(tasks.map((t) => MapEntry(t.id, t)));
@@ -497,6 +498,89 @@ void main() {
           repeatMode: RepeatMode.afterAmount,
         ),
       ));
+    });
+  });
+
+  group('duplicateTask', () {
+    test('the server copies the task; the copy is stored with its '
+        'copiedfrom edge and the source with copiedto', () async {
+      final copyId = await repository.duplicateTask(2);
+
+      expect(copyId, 100);
+      expect(write.requests, ['duplicate 2']);
+      final copy = (await db.tasksDao.find(copyId))!;
+      expect(copy.title, 'Monday');
+      expect(copy.dueDate, monday);
+      expect(copy.relatedTasks[TaskRelationKind.copiedFrom]!.single.id, 2);
+      final source = (await db.tasksDao.find(2))!;
+      expect(source.relatedTasks[TaskRelationKind.copiedTo]!.single.id, 100);
+    });
+
+    test('queued changes go first, so the copy has them', () async {
+      await repository.updateTask(2, const TaskChanges(title: 'Renamed'));
+
+      final copyId = await repository.duplicateTask(2);
+
+      expect(write.requests, ['update 2', 'duplicate 2']);
+      expect((await db.tasksDao.find(copyId))!.title, 'Renamed');
+    });
+
+    test('a task created here is duplicated under its server id once its '
+        'create went', () async {
+      sender.pause();
+      final localId = await repository.createTask(
+        const NewTask(projectId: 7, title: 'Fresh'),
+      );
+      await sender.resume();
+      write.requests.clear();
+
+      final copyId = await repository.duplicateTask(localId);
+
+      expect(write.requests, ['duplicate 100']);
+      expect(copyId, 101);
+    });
+
+    test('offline the queued change cannot go: refused with the network '
+        'failure, nothing duplicated', () async {
+      write.beforeRequest = (_) async =>
+          throw const NetworkFailure(NetworkProblem.unreachable);
+      await repository.setFavorite(2, favorite: true);
+
+      await expectLater(
+        repository.duplicateTask(2),
+        throwsA(isA<NetworkFailure>()),
+      );
+      expect(write.requests.where((r) => r.startsWith('duplicate')), isEmpty);
+      expect(await db.outboxDao.count(), 1);
+    });
+
+    test(
+      'a change the server refused is not synced: refused as such',
+      () async {
+        write.beforeRequest = (request) async =>
+            throw const Forbidden(code: 7003);
+        await repository.setFavorite(2, favorite: true);
+        await sender.drain();
+
+        await expectLater(
+          repository.duplicateTask(2),
+          throwsA(isA<TaskNotSyncedYet>()),
+        );
+        expect(write.requests.where((r) => r.startsWith('duplicate')), isEmpty);
+      },
+    );
+
+    test('the failure of the duplicate itself propagates and stores '
+        'nothing', () async {
+      write.beforeRequest = (request) async {
+        if (request.startsWith('duplicate')) throw const ServerFailure(500);
+      };
+
+      await expectLater(
+        repository.duplicateTask(2),
+        throwsA(isA<ServerFailure>()),
+      );
+      expect(await db.tasksDao.find(100), isNull);
     });
   });
 }

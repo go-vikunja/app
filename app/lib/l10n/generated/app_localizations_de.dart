@@ -1324,6 +1324,18 @@ class AppLocalizationsDe extends AppLocalizations {
       'Das Projekt der Aufgabe ist archiviert.';
 
   @override
+  String get syncProblemRelatedTaskMissing =>
+      'Eine verknüpfte Aufgabe gibt es auf dem Server nicht mehr.';
+
+  @override
+  String get syncProblemRelationCycle =>
+      'Die Verknüpfung würde einen Kreis aus Aufgaben ergeben.';
+
+  @override
+  String get syncProblemRelationToItself =>
+      'Eine Aufgabe kann nicht mit sich selbst verknüpft werden.';
+
+  @override
   String get syncProblemRejected => 'Der Server hat die Änderung abgelehnt.';
 
   @override
@@ -2314,5 +2326,219 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String notificationBodyWithIdentifier(String body, String identifier) {
     return '$body · $identifier';
+  }
+
+  @override
+  String get cancel => 'Abbrechen';
+
+  @override
+  String get taskDetailSubtasks => 'Unteraufgaben';
+
+  @override
+  String taskDetailSubtasksDone(int done, int total) {
+    return '$done von $total erledigt';
+  }
+
+  @override
+  String get taskDetailAddSubtask => 'Unteraufgabe hinzufügen';
+
+  @override
+  String get taskDetailAddSubtaskFailed =>
+      'Die Unteraufgabe konnte nicht hinzugefügt werden';
+
+  @override
+  String get taskDetailSubtaskNotLinked =>
+      'Die Aufgabe wurde hinzugefügt, aber nicht als Unteraufgabe';
+
+  @override
+  String get taskDetailParentTask => 'Übergeordnete Aufgabe';
+
+  @override
+  String get taskDetailRelatedTasks => 'Verknüpfte Aufgaben';
+
+  @override
+  String get taskDetailAddRelation => 'Verknüpfung hinzufügen';
+
+  @override
+  String get taskRelationSubtask => 'Unteraufgabe';
+
+  @override
+  String get taskRelationParentTask => 'Übergeordnete Aufgabe';
+
+  @override
+  String get taskRelationRelated => 'Verwandt mit';
+
+  @override
+  String get taskRelationBlocking => 'Blockierend';
+
+  @override
+  String get taskRelationBlocked => 'Blockiert durch';
+
+  @override
+  String get taskRelationPrecedes => 'Geht voraus';
+
+  @override
+  String get taskRelationFollows => 'Folgt auf';
+
+  @override
+  String get taskRelationDuplicateOf => 'Duplikat von';
+
+  @override
+  String get taskRelationDuplicates => 'Dupliziert durch';
+
+  @override
+  String get taskRelationCopiedFrom => 'Kopiert von';
+
+  @override
+  String get taskRelationCopiedTo => 'Kopiert nach';
+
+  @override
+  String get taskRelationRemove => 'Verknüpfung entfernen';
+
+  @override
+  String get taskRelationRemoveTitle => 'Verknüpfung entfernen?';
+
+  @override
+  String taskRelationRemoveBody(String title) {
+    return 'Die Verknüpfung mit „$title“ wird auch auf dem Server entfernt. Die Aufgabe selbst bleibt.';
+  }
+
+  @override
+  String get taskRelationRemoveConfirm => 'Entfernen';
+
+  @override
+  String get addRelationKind => 'Art der Verknüpfung';
+
+  @override
+  String get addRelationSearch => 'Nach Titel oder Kennung suchen';
+
+  @override
+  String get addRelationShowDone => 'Erledigte Aufgaben zeigen';
+
+  @override
+  String get addRelationNoMatches => 'Keine passenden Aufgaben';
+
+  @override
+  String get taskDuplicate => 'Duplizieren';
+
+  @override
+  String get taskDuplicated => 'Dupliziert';
+
+  @override
+  String get taskDuplicateOpen => 'Öffnen';
+
+  @override
+  String get taskDuplicateNeedsConnection =>
+      'Duplizieren braucht eine Verbindung zum Server.';
+
+  @override
+  String get taskDuplicateNotSynced =>
+      'Du kannst diese Aufgabe duplizieren, sobald ihre Änderungen synchronisiert sind.';
+
+  @override
+  String taskDuplicateFailed(String message) {
+    return 'Die Aufgabe konnte nicht dupliziert werden: $message';
+  }
+
+  @override
+  String get taskDuplicateFailedUnknown =>
+      'Die Aufgabe konnte nicht dupliziert werden.';
+
+  @override
+  String get followTask => 'Aufgabe folgen';
+
+  @override
+  String get unfollowTask => 'Aufgabe nicht mehr folgen';
+
+  @override
+  String get followProject => 'Projekt folgen';
+
+  @override
+  String get unfollowProject => 'Projekt nicht mehr folgen';
+
+  @override
+  String get followNeedsConnection =>
+      'Folgen braucht eine Verbindung zum Server.';
+
+  @override
+  String get followFailed =>
+      'Das Folgen ließ sich nicht ändern. Versuch es noch einmal.';
+
+  @override
+  String get followTaskOnceSynced =>
+      'Du kannst dieser Aufgabe folgen, sobald sie synchronisiert ist.';
+
+  @override
+  String get followTaskUnavailable =>
+      'Aufgabe folgen (braucht eine Verbindung)';
+
+  @override
+  String get followChecking => 'Prüfe, ob du folgst …';
+
+  @override
+  String followingViaProject(String project) {
+    return 'Du folgst dem Projekt $project';
+  }
+
+  @override
+  String get followingViaSomeProject => 'Du folgst über ein Projekt';
+
+  @override
+  String get followInheritedTaskTitle => 'Dieser Aufgabe nicht mehr folgen?';
+
+  @override
+  String followInheritedTaskBody(String project) {
+    return 'Du folgst dem Projekt „$project“, zu dem diese Aufgabe gehört. Du bekommst dann zu dieser Aufgabe keine Benachrichtigungen mehr, folgst dem Projekt aber weiter.';
+  }
+
+  @override
+  String get followInheritedProjectTitle => 'Diesem Projekt nicht mehr folgen?';
+
+  @override
+  String followInheritedProjectBody(String project) {
+    return 'Du folgst dem übergeordneten Projekt „$project“. Du bekommst dann zu diesem Projekt keine Benachrichtigungen mehr, folgst „$project“ aber weiter.';
+  }
+
+  @override
+  String get followInheritedConfirm => 'Nicht mehr folgen';
+
+  @override
+  String get projectFollowed => 'Du folgst jetzt diesem Projekt';
+
+  @override
+  String get projectUnfollowed => 'Du folgst diesem Projekt nicht mehr';
+
+  @override
+  String newTaskTreeCount(int count, int subtasks) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Aufgaben',
+      one: '1 Aufgabe',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      subtasks,
+      locale: localeName,
+      other: '$subtasks davon als Unteraufgaben',
+      one: '1 davon als Unteraufgabe',
+    );
+    return '$_temp0, $_temp1 · die erste:';
+  }
+
+  @override
+  String newTaskTreeCountOnly(int count, int subtasks) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Aufgaben',
+      one: '1 Aufgabe',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      subtasks,
+      locale: localeName,
+      other: '$subtasks davon als Unteraufgaben',
+      one: '1 davon als Unteraufgabe',
+    );
+    return '$_temp0, $_temp1';
   }
 }

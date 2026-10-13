@@ -1916,6 +1916,24 @@ abstract class AppLocalizations {
   /// **'Its project is archived.'**
   String get syncProblemProjectArchived;
 
+  /// No description provided for @syncProblemRelatedTaskMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'A task it is related to no longer exists on the server.'**
+  String get syncProblemRelatedTaskMissing;
+
+  /// No description provided for @syncProblemRelationCycle.
+  ///
+  /// In en, this message translates to:
+  /// **'The relation would make the tasks depend on each other in a loop.'**
+  String get syncProblemRelationCycle;
+
+  /// No description provided for @syncProblemRelationToItself.
+  ///
+  /// In en, this message translates to:
+  /// **'A task cannot be related to itself.'**
+  String get syncProblemRelationToItself;
+
   /// No description provided for @syncProblemRejected.
   ///
   /// In en, this message translates to:
@@ -3437,6 +3455,336 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{body} · {identifier}'**
   String notificationBodyWithIdentifier(String body, String identifier);
+
+  /// No description provided for @cancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get cancel;
+
+  /// No description provided for @taskDetailSubtasks.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtasks'**
+  String get taskDetailSubtasks;
+
+  /// Next to the Subtasks heading.
+  ///
+  /// In en, this message translates to:
+  /// **'{done} of {total} done'**
+  String taskDetailSubtasksDone(int done, int total);
+
+  /// Label of the inline field under the subtasks and tooltip of its add button.
+  ///
+  /// In en, this message translates to:
+  /// **'Add subtask'**
+  String get taskDetailAddSubtask;
+
+  /// No description provided for @taskDetailAddSubtaskFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t add the subtask'**
+  String get taskDetailAddSubtaskFailed;
+
+  /// No description provided for @taskDetailSubtaskNotLinked.
+  ///
+  /// In en, this message translates to:
+  /// **'The task was added, but not as a subtask'**
+  String get taskDetailSubtaskNotLinked;
+
+  /// No description provided for @taskDetailParentTask.
+  ///
+  /// In en, this message translates to:
+  /// **'Parent task'**
+  String get taskDetailParentTask;
+
+  /// No description provided for @taskDetailRelatedTasks.
+  ///
+  /// In en, this message translates to:
+  /// **'Related tasks'**
+  String get taskDetailRelatedTasks;
+
+  /// No description provided for @taskDetailAddRelation.
+  ///
+  /// In en, this message translates to:
+  /// **'Add relation'**
+  String get taskDetailAddRelation;
+
+  /// Relation kind: the other task is a subtask of this one.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtask'**
+  String get taskRelationSubtask;
+
+  /// Relation kind: the other task is this one's parent.
+  ///
+  /// In en, this message translates to:
+  /// **'Parent task'**
+  String get taskRelationParentTask;
+
+  /// No description provided for @taskRelationRelated.
+  ///
+  /// In en, this message translates to:
+  /// **'Related to'**
+  String get taskRelationRelated;
+
+  /// Relation kind: this task blocks the other.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocks'**
+  String get taskRelationBlocking;
+
+  /// No description provided for @taskRelationBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocked by'**
+  String get taskRelationBlocked;
+
+  /// No description provided for @taskRelationPrecedes.
+  ///
+  /// In en, this message translates to:
+  /// **'Precedes'**
+  String get taskRelationPrecedes;
+
+  /// No description provided for @taskRelationFollows.
+  ///
+  /// In en, this message translates to:
+  /// **'Follows'**
+  String get taskRelationFollows;
+
+  /// No description provided for @taskRelationDuplicateOf.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate of'**
+  String get taskRelationDuplicateOf;
+
+  /// Relation kind: the other task is a duplicate of this one.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicated by'**
+  String get taskRelationDuplicates;
+
+  /// No description provided for @taskRelationCopiedFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied from'**
+  String get taskRelationCopiedFrom;
+
+  /// No description provided for @taskRelationCopiedTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied to'**
+  String get taskRelationCopiedTo;
+
+  /// Tooltip of the button that removes a relation; the task itself stays.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove relation'**
+  String get taskRelationRemove;
+
+  /// No description provided for @taskRelationRemoveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove relation?'**
+  String get taskRelationRemoveTitle;
+
+  /// No description provided for @taskRelationRemoveBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The link to “{title}” will be removed on the server too. The task itself stays.'**
+  String taskRelationRemoveBody(String title);
+
+  /// No description provided for @taskRelationRemoveConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get taskRelationRemoveConfirm;
+
+  /// Label of the relation kind picker in the Add relation sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Relation'**
+  String get addRelationKind;
+
+  /// No description provided for @addRelationSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search by title or identifier'**
+  String get addRelationSearch;
+
+  /// No description provided for @addRelationShowDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Show done tasks'**
+  String get addRelationShowDone;
+
+  /// No description provided for @addRelationNoMatches.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching tasks'**
+  String get addRelationNoMatches;
+
+  /// No description provided for @taskDuplicate.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate'**
+  String get taskDuplicate;
+
+  /// No description provided for @taskDuplicated.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicated'**
+  String get taskDuplicated;
+
+  /// Snackbar action that opens the copy just made.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get taskDuplicateOpen;
+
+  /// No description provided for @taskDuplicateNeedsConnection.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicating needs a connection to the server.'**
+  String get taskDuplicateNeedsConnection;
+
+  /// No description provided for @taskDuplicateNotSynced.
+  ///
+  /// In en, this message translates to:
+  /// **'You can duplicate this task once its changes are synced.'**
+  String get taskDuplicateNotSynced;
+
+  /// No description provided for @taskDuplicateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t duplicate the task: {message}'**
+  String taskDuplicateFailed(String message);
+
+  /// No description provided for @taskDuplicateFailedUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t duplicate the task.'**
+  String get taskDuplicateFailedUnknown;
+
+  /// No description provided for @followTask.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow task'**
+  String get followTask;
+
+  /// No description provided for @unfollowTask.
+  ///
+  /// In en, this message translates to:
+  /// **'Unfollow task'**
+  String get unfollowTask;
+
+  /// No description provided for @followProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow project'**
+  String get followProject;
+
+  /// No description provided for @unfollowProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Unfollow project'**
+  String get unfollowProject;
+
+  /// No description provided for @followNeedsConnection.
+  ///
+  /// In en, this message translates to:
+  /// **'Following needs a connection to the server.'**
+  String get followNeedsConnection;
+
+  /// No description provided for @followFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t change whether you follow this. Try again.'**
+  String get followFailed;
+
+  /// No description provided for @followTaskOnceSynced.
+  ///
+  /// In en, this message translates to:
+  /// **'You can follow this task once it is synced.'**
+  String get followTaskOnceSynced;
+
+  /// Label of the follow bell while it is not known whether the user follows the task (offline, or the task is not synced yet).
+  ///
+  /// In en, this message translates to:
+  /// **'Follow task (needs a connection)'**
+  String get followTaskUnavailable;
+
+  /// Label of the follow bell and of the project menu item while the follow state is being read from the server.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking whether you follow this…'**
+  String get followChecking;
+
+  /// Under the task title when the user follows the task through its project.
+  ///
+  /// In en, this message translates to:
+  /// **'Following the project {project}'**
+  String followingViaProject(String project);
+
+  /// No description provided for @followingViaSomeProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Following through a project'**
+  String get followingViaSomeProject;
+
+  /// No description provided for @followInheritedTaskTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop following this task?'**
+  String get followInheritedTaskTitle;
+
+  /// No description provided for @followInheritedTaskBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You follow the project “{project}”, which includes this task. You will stop getting notifications about this task only and keep following the project.'**
+  String followInheritedTaskBody(String project);
+
+  /// No description provided for @followInheritedProjectTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop following this project?'**
+  String get followInheritedProjectTitle;
+
+  /// No description provided for @followInheritedProjectBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You follow the parent project “{project}”. You will stop getting notifications about this project only and keep following “{project}”.'**
+  String followInheritedProjectBody(String project);
+
+  /// No description provided for @followInheritedConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop following'**
+  String get followInheritedConfirm;
+
+  /// No description provided for @projectFollowed.
+  ///
+  /// In en, this message translates to:
+  /// **'You follow this project now'**
+  String get projectFollowed;
+
+  /// No description provided for @projectUnfollowed.
+  ///
+  /// In en, this message translates to:
+  /// **'You no longer follow this project'**
+  String get projectUnfollowed;
+
+  /// Above the preview of the first line once indented lines are pasted: indented lines become subtasks of the line above.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 task} other{{count} tasks}}, {subtasks, plural, =1{1 as a subtask} other{{subtasks} as subtasks}} · the first one:'**
+  String newTaskTreeCount(int count, int subtasks);
+
+  /// Like newTaskTreeCount when the first line has nothing to preview.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 task} other{{count} tasks}}, {subtasks, plural, =1{1 as a subtask} other{{subtasks} as subtasks}}'**
+  String newTaskTreeCountOnly(int count, int subtasks);
 }
 
 class _AppLocalizationsDelegate

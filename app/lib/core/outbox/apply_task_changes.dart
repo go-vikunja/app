@@ -31,8 +31,9 @@ TaskRow applyTaskChanges(
 );
 
 /// [task] with [changes] folded into the create, for an edit of a task the
-/// server has not been asked for yet. `done`, labels and assignees are not
-/// among a new task's fields and are left out; see [changesAfterCreate].
+/// server has not been asked for yet. `done`, labels, assignees and
+/// relations are not among a new task's fields and are left out; see
+/// [changesAfterCreate].
 NewTask applyChangesToNewTask(NewTask task, TaskChanges changes) => NewTask(
   projectId: changes.projectId ?? task.projectId,
   title: changes.title ?? task.title,
@@ -54,12 +55,13 @@ NewTask applyChangesToNewTask(NewTask task, TaskChanges changes) => NewTask(
 
 /// What of [changes] a create cannot carry: an update queued behind it,
 /// sent once the server has named the task. The server ignores labels in
-/// a create body, and labels and assignees go through their own endpoints,
-/// which need the task's id.
+/// a create body, and labels, assignees and relations go through their own
+/// endpoints, which need the task's id.
 TaskChanges changesAfterCreate(TaskChanges changes) => TaskChanges(
   done: changes.done,
   labels: changes.labels,
   assignees: changes.assignees,
+  relations: changes.relations,
 );
 
 /// [changes] without any change to the labels in [labelIds].
@@ -71,25 +73,68 @@ TaskChanges withoutLabels(TaskChanges changes, Set<int> labelIds) {
     ),
     null => null,
   };
-  return TaskChanges(
-    title: changes.title,
-    description: changes.description,
-    done: changes.done,
-    isFavorite: changes.isFavorite,
-    priority: changes.priority,
-    percentDone: changes.percentDone,
-    hexColor: changes.hexColor,
-    dueDate: changes.dueDate,
-    startDate: changes.startDate,
-    endDate: changes.endDate,
-    repeatAfter: changes.repeatAfter,
-    repeatMode: changes.repeatMode,
-    projectId: changes.projectId,
+  return _rebuilt(
+    changes,
     labels: (labels?.isEmpty ?? true) ? null : labels,
-    assignees: changes.assignees,
-    reminders: changes.reminders,
+    relations: changes.relations,
   );
 }
+
+/// [changes] with its relation change replaced by [relations]; an empty one
+/// is left out.
+TaskChanges withRelations(TaskChanges changes, RelationChange? relations) =>
+    _rebuilt(
+      changes,
+      labels: changes.labels,
+      relations: (relations?.isEmpty ?? true) ? null : relations,
+    );
+
+/// [changes] without any edge to the tasks in [taskIds].
+TaskChanges withoutRelatedTasks(TaskChanges changes, Set<int> taskIds) {
+  final relations = changes.relations;
+  if (relations == null) return changes;
+  bool kept(TaskRelationRef ref) => !taskIds.contains(ref.otherTaskId);
+  return withRelations(
+    changes,
+    RelationChange(
+      added: relations.added.where(kept).toSet(),
+      removed: relations.removed.where(kept).toSet(),
+    ),
+  );
+}
+
+/// Every other-task id [changes] names in its relations.
+Set<int> relatedTaskIds(TaskChanges changes) => {
+  for (final ref in [
+    ...?changes.relations?.added,
+    ...?changes.relations?.removed,
+  ])
+    ref.otherTaskId,
+};
+
+TaskChanges _rebuilt(
+  TaskChanges changes, {
+  required IdSetChange? labels,
+  required RelationChange? relations,
+}) => TaskChanges(
+  title: changes.title,
+  description: changes.description,
+  done: changes.done,
+  isFavorite: changes.isFavorite,
+  priority: changes.priority,
+  percentDone: changes.percentDone,
+  hexColor: changes.hexColor,
+  dueDate: changes.dueDate,
+  startDate: changes.startDate,
+  endDate: changes.endDate,
+  repeatAfter: changes.repeatAfter,
+  repeatMode: changes.repeatMode,
+  projectId: changes.projectId,
+  labels: labels,
+  assignees: changes.assignees,
+  reminders: changes.reminders,
+  relations: relations,
+);
 
 bool changesDates(TaskChanges changes) =>
     changes.dueDate != null ||

@@ -8,6 +8,52 @@ part of 'task_providers.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
+/// Every task, done ones included, without its lists or relations, for a
+/// search over titles and identifiers. Stays loading without an account.
+
+@ProviderFor(searchableTasks)
+final searchableTasksProvider = SearchableTasksProvider._();
+
+/// Every task, done ones included, without its lists or relations, for a
+/// search over titles and identifiers. Stays loading without an account.
+
+final class SearchableTasksProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<Task>>,
+          List<Task>,
+          Stream<List<Task>>
+        >
+    with $FutureModifier<List<Task>>, $StreamProvider<List<Task>> {
+  /// Every task, done ones included, without its lists or relations, for a
+  /// search over titles and identifiers. Stays loading without an account.
+  SearchableTasksProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'searchableTasksProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$searchableTasksHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<List<Task>> $createElement($ProviderPointer pointer) =>
+      $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<Task>> create(Ref ref) {
+    return searchableTasks(ref);
+  }
+}
+
+String _$searchableTasksHash() => r'2f46489f3eaf36d0705e383b80ed15d74b149eb4';
+
 /// One task as the local row knows it, following a queued create across
 /// its id change; null once the row is gone. Stays loading without an
 /// account.
@@ -58,7 +104,7 @@ final class TaskByIdProvider extends $StreamNotifierProvider<TaskById, Task?> {
   }
 }
 
-String _$taskByIdHash() => r'41835a421f1890b86c90615f97b644c3bc665441';
+String _$taskByIdHash() => r'bb7c540fb0f6008cfe65176d60cb5235c9329996';
 
 /// One task as the local row knows it, following a queued create across
 /// its id change; null once the row is gone. Stays loading without an

@@ -126,6 +126,9 @@ final class RetryingTasksWrites implements TasksWritePort {
 
   @override
   Future<void> delete(int id) => despiteWriteRaces(() => _writes.delete(id));
+
+  @override
+  Future<Task> duplicate(int id) => _writes.duplicate(id);
 }
 
 final class RetryingLabelsWrites implements LabelsWritePort {

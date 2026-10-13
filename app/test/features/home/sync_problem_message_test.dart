@@ -59,6 +59,22 @@ void main() {
       endsWith(en.syncProblemProjectArchived),
     );
     expect(
+      describe(const RelatedTaskMissing(7)),
+      endsWith(en.syncProblemRelatedTaskMissing),
+    );
+    expect(
+      describe(const DomainError(409, code: 4023)),
+      endsWith(en.syncProblemRelationCycle),
+    );
+    expect(
+      describe(const DomainError(400, code: 4010)),
+      endsWith(en.syncProblemRelationToItself),
+    );
+    expect(
+      describe(const DomainError(400, code: 4007)),
+      endsWith(en.syncProblemRejected),
+    );
+    expect(
       describe(const ValidationFailed(code: 4001, message: 'title empty')),
       endsWith(en.syncProblemRejected),
     );

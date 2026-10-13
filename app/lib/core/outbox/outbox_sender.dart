@@ -6,6 +6,7 @@ import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/db/daos/outbox_dao.dart';
+import 'package:vikunja_mobile/core/outbox/apply_task_changes.dart';
 import 'package:vikunja_mobile/core/outbox/new_task_json.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/outbox/task_changes_json.dart';
@@ -189,7 +190,8 @@ final class OutboxSender {
     await drain();
   }
 
-  /// Drops the op and restores the task from the server; a task the
+  /// Drops the op and restores the task from the server, with the inverse
+  /// edges of its discarded relation changes on the other tasks; a task the
   /// server no longer has, or no longer shows this user, is removed here.
   /// Throws the `VikunjaFailure` of the read and changes nothing then, so
   /// the user can try again later. An op that went meanwhile (a retry that
@@ -322,6 +324,16 @@ final class OutboxSender {
       );
       return false;
     }
+    TaskChanges? changes;
+    if (kind == OutboxOperationKind.updateTask) {
+      changes = await _sendableChanges(op);
+      if (changes == null) {
+        // An edit merged in after the queue was read names a task whose
+        // create is still on its way; the queue skips the op until then.
+        await _db.outboxDao.unclaim(op.id);
+        return false;
+      }
+    }
     final Task? task;
     try {
       switch (kind) {
@@ -331,10 +343,7 @@ final class OutboxSender {
               await _recoverCreate(op, newTask) ??
               await _write.tasks.create(newTask);
         case OutboxOperationKind.updateTask:
-          task = await _write.tasks.update(
-            op.taskId,
-            decodeTaskChanges(op.payload),
-          );
+          task = await _write.tasks.update(op.taskId, changes!);
         case OutboxOperationKind.deleteTask:
           await _write.tasks.delete(op.taskId);
           task = null;
@@ -373,6 +382,25 @@ final class OutboxSender {
     }
     _log.fine('Sent ${op.kind} for task ${op.taskId}');
     return true;
+  }
+
+  /// The op's changes with every task its relations name followed to the
+  /// server id; null while one of them is still a task created here whose
+  /// create has not been answered.
+  Future<TaskChanges?> _sendableChanges(OutboxRow op) async {
+    final changes = decodeTaskChanges(op.payload);
+    final relations = changes.relations;
+    if (relations == null) return changes;
+    final resolved = <int, int>{};
+    for (final id in relatedTaskIds(changes)) {
+      final serverId = await _db.tasksDao.resolveId(id);
+      if (serverId < 0) return null;
+      resolved[id] = serverId;
+    }
+    return withRelations(
+      changes,
+      relations.mapTaskIds((id) => resolved[id] ?? id),
+    );
   }
 
   /// The task an earlier, unanswered attempt of this create left on the

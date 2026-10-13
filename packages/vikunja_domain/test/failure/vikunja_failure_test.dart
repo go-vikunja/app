@@ -14,6 +14,23 @@ void main() {
     expect(const NetworkFailure(NetworkProblem.timeout).code, isNull);
   });
 
+  test('a missing related task is a 404 with code 4002 that names the '
+      'other task', () {
+    const failure = RelatedTaskMissing(5, message: 'This task does not exist');
+
+    expect(failure, isA<NotFound>());
+    expect(failure.code, 4002);
+    expect(failure.routeAbsent, isFalse);
+    expect(failure.otherTaskId, 5);
+    expect(failure.message, 'This task does not exist');
+    expect('$failure', 'RelatedTaskMissing(5)');
+    expect(switch (failure as VikunjaFailure) {
+      RelatedTaskMissing(:final otherTaskId) => 'related $otherTaskId',
+      NotFound() => 'task gone',
+      _ => 'other',
+    }, 'related 5');
+  });
+
   test('toString never includes the server message', () {
     const message = 'secret detail';
     final failures = <VikunjaFailure>[
@@ -31,6 +48,7 @@ void main() {
       ),
       const Forbidden(message: message),
       const NotFound(message: message),
+      const RelatedTaskMissing(5, message: message),
       const ValidationFailed(
         fieldErrors: {
           'title': [message],

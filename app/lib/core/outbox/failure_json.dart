@@ -21,6 +21,7 @@ Map<String, Object?> failureToJson(VikunjaFailure failure) => {
     RefreshRaceLost() => 'refresh_race_lost',
     OAuthFailure() => 'oauth',
     Forbidden() => 'forbidden',
+    RelatedTaskMissing() => 'related_task_missing',
     NotFound() => 'not_found',
     ValidationFailed() => 'validation_failed',
     RateLimited() => 'rate_limited',
@@ -34,6 +35,7 @@ Map<String, Object?> failureToJson(VikunjaFailure failure) => {
     NetworkFailure(:final problem) => {'problem': problem.name},
     SessionEnded(:final reason) => {'reason': reason.name},
     OAuthFailure(:final problem) => {'problem': problem.name},
+    RelatedTaskMissing(:final otherTaskId) => {'other_task_id': otherTaskId},
     ValidationFailed(:final fieldErrors) => {'field_errors': fieldErrors},
     RateLimited(:final retryAfter?) => {
       'retry_after_ms': retryAfter.inMilliseconds,
@@ -69,6 +71,10 @@ VikunjaFailure failureFromJson(Map<String, Object?> json) {
       message: message,
     ),
     'forbidden' => Forbidden(code: code, message: message),
+    'related_task_missing' => RelatedTaskMissing(
+      json['other_task_id'] as int? ?? 0,
+      message: message,
+    ),
     'not_found' => NotFound(code: code, message: message),
     'validation_failed' => ValidationFailed(
       fieldErrors: _fieldErrors(json['field_errors']),

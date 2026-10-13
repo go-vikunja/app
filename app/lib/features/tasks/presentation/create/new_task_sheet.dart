@@ -77,6 +77,7 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
 
   // The plans of the lines typed so far, valid for what they were made with.
   QuickAddService? _service;
+  QuickAddMagicMode _mode = QuickAddMagicMode.vikunja;
   QuickAddPrefixes? _prefixes;
   int? _fallbackId;
   DateTime? _plannedDue;
@@ -100,6 +101,7 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
 
   void _usePlanner({
     required QuickAddService? service,
+    required QuickAddMagicMode mode,
     required QuickAddPrefixes? prefixes,
     required int? fallbackId,
     required DateTime now,
@@ -114,6 +116,7 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
       _plans.clear();
     }
     _service = service;
+    _mode = mode;
     _prefixes = prefixes;
     _fallbackId = fallbackId;
     _plannedDue = _due;
@@ -229,7 +232,7 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
   Future<void> _add({required bool openEditor}) async {
     final service = _service;
     final text = _text.text;
-    final lines = splitQuickAddLines(text);
+    final lines = splitQuickAddLines(text, mode: _mode);
     if (_adding || service == null || lines.isEmpty) return;
     final l10n = context.l10n;
     final fallbackId = _fallbackId;
@@ -380,15 +383,19 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
     );
     _usePlanner(
       service: service,
+      mode: mode,
       prefixes: prefixes,
       fallbackId: fallback?.id,
       now: now,
     );
 
     final lines = magicLines(_text.text);
-    final taskLines = splitQuickAddLines(_text.text);
-    final taskPlans = [for (final line in taskLines) ?_plan(line)];
+    final taskLines = quickAddTaskLines(_text.text, mode: mode);
+    final taskPlans = [for (final line in taskLines) ?_plan(line.text)];
     final taskCount = taskLines.length;
+    final subtaskCount = taskLines
+        .where((line) => line.parentIndex != null)
+        .length;
     final plan = lines.isEmpty ? null : _plan(lines.first.text);
     // A fallback stays choosable while some line still goes without its
     // own value.
@@ -401,7 +408,21 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
         !plan.magicOnly &&
         plan.parsed.project != null &&
         plan.unmatchedProject == null;
-    final matchedProject = everyLine(matchesProject)
+    // A subtask without a project of its own goes to its parent's.
+    bool namesProject(int index) {
+      final line = taskLines[index];
+      if (matchesProject(taskPlans[index])) return true;
+      final parent = line.parentIndex;
+      return parent != null &&
+          line.inheritedProject != null &&
+          namesProject(parent);
+    }
+
+    final everyLineNamesProject =
+        taskPlans.isNotEmpty &&
+        taskPlans.length == taskCount &&
+        Iterable<int>.generate(taskCount).every(namesProject);
+    final matchedProject = everyLineNamesProject
         ? taskPlans.first.project
         : null;
     final project = matchedProject ?? fallback;
@@ -479,6 +500,7 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
                 ? null
                 : projectLabel(plan.project!, projects),
             lineCount: taskCount,
+            subtaskCount: subtaskCount,
           ),
         const SizedBox(height: 12),
         Padding(

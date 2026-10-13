@@ -1074,6 +1074,9 @@
   "syncProblemLabelMissing": "One of its labels no longer exists on the server.",
   "syncProblemUserMissing": "One of its assignees no longer exists on the server.",
   "syncProblemProjectArchived": "Its project is archived.",
+  "syncProblemRelatedTaskMissing": "A task it is related to no longer exists on the server.",
+  "syncProblemRelationCycle": "The relation would make the tasks depend on each other in a loop.",
+  "syncProblemRelationToItself": "A task cannot be related to itself.",
   "syncProblemRejected": "The server rejected the change.",
   "syncProblemUnexpected": "The server answered in an unexpected way.",
   "syncProblemFailedAt": "Failed {when}",
@@ -2125,6 +2128,165 @@
       "identifier": {
         "type": "String",
         "example": "WORK-12"
+      }
+    }
+  },
+  "cancel": "Cancel",
+  "taskDetailSubtasks": "Subtasks",
+  "taskDetailSubtasksDone": "{done} of {total} done",
+  "@taskDetailSubtasksDone": {
+    "description": "Next to the Subtasks heading.",
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "taskDetailAddSubtask": "Add subtask",
+  "@taskDetailAddSubtask": {
+    "description": "Label of the inline field under the subtasks and tooltip of its add button."
+  },
+  "taskDetailAddSubtaskFailed": "Couldn't add the subtask",
+  "taskDetailSubtaskNotLinked": "The task was added, but not as a subtask",
+  "taskDetailParentTask": "Parent task",
+  "taskDetailRelatedTasks": "Related tasks",
+  "taskDetailAddRelation": "Add relation",
+  "taskRelationSubtask": "Subtask",
+  "@taskRelationSubtask": {
+    "description": "Relation kind: the other task is a subtask of this one."
+  },
+  "taskRelationParentTask": "Parent task",
+  "@taskRelationParentTask": {
+    "description": "Relation kind: the other task is this one's parent."
+  },
+  "taskRelationRelated": "Related to",
+  "taskRelationBlocking": "Blocks",
+  "@taskRelationBlocking": {
+    "description": "Relation kind: this task blocks the other."
+  },
+  "taskRelationBlocked": "Blocked by",
+  "taskRelationPrecedes": "Precedes",
+  "taskRelationFollows": "Follows",
+  "taskRelationDuplicateOf": "Duplicate of",
+  "taskRelationDuplicates": "Duplicated by",
+  "@taskRelationDuplicates": {
+    "description": "Relation kind: the other task is a duplicate of this one."
+  },
+  "taskRelationCopiedFrom": "Copied from",
+  "taskRelationCopiedTo": "Copied to",
+  "taskRelationRemove": "Remove relation",
+  "@taskRelationRemove": {
+    "description": "Tooltip of the button that removes a relation; the task itself stays."
+  },
+  "taskRelationRemoveTitle": "Remove relation?",
+  "taskRelationRemoveBody": "The link to “{title}” will be removed on the server too. The task itself stays.",
+  "@taskRelationRemoveBody": {
+    "placeholders": {
+      "title": {
+        "type": "String",
+        "example": "Buy milk"
+      }
+    }
+  },
+  "taskRelationRemoveConfirm": "Remove",
+  "addRelationKind": "Relation",
+  "@addRelationKind": {
+    "description": "Label of the relation kind picker in the Add relation sheet."
+  },
+  "addRelationSearch": "Search by title or identifier",
+  "addRelationShowDone": "Show done tasks",
+  "addRelationNoMatches": "No matching tasks",
+  "taskDuplicate": "Duplicate",
+  "taskDuplicated": "Duplicated",
+  "taskDuplicateOpen": "Open",
+  "@taskDuplicateOpen": {
+    "description": "Snackbar action that opens the copy just made."
+  },
+  "taskDuplicateNeedsConnection": "Duplicating needs a connection to the server.",
+  "taskDuplicateNotSynced": "You can duplicate this task once its changes are synced.",
+  "taskDuplicateFailed": "Couldn't duplicate the task: {message}",
+  "@taskDuplicateFailed": {
+    "placeholders": {
+      "message": {
+        "type": "String",
+        "example": "Forbidden"
+      }
+    }
+  },
+  "taskDuplicateFailedUnknown": "Couldn't duplicate the task.",
+  "followTask": "Follow task",
+  "unfollowTask": "Unfollow task",
+  "followProject": "Follow project",
+  "unfollowProject": "Unfollow project",
+  "followNeedsConnection": "Following needs a connection to the server.",
+  "followFailed": "Couldn't change whether you follow this. Try again.",
+  "followTaskOnceSynced": "You can follow this task once it is synced.",
+  "followTaskUnavailable": "Follow task (needs a connection)",
+  "@followTaskUnavailable": {
+    "description": "Label of the follow bell while it is not known whether the user follows the task (offline, or the task is not synced yet)."
+  },
+  "followChecking": "Checking whether you follow this…",
+  "@followChecking": {
+    "description": "Label of the follow bell and of the project menu item while the follow state is being read from the server."
+  },
+  "followingViaProject": "Following the project {project}",
+  "@followingViaProject": {
+    "description": "Under the task title when the user follows the task through its project.",
+    "placeholders": {
+      "project": {
+        "type": "String",
+        "example": "Work"
+      }
+    }
+  },
+  "followingViaSomeProject": "Following through a project",
+  "followInheritedTaskTitle": "Stop following this task?",
+  "followInheritedTaskBody": "You follow the project “{project}”, which includes this task. You will stop getting notifications about this task only and keep following the project.",
+  "@followInheritedTaskBody": {
+    "placeholders": {
+      "project": {
+        "type": "String",
+        "example": "Work"
+      }
+    }
+  },
+  "followInheritedProjectTitle": "Stop following this project?",
+  "followInheritedProjectBody": "You follow the parent project “{project}”. You will stop getting notifications about this project only and keep following “{project}”.",
+  "@followInheritedProjectBody": {
+    "placeholders": {
+      "project": {
+        "type": "String",
+        "example": "Work"
+      }
+    }
+  },
+  "followInheritedConfirm": "Stop following",
+  "projectFollowed": "You follow this project now",
+  "projectUnfollowed": "You no longer follow this project",
+  "newTaskTreeCount": "{count, plural, =1{1 task} other{{count} tasks}}, {subtasks, plural, =1{1 as a subtask} other{{subtasks} as subtasks}} · the first one:",
+  "@newTaskTreeCount": {
+    "description": "Above the preview of the first line once indented lines are pasted: indented lines become subtasks of the line above.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "subtasks": {
+        "type": "int"
+      }
+    }
+  },
+  "newTaskTreeCountOnly": "{count, plural, =1{1 task} other{{count} tasks}}, {subtasks, plural, =1{1 as a subtask} other{{subtasks} as subtasks}}",
+  "@newTaskTreeCountOnly": {
+    "description": "Like newTaskTreeCount when the first line has nothing to preview.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "subtasks": {
+        "type": "int"
       }
     }
   }

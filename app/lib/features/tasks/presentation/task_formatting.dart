@@ -11,6 +11,21 @@ String priorityLabel(AppLocalizations l10n, TaskPriority priority) =>
       TaskPriority.doNow => l10n.priorityDoNow,
     };
 
+String relationKindLabel(AppLocalizations l10n, TaskRelationKind kind) =>
+    switch (kind) {
+      TaskRelationKind.subtask => l10n.taskRelationSubtask,
+      TaskRelationKind.parentTask => l10n.taskRelationParentTask,
+      TaskRelationKind.related => l10n.taskRelationRelated,
+      TaskRelationKind.duplicateOf => l10n.taskRelationDuplicateOf,
+      TaskRelationKind.duplicates => l10n.taskRelationDuplicates,
+      TaskRelationKind.blocking => l10n.taskRelationBlocking,
+      TaskRelationKind.blocked => l10n.taskRelationBlocked,
+      TaskRelationKind.precedes => l10n.taskRelationPrecedes,
+      TaskRelationKind.follows => l10n.taskRelationFollows,
+      TaskRelationKind.copiedFrom => l10n.taskRelationCopiedFrom,
+      TaskRelationKind.copiedTo => l10n.taskRelationCopiedTo,
+    };
+
 enum _PeriodUnit { weeks, days, hours, minutes, seconds }
 
 /// The web's `secondsToPeriod`: the largest unit that divides evenly.

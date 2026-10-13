@@ -53,6 +53,7 @@ void main() {
       db,
       RecordingSyncEngine(),
       sender,
+      write,
       now: () => now,
     );
     addTearDown(tasks.dispose);
@@ -151,4 +152,66 @@ void main() {
     expect(onServer.labels.map((label) => label.id), [10]);
     expect(onServer.assignees.map((user) => user.id), [20]);
   });
+
+  test(
+    'offline: a tree is on screen at once with its subtasks and goes '
+    'out as creates, each child naming its parent with the server id',
+    () async {
+      write.beforeRequest = (request) =>
+          throw const NetworkFailure(NetworkProblem.unreachable);
+
+      final result = await (await service()).submit(
+        'Parent +Garage\n  Child one\n    Grandchild\n  Child two',
+      );
+      await pumpEventQueue();
+
+      final [parent, one, grandchild, two] = result.createdTaskIds;
+      final ops = await db.outboxDao.all();
+      expect(ops.map((op) => (op.kind, op.taskId)), [
+        ('createTask', parent),
+        ('createTask', one),
+        ('updateTask', one),
+        ('createTask', grandchild),
+        ('updateTask', grandchild),
+        ('createTask', two),
+        ('updateTask', two),
+      ]);
+      final local = (await db.tasksDao.find(parent))!;
+      expect(
+        local.subtasks.map((task) => task.id),
+        unorderedEquals([one, two]),
+      );
+      expect((await db.tasksDao.find(one))!.subtasks.single.id, grandchild);
+      expect((await db.tasksDao.find(grandchild))!.projectId, 3);
+
+      write
+        ..beforeRequest = null
+        ..requests.clear();
+      expect(await sender.sendNow(), isNull);
+
+      expect(write.requests, [
+        'create Parent',
+        'create Child one',
+        'update 101',
+        'create Grandchild',
+        'update 102',
+        'create Child two',
+        'update 103',
+      ]);
+      expect(await db.outboxDao.count(), 0);
+      List<int> serverSubtasks(int id) => [
+        for (final task in write.serverTasks[id]!.subtasks) task.id,
+      ];
+      expect(serverSubtasks(100), unorderedEquals([101, 103]));
+      expect(serverSubtasks(101), [102]);
+      expect(write.serverTasks.values.map((task) => task.projectId), {3});
+      final remapped = (await tasks.watchTask(parent).first)!;
+      expect(remapped.id, 100);
+      expect(
+        remapped.subtasks.map((task) => task.id),
+        unorderedEquals([101, 103]),
+      );
+      expect((await db.tasksDao.find(102))!.parentTasks.single.id, 101);
+    },
+  );
 }

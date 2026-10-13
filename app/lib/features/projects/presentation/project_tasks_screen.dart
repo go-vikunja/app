@@ -7,6 +7,8 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/repositories/paged_list.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/core/repositories/subscription_repository.dart';
+import 'package:vikunja_mobile/core/repositories/subscription_repository_providers.dart';
 import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
@@ -16,11 +18,12 @@ import 'package:vikunja_mobile/features/projects/application/projects_provider.d
 import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
 import 'package:vikunja_mobile/features/sync/presentation/sync_progress_bar.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/follow/follow_controller.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_list_actions.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
 
-enum _Action { toggleShowDone }
+enum _Action { toggleShowDone, follow }
 
 class ProjectTasksScreen extends ConsumerStatefulWidget {
   const new({required this.projectId, super.key});
@@ -38,6 +41,32 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
   bool _showDone = false;
   bool _loadingMore = false;
   Object? _loadMoreFailure;
+  late final _follow = FollowController(
+    entity: SubscriptionEntity.project,
+    read: (id) => _subscriptions().forProject(id),
+    write: (id, {required subscribed}) =>
+        _subscriptions().setProjectSubscribed(id, subscribed: subscribed),
+  );
+
+  /// Saved filters show as projects with ids below zero; nobody follows
+  /// them.
+  bool get _followable => widget.projectId > 0;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_followable) unawaited(_follow.load(widget.projectId));
+  }
+
+  @override
+  void dispose() {
+    _follow.dispose();
+    super.dispose();
+  }
+
+  SubscriptionRepository _subscriptions() =>
+      ref.read(subscriptionRepositoryProvider) ??
+      (throw StateError('No account is signed in'));
 
   @override
   ProviderListenable<Object?> get repositoryProvider => taskRepositoryProvider;
@@ -87,6 +116,36 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
     return false;
   }
 
+  Future<void> _toggleFollow() async {
+    final l10n = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
+    final titles = {
+      for (final project in ref.read(projectsProvider).value ?? <Project>[])
+        project.id: project.title,
+    };
+    final before = _follow.value;
+    final message = await toggleFollowing(
+      context,
+      _follow,
+      id: widget.projectId,
+      projectTitle: (id) => titles[id] ?? l10n.projectUnknownTitle,
+    );
+    if (!mounted) return;
+    final text =
+        message ??
+        switch ((before, _follow.value)) {
+          (FollowKnown(following: false), FollowKnown(following: true)) =>
+            l10n.projectFollowed,
+          (FollowKnown(following: true), FollowKnown(following: false)) =>
+            l10n.projectUnfollowed,
+          _ => null,
+        };
+    if (text == null) return;
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(text)));
+  }
+
   void _toggleShowDone() => setState(() {
     _showDone = !_showDone;
     clearRefreshFailure();
@@ -114,6 +173,7 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
             tooltip: l10n.moreActions,
             onSelected: (action) => switch (action) {
               _Action.toggleShowDone => _toggleShowDone(),
+              _Action.follow => unawaited(_toggleFollow()),
             },
             itemBuilder: (context) => [
               CheckedPopupMenuItem(
@@ -121,6 +181,7 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
                 checked: _showDone,
                 child: Text(l10n.projectTasksShowDone),
               ),
+              if (_followable) _followItem(l10n),
             ],
           ),
         ],
@@ -137,6 +198,36 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
         loadingLabel: l10n.projectTasksLoading,
         builder: (page, notice) =>
             _list(page, notice, project, now, pendingIds),
+      ),
+    );
+  }
+
+  /// Labelled by the state the menu opens with: disabled while it is read
+  /// or written, as a tap would do nothing; while it is unknown the tap
+  /// explains why and loads it again.
+  PopupMenuItem<_Action> _followItem(AppLocalizations l10n) {
+    final state = _follow.value;
+    final following = state is FollowKnown && state.following;
+    return PopupMenuItem(
+      value: _Action.follow,
+      enabled: switch (state) {
+        FollowUnknown(:final loading) => !loading,
+        FollowKnown(:final saving) => !saving,
+      },
+      child: Row(
+        children: [
+          Icon(
+            following ? Icons.notifications_off_outlined : Icons.notifications,
+          ),
+          const SizedBox(width: 12),
+          Flexible(
+            child: Text(switch (state) {
+              FollowUnknown(loading: true) => l10n.followChecking,
+              _ when following => l10n.unfollowProject,
+              _ => l10n.followProject,
+            }),
+          ),
+        ],
       ),
     );
   }

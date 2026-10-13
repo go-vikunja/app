@@ -326,7 +326,9 @@ final class IncrementalRun {
 
   /// Every change bumps a task's `updated` (asynchronously for comments,
   /// attachments, relations and assignees, which the overlap re-reads), so
-  /// a row equal to the local one has nothing new. Reminders are compared
+  /// a row equal to the local one has nothing new. A relation change bumps
+  /// only the task it was made on; the upsert of that task corrects the
+  /// inverse edges of the other one. Reminders are compared
   /// too: a date change can make the server merge reminders without a
   /// newer `updated` than the answer the row took them from.
   Future<void> _upsertChanged(List<Task> items) async {

@@ -65,7 +65,7 @@ Future<TestUser> registerAndLogin(Dio dio, ServerConnection connection) async {
   final suffix = Random.secure().nextInt(1 << 32).toRadixString(16);
   final username = 'sync$suffix';
   final password = 'password-$suffix';
-  final registered = await _despiteWriteRaces(
+  final registered = await despiteWriteRaces(
     () => dio.postUri<Map<String, Object?>>(
       v1.replace(path: '${v1.path}/register'),
       data: {
@@ -75,7 +75,7 @@ Future<TestUser> registerAndLogin(Dio dio, ServerConnection connection) async {
       },
     ),
   );
-  final login = await _despiteWriteRaces(
+  final login = await despiteWriteRaces(
     () => dio.postUri<Map<String, Object?>>(
       v1.replace(path: '${v1.path}/login'),
       data: {'username': username, 'password': password},
@@ -88,14 +88,20 @@ Future<TestUser> registerAndLogin(Dio dio, ServerConnection connection) async {
   );
 }
 
-// The SQLite test server answers a lost write race ("database is locked")
-// with a 500.
-Future<T> _despiteWriteRaces<T>(Future<T> Function() call) async {
+/// The SQLite test server answers a lost write race ("database is locked")
+/// with a 500, which test files running in parallel provoke. Raw dio calls
+/// throw it as a `DioException`, the clients as a `ServerFailure`.
+Future<T> despiteWriteRaces<T>(Future<T> Function() call) async {
   for (var attempt = 1; ; attempt++) {
     try {
       return await patiently(call);
-    } on DioException catch (error) {
-      if (normalizeError(error) is! ServerFailure || attempt == 8) rethrow;
+    } on Object catch (error) {
+      final failure = switch (error) {
+        final VikunjaFailure failure => failure,
+        final DioException exception => normalizeError(exception),
+        _ => null,
+      };
+      if (failure is! ServerFailure || attempt == 8) rethrow;
       await Future<void>.delayed(_spread(Duration(seconds: attempt)));
     }
   }
@@ -154,7 +160,7 @@ final class Seeder {
 
   Future<void> delete(String path) async {
     try {
-      await _despiteWriteRaces(
+      await despiteWriteRaces(
         () => _dio.deleteUri<Object?>(
           _v2.replace(path: '${_v2.path}$path'),
           options: Options(headers: {'Authorization': 'Bearer ${_user.jwt}'}),
@@ -175,7 +181,7 @@ final class Seeder {
     String contentType = Headers.jsonContentType,
   }) async {
     try {
-      final response = await _despiteWriteRaces(
+      final response = await despiteWriteRaces(
         () => _dio.requestUri<Map<String, Object?>>(
           _v2.replace(path: '${_v2.path}$path'),
           data: body == null ? null : jsonEncode(body),

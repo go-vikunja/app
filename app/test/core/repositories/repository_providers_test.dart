@@ -4,6 +4,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/auth/sign_out_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/core/repositories/subscription_repository_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/overview/application/open_tasks_provider.dart';
@@ -40,6 +41,7 @@ void main() {
     expect(container.read(taskRepositoryProvider), isNull);
     expect(container.read(labelRepositoryProvider), isNull);
     expect(container.read(userRepositoryProvider), isNull);
+    expect(container.read(subscriptionRepositoryProvider), isNull);
     final projects = container.listen(projectsProvider, (_, _) {});
     expect(projects.read(), const AsyncLoading<List<Project>>());
     final status = container.listen(syncStatusProvider, (_, _) {});
@@ -92,6 +94,10 @@ void main() {
       expect(
         container.read(taskRepositoryProvider),
         same(dataFor(bob.id).tasks),
+      );
+      expect(
+        container.read(subscriptionRepositoryProvider),
+        same(dataFor(bob.id).subscriptions),
       );
       // The old account's data must not linger while the new one loads.
       expect(

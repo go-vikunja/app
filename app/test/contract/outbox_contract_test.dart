@@ -98,6 +98,9 @@ final class _FlakyWriteClient implements VikunjaWriteClient {
 
   @override
   NotificationsWritePort get notifications => _real.notifications;
+
+  @override
+  SubscriptionsWritePort get subscriptions => _real.subscriptions;
 }
 
 final class _FlakyTasks implements TasksWritePort {
@@ -129,6 +132,12 @@ final class _FlakyTasks implements TasksWritePort {
   Future<void> delete(int id) {
     _maybeFail();
     return _client._real.tasks.delete(id);
+  }
+
+  @override
+  Future<Task> duplicate(int id) {
+    _maybeFail();
+    return _client._real.tasks.duplicate(id);
   }
 }
 
@@ -216,7 +225,7 @@ void main() {
             sync: engine,
           );
           addTearDown(sender.dispose);
-          repository = LocalTaskRepository(db, engine, sender);
+          repository = LocalTaskRepository(db, engine, sender, writes);
           addTearDown(repository.dispose);
           await engine.ensureInitialSync();
         });

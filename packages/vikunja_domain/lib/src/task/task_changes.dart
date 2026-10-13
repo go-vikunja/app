@@ -1,5 +1,6 @@
 import 'package:meta/meta.dart';
 import 'package:vikunja_domain/src/task/id_set_change.dart';
+import 'package:vikunja_domain/src/task/relation_change.dart';
 import 'package:vikunja_domain/src/task/task.dart';
 import 'package:vikunja_domain/src/task/task_reminder.dart';
 
@@ -58,6 +59,7 @@ final class TaskChanges {
     this.labels,
     this.assignees,
     this.reminders,
+    this.relations,
   });
 
   final String? title;
@@ -88,6 +90,10 @@ final class TaskChanges {
   /// The task's whole reminder list; empty removes every reminder.
   final List<TaskReminder>? reminders;
 
+  /// Relations to add and remove from this task's side, through the task's
+  /// relation endpoints; the server keeps the inverse edges.
+  final RelationChange? relations;
+
   bool get isEmpty =>
       title == null &&
       description == null &&
@@ -104,7 +110,8 @@ final class TaskChanges {
       projectId == null &&
       (labels?.isEmpty ?? true) &&
       (assignees?.isEmpty ?? true) &&
-      reminders == null;
+      reminders == null &&
+      (relations?.isEmpty ?? true);
 
   /// [later] wins where both set a field.
   TaskChanges merge(TaskChanges later) => TaskChanges(
@@ -124,6 +131,11 @@ final class TaskChanges {
     labels: _mergeSets(labels, later.labels),
     assignees: _mergeSets(assignees, later.assignees),
     reminders: later.reminders ?? reminders,
+    relations: switch ((relations, later.relations)) {
+      (final earlier?, final later?) => earlier.merge(later),
+      (final earlier, null) => earlier,
+      (null, final later) => later,
+    },
   );
 
   static IdSetChange? _mergeSets(IdSetChange? earlier, IdSetChange? later) =>
@@ -151,7 +163,8 @@ final class TaskChanges {
       other.projectId == projectId &&
       other.labels == labels &&
       other.assignees == assignees &&
-      _sameReminders(other.reminders, reminders);
+      _sameReminders(other.reminders, reminders) &&
+      other.relations == relations;
 
   static bool _sameReminders(List<TaskReminder>? a, List<TaskReminder>? b) {
     if (a == null || b == null) return a == b;
@@ -183,5 +196,6 @@ final class TaskChanges {
       final list? => Object.hashAll(list),
       null => null,
     },
+    relations,
   );
 }

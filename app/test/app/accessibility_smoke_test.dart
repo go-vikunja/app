@@ -21,6 +21,7 @@ import 'package:vikunja_mobile/features/sync/presentation/offline_notice.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/task_edit_page.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/assignee_picker.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/relations/add_relation_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 
 import '../features/accounts/accounts_harness.dart';
@@ -141,6 +142,70 @@ void main() {
 
       expect(find.byType(TaskDetailSheet), findsOneWidget);
       await scrollToEnd(tester, find.byType(TaskDetailSheet));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('task relations, adding one and following at 200 % in '
+        'dark mode (${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      final data = richData();
+      final l10n = lookupAppLocalizations(locale);
+      final tasks = data.tasks.all;
+      Task bare(Task task) => task.copyWith(relatedTasks: const {});
+      data.tasks.all = [
+        tasks[0].copyWith(
+          relatedTasks: {
+            TaskRelationKind.parentTask: [bare(tasks[5])],
+            TaskRelationKind.subtask: [bare(tasks[1]), bare(tasks[2])],
+            TaskRelationKind.duplicates: [bare(tasks[3])],
+            TaskRelationKind.copiedFrom: [bare(tasks[4])],
+          },
+        ),
+        ...tasks.skip(1),
+      ];
+      data.subscriptions.taskStates[1] = const Subscription(
+        entity: SubscriptionEntity.project,
+        entityId: 1,
+      );
+      await pumpSignedInApp(tester, sync: data);
+
+      await tapRow(tester, 'Task 1 ');
+      expect(find.byType(TaskDetailSheet), findsOneWidget);
+      await scrollToEnd(tester, find.byType(TaskDetailSheet));
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(find.text(l10n.taskDetailAddRelation));
+      await tester.pumpAndSettle();
+      expect(find.byType(AddRelationSheet), findsOneWidget);
+      await tester.tap(
+        find.descendant(
+          of: find.byType(AddRelationSheet),
+          matching: find.text(l10n.taskRelationRelated),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.text(l10n.taskRelationDuplicates).last);
+      await tester.pumpAndSettle();
+      await scrollToEnd(tester, find.byType(AddRelationSheet));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('following a project from its menu at 200 % in dark mode '
+        '(${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      final l10n = lookupAppLocalizations(locale);
+      await pumpSignedInApp(tester, sync: richData());
+      containerOf(tester).read(appRouterProvider).go(AppRoutes.project(2));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip(l10n.moreActions));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.followProject), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.text(l10n.followProject));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.projectFollowed), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 

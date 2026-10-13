@@ -30,11 +30,24 @@ abstract interface class TasksWritePort {
   /// task's label and assignee endpoints afterwards, only for the ids
   /// whose state on the server differs, so a repeated call after a lost
   /// answer changes nothing twice; the result is then read back.
+  ///
+  /// [TaskChanges.relations] follow the same way through the relation
+  /// endpoints (removes, then adds), compared with the task's
+  /// `related_tasks`; an edge that already exists (409 code 4008) or is
+  /// already gone (404 code 4009) counts as done. Every other task id must
+  /// be a server id, else this throws an [ArgumentError] before any
+  /// request. A missing other task fails with `RelatedTaskMissing`, never
+  /// with the plain `NotFound` code 4002 that means this task is gone.
   Future<Task> update(int id, TaskChanges changes);
 
   /// A task that is already gone (404 with Vikunja code 4002) counts as
   /// deleted and does not throw.
   Future<void> delete(int id);
+
+  /// v2 `POST /tasks/{id}/duplicate`, v1 `PUT`: the server copies the task
+  /// with its labels, assignees, attachments and reminders and adds a
+  /// `copiedfrom` relation; returns the copy. Not idempotent.
+  Future<Task> duplicate(int id);
 }
 
 abstract interface class LabelsWritePort {
@@ -52,10 +65,23 @@ abstract interface class NotificationsWritePort {
   Future<void> markAllRead();
 }
 
+abstract interface class SubscriptionsWritePort {
+  /// v2 `POST`, v1 `PUT` `/subscriptions/{entity}/{id}`; an existing
+  /// subscription (412 code 12002) counts as done.
+  Future<void> subscribe(SubscriptionEntity entity, int id);
+
+  /// `DELETE /subscriptions/{entity}/{id}`; for a subscription inherited
+  /// from a parent project the server stores an opt-out. Nothing to delete
+  /// (403 without a code) counts as done when a read of the entity shows
+  /// no subscription.
+  Future<void> unsubscribe(SubscriptionEntity entity, int id);
+}
+
 abstract interface class VikunjaWriteClient {
   TasksWritePort get tasks;
   LabelsWritePort get labels;
   NotificationsWritePort get notifications;
+  SubscriptionsWritePort get subscriptions;
 }
 
 /// [dio] is an authenticated client from `createAuthenticatedDio`; the

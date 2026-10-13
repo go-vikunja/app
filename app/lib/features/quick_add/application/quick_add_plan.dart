@@ -105,10 +105,13 @@ abstract interface class QuickAddService {
   });
 
   /// Creates one task per non-empty line of [text] through the outbox
-  /// (offline-capable), as [plan] plans it; `*label`s that do not exist
-  /// are created online first, `@names` are resolved with the server's
-  /// user search in the task's project when it is reachable and with the
-  /// known users otherwise. Throws [QuickAddNoProject] before creating
+  /// (offline-capable), as [plan] plans it; a line indented deeper than
+  /// the one before becomes a subtask of the nearest line above it with
+  /// less indent, in that line's project unless it names its own (the
+  /// `parenttask` relation queued behind both creates); `*label`s that do
+  /// not exist are created online first, `@names` are resolved with the
+  /// server's user search in the task's project when it is reachable and
+  /// with the known users otherwise. Throws [QuickAddNoProject] before creating
   /// anything when a line has no project, and [QuickAddPartlyFailed] when
   /// a line fails after earlier ones were created.
   Future<QuickAddResult> submit(

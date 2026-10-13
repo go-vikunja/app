@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:vikunja_api/src/dto/json_values.dart';
 import 'package:vikunja_api/src/dto/label_codec.dart';
+import 'package:vikunja_api/src/dto/subscription_codec.dart';
 import 'package:vikunja_api/src/dto/task_codec.dart';
 import 'package:vikunja_api/src/errors/normalize_error.dart';
 import 'package:vikunja_api/src/write/write_ports.dart';
@@ -9,8 +10,8 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 /// Writes over `/api/v2` or `/api/v1`, chosen by
 /// `connection.preferredApiVersion`. v2 patches the changed fields; v1 has
 /// no partial update, so the task is read, the changes are overlaid and the
-/// whole object is posted back. Labels and assignees go through the task's
-/// own endpoints on both.
+/// whole object is posted back. Labels, assignees and relations go through
+/// the task's own endpoints on both.
 final class WriteClient implements VikunjaWriteClient {
   new({required Dio dio, required ServerConnection connection})
     : this._(_WriteTransport(dio, connection));
@@ -18,7 +19,8 @@ final class WriteClient implements VikunjaWriteClient {
   new _(_WriteTransport transport)
     : tasks = _TasksWriteApi(transport),
       labels = _LabelsWriteApi(transport),
-      notifications = _NotificationsWriteApi(transport);
+      notifications = _NotificationsWriteApi(transport),
+      subscriptions = _SubscriptionsWriteApi(transport);
 
   @override
   final TasksWritePort tasks;
@@ -28,6 +30,48 @@ final class WriteClient implements VikunjaWriteClient {
 
   @override
   final NotificationsWritePort notifications;
+
+  @override
+  final SubscriptionsWritePort subscriptions;
+}
+
+final class _SubscriptionsWriteApi implements SubscriptionsWritePort {
+  new(this._transport);
+
+  final _WriteTransport _transport;
+
+  @override
+  Future<void> subscribe(SubscriptionEntity entity, int id) async {
+    try {
+      await _transport.send(
+        _transport.createMethod,
+        '/subscriptions/${entity.wireName}/$id',
+      );
+    } on DomainError catch (failure) {
+      if (failure.code != _alreadySubscribed) rethrow;
+    }
+  }
+
+  @override
+  Future<void> unsubscribe(SubscriptionEntity entity, int id) async {
+    try {
+      await _transport.send('DELETE', '/subscriptions/${entity.wireName}/$id');
+    } on Forbidden catch (failure) {
+      // 403 without a code is the answer when there is nothing to delete
+      // (never followed, or unfollowed before); it also means no access,
+      // which the read tells apart by failing itself.
+      if (failure.code != null) rethrow;
+      final path = switch (entity) {
+        SubscriptionEntity.task => '/tasks/$id',
+        SubscriptionEntity.project => '/projects/$id',
+      };
+      final current = _transport.decode(
+        await _transport.send('GET', path),
+        (json) => subscriptionOf(objectOf(json, entity.wireName)),
+      );
+      if (current != null) rethrow;
+    }
+  }
 }
 
 final class _NotificationsWriteApi implements NotificationsWritePort {
@@ -81,6 +125,9 @@ const _notModified = 304;
 const _taskDoesNotExist = 4002;
 const _labelAlreadyOnTask = 8001;
 const _userAlreadyAssigned = 4021;
+const _relationAlreadyExists = 4008;
+const _relationDoesNotExist = 4009;
+const _alreadySubscribed = 12002;
 
 // A v1 update replaces the task with the body: every field the server sent
 // goes back so that assignees, reminders and the fields this client does not
@@ -113,6 +160,8 @@ final class _TasksWriteApi implements TasksWritePort {
 
   @override
   Future<Task> update(int id, TaskChanges changes) async {
+    final relations = changes.relations;
+    if (relations != null) _checkServerIds(relations);
     final body = encodeTaskChanges(changes);
     final answer = body.isEmpty
         ? await _read(id)
@@ -120,7 +169,14 @@ final class _TasksWriteApi implements TasksWritePort {
             ApiVersion.v2 => await _patch(id, body),
             ApiVersion.v1 => await _replace(id, body),
           };
-    final sentAny = await _sendLabelsAndAssignees(id, changes, answer);
+    final sentLabelsOrAssignees = await _sendLabelsAndAssignees(
+      id,
+      changes,
+      answer,
+    );
+    final sentRelations =
+        relations != null && await _sendRelations(id, relations, answer);
+    final sentAny = sentLabelsOrAssignees || sentRelations;
     // A move is answered with the identifier of the old project (the server
     // builds it before moving). The server keeps only one reminder per
     // instant but answers with the list from before that: new reminders as
@@ -143,6 +199,18 @@ final class _TasksWriteApi implements TasksWritePort {
     } on NotFound catch (failure) {
       if (failure.code != _taskDoesNotExist) rethrow;
     }
+  }
+
+  @override
+  Future<Task> duplicate(int id) async {
+    final response = await _transport.send(
+      _transport.createMethod,
+      '/tasks/$id/duplicate',
+    );
+    return _transport.decode<Task>(
+      response,
+      (json) => parseTask(objectOf(json, 'duplicate')['duplicated_task']),
+    );
   }
 
   Future<Task> _patch(int id, Map<String, Object?> body) async {
@@ -172,13 +240,15 @@ final class _TasksWriteApi implements TasksWritePort {
         ...overlay,
       },
     );
-    // The v1 update answers without the labels, which it cannot change; the
-    // read just made has them.
+    // The v1 update cannot change labels or relations and answers without
+    // them (relations as `{}` or null), so the read just made has the real
+    // ones.
     return _transport.decode<Task>(response, (json) {
       final stored = objectOf(json, 'task');
       return parseTask({
         ...stored,
         'labels': stored['labels'] ?? current['labels'],
+        'related_tasks': current['related_tasks'],
       });
     });
   }
@@ -257,11 +327,107 @@ final class _TasksWriteApi implements TasksWritePort {
     await _transport.send('DELETE', '/tasks/$taskId/assignees/$userId');
   }
 
+  void _checkServerIds(RelationChange relations) {
+    for (final ref in [...relations.added, ...relations.removed]) {
+      if (ref.otherTaskId <= 0) {
+        throw ArgumentError.value(
+          ref.otherTaskId,
+          'otherTaskId',
+          'A temporary task id must be resolved before the update is sent',
+        );
+      }
+    }
+  }
+
+  /// Like [_sendLabelsAndAssignees], for the task's relation edges: removes
+  /// first, then adds. A missing other task does not hold back the edges
+  /// after it; its [RelatedTaskMissing] is thrown once all were tried.
+  Future<bool> _sendRelations(
+    int id,
+    RelationChange relations,
+    Task stored,
+  ) async {
+    final held = _edgesOf(stored);
+    final remove = [
+      for (final ref in relations.removed.difference(relations.added))
+        if (held.contains(ref)) ref,
+    ];
+    final add = [
+      for (final ref in relations.added)
+        if (!held.contains(ref)) ref,
+    ];
+    RelatedTaskMissing? missing;
+    Future<void> trying(Future<void> Function() send) async {
+      try {
+        await send();
+      } on RelatedTaskMissing catch (failure) {
+        missing ??= failure;
+      }
+    }
+
+    for (final ref in remove) {
+      await trying(() => _removeRelation(id, ref));
+    }
+    for (final ref in add) {
+      await trying(() => _addRelation(id, ref));
+    }
+    if (missing case final failure?) throw failure;
+    return remove.isNotEmpty || add.isNotEmpty;
+  }
+
+  Future<void> _addRelation(int taskId, TaskRelationRef ref) async {
+    try {
+      await _transport.send(
+        _transport.createMethod,
+        '/tasks/$taskId/relations',
+        body: {
+          'other_task_id': ref.otherTaskId,
+          'relation_kind': ref.kind.wireName,
+        },
+      );
+    } on DomainError catch (failure) {
+      // 409 also for an edge that exists only because its inverse was
+      // added from the other task.
+      if (failure.code != _relationAlreadyExists) rethrow;
+    } on NotFound catch (failure) {
+      if (failure.code != _taskDoesNotExist) rethrow;
+      // The code does not say which of the two tasks is missing; the read
+      // fails with it when this one is.
+      await _read(taskId);
+      throw RelatedTaskMissing(ref.otherTaskId, message: failure.message);
+    }
+  }
+
+  Future<void> _removeRelation(int taskId, TaskRelationRef ref) async {
+    try {
+      await _transport.send(
+        'DELETE',
+        '/tasks/$taskId/relations/${ref.kind.wireName}/${ref.otherTaskId}',
+      );
+    } on NotFound catch (failure) {
+      switch (failure.code) {
+        case _relationDoesNotExist:
+          return;
+        case _taskDoesNotExist:
+          // Deleting the other task takes its edges along.
+          if (!_edgesOf(await _read(taskId)).contains(ref)) return;
+          throw RelatedTaskMissing(ref.otherTaskId, message: failure.message);
+        default:
+          rethrow;
+      }
+    }
+  }
+
   Future<Task> _read(int id) async {
     final response = await _transport.send('GET', '/tasks/$id');
     return _transport.decode<Task>(response, parseTask);
   }
 }
+
+Set<TaskRelationRef> _edgesOf(Task task) => {
+  for (final MapEntry(key: kind, value: others) in task.relatedTasks.entries)
+    for (final other in others) TaskRelationRef(kind, other.id),
+};
 
 /// An id both added and removed ends up added, as in [IdSetChange.applyTo].
 ({List<int> remove, List<int> add}) _requestsToSend(

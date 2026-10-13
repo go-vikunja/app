@@ -250,6 +250,33 @@ void main() {
     });
   });
 
+  test('searchable tasks are every visible task, done ones included, newest '
+      'first and without their child rows', () async {
+    await upsert(const [
+      Task(id: 1, title: 'Labelled', projectId: 5, labels: [urgent]),
+      Task(id: 2, title: 'Done', projectId: 6, done: true),
+      Task(
+        id: 3,
+        title: 'Related',
+        projectId: 5,
+        relatedTasks: {
+          TaskRelationKind.related: [
+            Task(id: 1, title: 'Labelled', projectId: 5),
+          ],
+        },
+      ),
+      Task(id: 4, title: 'Deleted here', projectId: 5),
+    ]);
+    await db.outboxDao.queueDelete(4, now: monday);
+    await db.outboxDao.queueCreate(_tempTask, now: monday);
+
+    final found = await db.tasksDao.watchSearchableTasks().first;
+
+    expect([for (final task in found) task.id], [-1, 3, 2, 1]);
+    expect(found.every((task) => task.labels.isEmpty), isTrue);
+    expect(found.every((task) => task.relatedTasks.isEmpty), isTrue);
+  });
+
   group('purge by run', () {
     test(
       'removes tasks another run or no run returned, with their rows',

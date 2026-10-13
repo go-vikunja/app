@@ -12,6 +12,7 @@ import 'package:vikunja_mobile/core/db/tables/users.dart';
 import 'package:vikunja_mobile/core/db/watch_tables.dart';
 import 'package:vikunja_mobile/core/outbox/apply_task_changes.dart';
 import 'package:vikunja_mobile/core/outbox/task_changes_json.dart';
+import 'package:vikunja_mobile/core/outbox/task_relation_inverse.dart';
 
 part 'tasks_dao.g.dart';
 
@@ -101,6 +102,16 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
               _visible,
     orderBy: [OrderingTerm.asc(tasks.position), ..._newestFirst],
   );
+
+  /// Every task, newest first, without the labels, assignees, reminders
+  /// and relations the other reads load; so it re-runs only when the tasks
+  /// table changes.
+  Stream<List<Task>> watchSearchableTasks() => watchTables({tasks}, () async {
+    final query = select(tasks)
+      ..where((t) => _visible)
+      ..orderBy([for (final term in _newestFirst) (_) => term]);
+    return [for (final row in await query.get()) taskFromRow(row)];
+  });
 
   /// One task, following a temporary id to the server id once the create
   /// is answered; null once the row is gone or queued for deletion.
@@ -204,46 +215,60 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
     return millis == null ? null : const EpochMillis().fromSql(millis);
   }
 
-  Future<int> purgeInProjects(Iterable<int> projectIds) => (delete(
-    tasks,
-  )..where((t) => t.projectId.isIn(projectIds) & _purgeable)).go();
+  Future<int> purgeInProjects(Iterable<int> projectIds) => transaction(
+    () async =>
+        await _purge(await _ids(tasks.projectId.isIn(projectIds) & _purgeable)),
+  );
 
   /// Removes the tasks of [projectId] whose id is not in [keep]. The ids to
   /// delete are picked locally, so the statements stay small whatever the
   /// size of [keep].
-  Future<int> purgeInProjectExcept(int projectId, Set<int> keep) async {
-    final candidates = await _ids(
-      tasks.projectId.equals(projectId) & _purgeable,
-    );
-    final gone = [
-      for (final id in candidates)
-        if (!keep.contains(id)) id,
-    ];
-    var purged = 0;
-    await transaction(() async {
-      for (var start = 0; start < gone.length; start += _chunkSize) {
-        final chunk = gone.sublist(
-          start,
-          (start + _chunkSize).clamp(0, gone.length),
+  Future<int> purgeInProjectExcept(int projectId, Set<int> keep) =>
+      transaction(() async {
+        final candidates = await _ids(
+          tasks.projectId.equals(projectId) & _purgeable,
         );
-        purged += await (delete(tasks)..where((t) => t.id.isIn(chunk))).go();
-      }
-    });
+        return await _purge([
+          for (final id in candidates)
+            if (!keep.contains(id)) id,
+        ]);
+      });
+
+  /// Deletes the rows [gone], whose labels, assignees, reminders and
+  /// relations go with them, and drops the queued edges other tasks have
+  /// to them (`OutboxDao.forgetRelatedTasks`): the server no longer has
+  /// them for this user.
+  Future<int> _purge(List<int> gone) async {
+    var purged = 0;
+    for (var start = 0; start < gone.length; start += _chunkSize) {
+      final chunk = gone.sublist(
+        start,
+        (start + _chunkSize).clamp(0, gone.length),
+      );
+      purged += await (delete(tasks)..where((t) => t.id.isIn(chunk))).go();
+    }
+    await attachedDatabase.outboxDao.forgetRelatedTasks(gone.toSet());
     return purged;
   }
 
   /// Upserts the tasks with the users and labels they carry, replacing their
   /// labels, assignees, reminders and relations; marks them seen in
   /// [syncRunId], or leaves the run a row has when null. A row with queued
-  /// changes keeps those fields over the incoming values, its queued label
-  /// and assignee changes apply to the incoming sets and its queued
-  /// reminders replace the incoming list; a row queued for deletion stays
-  /// hidden. One transaction, so that a change queued meanwhile is not
-  /// overwritten with the queue as it was read.
+  /// changes keeps those fields over the incoming values, its queued label,
+  /// assignee and relation changes apply to the incoming sets and its
+  /// queued reminders replace the incoming list; a row queued for deletion
+  /// stays hidden. The relation changes other tasks still have queued keep
+  /// their inverse edges on the incoming tasks, as the server will once
+  /// they are sent, and the edges other local tasks hold to the incoming
+  /// ones follow theirs, see [_matchInverseRows]. One transaction, so that
+  /// a change queued meanwhile is not overwritten with the queue as it was
+  /// read.
   Future<void> upsertAll(List<Task> all, {String? syncRunId}) =>
       transaction(() async {
         final ids = [for (final task in all) task.id];
         final queued = await _queuedRows(ids);
+        final queuedRelations = await _queuedRelationChanges();
+        final inverse = _inverseEdgesOn(ids.toSet(), queuedRelations);
         final pending = {
           for (final row in queued.values)
             if (row.pendingChanges case final json?)
@@ -262,6 +287,7 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
           }),
         };
         final taskRows = <TasksCompanion>[];
+        final relationRows = <TaskRelationRow>[];
         final labelRows = <TaskLabelRow>[];
         final assigneeRows = <TaskAssigneeRow>[];
         final reminders = <TaskReminderRow>[];
@@ -277,6 +303,9 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
                 : companion,
           );
           final changes = pending[task.id];
+          relationRows.addAll(
+            _relationRows(task, inverse[task.id], changes?.relations),
+          );
           if (changes == null) {
             labelRows.addAll(taskLabelRows(task));
             assigneeRows.addAll(taskAssigneeRows(task));
@@ -334,20 +363,24 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
             ..insertAllOnConflictUpdate(taskReminders, [
               for (final reminder in reminders) reminder.toCompanion(false),
             ])
-            ..insertAllOnConflictUpdate(taskRelations, [
-              for (final task in all) ...taskRelationRows(task),
-            ]);
+            ..insertAllOnConflictUpdate(taskRelations, relationRows);
         });
+        await _matchInverseRows(ids.toSet(), relationRows, queuedRelations);
       });
 
   /// The child rows of the task stored as [row], which already carries the
-  /// rest of [changes]: the label and assignee changes applied, the
-  /// reminder list replaced, and the instants of relative reminders
+  /// rest of [changes]: the label, assignee and relation changes applied,
+  /// the reminder list replaced, and the instants of relative reminders
   /// computed from the row's dates whenever the list or a date changes.
   /// A label or user this device has no row for is skipped here (the
-  /// foreign keys need the row); the change still goes to the server.
+  /// foreign keys need the row); the change still goes to the server. A
+  /// relation also changes the inverse edge on the other task when this
+  /// device has it, as the server does.
   Future<void> applyChildChanges(TaskRow row, TaskChanges changes) async {
     final taskId = row.id;
+    if (changes.relations case final delta?) {
+      await _applyRelationChange(taskId, delta);
+    }
     if (changes.labels case final delta?) {
       if (delta.removed.isNotEmpty) {
         await (delete(taskLabels)..where(
@@ -408,15 +441,220 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
-  /// Removes every task that [syncRunId] did not return; their labels,
-  /// assignees, reminders and relations go with them.
-  Future<int> purgeNotInRun(String syncRunId) =>
-      (delete(tasks)..where(
-            (t) =>
-                (t.syncRunId.isNull() | t.syncRunId.equals(syncRunId).not()) &
-                _purgeable,
+  /// The server named the task created here as [localId]: the edges of
+  /// other tasks that point at it follow.
+  Future<void> remapRelatedTask(int localId, int serverId) async {
+    await customUpdate(
+      'UPDATE OR IGNORE task_relations SET other_task_id = ? '
+      'WHERE other_task_id = ?',
+      variables: [Variable.withInt(serverId), Variable.withInt(localId)],
+      updates: {taskRelations},
+    );
+    await (delete(
+      taskRelations,
+    )..where((r) => r.otherTaskId.equals(localId))).go();
+  }
+
+  /// Tasks the server does not have: no edge may point at them, and their
+  /// own edges, inverses of those, go too.
+  Future<void> forgetRelatedTasks(Set<int> taskIds) async {
+    final ids = taskIds.toList();
+    for (var start = 0; start < ids.length; start += _chunkSize) {
+      final chunk = ids.sublist(
+        start,
+        (start + _chunkSize).clamp(0, ids.length),
+      );
+      await (delete(
+        taskRelations,
+      )..where((r) => r.otherTaskId.isIn(chunk) | r.taskId.isIn(chunk))).go();
+    }
+  }
+
+  Future<void> _applyRelationChange(int taskId, RelationChange delta) async {
+    for (final ref in delta.removed) {
+      await (delete(taskRelations)..where(
+            (r) =>
+                (r.taskId.equals(taskId) &
+                    r.otherTaskId.equals(ref.otherTaskId) &
+                    r.kind.equals(ref.kind.wireName)) |
+                (r.taskId.equals(ref.otherTaskId) &
+                    r.otherTaskId.equals(taskId) &
+                    r.kind.equals(inverseRelationKind(ref.kind).wireName)),
           ))
           .go();
+    }
+    if (delta.added.isEmpty) return;
+    final others = await _existingTaskIds({
+      for (final ref in delta.added) ref.otherTaskId,
+    });
+    await batch(
+      (b) => b.insertAll(taskRelations, [
+        for (final ref in delta.added) ...[
+          TaskRelationRow(
+            taskId: taskId,
+            otherTaskId: ref.otherTaskId,
+            kind: ref.kind.wireName,
+          ),
+          if (others.contains(ref.otherTaskId))
+            TaskRelationRow(
+              taskId: ref.otherTaskId,
+              otherTaskId: taskId,
+              kind: inverseRelationKind(ref.kind).wireName,
+            ),
+        ],
+      ], mode: InsertMode.insertOrIgnore),
+    );
+  }
+
+  /// [task]'s edges as the server sent them, with the inverse edges of
+  /// other tasks' queued relation changes and then its own queued relation
+  /// change applied.
+  static List<TaskRelationRow> _relationRows(
+    Task task,
+    RelationChange? inverse,
+    RelationChange? own,
+  ) {
+    if (inverse == null && own == null) return taskRelationRows(task);
+    var refs = <TaskRelationRef>{
+      for (final MapEntry(key: kind, value: others)
+          in task.relatedTasks.entries)
+        for (final other in others) TaskRelationRef(kind, other.id),
+    };
+    if (inverse != null) refs = inverse.applyTo(refs);
+    if (own != null) refs = own.applyTo(refs);
+    return [
+      for (final ref in refs)
+        TaskRelationRow(
+          taskId: task.id,
+          otherTaskId: ref.otherTaskId,
+          kind: ref.kind.wireName,
+        ),
+    ];
+  }
+
+  /// The edges other local tasks hold to the [pulled] tasks made the
+  /// inverse of [pulledRows], with those tasks' own queued changes to them
+  /// on top. The server bumps `updated` only on the task a relation was
+  /// added to or removed from, so the other task is not pulled along.
+  /// Tasks pulled in the same batch have their rows from their own pull.
+  Future<void> _matchInverseRows(
+    Set<int> pulled,
+    List<TaskRelationRow> pulledRows,
+    Map<int, RelationChange> queuedRelations,
+  ) async {
+    if (pulled.isEmpty) return;
+    final pointing = selectOnly(taskRelations, distinct: true)
+      ..addColumns([taskRelations.taskId])
+      ..where(taskRelations.otherTaskId.isIn(pulled));
+    final others = {
+      ...await _existingTaskIds({
+        for (final row in pulledRows) row.otherTaskId,
+      }),
+      for (final row in await pointing.get()) row.read(taskRelations.taskId)!,
+    }.difference(pulled);
+    if (others.isEmpty) return;
+    final edges = <int, Set<TaskRelationRef>>{for (final id in others) id: {}};
+    for (final row in pulledRows) {
+      final kind = TaskRelationKind.fromWire(row.kind);
+      if (kind == null || !others.contains(row.otherTaskId)) continue;
+      edges[row.otherTaskId]!.add(
+        TaskRelationRef(inverseRelationKind(kind), row.taskId),
+      );
+    }
+    await batch((b) {
+      b
+        ..deleteWhere(
+          taskRelations,
+          (r) => r.taskId.isIn(others) & r.otherTaskId.isIn(pulled),
+        )
+        ..insertAll(taskRelations, [
+          for (final MapEntry(key: id, value: refs) in edges.entries)
+            for (final ref in queuedRelations[id]?.applyTo(refs) ?? refs)
+              if (pulled.contains(ref.otherTaskId))
+                TaskRelationRow(
+                  taskId: id,
+                  otherTaskId: ref.otherTaskId,
+                  kind: ref.kind.wireName,
+                ),
+        ], mode: InsertMode.insertOrIgnore);
+    });
+  }
+
+  /// The queued relation change of every task that has one.
+  Future<Map<int, RelationChange>> _queuedRelationChanges() async {
+    // The outbox is small and usually holds no relation change; the tasks
+    // table may be large and has no index on pending_changes.
+    final outbox = attachedDatabase.outbox;
+    final queued =
+        await (selectOnly(outbox)
+              ..addColumns([outbox.id])
+              ..where(outbox.payload.like('%"relations"%'))
+              ..limit(1))
+            .getSingleOrNull();
+    if (queued == null) return const {};
+    final rows = await (select(
+      tasks,
+    )..where((t) => t.pendingChanges.like('%"relations"%'))).get();
+    return {
+      for (final row in rows)
+        row.id: ?decodeTaskChanges(row.pendingChanges!).relations,
+    };
+  }
+
+  /// Per task among [ids], the inverse of the relation changes other tasks
+  /// still have queued that name it.
+  static Map<int, RelationChange> _inverseEdgesOn(
+    Set<int> ids,
+    Map<int, RelationChange> queuedRelations,
+  ) {
+    final added = <int, Set<TaskRelationRef>>{};
+    final removed = <int, Set<TaskRelationRef>>{};
+    void collect(
+      Map<int, Set<TaskRelationRef>> into,
+      Iterable<TaskRelationRef> refs,
+      int from,
+    ) {
+      for (final ref in refs) {
+        if (ref.otherTaskId == from || !ids.contains(ref.otherTaskId)) {
+          continue;
+        }
+        into
+            .putIfAbsent(ref.otherTaskId, () => {})
+            .add(TaskRelationRef(inverseRelationKind(ref.kind), from));
+      }
+    }
+
+    for (final MapEntry(key: from, value: relations)
+        in queuedRelations.entries) {
+      collect(added, relations.added, from);
+      collect(removed, relations.removed, from);
+    }
+    return {
+      for (final id in {...added.keys, ...removed.keys})
+        id: RelationChange(
+          added: added[id] ?? const {},
+          removed: removed[id] ?? const {},
+        ),
+    };
+  }
+
+  Future<Set<int>> _existingTaskIds(Set<int> ids) async {
+    if (ids.isEmpty) return const {};
+    final query = selectOnly(tasks)
+      ..addColumns([tasks.id])
+      ..where(tasks.id.isIn(ids));
+    return {for (final row in await query.get()) row.read(tasks.id)!};
+  }
+
+  /// Removes every task that [syncRunId] did not return, see [_purge].
+  Future<int> purgeNotInRun(String syncRunId) => transaction(
+    () async => await _purge(
+      await _ids(
+        (tasks.syncRunId.isNull() | tasks.syncRunId.equals(syncRunId).not()) &
+            _purgeable,
+      ),
+    ),
+  );
 
   Future<void> deleteRow(int id) =>
       (delete(tasks)..where((t) => t.id.equals(id))).go();
@@ -574,8 +812,9 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
     }
   }
 
-  /// Only relations whose other task is local; the nested task carries no
-  /// labels, assignees, reminders or relations of its own.
+  /// Only relations whose other task is local and not queued for deletion;
+  /// the nested task carries no labels, assignees, reminders or relations
+  /// of its own.
   Future<void> _loadRelations(
     List<int> ids,
     Map<int, Map<TaskRelationKind, List<Task>>> into,
@@ -584,7 +823,7 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
         select(taskRelations).join([
             innerJoin(tasks, tasks.id.equalsExp(taskRelations.otherTaskId)),
           ])
-          ..where(taskRelations.taskId.isIn(ids))
+          ..where(taskRelations.taskId.isIn(ids) & _visible)
           ..orderBy([OrderingTerm.asc(tasks.id)]);
     for (final row in await query.get()) {
       final relation = row.readTable(taskRelations);

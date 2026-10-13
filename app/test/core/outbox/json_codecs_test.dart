@@ -133,6 +133,53 @@ void main() {
       expect(old.assignees, isNull);
       expect(old.reminders, isNull);
     });
+
+    test('relation changes are edges by kind and other task, sorted, '
+        'temporary ids included', () {
+      final changes = TaskChanges(
+        title: 'Child',
+        relations: RelationChange(
+          added: {
+            const TaskRelationRef(TaskRelationKind.related, 9),
+            const TaskRelationRef(TaskRelationKind.parentTask, -3),
+            const TaskRelationRef(TaskRelationKind.related, 4),
+          },
+          removed: {const TaskRelationRef(TaskRelationKind.blocked, 12)},
+        ),
+      );
+
+      final json = encodeTaskChanges(changes);
+
+      expect(jsonDecode(json), {
+        'title': 'Child',
+        'relations': {
+          'added': [
+            {'kind': 'parenttask', 'other': -3},
+            {'kind': 'related', 'other': 4},
+            {'kind': 'related', 'other': 9},
+          ],
+          'removed': [
+            {'kind': 'blocked', 'other': 12},
+          ],
+        },
+      });
+      expect(decodeTaskChanges(json), changes);
+      expect(json, encodeTaskChanges(decodeTaskChanges(json)));
+    });
+
+    test('a payload from before step 14 changes no relation; an edge of an '
+        'unknown kind or without an id is skipped', () {
+      expect(decodeTaskChanges('{"done":true}').relations, isNull);
+      expect(
+        decodeTaskChanges(
+          '{"relations":{"added":[{"kind":"later","other":1},'
+          '{"kind":"related"},{"kind":"related","other":2}]}}',
+        ).relations,
+        RelationChange(
+          added: {const TaskRelationRef(TaskRelationKind.related, 2)},
+        ),
+      );
+    });
   });
 
   group('NewTask', () {
@@ -223,6 +270,7 @@ void main() {
       const Forbidden(code: 7003, message: 'no access'),
       const NotFound(code: 3001),
       const NotFound(),
+      const RelatedTaskMissing(41, message: 'task does not exist'),
       const ValidationFailed(
         fieldErrors: {
           'title': ['must not be empty', 'too long'],
@@ -252,6 +300,8 @@ void main() {
             expect(b.reason, a.reason);
           case (final OAuthFailure a, final OAuthFailure b):
             expect(b.problem, a.problem);
+          case (final RelatedTaskMissing a, final RelatedTaskMissing b):
+            expect(b.otherTaskId, a.otherTaskId);
           case (final NotFound a, final NotFound b):
             expect(b.routeAbsent, a.routeAbsent);
           case (final ValidationFailed a, final ValidationFailed b):

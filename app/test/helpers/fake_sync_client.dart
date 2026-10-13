@@ -42,6 +42,12 @@ final class FakeSyncClient implements VikunjaReadClient {
   late final FakeUsersPort users = FakeUsersPort(this);
   @override
   late final FakeNotificationsPort notifications = FakeNotificationsPort(this);
+  @override
+  late final FakeSubscriptionsPort subscriptions = FakeSubscriptionsPort(this);
+
+  /// The subscription each task / project shows on a single read.
+  final Map<int, Subscription> taskSubscriptions = {};
+  final Map<int, Subscription> projectSubscriptions = {};
 
   /// The server's notifications for the user, newest first.
   List<ServerNotification> serverNotifications = [];
@@ -383,5 +389,23 @@ final class FakeNotificationsPort implements NotificationsPort {
       page: page,
       perPage: perPage,
     );
+  }
+}
+
+final class FakeSubscriptionsPort implements SubscriptionsPort {
+  new(this._client);
+
+  final FakeSyncClient _client;
+
+  @override
+  Future<Subscription?> forTask(int taskId) async {
+    await _client._request('subscription task $taskId');
+    return _client.taskSubscriptions[taskId];
+  }
+
+  @override
+  Future<Subscription?> forProject(int projectId) async {
+    await _client._request('subscription project $projectId');
+    return _client.projectSubscriptions[projectId];
   }
 }

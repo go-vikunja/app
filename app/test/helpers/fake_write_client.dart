@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/outbox/apply_task_changes.dart';
 
 import 'task_edits.dart';
 
@@ -13,8 +14,13 @@ import 'task_edits.dart';
 /// never fails for a task that is already gone. Labels and assignees an
 /// update adds must be in [serverLabels] and [serverUsers] or already on
 /// the task, else it fails like the server: `NotFound` 8002 for a label,
-/// 1005 for a user. Every request is logged; [beforeRequest] can fail or
-/// hold a request, [afterRequest] can lose its answer.
+/// 1005 for a user. Relations go onto both tasks, the inverse edge onto
+/// the other one; an edge to a task the server does not hold fails with
+/// `RelatedTaskMissing` once the rest of the update is applied, as the
+/// real port tries every other request first, and a temporary id with an
+/// `ArgumentError`, as the real port refuses one. Every request is
+/// logged; [beforeRequest] can fail or hold a request, [afterRequest] can
+/// lose its answer.
 final class FakeWriteClient implements VikunjaWriteClient {
   new({DateTime Function()? clock}) : _clock = clock ?? DateTime.now;
 
@@ -50,6 +56,10 @@ final class FakeWriteClient implements VikunjaWriteClient {
   @override
   late final FakeNotificationsWritePort notifications =
       FakeNotificationsWritePort(this);
+
+  @override
+  late final FakeSubscriptionsWritePort subscriptions =
+      FakeSubscriptionsWritePort(this);
 
   Future<void> _request(String description) async {
     requests.add(description);
@@ -97,10 +107,21 @@ final class FakeTasksWritePort implements TasksWritePort {
     if (!userIds.containsAll(changes.assignees?.added ?? const <int>{})) {
       throw const NotFound(code: 1005);
     }
+    final relations = changes.relations;
+    for (final ref in [...?relations?.added, ...?relations?.removed]) {
+      if (ref.otherTaskId <= 0) {
+        throw ArgumentError.value(ref.otherTaskId, 'otherTaskId');
+      }
+    }
+    final missing = [
+      for (final ref in relations?.added ?? const <TaskRelationRef>{})
+        if (!_client.serverTasks.containsKey(ref.otherTaskId)) ref.otherTaskId,
+    ];
+    final applied = withoutRelatedTasks(changes, missing.toSet());
     final now = _client._clock().toUtc();
     var next = applyChangesToTask(
       current,
-      changes,
+      applied,
       now: now,
       labels: _client.serverLabels,
       users: _client.serverUsers,
@@ -109,8 +130,53 @@ final class FakeTasksWritePort implements TasksWritePort {
       if (current.repeats) next = reopenRepeating(next, now: now);
     }
     _client.serverTasks[id] = next;
+    if (applied.relations case final sent?) {
+      final related = applyRelationChange(
+        [..._client.serverTasks.values],
+        id,
+        sent,
+      );
+      _client.serverTasks
+        ..clear()
+        ..addEntries([for (final task in related) MapEntry(task.id, task)]);
+    }
+    if (missing.isNotEmpty) throw RelatedTaskMissing(missing.first);
     _client.updates.add((id, changes));
-    return next;
+    return _client.serverTasks[id]!;
+  }
+
+  @override
+  Future<Task> duplicate(int id) async {
+    await _client._request('duplicate $id');
+    final source = _client.serverTasks[id];
+    if (source == null) throw const NotFound(code: 4002);
+    final copyId = _client.nextId++;
+    final copy = Task(
+      id: copyId,
+      title: source.title,
+      projectId: source.projectId,
+      description: source.description,
+      dueDate: source.dueDate,
+      startDate: source.startDate,
+      endDate: source.endDate,
+      priority: source.priority,
+      percentDone: source.percentDone,
+      hexColor: source.hexColor,
+      identifier: '-$copyId',
+      index: copyId,
+      repeatAfter: source.repeatAfter,
+      repeatMode: source.repeatMode,
+      labels: source.labels,
+      assignees: source.assignees,
+      reminders: source.reminders,
+      relatedTasks: {
+        TaskRelationKind.copiedFrom: [source],
+      },
+      created: _client._clock().toUtc(),
+      updated: _client._clock().toUtc(),
+    );
+    _client.serverTasks[copyId] = copy;
+    return copy;
   }
 
   @override
@@ -164,5 +230,26 @@ final class FakeNotificationsWritePort implements NotificationsWritePort {
   Future<void> markAllRead() async {
     await _client._request('notifications read all');
     markedAll++;
+  }
+}
+
+final class FakeSubscriptionsWritePort implements SubscriptionsWritePort {
+  new(this._client);
+
+  final FakeWriteClient _client;
+
+  /// What the fake server holds, `<entity>:<id>`.
+  final Set<String> subscribed = {};
+
+  @override
+  Future<void> subscribe(SubscriptionEntity entity, int id) async {
+    await _client._request('subscribe ${entity.wireName} $id');
+    subscribed.add('${entity.wireName}:$id');
+  }
+
+  @override
+  Future<void> unsubscribe(SubscriptionEntity entity, int id) async {
+    await _client._request('unsubscribe ${entity.wireName} $id');
+    subscribed.remove('${entity.wireName}:$id');
   }
 }

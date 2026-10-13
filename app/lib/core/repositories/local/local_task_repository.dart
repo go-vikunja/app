@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:logging/logging.dart';
+import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/outbox/outbox_sender.dart';
@@ -16,19 +17,30 @@ final _log = Logger('AccountData');
 /// project list is never paged and every refresh is a full sync run. A
 /// write lands in the database and the outbox in one transaction, then the
 /// sender drains; a create gets a temporary negative id that the sender
-/// remaps once the server has named the task.
+/// remaps once the server has named the task. A duplicate is made by the
+/// server and is online only.
 final class LocalTaskRepository
     implements TaskRepository, PendingTaskIdsSource {
-  new(this._db, this._sync, this._outbox, {DateTime Function()? now})
-    : _now = now ?? DateTime.now;
+  new(
+    this._db,
+    this._sync,
+    this._outbox,
+    this._write, {
+    DateTime Function()? now,
+  }) : _now = now ?? DateTime.now;
 
   final AppDatabase _db;
   final SyncEngine _sync;
   final OutboxSender _outbox;
+  final VikunjaWriteClient _write;
   final DateTime Function() _now;
 
   @override
   Stream<List<Task>> watchOpenTasks() => _db.tasksDao.watchOpenTasks();
+
+  @override
+  Stream<List<Task>> watchSearchableTasks() =>
+      _db.tasksDao.watchSearchableTasks();
 
   @override
   Stream<PagedList<Task>> watchProjectTasks(
@@ -94,6 +106,26 @@ final class LocalTaskRepository
   Future<void> deleteTask(int taskId) async {
     final queued = await _db.outboxDao.queueDelete(taskId, now: _now());
     if (queued) _drainQuietly();
+  }
+
+  /// The server copies the task as it has it, so the task's queued
+  /// changes go first; a copy without them would lose them. The request is
+  /// not idempotent: a copy made without the answer arriving comes with
+  /// the next sync.
+  @override
+  Future<int> duplicateTask(int taskId) async {
+    var id = await _db.tasksDao.resolveId(taskId);
+    if (await _db.outboxDao.hasQueuedOps(id)) {
+      final blockedBy = await _outbox.sendNow();
+      id = await _db.tasksDao.resolveId(taskId);
+      if (await _db.outboxDao.hasQueuedOps(id)) {
+        throw blockedBy ?? TaskNotSyncedYet(taskId);
+      }
+    }
+    final copy = await _write.tasks.duplicate(id);
+    await _db.tasksDao.upsertAll([copy]);
+    _log.fine('Duplicated task $id as ${copy.id}');
+    return copy.id;
   }
 
   @override

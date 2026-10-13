@@ -290,6 +290,7 @@ TaskRepository accountTaskRepository(Ref ref, String accountId) {
     ref.watch(appDatabaseProvider(accountId)),
     ref.watch(syncEngineProvider(accountId)),
     ref.watch(outboxSenderProvider(accountId)),
+    ref.watch(writeClientProvider(accountId)),
     now: ref.watch(clockProvider),
   );
   ref.onDispose(repository.dispose);

@@ -1,5 +1,6 @@
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
+import 'package:vikunja_mobile/features/quick_add/application/quick_add_lines.dart';
 
 typedef TaskTextParser = ParsedTaskText Function(
   String text, {
@@ -25,12 +26,14 @@ final class QuickAddGrammar {
     this.cleanup = cleanupItemText,
     this.prefixes = quickAddPrefixes,
     this.repeatOf = _taskRepeat,
+    this.subtasks = parseSubtasksViaIndention,
   });
 
   final TaskTextParser parse;
   final ItemCleanup cleanup;
   final QuickAddPrefixes? Function(QuickAddMagicMode mode) prefixes;
   final TaskRepeatOf repeatOf;
+  final SubtaskParser subtasks;
 }
 
 ({Duration repeatAfter, RepeatMode mode}) _taskRepeat(QuickAddRepeat repeat) =>

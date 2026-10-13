@@ -28,6 +28,7 @@ class QuickAddPreview extends StatelessWidget {
     required this.onRemove,
     this.projectLabel,
     this.lineCount = 1,
+    this.subtaskCount = 0,
     super.key,
   });
 
@@ -42,6 +43,9 @@ class QuickAddPreview extends StatelessWidget {
   /// The number of tasks the text makes; the chips show the first.
   final int lineCount;
 
+  /// How many of them become subtasks, by their indentation.
+  final int subtaskCount;
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -49,7 +53,11 @@ class QuickAddPreview extends StatelessWidget {
     final colors = theme.colorScheme;
     final chips = plan.magicOnly ? const <Widget>[] : _chips(context);
     final notes = [
-      if (lineCount > 1 && chips.isEmpty)
+      if (lineCount > 1 && subtaskCount > 0 && chips.isEmpty)
+        l10n.newTaskTreeCountOnly(lineCount, subtaskCount)
+      else if (lineCount > 1 && subtaskCount > 0)
+        l10n.newTaskTreeCount(lineCount, subtaskCount)
+      else if (lineCount > 1 && chips.isEmpty)
         l10n.newTaskLineCountOnly(lineCount)
       else if (lineCount > 1)
         l10n.newTaskLineCount(lineCount),

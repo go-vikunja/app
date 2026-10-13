@@ -11,6 +11,7 @@ import 'package:vikunja_mobile/core/repositories/activity_repository_providers.d
 import 'package:vikunja_mobile/core/repositories/paged_list.dart';
 import 'package:vikunja_mobile/core/repositories/project_repository.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/core/repositories/subscription_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
@@ -18,6 +19,7 @@ import 'package:vikunja_mobile/features/accounts/application/account_switcher.da
 import 'package:vikunja_mobile/features/sync/application/inactive_outboxes.dart';
 
 import 'activity_fakes.dart';
+import 'subscription_fakes.dart';
 import 'task_edits.dart';
 
 /// Replays [current] to every subscriber when it has one, then forwards
@@ -252,6 +254,12 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
   );
 
   @override
+  Stream<List<Task>> watchSearchableTasks() =>
+      _replaying(() => _all, _changes.stream).map(
+        (_) => [for (final task in _all) task.copyWith(relatedTasks: const {})],
+      );
+
+  @override
   Future<void> refreshOpenTasks() => _engine.refresh();
 
   @override
@@ -362,18 +370,28 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
     return id;
   }
 
-  /// The server named the task: it moves to [serverId] in the list and
-  /// watchers of [localId] follow.
+  /// The server named the task: it moves to [serverId] in the list, the
+  /// relations of other tasks follow it, and watchers of [localId] follow.
   void remapTask(int localId, int serverId) {
     remaps[localId] = serverId;
+    Task renamed(Task task) =>
+        task.id == localId ? taskWithId(task, serverId) : task;
     all = [
       for (final task in _all)
-        if (task.id == localId) taskWithId(task, serverId) else task,
+        renamed(task).copyWith(
+          relatedTasks: {
+            for (final MapEntry(:key, :value) in task.relatedTasks.entries)
+              key: [for (final other in value) renamed(other)],
+          },
+        ),
     ];
   }
 
+  /// Relations apply to both tasks when the other one is in [all], as the
+  /// server keeps the inverse edge; a temporary id that was remapped is
+  /// followed.
   @override
-  Future<void> updateTask(int taskId, TaskChanges changes) {
+  Future<void> updateTask(int taskId, TaskChanges changes) async {
     updates.add((taskId, changes));
     final labels = {
       for (final task in _all)
@@ -385,9 +403,10 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
         for (final user in task.assignees) user.id: user,
       ...knownUsers,
     };
-    return _write(
+    final id = remaps[taskId] ?? taskId;
+    await _write(
       'update $taskId',
-      (task) => task.id == (remaps[taskId] ?? taskId)
+      (task) => task.id == id
           ? applyChangesToTask(
               task,
               changes,
@@ -397,6 +416,13 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
             )
           : task,
     );
+    if (changes.relations case final relations?) {
+      all = applyRelationChange(
+        _all,
+        id,
+        relations.mapTaskIds((other) => remaps[other] ?? other),
+      );
+    }
   }
 
   @override
@@ -435,6 +461,31 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
   @override
   Future<void> deleteTask(int taskId) =>
       _write('delete $taskId', (task) => task.id == taskId ? null : task);
+
+  /// Ids the next duplicates get; a failure set here is thrown instead
+  /// (a `VikunjaFailure`, or `TaskNotSyncedYet`).
+  int nextDuplicateId = 9000;
+  Exception? duplicateFailure;
+  final List<int> duplicated = [];
+
+  /// A task in [all] is copied under the new id, with `copiedfrom` on the
+  /// copy and `copiedto` on the source, like the server's duplicate.
+  @override
+  Future<int> duplicateTask(int taskId) async {
+    duplicated.add(taskId);
+    if (duplicateFailure case final failure?) throw failure;
+    final copyId = nextDuplicateId++;
+    if (find(taskId) case final source?) {
+      all = applyRelationChange(
+        [..._all, taskWithId(source, copyId).copyWith(relatedTasks: const {})],
+        copyId,
+        RelationChange(
+          added: {TaskRelationRef(TaskRelationKind.copiedFrom, source.id)},
+        ),
+      );
+    }
+    return copyId;
+  }
 
   @override
   Stream<int> watchPendingChanges() =>
@@ -557,6 +608,7 @@ final class AccountDataFakes {
   late final FakeProjectRepository projects;
   late final FakeTaskRepository tasks;
   final activity = FakeActivityRepository();
+  final subscriptions = FakeSubscriptionRepository();
 }
 
 /// The data layer under the screens, without a database: every account
@@ -581,6 +633,7 @@ final class SyncFakes {
   FakeProjectRepository get projects => shared.projects;
   FakeTaskRepository get tasks => shared.tasks;
   FakeActivityRepository get activity => shared.activity;
+  FakeSubscriptionRepository get subscriptions => shared.subscriptions;
 
   AccountDataFakes forAccount(String accountId) =>
       accounts[accountId] ?? shared;
@@ -599,6 +652,9 @@ final class SyncFakes {
     ),
     accountActivityRepositoryProvider.overrideWith(
       (ref, accountId) => forAccount(accountId).activity,
+    ),
+    accountSubscriptionRepositoryProvider.overrideWith(
+      (ref, accountId) => forAccount(accountId).subscriptions,
     ),
     // The real one syncs the activity on the foreground ticks, which opens
     // the inactive accounts' databases.

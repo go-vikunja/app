@@ -128,9 +128,60 @@ String fakeCleanup(String text, Iterable<String> items, String prefix) {
       ),
     };
 
+/// A stand-in for the indentation parser: every two leading spaces are a
+/// level, a line deeper than an earlier one is a subtask of the nearest
+/// such line, a leading `- `, `* `, `+ ` and `[ ] ` go, and a subtask
+/// without a `<project>x` word inherits its parent's project name. No
+/// tabs or quotes.
+List<IndentedLine> fakeSubtasks(
+  String text, {
+  QuickAddMagicMode mode = QuickAddMagicMode.vikunja,
+}) {
+  final prefix = fakePrefixes(mode)?.project;
+  String? projectOf(String line) {
+    if (prefix == null) return null;
+    for (final word in line.split(' ')) {
+      if (word.length > 1 && word.startsWith(prefix)) return word.substring(1);
+    }
+    return null;
+  }
+
+  final result = <IndentedLine>[];
+  final levels = <int>[];
+  final projects = <String?>[];
+  for (final line in text.split('\n')) {
+    if (line.trim().isEmpty) continue;
+    final level = (line.length - line.trimLeft().length) ~/ 2;
+    final text = line.trimLeft().replaceFirst(
+      RegExp(r'^(?:[-*+] )?(?:\[ \] )?'),
+      '',
+    );
+    int? parent;
+    for (var index = result.length - 1; index >= 0; index--) {
+      if (levels[index] < level) {
+        parent = index;
+        break;
+      }
+    }
+    final own = projectOf(text);
+    final inherited = parent == null ? null : projects[parent];
+    result.add(
+      IndentedLine(
+        text: text,
+        parentIndex: parent,
+        inheritedProject: own == null ? inherited : null,
+      ),
+    );
+    levels.add(level);
+    projects.add(own ?? inherited);
+  }
+  return result;
+}
+
 const fakeGrammar = QuickAddGrammar(
   parse: fakeParse,
   cleanup: fakeCleanup,
   prefixes: fakePrefixes,
   repeatOf: fakeRepeatOf,
+  subtasks: fakeSubtasks,
 );

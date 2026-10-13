@@ -57,12 +57,22 @@ abstract interface class NotificationsPort {
   Future<Page<ServerNotification>> list({int page = 1, int? perPage});
 }
 
+abstract interface class SubscriptionsPort {
+  /// The subscription covering the task (its own or a parent project's),
+  /// from `GET /tasks/{id}`; null when not subscribed.
+  Future<Subscription?> forTask(int taskId);
+
+  /// From `GET /projects/{id}`; null when not subscribed.
+  Future<Subscription?> forProject(int projectId);
+}
+
 abstract interface class VikunjaReadClient {
   ProjectsPort get projects;
   LabelsPort get labels;
   TasksPort get tasks;
   UsersPort get users;
   NotificationsPort get notifications;
+  SubscriptionsPort get subscriptions;
 }
 
 /// [dio] is an authenticated client from `createAuthenticatedDio`; the

@@ -4,7 +4,8 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 
 /// `TaskChanges` as stored in the outbox and in `tasks.pending_changes`:
 /// the wire names, absent for unchanged, an empty string for a cleared date,
-/// label and assignee deltas as `{"added": [...], "removed": [...]}`.
+/// label and assignee deltas as `{"added": [...], "removed": [...]}`, and
+/// relation deltas as `{"added": [{"kind", "other"}], "removed": [...]}`.
 String encodeTaskChanges(TaskChanges changes) =>
     jsonEncode(taskChangesToJson(changes));
 
@@ -32,6 +33,8 @@ Map<String, Object?> taskChangesToJson(TaskChanges changes) => {
     'assignees': _idSetJson(assignees),
   if (changes.reminders case final reminders?)
     'reminders': remindersToJson(reminders),
+  if (changes.relations case final relations?)
+    'relations': _relationsJson(relations),
 };
 
 TaskChanges taskChangesFromJson(Map<String, Object?> json) => TaskChanges(
@@ -60,6 +63,7 @@ TaskChanges taskChangesFromJson(Map<String, Object?> json) => TaskChanges(
     final List<Object?> list => remindersFromJson(list),
     _ => null,
   },
+  relations: _relationChange(json['relations']),
 );
 
 /// Instants in UTC; `reminder` is absent while a relative one has none.
@@ -102,6 +106,37 @@ Set<int> _ids(Object? value) => {
   if (value is List<Object?>)
     for (final id in value)
       if (id is int) id,
+};
+
+Map<String, Object?> _relationsJson(RelationChange change) => {
+  'added': _refsJson(change.added),
+  'removed': _refsJson(change.removed),
+};
+
+List<Map<String, Object?>> _refsJson(Set<TaskRelationRef> refs) => [
+  for (final ref
+      in [...refs]..sort(
+        (a, b) => a.kind.index != b.kind.index
+            ? a.kind.index.compareTo(b.kind.index)
+            : a.otherTaskId.compareTo(b.otherTaskId),
+      ))
+    {'kind': ref.kind.wireName, 'other': ref.otherTaskId},
+];
+
+RelationChange? _relationChange(Object? value) => switch (value) {
+  final Map<String, Object?> map => RelationChange(
+    added: _refs(map['added']),
+    removed: _refs(map['removed']),
+  ),
+  _ => null,
+};
+
+Set<TaskRelationRef> _refs(Object? value) => {
+  if (value is List<Object?>)
+    for (final item in value)
+      if (item case {'kind': final String wire, 'other': final int other})
+        if (TaskRelationKind.fromWire(wire) case final kind?)
+          TaskRelationRef(kind, other),
 };
 
 String _dateJson(DateChange change) => switch (change) {

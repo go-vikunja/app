@@ -1311,6 +1311,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get syncProblemProjectArchived => 'Its project is archived.';
 
   @override
+  String get syncProblemRelatedTaskMissing =>
+      'A task it is related to no longer exists on the server.';
+
+  @override
+  String get syncProblemRelationCycle =>
+      'The relation would make the tasks depend on each other in a loop.';
+
+  @override
+  String get syncProblemRelationToItself =>
+      'A task cannot be related to itself.';
+
+  @override
   String get syncProblemRejected => 'The server rejected the change.';
 
   @override
@@ -2295,5 +2307,216 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String notificationBodyWithIdentifier(String body, String identifier) {
     return '$body · $identifier';
+  }
+
+  @override
+  String get cancel => 'Cancel';
+
+  @override
+  String get taskDetailSubtasks => 'Subtasks';
+
+  @override
+  String taskDetailSubtasksDone(int done, int total) {
+    return '$done of $total done';
+  }
+
+  @override
+  String get taskDetailAddSubtask => 'Add subtask';
+
+  @override
+  String get taskDetailAddSubtaskFailed => 'Couldn\'t add the subtask';
+
+  @override
+  String get taskDetailSubtaskNotLinked =>
+      'The task was added, but not as a subtask';
+
+  @override
+  String get taskDetailParentTask => 'Parent task';
+
+  @override
+  String get taskDetailRelatedTasks => 'Related tasks';
+
+  @override
+  String get taskDetailAddRelation => 'Add relation';
+
+  @override
+  String get taskRelationSubtask => 'Subtask';
+
+  @override
+  String get taskRelationParentTask => 'Parent task';
+
+  @override
+  String get taskRelationRelated => 'Related to';
+
+  @override
+  String get taskRelationBlocking => 'Blocks';
+
+  @override
+  String get taskRelationBlocked => 'Blocked by';
+
+  @override
+  String get taskRelationPrecedes => 'Precedes';
+
+  @override
+  String get taskRelationFollows => 'Follows';
+
+  @override
+  String get taskRelationDuplicateOf => 'Duplicate of';
+
+  @override
+  String get taskRelationDuplicates => 'Duplicated by';
+
+  @override
+  String get taskRelationCopiedFrom => 'Copied from';
+
+  @override
+  String get taskRelationCopiedTo => 'Copied to';
+
+  @override
+  String get taskRelationRemove => 'Remove relation';
+
+  @override
+  String get taskRelationRemoveTitle => 'Remove relation?';
+
+  @override
+  String taskRelationRemoveBody(String title) {
+    return 'The link to “$title” will be removed on the server too. The task itself stays.';
+  }
+
+  @override
+  String get taskRelationRemoveConfirm => 'Remove';
+
+  @override
+  String get addRelationKind => 'Relation';
+
+  @override
+  String get addRelationSearch => 'Search by title or identifier';
+
+  @override
+  String get addRelationShowDone => 'Show done tasks';
+
+  @override
+  String get addRelationNoMatches => 'No matching tasks';
+
+  @override
+  String get taskDuplicate => 'Duplicate';
+
+  @override
+  String get taskDuplicated => 'Duplicated';
+
+  @override
+  String get taskDuplicateOpen => 'Open';
+
+  @override
+  String get taskDuplicateNeedsConnection =>
+      'Duplicating needs a connection to the server.';
+
+  @override
+  String get taskDuplicateNotSynced =>
+      'You can duplicate this task once its changes are synced.';
+
+  @override
+  String taskDuplicateFailed(String message) {
+    return 'Couldn\'t duplicate the task: $message';
+  }
+
+  @override
+  String get taskDuplicateFailedUnknown => 'Couldn\'t duplicate the task.';
+
+  @override
+  String get followTask => 'Follow task';
+
+  @override
+  String get unfollowTask => 'Unfollow task';
+
+  @override
+  String get followProject => 'Follow project';
+
+  @override
+  String get unfollowProject => 'Unfollow project';
+
+  @override
+  String get followNeedsConnection =>
+      'Following needs a connection to the server.';
+
+  @override
+  String get followFailed =>
+      'Couldn\'t change whether you follow this. Try again.';
+
+  @override
+  String get followTaskOnceSynced =>
+      'You can follow this task once it is synced.';
+
+  @override
+  String get followTaskUnavailable => 'Follow task (needs a connection)';
+
+  @override
+  String get followChecking => 'Checking whether you follow this…';
+
+  @override
+  String followingViaProject(String project) {
+    return 'Following the project $project';
+  }
+
+  @override
+  String get followingViaSomeProject => 'Following through a project';
+
+  @override
+  String get followInheritedTaskTitle => 'Stop following this task?';
+
+  @override
+  String followInheritedTaskBody(String project) {
+    return 'You follow the project “$project”, which includes this task. You will stop getting notifications about this task only and keep following the project.';
+  }
+
+  @override
+  String get followInheritedProjectTitle => 'Stop following this project?';
+
+  @override
+  String followInheritedProjectBody(String project) {
+    return 'You follow the parent project “$project”. You will stop getting notifications about this project only and keep following “$project”.';
+  }
+
+  @override
+  String get followInheritedConfirm => 'Stop following';
+
+  @override
+  String get projectFollowed => 'You follow this project now';
+
+  @override
+  String get projectUnfollowed => 'You no longer follow this project';
+
+  @override
+  String newTaskTreeCount(int count, int subtasks) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tasks',
+      one: '1 task',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      subtasks,
+      locale: localeName,
+      other: '$subtasks as subtasks',
+      one: '1 as a subtask',
+    );
+    return '$_temp0, $_temp1 · the first one:';
+  }
+
+  @override
+  String newTaskTreeCountOnly(int count, int subtasks) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tasks',
+      one: '1 task',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      subtasks,
+      locale: localeName,
+      other: '$subtasks as subtasks',
+      one: '1 as a subtask',
+    );
+    return '$_temp0, $_temp1';
   }
 }

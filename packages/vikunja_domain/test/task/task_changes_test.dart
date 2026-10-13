@@ -41,16 +41,27 @@ void main() {
         const TaskChanges(assignees: IdSetChange(added: {1})),
         const TaskChanges(assignees: IdSetChange(removed: {1})),
         const TaskChanges(reminders: []),
+        TaskChanges(
+          relations: RelationChange(
+            added: {const TaskRelationRef(TaskRelationKind.related, 1)},
+          ),
+        ),
+        TaskChanges(
+          relations: RelationChange(
+            removed: {const TaskRelationRef(TaskRelationKind.related, 1)},
+          ),
+        ),
       ];
 
       expect(singles.map((c) => c.isEmpty), everyElement(isFalse));
     });
 
-    test('is true with empty id-set changes', () {
+    test('is true with empty id-set and relation changes', () {
       expect(
         const TaskChanges(
           labels: IdSetChange(),
           assignees: IdSetChange(),
+          relations: RelationChange(),
         ).isEmpty,
         isTrue,
       );
@@ -231,7 +242,62 @@ void main() {
     });
   });
 
+  group('TaskChanges.merge of relations', () {
+    const parent = TaskRelationRef(TaskRelationKind.parentTask, 1);
+    const blocks = TaskRelationRef(TaskRelationKind.blocking, 2);
+
+    test('merge per edge, the later change winning', () {
+      final earlier = TaskChanges(
+        relations: RelationChange(added: {parent, blocks}),
+      );
+      final later = TaskChanges(relations: RelationChange(removed: {blocks}));
+
+      expect(
+        earlier.merge(later),
+        TaskChanges(
+          relations: RelationChange(added: {parent}, removed: {blocks}),
+        ),
+      );
+    });
+
+    test('a relation change on one side only is kept', () {
+      final relations = TaskChanges(relations: RelationChange(added: {parent}));
+
+      expect(
+        relations.merge(const TaskChanges(title: 't')).relations,
+        relations.relations,
+      );
+      expect(
+        const TaskChanges(title: 't').merge(relations).relations,
+        relations.relations,
+      );
+      expect(const TaskChanges().merge(const TaskChanges()).relations, isNull);
+    });
+  });
+
   group('equality', () {
+    test('compares relation changes by content', () {
+      const one = TaskRelationRef(TaskRelationKind.related, 1);
+      const two = TaskRelationRef(TaskRelationKind.related, 2);
+
+      expect(
+        TaskChanges(relations: RelationChange(added: {one, two})),
+        TaskChanges(relations: RelationChange(added: {two, one})),
+      );
+      expect(
+        TaskChanges(relations: RelationChange(added: {one, two})).hashCode,
+        TaskChanges(relations: RelationChange(added: {two, one})).hashCode,
+      );
+      expect(
+        TaskChanges(relations: RelationChange(added: {one})),
+        isNot(TaskChanges(relations: RelationChange(removed: {one}))),
+      );
+      expect(
+        TaskChanges(relations: RelationChange(added: {one})),
+        isNot(const TaskChanges()),
+      );
+    });
+
     test('compares every field', () {
       expect(
         TaskChanges(title: 'a', dueDate: DateChange.set(monday)),

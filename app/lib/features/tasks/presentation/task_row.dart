@@ -52,7 +52,7 @@ class TaskRow extends StatelessWidget {
 
     return ListTile(
       onTap: onTap,
-      leading: _DoneControl(done: task.done, onChanged: onDoneChanged),
+      leading: TaskDoneControl(done: task.done, onChanged: onDoneChanged),
       title: Text(
         task.title,
         style: task.done
@@ -109,8 +109,10 @@ class TaskRow extends StatelessWidget {
   }
 }
 
-class _DoneControl extends StatelessWidget {
-  const new({required this.done, required this.onChanged});
+/// The round done toggle of a task row; an indicator only without
+/// [onChanged].
+class TaskDoneControl extends StatelessWidget {
+  const new({required this.done, required this.onChanged, super.key});
 
   final bool done;
   final ValueChanged<bool>? onChanged;

@@ -107,6 +107,18 @@ final class NotFound extends VikunjaFailure {
   String toString() => 'NotFound(code: $code)';
 }
 
+/// The other task of a relation is gone. The server answers with
+/// the same 404 code 4002 as for the task itself, which this one must not
+/// be taken for: the task the relation was added to still exists.
+final class RelatedTaskMissing extends NotFound {
+  const new(this.otherTaskId, {super.message}) : super(code: 4002);
+
+  final int otherTaskId;
+
+  @override
+  String toString() => 'RelatedTaskMissing($otherTaskId)';
+}
+
 /// v1 412 with `invalid_fields`, v2 422 with `errors[]`.
 final class ValidationFailed extends VikunjaFailure {
   const new({this.fieldErrors = const {}, super.code, super.message});

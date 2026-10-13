@@ -82,6 +82,19 @@ ParsedTaskText parseTaskText(
   );
 }
 
+/// The project [parseTaskText] reads from [text], without the rest of the
+/// parse.
+String? parseQuickAddProject(
+  String text, {
+  QuickAddMagicMode mode = QuickAddMagicMode.vikunja,
+}) {
+  final prefixes = quickAddPrefixes(mode);
+  if (prefixes == null || _isQuoted(text)) return null;
+  final labels = _itemsFromPrefix(text, prefixes.label);
+  final rest = cleanupItemText(text, labels, prefixes.label);
+  return _itemsFromPrefix(rest, prefixes.project).firstOrNull;
+}
+
 /// The web's `cleanupItemText`: removes `<prefix>item` (quoted or not, with
 /// one trailing space) for each of [items], case-insensitively.
 String cleanupItemText(String text, Iterable<String> items, String prefix) {

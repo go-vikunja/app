@@ -495,7 +495,15 @@ void main() {
       ]);
       expect(tasks.updates, [
         (-1, const TaskChanges(labels: IdSetChange(added: {500}))),
-        (-2, const TaskChanges(labels: IdSetChange(added: {500}))),
+        (
+          -2,
+          TaskChanges(
+            labels: const IdSetChange(added: {500}),
+            relations: RelationChange(
+              added: {const TaskRelationRef(TaskRelationKind.parentTask, -1)},
+            ),
+          ),
+        ),
         (-3, const TaskChanges(labels: IdSetChange(added: {10}))),
       ]);
       expect(result.createdTaskIds, [-1, -2, -3]);
@@ -755,6 +763,120 @@ void main() {
 
       expect(result.createdTaskIds, isEmpty);
       expect(tasks.writes, isEmpty);
+    });
+  });
+
+  group('submit with indentation', () {
+    TaskChanges parentIs(int parent) => TaskChanges(
+      relations: RelationChange(
+        added: {TaskRelationRef(TaskRelationKind.parentTask, parent)},
+      ),
+    );
+
+    test('an indented line is a subtask of the line above: created after it '
+        'and given its parent behind both creates', () async {
+      final result = await service().submit('Parent\n  Child one\n  Child two');
+
+      expect(result.createdTaskIds, [-1, -2, -3]);
+      expect(tasks.creates.map((task) => (task.title, task.projectId)), [
+        ('Parent', 4),
+        ('Child one', 4),
+        ('Child two', 4),
+      ]);
+      expect(tasks.writes, [
+        'create -1 Parent',
+        'create -2 Child one',
+        'update -2',
+        'create -3 Child two',
+        'update -3',
+      ]);
+      expect(tasks.updates, [(-2, parentIs(-1)), (-3, parentIs(-1))]);
+    });
+
+    test('three levels: each line names the nearest line above with less '
+        'indent', () async {
+      await service().submit('A\n  B\n    C\n  D\nE\n  F');
+
+      expect(tasks.creates.map((task) => task.title), [
+        'A',
+        'B',
+        'C',
+        'D',
+        'E',
+        'F',
+      ]);
+      expect(tasks.updates, [
+        (-2, parentIs(-1)),
+        (-3, parentIs(-2)),
+        (-4, parentIs(-1)),
+        (-6, parentIs(-5)),
+      ]);
+    });
+
+    test("a subtask without a project goes into its parent line's, a "
+        'subtask with its own keeps it', () async {
+      await service().submit(
+        'Car +Garage\n  Tyres\n    Valves\n  Invoice +Work',
+        fallbackProjectId: 4,
+      );
+
+      expect(tasks.creates.map((task) => (task.title, task.projectId)), [
+        ('Car', 3),
+        ('Tyres', 3),
+        ('Valves', 3),
+        ('Invoice', 5),
+      ]);
+    });
+
+    test('a parent project nothing matches leaves the subtask in the '
+        'fallback, like the parent', () async {
+      await service().submit('Car +Nowhere\n  Tyres', fallbackProjectId: 3);
+
+      expect(tasks.creates.map((task) => (task.title, task.projectId)), [
+        ('Car +Nowhere', 3),
+        ('Tyres', 3),
+      ]);
+    });
+
+    test('labels and the parent go in one update', () async {
+      await service().submit('Parent\n  Child *Wichtig');
+
+      expect(tasks.updates, [
+        (
+          -2,
+          TaskChanges(
+            labels: const IdSetChange(added: {10}),
+            relations: RelationChange(
+              added: {const TaskRelationRef(TaskRelationKind.parentTask, -1)},
+            ),
+          ),
+        ),
+      ]);
+    });
+
+    test('the lines left after a failure keep their tree; a child of a '
+        'created line starts its own', () async {
+      tasks.beforeWrite = () async {
+        if (tasks.creates.length == 3) throw StateError('database');
+      };
+
+      final failure = await service()
+          .submit('A\n  B\n    C\n      D\n  E\n    F')
+          .then<Object?>((_) => null, onError: (Object error) => error);
+
+      expect(
+        failure,
+        isA<QuickAddPartlyFailed>()
+            .having((f) => f.createdTaskIds, 'created', [-1, -2])
+            .having((f) => f.remainingText, 'remaining', 'C\n  D\nE\n  F'),
+      );
+    });
+
+    test('a single indented line is one task as typed', () async {
+      await service().submit('   Alone');
+
+      expect(tasks.creates.single.title, 'Alone');
+      expect(tasks.updates, isEmpty);
     });
   });
 
