@@ -40,6 +40,11 @@ final class FakeSyncClient implements VikunjaReadClient {
   late final FakeTasksPort tasks = FakeTasksPort(this);
   @override
   late final FakeUsersPort users = FakeUsersPort(this);
+  @override
+  late final FakeNotificationsPort notifications = FakeNotificationsPort(this);
+
+  /// The server's notifications for the user, newest first.
+  List<ServerNotification> serverNotifications = [];
 
   /// The users with access per project, for the assignee search.
   final Map<int, List<User>> projectUsers = {};
@@ -362,5 +367,21 @@ final class FakeUsersPort implements UsersPort {
             user.name.toLowerCase().contains(needle))
           user,
     ];
+  }
+}
+
+final class FakeNotificationsPort implements NotificationsPort {
+  new(this._client);
+
+  final FakeSyncClient _client;
+
+  @override
+  Future<Page<ServerNotification>> list({int page = 1, int? perPage}) async {
+    await _client._request('notifications $page');
+    return _client._page(
+      _client.serverNotifications,
+      page: page,
+      perPage: perPage,
+    );
   }
 }

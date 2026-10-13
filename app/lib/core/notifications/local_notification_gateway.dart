@@ -22,6 +22,8 @@ final class LocalNotificationTexts {
     required this.markDone,
     required this.snooze10Minutes,
     required this.snooze1Hour,
+    required this.activityChannelName,
+    required this.activityChannelDescription,
   });
 
   final String channelName;
@@ -29,6 +31,8 @@ final class LocalNotificationTexts {
   final String markDone;
   final String snooze10Minutes;
   final String snooze1Hour;
+  final String activityChannelName;
+  final String activityChannelDescription;
 }
 
 typedef NotificationResponseCallback = void Function(
@@ -53,6 +57,10 @@ final class LocalNotificationGateway implements NotificationGateway {
   }) : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
 
   static const channelId = 'reminders';
+
+  /// Comments, assignments, mentions and the "Sign in again" notice: less
+  /// urgent than a reminder, and without the task actions.
+  static const activityChannelId = 'activity';
 
   /// iOS keeps a category's actions until the app is reinstalled, so a
   /// change to the actions needs a new identifier.
@@ -139,6 +147,13 @@ final class LocalNotificationGateway implements NotificationGateway {
         _texts.channelName,
         description: _texts.channelDescription,
         importance: Importance.high,
+      ),
+    );
+    await _android?.createNotificationChannel(
+      AndroidNotificationChannel(
+        activityChannelId,
+        _texts.activityChannelName,
+        description: _texts.activityChannelDescription,
       ),
     );
   }
@@ -277,6 +292,54 @@ final class LocalNotificationGateway implements NotificationGateway {
       title: title,
       body: body,
       notificationDetails: _details(),
+      payload: payload,
+    );
+  }
+
+  @override
+  Future<List<DeliveredNotification>> delivered() async {
+    await initialize();
+    return [
+      for (final notification in await _plugin.getActiveNotifications())
+        if (notification.id case final id?)
+          (osId: id, payload: notification.payload),
+    ];
+  }
+
+  @override
+  Future<void> showActivity({
+    required int osId,
+    required String title,
+    required String body,
+    required String payload,
+    String? subtitle,
+    String? group,
+  }) async {
+    await initialize();
+    await _plugin.show(
+      id: osId,
+      title: title,
+      body: body,
+      notificationDetails: NotificationDetails(
+        android: AndroidNotificationDetails(
+          activityChannelId,
+          _texts.activityChannelName,
+          channelDescription: _texts.activityChannelDescription,
+          category: AndroidNotificationCategory.social,
+          // A comment's first line rarely fits the collapsed view.
+          styleInformation: BigTextStyleInformation(body),
+          subText: subtitle,
+          groupKey: group,
+        ),
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBanner: true,
+          presentList: true,
+          presentSound: true,
+          subtitle: subtitle,
+          threadIdentifier: group,
+        ),
+      ),
       payload: payload,
     );
   }

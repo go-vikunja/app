@@ -28,13 +28,19 @@ final class StoredNotificationPreferences
     final json = await _store.getString(keyFor(accountId));
     if (json == null) return const NotificationPreferences();
     try {
-      if (jsonDecode(json) case {
+      final decoded = jsonDecode(json);
+      if (decoded case {
         'reminders': final bool reminders,
         'dueDates': final bool dueDates,
       }) {
         return NotificationPreferences(
           reminders: reminders,
           dueDates: dueDates,
+          // Stored before step 16 without the key: on, like a new account.
+          activity: switch (decoded) {
+            {'activity': final bool activity} => activity,
+            _ => true,
+          },
         );
       }
     } on FormatException {
@@ -54,6 +60,7 @@ final class StoredNotificationPreferences
       jsonEncode({
         'reminders': preferences.reminders,
         'dueDates': preferences.dueDates,
+        'activity': preferences.activity,
       }),
     );
     if (!_changes.isClosed) _changes.add((accountId, preferences));

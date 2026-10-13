@@ -18,12 +18,14 @@ typedef TimerFactory = Timer Function(
 /// resume when the last run is older than [interval]. Consecutive network
 /// failures double the wait up to [maxInterval]; a completed run resets it.
 /// A run in progress is never doubled: the timer waits for its end, which
-/// starts the next wait.
+/// starts the next wait. `onForeground` hears the start, every resume and
+/// every tick of the timer (`timed`), whether a sync runs or not.
 final class ForegroundSyncScheduler {
   new({
     required this._engine,
     required this._clock,
     this._createTimer = Timer.new,
+    this._onForeground,
     this.interval = const Duration(seconds: 60),
     this.maxInterval = const Duration(minutes: 5),
   }) : _wait = interval {
@@ -33,6 +35,7 @@ final class ForegroundSyncScheduler {
   final SyncEngine _engine;
   final DateTime Function() _clock;
   final TimerFactory _createTimer;
+  final void Function({required bool timed})? _onForeground;
   final Duration interval;
   final Duration maxInterval;
 
@@ -52,6 +55,7 @@ final class ForegroundSyncScheduler {
   void start() {
     if (_disposed) return;
     _active = true;
+    _onForeground?.call(timed: false);
     _arm(_wait);
   }
 
@@ -62,6 +66,7 @@ final class ForegroundSyncScheduler {
   void onResume() {
     if (_disposed || _active) return;
     _active = true;
+    _onForeground?.call(timed: false);
     if (_engine.currentStatus is SyncRunning) return;
     final sinceLastRun = switch (_lastRunEndedAt) {
       final endedAt? => _clock().difference(endedAt),
@@ -115,6 +120,7 @@ final class ForegroundSyncScheduler {
   void _onTimer() {
     _timer = null;
     if (!_active) return;
+    _onForeground?.call(timed: true);
     // Started by someone else; its end arms the next wait.
     if (_engine.currentStatus is SyncRunning) return;
     _log.fine('Timed sync after $_wait');

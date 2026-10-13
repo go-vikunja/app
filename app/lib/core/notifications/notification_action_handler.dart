@@ -7,8 +7,10 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart'
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:logging/logging.dart';
+import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/auth/session_manager.dart';
+import 'package:vikunja_mobile/core/background/background_providers.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/network/client_identity.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
@@ -64,6 +66,7 @@ Future<void> handleNotificationAction(NotificationResponse response) async {
 /// op stays queued for the app to send.
 final List<Override> backgroundActionOverrides = [
   sessionManagersProvider.overrideWith(_nonRefreshingSessionManagers),
+  runsHeadlessProvider.overrideWithValue(true),
 ];
 
 SessionManagers _nonRefreshingSessionManagers(Ref ref) {
@@ -160,6 +163,7 @@ final class NotificationActionHandler {
       final sender = _container.read(outboxSenderProvider(payload.accountId));
       try {
         await sender.drain().timeout(drainTimeout);
+        if (sender.blockedBy is TokenRejected) await _enqueueDrain(payload);
       } on TimeoutException {
         _log.info(
           'The done of task ${payload.taskId} is still on its way after '
@@ -170,6 +174,21 @@ final class NotificationActionHandler {
       repository.close();
     }
     _log.fine('Marked task ${payload.taskId} done from its notification');
+  }
+
+  /// The access token had expired, and this isolate never refreshes: a
+  /// background run that may refresh sends the op within minutes instead
+  /// of at the next app start (Android; a no-op on iOS).
+  Future<void> _enqueueDrain(NotificationPayload payload) async {
+    try {
+      await _container.read(backgroundSchedulerProvider).enqueueDrain();
+      _log.info(
+        'The done of task ${payload.taskId} waits for a token refresh; '
+        'a background drain is queued',
+      );
+    } on Object catch (error) {
+      _log.warning('Could not queue a background drain: ${error.runtimeType}');
+    }
   }
 
   /// Before the drain, so the OS is told while the isolate is sure to run;

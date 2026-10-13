@@ -82,6 +82,8 @@ LocalNotificationTexts localNotificationTexts(AppLocalizations l10n) =>
       markDone: l10n.notificationActionDone,
       snooze10Minutes: l10n.notificationActionSnooze10Minutes,
       snooze1Hour: l10n.notificationActionSnooze1Hour,
+      activityChannelName: l10n.notificationChannelActivity,
+      activityChannelDescription: l10n.notificationChannelActivityDescription,
     );
 
 /// Where an isolate that resolved the device locale notes its tag, for one

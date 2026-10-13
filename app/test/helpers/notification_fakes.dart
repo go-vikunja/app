@@ -68,6 +68,7 @@ final class FakeNotificationGateway implements NotificationGateway {
     await _call('cancel $osId');
     cancelled.add(osId);
     pending.remove(osId);
+    tray.remove(osId);
   }
 
   @override
@@ -85,6 +86,51 @@ final class FakeNotificationGateway implements NotificationGateway {
   }) async {
     await _call('showNow $osId');
     shown.add((osId: osId, title: title, body: body, payload: payload));
+  }
+
+  final List<
+    ({
+      int osId,
+      String title,
+      String body,
+      String payload,
+      String? subtitle,
+      String? group,
+    })
+  >
+  activities = [];
+
+  /// What the tray holds: shown activity notifications until cancelled.
+  final Map<int, String?> tray = {};
+
+  @override
+  Future<List<DeliveredNotification>> delivered() async {
+    await _call('delivered');
+    return [
+      for (final MapEntry(:key, :value) in tray.entries)
+        (osId: key, payload: value),
+    ];
+  }
+
+  @override
+  Future<void> showActivity({
+    required int osId,
+    required String title,
+    required String body,
+    required String payload,
+    String? subtitle,
+    String? group,
+  }) async {
+    await _call('showActivity $osId');
+    activities.add((
+      osId: osId,
+      title: title,
+      body: body,
+      payload: payload,
+      subtitle: subtitle,
+      group: group,
+    ));
+    tray[osId] = payload;
   }
 }
 

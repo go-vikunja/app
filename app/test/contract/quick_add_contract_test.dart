@@ -34,6 +34,9 @@ final class _SwitchableWriteClient implements VikunjaWriteClient {
   @override
   late final LabelsWritePort labels = _SwitchableLabels(this);
 
+  @override
+  NotificationsWritePort get notifications => _real.notifications;
+
   void _check() {
     if (offline) throw const NetworkFailure(NetworkProblem.unreachable);
   }

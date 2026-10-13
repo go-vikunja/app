@@ -9,13 +9,15 @@ import 'package:vikunja_mobile/core/sync/sync_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_message.dart';
+import 'package:vikunja_mobile/features/home/presentation/background_sync_line.dart';
 import 'package:vikunja_mobile/features/sync/presentation/sync_phase_label.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/relative_time.dart';
 
-/// When the account was last synced, what went wrong if the last run
-/// failed, a button for a sync right now and one for a full resync. The
-/// buttons rest during a sign-out, whose wipe a run would race, and for a
-/// session that ended, which the banner above asks to renew.
+/// When the account was last synced, in front and in the background, what
+/// went wrong if the last run failed, a button for a sync right now and one
+/// for a full resync. The buttons rest during a sign-out, whose wipe a run
+/// would race, and for a session that ended, which the banner above asks
+/// to renew.
 class SyncStatusSection extends ConsumerWidget {
   const new({required this.entry, required this.signingOut, super.key});
 
@@ -121,6 +123,7 @@ class SyncStatusSection extends ConsumerWidget {
                         ],
                       ),
                     ),
+                  BackgroundSyncLine(accountId: entry.id),
                 ],
               ),
             ),

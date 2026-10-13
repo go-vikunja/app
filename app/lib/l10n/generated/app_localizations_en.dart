@@ -1203,6 +1203,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get accountFullResync => 'Full resync';
 
   @override
+  String accountBackgroundSync(String when) {
+    return 'Background sync: $when';
+  }
+
+  @override
+  String get accountBackgroundSyncJustNow => 'Background sync: just now';
+
+  @override
+  String get accountBackgroundSyncNever => 'Background sync has not run yet';
+
+  @override
+  String get accountBackgroundSyncIosHint =>
+      'iOS decides when apps may sync in the background.';
+
+  @override
   String get taskMarkDone => 'Mark done';
 
   @override
@@ -1912,6 +1927,136 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get inboxTitle => 'Notifications';
+
+  @override
+  String inboxButton(int count) {
+    final intl.NumberFormat countNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String countString = countNumberFormat.format(count);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Notifications, $countString unread',
+      one: 'Notifications, 1 unread',
+      zero: 'Notifications',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get inboxLoading => 'Loading notifications…';
+
+  @override
+  String get inboxEmptyTitle => 'You’re all caught up';
+
+  @override
+  String get inboxEmptyBody =>
+      'Comments, assignments and mentions from your Vikunja server show up here.';
+
+  @override
+  String get inboxMarkAllRead => 'Mark all as read';
+
+  @override
+  String get inboxToday => 'Today';
+
+  @override
+  String get inboxYesterday => 'Yesterday';
+
+  @override
+  String get inboxEarlier => 'Earlier';
+
+  @override
+  String get inboxUnread => 'Unread';
+
+  @override
+  String get inboxTaskNotLocal => 'This task is not on this device';
+
+  @override
+  String get inboxProjectNotLocal => 'This project is not on this device';
+
+  @override
+  String get inboxSomeone => 'Someone';
+
+  @override
+  String get inboxATask => 'a task';
+
+  @override
+  String get inboxUnnamed => 'unnamed';
+
+  @override
+  String inboxCommented(String doer, String task) {
+    return '$doer commented on $task';
+  }
+
+  @override
+  String inboxAssignedYou(String doer, String task) {
+    return '$doer assigned you to $task';
+  }
+
+  @override
+  String inboxAssigned(String doer, String assignee, String task) {
+    return '$doer assigned $assignee to $task';
+  }
+
+  @override
+  String inboxAssignedSomeone(String doer, String task) {
+    return '$doer assigned someone to $task';
+  }
+
+  @override
+  String inboxMentioned(String doer, String task) {
+    return '$doer mentioned you on $task';
+  }
+
+  @override
+  String inboxTaskCreated(String doer, String task) {
+    return '$doer created $task';
+  }
+
+  @override
+  String inboxTaskDeleted(String doer, String task) {
+    return '$doer deleted $task';
+  }
+
+  @override
+  String inboxProjectCreated(String doer, String project) {
+    return '$doer created $project';
+  }
+
+  @override
+  String inboxAddedYouToTeam(String doer, String team) {
+    return '$doer added you to the $team team';
+  }
+
+  @override
+  String inboxAddedToTeam(String doer, String member, String team) {
+    return '$doer added $member to the $team team';
+  }
+
+  @override
+  String inboxAddedSomeoneToTeam(String doer, String team) {
+    return '$doer added someone to the $team team';
+  }
+
+  @override
+  String get inboxTaskWasDeleted => 'This task was deleted';
+
+  @override
+  String inboxReminder(String task) {
+    return 'Reminder for $task';
+  }
+
+  @override
+  String get inboxOther => 'New notification';
+
+  @override
+  String inboxQuoted(String text) {
+    return '“$text”';
+  }
+
+  @override
   String get notificationSetupTitle => 'Stay on top of your tasks';
 
   @override
@@ -1963,6 +2108,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notificationsDueDatesSubtitle => 'At the exact due time';
 
   @override
+  String get notificationsActivity => 'Activity';
+
+  @override
+  String get notificationsActivitySubtitle =>
+      'Comments, assignments and mentions';
+
+  @override
   String get notificationsOff => 'Notifications are off';
 
   @override
@@ -2011,6 +2163,109 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get notificationChannelRemindersDescription =>
       'Reminders and due dates of your tasks';
+
+  @override
+  String get notificationChannelActivity => 'Activity';
+
+  @override
+  String get notificationChannelActivityDescription =>
+      'Comments, assignments and mentions from your Vikunja servers';
+
+  @override
+  String activityNotificationCommented(String name, String comment) {
+    return '$name commented: $comment';
+  }
+
+  @override
+  String activityNotificationCommentedNoText(String name) {
+    return '$name commented';
+  }
+
+  @override
+  String activityNotificationAssignedYou(String name) {
+    return '$name assigned you';
+  }
+
+  @override
+  String activityNotificationAssignedOther(String name, String assignee) {
+    return '$name assigned $assignee';
+  }
+
+  @override
+  String activityNotificationAssignedSomeone(String name) {
+    return '$name assigned someone to this task';
+  }
+
+  @override
+  String activityNotificationMentioned(String name) {
+    return '$name mentioned you';
+  }
+
+  @override
+  String activityNotificationTaskCreated(String name, String project) {
+    return '$name created this task in $project';
+  }
+
+  @override
+  String activityNotificationTaskCreatedNoProject(String name) {
+    return '$name created this task';
+  }
+
+  @override
+  String activityNotificationTaskDeleted(String name) {
+    return '$name deleted this task';
+  }
+
+  @override
+  String activityNotificationProjectCreated(String name, String project) {
+    return '$name created the project $project';
+  }
+
+  @override
+  String activityNotificationTeamAddedYou(String name, String team) {
+    return '$name added you to the team $team';
+  }
+
+  @override
+  String activityNotificationTeamAddedOther(
+    String name,
+    String member,
+    String team,
+  ) {
+    return '$name added $member to the team $team';
+  }
+
+  @override
+  String activityNotificationTeamAddedSomeone(String name, String team) {
+    return '$name added someone to the team $team';
+  }
+
+  @override
+  String get activityNotificationMoreTitle => 'More activity';
+
+  @override
+  String activityNotificationMoreBody(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count more new notifications',
+      one: '1 more new notification',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get activityNotificationUntitled => 'Vikunja';
+
+  @override
+  String sessionEndedNotificationTitle(String host) {
+    return 'Sign in again to $host';
+  }
+
+  @override
+  String sessionEndedNotificationBody(String username) {
+    return 'Your session as $username has ended. Rurana cannot sync this account until you sign in again.';
+  }
 
   @override
   String get notificationActionDone => 'Done';

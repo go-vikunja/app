@@ -42,9 +42,20 @@ abstract interface class LabelsWritePort {
   Future<Label> create(NewLabel label);
 }
 
+abstract interface class NotificationsWritePort {
+  /// v2 `PUT /notifications/{id}`, v1 `POST /notifications/{id}`, body
+  /// `{read}`. A notification that is gone (403, or a 404 with a Vikunja
+  /// code) counts as done and does not throw.
+  Future<void> markRead(int id, {bool read = true});
+
+  /// `POST /notifications` on both versions.
+  Future<void> markAllRead();
+}
+
 abstract interface class VikunjaWriteClient {
   TasksWritePort get tasks;
   LabelsWritePort get labels;
+  NotificationsWritePort get notifications;
 }
 
 /// [dio] is an authenticated client from `createAuthenticatedDio`; the

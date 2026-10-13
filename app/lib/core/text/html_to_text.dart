@@ -10,6 +10,13 @@ final _checklistItem = RegExp(
   caseSensitive: false,
 );
 final _listItem = RegExp(r'<li\b[^>]*>', caseSensitive: false);
+// A mention carries its name only in attributes; the element is empty.
+final _mention = RegExp(
+  r'<mention-user\b[^>]*>[^<]*</mention-user\s*>',
+  caseSensitive: false,
+);
+final _mentionLabel = RegExp('data-label="([^"]*)"', caseSensitive: false);
+final _mentionId = RegExp('data-id="([^"]*)"', caseSensitive: false);
 final _blockEnd = RegExp(
   r'</(p|div|h[1-6]|li|tr|blockquote|pre|ul|ol|table)\s*>',
   caseSensitive: false,
@@ -40,6 +47,7 @@ String htmlToPlainText(String html) {
         (match) => match.group(1) == 'true' ? '☑ ' : '☐ ',
       )
       .replaceAll(_listItem, '• ')
+      .replaceAllMapped(_mention, (match) => '@${_mentionName(match[0]!)}')
       .replaceAll(_blockEnd, '\n')
       .replaceAll(_tag, '')
       .replaceAllMapped(_entity, (match) => _decodeEntity(match.group(1)!));
@@ -48,6 +56,11 @@ String htmlToPlainText(String html) {
       .replaceAll(_blankLines, '\n\n')
       .trim();
 }
+
+String _mentionName(String element) =>
+    _mentionLabel.firstMatch(element)?.group(1) ??
+    _mentionId.firstMatch(element)?.group(1) ??
+    '';
 
 String _decodeEntity(String name) {
   if (name.startsWith('#x') || name.startsWith('#X')) {

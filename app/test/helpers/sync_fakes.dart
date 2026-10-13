@@ -2,9 +2,12 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/misc.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/activity/activity_providers.dart';
+import 'package:vikunja_mobile/core/activity/foreground_activity.dart';
 import 'package:vikunja_mobile/core/db/account_database_files.dart';
 import 'package:vikunja_mobile/core/outbox/pending_task_ids_source.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
+import 'package:vikunja_mobile/core/repositories/activity_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/paged_list.dart';
 import 'package:vikunja_mobile/core/repositories/project_repository.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
@@ -14,6 +17,7 @@ import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/accounts/application/account_switcher.dart';
 import 'package:vikunja_mobile/features/sync/application/inactive_outboxes.dart';
 
+import 'activity_fakes.dart';
 import 'task_edits.dart';
 
 /// Replays [current] to every subscriber when it has one, then forwards
@@ -552,6 +556,7 @@ final class AccountDataFakes {
   late final FakeSyncEngine engine;
   late final FakeProjectRepository projects;
   late final FakeTaskRepository tasks;
+  final activity = FakeActivityRepository();
 }
 
 /// The data layer under the screens, without a database: every account
@@ -575,6 +580,7 @@ final class SyncFakes {
   FakeSyncEngine get engine => shared.engine;
   FakeProjectRepository get projects => shared.projects;
   FakeTaskRepository get tasks => shared.tasks;
+  FakeActivityRepository get activity => shared.activity;
 
   AccountDataFakes forAccount(String accountId) =>
       accounts[accountId] ?? shared;
@@ -590,6 +596,14 @@ final class SyncFakes {
     ),
     accountTaskRepositoryProvider.overrideWith(
       (ref, accountId) => forAccount(accountId).tasks,
+    ),
+    accountActivityRepositoryProvider.overrideWith(
+      (ref, accountId) => forAccount(accountId).activity,
+    ),
+    // The real one syncs the activity on the foreground ticks, which opens
+    // the inactive accounts' databases.
+    foregroundActivityProvider.overrideWithValue(
+      ForegroundActivity(syncActive: () async {}, syncInactive: () async {}),
     ),
     // The real one opens the account's database.
     accountPendingChangesProvider.overrideWith(

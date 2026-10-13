@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:vikunja_mobile/core/activity/activity_providers.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
@@ -30,6 +31,8 @@ ForegroundSyncScheduler? foregroundSyncScheduler(Ref ref) {
   final scheduler = ForegroundSyncScheduler(
     engine: ref.watch(syncEngineProvider(accountId)),
     clock: ref.watch(clockProvider),
+    // The activity sync rides on its ticks (step 16).
+    onForeground: ref.watch(foregroundActivityProvider).onForeground,
   );
   var listened = true;
   bool inFront() => switch (WidgetsBinding.instance.lifecycleState) {

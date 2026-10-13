@@ -17,13 +17,48 @@ final class WriteClient implements VikunjaWriteClient {
 
   new _(_WriteTransport transport)
     : tasks = _TasksWriteApi(transport),
-      labels = _LabelsWriteApi(transport);
+      labels = _LabelsWriteApi(transport),
+      notifications = _NotificationsWriteApi(transport);
 
   @override
   final TasksWritePort tasks;
 
   @override
   final LabelsWritePort labels;
+
+  @override
+  final NotificationsWritePort notifications;
+}
+
+final class _NotificationsWriteApi implements NotificationsWritePort {
+  new(this._transport);
+
+  final _WriteTransport _transport;
+
+  @override
+  Future<void> markRead(int id, {bool read = true}) async {
+    try {
+      await _transport.send(
+        switch (_transport.version) {
+          ApiVersion.v2 => 'PUT',
+          ApiVersion.v1 => 'POST',
+        },
+        '/notifications/$id',
+        body: {'read': read},
+      );
+    } on Forbidden {
+      // 2.7.0 answers 403, not 404, for an id that is not the caller's
+      // notification, which for an id from the caller's own list means it
+      // was deleted.
+    } on NotFound catch (failure) {
+      if (failure.routeAbsent) rethrow;
+    }
+  }
+
+  @override
+  Future<void> markAllRead() async {
+    await _transport.send('POST', '/notifications');
+  }
 }
 
 final class _LabelsWriteApi implements LabelsWritePort {

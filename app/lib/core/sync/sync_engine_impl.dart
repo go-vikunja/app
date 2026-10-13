@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:logging/logging.dart';
@@ -30,6 +31,16 @@ typedef CurrentUserSource = Future<UserWithSettings> Function();
 /// serialized: a call joins the run in progress, except that a full run
 /// asked for during an incremental one follows it.
 ///
+/// Engines of the same account in other isolates (a background run, a
+/// notification action) share the database, so a run first takes the
+/// account's lease in `sync_state` and renews it as it goes: a full run
+/// purges every task it did not mark, and would otherwise delete the ones
+/// another run marked meanwhile. The app's engine waits for a lease
+/// another isolate holds, a [headless] one ends its run without syncing;
+/// the winner adopts the stored state the other run left. A run that finds
+/// its lease taken (it stalled past [leaseDuration]) stops quietly, and
+/// purges nothing.
+///
 /// The first status event arrives once the stored state has been read; the
 /// stream replays the current status to every subscriber after that.
 final class DefaultSyncEngine implements SyncEngine {
@@ -39,8 +50,11 @@ final class DefaultSyncEngine implements SyncEngine {
     required int perPage,
     this._currentUser,
     DateTime Function()? now,
+    this.headless = false,
+    Future<void> Function(Duration duration)? delay,
   }) : _perPage = perPage,
-       _now = now ?? DateTime.now {
+       _now = now ?? DateTime.now,
+       _delay = delay ?? Future<void>.delayed {
     if (perPage < 1) throw ArgumentError.value(perPage, 'perPage');
     _ready = _restore();
   }
@@ -50,7 +64,16 @@ final class DefaultSyncEngine implements SyncEngine {
   final int _perPage;
   final CurrentUserSource? _currentUser;
   final DateTime Function() _now;
+  final Future<void> Function(Duration duration) _delay;
+
+  /// In a container the OS started without the app: a refresh is always
+  /// incremental once a run has completed, because a background run has
+  /// seconds to minutes and the daily full pull would start over every
+  /// time (the app runs it when it is in front), and a run another isolate
+  /// holds is not waited for.
+  final bool headless;
   final _random = Random();
+  late final String _leaseOwner = _newRunId();
   // Synchronous, so a status has reached its subscribers once the run's
   // future resolves.
   final _changes = StreamController<SyncStatus>.broadcast(sync: true);
@@ -71,6 +94,13 @@ final class DefaultSyncEngine implements SyncEngine {
   /// The watermark of an account without tasks: an incremental run then
   /// asks for everything, which is nothing.
   static final watermarkFloor = DateTime.utc(1970);
+
+  /// Longer than any gap between two renewals (a page request with its
+  /// timeouts); a lease past it belongs to a run that died.
+  static const leaseDuration = Duration(minutes: 3);
+
+  /// How often the app's engine looks again while another isolate syncs.
+  static const leasePoll = Duration(seconds: 2);
 
   late Future<void> _ready;
   SyncStatus _status = const SyncNeverRun();
@@ -102,15 +132,26 @@ final class DefaultSyncEngine implements SyncEngine {
   Future<void> ensureInitialSync() async {
     await _ensureRestored();
     if (_lastSyncedAt != null) return;
-    return await _join(() => _runFull(resume: true), full: true);
+    return await _join(
+      () => _leased(
+        () async => _lastSyncedAt == null ? await _runFull(resume: true) : null,
+      ),
+      full: true,
+    );
   }
 
+  /// What a run stored in another isolate meanwhile is adopted with the
+  /// lease; a full pull that became due while waiting for it runs instead.
   @override
   Future<void> refresh() async {
     await _ensureRestored();
     final full = !_canRunIncrementally;
     return await _join(
-      full ? () => _runFull(resume: false) : _runIncremental,
+      () => _leased(
+        () => full || !_canRunIncrementally
+            ? _runFull(resume: false)
+            : _runIncremental(),
+      ),
       full: full,
     );
   }
@@ -118,7 +159,10 @@ final class DefaultSyncEngine implements SyncEngine {
   @override
   Future<void> fullResync() async {
     await _ensureRestored();
-    return await _join(() => _runFull(resume: false), full: true);
+    return await _join(
+      () => _leased(() => _runFull(resume: false)),
+      full: true,
+    );
   }
 
   @override
@@ -128,12 +172,98 @@ final class DefaultSyncEngine implements SyncEngine {
   }
 
   /// Not before the first run completed, not from a state written before
-  /// incremental sync existed, and not once the last full run is a day old.
+  /// incremental sync existed, and, unless [headless], not once the last
+  /// full run is a day old.
   bool get _canRunIncrementally {
     if (_lastSyncedAt == null || _watermark == null) return false;
     final lastFull = _lastFullSyncAt;
     if (lastFull == null) return false;
-    return _now().toUtc().difference(lastFull) < fullResyncInterval;
+    return headless || _now().toUtc().difference(lastFull) < fullResyncInterval;
+  }
+
+  Future<void> _leased(Future<void> Function() run) async {
+    try {
+      if (!await _acquireLease()) return;
+    } on _Disposed {
+      return;
+    }
+    try {
+      await run();
+    } finally {
+      await _releaseLease();
+    }
+  }
+
+  /// False when a [headless] engine finds the lease held elsewhere.
+  Future<bool> _acquireLease() async {
+    var waited = false;
+    while (true) {
+      _checkDisposed();
+      final taken = await _db.transaction(() async {
+        final state = await _db.syncStateDao.readAll();
+        if (_heldElsewhere(state)) return false;
+        await _db.syncStateDao.write(_leaseState());
+        _adopt(state);
+        return true;
+      });
+      if (taken) return true;
+      if (headless) {
+        _log.info('Another sync of this account is running; not this one');
+        return false;
+      }
+      if (!waited) _log.info('Waiting for a sync of this account elsewhere');
+      waited = true;
+      await _delay(leasePoll);
+    }
+  }
+
+  /// Inside the transaction of a write that belongs to the run: renews the
+  /// lease, or ends the run when another one has taken it.
+  Future<void> _holdLease() async {
+    final state = await _db.syncStateDao.readAll();
+    if (_heldElsewhere(state)) throw const _LeaseLost();
+    await _db.syncStateDao.write(_leaseState());
+  }
+
+  Future<void> _releaseLease() async {
+    try {
+      await _db.transaction(() async {
+        final state = await _db.syncStateDao.readAll();
+        if (_SyncLease.parse(state[SyncStateKeys.syncLease])?.owner !=
+            _leaseOwner) {
+          return;
+        }
+        await _db.syncStateDao.write({SyncStateKeys.syncLease: null});
+      });
+    } on Object catch (error) {
+      // Disposed with its database: the lease runs out by itself.
+      _log.fine('Sync lease not released: ${error.runtimeType}');
+    }
+  }
+
+  /// A lease further ahead than one [leaseDuration] was written by a clock
+  /// that has gone back since, and counts as run out.
+  bool _heldElsewhere(Map<String, String> state) {
+    final lease = _SyncLease.parse(state[SyncStateKeys.syncLease]);
+    if (lease == null || lease.owner == _leaseOwner) return false;
+    final now = _now().toUtc();
+    return lease.until.isAfter(now) &&
+        !lease.until.isAfter(now.add(leaseDuration));
+  }
+
+  Map<String, String> _leaseState() => {
+    SyncStateKeys.syncLease: _SyncLease(
+      owner: _leaseOwner,
+      until: _now().toUtc().add(leaseDuration),
+    ).encode(),
+  };
+
+  /// The state as the last run of any isolate left it.
+  void _adopt(Map<String, String> state) {
+    _lastSyncedAt = _stored(state, SyncStateKeys.lastSyncedAt);
+    _lastFullSyncAt = _stored(state, SyncStateKeys.lastFullSyncAt);
+    _watermark = _stored(state, SyncStateKeys.watermark);
+    _checkpoint = SyncCheckpoint.fromState(state);
   }
 
   /// A full run joins only a full run: joining an incremental one would
@@ -201,6 +331,7 @@ final class DefaultSyncEngine implements SyncEngine {
       runId: runId,
       since: _watermark!.subtract(catchUpOverlap),
       checkActive: _checkDisposed,
+      keepLease: () => _db.transaction(_holdLease),
       report: (phase, {done = 0, total}) => _emit(
         SyncRunning(phase: phase, done: done, total: total, initial: false),
       ),
@@ -219,7 +350,10 @@ final class DefaultSyncEngine implements SyncEngine {
       _emit(
         const SyncRunning(phase: SyncPhase.finishing, done: 0, initial: false),
       );
-      await _writeCompletion(finishedAt, full: false);
+      await _db.transaction(() async {
+        await _holdLease();
+        await _writeCompletion(finishedAt, full: false);
+      });
       _log.info('Sync run $runId done');
       _emit(SyncIdle(lastSyncedAt: finishedAt));
     });
@@ -262,6 +396,13 @@ final class DefaultSyncEngine implements SyncEngine {
     try {
       await body();
     } on _Disposed {
+      return;
+    } on _LeaseLost {
+      _log.info('Sync run $runId stopped: another run took over');
+      _emit(switch (_lastSyncedAt) {
+        final at? => SyncIdle(lastSyncedAt: at),
+        null => const SyncNeverRun(),
+      });
       return;
     } on VikunjaFailure catch (failure) {
       _fail(failure, runId, phaseName());
@@ -310,9 +451,10 @@ final class DefaultSyncEngine implements SyncEngine {
   Future<SyncCheckpoint> _syncProjects(SyncCheckpoint checkpoint) async {
     var current = checkpoint;
     final byId = await collectPages<Project>(
-      fetch: (page) {
+      fetch: (page) async {
         _checkDisposed();
-        return _client.projects.list(
+        await _db.transaction(_holdLease);
+        return await _client.projects.list(
           page: page,
           perPage: _perPage,
           includeArchived: true,
@@ -337,9 +479,10 @@ final class DefaultSyncEngine implements SyncEngine {
   Future<SyncCheckpoint> _syncLabels(SyncCheckpoint checkpoint) async {
     var current = checkpoint;
     final byId = await collectPages<Label>(
-      fetch: (page) {
+      fetch: (page) async {
         _checkDisposed();
-        return _client.labels.list(page: page, perPage: _perPage);
+        await _db.transaction(_holdLease);
+        return await _client.labels.list(page: page, perPage: _perPage);
       },
       idOf: (label) => label.id,
       onPage: (collected, page) {
@@ -419,6 +562,7 @@ final class DefaultSyncEngine implements SyncEngine {
     _checkDisposed();
     final finishedAt = _now().toUtc();
     final purged = await _db.transaction(() async {
+      await _holdLease();
       final purged = await _db.tasksDao.purgeNotInRun(caughtUp.runId);
       await _writeCompletion(finishedAt, full: true);
       return purged;
@@ -567,7 +711,10 @@ final class DefaultSyncEngine implements SyncEngine {
 
   Future<void> _save(SyncCheckpoint checkpoint) async {
     _checkDisposed();
-    await _db.syncStateDao.write(checkpoint.toState());
+    await _db.transaction(() async {
+      await _holdLease();
+      await _db.syncStateDao.write(checkpoint.toState());
+    });
     _checkpoint = checkpoint;
   }
 
@@ -607,4 +754,35 @@ final class DefaultSyncEngine implements SyncEngine {
 /// Ends a run quietly after `dispose()`.
 final class _Disposed implements Exception {
   const new();
+}
+
+/// Ends a run quietly whose lease another run took.
+final class _LeaseLost implements Exception {
+  const new();
+}
+
+final class _SyncLease {
+  const new({required this.owner, required this.until});
+
+  final String owner;
+  final DateTime until;
+
+  static _SyncLease? parse(String? raw) {
+    if (raw == null) return null;
+    try {
+      if (jsonDecode(raw) case {
+        'owner': final String owner,
+        'until': final String until,
+      }) {
+        final at = DateTime.tryParse(until);
+        if (at != null) return _SyncLease(owner: owner, until: at.toUtc());
+      }
+    } on FormatException {
+      // Falls through: an unreadable lease holds nothing.
+    }
+    return null;
+  }
+
+  String encode() =>
+      jsonEncode({'owner': owner, 'until': until.toIso8601String()});
 }

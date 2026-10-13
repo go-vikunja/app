@@ -4,6 +4,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/db/daos/outbox_dao.dart';
 import 'package:vikunja_mobile/core/outbox/task_changes_json.dart';
+import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
 
 import '../../helpers/sample_data.dart';
 import 'generated/schema.dart';
@@ -104,7 +105,7 @@ void main() {
     expect(op.sentAt, isNull);
     expect(decodeTaskChanges(op.payload), const TaskChanges(done: true));
     expect((await db.tasksDao.find(1))!.done, isTrue);
-    expect((await db.outboxDao.nextPending())!.id, 'op-1');
+    expect((await db.outboxDao.nextInLine())!.id, 'op-1');
 
     final localId = await db.outboxDao.queueCreate(
       const NewTask(projectId: 7, title: 'Created after the upgrade'),
@@ -180,5 +181,60 @@ void main() {
     ]);
     expect(await db.scheduledNotificationsDao.osIds(), {1234});
     expect((await db.scheduledNotificationsDao.all()).single.exact, isFalse);
+  });
+
+  test('v4 → v5 keeps the scheduled notifications and the sync state and '
+      'adds the server notifications', () async {
+    final verifier = SchemaVerifier(GeneratedHelper());
+    final schema = await verifier.schemaAt(4);
+    schema.rawDatabase
+      ..execute(
+        'INSERT INTO tasks (id, project_id, title, description, done, done_at, '
+        'due_date, start_date, end_date, priority, percent_done, hex_color, '
+        'identifier, "index", is_favorite, position, repeat_after, '
+        'repeat_mode, bucket_id, created_by_id, created, updated, '
+        'sync_run_id, pending_changes, pending_delete) '
+        "VALUES (50, 7, 'Remind me', '', 0, NULL, 1760000000000, NULL, NULL, "
+        "0, 0.0, '', '-1', 1, 0, 0.0, 0, 0, 0, NULL, NULL, 1759000000000, "
+        "'run-1', NULL, 0)",
+      )
+      ..execute(
+        'INSERT INTO scheduled_notifications (key, os_id, task_id, kind, '
+        'fire_at, title, body, snoozed_until, snooze_original_fire_at, exact) '
+        "VALUES ('50:due', 4321, 50, 'dueDate', 1760000000000, 'Remind me', "
+        "'Due now', NULL, NULL, 1)",
+      )
+      ..execute(
+        'INSERT INTO sync_state (key, value) '
+        "VALUES ('last_synced_at', '2026-10-12T12:00:00.000Z')",
+      );
+    final db = AppDatabase(schema.newConnection());
+    addTearDown(db.close);
+
+    await verifier.migrateAndValidate(db, 5);
+
+    expect((await db.tasksDao.find(50))!.title, 'Remind me');
+    final scheduled = (await db.scheduledNotificationsDao.all()).single;
+    expect(scheduled.key, '50:due');
+    expect(scheduled.osId, 4321);
+    expect(scheduled.exact, isTrue);
+    final state = await db.syncStateDao.readAll();
+    expect(state[SyncStateKeys.lastSyncedAt], '2026-10-12T12:00:00.000Z');
+    expect(state[SyncStateKeys.activitySyncedAt], isNull);
+    expect(await db.serverNotificationsDao.count(), 0);
+    await db.serverNotificationsDao.upsertAll([
+      ServerNotification(
+        id: 9,
+        name: 'task.assigned',
+        payload: const {
+          'task': {'id': 50, 'title': 'Remind me'},
+        },
+        created: DateTime.utc(2026, 10, 12, 13),
+      ),
+    ], handled: false);
+    final stored = (await db.serverNotificationsDao.find(9))!;
+    expect(stored.taskId, 50);
+    expect(stored.isRead, isFalse);
+    expect(await db.serverNotificationsDao.unreadCount(), 1);
   });
 }

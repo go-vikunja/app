@@ -41,6 +41,7 @@ final class IncrementalRun {
     required this.runId,
     required this._since,
     required this._checkActive,
+    required this._keepLease,
     required this._report,
   });
 
@@ -49,6 +50,10 @@ final class IncrementalRun {
   final int _perPage;
   final DateTime _since;
   final void Function() _checkActive;
+
+  /// Before every request: renews the run's hold on the account, or throws
+  /// when another run has taken it.
+  final Future<void> Function() _keepLease;
   final SyncProgress _report;
 
   final String runId;
@@ -358,6 +363,8 @@ final class IncrementalRun {
   }
 
   Future<T> _request<T>(Future<T> Function() send) async {
+    _checkActive();
+    await _keepLease();
     _checkActive();
     requests++;
     final response = await send();

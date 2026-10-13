@@ -5,27 +5,42 @@ import 'package:flutter/foundation.dart';
 /// sync state). Defaults on, D17.
 @immutable
 final class NotificationPreferences {
-  const new({this.reminders = true, this.dueDates = true});
+  const new({
+    this.reminders = true,
+    this.dueDates = true,
+    this.activity = true,
+  });
 
   final bool reminders;
   final bool dueDates;
 
+  /// Comments, assignments, mentions and the like from the server's
+  /// notifications.
+  final bool activity;
+
+  /// Whether the scheduler has anything to plan; [activity] is not
+  /// scheduled.
   bool get anyEnabled => reminders || dueDates;
 
-  NotificationPreferences copyWith({bool? reminders, bool? dueDates}) =>
-      NotificationPreferences(
-        reminders: reminders ?? this.reminders,
-        dueDates: dueDates ?? this.dueDates,
-      );
+  NotificationPreferences copyWith({
+    bool? reminders,
+    bool? dueDates,
+    bool? activity,
+  }) => NotificationPreferences(
+    reminders: reminders ?? this.reminders,
+    dueDates: dueDates ?? this.dueDates,
+    activity: activity ?? this.activity,
+  );
 
   @override
   bool operator ==(Object other) =>
       other is NotificationPreferences &&
       other.reminders == reminders &&
-      other.dueDates == dueDates;
+      other.dueDates == dueDates &&
+      other.activity == activity;
 
   @override
-  int get hashCode => Object.hash(reminders, dueDates);
+  int get hashCode => Object.hash(reminders, dueDates, activity);
 }
 
 abstract interface class NotificationPreferencesStore {

@@ -59,7 +59,10 @@ void main() {
     timers = FakeTimers();
   });
 
-  ForegroundSyncScheduler buildScheduler({SyncStatus? status}) {
+  ForegroundSyncScheduler buildScheduler({
+    SyncStatus? status,
+    void Function({required bool timed})? onForeground,
+  }) {
     engine = FakeSyncEngine(
       initialStatus: status ?? SyncIdle(lastSyncedAt: start),
       clock: () => current,
@@ -68,6 +71,7 @@ void main() {
       engine: engine,
       clock: () => current,
       createTimer: timers.create,
+      onForeground: onForeground,
     );
     addTearDown(scheduler.dispose);
     return scheduler;
@@ -92,6 +96,26 @@ void main() {
     timers.fire();
     await pumpEventQueue();
     expect(engine.refreshCalls, 2);
+  });
+
+  test('reports the start, every tick and a resume after a pause', () async {
+    final heard = <bool>[];
+    final scheduler = buildScheduler(
+      onForeground: ({required timed}) => heard.add(timed),
+    )..start();
+    expect(heard, [false]);
+
+    timers.fire();
+    await pumpEventQueue();
+    timers.fire();
+    await pumpEventQueue();
+    expect(heard, [false, true, true]);
+
+    scheduler
+      ..onResume()
+      ..onPause()
+      ..onResume();
+    expect(heard, [false, true, true, false]);
   });
 
   test('a run started elsewhere restarts the countdown', () async {

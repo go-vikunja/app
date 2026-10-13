@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:vikunja_mobile/features/tasks/application/html_to_text.dart';
+import 'package:vikunja_mobile/core/text/html_to_text.dart';
 
 void main() {
   test('paragraphs and breaks become line breaks', () {
@@ -61,5 +61,19 @@ void main() {
 
   test('plain text passes through', () {
     expect(htmlToPlainText('just text'), 'just text');
+  });
+
+  test('a mention shows its label, else the username', () {
+    expect(
+      htmlToPlainText(
+        '<p>Kannst du das übernehmen, <mention-user data-id="anna" '
+        'data-label="Anna B"></mention-user>?</p>',
+      ),
+      'Kannst du das übernehmen, @Anna B?',
+    );
+    expect(
+      htmlToPlainText('<p>Hi <mention-user data-id="anna"></mention-user></p>'),
+      'Hi @anna',
+    );
   });
 }

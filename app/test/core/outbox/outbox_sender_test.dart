@@ -314,7 +314,7 @@ void main() {
     });
 
     test('an accepted write whose local apply fails is left in flight, not '
-        're-sent on the spot, and goes again at the next start', () async {
+        're-sent on the spot, and goes again once it is stale', () async {
       await queue(1, done);
       await db.customStatement(
         'CREATE TRIGGER apply_fails BEFORE DELETE ON outbox '
@@ -330,6 +330,10 @@ void main() {
       expect(await db.outboxDao.loadProblems(), isEmpty);
 
       await db.customStatement('DROP TRIGGER apply_fails');
+      await sender().drain();
+      expect(write.updates, [(1, done)]);
+
+      now = now.add(OutboxSender.staleSendingAfter);
       await sender().drain();
 
       // At least once: the server stored it twice.
@@ -358,15 +362,102 @@ void main() {
       expect(await db.outboxDao.loadProblems(), isEmpty);
     });
 
-    test('ops a killed app left in flight are sent again', () async {
+    test('ops a killed app left in flight are sent again once stale', () async {
       await queue(1, done);
       await db.outboxDao.markSending((await ops()).single.id, at: now);
+      now = now.add(OutboxSender.staleSendingAfter);
 
       await sender().drain();
 
       expect(write.updates, [(1, done)]);
       expect(await db.outboxDao.count(), 0);
     });
+
+    test('a second sender leaves a create the first has in flight alone '
+        'and waits for it', () async {
+      final id = await db.outboxDao.queueCreate(
+        const NewTask(projectId: 7, title: 'Buy milk'),
+        now: now,
+      );
+      final gate = RequestGate()..pattern = 'create Buy milk';
+      write.beforeRequest = gate.call;
+      final first = sender();
+      final drain = first.drain();
+      await pumpEventQueue();
+      expect(write.requests, ['create Buy milk']);
+
+      final second = sender();
+      await second.drain();
+
+      expect(second.state, OutboxSenderState.waiting);
+      expect(second.blockedBy, isNull);
+      expect(timers.pendingWait, OutboxSender.inFlightRecheck);
+      expect(read.requests, isEmpty);
+      expect(write.requests, ['create Buy milk']);
+      expect((await ops()).single.sentAt, isNull);
+
+      gate.release();
+      await drain;
+      timers.fireNext();
+      await pumpEventQueue();
+
+      expect(write.creates, hasLength(1));
+      expect(await db.tasksDao.resolveId(id), 100);
+      expect(await db.outboxDao.count(), 0);
+      expect(second.state, OutboxSenderState.idle);
+    });
+
+    test(
+      'a second sender does not overtake an op the first has in flight',
+      () async {
+        await queue(1, done);
+        final gate = RequestGate()..pattern = 'update 1';
+        write.beforeRequest = gate.call;
+        final first = sender();
+        final drain = first.drain();
+        await pumpEventQueue();
+        await queue(1, favorite);
+        expect((await ops()).map((op) => op.state), ['sending', 'pending']);
+
+        final second = sender();
+        await second.drain();
+
+        expect(second.state, OutboxSenderState.waiting);
+        expect(write.requests, ['update 1']);
+
+        gate
+          ..pattern = null
+          ..release();
+        await drain;
+        timers.fireNext();
+        await pumpEventQueue();
+
+        expect(write.updates, [(1, done), (1, favorite)]);
+        expect(await db.outboxDao.count(), 0);
+      },
+    );
+
+    test(
+      'an op in flight elsewhere is reset and sent once it is stale',
+      () async {
+        await queue(1, done);
+        await db.outboxDao.markSending((await ops()).single.id, at: now);
+        now = now.add(const Duration(minutes: 4, seconds: 50));
+
+        final outbox = sender();
+        await outbox.drain();
+
+        expect(write.requests, isEmpty);
+        expect(timers.pendingWait, const Duration(seconds: 10));
+
+        now = now.add(const Duration(seconds: 10));
+        timers.fireNext();
+        await pumpEventQueue();
+
+        expect(write.updates, [(1, done)]);
+        expect(await db.outboxDao.count(), 0);
+      },
+    );
 
     test('nothing to send means no refresh', () async {
       await sender().drain();
@@ -1186,6 +1277,7 @@ void main() {
       final id = await create();
       final op = (await ops()).single;
       await db.outboxDao.markSending(op.id, at: now);
+      now = now.add(OutboxSender.staleSendingAfter);
       // The request had reached the server before the kill.
       write.serverTasks[100] = taskFromNewTask(draft, id: 100, now: now);
       write.nextId = 101;
@@ -1209,6 +1301,7 @@ void main() {
       final id = await create();
       final op = (await ops()).single;
       await db.outboxDao.markSending(op.id, at: now);
+      now = now.add(OutboxSender.staleSendingAfter);
 
       await sender().drain();
 

@@ -47,6 +47,10 @@ final class FakeWriteClient implements VikunjaWriteClient {
   @override
   late final FakeLabelsWritePort labels = FakeLabelsWritePort(this);
 
+  @override
+  late final FakeNotificationsWritePort notifications =
+      FakeNotificationsWritePort(this);
+
   Future<void> _request(String description) async {
     requests.add(description);
     await beforeRequest?.call(description);
@@ -140,5 +144,25 @@ final class FakeLabelsWritePort implements LabelsWritePort {
     _client.serverLabels[created.id] = created;
     await _client.afterRequest?.call(description);
     return created;
+  }
+}
+
+final class FakeNotificationsWritePort implements NotificationsWritePort {
+  new(this._client);
+
+  final FakeWriteClient _client;
+  final List<(int, bool)> marked = [];
+  int markedAll = 0;
+
+  @override
+  Future<void> markRead(int id, {bool read = true}) async {
+    await _client._request('notification read $id $read');
+    marked.add((id, read));
+  }
+
+  @override
+  Future<void> markAllRead() async {
+    await _client._request('notifications read all');
+    markedAll++;
   }
 }

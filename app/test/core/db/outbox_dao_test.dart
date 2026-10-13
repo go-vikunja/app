@@ -237,13 +237,13 @@ void main() {
       await queue(2, done);
       final first = (await ops()).first;
 
-      expect((await db.outboxDao.nextPending())!.id, first.id);
+      expect((await db.outboxDao.nextInLine())!.id, first.id);
 
       await db.outboxDao.markFailed(first.id, const NotFound(code: 3001));
-      expect((await db.outboxDao.nextPending())!.taskId, 2);
+      expect((await db.outboxDao.nextInLine())!.taskId, 2);
 
       await db.outboxDao.retry(first.id);
-      final retried = (await db.outboxDao.nextPending())!;
+      final retried = (await db.outboxDao.nextInLine())!;
       expect(retried.id, first.id);
       expect(retried.attempts, 0);
       expect(retried.lastError, isNull);
@@ -279,7 +279,7 @@ void main() {
 
     test('claiming an op takes it as it is now, once', () async {
       await queue(1, done);
-      final read = (await db.outboxDao.nextPending())!;
+      final read = (await db.outboxDao.nextInLine())!;
       // An undo lands between the read and the claim.
       await queue(1, const TaskChanges(done: false));
 
@@ -305,6 +305,46 @@ void main() {
 
       expect((await ops()).map((op) => op.taskId), [2]);
     });
+
+    test(
+      'only ops in flight for at least the given age go back to pending',
+      () async {
+        await queue(1, done);
+        await db.outboxDao.markSending((await ops()).single.id, at: now);
+
+        expect(
+          await db.outboxDao.resetSending(
+            now: later,
+            olderThan: const Duration(minutes: 6),
+          ),
+          0,
+        );
+        expect((await ops()).single.state, OutboxState.sending.name);
+        expect(
+          await db.outboxDao.resetSending(
+            now: later,
+            olderThan: const Duration(minutes: 5),
+          ),
+          1,
+        );
+      },
+    );
+
+    test(
+      'an op whose attempt lies ahead of a clock set back is reset',
+      () async {
+        await queue(1, done);
+        await db.outboxDao.markSending((await ops()).single.id, at: later);
+
+        expect(
+          await db.outboxDao.resetSending(
+            now: later.subtract(const Duration(hours: 1)),
+            olderThan: const Duration(minutes: 5),
+          ),
+          1,
+        );
+      },
+    );
 
     test('ops left in flight by a killed app go back to pending', () async {
       await queue(1, done);
@@ -442,7 +482,7 @@ void main() {
       expect(decodeNewTask(op.payload), draft);
       expect(await db.outboxDao.count(), 2);
       expect(await db.outboxDao.loadPendingTaskIds(), {-1, -2});
-      expect((await db.outboxDao.nextPending())!.taskId, -1);
+      expect((await db.outboxDao.nextInLine())!.taskId, -1);
     });
 
     test(
@@ -517,9 +557,9 @@ void main() {
         expect(await pendingOf(id), const TaskChanges(done: false));
         expect((await db.tasksDao.find(id))!.done, isFalse);
         // The update waits for the create: it cannot go under a temporary id.
-        expect((await db.outboxDao.nextPending())!.kind, 'createTask');
+        expect((await db.outboxDao.nextInLine())!.kind, 'createTask');
         await db.outboxDao.markSending(all.first.id, at: now);
-        expect(await db.outboxDao.nextPending(), isNull);
+        expect((await db.outboxDao.nextInLine())!.kind, 'createTask');
       },
     );
 
@@ -807,7 +847,7 @@ void main() {
       expect(follower.kind, 'updateTask');
       expect(follower.taskId, 50);
       expect(follower.state, OutboxState.pending.name);
-      expect((await db.outboxDao.nextPending())!.id, follower.id);
+      expect((await db.outboxDao.nextInLine())!.id, follower.id);
       final task = (await db.tasksDao.find(50))!;
       expect(task.title, 'Edited in flight');
       expect(task.done, isTrue);
@@ -878,7 +918,7 @@ void main() {
       expect(problem.taskId, id);
       expect(problem.taskTitle, 'Buy milk');
       expect(problem.failedAt, later);
-      expect(await db.outboxDao.nextPending(), isNull);
+      expect(await db.outboxDao.nextInLine(), isNull);
     });
   });
 }

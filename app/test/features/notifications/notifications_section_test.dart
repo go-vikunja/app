@@ -92,6 +92,34 @@ void main() {
     );
   });
 
+  testWidgets('the activity switch is on and writes the account preference '
+      'alone', (tester) async {
+    await pumpSection(tester);
+    await tester.scrollUntilVisible(
+      switchFor(en.notificationsActivity),
+      100,
+      scrollable: find
+          .descendant(
+            of: find.byType(AccountTab),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text(en.notificationsActivitySubtitle), findsOneWidget);
+    expect(switchValue(tester, en.notificationsActivity), isTrue);
+
+    await tester.tap(switchFor(en.notificationsActivity));
+    await tester.pumpAndSettle();
+
+    expect(
+      notifications.preferences.values[accountId(tester)],
+      const NotificationPreferences(activity: false),
+    );
+    expect(switchValue(tester, en.notificationsActivity), isFalse);
+    expect(switchValue(tester, en.notificationsReminders), isTrue);
+  });
+
   testWidgets('shows the stored preferences', (tester) async {
     await auth.seedAccount(
       fullServer270(),
@@ -100,11 +128,13 @@ void main() {
     final entry = (await auth.registry.load()).activeAccount!;
     notifications.preferences.values[entry.id] = const NotificationPreferences(
       dueDates: false,
+      activity: false,
     );
     await pumpSection(tester);
 
     expect(switchValue(tester, en.notificationsReminders), isTrue);
     expect(switchValue(tester, en.notificationsDueDates), isFalse);
+    expect(switchValue(tester, en.notificationsActivity), isFalse);
   });
 
   testWidgets('nothing scheduled', (tester) async {

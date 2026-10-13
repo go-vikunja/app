@@ -24,8 +24,8 @@ const testNotificationOsId = 1;
 /// tab instead of a task.
 const testNotificationTaskId = 0;
 
-/// The account's reminder and due-date switches, what the OS allows, how
-/// many notifications are scheduled, and a test notification.
+/// The account's reminder, due-date and activity switches, what the OS
+/// allows, how many notifications are scheduled, and a test notification.
 class NotificationsSection extends ConsumerWidget {
   const new({required this.entry, super.key});
 
@@ -118,6 +118,14 @@ class NotificationsSection extends ConsumerWidget {
           value: preferences.dueDates,
           onChanged: (value) =>
               unawaited(_write(ref, preferences.copyWith(dueDates: value))),
+        ),
+        SwitchListTile.adaptive(
+          contentPadding: EdgeInsets.zero,
+          title: Text(l10n.notificationsActivity),
+          subtitle: Text(l10n.notificationsActivitySubtitle),
+          value: preferences.activity,
+          onChanged: (value) =>
+              unawaited(_write(ref, preferences.copyWith(activity: value))),
         ),
         if (capabilities case final capabilities? when !granted)
           _StatusLine(

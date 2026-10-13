@@ -91,9 +91,11 @@ void main() {
   Map<String, Object?> platformSpecifics(MethodCall call) =>
       Map<String, Object?>.from(args(call)['platformSpecifics']! as Map);
 
+  // The plugin refuses an instant before the real clock, so the fixture
+  // lies well ahead of any test run.
   final notification = ScheduledNotification(
     osId: 77,
-    fireAt: DateTime.utc(2026, 10, 13, 8, 30),
+    fireAt: DateTime.utc(2036, 10, 13, 8, 30),
     title: 'Water the plants',
     body: 'Reminder · Home',
     payload: '{"account":"a","task":5,"key":"5:due"}',
@@ -110,13 +112,18 @@ void main() {
       expect(calls.map((c) => c.method), [
         'initialize',
         'createNotificationChannel',
+        'createNotificationChannel',
         'cancel',
       ]);
       final init = args(call('initialize'));
       expect(init['defaultIcon'], LocalNotificationGateway.androidIcon);
       expect(init['dispatcher_handle'], isA<int>());
       expect(init['callback_handle'], isA<int>());
-      final channel = args(call('createNotificationChannel'));
+      final channels = [
+        for (final call in calls)
+          if (call.method == 'createNotificationChannel') args(call),
+      ];
+      final channel = channels.first;
       expect(channel['id'], LocalNotificationGateway.channelId);
       expect(channel['name'], en.notificationChannelReminders);
       expect(
@@ -124,6 +131,14 @@ void main() {
         en.notificationChannelRemindersDescription,
       );
       expect(channel['importance'], Importance.high.value);
+      final activity = channels.last;
+      expect(activity['id'], LocalNotificationGateway.activityChannelId);
+      expect(activity['name'], en.notificationChannelActivity);
+      expect(
+        activity['description'],
+        en.notificationChannelActivityDescription,
+      );
+      expect(activity['importance'], Importance.defaultImportance.value);
     });
 
     test('iOS: the task category with background actions, no prompt', () async {
@@ -176,7 +191,7 @@ void main() {
       expect(scheduled['body'], notification.body);
       expect(scheduled['payload'], notification.payload);
       expect(scheduled['timeZoneName'], 'Etc/UTC');
-      expect(scheduled['scheduledDateTime'], '2026-10-13T08:30:00');
+      expect(scheduled['scheduledDateTime'], '2036-10-13T08:30:00');
       final specifics = platformSpecifics(call('zonedSchedule'));
       expect(specifics['scheduleMode'], 'exactAllowWhileIdle');
       expect(specifics['channelId'], LocalNotificationGateway.channelId);
@@ -226,7 +241,7 @@ void main() {
 
       final scheduled = args(call('zonedSchedule'));
       expect(scheduled['timeZoneName'], 'Etc/UTC');
-      expect(scheduled['scheduledDateTime'], '2026-10-13T08:30:00');
+      expect(scheduled['scheduledDateTime'], '2036-10-13T08:30:00');
       final specifics = platformSpecifics(call('zonedSchedule'));
       expect(
         specifics['categoryIdentifier'],
@@ -315,6 +330,44 @@ void main() {
       platformSpecifics(call('show'))['channelId'],
       LocalNotificationGateway.channelId,
     );
+  });
+
+  group('showActivity', () {
+    test(
+      'Android: the activity channel, default importance, no actions',
+      () async {
+        await gateway().showActivity(
+          osId: 42,
+          title: 'Water the plants',
+          body: 'Anna commented: Please check the pots',
+          payload: '{"account":"a","task":5,"key":"activity:9"}',
+        );
+
+        final shown = args(call('show'));
+        expect(shown['id'], 42);
+        expect(shown['title'], 'Water the plants');
+        expect(shown['body'], 'Anna commented: Please check the pots');
+        expect(shown['payload'], '{"account":"a","task":5,"key":"activity:9"}');
+        final specifics = platformSpecifics(call('show'));
+        expect(
+          specifics['channelId'],
+          LocalNotificationGateway.activityChannelId,
+        );
+        expect(specifics['channelName'], en.notificationChannelActivity);
+        expect(specifics['importance'], Importance.defaultImportance.value);
+        expect(specifics['category'], 'social');
+        expect(specifics['actions'], anyOf(isNull, isEmpty));
+      },
+    );
+
+    test('iOS: no category, so no task actions', () async {
+      await gateway(platform: TargetPlatform.iOS)
+          .showActivity(osId: 42, title: 't', body: 'b', payload: 'p');
+
+      final specifics = platformSpecifics(call('show'));
+      expect(specifics['categoryIdentifier'], isNull);
+      expect(specifics['presentAlert'], isTrue);
+    });
   });
 
   group('capabilities', () {

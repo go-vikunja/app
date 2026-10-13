@@ -148,6 +148,20 @@ final class SessionManager implements AccessTokenSource {
     await _track(_saveClockOffset(offset));
   }
 
+  /// Completes once no refresh is on its way and no token write is pending,
+  /// so the isolate may end without abandoning a rotation the server has
+  /// made; the refresh's outcome is its caller's.
+  Future<void> settle() async {
+    for (final pending in <Future<Object?>?>[_inFlight, _pendingWrite]) {
+      if (pending == null) continue;
+      try {
+        await pending;
+      } on Object {
+        // Only completion matters here.
+      }
+    }
+  }
+
   /// After sign-out or replacement by a new sign-in. Waits only for a storage
   /// write that has already started, so the caller can wipe storage
   /// afterwards; a refresh still on the network is abandoned and its result
@@ -501,6 +515,10 @@ final class SessionManagers {
   /// account (a list or sync call that got 401) finds a manager that hands
   /// out nothing and never writes storage, until [signedIn] replaces it.
   Future<void> retire(String accountId) => forAccount(accountId).retire();
+
+  /// See [SessionManager.settle], for every account.
+  Future<void> settle() =>
+      Future.wait([for (final manager in _managers.values) manager.settle()]);
 
   /// For tokens a sign-in has just persisted.
   Future<SessionManager> signedIn(

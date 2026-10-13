@@ -70,3 +70,37 @@ Task sampleTask({
   description: description,
   position: position,
 );
+
+/// A server notification shaped like 2.7.0's: `task.assigned` by default,
+/// with the doer, the task and its project in the payload; [extra] adds
+/// or replaces payload entries (a `comment`, an `assignee`, a `team`).
+ServerNotification sampleNotification({
+  required int id,
+  String name = 'task.assigned',
+  DateTime? created,
+  DateTime? readAt,
+  User doer = const User(id: 9, username: 'anna', name: 'Anna'),
+  int? taskId = 1,
+  String taskTitle = 'Water the plants',
+  int projectId = 7,
+  String projectTitle = 'Garden',
+  Map<String, Object?> extra = const {},
+}) => ServerNotification(
+  id: id,
+  name: name,
+  payload: {
+    'doer': {'id': doer.id, 'username': doer.username, 'name': doer.name},
+    if (taskId != null)
+      'task': {
+        'id': taskId,
+        'title': taskTitle,
+        'identifier': '#$taskId',
+        'index': taskId,
+        'project_id': projectId,
+      },
+    'project': {'id': projectId, 'title': projectTitle},
+    ...extra,
+  },
+  created: created ?? DateTime.utc(2026, 10, 13, 9).add(Duration(minutes: id)),
+  readAt: readAt,
+);

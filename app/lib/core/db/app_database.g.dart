@@ -6315,6 +6315,476 @@ class ScheduledNotificationsCompanion
   }
 }
 
+class $ServerNotificationsTable extends ServerNotifications
+    with TableInfo<$ServerNotificationsTable, ServerNotificationRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ServerNotificationsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _payloadMeta = const VerificationMeta(
+    'payload',
+  );
+  @override
+  late final GeneratedColumn<String> payload = GeneratedColumn<String>(
+    'payload',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<DateTime, int> created =
+      GeneratedColumn<int>(
+        'created',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: true,
+      ).withConverter<DateTime>($ServerNotificationsTable.$convertercreated);
+  @override
+  late final GeneratedColumnWithTypeConverter<DateTime?, int> readAt =
+      GeneratedColumn<int>(
+        'read_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      ).withConverter<DateTime?>($ServerNotificationsTable.$converterreadAtn);
+  static const VerificationMeta _readPendingMeta = const VerificationMeta(
+    'readPending',
+  );
+  @override
+  late final GeneratedColumn<bool> readPending = GeneratedColumn<bool>(
+    'read_pending',
+    aliasedName,
+    true,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("read_pending" IN (0, 1))',
+    ),
+  );
+  static const VerificationMeta _notifiedMeta = const VerificationMeta(
+    'notified',
+  );
+  @override
+  late final GeneratedColumn<bool> notified = GeneratedColumn<bool>(
+    'notified',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("notified" IN (0, 1))',
+    ),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    payload,
+    created,
+    readAt,
+    readPending,
+    notified,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'server_notifications';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ServerNotificationRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('payload')) {
+      context.handle(
+        _payloadMeta,
+        payload.isAcceptableOrUnknown(data['payload']!, _payloadMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_payloadMeta);
+    }
+    if (data.containsKey('read_pending')) {
+      context.handle(
+        _readPendingMeta,
+        readPending.isAcceptableOrUnknown(
+          data['read_pending']!,
+          _readPendingMeta,
+        ),
+      );
+    }
+    if (data.containsKey('notified')) {
+      context.handle(
+        _notifiedMeta,
+        notified.isAcceptableOrUnknown(data['notified']!, _notifiedMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_notifiedMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ServerNotificationRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ServerNotificationRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      payload: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payload'],
+      )!,
+      created: $ServerNotificationsTable.$convertercreated.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}created'],
+        )!,
+      ),
+      readAt: $ServerNotificationsTable.$converterreadAtn.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}read_at'],
+        ),
+      ),
+      readPending: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}read_pending'],
+      ),
+      notified: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}notified'],
+      )!,
+    );
+  }
+
+  @override
+  $ServerNotificationsTable createAlias(String alias) {
+    return $ServerNotificationsTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<DateTime, int> $convertercreated = const EpochMillis();
+  static TypeConverter<DateTime, int> $converterreadAt = const EpochMillis();
+  static TypeConverter<DateTime?, int?> $converterreadAtn =
+      NullAwareTypeConverter.wrap($converterreadAt);
+}
+
+class ServerNotificationRow extends DataClass
+    implements Insertable<ServerNotificationRow> {
+  final int id;
+
+  /// `task.comment`, `task.assigned`, … as the server names them.
+  final String name;
+
+  /// The server's `notification` object as JSON.
+  final String payload;
+  final DateTime created;
+
+  /// When it was read: the server's time, or this device's while
+  /// [readPending] holds a local mark the server has not taken yet. Null
+  /// while unread.
+  final DateTime? readAt;
+
+  /// The read state to send; null once the server has it.
+  final bool? readPending;
+
+  /// Already handled as an OS notification (shown, or deliberately not:
+  /// the first sync of an account, a read one, a kind that is not shown).
+  final bool notified;
+  const ServerNotificationRow({
+    required this.id,
+    required this.name,
+    required this.payload,
+    required this.created,
+    this.readAt,
+    this.readPending,
+    required this.notified,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['name'] = Variable<String>(name);
+    map['payload'] = Variable<String>(payload);
+    {
+      map['created'] = Variable<int>(
+        $ServerNotificationsTable.$convertercreated.toSql(created),
+      );
+    }
+    if (!nullToAbsent || readAt != null) {
+      map['read_at'] = Variable<int>(
+        $ServerNotificationsTable.$converterreadAtn.toSql(readAt),
+      );
+    }
+    if (!nullToAbsent || readPending != null) {
+      map['read_pending'] = Variable<bool>(readPending);
+    }
+    map['notified'] = Variable<bool>(notified);
+    return map;
+  }
+
+  ServerNotificationsCompanion toCompanion(bool nullToAbsent) {
+    return ServerNotificationsCompanion(
+      id: Value(id),
+      name: Value(name),
+      payload: Value(payload),
+      created: Value(created),
+      readAt: readAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(readAt),
+      readPending: readPending == null && nullToAbsent
+          ? const Value.absent()
+          : Value(readPending),
+      notified: Value(notified),
+    );
+  }
+
+  factory ServerNotificationRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ServerNotificationRow(
+      id: serializer.fromJson<int>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      payload: serializer.fromJson<String>(json['payload']),
+      created: serializer.fromJson<DateTime>(json['created']),
+      readAt: serializer.fromJson<DateTime?>(json['readAt']),
+      readPending: serializer.fromJson<bool?>(json['readPending']),
+      notified: serializer.fromJson<bool>(json['notified']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'name': serializer.toJson<String>(name),
+      'payload': serializer.toJson<String>(payload),
+      'created': serializer.toJson<DateTime>(created),
+      'readAt': serializer.toJson<DateTime?>(readAt),
+      'readPending': serializer.toJson<bool?>(readPending),
+      'notified': serializer.toJson<bool>(notified),
+    };
+  }
+
+  ServerNotificationRow copyWith({
+    int? id,
+    String? name,
+    String? payload,
+    DateTime? created,
+    Value<DateTime?> readAt = const Value.absent(),
+    Value<bool?> readPending = const Value.absent(),
+    bool? notified,
+  }) => ServerNotificationRow(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    payload: payload ?? this.payload,
+    created: created ?? this.created,
+    readAt: readAt.present ? readAt.value : this.readAt,
+    readPending: readPending.present ? readPending.value : this.readPending,
+    notified: notified ?? this.notified,
+  );
+  ServerNotificationRow copyWithCompanion(ServerNotificationsCompanion data) {
+    return ServerNotificationRow(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      payload: data.payload.present ? data.payload.value : this.payload,
+      created: data.created.present ? data.created.value : this.created,
+      readAt: data.readAt.present ? data.readAt.value : this.readAt,
+      readPending: data.readPending.present
+          ? data.readPending.value
+          : this.readPending,
+      notified: data.notified.present ? data.notified.value : this.notified,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ServerNotificationRow(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('payload: $payload, ')
+          ..write('created: $created, ')
+          ..write('readAt: $readAt, ')
+          ..write('readPending: $readPending, ')
+          ..write('notified: $notified')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, name, payload, created, readAt, readPending, notified);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ServerNotificationRow &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.payload == this.payload &&
+          other.created == this.created &&
+          other.readAt == this.readAt &&
+          other.readPending == this.readPending &&
+          other.notified == this.notified);
+}
+
+class ServerNotificationsCompanion
+    extends UpdateCompanion<ServerNotificationRow> {
+  final Value<int> id;
+  final Value<String> name;
+  final Value<String> payload;
+  final Value<DateTime> created;
+  final Value<DateTime?> readAt;
+  final Value<bool?> readPending;
+  final Value<bool> notified;
+  const ServerNotificationsCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.payload = const Value.absent(),
+    this.created = const Value.absent(),
+    this.readAt = const Value.absent(),
+    this.readPending = const Value.absent(),
+    this.notified = const Value.absent(),
+  });
+  ServerNotificationsCompanion.insert({
+    this.id = const Value.absent(),
+    required String name,
+    required String payload,
+    required DateTime created,
+    this.readAt = const Value.absent(),
+    this.readPending = const Value.absent(),
+    required bool notified,
+  }) : name = Value(name),
+       payload = Value(payload),
+       created = Value(created),
+       notified = Value(notified);
+  static Insertable<ServerNotificationRow> custom({
+    Expression<int>? id,
+    Expression<String>? name,
+    Expression<String>? payload,
+    Expression<int>? created,
+    Expression<int>? readAt,
+    Expression<bool>? readPending,
+    Expression<bool>? notified,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (payload != null) 'payload': payload,
+      if (created != null) 'created': created,
+      if (readAt != null) 'read_at': readAt,
+      if (readPending != null) 'read_pending': readPending,
+      if (notified != null) 'notified': notified,
+    });
+  }
+
+  ServerNotificationsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? name,
+    Value<String>? payload,
+    Value<DateTime>? created,
+    Value<DateTime?>? readAt,
+    Value<bool?>? readPending,
+    Value<bool>? notified,
+  }) {
+    return ServerNotificationsCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      payload: payload ?? this.payload,
+      created: created ?? this.created,
+      readAt: readAt ?? this.readAt,
+      readPending: readPending ?? this.readPending,
+      notified: notified ?? this.notified,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (payload.present) {
+      map['payload'] = Variable<String>(payload.value);
+    }
+    if (created.present) {
+      map['created'] = Variable<int>(
+        $ServerNotificationsTable.$convertercreated.toSql(created.value),
+      );
+    }
+    if (readAt.present) {
+      map['read_at'] = Variable<int>(
+        $ServerNotificationsTable.$converterreadAtn.toSql(readAt.value),
+      );
+    }
+    if (readPending.present) {
+      map['read_pending'] = Variable<bool>(readPending.value);
+    }
+    if (notified.present) {
+      map['notified'] = Variable<bool>(notified.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ServerNotificationsCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('payload: $payload, ')
+          ..write('created: $created, ')
+          ..write('readAt: $readAt, ')
+          ..write('readPending: $readPending, ')
+          ..write('notified: $notified')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -6332,6 +6802,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $TaskIdRemapsTable taskIdRemaps = $TaskIdRemapsTable(this);
   late final $ScheduledNotificationsTable scheduledNotifications =
       $ScheduledNotificationsTable(this);
+  late final $ServerNotificationsTable serverNotifications =
+      $ServerNotificationsTable(this);
   late final Index projectViewsProject = Index(
     'project_views_project',
     'CREATE INDEX project_views_project ON project_views (project_id)',
@@ -6356,6 +6828,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final OutboxDao outboxDao = OutboxDao(this as AppDatabase);
   late final ScheduledNotificationsDao scheduledNotificationsDao =
       ScheduledNotificationsDao(this as AppDatabase);
+  late final ServerNotificationsDao serverNotificationsDao =
+      ServerNotificationsDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -6374,6 +6848,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     outbox,
     taskIdRemaps,
     scheduledNotifications,
+    serverNotifications,
     projectViewsProject,
     tasksProject,
     tasksDoneDue,
@@ -11108,6 +11583,269 @@ typedef $$ScheduledNotificationsTableProcessedTableManager =
       ScheduledNotificationRow,
       PrefetchHooks Function()
     >;
+typedef $$ServerNotificationsTableCreateCompanionBuilder =
+    ServerNotificationsCompanion Function({
+      Value<int> id,
+      required String name,
+      required String payload,
+      required DateTime created,
+      Value<DateTime?> readAt,
+      Value<bool?> readPending,
+      required bool notified,
+    });
+typedef $$ServerNotificationsTableUpdateCompanionBuilder =
+    ServerNotificationsCompanion Function({
+      Value<int> id,
+      Value<String> name,
+      Value<String> payload,
+      Value<DateTime> created,
+      Value<DateTime?> readAt,
+      Value<bool?> readPending,
+      Value<bool> notified,
+    });
+
+class $$ServerNotificationsTableFilterComposer
+    extends Composer<_$AppDatabase, $ServerNotificationsTable> {
+  $$ServerNotificationsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<DateTime, DateTime, int> get created =>
+      $composableBuilder(
+        column: $table.created,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnWithTypeConverterFilters<DateTime?, DateTime, int> get readAt =>
+      $composableBuilder(
+        column: $table.readAt,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnFilters<bool> get readPending => $composableBuilder(
+    column: $table.readPending,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get notified => $composableBuilder(
+    column: $table.notified,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ServerNotificationsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ServerNotificationsTable> {
+  $$ServerNotificationsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get created => $composableBuilder(
+    column: $table.created,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get readAt => $composableBuilder(
+    column: $table.readAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get readPending => $composableBuilder(
+    column: $table.readPending,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get notified => $composableBuilder(
+    column: $table.notified,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ServerNotificationsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ServerNotificationsTable> {
+  $$ServerNotificationsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get payload =>
+      $composableBuilder(column: $table.payload, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<DateTime, int> get created =>
+      $composableBuilder(column: $table.created, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<DateTime?, int> get readAt =>
+      $composableBuilder(column: $table.readAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get readPending => $composableBuilder(
+    column: $table.readPending,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get notified =>
+      $composableBuilder(column: $table.notified, builder: (column) => column);
+}
+
+class $$ServerNotificationsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ServerNotificationsTable,
+          ServerNotificationRow,
+          $$ServerNotificationsTableFilterComposer,
+          $$ServerNotificationsTableOrderingComposer,
+          $$ServerNotificationsTableAnnotationComposer,
+          $$ServerNotificationsTableCreateCompanionBuilder,
+          $$ServerNotificationsTableUpdateCompanionBuilder,
+          (
+            ServerNotificationRow,
+            BaseReferences<
+              _$AppDatabase,
+              $ServerNotificationsTable,
+              ServerNotificationRow
+            >,
+          ),
+          ServerNotificationRow,
+          PrefetchHooks Function()
+        > {
+  $$ServerNotificationsTableTableManager(
+    _$AppDatabase db,
+    $ServerNotificationsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ServerNotificationsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ServerNotificationsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$ServerNotificationsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> payload = const Value.absent(),
+                Value<DateTime> created = const Value.absent(),
+                Value<DateTime?> readAt = const Value.absent(),
+                Value<bool?> readPending = const Value.absent(),
+                Value<bool> notified = const Value.absent(),
+              }) => ServerNotificationsCompanion(
+                id: id,
+                name: name,
+                payload: payload,
+                created: created,
+                readAt: readAt,
+                readPending: readPending,
+                notified: notified,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String name,
+                required String payload,
+                required DateTime created,
+                Value<DateTime?> readAt = const Value.absent(),
+                Value<bool?> readPending = const Value.absent(),
+                required bool notified,
+              }) => ServerNotificationsCompanion.insert(
+                id: id,
+                name: name,
+                payload: payload,
+                created: created,
+                readAt: readAt,
+                readPending: readPending,
+                notified: notified,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$ServerNotificationsTable, ServerNotificationRow>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $ServerNotificationsTable,
+                    ServerNotificationRow
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ServerNotificationsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ServerNotificationsTable,
+      ServerNotificationRow,
+      $$ServerNotificationsTableFilterComposer,
+      $$ServerNotificationsTableOrderingComposer,
+      $$ServerNotificationsTableAnnotationComposer,
+      $$ServerNotificationsTableCreateCompanionBuilder,
+      $$ServerNotificationsTableUpdateCompanionBuilder,
+      (
+        ServerNotificationRow,
+        BaseReferences<
+          _$AppDatabase,
+          $ServerNotificationsTable,
+          ServerNotificationRow
+        >,
+      ),
+      ServerNotificationRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -11141,4 +11879,6 @@ class $AppDatabaseManager {
         _db,
         _db.scheduledNotifications,
       );
+  $$ServerNotificationsTableTableManager get serverNotifications =>
+      $$ServerNotificationsTableTableManager(_db, _db.serverNotifications);
 }

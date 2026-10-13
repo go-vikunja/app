@@ -8,14 +8,19 @@ import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/activity/activity_notifier.dart';
+import 'package:vikunja_mobile/core/activity/activity_tray.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/auth/session_manager.dart';
 import 'package:vikunja_mobile/core/auth/sign_out.dart';
+import 'package:vikunja_mobile/core/background/background_providers.dart';
+import 'package:vikunja_mobile/core/background/background_runner_channel.dart';
 import 'package:vikunja_mobile/core/db/account_database_files.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/db/open_account_database.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
 import 'package:vikunja_mobile/core/network/request_log_interceptor.dart';
+import 'package:vikunja_mobile/core/notifications/local_notification_gateway_provider.dart';
 import 'package:vikunja_mobile/core/notifications/notification_providers.dart';
 import 'package:vikunja_mobile/core/notifications/notification_schedulers.dart';
 import 'package:vikunja_mobile/core/outbox/outbox_sender.dart';
@@ -179,6 +184,12 @@ AppDatabase appDatabase(Ref ref, String accountId) {
   return databases.open(accountId);
 }
 
+/// True in a container the OS started without the app (a background run,
+/// a notification action): its sync engines leave the daily full pull to
+/// the app and give way to a run already in progress.
+@Riverpod(keepAlive: true)
+bool runsHeadless(Ref ref) => false;
+
 /// One account's sync engine; disposed with its database on sign-out.
 @Riverpod(keepAlive: true)
 SyncEngine syncEngine(Ref ref, String accountId) {
@@ -195,6 +206,7 @@ SyncEngine syncEngine(Ref ref, String accountId) {
     db: ref.watch(appDatabaseProvider(accountId)),
     client: ref.watch(readClientProvider(accountId)),
     perPage: perPage,
+    headless: ref.watch(runsHeadlessProvider),
     currentUser: () {
       final entry = ref.read(accountsProvider).value?.find(accountId);
       if (entry == null) {
@@ -335,15 +347,31 @@ UserRepository? userRepository(Ref ref) {
   return ref.watch(accountUserRepositoryProvider(accountId));
 }
 
-/// The last step of a sign-out: cancels the account's notifications and
-/// forgets their preferences, stops its outbox sender and sync engine,
-/// closes its database and deletes the files.
+/// The last step of a sign-out: makes a background run in another isolate
+/// let go of the account, cancels the account's notifications (scheduled
+/// and in the tray) and forgets their preferences and the background
+/// notes, stops its outbox sender and sync engine, closes its database and
+/// deletes the files.
 @Riverpod(keepAlive: true)
 AccountDataWiper accountDataWiper(Ref ref) => (accountId) async {
+  BackgroundRunnerChannel.release(accountId);
+  await _disposeQuietly('Background notes', accountId, () async {
+    await ref.read(backgroundRunLogProvider).forget(accountId);
+    await ref
+        .read(preferencesStoreProvider)
+        .remove(ActivityNotifier.sessionEndedKey(accountId));
+  });
   await _disposeQuietly(
     'Notification scheduler',
     accountId,
     () => ref.read(notificationSchedulersProvider).cancelAll(accountId),
+  );
+  await _disposeQuietly(
+    'Delivered notifications',
+    accountId,
+    () =>
+        ActivityTray(ref.read(notificationGatewayProvider))
+            .withdrawAll(accountId),
   );
   await _disposeQuietly(
     'Notification preferences',

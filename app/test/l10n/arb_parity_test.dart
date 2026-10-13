@@ -10,8 +10,10 @@ Map<String, Object?> _readArb(String locale) =>
 Set<String> _messageKeys(Map<String, Object?> arb) =>
     arb.keys.where((key) => !key.startsWith('@')).toSet();
 
+// A brace right after a word is a plural or select branch, like
+// `=0{Notifications}`, not a placeholder.
 Set<String> _placeholders(String message) =>
-    RegExp(r'\{(\w+)\}')
+    RegExp(r'(?<!\w)\{(\w+)\}')
         .allMatches(message)
         .map((match) => match.group(1)!)
         .toSet();

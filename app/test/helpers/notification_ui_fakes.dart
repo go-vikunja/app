@@ -80,6 +80,28 @@ final class FakeNotificationOs implements NotificationGateway {
     await _call('showNow $osId');
     shown.add((osId: osId, title: title, body: body, payload: payload));
   }
+
+  final List<({int osId, String title, String body, String payload})>
+  activities = [];
+
+  @override
+  Future<List<DeliveredNotification>> delivered() async {
+    await _call('delivered');
+    return const [];
+  }
+
+  @override
+  Future<void> showActivity({
+    required int osId,
+    required String title,
+    required String body,
+    required String payload,
+    String? subtitle,
+    String? group,
+  }) async {
+    await _call('showActivity $osId');
+    activities.add((osId: osId, title: title, body: body, payload: payload));
+  }
 }
 
 final class FakeNotificationPreferences

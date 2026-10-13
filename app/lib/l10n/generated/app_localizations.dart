@@ -1736,6 +1736,30 @@ abstract class AppLocalizations {
   /// **'Full resync'**
   String get accountFullResync;
 
+  /// When the background sync last ran for the account.
+  ///
+  /// In en, this message translates to:
+  /// **'Background sync: {when}'**
+  String accountBackgroundSync(String when);
+
+  /// No description provided for @accountBackgroundSyncJustNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Background sync: just now'**
+  String get accountBackgroundSyncJustNow;
+
+  /// No description provided for @accountBackgroundSyncNever.
+  ///
+  /// In en, this message translates to:
+  /// **'Background sync has not run yet'**
+  String get accountBackgroundSyncNever;
+
+  /// No description provided for @accountBackgroundSyncIosHint.
+  ///
+  /// In en, this message translates to:
+  /// **'iOS decides when apps may sync in the background.'**
+  String get accountBackgroundSyncIosHint;
+
   /// No description provided for @taskMarkDone.
   ///
   /// In en, this message translates to:
@@ -2876,6 +2900,186 @@ abstract class AppLocalizations {
   /// **'{date} (not set)'**
   String reminderRelativeToUnset(String date);
 
+  /// No description provided for @inboxTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get inboxTitle;
+
+  /// Screen reader label of the bell in the Overview's app bar.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{Notifications} =1{Notifications, 1 unread} other{Notifications, {count} unread}}'**
+  String inboxButton(int count);
+
+  /// No description provided for @inboxLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading notifications…'**
+  String get inboxLoading;
+
+  /// No description provided for @inboxEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'You’re all caught up'**
+  String get inboxEmptyTitle;
+
+  /// No description provided for @inboxEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Comments, assignments and mentions from your Vikunja server show up here.'**
+  String get inboxEmptyBody;
+
+  /// No description provided for @inboxMarkAllRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark all as read'**
+  String get inboxMarkAllRead;
+
+  /// No description provided for @inboxToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get inboxToday;
+
+  /// No description provided for @inboxYesterday.
+  ///
+  /// In en, this message translates to:
+  /// **'Yesterday'**
+  String get inboxYesterday;
+
+  /// No description provided for @inboxEarlier.
+  ///
+  /// In en, this message translates to:
+  /// **'Earlier'**
+  String get inboxEarlier;
+
+  /// Screen reader label of the dot on an unread notification.
+  ///
+  /// In en, this message translates to:
+  /// **'Unread'**
+  String get inboxUnread;
+
+  /// No description provided for @inboxTaskNotLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'This task is not on this device'**
+  String get inboxTaskNotLocal;
+
+  /// No description provided for @inboxProjectNotLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'This project is not on this device'**
+  String get inboxProjectNotLocal;
+
+  /// Stands in for the person who did something when the server did not say who.
+  ///
+  /// In en, this message translates to:
+  /// **'Someone'**
+  String get inboxSomeone;
+
+  /// Stands in for a task without an identifier or title, as in “Anna commented on a task”.
+  ///
+  /// In en, this message translates to:
+  /// **'a task'**
+  String get inboxATask;
+
+  /// Stands in for a project or team without a name.
+  ///
+  /// In en, this message translates to:
+  /// **'unnamed'**
+  String get inboxUnnamed;
+
+  /// A comment on a task, named by its identifier, e.g. #12 or PROJ-12.
+  ///
+  /// In en, this message translates to:
+  /// **'{doer} commented on {task}'**
+  String inboxCommented(String doer, String task);
+
+  /// No description provided for @inboxAssignedYou.
+  ///
+  /// In en, this message translates to:
+  /// **'{doer} assigned you to {task}'**
+  String inboxAssignedYou(String doer, String task);
+
+  /// No description provided for @inboxAssigned.
+  ///
+  /// In en, this message translates to:
+  /// **'{doer} assigned {assignee} to {task}'**
+  String inboxAssigned(String doer, String assignee, String task);
+
+  /// Inbox row for an assignment whose assignee has no name in the server's payload.
+  ///
+  /// In en, this message translates to:
+  /// **'{doer} assigned someone to {task}'**
+  String inboxAssignedSomeone(String doer, String task);
+
+  /// No description provided for @inboxMentioned.
+  ///
+  /// In en, this message translates to:
+  /// **'{doer} mentioned you on {task}'**
+  String inboxMentioned(String doer, String task);
+
+  /// No description provided for @inboxTaskCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'{doer} created {task}'**
+  String inboxTaskCreated(String doer, String task);
+
+  /// No description provided for @inboxTaskDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'{doer} deleted {task}'**
+  String inboxTaskDeleted(String doer, String task);
+
+  /// No description provided for @inboxProjectCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'{doer} created {project}'**
+  String inboxProjectCreated(String doer, String project);
+
+  /// No description provided for @inboxAddedYouToTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'{doer} added you to the {team} team'**
+  String inboxAddedYouToTeam(String doer, String team);
+
+  /// No description provided for @inboxAddedToTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'{doer} added {member} to the {team} team'**
+  String inboxAddedToTeam(String doer, String member, String team);
+
+  /// Inbox row for a team membership whose member has no name in the server's payload.
+  ///
+  /// In en, this message translates to:
+  /// **'{doer} added someone to the {team} team'**
+  String inboxAddedSomeoneToTeam(String doer, String team);
+
+  /// Snackbar after tapping an inbox row that says someone deleted a task.
+  ///
+  /// In en, this message translates to:
+  /// **'This task was deleted'**
+  String get inboxTaskWasDeleted;
+
+  /// The server's own reminder notification.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminder for {task}'**
+  String inboxReminder(String task);
+
+  /// A server notification of a kind this app does not know.
+  ///
+  /// In en, this message translates to:
+  /// **'New notification'**
+  String get inboxOther;
+
+  /// A comment's text in quotation marks.
+  ///
+  /// In en, this message translates to:
+  /// **'“{text}”'**
+  String inboxQuoted(String text);
+
   /// No description provided for @notificationSetupTitle.
   ///
   /// In en, this message translates to:
@@ -2972,6 +3176,18 @@ abstract class AppLocalizations {
   /// **'At the exact due time'**
   String get notificationsDueDatesSubtitle;
 
+  /// No description provided for @notificationsActivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity'**
+  String get notificationsActivity;
+
+  /// No description provided for @notificationsActivitySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Comments, assignments and mentions'**
+  String get notificationsActivitySubtitle;
+
   /// No description provided for @notificationsOff.
   ///
   /// In en, this message translates to:
@@ -3049,6 +3265,130 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Reminders and due dates of your tasks'**
   String get notificationChannelRemindersDescription;
+
+  /// Name of the Android notification channel for comments, assignments and mentions from the server.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity'**
+  String get notificationChannelActivity;
+
+  /// No description provided for @notificationChannelActivityDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Comments, assignments and mentions from your Vikunja servers'**
+  String get notificationChannelActivityDescription;
+
+  /// Body of an OS notification for a new comment; the title is the task's title. The comment is cut to 80 characters.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} commented: {comment}'**
+  String activityNotificationCommented(String name, String comment);
+
+  /// No description provided for @activityNotificationCommentedNoText.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} commented'**
+  String activityNotificationCommentedNoText(String name);
+
+  /// Body of an OS notification: someone assigned the user to the task in the title.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} assigned you'**
+  String activityNotificationAssignedYou(String name);
+
+  /// No description provided for @activityNotificationAssignedOther.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} assigned {assignee}'**
+  String activityNotificationAssignedOther(String name, String assignee);
+
+  /// Body of an OS notification for an assignment whose assignee has no name in the server's payload.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} assigned someone to this task'**
+  String activityNotificationAssignedSomeone(String name);
+
+  /// No description provided for @activityNotificationMentioned.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} mentioned you'**
+  String activityNotificationMentioned(String name);
+
+  /// No description provided for @activityNotificationTaskCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} created this task in {project}'**
+  String activityNotificationTaskCreated(String name, String project);
+
+  /// No description provided for @activityNotificationTaskCreatedNoProject.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} created this task'**
+  String activityNotificationTaskCreatedNoProject(String name);
+
+  /// No description provided for @activityNotificationTaskDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} deleted this task'**
+  String activityNotificationTaskDeleted(String name);
+
+  /// Body of an OS notification; the title is the project's title.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} created the project {project}'**
+  String activityNotificationProjectCreated(String name, String project);
+
+  /// Body of an OS notification; the title is the team's name.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} added you to the team {team}'**
+  String activityNotificationTeamAddedYou(String name, String team);
+
+  /// No description provided for @activityNotificationTeamAddedOther.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} added {member} to the team {team}'**
+  String activityNotificationTeamAddedOther(
+    String name,
+    String member,
+    String team,
+  );
+
+  /// Body of an OS notification for a team membership whose member has no name in the server's payload.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} added someone to the team {team}'**
+  String activityNotificationTeamAddedSomeone(String name, String team);
+
+  /// Title of the OS notification that stands for the new notifications of one sync beyond the few shown one by one.
+  ///
+  /// In en, this message translates to:
+  /// **'More activity'**
+  String get activityNotificationMoreTitle;
+
+  /// No description provided for @activityNotificationMoreBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 more new notification} other{{count} more new notifications}}'**
+  String activityNotificationMoreBody(int count);
+
+  /// Title of an activity notification whose task, project or team has no name.
+  ///
+  /// In en, this message translates to:
+  /// **'Vikunja'**
+  String get activityNotificationUntitled;
+
+  /// Title of the OS notification when the server ended an account's session.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in again to {host}'**
+  String sessionEndedNotificationTitle(String host);
+
+  /// No description provided for @sessionEndedNotificationBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your session as {username} has ended. Rurana cannot sync this account until you sign in again.'**
+  String sessionEndedNotificationBody(String username);
 
   /// Notification action that marks the task done.
   ///

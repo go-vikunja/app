@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:dio/dio.dart';
 import 'package:vikunja_api/src/dto/json_values.dart';
 import 'package:vikunja_api/src/dto/label_codec.dart';
+import 'package:vikunja_api/src/dto/notification_codec.dart';
 import 'package:vikunja_api/src/dto/project_codec.dart';
 import 'package:vikunja_api/src/dto/task_codec.dart';
 import 'package:vikunja_api/src/dto/user_codec.dart';
@@ -22,7 +23,8 @@ final class ReadClient implements VikunjaReadClient {
     : projects = _ProjectsApi(transport),
       labels = _LabelsApi(transport),
       tasks = _TasksApi(transport),
-      users = _UsersApi(transport);
+      users = _UsersApi(transport),
+      notifications = _NotificationsApi(transport);
 
   @override
   final ProjectsPort projects;
@@ -35,6 +37,29 @@ final class ReadClient implements VikunjaReadClient {
 
   @override
   final UsersPort users;
+
+  @override
+  final NotificationsPort notifications;
+}
+
+final class _NotificationsApi implements NotificationsPort {
+  new(this._transport);
+
+  final _ReadTransport _transport;
+
+  @override
+  Future<Page<ServerNotification>> list({int page = 1, int? perPage}) async {
+    final response = await _transport.get(
+      '/notifications',
+      query: {'page': page, 'per_page': ?perPage},
+    );
+    return _transport.page(
+      response,
+      page: page,
+      perPage: perPage,
+      parse: parseServerNotification,
+    );
+  }
 }
 
 final class _UsersApi implements UsersPort {

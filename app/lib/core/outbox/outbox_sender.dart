@@ -5,6 +5,7 @@ import 'package:logging/logging.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/db/daos/outbox_dao.dart';
 import 'package:vikunja_mobile/core/outbox/new_task_json.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/outbox/task_changes_json.dart';
@@ -54,6 +55,14 @@ enum OutboxSenderState {
 /// a slow upstream, a kill while the request was in flight) is not simply
 /// sent again: the next attempt first looks for a task with the sent title
 /// created since [lostResponseWindow] before that attempt and adopts it.
+///
+/// Senders of the same account may run in several isolates (the app, a
+/// background run, a notification action) on the shared database. The
+/// claim makes only one of them send an op, and an op another one has in
+/// flight (`sending`) stops the queue like a backoff: nothing overtakes it
+/// and nothing sends it again until it is [staleSendingAfter] old, which
+/// no live sender takes over one op, so only an op a dead run left behind
+/// goes back to the queue.
 final class OutboxSender {
   new({
     required this._db,
@@ -79,6 +88,15 @@ final class OutboxSender {
   /// exact title and project keep the match narrow.
   static const lostResponseWindow = Duration(hours: 1);
 
+  /// Above the longest a live sender spends on one op: the connect, send
+  /// and receive timeouts of a v1 update's several requests or a label and
+  /// assignee diff, and a Retry-After the client waits out.
+  static const staleSendingAfter = Duration(minutes: 5);
+
+  /// How often a sender looks again while another isolate sends the op at
+  /// the head of the queue, which usually takes seconds.
+  static const inFlightRecheck = Duration(seconds: 30);
+
   /// A delete of a task that is already gone.
   static const _taskGoneCode = 4002;
 
@@ -101,12 +119,16 @@ final class OutboxSender {
   Future<void>? _running;
   var _exiting = false;
   var _requested = false;
-  var _recovered = false;
   var _paused = false;
   var _disposed = false;
   Timer? _timer;
 
   OutboxSenderState get state => _state;
+
+  /// What the oldest op waits out while [state] is `waiting`; null
+  /// otherwise.
+  VikunjaFailure? get blockedBy =>
+      _state == OutboxSenderState.waiting ? _blockedBy : null;
 
   /// Replays the current state on subscription.
   Stream<OutboxSenderState> get states => Stream.multi((subscriber) {
@@ -238,11 +260,6 @@ final class OutboxSender {
   }
 
   Future<void> _run() async {
-    if (!_recovered) {
-      // Ops a killed app left in flight.
-      await _db.outboxDao.resetSending(now: _now());
-      _recovered = true;
-    }
     try {
       while (_requested && !_disposed && !_paused) {
         _requested = false;
@@ -256,17 +273,23 @@ final class OutboxSender {
     }
   }
 
-  /// Sends until the queue is empty, the oldest op waits for its backoff,
-  /// or the sender is paused; returns how many ops the server accepted.
+  /// Sends until the queue is empty, the oldest op waits for its backoff
+  /// or is in flight elsewhere, or the sender is paused; returns how many
+  /// ops the server accepted.
   Future<int> _sendUntilBlocked() async {
     _cancelTimer();
     _emit(OutboxSenderState.draining);
+    await _db.outboxDao.resetSending(now: _now(), olderThan: staleSendingAfter);
     var sent = 0;
     while (!_disposed && !_paused) {
-      final next = await _db.outboxDao.nextPending();
+      final next = await _db.outboxDao.nextInLine();
       if (next == null) {
         _blockedBy = null;
         _emit(OutboxSenderState.idle);
+        return sent;
+      }
+      if (next.state == OutboxState.sending.name) {
+        _waitForInFlight(next);
         return sent;
       }
       final wait = next.nextAttemptAt?.difference(_now());
@@ -287,8 +310,9 @@ final class OutboxSender {
   /// True when the server accepted the op. Only the request is guarded:
   /// once the server has stored the change, an error while applying it
   /// propagates and leaves the op `sending`, so nothing is re-sent on the
-  /// spot; the next start resets it and sends an update or delete again
-  /// (at least once), while a create is looked up first.
+  /// spot; once it is [staleSendingAfter] old a drain resets it and sends
+  /// an update or delete again (at least once), while a create is looked
+  /// up first.
   Future<bool> _send(OutboxRow op) async {
     final kind = OutboxOperationKind.values.asNameMap()[op.kind];
     if (kind == null) {
@@ -502,6 +526,21 @@ final class OutboxSender {
     } on Object catch (error) {
       _log.info('Refresh after the drain failed: ${error.runtimeType}');
     }
+  }
+
+  void _waitForInFlight(OutboxRow op) {
+    final now = _now();
+    final untilStale = (op.lastAttemptAt ?? now)
+        .add(staleSendingAfter)
+        .difference(now);
+    _blockedBy = null;
+    _arm(
+      untilStale < inFlightRecheck
+          ? (untilStale.isNegative ? Duration.zero : untilStale)
+          : inFlightRecheck,
+    );
+    _emit(OutboxSenderState.waiting);
+    _log.fine('${op.kind} for task ${op.taskId} is in flight elsewhere');
   }
 
   void _arm(Duration wait) {

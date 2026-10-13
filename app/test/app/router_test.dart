@@ -43,6 +43,7 @@ void main() {
     for (final location in [
       AppRoutes.home,
       AppRoutes.taskEdit(7),
+      AppRoutes.inbox,
       AppRoutes.addAccount,
       AppRoutes.addAccountServer,
       AppRoutes.connect,
@@ -232,6 +233,17 @@ void main() {
 
     expect(location(tester), AppRoutes.connect);
     expect(find.byType(HomeShell), findsNothing);
+  });
+
+  testWidgets('the inbox redirects to connect without an account', (
+    tester,
+  ) async {
+    await pumpVikunjaApp(tester);
+
+    routerOf(tester).go(AppRoutes.inbox);
+    await tester.pumpAndSettle();
+
+    expect(location(tester), AppRoutes.connect);
   });
 
   testWidgets(

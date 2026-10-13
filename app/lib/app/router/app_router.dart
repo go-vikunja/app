@@ -10,6 +10,7 @@ import 'package:vikunja_mobile/core/sync/sync_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/home/presentation/account_tab.dart';
 import 'package:vikunja_mobile/features/home/presentation/home_shell.dart';
+import 'package:vikunja_mobile/features/inbox/presentation/inbox_screen.dart';
 import 'package:vikunja_mobile/features/notifications/application/notifications_onboarding.dart';
 import 'package:vikunja_mobile/features/notifications/presentation/notification_setup_screen.dart';
 import 'package:vikunja_mobile/features/onboarding/application/current_server.dart';
@@ -45,6 +46,9 @@ abstract final class AppRoutes {
 
   /// Full screen over the shell, from the detail sheet or a new task.
   static String taskEdit(int id) => '$home/tasks/$id/edit';
+
+  /// The server's notifications, over the shell from the Overview's bell.
+  static const inbox = '$home/inbox';
 
   /// The connect screen and the server overview over the shell, for
   /// signing in to another account; pushed, so back returns to the shell.
@@ -150,6 +154,12 @@ GoRouter appRouter(Ref ref) {
             _idParam(state) == null ? AppRoutes.overview : null,
         builder: (context, state) =>
             AccountBoundScreen(child: TaskEditPage(taskId: _idParam(state)!)),
+      ),
+      GoRoute(
+        path: AppRoutes.inbox,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) =>
+            const AccountBoundScreen(child: InboxScreen()),
       ),
       GoRoute(
         path: AppRoutes.addAccount,

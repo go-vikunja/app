@@ -26,6 +26,19 @@ abstract final class SyncStateKeys {
   /// see `encodeUserSettings`. Absent before the first run.
   static const userSettings = 'user_settings';
 
+  /// When the activity sync last completed, ISO 8601 UTC. Absent until its
+  /// first run, which stores what it finds without showing any of it.
+  static const activitySyncedAt = 'activity_synced_at';
+
+  /// When an activity sync last pulled far enough back to cover the
+  /// stored notifications that are unread here, ISO 8601 UTC.
+  static const activityWindowCheckedAt = 'activity_window_checked_at';
+
+  /// The sync run that holds the account, `{"owner", "until"}` with
+  /// `until` ISO 8601 UTC; absent while none does. Every isolate's engine
+  /// takes it before a run and renews it while the run makes progress.
+  static const syncLease = 'sync_lease';
+
   static const runId = 'run_id';
   static const runNewestUpdated = 'run_newest_updated';
   static const phase = 'phase';

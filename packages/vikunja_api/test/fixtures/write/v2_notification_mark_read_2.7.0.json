@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "PUT /api/v2/notifications/373",
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"id\":373,\"notification\":{\"doer\":{\"created\":\"2026-10-13T11:09:56Z\",\"id\":375,\"name\":\"\",\"updated\":\"2026-10-13T11:09:56Z\",\"username\":\"fixturedoer\"},\"member\":{\"created\":\"2026-10-13T11:09:56Z\",\"id\":374,\"name\":\"\",\"updated\":\"2026-10-13T11:09:56Z\",\"username\":\"fixturereader\"},\"team\":{\"created\":\"2026-10-13T11:09:58Z\",\"created_by\":{\"created\":\"2026-10-13T11:09:56Z\",\"id\":375,\"name\":\"\",\"updated\":\"2026-10-13T11:09:56Z\",\"username\":\"fixturedoer\"},\"description\":\"\",\"external_id\":\"\",\"id\":1,\"is_public\":false,\"members\":[{\"admin\":true,\"created\":\"2026-10-13T11:09:56Z\",\"id\":375,\"name\":\"\",\"updated\":\"2026-10-13T11:09:56Z\",\"username\":\"fixturedoer\"}],\"name\":\"Gardeners\",\"updated\":\"2026-10-13T11:09:58Z\"}},\"name\":\"team.member.added\",\"read_at\":\"2026-10-13T11:09:59.005984918Z\",\"created\":\"2026-10-13T11:09:58Z\",\"read\":true}\n"
+}

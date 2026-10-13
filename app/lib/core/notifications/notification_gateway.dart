@@ -14,6 +14,9 @@ final class NotificationCapabilities {
 
 enum ScheduledNotificationKind { reminder, dueDate }
 
+/// A notification the OS shows in its tray right now.
+typedef DeliveredNotification = ({int osId, String? payload});
+
 /// One notification as handed to the OS. [osId] is the plugin's integer id;
 /// [payload] travels back with a tap or an action.
 @immutable
@@ -64,6 +67,22 @@ abstract interface class NotificationGateway {
 
   /// The ids the OS still holds for this app, every account included.
   Future<Set<int>> pendingIds();
+
+  /// What this app has in the tray, every account included.
+  Future<List<DeliveredNotification>> delivered();
+
+  /// Shows an activity notification at once (a comment, an assignment, a
+  /// mention, a session that ended) on the separate activity channel,
+  /// without the task actions. [subtitle] names the account when several
+  /// are signed in; notifications of one [group] are bundled.
+  Future<void> showActivity({
+    required int osId,
+    required String title,
+    required String body,
+    required String payload,
+    String? subtitle,
+    String? group,
+  });
 
   /// Shows a notification at once (the "Send a test notification" button).
   Future<void> showNow({

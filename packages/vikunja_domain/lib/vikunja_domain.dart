@@ -5,6 +5,7 @@ export 'src/account/user_settings.dart';
 export 'src/failure/vikunja_failure.dart';
 export 'src/label/label.dart';
 export 'src/label/new_label.dart';
+export 'src/notification/server_notification.dart';
 export 'src/project/project.dart';
 export 'src/project/project_view.dart';
 export 'src/query/page.dart';

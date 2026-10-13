@@ -181,15 +181,16 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
         return true;
       });
 
-  /// The op to send next: the oldest pending one, whatever its
-  /// `next_attempt_at`; the sender waits for that itself. An update or
-  /// delete under a temporary id waits for its create, which is ahead of
-  /// it or failed.
-  Future<OutboxRow?> nextPending() =>
+  /// The head of the queue: the oldest op that has not failed, whatever
+  /// its `next_attempt_at`; the sender waits for that itself. It may be
+  /// `sending`, in another isolate or left by a run that died, and then
+  /// nothing may overtake it. An update or delete under a temporary id
+  /// waits for its create, which is ahead of it or failed.
+  Future<OutboxRow?> nextInLine() =>
       (select(outbox)
             ..where(
               (o) =>
-                  o.state.equals(OutboxState.pending.name) &
+                  o.state.equals(OutboxState.failed.name).not() &
                   (o.taskId.isBiggerThanValue(0) |
                       o.kind.equals(OutboxOperationKind.createTask.name)),
             )
@@ -387,12 +388,28 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
     ),
   );
 
-  /// Ops a killed app left in `sending` go back to pending. A create among
-  /// them may have reached the server before the kill, so it is marked
-  /// uncertain as of its attempt (an earlier `sent_at` stays), and the
-  /// next attempt looks for the task before sending it again.
-  Future<int> resetSending({required DateTime now}) => transaction(() async {
-    final sending = outbox.state.equals(OutboxState.sending.name);
+  /// Ops left in `sending` for at least [olderThan] go back to pending: a
+  /// killed run, a disposed sender or a failed local apply left them, as
+  /// no live sender takes that long over one op. A younger one may still
+  /// be on its way in another isolate and stays. A create among them may
+  /// have reached the server, so it is marked uncertain as of its attempt
+  /// (an earlier `sent_at` stays), and the next attempt looks for the task
+  /// before sending it again.
+  Future<int> resetSending({
+    required DateTime now,
+    Duration olderThan = Duration.zero,
+  }) => transaction(() async {
+    const millis = EpochMillis();
+    // A clock set back since the attempt must not hold the op for good.
+    final sending =
+        outbox.state.equals(OutboxState.sending.name) &
+        (outbox.lastAttemptAt.isNull() |
+            outbox.lastAttemptAt.isSmallerOrEqualValue(
+              millis.toSql(now.subtract(olderThan)),
+            ) |
+            outbox.lastAttemptAt.isBiggerOrEqualValue(
+              millis.toSql(now.add(olderThan)),
+            ));
     await (update(outbox)..where(
           (o) => sending & o.kind.equals(OutboxOperationKind.createTask.name),
         ))

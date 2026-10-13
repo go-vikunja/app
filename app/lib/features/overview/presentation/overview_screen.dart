@@ -12,6 +12,7 @@ import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
 import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
+import 'package:vikunja_mobile/features/inbox/presentation/inbox_button.dart';
 import 'package:vikunja_mobile/features/overview/application/due_date_groups.dart';
 import 'package:vikunja_mobile/features/overview/application/open_tasks_provider.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
@@ -61,11 +62,16 @@ class _OverviewScreenState extends ConsumerState<OverviewScreen>
         title: Text(l10n.tabOverview),
         actions: [
           RefreshButton(onPressed: refreshing ? null : refresh),
+          const InboxButton(),
           const AccountSwitcherButton(),
         ],
         bottom: const SyncProgressBar(),
       ),
       floatingActionButton: FloatingActionButton.extended(
+        // A page over the shell (the inbox, the edit page) finds the heroes
+        // of every tab's top route; the project screen's button would share
+        // the default tag.
+        heroTag: null,
         onPressed: () => unawaited(showNewTaskSheet(context)),
         icon: const Icon(Icons.add),
         label: Text(l10n.newTask),

@@ -486,6 +486,57 @@ final class AppDatabaseFamily extends $Family
   String toString() => r'appDatabaseProvider';
 }
 
+/// True in a container the OS started without the app (a background run,
+/// a notification action): its sync engines leave the daily full pull to
+/// the app and give way to a run already in progress.
+
+@ProviderFor(runsHeadless)
+final runsHeadlessProvider = RunsHeadlessProvider._();
+
+/// True in a container the OS started without the app (a background run,
+/// a notification action): its sync engines leave the daily full pull to
+/// the app and give way to a run already in progress.
+
+final class RunsHeadlessProvider extends $FunctionalProvider<bool, bool, bool>
+    with $Provider<bool> {
+  /// True in a container the OS started without the app (a background run,
+  /// a notification action): its sync engines leave the daily full pull to
+  /// the app and give way to a run already in progress.
+  RunsHeadlessProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'runsHeadlessProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$runsHeadlessHash();
+
+  @$internal
+  @override
+  $ProviderElement<bool> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  bool create(Ref ref) {
+    return runsHeadless(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(bool value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<bool>(value),
+    );
+  }
+}
+
+String _$runsHeadlessHash() => r'c540d3b6e1d9947203596bd1d435eca0ba1f14b7';
+
 /// One account's sync engine; disposed with its database on sign-out.
 
 @ProviderFor(syncEngine)
@@ -548,7 +599,7 @@ final class SyncEngineProvider
   }
 }
 
-String _$syncEngineHash() => r'd7fddaa6ee253efaf8893af011111e7e5d98d8b3';
+String _$syncEngineHash() => r'1a0b9a68c73a8684c4f6f8672398267099c1fc0c';
 
 /// One account's sync engine; disposed with its database on sign-out.
 
@@ -1198,16 +1249,20 @@ final class UserRepositoryProvider
 
 String _$userRepositoryHash() => r'28da8498a99ef2100dbc72f90b776490a8e9c948';
 
-/// The last step of a sign-out: cancels the account's notifications and
-/// forgets their preferences, stops its outbox sender and sync engine,
-/// closes its database and deletes the files.
+/// The last step of a sign-out: makes a background run in another isolate
+/// let go of the account, cancels the account's notifications (scheduled
+/// and in the tray) and forgets their preferences and the background
+/// notes, stops its outbox sender and sync engine, closes its database and
+/// deletes the files.
 
 @ProviderFor(accountDataWiper)
 final accountDataWiperProvider = AccountDataWiperProvider._();
 
-/// The last step of a sign-out: cancels the account's notifications and
-/// forgets their preferences, stops its outbox sender and sync engine,
-/// closes its database and deletes the files.
+/// The last step of a sign-out: makes a background run in another isolate
+/// let go of the account, cancels the account's notifications (scheduled
+/// and in the tray) and forgets their preferences and the background
+/// notes, stops its outbox sender and sync engine, closes its database and
+/// deletes the files.
 
 final class AccountDataWiperProvider
     extends
@@ -1217,9 +1272,11 @@ final class AccountDataWiperProvider
           AccountDataWiper
         >
     with $Provider<AccountDataWiper> {
-  /// The last step of a sign-out: cancels the account's notifications and
-  /// forgets their preferences, stops its outbox sender and sync engine,
-  /// closes its database and deletes the files.
+  /// The last step of a sign-out: makes a background run in another isolate
+  /// let go of the account, cancels the account's notifications (scheduled
+  /// and in the tray) and forgets their preferences and the background
+  /// notes, stops its outbox sender and sync engine, closes its database and
+  /// deletes the files.
   AccountDataWiperProvider._()
     : super(
         from: null,
@@ -1253,4 +1310,4 @@ final class AccountDataWiperProvider
   }
 }
 
-String _$accountDataWiperHash() => r'bab7b3294b9e425b7d80cdd0579effce5882d233';
+String _$accountDataWiperHash() => r'd9cfe5b63ed7616a4be6c477a18d8f07dabde3e6';

@@ -1010,6 +1010,19 @@
   "accountSyncFailed": "The last sync failed.",
   "accountSyncNow": "Sync now",
   "accountFullResync": "Full resync",
+  "accountBackgroundSync": "Background sync: {when}",
+  "@accountBackgroundSync": {
+    "description": "When the background sync last ran for the account.",
+    "placeholders": {
+      "when": {
+        "type": "String",
+        "example": "2 hours ago"
+      }
+    }
+  },
+  "accountBackgroundSyncJustNow": "Background sync: just now",
+  "accountBackgroundSyncNever": "Background sync has not run yet",
+  "accountBackgroundSyncIosHint": "iOS decides when apps may sync in the background.",
   "taskMarkDone": "Mark done",
   "taskMarkNotDone": "Mark not done",
   "taskMarkedDone": "Marked done",
@@ -1612,6 +1625,225 @@
       }
     }
   },
+  "inboxTitle": "Notifications",
+  "inboxButton": "{count, plural, =0{Notifications} =1{Notifications, 1 unread} other{Notifications, {count} unread}}",
+  "@inboxButton": {
+    "description": "Screen reader label of the bell in the Overview's app bar.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "decimalPattern",
+        "example": "3"
+      }
+    }
+  },
+  "inboxLoading": "Loading notifications…",
+  "inboxEmptyTitle": "You’re all caught up",
+  "inboxEmptyBody": "Comments, assignments and mentions from your Vikunja server show up here.",
+  "inboxMarkAllRead": "Mark all as read",
+  "inboxToday": "Today",
+  "inboxYesterday": "Yesterday",
+  "inboxEarlier": "Earlier",
+  "inboxUnread": "Unread",
+  "@inboxUnread": {
+    "description": "Screen reader label of the dot on an unread notification."
+  },
+  "inboxTaskNotLocal": "This task is not on this device",
+  "inboxProjectNotLocal": "This project is not on this device",
+  "inboxSomeone": "Someone",
+  "@inboxSomeone": {
+    "description": "Stands in for the person who did something when the server did not say who."
+  },
+  "inboxATask": "a task",
+  "@inboxATask": {
+    "description": "Stands in for a task without an identifier or title, as in “Anna commented on a task”."
+  },
+  "inboxUnnamed": "unnamed",
+  "@inboxUnnamed": {
+    "description": "Stands in for a project or team without a name."
+  },
+  "inboxCommented": "{doer} commented on {task}",
+  "@inboxCommented": {
+    "description": "A comment on a task, named by its identifier, e.g. #12 or PROJ-12.",
+    "placeholders": {
+      "doer": {
+        "type": "String",
+        "example": "Anna"
+      },
+      "task": {
+        "type": "String",
+        "example": "#12"
+      }
+    }
+  },
+  "inboxAssignedYou": "{doer} assigned you to {task}",
+  "@inboxAssignedYou": {
+    "placeholders": {
+      "doer": {
+        "type": "String",
+        "example": "Anna"
+      },
+      "task": {
+        "type": "String",
+        "example": "#12"
+      }
+    }
+  },
+  "inboxAssigned": "{doer} assigned {assignee} to {task}",
+  "@inboxAssigned": {
+    "placeholders": {
+      "doer": {
+        "type": "String",
+        "example": "Anna"
+      },
+      "assignee": {
+        "type": "String",
+        "example": "Ben"
+      },
+      "task": {
+        "type": "String",
+        "example": "#12"
+      }
+    }
+  },
+  "inboxAssignedSomeone": "{doer} assigned someone to {task}",
+  "@inboxAssignedSomeone": {
+    "description": "Inbox row for an assignment whose assignee has no name in the server's payload.",
+    "placeholders": {
+      "doer": {
+        "type": "String",
+        "example": "Anna"
+      },
+      "task": {
+        "type": "String",
+        "example": "#12"
+      }
+    }
+  },
+  "inboxMentioned": "{doer} mentioned you on {task}",
+  "@inboxMentioned": {
+    "placeholders": {
+      "doer": {
+        "type": "String",
+        "example": "Anna"
+      },
+      "task": {
+        "type": "String",
+        "example": "#12"
+      }
+    }
+  },
+  "inboxTaskCreated": "{doer} created {task}",
+  "@inboxTaskCreated": {
+    "placeholders": {
+      "doer": {
+        "type": "String",
+        "example": "Anna"
+      },
+      "task": {
+        "type": "String",
+        "example": "#12"
+      }
+    }
+  },
+  "inboxTaskDeleted": "{doer} deleted {task}",
+  "@inboxTaskDeleted": {
+    "placeholders": {
+      "doer": {
+        "type": "String",
+        "example": "Anna"
+      },
+      "task": {
+        "type": "String",
+        "example": "#12"
+      }
+    }
+  },
+  "inboxProjectCreated": "{doer} created {project}",
+  "@inboxProjectCreated": {
+    "placeholders": {
+      "doer": {
+        "type": "String",
+        "example": "Anna"
+      },
+      "project": {
+        "type": "String",
+        "example": "Garden"
+      }
+    }
+  },
+  "inboxAddedYouToTeam": "{doer} added you to the {team} team",
+  "@inboxAddedYouToTeam": {
+    "placeholders": {
+      "doer": {
+        "type": "String",
+        "example": "Anna"
+      },
+      "team": {
+        "type": "String",
+        "example": "Family"
+      }
+    }
+  },
+  "inboxAddedToTeam": "{doer} added {member} to the {team} team",
+  "@inboxAddedToTeam": {
+    "placeholders": {
+      "doer": {
+        "type": "String",
+        "example": "Anna"
+      },
+      "member": {
+        "type": "String",
+        "example": "Ben"
+      },
+      "team": {
+        "type": "String",
+        "example": "Family"
+      }
+    }
+  },
+  "inboxAddedSomeoneToTeam": "{doer} added someone to the {team} team",
+  "@inboxAddedSomeoneToTeam": {
+    "description": "Inbox row for a team membership whose member has no name in the server's payload.",
+    "placeholders": {
+      "doer": {
+        "type": "String",
+        "example": "Anna"
+      },
+      "team": {
+        "type": "String",
+        "example": "Gardeners"
+      }
+    }
+  },
+  "inboxTaskWasDeleted": "This task was deleted",
+  "@inboxTaskWasDeleted": {
+    "description": "Snackbar after tapping an inbox row that says someone deleted a task."
+  },
+  "inboxReminder": "Reminder for {task}",
+  "@inboxReminder": {
+    "description": "The server's own reminder notification.",
+    "placeholders": {
+      "task": {
+        "type": "String",
+        "example": "#12"
+      }
+    }
+  },
+  "inboxOther": "New notification",
+  "@inboxOther": {
+    "description": "A server notification of a kind this app does not know."
+  },
+  "inboxQuoted": "“{text}”",
+  "@inboxQuoted": {
+    "description": "A comment's text in quotation marks.",
+    "placeholders": {
+      "text": {
+        "type": "String",
+        "example": "Looks good to me"
+      }
+    }
+  },
   "notificationSetupTitle": "Stay on top of your tasks",
   "notificationSetupBody": "Rurana can notify you on this phone, without the server having to send anything:",
   "notificationSetupReminders": "Reminders at their time",
@@ -1628,6 +1860,8 @@
   "notificationsRemindersSubtitle": "At the time of each reminder",
   "notificationsDueDates": "Due dates",
   "notificationsDueDatesSubtitle": "At the exact due time",
+  "notificationsActivity": "Activity",
+  "notificationsActivitySubtitle": "Comments, assignments and mentions",
   "notificationsOff": "Notifications are off",
   "notificationsOpenSettings": "Open settings",
   "notificationsTurnOn": "Turn on",
@@ -1656,6 +1890,202 @@
     "description": "Name of the Android notification channel for task reminders and due dates."
   },
   "notificationChannelRemindersDescription": "Reminders and due dates of your tasks",
+  "notificationChannelActivity": "Activity",
+  "@notificationChannelActivity": {
+    "description": "Name of the Android notification channel for comments, assignments and mentions from the server."
+  },
+  "notificationChannelActivityDescription": "Comments, assignments and mentions from your Vikunja servers",
+  "activityNotificationCommented": "{name} commented: {comment}",
+  "@activityNotificationCommented": {
+    "description": "Body of an OS notification for a new comment; the title is the task's title. The comment is cut to 80 characters.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Anna"
+      },
+      "comment": {
+        "type": "String",
+        "example": "Please check the pots"
+      }
+    }
+  },
+  "activityNotificationCommentedNoText": "{name} commented",
+  "@activityNotificationCommentedNoText": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Anna"
+      }
+    }
+  },
+  "activityNotificationAssignedYou": "{name} assigned you",
+  "@activityNotificationAssignedYou": {
+    "description": "Body of an OS notification: someone assigned the user to the task in the title.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Anna"
+      }
+    }
+  },
+  "activityNotificationAssignedOther": "{name} assigned {assignee}",
+  "@activityNotificationAssignedOther": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Anna"
+      },
+      "assignee": {
+        "type": "String",
+        "example": "Ben"
+      }
+    }
+  },
+  "activityNotificationAssignedSomeone": "{name} assigned someone to this task",
+  "@activityNotificationAssignedSomeone": {
+    "description": "Body of an OS notification for an assignment whose assignee has no name in the server's payload.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Anna"
+      }
+    }
+  },
+  "activityNotificationMentioned": "{name} mentioned you",
+  "@activityNotificationMentioned": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Anna"
+      }
+    }
+  },
+  "activityNotificationTaskCreated": "{name} created this task in {project}",
+  "@activityNotificationTaskCreated": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Anna"
+      },
+      "project": {
+        "type": "String",
+        "example": "Garden"
+      }
+    }
+  },
+  "activityNotificationTaskCreatedNoProject": "{name} created this task",
+  "@activityNotificationTaskCreatedNoProject": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Anna"
+      }
+    }
+  },
+  "activityNotificationTaskDeleted": "{name} deleted this task",
+  "@activityNotificationTaskDeleted": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Anna"
+      }
+    }
+  },
+  "activityNotificationProjectCreated": "{name} created the project {project}",
+  "@activityNotificationProjectCreated": {
+    "description": "Body of an OS notification; the title is the project's title.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Anna"
+      },
+      "project": {
+        "type": "String",
+        "example": "Garden"
+      }
+    }
+  },
+  "activityNotificationTeamAddedYou": "{name} added you to the team {team}",
+  "@activityNotificationTeamAddedYou": {
+    "description": "Body of an OS notification; the title is the team's name.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Anna"
+      },
+      "team": {
+        "type": "String",
+        "example": "Gardeners"
+      }
+    }
+  },
+  "activityNotificationTeamAddedOther": "{name} added {member} to the team {team}",
+  "@activityNotificationTeamAddedOther": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Anna"
+      },
+      "member": {
+        "type": "String",
+        "example": "Ben"
+      },
+      "team": {
+        "type": "String",
+        "example": "Gardeners"
+      }
+    }
+  },
+  "activityNotificationTeamAddedSomeone": "{name} added someone to the team {team}",
+  "@activityNotificationTeamAddedSomeone": {
+    "description": "Body of an OS notification for a team membership whose member has no name in the server's payload.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Anna"
+      },
+      "team": {
+        "type": "String",
+        "example": "Gardeners"
+      }
+    }
+  },
+  "activityNotificationMoreTitle": "More activity",
+  "@activityNotificationMoreTitle": {
+    "description": "Title of the OS notification that stands for the new notifications of one sync beyond the few shown one by one."
+  },
+  "activityNotificationMoreBody": "{count, plural, =1{1 more new notification} other{{count} more new notifications}}",
+  "@activityNotificationMoreBody": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "7"
+      }
+    }
+  },
+  "activityNotificationUntitled": "Vikunja",
+  "@activityNotificationUntitled": {
+    "description": "Title of an activity notification whose task, project or team has no name."
+  },
+  "sessionEndedNotificationTitle": "Sign in again to {host}",
+  "@sessionEndedNotificationTitle": {
+    "description": "Title of the OS notification when the server ended an account's session.",
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "tasks.example.com"
+      }
+    }
+  },
+  "sessionEndedNotificationBody": "Your session as {username} has ended. Rurana cannot sync this account until you sign in again.",
+  "@sessionEndedNotificationBody": {
+    "placeholders": {
+      "username": {
+        "type": "String",
+        "example": "anna"
+      }
+    }
+  },
   "notificationActionDone": "Done",
   "@notificationActionDone": {
     "description": "Notification action that marks the task done."

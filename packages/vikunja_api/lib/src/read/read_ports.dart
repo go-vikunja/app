@@ -50,11 +50,19 @@ abstract interface class UsersPort {
   Future<List<User>> searchProjectUsers(int projectId, {String query = ''});
 }
 
+abstract interface class NotificationsPort {
+  /// The user's notifications, newest first: v2 envelope, v1 bare array
+  /// with paging headers. Only notifications of projects the user can
+  /// still read come back.
+  Future<Page<ServerNotification>> list({int page = 1, int? perPage});
+}
+
 abstract interface class VikunjaReadClient {
   ProjectsPort get projects;
   LabelsPort get labels;
   TasksPort get tasks;
   UsersPort get users;
+  NotificationsPort get notifications;
 }
 
 /// [dio] is an authenticated client from `createAuthenticatedDio`; the

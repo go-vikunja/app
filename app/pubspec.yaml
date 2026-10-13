@@ -9,6 +9,7 @@ environment:
   flutter: ">=3.47.0"
 
 dependencies:
+  characters: ^1.4.1
   crypto: ^3.0.7
   cupertino_ui: ^1.1.2
   dio: ^5.11.1
@@ -42,6 +43,7 @@ dependencies:
     path: ../packages/vikunja_domain
   vikunja_logic:
     path: ../packages/vikunja_logic
+  workmanager: ^0.10.10
 
 dev_dependencies:
   build_runner: ^2.16.2

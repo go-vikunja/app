@@ -7,10 +7,14 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/app/router/pop_pages_over_shell.dart';
+import 'package:vikunja_mobile/core/activity/activity_tray.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/notifications/notification_actions.dart';
+import 'package:vikunja_mobile/core/repositories/activity_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/features/accounts/application/account_switcher.dart';
+import 'package:vikunja_mobile/features/inbox/application/local_task_lookup.dart';
 import 'package:vikunja_mobile/features/notifications/application/notification_providers.dart';
 import 'package:vikunja_mobile/features/notifications/presentation/notifications_section.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
@@ -21,8 +25,12 @@ final _log = Logger('NotificationTap');
 /// while the app runs or launched it: waits for the shell, switches to the
 /// notification's account when another one is active, then shows the
 /// detail sheet over the Overview, or over a page that covers the shell
-/// (the edit page keeps its unsaved changes). A test notification opens
-/// the Account tab. Signed out, the tap is dropped.
+/// (the edit page keeps its unsaved changes). An activity notification is
+/// marked read first and opens the inbox when it names no task, and so
+/// does the one that stands for several; a test notification and one about
+/// an ended session open the Account tab, after the pages over the shell
+/// went as if the user went back (the edit page asks first). Signed out,
+/// the tap is dropped.
 class NotificationTapListener extends ConsumerStatefulWidget {
   const new({required this.child, super.key});
 
@@ -135,8 +143,26 @@ class _NotificationTapListenerState
       if (!mounted) return;
     }
     if (ref.read(activeAccountIdProvider) != payload.accountId) return;
+    if (ActivityTray.isSessionKey(payload.key)) {
+      await _openAccountTab(confirmTest: false);
+      return;
+    }
+    if (ActivityTray.isMoreKey(payload.key)) {
+      _openInbox();
+      return;
+    }
+    final activityId = ActivityTray.activityIdOf(payload.key);
+    if (activityId != null) {
+      await _markActivityRead(payload.accountId, activityId);
+      if (!mounted) return;
+      if (ref.read(activeAccountIdProvider) != payload.accountId) return;
+      if (payload.taskId == 0) {
+        _openInbox();
+        return;
+      }
+    }
     if (payload.taskId == testNotificationTaskId) {
-      await _openAccountTab();
+      await _openAccountTab(confirmTest: true);
       return;
     }
     // By account, not the active account's provider, which may not have
@@ -147,7 +173,7 @@ class _NotificationTapListenerState
     );
     final Task? found;
     try {
-      found = await _firstTask(repository.read().watchTask(payload.taskId));
+      found = await findLocalTask(repository.read(), payload.taskId);
     } finally {
       repository.close();
     }
@@ -158,7 +184,13 @@ class _NotificationTapListenerState
         (context) => ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
           ..showSnackBar(
-            SnackBar(content: Text(context.l10n.notificationTaskGone)),
+            SnackBar(
+              content: Text(
+                activityId == null
+                    ? context.l10n.notificationTaskGone
+                    : context.l10n.inboxTaskNotLocal,
+              ),
+            ),
           ),
       );
       return;
@@ -195,15 +227,44 @@ class _NotificationTapListenerState
         .whenComplete(subscription.close);
   }
 
-  /// The test notification's tap: a visible result on the Account tab too,
+  /// Read on the notification's account, which need not be active yet; a
+  /// failure leaves it unread.
+  Future<void> _markActivityRead(String accountId, int activityId) async {
+    final repository = ref.listenManual(
+      accountActivityRepositoryProvider(accountId),
+      (_, _) {},
+    );
+    try {
+      await repository.read().markRead(activityId);
+    } on Object catch (error) {
+      _log.warning(
+        'Could not mark the tapped notification read: ${error.runtimeType}',
+      );
+    } finally {
+      repository.close();
+    }
+  }
+
+  void _openInbox() {
+    ref.read(rootModalRoutesProvider).closeAll();
+    if (_router.routerDelegate.state.matchedLocation != AppRoutes.inbox) {
+      unawaited(_router.push(AppRoutes.inbox));
+    }
+  }
+
+  /// The Account tab shows the banner of an ended session. The test
+  /// notification's tap with [confirmTest] has a visible result there too,
   /// where the button that sent it lives.
-  Future<void> _openAccountTab() {
+  Future<void> _openAccountTab({required bool confirmTest}) async {
     ref.read(rootModalRoutesProvider).closeAll();
     if (_router.routerDelegate.state.matchedLocation != AppRoutes.account) {
-      _router.go(AppRoutes.account);
-      return Future.value();
+      if (await popPagesOverShell(_router) && mounted) {
+        _router.go(AppRoutes.account);
+      }
+      return;
     }
-    return _showAfterFrame(
+    if (!confirmTest) return;
+    await _showAfterFrame(
       (context) => ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(
@@ -239,25 +300,4 @@ class _NotificationTapListenerState
 
   @override
   Widget build(BuildContext context) => widget.child;
-}
-
-/// `Stream.first` waits for the cancel; this does not, so a source whose
-/// cancel never completes cannot hold the tap.
-Future<Task?> _firstTask(Stream<Task?> stream) {
-  final completer = Completer<Task?>();
-  late final StreamSubscription<Task?> subscription;
-  subscription = stream.listen(
-    (value) {
-      if (!completer.isCompleted) completer.complete(value);
-      unawaited(subscription.cancel());
-    },
-    onError: (Object error, StackTrace stack) {
-      if (!completer.isCompleted) completer.completeError(error, stack);
-      unawaited(subscription.cancel());
-    },
-    onDone: () {
-      if (!completer.isCompleted) completer.complete(null);
-    },
-  );
-  return completer.future;
 }

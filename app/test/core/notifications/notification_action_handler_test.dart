@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/background/background_providers.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway_provider.dart';
 import 'package:vikunja_mobile/core/notifications/notification_action_handler.dart';
@@ -14,6 +15,7 @@ import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 
+import '../../helpers/activity_fakes.dart';
 import '../../helpers/auth_fakes.dart';
 import '../../helpers/fake_sync_client.dart';
 import '../../helpers/fake_write_client.dart';
@@ -52,6 +54,7 @@ void main() {
   late FakeWriteClient write;
   late FakeSyncClient read;
   late FakeNotificationGateway gateway;
+  late FakeBackgroundScheduler background;
   late ProviderContainer container;
   late NotificationActionHandler handler;
 
@@ -64,6 +67,7 @@ void main() {
     write = FakeWriteClient(clock: () => now);
     read = FakeSyncClient();
     gateway = FakeNotificationGateway();
+    background = FakeBackgroundScheduler();
     container = ProviderContainer(
       overrides: [
         ...auth.overrides,
@@ -83,6 +87,7 @@ void main() {
         readClientProvider.overrideWith((ref, accountId) => read),
         clockProvider.overrideWithValue(() => now),
         notificationGatewayProvider.overrideWithValue(gateway),
+        backgroundSchedulerProvider.overrideWithValue(background),
       ],
     );
     addTearDown(container.dispose);
@@ -188,6 +193,45 @@ void main() {
       expect(await db.outboxDao.count(), 1);
       expect((await db.tasksDao.find(1))!.done, isTrue);
       expect(gateway.pending.keys, [notificationOsIdFor(accountId, '2:due')]);
+    });
+
+    test('an expired access token queues a background drain, so the done '
+        'goes out within minutes', () async {
+      final (accountId, db) = await signedIn();
+      write.beforeRequest = (_) => throw const TokenRejected(
+        message:
+            'the access token has expired and this isolate does not '
+            'refresh',
+      );
+
+      await handler.handle(
+        action(
+          NotificationActionIds.markDone,
+          accountId: accountId,
+          taskId: 1,
+          key: '1:due',
+        ),
+      );
+
+      expect(await db.outboxDao.count(), 1);
+      expect(background.calls, ['drain']);
+    });
+
+    test('an unreachable server queues no background drain', () async {
+      final (accountId, _) = await signedIn();
+      write.beforeRequest = (_) =>
+          throw const NetworkFailure(NetworkProblem.unreachable);
+
+      await handler.handle(
+        action(
+          NotificationActionIds.markDone,
+          accountId: accountId,
+          taskId: 1,
+          key: '1:due',
+        ),
+      );
+
+      expect(background.calls, isEmpty);
     });
 
     test('follows a temporary id to the server id', () async {

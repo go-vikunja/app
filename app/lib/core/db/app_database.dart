@@ -3,6 +3,7 @@ import 'package:vikunja_mobile/core/db/daos/labels_dao.dart';
 import 'package:vikunja_mobile/core/db/daos/outbox_dao.dart';
 import 'package:vikunja_mobile/core/db/daos/projects_dao.dart';
 import 'package:vikunja_mobile/core/db/daos/scheduled_notifications_dao.dart';
+import 'package:vikunja_mobile/core/db/daos/server_notifications_dao.dart';
 import 'package:vikunja_mobile/core/db/daos/sync_state_dao.dart';
 import 'package:vikunja_mobile/core/db/daos/tasks_dao.dart';
 import 'package:vikunja_mobile/core/db/daos/users_dao.dart';
@@ -11,6 +12,7 @@ import 'package:vikunja_mobile/core/db/tables/labels.dart';
 import 'package:vikunja_mobile/core/db/tables/outbox.dart';
 import 'package:vikunja_mobile/core/db/tables/projects.dart';
 import 'package:vikunja_mobile/core/db/tables/scheduled_notifications.dart';
+import 'package:vikunja_mobile/core/db/tables/server_notifications.dart';
 import 'package:vikunja_mobile/core/db/tables/sync_state.dart';
 import 'package:vikunja_mobile/core/db/tables/task_id_remaps.dart';
 import 'package:vikunja_mobile/core/db/tables/tasks.dart';
@@ -35,6 +37,7 @@ part 'app_database.g.dart';
     Outbox,
     TaskIdRemaps,
     ScheduledNotifications,
+    ServerNotifications,
   ],
   daos: [
     ProjectsDao,
@@ -44,13 +47,14 @@ part 'app_database.g.dart';
     SyncStateDao,
     OutboxDao,
     ScheduledNotificationsDao,
+    ServerNotificationsDao,
   ],
 )
 final class AppDatabase extends _$AppDatabase {
   new(super.e);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -67,6 +71,7 @@ final class AppDatabase extends _$AppDatabase {
         await m.createTable(taskIdRemaps);
       }
       if (from < 4) await m.createTable(scheduledNotifications);
+      if (from < 5) await m.createTable(serverNotifications);
     },
     beforeOpen: (_) => customStatement('PRAGMA foreign_keys = ON'),
   );

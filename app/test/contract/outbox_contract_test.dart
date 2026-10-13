@@ -95,6 +95,9 @@ final class _FlakyWriteClient implements VikunjaWriteClient {
 
   @override
   LabelsWritePort get labels => _real.labels;
+
+  @override
+  NotificationsWritePort get notifications => _real.notifications;
 }
 
 final class _FlakyTasks implements TasksWritePort {

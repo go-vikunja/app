@@ -398,7 +398,7 @@ void main() {
         at(hourBeforeDue, monday.subtract(const Duration(hours: 1))),
       ]);
       // The update waits for the create.
-      expect((await db.outboxDao.nextPending())!.kind, 'createTask');
+      expect((await db.outboxDao.nextInLine())!.kind, 'createTask');
     });
 
     test('a reminder edit alone before the send is no op of its own', () async {
@@ -452,7 +452,7 @@ void main() {
           assignees: IdSetChange(added: {21}),
         ),
       );
-      expect((await db.outboxDao.nextPending())!.id, follower.id);
+      expect((await db.outboxDao.nextInLine())!.id, follower.id);
     });
 
     test('reminders changed while the create is in flight stay on top of the '

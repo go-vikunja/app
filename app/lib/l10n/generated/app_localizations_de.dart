@@ -1211,6 +1211,23 @@ class AppLocalizationsDe extends AppLocalizations {
   String get accountFullResync => 'Alles neu laden';
 
   @override
+  String accountBackgroundSync(String when) {
+    return 'Hintergrundsynchronisierung: $when';
+  }
+
+  @override
+  String get accountBackgroundSyncJustNow =>
+      'Hintergrundsynchronisierung: gerade eben';
+
+  @override
+  String get accountBackgroundSyncNever =>
+      'Die Hintergrundsynchronisierung lief noch nicht';
+
+  @override
+  String get accountBackgroundSyncIosHint =>
+      'iOS entscheidet, wann Apps im Hintergrund synchronisieren dürfen.';
+
+  @override
   String get taskMarkDone => 'Als erledigt markieren';
 
   @override
@@ -1928,6 +1945,137 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get inboxTitle => 'Benachrichtigungen';
+
+  @override
+  String inboxButton(int count) {
+    final intl.NumberFormat countNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String countString = countNumberFormat.format(count);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Benachrichtigungen, $countString ungelesen',
+      one: 'Benachrichtigungen, 1 ungelesen',
+      zero: 'Benachrichtigungen',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get inboxLoading => 'Benachrichtigungen werden geladen …';
+
+  @override
+  String get inboxEmptyTitle => 'Du bist auf dem neuesten Stand';
+
+  @override
+  String get inboxEmptyBody =>
+      'Kommentare, Zuweisungen und Erwähnungen von deinem Vikunja-Server erscheinen hier.';
+
+  @override
+  String get inboxMarkAllRead => 'Alle als gelesen markieren';
+
+  @override
+  String get inboxToday => 'Heute';
+
+  @override
+  String get inboxYesterday => 'Gestern';
+
+  @override
+  String get inboxEarlier => 'Früher';
+
+  @override
+  String get inboxUnread => 'Ungelesen';
+
+  @override
+  String get inboxTaskNotLocal => 'Diese Aufgabe ist nicht auf diesem Gerät';
+
+  @override
+  String get inboxProjectNotLocal =>
+      'Dieses Projekt ist nicht auf diesem Gerät';
+
+  @override
+  String get inboxSomeone => 'Jemand';
+
+  @override
+  String get inboxATask => 'eine Aufgabe';
+
+  @override
+  String get inboxUnnamed => 'ohne Namen';
+
+  @override
+  String inboxCommented(String doer, String task) {
+    return '$doer hat $task kommentiert';
+  }
+
+  @override
+  String inboxAssignedYou(String doer, String task) {
+    return '$doer hat dir $task zugewiesen';
+  }
+
+  @override
+  String inboxAssigned(String doer, String assignee, String task) {
+    return '$doer hat $assignee $task zugewiesen';
+  }
+
+  @override
+  String inboxAssignedSomeone(String doer, String task) {
+    return '$doer hat $task jemandem zugewiesen';
+  }
+
+  @override
+  String inboxMentioned(String doer, String task) {
+    return '$doer hat dich in $task erwähnt';
+  }
+
+  @override
+  String inboxTaskCreated(String doer, String task) {
+    return '$doer hat $task erstellt';
+  }
+
+  @override
+  String inboxTaskDeleted(String doer, String task) {
+    return '$doer hat $task gelöscht';
+  }
+
+  @override
+  String inboxProjectCreated(String doer, String project) {
+    return '$doer hat $project erstellt';
+  }
+
+  @override
+  String inboxAddedYouToTeam(String doer, String team) {
+    return '$doer hat dich zum Team $team hinzugefügt';
+  }
+
+  @override
+  String inboxAddedToTeam(String doer, String member, String team) {
+    return '$doer hat $member zum Team $team hinzugefügt';
+  }
+
+  @override
+  String inboxAddedSomeoneToTeam(String doer, String team) {
+    return '$doer hat jemanden zum Team $team hinzugefügt';
+  }
+
+  @override
+  String get inboxTaskWasDeleted => 'Diese Aufgabe wurde gelöscht';
+
+  @override
+  String inboxReminder(String task) {
+    return 'Erinnerung an $task';
+  }
+
+  @override
+  String get inboxOther => 'Neue Benachrichtigung';
+
+  @override
+  String inboxQuoted(String text) {
+    return '„$text“';
+  }
+
+  @override
   String get notificationSetupTitle => 'Behalte deine Aufgaben im Blick';
 
   @override
@@ -1979,6 +2127,13 @@ class AppLocalizationsDe extends AppLocalizations {
   String get notificationsDueDatesSubtitle => 'Zur genauen Fälligkeitszeit';
 
   @override
+  String get notificationsActivity => 'Aktivität';
+
+  @override
+  String get notificationsActivitySubtitle =>
+      'Kommentare, Zuweisungen und Erwähnungen';
+
+  @override
   String get notificationsOff => 'Benachrichtigungen sind aus';
 
   @override
@@ -2027,6 +2182,109 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get notificationChannelRemindersDescription =>
       'Erinnerungen und Fälligkeiten deiner Aufgaben';
+
+  @override
+  String get notificationChannelActivity => 'Aktivitäten';
+
+  @override
+  String get notificationChannelActivityDescription =>
+      'Kommentare, Zuweisungen und Erwähnungen von deinen Vikunja-Servern';
+
+  @override
+  String activityNotificationCommented(String name, String comment) {
+    return '$name hat kommentiert: $comment';
+  }
+
+  @override
+  String activityNotificationCommentedNoText(String name) {
+    return '$name hat kommentiert';
+  }
+
+  @override
+  String activityNotificationAssignedYou(String name) {
+    return '$name hat dir diese Aufgabe zugewiesen';
+  }
+
+  @override
+  String activityNotificationAssignedOther(String name, String assignee) {
+    return '$name hat diese Aufgabe $assignee zugewiesen';
+  }
+
+  @override
+  String activityNotificationAssignedSomeone(String name) {
+    return '$name hat diese Aufgabe jemandem zugewiesen';
+  }
+
+  @override
+  String activityNotificationMentioned(String name) {
+    return '$name hat dich erwähnt';
+  }
+
+  @override
+  String activityNotificationTaskCreated(String name, String project) {
+    return '$name hat diese Aufgabe in $project erstellt';
+  }
+
+  @override
+  String activityNotificationTaskCreatedNoProject(String name) {
+    return '$name hat diese Aufgabe erstellt';
+  }
+
+  @override
+  String activityNotificationTaskDeleted(String name) {
+    return '$name hat diese Aufgabe gelöscht';
+  }
+
+  @override
+  String activityNotificationProjectCreated(String name, String project) {
+    return '$name hat das Projekt $project erstellt';
+  }
+
+  @override
+  String activityNotificationTeamAddedYou(String name, String team) {
+    return '$name hat dich zum Team $team hinzugefügt';
+  }
+
+  @override
+  String activityNotificationTeamAddedOther(
+    String name,
+    String member,
+    String team,
+  ) {
+    return '$name hat $member zum Team $team hinzugefügt';
+  }
+
+  @override
+  String activityNotificationTeamAddedSomeone(String name, String team) {
+    return '$name hat jemanden zum Team $team hinzugefügt';
+  }
+
+  @override
+  String get activityNotificationMoreTitle => 'Weitere Aktivitäten';
+
+  @override
+  String activityNotificationMoreBody(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count weitere neue Benachrichtigungen',
+      one: '1 weitere neue Benachrichtigung',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get activityNotificationUntitled => 'Vikunja';
+
+  @override
+  String sessionEndedNotificationTitle(String host) {
+    return 'Melde dich wieder bei $host an';
+  }
+
+  @override
+  String sessionEndedNotificationBody(String username) {
+    return 'Deine Sitzung als $username ist abgelaufen. Rurana kann dieses Konto erst wieder synchronisieren, wenn du dich neu anmeldest.';
+  }
 
   @override
   String get notificationActionDone => 'Erledigt';
