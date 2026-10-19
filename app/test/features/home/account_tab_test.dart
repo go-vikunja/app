@@ -333,6 +333,7 @@ void main() {
       tester,
     ) async {
       final semantics = tester.ensureSemantics();
+      usePhoneSurface(tester);
       data = SyncFakes(
         now: now,
         status: SyncFailed(

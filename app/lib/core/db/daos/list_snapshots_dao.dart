@@ -61,11 +61,11 @@ final class ListSnapshotsDao extends DatabaseAccessor<AppDatabase>
       watchTables({listSnapshots, listSnapshotTasks}, () => load(listKey));
 
   /// Removes the snapshots whose key starts with [prefix], except [keep].
-  Future<void> removeAll(String prefix, {String? keep}) =>
+  Future<void> removeAll(String prefix, {Set<String> keep = const {}}) =>
       transaction(() async {
         Expression<bool> doomed(GeneratedColumn<String> key) {
           final matches = key.like('${_escaped(prefix)}%', escapeChar: r'\');
-          return keep == null ? matches : matches & key.equals(keep).not();
+          return keep.isEmpty ? matches : matches & key.isNotIn(keep);
         }
 
         await (delete(listSnapshotTasks)..where((t) => doomed(t.listKey))).go();

@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
@@ -7,7 +8,7 @@ import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/theme/hex_color.dart';
 import 'package:vikunja_mobile/features/tasks/application/task_row_content.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/favourite_button.dart';
-import 'package:vikunja_mobile/features/tasks/presentation/relative_time.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_chips.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_formatting.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row_parts.dart';
@@ -16,7 +17,7 @@ import 'package:vikunja_mobile/features/tasks/presentation/task_row_parts.dart';
 /// texts that open the detail sheet (one semantics node that reads them
 /// all), and the favourite star. The controls are indicators only without
 /// their callbacks.
-class TaskRow extends StatelessWidget {
+class TaskRow extends ConsumerWidget {
   const new({
     required this.task,
     required this.now,
@@ -59,15 +60,17 @@ class TaskRow extends StatelessWidget {
   static const _maxIndentedLevels = 4;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
+    final formatter = MomentFormatter.watch(context, ref);
     final overdue = task.isOverdue(now);
     final due = task.dueDate;
-    final dueText = due == null
+    final dueText = due == null ? null : formatter.relative(due, now: now);
+    final spokenDue = due == null
         ? null
-        : formatRelativeTime(l10n, due, now: now);
+        : formatter.semanticsLabel(due) ?? dueText;
     final detailStyle = theme.textTheme.bodyMedium?.copyWith(
       color: colors.onSurfaceVariant,
     );
@@ -94,10 +97,10 @@ class TaskRow extends StatelessWidget {
         l10n.taskSubtaskOfSemantics(parent),
       if (task.done) l10n.taskDoneSemantics,
       if (details.isNotEmpty) details,
-      if (dueText != null && overdue)
-        l10n.taskOverdueSemantics(dueText)
-      else if (dueText != null)
-        l10n.taskDueSemantics(dueText),
+      if (spokenDue != null && overdue)
+        l10n.taskOverdueSemantics(spokenDue)
+      else if (spokenDue != null)
+        l10n.taskDueSemantics(spokenDue),
       if (showsPriority)
         l10n.prioritySemantics(priorityLabel(l10n, task.priority)),
       for (final label in labels) l10n.labelSemantics(label.title),

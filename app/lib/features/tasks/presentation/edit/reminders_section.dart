@@ -1,8 +1,9 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/features/tasks/application/reminder_editing.dart';
-import 'package:vikunja_mobile/features/tasks/presentation/moment_format.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_formatting.dart';
 
 /// One row per reminder: tap edits, the trailing button removes. A
@@ -57,7 +58,7 @@ class RemindersSection extends StatelessWidget {
   }
 }
 
-class _ReminderRow extends StatelessWidget {
+class _ReminderRow extends ConsumerWidget {
   const new({
     required this.reminder,
     required this.dates,
@@ -71,20 +72,29 @@ class _ReminderRow extends StatelessWidget {
   final VoidCallback onRemove;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
+    final formatter = MomentFormatter.watch(context, ref);
     final text = formatReminder(
       l10n,
       reminder,
-      formatAbsolute: (moment) => formatMoment(context, moment),
+      formatAbsolute: formatter.absolute,
+    );
+    final spoken = formatReminder(
+      l10n,
+      reminder,
+      formatAbsolute: formatter.spokenAbsolute,
     );
     final relativeTo = reminder.relativeTo;
     final instant = reminderInstant(reminder, dates);
     final secondary = switch ((relativeTo, instant)) {
       (null, _) => null,
-      (_, final instant?) => Text(formatMoment(context, instant)),
+      (_, final instant?) => Text(
+        formatter.absolute(instant),
+        semanticsLabel: formatter.semanticsLabel(instant),
+      ),
       (final relativeTo?, null) => _Warning(switch (relativeTo) {
         ReminderRelativeTo.dueDate => l10n.reminderDueDateNotSet,
         ReminderRelativeTo.startDate => l10n.reminderStartDateNotSet,
@@ -95,11 +105,11 @@ class _ReminderRow extends StatelessWidget {
       onTapHint: l10n.taskEditEditReminder,
       child: ListTile(
         leading: Icon(Icons.alarm, color: colors.onSurfaceVariant),
-        title: Text(text),
+        title: Text(text, semanticsLabel: spoken),
         subtitle: secondary,
         trailing: IconButton(
           onPressed: onRemove,
-          tooltip: l10n.taskEditRemoveReminder(text),
+          tooltip: l10n.taskEditRemoveReminder(spoken),
           icon: const Icon(Icons.close),
         ),
         onTap: onTap,

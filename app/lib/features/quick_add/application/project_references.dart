@@ -32,8 +32,12 @@ String? projectReference(Project project, List<Project> candidates) {
 }
 
 /// [project]'s title, after its parents' when another of [projects] has
-/// the same title: `Work › Backlog`.
-String projectLabel(Project project, List<Project> projects) {
+/// the same title: `Work › Backlog`. [titleOf] names each project shown.
+String projectLabel(
+  Project project,
+  List<Project> projects, {
+  String Function(Project project) titleOf = _serverTitle,
+}) {
   final lower = project.title.toLowerCase();
   final shared = projects.any(
     (other) =>
@@ -41,14 +45,16 @@ String projectLabel(Project project, List<Project> projects) {
         !other.isArchived &&
         other.title.toLowerCase() == lower,
   );
-  if (!shared) return project.title;
+  if (!shared) return titleOf(project);
   final byId = {for (final other in projects) other.id: other};
-  final titles = [project.title];
+  final titles = [titleOf(project)];
   final seen = {project.id};
   var parent = byId[project.parentProjectId];
   while (parent != null && seen.add(parent.id)) {
-    titles.insert(0, parent.title);
+    titles.insert(0, titleOf(parent));
     parent = byId[parent.parentProjectId];
   }
   return titles.join(' › ');
 }
+
+String _serverTitle(Project project) => project.title;

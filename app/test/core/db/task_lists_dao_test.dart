@@ -415,7 +415,10 @@ void main() {
           await db.listSnapshotsDao.replace(key, {1: 1}, loadedAt: now);
         }
 
-        await db.listSnapshotsDao.removeAll('overview:', keep: 'overview:-14');
+        await db.listSnapshotsDao.removeAll(
+          'overview:',
+          keep: {'overview:-14'},
+        );
 
         expect(
           (await db.listSnapshotsDao.load('overview:-2')).loadedAt,
@@ -437,5 +440,23 @@ void main() {
         );
       },
     );
+
+    test('removing by prefix can keep several', () async {
+      for (final key in ['filter:-2', 'filter:-3', 'filter:-14', 'view:70']) {
+        await db.listSnapshotsDao.replace(key, {1: 1}, loadedAt: now);
+      }
+
+      await db.listSnapshotsDao.removeAll(
+        'filter:',
+        keep: {'filter:-2', 'filter:-14', 'filter:-99'},
+      );
+
+      Future<DateTime?> loaded(String key) async =>
+          (await db.listSnapshotsDao.load(key)).loadedAt;
+      expect(await loaded('filter:-2'), now);
+      expect(await loaded('filter:-3'), isNull);
+      expect(await loaded('filter:-14'), now);
+      expect(await loaded('view:70'), now);
+    });
   });
 }

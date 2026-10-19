@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/home/presentation/account_tab.dart';
@@ -14,6 +15,7 @@ import 'package:vikunja_mobile/features/overview/presentation/overview_screen.da
 import 'package:vikunja_mobile/features/projects/presentation/project_tasks_screen.dart';
 import 'package:vikunja_mobile/features/projects/presentation/projects_screen.dart';
 import 'package:vikunja_mobile/features/sync/presentation/first_sync_screen.dart';
+import 'package:vikunja_mobile/features/sync/presentation/offline_banner.dart';
 import 'package:vikunja_mobile/features/sync/presentation/sync_progress_bar.dart';
 import 'package:vikunja_mobile/features/upcoming/presentation/upcoming_screen.dart';
 
@@ -64,12 +66,14 @@ void main() {
   testWidgets('opens on the overview and switches between the tabs', (
     tester,
   ) async {
+    usePhoneSurface(tester);
     await pumpSignedInApp(tester, sync: data, now: now);
 
     expect(find.byType(HomeShell), findsOneWidget);
     expect(find.byType(OverviewScreen), findsOneWidget);
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(find.byType(NavigationDestination), findsNWidgets(4));
+    expect(find.byType(NavigationRail), findsNothing);
     expect(location(tester), AppRoutes.overview);
 
     await openTab(tester, en.tabUpcoming);
@@ -180,15 +184,229 @@ void main() {
     expect(find.byType(OverviewScreen), findsOneWidget);
   });
 
-  testWidgets('uses the Cupertino tab bar on iOS', (tester) async {
-    await pumpSignedInApp(tester, sync: data, now: now);
+  group('navigation', () {
+    const wide = Size(800, 600);
+    const landscapePhone = Size(740, 360);
 
-    expect(find.byType(CupertinoTabBar), findsOneWidget);
-    expect(find.byType(NavigationBar), findsNothing);
+    int? railIndex(WidgetTester tester) => tester
+        .widget<NavigationRail>(find.byType(NavigationRail))
+        .selectedIndex;
 
-    await openTab(tester, en.tabProjects);
-    expect(find.byType(ProjectsScreen), findsOneWidget);
-  }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+    for (final (name, size) in [('phone', phoneSize), ('wide window', wide)]) {
+      testWidgets('iOS keeps the Cupertino tab bar in a $name', (tester) async {
+        usePhoneSurface(tester, logicalSize: size);
+        await pumpSignedInApp(tester, sync: data, now: now);
+
+        expect(find.byType(CupertinoTabBar), findsOneWidget);
+        expect(find.byType(NavigationBar), findsNothing);
+        expect(find.byType(NavigationRail), findsNothing);
+
+        await openTab(tester, en.tabProjects);
+        expect(find.byType(ProjectsScreen), findsOneWidget);
+      }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+    }
+
+    testWidgets('a wide window on Android has the rail with every label '
+        'beside the content', (tester) async {
+      usePhoneSurface(tester, logicalSize: wide);
+      await pumpSignedInApp(tester, sync: data, now: now);
+
+      expect(find.byType(NavigationRail), findsOneWidget);
+      expect(find.byType(NavigationBar), findsNothing);
+      final railWidget = tester.widget<NavigationRail>(
+        find.byType(NavigationRail),
+      );
+      expect(railWidget.destinations, hasLength(4));
+      expect(railWidget.labelType, NavigationRailLabelType.all);
+      for (final label in [en.tabUpcoming, en.tabProjects, en.tabAccount]) {
+        expect(
+          find.descendant(
+            of: find.byType(NavigationRail),
+            matching: find.text(label),
+          ),
+          findsOneWidget,
+        );
+      }
+      expect(railIndex(tester), 0);
+      final rail = tester.getRect(find.byType(NavigationRail));
+      final content = tester.getRect(find.byType(OverviewScreen));
+      expect(rail.left, 0);
+      expect(content.left, greaterThan(rail.right));
+      expect(content.bottom, wide.height);
+
+      await openTab(tester, en.tabProjects);
+      expect(find.byType(ProjectsScreen), findsOneWidget);
+      expect(railIndex(tester), 2);
+      await tester.tap(find.text('Work'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ProjectTasksScreen), findsOneWidget);
+
+      // Re-selecting the tab returns to its first screen.
+      await openTab(tester, en.tabProjects);
+      expect(find.byType(ProjectTasksScreen), findsNothing);
+      expect(find.byType(ProjectsScreen), findsOneWidget);
+
+      await openTab(tester, en.tabAccount);
+      expect(find.byType(AccountTab), findsOneWidget);
+      expect(railIndex(tester), 3);
+
+      // System back on another tab's root returns to the first tab.
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.byType(OverviewScreen), findsOneWidget);
+      expect(railIndex(tester), 0);
+    });
+
+    testWidgets('a phone turned to landscape gets the rail and every tab '
+        'keeps its place', (tester) async {
+      usePhoneSurface(tester);
+      await pumpSignedInApp(tester, sync: data, now: now);
+      await openTab(tester, en.tabProjects);
+      await tester.tap(find.text('Work'));
+      await tester.pumpAndSettle();
+
+      usePhoneSurface(tester, logicalSize: landscapePhone);
+      await tester.pumpAndSettle();
+      expect(find.byType(NavigationRail), findsOneWidget);
+      expect(find.byType(ProjectTasksScreen), findsOneWidget);
+      expect(railIndex(tester), 2);
+      expect(location(tester), AppRoutes.project(1));
+
+      usePhoneSurface(tester);
+      await tester.pumpAndSettle();
+      expect(find.byType(NavigationBar), findsOneWidget);
+      expect(find.byType(ProjectTasksScreen), findsOneWidget);
+      await openTab(tester, en.tabOverview);
+      await openTab(tester, en.tabProjects);
+      expect(find.byType(ProjectTasksScreen), findsOneWidget);
+    });
+
+    testWidgets('an account switch puts the rail back on the overview and '
+        'every tab at its first screen', (tester) async {
+      usePhoneSurface(tester, logicalSize: wide);
+      final auth = AuthFakes();
+      final bob = await auth.seedAccount(
+        oauthServer230(),
+        tokens: issueTokens(issuedAt: now, userId: 8, username: 'bob'),
+        displayName: 'Bob',
+        activate: false,
+      );
+      data.accounts[bob.id] = AccountDataFakes(now: now)
+        ..projects.all = [sampleProject(id: 7, title: 'Bob project')];
+      await pumpSignedInApp(tester, sync: data, auth: auth, now: now);
+      await openTab(tester, en.tabProjects);
+      await tester.tap(find.text('Work'));
+      await tester.pumpAndSettle();
+
+      await containerOf(tester).read(accountRegistryProvider).setActive(bob.id);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(OverviewScreen), findsOneWidget);
+      expect(railIndex(tester), 0);
+      await openTab(tester, en.tabProjects);
+      expect(find.byType(ProjectTasksScreen), findsNothing);
+      expect(find.text('Bob project'), findsOneWidget);
+    });
+
+    testWidgets('the system insets go to the bar, the rail and the offline '
+        'banner, never twice to the content', (tester) async {
+      usePhoneSurface(tester);
+      tester.view.padding = const FakeViewPadding(bottom: 24 * 3);
+      await pumpSignedInApp(tester, sync: data, now: now);
+      EdgeInsets contentPadding() =>
+          MediaQuery.paddingOf(tester.element(find.byType(OverviewScreen)));
+      expect(contentPadding().bottom, 0);
+
+      usePhoneSurface(tester, logicalSize: landscapePhone);
+      tester.view.padding = const FakeViewPadding(left: 40 * 3, bottom: 20 * 3);
+      await tester.pumpAndSettle();
+      expect(find.byType(NavigationRail), findsOneWidget);
+      expect(contentPadding().left, 0);
+      expect(contentPadding().bottom, 20);
+
+      data.engine.emit(
+        SyncFailed(
+          failure: const NetworkFailure(NetworkProblem.unreachable),
+          lastSyncedAt: now,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(contentPadding().bottom, 0);
+      final banner = tester.getRect(find.byType(OfflineBanner));
+      expect(banner.bottom, landscapePhone.height);
+      final icon = tester.getRect(
+        find.descendant(
+          of: find.byType(OfflineBanner),
+          matching: find.byIcon(Icons.cloud_off_outlined),
+        ),
+      );
+      expect(icon.bottom, lessThanOrEqualTo(landscapePhone.height - 20));
+      expect(icon.left - banner.left, 16);
+    });
+
+    testWidgets('a rotation keeps the offline banner, which screen readers '
+        'would otherwise hear again', (tester) async {
+      usePhoneSurface(tester);
+      await pumpSignedInApp(tester, sync: data, now: now);
+      data.engine.emit(
+        SyncFailed(
+          failure: const NetworkFailure(NetworkProblem.unreachable),
+          lastSyncedAt: now,
+        ),
+      );
+      await tester.pumpAndSettle();
+      final banner = tester.element(find.byType(OfflineBanner));
+
+      usePhoneSurface(tester, logicalSize: landscapePhone);
+      await tester.pumpAndSettle();
+      expect(find.byType(NavigationRail), findsOneWidget);
+      expect(tester.element(find.byType(OfflineBanner)), same(banner));
+
+      usePhoneSurface(tester);
+      await tester.pumpAndSettle();
+      expect(find.byType(NavigationBar), findsOneWidget);
+      expect(tester.element(find.byType(OfflineBanner)), same(banner));
+    });
+
+    testWidgets("beside the rail a tab's snackbar leaves the rail free", (
+      tester,
+    ) async {
+      usePhoneSurface(tester, logicalSize: landscapePhone);
+      data.tasks.all = [sampleTask(id: 1, title: 'Call mom')];
+      await pumpSignedInApp(tester, sync: data, now: now);
+
+      await tester.tap(find.byTooltip(en.taskMarkDone));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(find.byType(SnackBar), findsOneWidget);
+      expect(
+        tester.getRect(find.byType(SnackBar)).left,
+        greaterThan(tester.getRect(find.byType(NavigationRail)).right),
+      );
+    });
+
+    testWidgets('the rail labels are in German', (tester) async {
+      useLocale(tester, const Locale('de'));
+      usePhoneSurface(tester, logicalSize: wide);
+      await pumpSignedInApp(tester, sync: data, now: now);
+
+      for (final label in [
+        de.tabOverview,
+        de.tabUpcoming,
+        de.tabProjects,
+        de.tabAccount,
+      ]) {
+        expect(
+          find.descendant(
+            of: find.byType(NavigationRail),
+            matching: find.text(label),
+          ),
+          findsOneWidget,
+        );
+      }
+    });
+  });
 
   testWidgets('the tab labels are in German', (tester) async {
     useLocale(tester, const Locale('de'));

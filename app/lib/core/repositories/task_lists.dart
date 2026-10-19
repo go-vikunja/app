@@ -5,19 +5,37 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 /// project id (-2 or lower).
 @immutable
 final class SavedFilterRef {
-  const new({required this.projectId, required this.title});
+  const new({
+    required this.projectId,
+    required this.title,
+    this.isFavorite = false,
+  });
 
   final int projectId;
   final String title;
+  final bool isFavorite;
 
   @override
   bool operator ==(Object other) =>
       other is SavedFilterRef &&
       other.projectId == projectId &&
-      other.title == title;
+      other.title == title &&
+      other.isFavorite == isFavorite;
 
   @override
-  int get hashCode => Object.hash(projectId, title);
+  int get hashCode => Object.hash(projectId, title, isFavorite);
+}
+
+/// A saved filter's open tasks as of its last download (null: never
+/// downloaded, and [tasks] stays empty until the first one), with this
+/// device's changes on top: a task done or deleted here leaves at once.
+@immutable
+final class SavedFilterTasks {
+  const new({this.tasks = const [], this.loadedAt});
+
+  /// Nearest due date first (none last), then newest first.
+  final List<Task> tasks;
+  final DateTime? loadedAt;
 }
 
 @immutable

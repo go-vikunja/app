@@ -10,7 +10,6 @@ import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
-import 'package:vikunja_mobile/features/sync/presentation/offline_notice.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_chips.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
@@ -384,15 +383,14 @@ void main() {
     await pullToRefresh(tester, find.byType(CustomScrollView));
 
     expect(find.byType(TaskRow), findsNWidgets(5));
-    expect(find.byType(OfflineNotice), findsOneWidget);
-    expect(find.text(en.offlineNotice), findsOneWidget);
+    expect(find.textContaining(en.offlineNotice), findsOneWidget);
     expect(find.byType(DataFailureCard), findsNothing);
 
     // Back online, the next sync clears it.
     data.engine.onRefresh = null;
     await tester.tap(find.byTooltip(en.refresh));
     await tester.pumpAndSettle();
-    expect(find.byType(OfflineNotice), findsNothing);
+    expect(find.textContaining(en.offlineNotice), findsNothing);
   });
 
   testWidgets('the quiet sync at start failing offline shows the notice too', (
@@ -411,7 +409,7 @@ void main() {
 
     expect(data.engine.refreshCalls, 1);
     expect(find.byType(TaskRow), findsNWidgets(5));
-    expect(find.byType(OfflineNotice), findsOneWidget);
+    expect(find.textContaining(en.offlineNotice), findsOneWidget);
     expect(find.byType(DataFailureCard), findsNothing);
   });
 
@@ -428,7 +426,7 @@ void main() {
     await pumpOverview(tester);
 
     expect(data.engine.refreshCalls, 1);
-    expect(find.byType(OfflineNotice), findsNothing);
+    expect(find.textContaining(en.offlineNotice), findsNothing);
     expect(find.byType(DataFailureCard), findsNothing);
     expect(find.byType(TaskRow), findsNWidgets(5));
   });
@@ -562,6 +560,6 @@ void main() {
         throw const NetworkFailure(NetworkProblem.unreachable);
     await tester.tap(find.byTooltip(de.refresh));
     await tester.pumpAndSettle();
-    expect(find.text(de.offlineNotice), findsOneWidget);
+    expect(find.textContaining(de.offlineNotice), findsOneWidget);
   });
 }

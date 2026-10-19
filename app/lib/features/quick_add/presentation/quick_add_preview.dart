@@ -1,14 +1,16 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/theme/hex_color.dart';
+import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/features/common/presentation/initials_avatar.dart';
 import 'package:vikunja_mobile/features/quick_add/application/quick_add_plan.dart';
 import 'package:vikunja_mobile/features/quick_add/presentation/magic_spans.dart';
 import 'package:vikunja_mobile/features/quick_add/presentation/magic_text_controller.dart';
 import 'package:vikunja_mobile/features/quick_add/presentation/quick_add_formatting.dart';
-import 'package:vikunja_mobile/features/tasks/presentation/moment_format.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_formatting.dart';
 
 /// Removes the parts of [kind] from the text; with [items] only the tokens
@@ -20,7 +22,7 @@ typedef MagicPartRemover = void Function(
 
 /// What one line will create, as chips; each chip's remove button takes its
 /// part out of the text.
-class QuickAddPreview extends StatelessWidget {
+class QuickAddPreview extends ConsumerWidget {
   const new({
     required this.plan,
     required this.prefixes,
@@ -37,7 +39,8 @@ class QuickAddPreview extends StatelessWidget {
   final DateTime now;
   final MagicPartRemover onRemove;
 
-  /// How the project chip names [plan]'s project; its title without.
+  /// How the project chip names [plan]'s project; its display title
+  /// without.
   final String? projectLabel;
 
   /// The number of tasks the text makes; the chips show the first.
@@ -47,11 +50,13 @@ class QuickAddPreview extends StatelessWidget {
   final int subtaskCount;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    final chips = plan.magicOnly ? const <Widget>[] : _chips(context);
+    final chips = plan.magicOnly
+        ? const <Widget>[]
+        : _chips(context, MomentFormatter.watch(context, ref));
     final notes = [
       if (lineCount > 1 && subtaskCount > 0 && chips.isEmpty)
         l10n.newTaskTreeCountOnly(lineCount, subtaskCount)
@@ -86,15 +91,15 @@ class QuickAddPreview extends StatelessWidget {
     );
   }
 
-  List<Widget> _chips(BuildContext context) {
+  List<Widget> _chips(BuildContext context, MomentFormatter formatter) {
     final l10n = context.l10n;
     final parsed = plan.parsed;
     final assigneePrefix = prefixes?.assignee ?? '';
     bool same(String a, String b) => a.toLowerCase() == b.toLowerCase();
 
-    final projectTitle = projectLabel ?? plan.project?.title ?? '';
+    final projectTitle = projectLabel ?? plan.project?.displayTitle(l10n) ?? '';
     return [
-      if (plan.dueDate case final due?) _dueChip(context, due),
+      if (plan.dueDate case final due?) _dueChip(context, due, formatter),
       if (plan.repeat case final repeat?)
         if (describeQuickAddRepeat(l10n, repeat) case final text?)
           _PartChip(
@@ -185,27 +190,39 @@ class QuickAddPreview extends StatelessWidget {
           label: formatReminder(
             l10n,
             reminder,
-            formatAbsolute: (moment) => formatMoment(context, moment),
+            formatAbsolute: formatter.absolute,
           ),
           semanticsLabel: l10n.quickAddReminderSemantics(
             formatReminder(
               l10n,
               reminder,
-              formatAbsolute: (moment) => formatMoment(context, moment),
+              formatAbsolute: formatter.spokenAbsolute,
             ),
           ),
         ),
     ];
   }
 
-  Widget _dueChip(BuildContext context, DateTime due) {
+  Widget _dueChip(
+    BuildContext context,
+    DateTime due,
+    MomentFormatter formatter,
+  ) {
     final l10n = context.l10n;
-    final (date, relative) = describeQuickAddDue(context, due, now: now);
+    final (date, relative) = describeQuickAddDue(
+      context,
+      due,
+      now: now,
+      formatter: formatter,
+    );
     return _PartChip(
       kind: MagicSpanKind.date,
       icon: const Icon(Icons.event),
       label: l10n.quickAddDueLabel(date, relative),
-      semanticsLabel: l10n.quickAddDueSemantics(date, relative),
+      semanticsLabel: l10n.quickAddDueSemantics(
+        formatter.semanticsLabel(due) ?? date,
+        relative,
+      ),
       onRemove: plan.dueDateFromText
           ? () => onRemove(MagicSpanKind.date)
           : null,

@@ -117,7 +117,9 @@ void main() {
     });
 
     test('are written only when they change', () async {
-      const filters = [SavedFilterRef(projectId: -14, title: 'Mine')];
+      const filters = [
+        SavedFilterRef(projectId: -14, title: 'Mine', isFavorite: true),
+      ];
       await storeSavedFilters(db, filters);
       var writes = 0;
       final subscription = db.tableUpdates().listen((_) => writes++);
@@ -128,6 +130,102 @@ void main() {
 
       expect(writes, 0);
       expect(await storedFilters(), filters);
+    });
+
+    test('every run records which are favourites', () async {
+      client.pseudoProjects = [
+        favorites,
+        myOpenTasks,
+        const Project(id: -3, title: 'Urgent', isFavorite: true),
+      ];
+      final sync = engine();
+
+      await sync.ensureInitialSync();
+
+      expect(await storedFilters(), const [
+        SavedFilterRef(projectId: -14, title: 'My Open Tasks'),
+        SavedFilterRef(projectId: -3, title: 'Urgent', isFavorite: true),
+      ]);
+
+      client.pseudoProjects = [
+        favorites,
+        const Project(id: -14, title: 'My Open Tasks', isFavorite: true),
+        urgentOnes,
+      ];
+      now = now.add(const Duration(hours: 1));
+      await sync.refresh();
+
+      expect(await storedFilters(), const [
+        SavedFilterRef(
+          projectId: -14,
+          title: 'My Open Tasks',
+          isFavorite: true,
+        ),
+        SavedFilterRef(projectId: -3, title: 'Urgent'),
+      ]);
+    });
+
+    test('filters stored before the favourite flag read as no favourite '
+        'and are rewritten by the next run', () async {
+      final sync = engine();
+      await sync.ensureInitialSync();
+      await db.syncStateDao.write({
+        SyncStateKeys.savedFilters:
+            '[{"project_id": -14, "title": "My Open Tasks"}, '
+            '{"project_id": -3, "title": "Urgent", "is_favorite": "yes"}]',
+      });
+
+      expect(await storedFilters(), const [
+        SavedFilterRef(projectId: -14, title: 'My Open Tasks'),
+        SavedFilterRef(projectId: -3, title: 'Urgent'),
+      ]);
+
+      now = now.add(const Duration(hours: 1));
+      await sync.refresh();
+
+      expect(
+        (await db.syncStateDao.readAll())[SyncStateKeys.savedFilters],
+        '[{"project_id":-14,"title":"My Open Tasks","is_favorite":false}]',
+      );
+    });
+
+    test('the downloads of filters the list no longer names go, in full and '
+        'incremental runs; the others and the Overview stay', () async {
+      client.pseudoProjects = [favorites, myOpenTasks, urgentOnes];
+      settings = const UserSettings(filterIdUsedOnOverview: -14);
+      final sync = engine();
+      await sync.ensureInitialSync();
+      for (final id in [-14, -3, -99]) {
+        await db.listSnapshotsDao.replace(savedFilterSnapshotKey(id), {
+          1: 0,
+        }, loadedAt: now);
+      }
+      await db.listSnapshotsDao.replace('view:70', {1: 0}, loadedAt: now);
+      Future<DateTime?> loaded(int id) async =>
+          (await db.listSnapshotsDao.load(savedFilterSnapshotKey(id))).loadedAt;
+
+      now = now.add(const Duration(hours: 1));
+      await sync.refresh();
+
+      // -99 was never listed: a download that finished after its filter
+      // went goes with the next run although the list did not change.
+      expect(await loaded(-99), isNull);
+      expect(await loaded(-14), isNotNull);
+      expect(await loaded(-3), isNotNull);
+      expect((await overviewSnapshot()).loadedAt, isNotNull);
+
+      client.pseudoProjects = [favorites, myOpenTasks];
+      await sync.refresh();
+
+      expect(await loaded(-3), isNull);
+      expect(await loaded(-14), isNotNull);
+      expect((await overviewSnapshot()).loadedAt, isNotNull);
+
+      client.pseudoProjects = [favorites];
+      await sync.fullResync();
+
+      expect(await loaded(-14), isNull);
+      expect((await db.listSnapshotsDao.load('view:70')).loadedAt, isNotNull);
     });
 
     test('a list that pages repeats them on every page', () async {

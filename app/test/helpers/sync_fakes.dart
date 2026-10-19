@@ -19,6 +19,7 @@ import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 import 'package:vikunja_mobile/core/repositories/task_resolver_providers.dart';
 import 'package:vikunja_mobile/core/settings/user_settings_providers.dart';
+import 'package:vikunja_mobile/core/sync/saved_filters.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/accounts/application/account_switcher.dart';
@@ -189,10 +190,30 @@ final class FakeProjectRepository implements ProjectRepository {
     return null;
   }
 
+  /// The saved filters of the last project sync; [watchSavedFilters] sorts
+  /// them by title like the real repository.
+  List<SavedFilterRef> get savedFilters => _savedFilters;
+
+  set savedFilters(List<SavedFilterRef> filters) {
+    _savedFilters = List.unmodifiable(filters);
+    if (!_savedFilterChanges.isClosed) _savedFilterChanges.add(_savedFilters);
+  }
+
+  List<SavedFilterRef> _savedFilters = const [];
+  final _savedFilterChanges =
+      StreamController<List<SavedFilterRef>>.broadcast();
+
+  @override
+  Stream<List<SavedFilterRef>> watchSavedFilters() => _replaying(
+    () => _savedFilters,
+    _savedFilterChanges.stream,
+  ).map(sortedByTitle);
+
   @override
   void dispose() {
     disposed = true;
     unawaited(_changes.close());
+    unawaited(_savedFilterChanges.close());
   }
 }
 
@@ -402,6 +423,78 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
     await _engine.refresh();
     await onRefreshProjectList?.call(projectId, viewId);
     if (refreshProjectListFailure case final failure?) throw failure;
+  }
+
+  /// Open favourite tasks outside [archivedProjectIds], like the database.
+  List<Task> get favoriteTasks => [
+    for (final task in activeOpenTasks)
+      if (task.isFavorite) task,
+  ];
+
+  @override
+  Stream<List<Task>> watchFavoriteTasks() =>
+      _replaying(() => _all, _changes.stream).map((_) => favoriteTasks);
+
+  /// Each saved filter's last download, by pseudo project id; its tasks
+  /// that are in [all] and open show, like the local database's.
+  Map<int, ListSnapshot> get savedFilterSnapshots =>
+      Map.unmodifiable(_savedFilterSnapshots);
+  final Map<int, ListSnapshot> _savedFilterSnapshots = {};
+
+  void setSavedFilterSnapshot(int pseudoProjectId, ListSnapshot snapshot) {
+    _savedFilterSnapshots[pseudoProjectId] = snapshot;
+    _notify();
+  }
+
+  /// Like a sync purging the download of a filter no longer listed.
+  void removeSavedFilterSnapshot(int pseudoProjectId) {
+    _savedFilterSnapshots.remove(pseudoProjectId);
+    _notify();
+  }
+
+  SavedFilterTasks savedFilterTasks(int pseudoProjectId) {
+    final snapshot =
+        _savedFilterSnapshots[pseudoProjectId] ?? const ListSnapshot();
+    return SavedFilterTasks(
+      tasks: [
+        for (final task in _all)
+          if (!task.done && snapshot.positions.containsKey(task.id)) task,
+      ]..sort(_byDueThenNewest),
+      loadedAt: snapshot.loadedAt,
+    );
+  }
+
+  /// Every `watchSavedFilterTasks`, by pseudo project id.
+  final List<int> savedFilterWatches = [];
+
+  /// The error `watchSavedFilterTasks` fails with, by pseudo project id.
+  final Map<int, Object> savedFilterErrors = {};
+
+  @override
+  Stream<SavedFilterTasks> watchSavedFilterTasks(int pseudoProjectId) {
+    savedFilterWatches.add(pseudoProjectId);
+    if (savedFilterErrors[pseudoProjectId] case final error?) {
+      return Stream.error(error);
+    }
+    return _replaying(
+      () => _all,
+      _changes.stream,
+    ).map((_) => savedFilterTasks(pseudoProjectId));
+  }
+
+  /// Every `refreshSavedFilter`, by pseudo project id. Each runs a sync
+  /// through the engine, then [onRefreshSavedFilter] (which can set the
+  /// snapshot), then throws [refreshSavedFilterFailure] when one is set.
+  final List<int> savedFilterRefreshes = [];
+  Future<void> Function(int pseudoProjectId)? onRefreshSavedFilter;
+  VikunjaFailure? refreshSavedFilterFailure;
+
+  @override
+  Future<void> refreshSavedFilter(int pseudoProjectId) async {
+    savedFilterRefreshes.add(pseudoProjectId);
+    await _engine.refresh();
+    await onRefreshSavedFilter?.call(pseudoProjectId);
+    if (refreshSavedFilterFailure case final failure?) throw failure;
   }
 
   @override

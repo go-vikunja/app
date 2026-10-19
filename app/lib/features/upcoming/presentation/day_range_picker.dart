@@ -1,17 +1,20 @@
 import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/l10n/picker_localizations.dart';
 
 /// A range of whole days: the Material date picker for the first day and
-/// again for the last, or on iOS one Cupertino date wheel for either end.
-/// Returns local midnights, the first day not after the last; null when
-/// the user backed out. Not the Material date range picker: its header row
-/// overflows a small phone even at the normal text size in German.
+/// again for the last, its weeks starting on [firstDayOfWeekIndex] (null:
+/// the locale's first day), or on iOS one Cupertino date wheel for either
+/// end. Returns local midnights, the first day not after the last; null
+/// when the user backed out. Not the Material date range picker: its header
+/// row overflows a small phone even at the normal text size in German.
 Future<(DateTime, DateTime)?> pickDayRange(
   BuildContext context, {
   required DateTime first,
   required DateTime last,
   required DateTime now,
+  required int? firstDayOfWeekIndex,
 }) {
   final firstDate = DateTime(2000);
   final lastDate = DateTime(now.year + 50, 12, 31);
@@ -39,6 +42,7 @@ Future<(DateTime, DateTime)?> pickDayRange(
       firstDate: firstDate,
       lastDate: lastDate,
       now: now,
+      firstDayOfWeekIndex: firstDayOfWeekIndex,
     ),
   };
 }
@@ -50,8 +54,12 @@ Future<(DateTime, DateTime)?> _pickWithMaterialDialogs(
   required DateTime firstDate,
   required DateTime lastDate,
   required DateTime now,
+  required int? firstDayOfWeekIndex,
 }) async {
   final l10n = context.l10n;
+  final weekStart = pickerFormatsBuilder(
+    firstDayOfWeekIndex: firstDayOfWeekIndex,
+  );
   final from = await showDatePicker(
     context: context,
     initialDate: first,
@@ -59,6 +67,7 @@ Future<(DateTime, DateTime)?> _pickWithMaterialDialogs(
     lastDate: lastDate,
     currentDate: now,
     helpText: l10n.upcomingRangeFrom,
+    builder: weekStart,
   );
   if (from == null || !context.mounted) return null;
   final to = await showDatePicker(
@@ -68,6 +77,7 @@ Future<(DateTime, DateTime)?> _pickWithMaterialDialogs(
     lastDate: lastDate,
     currentDate: now,
     helpText: l10n.upcomingRangeTo,
+    builder: weekStart,
   );
   if (to == null) return null;
   return (_day(from), _day(to));

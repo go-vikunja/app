@@ -1,8 +1,10 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/features/sync/presentation/offline_banner.dart';
 
-/// Above a list whose last sync could not reach the server: the saved data
-/// is shown, nothing is wrong with it.
+/// Above a list on a page over the shell, where the [OfflineBanner] does
+/// not show, when the last sync or refresh could not reach the server: the
+/// saved data is shown, nothing is wrong with it.
 class OfflineNotice extends StatelessWidget {
   const new({super.key});
 

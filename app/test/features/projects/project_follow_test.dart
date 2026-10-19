@@ -114,7 +114,8 @@ void main() {
     expect(data.subscriptions.calls, ['forProject 1']);
 
     loaded.complete();
-    await tester.tapAt(const Offset(20, 400));
+    // Beside the menu, on its barrier.
+    await tester.tapAt(const Offset(400, 500));
     await tester.pumpAndSettle();
     expect(find.text(en.followChecking), findsNothing);
     await openMenu(tester);

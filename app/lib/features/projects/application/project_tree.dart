@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/text/title_order.dart';
 
 @immutable
 final class ProjectNode {
@@ -22,15 +23,20 @@ final class ProjectTreeRow {
 int compareProjects(Project a, Project b) {
   final byPosition = a.position.compareTo(b.position);
   if (byPosition != 0) return byPosition;
-  return a.title.toLowerCase().compareTo(b.title.toLowerCase());
+  return compareTitles(a.title, b.title);
 }
 
-/// Hides archived and pseudo projects (saved filters come in step 24). A
-/// child whose parent is hidden or unknown is shown at the top level.
-List<ProjectNode> buildProjectTree(List<Project> projects) {
+/// Hides pseudo projects, and archived ones unless [includeArchived] (the
+/// Projects tab's choice; pickers and defaults never offer them). A child
+/// whose parent is hidden or unknown is shown at the top level.
+List<ProjectNode> buildProjectTree(
+  List<Project> projects, {
+  bool includeArchived = false,
+}) {
   final visible = [
     for (final project in projects)
-      if (!project.isArchived && !project.isPseudo) project,
+      if ((includeArchived || !project.isArchived) && !project.isPseudo)
+        project,
   ]..sort(compareProjects);
   final ids = {for (final project in visible) project.id};
   final childrenOf = <int, List<Project>>{};

@@ -67,8 +67,40 @@ Future<void> downloadOverviewFilter({
   if (stored.loadedAt == null || !_sameOrder(stored.positions, positions)) {
     await db.listSnapshotsDao.replace(key, positions, loadedAt: now().toUtc());
   }
-  await db.listSnapshotsDao.removeAll(overviewSnapshotPrefix, keep: key);
+  await db.listSnapshotsDao.removeAll(overviewSnapshotPrefix, keep: {key});
   _log.info('Sync run $runId: Overview filter, ${tasks.length} tasks');
+}
+
+/// A saved filter's open tasks, all pages, into its snapshot: the
+/// Overview's request, with relative dates in the filter rounded in the
+/// user's time zone setting as the web asks for them. Always rewritten, so
+/// its `loadedAt` says when the list was last checked. Throws the
+/// download's `VikunjaFailure`; the previous snapshot stays then.
+Future<void> downloadSavedFilter({
+  required AppDatabase db,
+  required VikunjaReadClient client,
+  required int perPage,
+  required int pseudoProjectId,
+  required DateTime Function() now,
+}) async {
+  final zone = await _timezoneSetting(db);
+  final tasks = await collectPages<Task>(
+    fetch: (page) => client.tasks.listInProject(
+      pseudoProjectId,
+      TaskQuery(
+        filter: 'done = false',
+        sort: TaskQuery.dueDateSort,
+        page: page,
+        perPage: perPage,
+        filterTimezone: zone,
+      ),
+    ),
+    idOf: (task) => task.id,
+  );
+  await db.listSnapshotsDao.replace(savedFilterSnapshotKey(pseudoProjectId), {
+    for (final (index, id) in tasks.keys.indexed) id: index.toDouble(),
+  }, loadedAt: now().toUtc());
+  _log.fine('Saved filter $pseudoProjectId: ${tasks.length} tasks');
 }
 
 /// A view's tasks with their positions in it, all pages, sorted by
@@ -84,9 +116,7 @@ Future<void> downloadViewSnapshot({
   required int viewId,
   required DateTime Function() now,
 }) async {
-  final zone = decodeUserSettings(
-    (await db.syncStateDao.readAll())[SyncStateKeys.userSettings],
-  ).timezone;
+  final zone = await _timezoneSetting(db);
   final tasks = await collectPages<Task>(
     fetch: (page) => client.tasks.listInView(
       projectId,
@@ -95,7 +125,7 @@ Future<void> downloadViewSnapshot({
         sort: const [TaskSort(TaskSortField.position)],
         page: page,
         perPage: perPage,
-        filterTimezone: zone.isEmpty ? null : zone,
+        filterTimezone: zone,
       ),
     ),
     idOf: (task) => task.id,
@@ -106,6 +136,14 @@ Future<void> downloadViewSnapshot({
     loadedAt: now().toUtc(),
   );
   _log.fine('View $viewId of project $projectId: ${tasks.length} tasks');
+}
+
+/// Null while the user has none stored.
+Future<String?> _timezoneSetting(AppDatabase db) async {
+  final zone = decodeUserSettings(
+    (await db.syncStateDao.readAll())[SyncStateKeys.userSettings],
+  ).timezone;
+  return zone.isEmpty ? null : zone;
 }
 
 bool _sameOrder(Map<int, double> a, Map<int, double> b) {

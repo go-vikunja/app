@@ -9,8 +9,7 @@ import 'package:vikunja_mobile/features/common/presentation/user_avatar.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/comments_controller.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/details_notice.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/reaction_chips.dart';
-import 'package:vikunja_mobile/features/tasks/presentation/moment_format.dart';
-import 'package:vikunja_mobile/features/tasks/presentation/relative_time.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/rich_text/rich_html.dart';
 
 /// The rows of the comments section, for the sheet's list to build lazily:
@@ -235,17 +234,20 @@ class CommentTile extends ConsumerWidget {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final now = ref.watch(clockTickProvider);
+    final formatter = MomentFormatter.watch(context, ref);
+    String spoken(DateTime moment) =>
+        formatter.semanticsLabel(moment) ?? formatter.absolute(moment);
     final created = comment.created;
     final updated = comment.updated;
     final when = [
-      if (created != null) formatRelativeTime(l10n, created, now: now),
+      if (created != null) formatter.relative(created, now: now),
       if (comment.isEdited && updated != null)
-        l10n.commentEdited(formatRelativeTime(l10n, updated, now: now)),
+        l10n.commentEdited(formatter.relative(updated, now: now)),
     ].join(' · ');
     final whenLabel = [
-      if (created != null) formatMoment(context, created),
+      if (created != null) spoken(created),
       if (comment.isEdited && updated != null)
-        l10n.commentEdited(formatMoment(context, updated)),
+        l10n.commentEdited(spoken(updated)),
     ].join(', ');
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),

@@ -42,6 +42,58 @@ void main() {
     expect(settings.effectiveMinimumPriority, 3);
   });
 
+  test('reads the display settings the web stores', () {
+    final settings = parseUserSettings({
+      'frontend_settings': {
+        'date_display': 'dd/mm/yyyy',
+        'time_format': '12h',
+        'color_schema': 'dark',
+        'default_view': 'kanban',
+      },
+    });
+
+    expect(settings.dateDisplay, DateDisplay.dayMonthYearSlashed);
+    expect(settings.timeFormat, TimeFormat.twelveHour);
+    expect(settings.colorSchema, ColorSchema.dark);
+    expect(settings.defaultViewKind, ProjectViewKind.kanban);
+  });
+
+  test('every date display and default view the web offers', () {
+    for (final display in DateDisplay.values) {
+      expect(
+        parseUserSettings({
+          'frontend_settings': {'date_display': display.wireName},
+        }).dateDisplay,
+        display,
+      );
+    }
+    for (final kind in ProjectViewKind.values) {
+      expect(
+        parseUserSettings({
+          'frontend_settings': {'default_view': kind.wireName},
+        }).defaultViewKind,
+        kind,
+      );
+    }
+    expect(
+      parseUserSettings({
+        'frontend_settings': {'default_view': 'first'},
+      }).defaultViewKind,
+      isNull,
+    );
+  });
+
+  test('display settings never set stay unset, the colour scheme auto', () {
+    for (final frontend in <Object?>[null, <String, Object?>{}]) {
+      final settings = parseUserSettings({'frontend_settings': frontend});
+
+      expect(settings.dateDisplay, isNull);
+      expect(settings.timeFormat, isNull);
+      expect(settings.colorSchema, ColorSchema.auto);
+      expect(settings.defaultViewKind, isNull);
+    }
+  });
+
   test('comments oldest first unless the web stored desc', () {
     for (final (stored, expected) in [
       ('asc', CommentSortOrder.oldestFirst),
@@ -221,6 +273,30 @@ void main() {
           priority,
         );
       }
+    });
+
+    test('display settings the server stored unchecked', () {
+      for (final odd in <Object?>[5, 'Relative', 'MM-DD-YYYY', '', true]) {
+        final settings = parseUserSettings({
+          'frontend_settings': {
+            'date_display': odd,
+            'time_format': odd,
+            'color_schema': odd,
+            'default_view': odd,
+          },
+        });
+
+        expect(settings.dateDisplay, isNull, reason: '$odd');
+        expect(settings.timeFormat, isNull, reason: '$odd');
+        expect(settings.colorSchema, ColorSchema.auto, reason: '$odd');
+        expect(settings.defaultViewKind, isNull, reason: '$odd');
+      }
+      expect(
+        parseUserSettings({
+          'frontend_settings': {'color_schema': 'purple', 'time_format': '24'},
+        }),
+        const UserSettings(),
+      );
     });
 
     test('default reminders that are not a list', () {

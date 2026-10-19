@@ -3,18 +3,19 @@ import 'package:flutter_riverpod/misc.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
-import 'package:vikunja_mobile/core/sync/sync_providers.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
-import 'package:vikunja_mobile/features/sync/application/sync_status_queries.dart';
+import 'package:vikunja_mobile/features/sync/application/offline_state.dart';
+import 'package:vikunja_mobile/features/sync/presentation/offline_banner.dart';
 import 'package:vikunja_mobile/features/sync/presentation/offline_notice.dart';
 
 /// The refresh of a list screen: one at a time, its failure a notice above
 /// the stale list or the whole screen while there is no data, and both
 /// forgotten when the repository is replaced, i.e. on an account switch. A
-/// server that cannot be reached, by a refresh or by the quiet sync at
-/// start, is only the offline notice above the saved data.
+/// server that cannot be reached, by a refresh or by a sync, is the shell's
+/// offline banner; only a list on a page over the shell, where the banner
+/// does not show, puts the offline notice above the saved data.
 mixin RefreshableList<W extends ConsumerStatefulWidget> on ConsumerState<W> {
   Object? _refreshFailure;
   bool _refreshing = false;
@@ -55,9 +56,10 @@ mixin RefreshableList<W extends ConsumerStatefulWidget> on ConsumerState<W> {
   /// shows.
   Object? get refreshFailure => _refreshFailure;
 
-  /// [builder] gets the data and, after a failed refresh or offline, the
-  /// notice to show above it. [header] stays above the loading and failure
-  /// states, for controls that must survive them.
+  /// [builder] gets the data and, after a failed refresh or offline (on a
+  /// page over the shell), the notice to show above it. [header] stays
+  /// above the loading and failure states, for controls that must survive
+  /// them.
   Widget buildRefreshable<T>(
     AsyncValue<T> data, {
     required String loadingLabel,
@@ -65,9 +67,8 @@ mixin RefreshableList<W extends ConsumerStatefulWidget> on ConsumerState<W> {
     Widget? header,
   }) {
     ref.listen(repositoryProvider, (_, _) => setState(onRepositoryReplaced));
-    final offline = ref.watch(
-      syncStatusProvider.select((status) => isOffline(status.value)),
-    );
+    final underBanner = OfflineBannerArea.contains(context);
+    final offline = ref.watch(offlineProvider) != null;
     return RefreshIndicator.adaptive(
       onRefresh: refresh,
       child: switch (data) {
@@ -78,13 +79,13 @@ mixin RefreshableList<W extends ConsumerStatefulWidget> on ConsumerState<W> {
           child: LoadingPlaceholder(label: loadingLabel),
         ),
         AsyncValue(:final value?) => builder(value, switch (_refreshFailure) {
-          NetworkFailure() => const OfflineNotice(),
+          NetworkFailure() => underBanner ? null : const OfflineNotice(),
           final failure? => DataFailureCard(
             error: failure,
             stale: true,
             onRetry: refresh,
           ),
-          null => offline ? const OfflineNotice() : null,
+          null => offline && !underBanner ? const OfflineNotice() : null,
         }),
         AsyncError(:final error) when !_refreshing => CenteredScrollView(
           header: header,

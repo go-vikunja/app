@@ -2,10 +2,16 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 
-/// The server's default name is translated, any other title shown as is,
-/// like the web's view tabs.
+/// The server's default names are translated, any other title shown as
+/// is, like the web's view tabs.
 String viewTitle(AppLocalizations l10n, ProjectView view) =>
-    view.title == 'List' ? l10n.projectViewList : view.title;
+    switch (view.title) {
+      'List' => l10n.projectViewList,
+      'Gantt' => l10n.projectViewGantt,
+      'Table' => l10n.projectViewTable,
+      'Kanban' => l10n.projectViewKanban,
+      final title => title,
+    };
 
 String sortLabel(AppLocalizations l10n, TaskListSort sort) => switch (sort) {
   TaskListSort.manual => l10n.sortManual,

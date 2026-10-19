@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/features/common/presentation/user_avatar.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/tasks/application/task_identifier.dart';
@@ -85,7 +86,7 @@ class TaskLinkPill extends ConsumerWidget {
       semanticsLabel = href;
     } else {
       final prefix = task.projectId != projectId && project != null
-          ? '${project.title} › '
+          ? '${project.displayTitle(l10n)} › '
           : '';
       text = '$prefix${taskIdentifierIn(task, project)} ${task.title}';
       semanticsLabel = task.done ? '$text, ${l10n.taskDoneSemantics}' : text;

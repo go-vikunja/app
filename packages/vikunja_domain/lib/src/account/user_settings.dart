@@ -1,4 +1,5 @@
 import 'package:meta/meta.dart';
+import 'package:vikunja_domain/src/project/project_view.dart';
 
 /// `frontend_settings.quick_add_magic_mode`; the web defaults to vikunja.
 enum QuickAddMagicMode {
@@ -28,6 +29,55 @@ enum CommentSortOrder {
       oldestFirst;
 }
 
+/// `frontend_settings.date_display`; null on [UserSettings] when the user
+/// never set it, so the app keeps its own formats.
+enum DateDisplay {
+  relative('relative'),
+  monthDayYearDashed('mm-dd-yyyy'),
+  dayMonthYearDashed('dd-mm-yyyy'),
+  yearMonthDayDashed('yyyy-mm-dd'),
+  monthDayYearSlashed('mm/dd/yyyy'),
+  dayMonthYearSlashed('dd/mm/yyyy'),
+  yearMonthDaySlashed('yyyy/mm/dd'),
+  dayMonthYear('dayMonthYear'),
+  weekdayDayMonthYear('weekdayDayMonthYear');
+
+  new(this.wireName);
+
+  final String wireName;
+
+  static DateDisplay? fromWire(Object? value) =>
+      values.where((display) => display.wireName == value).firstOrNull;
+}
+
+/// `frontend_settings.time_format`; null when never set (the device's
+/// 12/24-hour setting applies).
+enum TimeFormat {
+  twelveHour('12h'),
+  twentyFourHour('24h');
+
+  new(this.wireName);
+
+  final String wireName;
+
+  static TimeFormat? fromWire(Object? value) =>
+      values.where((format) => format.wireName == value).firstOrNull;
+}
+
+/// `frontend_settings.color_schema`; the web defaults to auto.
+enum ColorSchema {
+  light('light'),
+  auto('auto'),
+  dark('dark');
+
+  new(this.wireName);
+
+  final String wireName;
+
+  static ColorSchema fromWire(Object? value) =>
+      values.where((schema) => schema.wireName == value).firstOrNull ?? auto;
+}
+
 /// The signed-in user's settings as the server stores them, read with the
 /// user (`GET /user`). Read-only until step 30.
 @immutable
@@ -42,6 +92,10 @@ final class UserSettings {
     this.filterIdUsedOnOverview,
     this.minimumPriority = 0,
     this.commentSortOrder = CommentSortOrder.oldestFirst,
+    this.dateDisplay,
+    this.timeFormat,
+    this.colorSchema = ColorSchema.auto,
+    this.defaultViewKind,
   });
 
   /// Null when unset (the server's 0).
@@ -66,6 +120,17 @@ final class UserSettings {
 
   final CommentSortOrder commentSortOrder;
 
+  /// Null when never set.
+  final DateDisplay? dateDisplay;
+
+  /// Null when never set.
+  final TimeFormat? timeFormat;
+  final ColorSchema colorSchema;
+
+  /// `frontend_settings.default_view`; null for `first` (the default): the
+  /// first view by position.
+  final ProjectViewKind? defaultViewKind;
+
   /// The lowest priority a task row shows; the web reads an unset value
   /// as medium.
   int get effectiveMinimumPriority => minimumPriority > 0 ? minimumPriority : 2;
@@ -84,7 +149,11 @@ final class UserSettings {
       ) &&
       other.filterIdUsedOnOverview == filterIdUsedOnOverview &&
       other.minimumPriority == minimumPriority &&
-      other.commentSortOrder == commentSortOrder;
+      other.commentSortOrder == commentSortOrder &&
+      other.dateDisplay == dateDisplay &&
+      other.timeFormat == timeFormat &&
+      other.colorSchema == colorSchema &&
+      other.defaultViewKind == defaultViewKind;
 
   @override
   int get hashCode => Object.hash(
@@ -97,6 +166,10 @@ final class UserSettings {
     filterIdUsedOnOverview,
     minimumPriority,
     commentSortOrder,
+    dateDisplay,
+    timeFormat,
+    colorSchema,
+    defaultViewKind,
   );
 
   static bool _sameDurations(List<Duration> a, List<Duration> b) {

@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/core/text/project_titles.dart';
 
 /// [project] and its ancestors from the root, as far up as [projects] has
 /// them: the web stops at the first parent the user cannot see.
@@ -51,7 +52,7 @@ class ProjectBreadcrumb extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 2),
                   child: Align(
                     widthFactor: 1,
-                    child: Text(path[i].title, style: style),
+                    child: Text(path[i].displayTitle(l10n), style: style),
                   ),
                 ),
               ),

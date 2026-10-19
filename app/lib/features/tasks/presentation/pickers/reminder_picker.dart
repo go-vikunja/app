@@ -1,12 +1,14 @@
 import 'dart:async';
 
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/features/tasks/application/date_shortcuts.dart';
+import 'package:vikunja_mobile/features/tasks/application/display_settings.dart';
 import 'package:vikunja_mobile/features/tasks/application/reminder_editing.dart';
-import 'package:vikunja_mobile/features/tasks/presentation/moment_format.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/date_time_picker.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/picker_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_formatting.dart';
@@ -49,7 +51,7 @@ String reminderReferenceLabel(
   ReminderRelativeTo.endDate => l10n.reminderRelativeToEndDate,
 };
 
-class ReminderPicker extends StatefulWidget {
+class ReminderPicker extends ConsumerStatefulWidget {
   const new({
     required this.dates,
     required this.now,
@@ -66,10 +68,10 @@ class ReminderPicker extends StatefulWidget {
   final ScrollController? scrollController;
 
   @override
-  State<ReminderPicker> createState() => _ReminderPickerState();
+  ConsumerState<ReminderPicker> createState() => _ReminderPickerState();
 }
 
-class _ReminderPickerState extends State<ReminderPicker> {
+class _ReminderPickerState extends ConsumerState<ReminderPicker> {
   late final ReminderRelativeTo? _defaultReference = defaultReminderReference(
     widget.dates,
   );
@@ -99,11 +101,12 @@ class _ReminderPickerState extends State<ReminderPicker> {
   TaskReminder get _customReminder =>
       TaskReminder(relativePeriod: _parts.period, relativeTo: _relativeTo);
 
-  String _format(TaskReminder reminder) => formatReminder(
-    context.l10n,
-    reminder,
-    formatAbsolute: (moment) => formatMoment(context, moment),
-  );
+  String _format(TaskReminder reminder, MomentFormatter formatter) =>
+      formatReminder(
+        context.l10n,
+        reminder,
+        formatAbsolute: formatter.absolute,
+      );
 
   Future<void> _pickAbsolute() async {
     final now = widget.now;
@@ -115,7 +118,12 @@ class _ReminderPickerState extends State<ReminderPicker> {
         now: now,
       ),
     };
-    final picked = await pickDateTime(context, current: current, now: now);
+    final picked = await pickDateTime(
+      context,
+      current: current,
+      now: now,
+      display: ref.read(displaySettingsProvider),
+    );
     if (picked == null || !mounted) return;
     Navigator.of(context).pop(TaskReminder(reminder: picked.toUtc()));
   }
@@ -149,6 +157,7 @@ class _ReminderPickerState extends State<ReminderPicker> {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
+    final formatter = MomentFormatter.watch(context, ref);
     final reference = _defaultReference;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -157,9 +166,12 @@ class _ReminderPickerState extends State<ReminderPicker> {
         if (reference != null)
           for (final preset in reminderPresets(reference))
             _PresetRow(
-              label: _format(preset),
+              label: _format(preset, formatter),
               instant: switch (reminderInstant(preset, widget.dates)) {
-                final instant? => formatMoment(context, instant),
+                final instant? => (
+                  text: formatter.absolute(instant),
+                  spoken: formatter.semanticsLabel(instant),
+                ),
                 null => null,
               },
               alreadySet:
@@ -288,7 +300,10 @@ class _ReminderPickerState extends State<ReminderPicker> {
                 Semantics(
                   liveRegion: true,
                   child: Text(
-                    _format(_customReminder),
+                    _format(
+                      _customReminder,
+                      MomentFormatter.watch(context, ref),
+                    ),
                     style: theme.textTheme.bodyLarge,
                   ),
                 ),
@@ -342,7 +357,9 @@ class _PresetRow extends StatelessWidget {
   });
 
   final String label;
-  final String? instant;
+
+  /// When it fires with the task's dates, and how screen readers say it.
+  final ({String text, String? spoken})? instant;
   final bool alreadySet;
   final VoidCallback onTap;
 
@@ -352,7 +369,10 @@ class _PresetRow extends StatelessWidget {
     return ListTile(
       leading: Icon(Icons.alarm, color: colors.onSurfaceVariant),
       title: Text(label),
-      subtitle: instant == null ? null : Text(instant!),
+      subtitle: switch (instant) {
+        (:final text, :final spoken) => Text(text, semanticsLabel: spoken),
+        null => null,
+      },
       trailing: alreadySet
           ? Icon(
               Icons.check,

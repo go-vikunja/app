@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart' hide RepeatMode;
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/relative_time.dart';
 
 /// How the task will repeat, as the task screens say it; null when the
@@ -16,20 +17,21 @@ String? describeQuickAddRepeat(AppLocalizations l10n, QuickAddRepeat repeat) {
   return l10n.repeatEveryHours(hours);
 }
 
-/// "Tue, Oct 13 9:00 AM" and "in 21 hours" for [due] (UTC) seen at [now].
+/// "Tue, Oct 13 9:00 AM" and "in 21 hours" for [due] (UTC) seen at [now];
+/// the date and time in the user's absolute format when they picked one.
 (String, String) describeQuickAddDue(
   BuildContext context,
   DateTime due, {
   required DateTime now,
+  required MomentFormatter formatter,
 }) {
   final materialL10n = MaterialLocalizations.of(context);
   final local = due.toLocal();
   final date = local.year == now.year
       ? materialL10n.formatMediumDate(local)
       : materialL10n.formatShortDate(local);
-  final time = materialL10n.formatTimeOfDay(
-    TimeOfDay.fromDateTime(local),
-    alwaysUse24HourFormat: MediaQuery.alwaysUse24HourFormatOf(context),
+  return (
+    formatter.chosenAbsolute(due) ?? '$date ${formatter.timeOfDay(due)}',
+    formatRelativeTime(context.l10n, due, now: now),
   );
-  return ('$date $time', formatRelativeTime(context.l10n, due, now: now));
 }

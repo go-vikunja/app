@@ -10,6 +10,7 @@ import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/settings/user_settings_providers.dart';
+import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/quick_add/application/project_references.dart';
@@ -25,8 +26,9 @@ import 'package:vikunja_mobile/features/quick_add/presentation/quick_add_help_sh
 import 'package:vikunja_mobile/features/quick_add/presentation/quick_add_preview.dart';
 import 'package:vikunja_mobile/features/tasks/application/date_shortcuts.dart';
 import 'package:vikunja_mobile/features/tasks/application/default_project.dart';
+import 'package:vikunja_mobile/features/tasks/application/display_settings.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/shortcut_chips.dart';
-import 'package:vikunja_mobile/features/tasks/presentation/moment_format.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/date_time_picker.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/project_picker.dart';
 
@@ -57,6 +59,10 @@ const Set<DateShortcut> _quickShortcuts = {
   DateShortcut.tomorrow,
   DateShortcut.nextWeek,
 };
+
+// By default the icon boxes are squares as tall as the label, which leaves
+// a wrapped label ever less width.
+const _chipIconBox = BoxConstraints.tightFor(width: 20, height: 20);
 
 class NewTaskSheet extends ConsumerStatefulWidget {
   const new({this.projectId, super.key});
@@ -225,7 +231,12 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
   }
 
   Future<void> _pickDue(DateTime now) async {
-    final picked = await pickDateTime(context, current: _due, now: now);
+    final picked = await pickDateTime(
+      context,
+      current: _due,
+      now: now,
+      display: ref.read(displaySettingsProvider),
+    );
     if (picked != null && mounted) setState(() => _due = picked.toUtc());
   }
 
@@ -448,9 +459,11 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
         : DateTime(dueLocal.year, dueLocal.month, dueLocal.day);
     final dueOnShortcut = shortcuts.any((option) => option.day == dueDay);
     final dueLocked = textDue != null;
+    String titleOf(Project project) => project.displayTitle(l10n);
     final projectTitle = project == null
         ? l10n.newTaskNoProject
-        : projectLabel(project, projects);
+        : projectLabel(project, projects, titleOf: titleOf);
+    final formatter = MomentFormatter.watch(context, ref);
 
     final content = Column(
       mainAxisSize: MainAxisSize.min,
@@ -498,7 +511,7 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
             onRemove: _removeParts,
             projectLabel: plan.project == null
                 ? null
-                : projectLabel(plan.project!, projects),
+                : projectLabel(plan.project!, projects, titleOf: titleOf),
             lineCount: taskCount,
             subtaskCount: subtaskCount,
           ),
@@ -536,7 +549,20 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
           trailing: [
             if (shownDue case final due? when !dueOnShortcut)
               InputChip(
-                label: Text(formatMoment(context, due)),
+                // A label on one line fades out the written date displays
+                // before their time at large text. The checkmark goes in
+                // the avatar's fixed box; without an avatar it takes a
+                // square as tall as the wrapped label.
+                avatar: const SizedBox.shrink(),
+                avatarBoxConstraints: _chipIconBox,
+                deleteIconBoxConstraints: _chipIconBox,
+                label: Text(
+                  formatter.absolute(due),
+                  semanticsLabel: formatter.semanticsLabel(due),
+                  softWrap: true,
+                  maxLines: 4,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 selected: true,
                 onDeleted: dueLocked ? null : () => setState(() => _due = null),
                 deleteButtonTooltipMessage: l10n.taskEditClearDueDate,

@@ -8,6 +8,7 @@ import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/account_actions.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/accounts_section.dart';
 import 'package:vikunja_mobile/features/home/presentation/account_header.dart';
+import 'package:vikunja_mobile/features/home/presentation/appearance_section.dart';
 import 'package:vikunja_mobile/features/home/presentation/pending_changes_line.dart';
 import 'package:vikunja_mobile/features/home/presentation/reauth_banner.dart';
 import 'package:vikunja_mobile/features/home/presentation/sync_problems_section.dart';
@@ -21,8 +22,8 @@ import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
 import 'package:vikunja_mobile/features/sync/presentation/sync_progress_bar.dart';
 
 /// Who is signed in, a session that needs a new sign-in, the other
-/// accounts, the sync state, the notifications, the changes still waiting
-/// for the server, and sign-out.
+/// accounts, the sync state, the notifications, the colours, the changes
+/// still waiting for the server, and sign-out.
 class AccountTab extends ConsumerWidget {
   const new({super.key});
 
@@ -98,6 +99,7 @@ class AccountTab extends ConsumerWidget {
             SyncStatusSection(entry: entry, signingOut: signingOut),
             const SizedBox(height: 24),
             NotificationsSection(entry: entry),
+            const AppearanceSection(),
             PendingChangesLine(
               entry: entry,
               canSend: !signingOut && !entry.account.needsReauth,

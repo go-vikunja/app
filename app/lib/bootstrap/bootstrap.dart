@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:vikunja_mobile/app/theme/theme_providers.dart';
 import 'package:vikunja_mobile/app/vikunja_app.dart';
 import 'package:vikunja_mobile/bootstrap/logging_setup.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
@@ -12,6 +13,7 @@ import 'package:vikunja_mobile/core/network/client_identity.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway_provider.dart';
 import 'package:vikunja_mobile/core/notifications/notification_entry_points.dart';
+import 'package:vikunja_mobile/core/settings/user_settings_providers.dart';
 import 'package:vikunja_mobile/core/storage/preferences_store.dart';
 import 'package:vikunja_mobile/core/sync/sync_providers.dart';
 import 'package:vikunja_mobile/features/notifications/application/notifications_onboarding.dart';
@@ -36,16 +38,18 @@ Future<void> bootstrap() async {
   );
   try {
     // Behind the native launch screen, so the router starts on its first
-    // real screen instead of animating it in over the empty splash route.
+    // real screen instead of animating it in over the empty splash route,
+    // in the colours it keeps.
     final accounts = await container.read(accountsProvider.future);
-    if (accounts.activeAccount case final entry?) {
-      // The shell, the first-sync screen or the notification setup: decided
-      // by the stored sync state and the onboarding flag.
-      await Future.wait([
+    await Future.wait([
+      _loadAppearance(container),
+      if (accounts.activeAccount case final entry?) ...[
+        // The shell, the first-sync screen or the notification setup:
+        // decided by the stored sync state and the onboarding flag.
         firstSyncStatus(container, entry.id),
         container.read(notificationsOnboardingProvider.future),
-      ]).timeout(const Duration(seconds: 5));
-    }
+      ],
+    ]).timeout(const Duration(seconds: 5));
   } on Object catch (error) {
     _log.severe('Could not load the local state: ${error.runtimeType}');
   }
@@ -55,6 +59,24 @@ Future<void> bootstrap() async {
   );
   unawaited(_initializeNotifications(container));
   unawaited(_initializeBackground(container));
+}
+
+/// The account's colour scheme and the system colours, which the first
+/// frame would otherwise switch away from a moment later. Never throws:
+/// the app starts in the default colours instead.
+Future<void> _loadAppearance(ProviderContainer container) async {
+  // The app watches it from its first frame on; until then this keeps the
+  // account's settings loaded.
+  container.listen(themeModeProvider, (_, _) {});
+  try {
+    await Future.wait([
+      container.read(userSettingsProvider.future),
+      container.read(systemColorsProvider.future),
+      container.read(useSystemColorsProvider.future),
+    ]);
+  } on Object catch (error) {
+    _log.warning('Could not load the appearance: ${error.runtimeType}');
+  }
 }
 
 /// After the first frame: hands the plugin the background entry point,

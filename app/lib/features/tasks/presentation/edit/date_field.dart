@@ -1,16 +1,18 @@
 import 'dart:async';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/features/tasks/application/date_shortcuts.dart';
+import 'package:vikunja_mobile/features/tasks/application/display_settings.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/shortcut_chips.dart';
-import 'package:vikunja_mobile/features/tasks/presentation/moment_format.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/date_time_picker.dart';
 
 /// One date of the edit page: the row opens the picker, the trailing
 /// button clears, the chips below jump to a day and keep the time already
 /// set (else the breakpoint time for [now]).
-class DateField extends StatelessWidget {
+class DateField extends ConsumerWidget {
   const new({
     required this.label,
     required this.clearLabel,
@@ -32,15 +34,21 @@ class DateField extends StatelessWidget {
   final List<DateShortcutOption> shortcuts;
   final ValueChanged<DateTime?> onChanged;
 
-  Future<void> _pick(BuildContext context) async {
-    final picked = await pickDateTime(context, current: value, now: now);
+  Future<void> _pick(BuildContext context, WidgetRef ref) async {
+    final picked = await pickDateTime(
+      context,
+      current: value,
+      now: now,
+      display: ref.read(displaySettingsProvider),
+    );
     if (picked != null) onChanged(picked);
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
     final colors = Theme.of(context).colorScheme;
+    final formatter = MomentFormatter.watch(context, ref);
     final local = value?.toLocal();
     final selectedDay = local == null
         ? null
@@ -51,11 +59,13 @@ class DateField extends StatelessWidget {
         ListTile(
           leading: Icon(icon, color: colors.onSurfaceVariant),
           title: Text(label),
-          subtitle: Text(
-            value == null
-                ? l10n.taskEditDateNotSet
-                : formatMoment(context, value!),
-          ),
+          subtitle: switch (value) {
+            final value? => Text(
+              formatter.absolute(value),
+              semanticsLabel: formatter.semanticsLabel(value),
+            ),
+            null => Text(l10n.taskEditDateNotSet),
+          },
           trailing: value == null
               ? null
               : IconButton(
@@ -63,7 +73,7 @@ class DateField extends StatelessWidget {
                   tooltip: clearLabel,
                   icon: const Icon(Icons.clear),
                 ),
-          onTap: () => unawaited(_pick(context)),
+          onTap: () => unawaited(_pick(context, ref)),
         ),
         DateShortcutChips(
           options: shortcuts,

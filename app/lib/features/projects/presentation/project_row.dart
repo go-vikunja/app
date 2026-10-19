@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/theme/hex_color.dart';
+import 'package:vikunja_mobile/core/text/project_titles.dart';
 
 class ProjectRow extends StatelessWidget {
   const new({
@@ -27,6 +28,7 @@ class ProjectRow extends StatelessWidget {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final color = parseHexColor(project.hexColor);
+    final title = project.displayTitle(l10n);
     return ListTile(
       onTap: onTap,
       contentPadding: EdgeInsetsDirectional.only(
@@ -41,13 +43,19 @@ class ProjectRow extends StatelessWidget {
                 child: const SizedBox.square(dimension: 16),
               ),
       ),
-      title: Text(project.title),
+      title: Text(title),
       subtitle: childCount > 0
           ? Text(l10n.projectChildCount(childCount))
           : null,
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (project.isArchived)
+            Icon(
+              Icons.archive_outlined,
+              color: colors.onSurfaceVariant,
+              semanticLabel: l10n.projectArchived,
+            ),
           if (project.isFavorite)
             Icon(
               Icons.star,
@@ -58,8 +66,8 @@ class ProjectRow extends StatelessWidget {
             IconButton(
               onPressed: onToggle,
               tooltip: expanded
-                  ? l10n.projectCollapse(project.title)
-                  : l10n.projectExpand(project.title),
+                  ? l10n.projectCollapse(title)
+                  : l10n.projectExpand(title),
               icon: Icon(expanded ? Icons.expand_less : Icons.expand_more),
             ),
         ],

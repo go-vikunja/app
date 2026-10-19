@@ -14,6 +14,37 @@ abstract interface class ListPreferences {
 
   Stream<UpcomingPreferences> watchUpcoming();
   Future<void> saveUpcoming(UpcomingPreferences preferences);
+
+  /// The Projects tab: whether archived projects show and which projects
+  /// are collapsed.
+  Stream<ProjectTreePreferences> watchProjectTree();
+  Future<void> saveProjectTree(ProjectTreePreferences preferences);
+}
+
+@immutable
+final class ProjectTreePreferences {
+  const new({this.showArchived = false, this.collapsed = const {}});
+
+  final bool showArchived;
+
+  /// Ids of the projects whose subprojects are hidden; open by default.
+  final Set<int> collapsed;
+
+  ProjectTreePreferences copyWith({bool? showArchived, Set<int>? collapsed}) =>
+      ProjectTreePreferences(
+        showArchived: showArchived ?? this.showArchived,
+        collapsed: collapsed ?? this.collapsed,
+      );
+
+  @override
+  bool operator ==(Object other) =>
+      other is ProjectTreePreferences &&
+      other.showArchived == showArchived &&
+      setEquals(other.collapsed, collapsed);
+
+  @override
+  int get hashCode =>
+      Object.hash(showArchived, Object.hashAllUnordered(collapsed));
 }
 
 /// [viewId] 0 stands for a project without a list view.

@@ -13,7 +13,8 @@ import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/subscription_repository.dart';
 import 'package:vikunja_mobile/core/repositories/subscription_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
-import 'package:vikunja_mobile/core/sync/sync_providers.dart';
+import 'package:vikunja_mobile/core/settings/user_settings_providers.dart';
+import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
@@ -25,8 +26,8 @@ import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dar
 import 'package:vikunja_mobile/features/projects/application/project_list_model.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_view_labels.dart';
+import 'package:vikunja_mobile/features/sync/application/offline_state.dart';
 import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
-import 'package:vikunja_mobile/features/sync/application/sync_status_queries.dart';
 import 'package:vikunja_mobile/features/sync/presentation/sync_progress_bar.dart';
 import 'package:vikunja_mobile/features/tasks/application/minimum_priority_provider.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
@@ -50,7 +51,8 @@ typedef _Shown = ({
 
 /// A project's list views from the local database: the web's subtask
 /// nesting and sort, the view's own filter where the device can evaluate
-/// it and the server's last answer where it cannot.
+/// it and the server's last answer where it cannot. An archived project
+/// says so and offers no new task, as the server refuses changes to it.
 class ProjectTasksScreen extends ConsumerStatefulWidget {
   const new({required this.projectId, super.key});
 
@@ -80,6 +82,7 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
   int? _chosenViewId;
   var _viewId = 0;
   final _quietlyRefreshed = <int>{};
+  final _quietlyRefreshing = <int>{};
   final _quietFailures = <int, Object>{};
   _Shown? _lastShown;
 
@@ -140,26 +143,56 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
     _lastShown = null;
   }
 
+  bool _isStale(ListSnapshot snapshot) {
+    final loadedAt = snapshot.loadedAt;
+    return loadedAt == null ||
+        ref.read(clockProvider)().difference(loadedAt) >= _staleAfter;
+  }
+
   void _refreshWhenStale(int viewId, ListSnapshot snapshot) {
     if (viewId == 0 || !_quietlyRefreshed.add(viewId)) return;
-    final loadedAt = snapshot.loadedAt;
-    final now = ref.read(clockProvider)();
-    if (loadedAt != null && now.difference(loadedAt) < _staleAfter) return;
+    if (!_isStale(snapshot)) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) unawaited(_refreshQuietly(viewId));
     });
+  }
+
+  /// Back online, the view shown downloads again when it failed offline or
+  /// is missing or stale: its failure would otherwise promise a download
+  /// that never comes.
+  void _refreshAfterReconnect() {
+    final viewId = _viewId;
+    if (!_quietlyRefreshed.contains(viewId) ||
+        _quietlyRefreshing.contains(viewId) ||
+        refreshing) {
+      return;
+    }
+    final shown = _lastShown;
+    final stale =
+        shown != null &&
+        shown.view?.id == viewId &&
+        _isStale(shown.source.snapshot);
+    if (!stale && !_quietFailures.containsKey(viewId)) return;
+    setState(() {
+      _quietFailures.remove(viewId);
+      if (refreshFailure is NetworkFailure) clearRefreshFailure();
+    });
+    unawaited(_refreshQuietly(viewId));
   }
 
   /// Offline the list shows the local data with the offline notice; a
   /// failure here is not the user's to handle, it only picks the words of
   /// a view never downloaded.
   Future<void> _refreshQuietly(int viewId) async {
+    _quietlyRefreshing.add(viewId);
     try {
       await ref
           .read(taskRepositoryProvider)
           ?.refreshProjectList(widget.projectId, viewId: viewId);
     } on Object catch (error) {
       if (mounted) setState(() => _quietFailures[viewId] = error);
+    } finally {
+      _quietlyRefreshing.remove(viewId);
     }
   }
 
@@ -211,7 +244,7 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
     final messenger = ScaffoldMessenger.of(context);
     final titles = {
       for (final project in ref.read(projectsProvider).value ?? <Project>[])
-        project.id: project.title,
+        project.id: project.displayTitle(l10n),
     };
     final before = _follow.value;
     final message = await toggleFollowing(
@@ -239,6 +272,9 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    ref.listen(offlineProvider, (previous, next) {
+      if (previous != null && next == null) _refreshAfterReconnect();
+    });
     // Not projectByIdProvider: a change of the views alone must show.
     final projects = ref.watch(projectsProvider);
     final projectsById = {
@@ -250,6 +286,11 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
     final viewId = _viewId = resolveViewId(
       views,
       remembered: _chosenViewId ?? _rememberedViewId,
+      defaultKind: ref.watch(
+        userSettingsProvider.select(
+          (settings) => settings.value?.defaultViewKind,
+        ),
+      ),
     );
     final view = views.where((view) => view.id == viewId).firstOrNull;
     final kind = view == null
@@ -270,9 +311,8 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
     final minimumPriority = ref.watch(minimumPriorityProvider);
     final pendingIds =
         ref.watch(pendingTaskIdsProvider).unwrapPrevious().value ?? const {};
-    final offline = ref.watch(
-      syncStatusProvider.select((status) => isOffline(status.value)),
-    );
+    final offline = ref.watch(offlineProvider) != null;
+    final archived = project?.isArchived ?? false;
     // Until then the view shown may still change.
     final ready =
         _rememberedLoaded &&
@@ -312,7 +352,7 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(project?.title ?? l10n.projectUnknownTitle),
+        title: Text(project?.displayTitle(l10n) ?? l10n.projectUnknownTitle),
         actions: [
           RefreshButton(onPressed: refreshing ? null : refresh),
           IconButton(
@@ -339,12 +379,15 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
         ],
         bottom: const SyncProgressBar(),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () =>
-            unawaited(showNewTaskSheet(context, projectId: widget.projectId)),
-        tooltip: l10n.newTask,
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: archived
+          ? null
+          : FloatingActionButton(
+              onPressed: () => unawaited(
+                showNewTaskSheet(context, projectId: widget.projectId),
+              ),
+              tooltip: l10n.newTask,
+              child: const Icon(Icons.add),
+            ),
       body: buildRefreshable(
         shownData,
         loadingLabel: l10n.projectTasksLoading,
@@ -376,6 +419,11 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
             header: stackedNotes([
               ?switcher,
               ?notice,
+              if (archived)
+                ListNote(
+                  icon: Icons.archive_outlined,
+                  text: l10n.projectArchivedNote,
+                ),
               if (shownKind == ViewFilterKind.other && loadedAt != null)
                 ListNote(
                   icon: Icons.filter_alt_outlined,
@@ -562,6 +610,8 @@ class _ProjectList extends StatelessWidget {
         final elsewhere = task.projectId == projectId
             ? null
             : projectsById[task.projectId];
+        // The server refuses changes to the tasks of an archived project.
+        final archived = projectsById[task.projectId]?.isArchived ?? false;
         return TaskRow(
           key: keys[index],
           task: task,
@@ -569,13 +619,16 @@ class _ProjectList extends StatelessWidget {
           minimumPriority: minimumPriority,
           depth: row.depth,
           parentTitle: row.parent?.title,
-          projectTitle: elsewhere?.title,
+          projectTitle: elsewhere?.displayTitle(context.l10n),
           projectColor: parseHexColor(elsewhere?.hexColor ?? ''),
           pending: pendingIds.contains(task.id),
           onTap: () => unawaited(showTaskDetail(context, task: task)),
-          onDoneChanged: (done) => onDoneChanged(task, done: done),
-          onFavoriteChanged: (favorite) =>
-              onFavoriteChanged(task, favorite: favorite),
+          onDoneChanged: archived
+              ? null
+              : (done) => onDoneChanged(task, done: done),
+          onFavoriteChanged: archived
+              ? null
+              : (favorite) => onFavoriteChanged(task, favorite: favorite),
         );
       },
     );

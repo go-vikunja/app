@@ -6,6 +6,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
+import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
@@ -242,18 +243,19 @@ void main() {
     expect(data.engine.refreshCalls, 2);
   });
 
-  testWidgets('offline, the saved tasks stay with the quiet notice', (
-    tester,
-  ) async {
+  testWidgets('offline, the saved tasks stay under the banner', (tester) async {
     await pumpProject(tester);
-    data.tasks.refreshProjectListFailure = const NetworkFailure(
-      NetworkProblem.unreachable,
-    );
+    data.engine.onRefresh = () async =>
+        throw const NetworkFailure(NetworkProblem.unreachable);
 
     await pullToRefresh(tester, find.byType(CustomScrollView));
 
     expect(find.byType(TaskRow), findsNWidgets(7));
-    expect(find.byType(OfflineNotice), findsOneWidget);
+    expect(
+      find.textContaining(en.offlineNotice, findRichText: true),
+      findsOneWidget,
+    );
+    expect(find.byType(OfflineNotice), findsNothing);
     expect(find.byType(DataFailureCard), findsNothing);
   });
 
@@ -401,6 +403,27 @@ void main() {
       findsOneWidget,
     );
     expect(data.tasks.projectListRefreshes, [(1, 13)]);
+  });
+
+  testWidgets('offline and never downloaded, such a view downloads once '
+      'back online', (tester) async {
+    data.engine.onRefresh = () async =>
+        throw const NetworkFailure(NetworkProblem.unreachable);
+    data.listPreferences.lastViews[1] = 13;
+    await pumpProject(tester);
+    expect(find.text(en.projectViewNotLoadedTitle), findsOneWidget);
+
+    data.engine.onRefresh = null;
+    data.tasks.onRefreshProjectList = (_, _) async => data.tasks.setSnapshot(
+      'view:13',
+      ListSnapshot(positions: const {7: 1}, loadedAt: now),
+    );
+    data.engine.emit(SyncIdle(lastSyncedAt: now));
+    await tester.pumpAndSettle();
+
+    expect(data.tasks.projectListRefreshes, [(1, 13), (1, 13)]);
+    expect(find.text(en.projectViewNotLoadedTitle), findsNothing);
+    expect(find.byType(TaskRow), findsOneWidget);
   });
 
   testWidgets('online, such a view says it is downloading, or that it could '

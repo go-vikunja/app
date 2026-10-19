@@ -1,5 +1,6 @@
 import 'package:characters/characters.dart';
 import 'package:vikunja_mobile/core/activity/activity_item.dart';
+import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/l10n/generated/app_localizations.dart';
 
 /// How much of a comment the notification body quotes, in characters as
@@ -16,6 +17,10 @@ const activityCommentLength = 80;
 }) {
   final doer = item.doerName ?? l10n.inboxSomeone;
   final team = item.teamName ?? l10n.inboxUnnamed;
+  final project = switch (item.projectTitle) {
+    final title? => projectDisplayTitle(l10n, title),
+    null => null,
+  };
   String titled(String? title) => title ?? l10n.activityNotificationUntitled;
   return switch (item.kind) {
     ActivityKind.comment => (
@@ -42,8 +47,8 @@ const activityCommentLength = 80;
     ),
     ActivityKind.taskCreated => (
       title: titled(item.taskTitle),
-      body: switch (item.projectTitle) {
-        final project? => l10n.activityNotificationTaskCreated(doer, project),
+      body: switch (project) {
+        final title? => l10n.activityNotificationTaskCreated(doer, title),
         null => l10n.activityNotificationTaskCreatedNoProject(doer),
       },
     ),
@@ -52,10 +57,10 @@ const activityCommentLength = 80;
       body: l10n.activityNotificationTaskDeleted(doer),
     ),
     ActivityKind.projectCreated => (
-      title: titled(item.projectTitle),
+      title: titled(project),
       body: l10n.activityNotificationProjectCreated(
         doer,
-        item.projectTitle ?? l10n.inboxUnnamed,
+        project ?? l10n.inboxUnnamed,
       ),
     ),
     ActivityKind.teamMemberAdded => (

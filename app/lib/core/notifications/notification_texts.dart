@@ -1,6 +1,7 @@
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
 import 'package:vikunja_mobile/core/notifications/notification_scheduler.dart';
+import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/l10n/generated/app_localizations.dart';
 
 /// Title: the task's title. Body: `Reminder · Work` or `Due now · Work`,
@@ -8,7 +9,7 @@ import 'package:vikunja_mobile/l10n/generated/app_localizations.dart';
 /// project part when the project is not known locally.
 NotificationDescriber describeNotificationsWith(AppLocalizations l10n) =>
     (task, kind, project) {
-      final body = switch ((kind, project?.title)) {
+      final body = switch ((kind, project?.displayTitle(l10n))) {
         (ScheduledNotificationKind.reminder, final title?) =>
           l10n.notificationReminderBody(title),
         (ScheduledNotificationKind.reminder, null) =>

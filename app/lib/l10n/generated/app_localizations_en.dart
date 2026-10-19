@@ -671,7 +671,88 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectsFavouritesHeading => 'Favourites';
 
   @override
+  String get projectsFavouriteTasks => 'Favourite tasks';
+
+  @override
   String get projectsAllHeading => 'All projects';
+
+  @override
+  String get projectsShowArchived => 'Show archived projects';
+
+  @override
+  String get projectArchived => 'Archived';
+
+  @override
+  String get projectArchivedNote =>
+      'This project is archived. It is not possible to create new or edit tasks for it.';
+
+  @override
+  String get savedFiltersHeading => 'Saved filters';
+
+  @override
+  String get savedFilterUnknownTitle => 'Saved filter';
+
+  @override
+  String smartListOpenTaskCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count open tasks',
+      one: '1 open task',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String smartListFilterNotice(String when) {
+    return 'The server applies this filter. Shown as of $when; new tasks and changes made elsewhere appear after the next download.';
+  }
+
+  @override
+  String smartListFilterNotLoadedBody(String title) {
+    return 'The server applies the saved filter “$title”. Its tasks download when you open it online.';
+  }
+
+  @override
+  String get smartListFilterDownloadingTitle => 'Downloading this filter…';
+
+  @override
+  String smartListFilterDownloadingBody(String title) {
+    return 'The server applies the saved filter “$title”. Its tasks are on their way.';
+  }
+
+  @override
+  String get smartListFilterGoneTitle => 'This saved filter is gone';
+
+  @override
+  String get smartListFilterGoneBody =>
+      'The last sync no longer found it. It may have been deleted on the web.';
+
+  @override
+  String get smartListFilterDownloadFailedTitle =>
+      'Couldn\'t download this filter';
+
+  @override
+  String smartListFilterDownloadFailedBody(String title) {
+    return 'The server applies the saved filter “$title”. Pull down to try again.';
+  }
+
+  @override
+  String get favoritesEmptyTitle => 'No favourite tasks';
+
+  @override
+  String get favoritesEmptyBody =>
+      'Mark a task as a favourite with its star to find it here.';
+
+  @override
+  String get appearanceHeading => 'Appearance';
+
+  @override
+  String get appearanceSystemColors => 'Use system colours';
+
+  @override
+  String get appearanceSystemColorsSubtitle =>
+      'The colours of your wallpaper instead of the app\'s blue';
 
   @override
   String projectChildCount(int count) {
@@ -877,6 +958,14 @@ class AppLocalizationsEn extends AppLocalizations {
       one: '1 year ago',
     );
     return '$_temp0';
+  }
+
+  @override
+  String get relativeJustNow => 'just now';
+
+  @override
+  String momentDateAtTime(String date, String time) {
+    return '$date at $time';
   }
 
   @override
@@ -2614,6 +2703,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectViewList => 'List';
 
   @override
+  String get projectViewGantt => 'Gantt';
+
+  @override
+  String get projectViewTable => 'Table';
+
+  @override
+  String get projectViewKanban => 'Kanban';
+
+  @override
   String get projectViewSwitch => 'Switch view';
 
   @override
@@ -2741,6 +2839,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get savedFilterMyOpenTasks => 'My Open Tasks';
+
+  @override
+  String get projectInboxTitle => 'Inbox';
+
+  @override
+  String get projectFavouritesTitle => 'Favourites';
 
   @override
   String overviewFilterNotice(String title, String when) {

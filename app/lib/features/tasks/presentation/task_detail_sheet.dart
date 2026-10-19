@@ -20,6 +20,7 @@ import 'package:vikunja_mobile/core/repositories/task_details_repository.dart';
 import 'package:vikunja_mobile/core/repositories/task_details_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 import 'package:vikunja_mobile/core/settings/user_settings_providers.dart';
+import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/features/common/presentation/user_avatar.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
@@ -41,7 +42,7 @@ import 'package:vikunja_mobile/features/tasks/presentation/details/task_metadata
 import 'package:vikunja_mobile/features/tasks/presentation/favourite_button.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/follow/follow_button.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/follow/follow_controller.dart';
-import 'package:vikunja_mobile/features/tasks/presentation/moment_format.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/open/task_opener.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/relations/add_relation_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/relations/related_tasks_section.dart';
@@ -436,7 +437,7 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
     final project = ref.watch(projectByIdProvider(task.projectId));
     final projects = ref.watch(projectsProvider).value ?? const <Project>[];
     final projectTitles = {
-      for (final project in projects) project.id: project.title,
+      for (final project in projects) project.id: project.displayTitle(l10n),
     };
     String? otherProjectTitle(Task other) => other.projectId == task.projectId
         ? null
@@ -452,6 +453,14 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
     final percent = (task.percentDone * 100).round();
     final color = parseHexColor(task.hexColor);
     final checklist = checklistStatistics(task.description);
+    final formatter = MomentFormatter.watch(context, ref);
+    _Property dateProperty(IconData icon, String label, DateTime moment) =>
+        _Property(
+          icon: icon,
+          label: label,
+          value: formatter.absolute(moment),
+          semanticsValue: formatter.semanticsLabel(moment),
+        );
 
     return ScaffoldMessenger(
       key: _messenger,
@@ -662,22 +671,18 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                     const SizedBox(height: 8),
                   ],
                   if (task.dueDate case final dueDate?)
-                    _Property(
-                      icon: Icons.event,
-                      label: l10n.taskDetailDueDate,
-                      value: formatMoment(context, dueDate),
-                    ),
+                    dateProperty(Icons.event, l10n.taskDetailDueDate, dueDate),
                   if (task.startDate case final startDate?)
-                    _Property(
-                      icon: Icons.play_arrow_outlined,
-                      label: l10n.taskDetailStartDate,
-                      value: formatMoment(context, startDate),
+                    dateProperty(
+                      Icons.play_arrow_outlined,
+                      l10n.taskDetailStartDate,
+                      startDate,
                     ),
                   if (task.endDate case final endDate?)
-                    _Property(
-                      icon: Icons.stop_outlined,
-                      label: l10n.taskDetailEndDate,
-                      value: formatMoment(context, endDate),
+                    dateProperty(
+                      Icons.stop_outlined,
+                      l10n.taskDetailEndDate,
+                      endDate,
                     ),
                   if (task.priority != TaskPriority.unset)
                     _Property(
@@ -706,8 +711,15 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                           formatReminder(
                             l10n,
                             reminder,
-                            formatAbsolute: (moment) =>
-                                formatMoment(context, moment),
+                            formatAbsolute: formatter.absolute,
+                          ),
+                      ].join('\n'),
+                      semanticsValue: [
+                        for (final reminder in task.reminders)
+                          formatReminder(
+                            l10n,
+                            reminder,
+                            formatAbsolute: formatter.spokenAbsolute,
                           ),
                       ].join('\n'),
                     ),
@@ -958,17 +970,29 @@ class _PendingChip extends StatelessWidget {
 }
 
 class _Property extends StatelessWidget {
-  const new({required this.icon, required this.label, required this.value});
+  const new({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.semanticsValue,
+  });
 
   final IconData icon;
   final String label;
   final String value;
 
+  /// What screen readers hear instead of [value].
+  final String? semanticsValue;
+
   @override
   Widget build(BuildContext context) => _PropertyBlock(
     icon: icon,
     label: label,
-    child: Text(value, style: Theme.of(context).textTheme.bodyLarge),
+    child: Text(
+      value,
+      semanticsLabel: semanticsValue,
+      style: Theme.of(context).textTheme.bodyLarge,
+    ),
   );
 }
 

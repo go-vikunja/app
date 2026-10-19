@@ -8,7 +8,7 @@ import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/theme/hex_color.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
-import 'package:vikunja_mobile/core/sync/sync_providers.dart';
+import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/account_switcher_button.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
@@ -20,8 +20,8 @@ import 'package:vikunja_mobile/features/inbox/presentation/inbox_button.dart';
 import 'package:vikunja_mobile/features/overview/application/due_date_groups.dart';
 import 'package:vikunja_mobile/features/overview/application/overview_tasks_provider.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
+import 'package:vikunja_mobile/features/sync/application/offline_state.dart';
 import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
-import 'package:vikunja_mobile/features/sync/application/sync_status_queries.dart';
 import 'package:vikunja_mobile/features/sync/presentation/sync_progress_bar.dart';
 import 'package:vikunja_mobile/features/tasks/application/minimum_priority_provider.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
@@ -65,9 +65,7 @@ class _OverviewScreenState extends ConsumerState<OverviewScreen>
     final minimumPriority = ref.watch(minimumPriorityProvider);
     final pendingIds =
         ref.watch(pendingTaskIdsProvider).unwrapPrevious().value ?? const {};
-    final offline = ref.watch(
-      syncStatusProvider.select((status) => isOffline(status.value)),
-    );
+    final offline = ref.watch(offlineProvider) != null;
 
     return Scaffold(
       appBar: AppBar(
@@ -139,7 +137,9 @@ class _TaskSections extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final filter = overview.filter;
-    final filterTitle = filter == null ? '' : _savedFilterTitle(l10n, filter);
+    final filterTitle = filter == null
+        ? ''
+        : projectDisplayTitle(l10n, filter.title, projectId: filter.projectId);
     final loadedAt = overview.filterLoadedAt;
     final header = stackedNotes([
       ?notice,
@@ -204,7 +204,7 @@ class _TaskSections extends StatelessWidget {
                 task: task,
                 now: now,
                 minimumPriority: minimumPriority,
-                projectTitle: project?.title,
+                projectTitle: project?.displayTitle(l10n),
                 projectColor: parseHexColor(project?.hexColor ?? ''),
                 pending: pendingIds.contains(task.id),
                 onTap: () => unawaited(showTaskDetail(context, task: task)),
@@ -223,14 +223,6 @@ class _TaskSections extends StatelessWidget {
       ],
     );
   }
-
-  /// The default saved filter in the user's language, as the web shows it.
-  static String _savedFilterTitle(
-    AppLocalizations l10n,
-    SavedFilterRef filter,
-  ) => filter.title == 'My Open Tasks'
-      ? l10n.savedFilterMyOpenTasks
-      : filter.title;
 
   String _sectionTitle(AppLocalizations l10n, DueGroup group) =>
       switch (group) {

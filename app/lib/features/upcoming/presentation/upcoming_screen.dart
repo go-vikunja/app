@@ -10,6 +10,7 @@ import 'package:vikunja_mobile/app/theme/hex_color.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/account_switcher_button.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
@@ -22,6 +23,7 @@ import 'package:vikunja_mobile/features/inbox/presentation/inbox_button.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
 import 'package:vikunja_mobile/features/sync/presentation/sync_progress_bar.dart';
+import 'package:vikunja_mobile/features/tasks/application/display_settings.dart';
 import 'package:vikunja_mobile/features/tasks/application/minimum_priority_provider.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
@@ -107,6 +109,9 @@ class _UpcomingScreenState extends ConsumerState<UpcomingScreen>
       first: first,
       last: last,
       now: now,
+      firstDayOfWeekIndex: ref
+          .read(displaySettingsProvider)
+          .firstDayOfWeekIndex,
     );
     if (days == null || !mounted) return;
     final (from, to) = days;
@@ -336,7 +341,7 @@ class _UpcomingSections extends StatelessWidget {
                 task: task,
                 now: now,
                 minimumPriority: minimumPriority,
-                projectTitle: project?.title,
+                projectTitle: project?.displayTitle(l10n),
                 projectColor: parseHexColor(project?.hexColor ?? ''),
                 pending: pendingIds.contains(task.id),
                 onTap: () => unawaited(showTaskDetail(context, task: task)),

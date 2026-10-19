@@ -95,6 +95,48 @@ void main() {
     expect(seen, [todoist]);
   });
 
+  test('a display setting changed on the web alone emits again', () async {
+    await store('a', todoist);
+    container.read(_activeAccount.notifier).accountId = 'a';
+    listen();
+    await pumpEventQueue();
+
+    const steps = [
+      UserSettings(
+        defaultProjectId: 4,
+        quickAddMagicMode: QuickAddMagicMode.todoist,
+        dateDisplay: DateDisplay.dayMonthYear,
+      ),
+      UserSettings(
+        defaultProjectId: 4,
+        quickAddMagicMode: QuickAddMagicMode.todoist,
+        dateDisplay: DateDisplay.dayMonthYear,
+        timeFormat: TimeFormat.twelveHour,
+      ),
+      UserSettings(
+        defaultProjectId: 4,
+        quickAddMagicMode: QuickAddMagicMode.todoist,
+        dateDisplay: DateDisplay.dayMonthYear,
+        timeFormat: TimeFormat.twelveHour,
+        colorSchema: ColorSchema.dark,
+      ),
+      UserSettings(
+        defaultProjectId: 4,
+        quickAddMagicMode: QuickAddMagicMode.todoist,
+        dateDisplay: DateDisplay.dayMonthYear,
+        timeFormat: TimeFormat.twelveHour,
+        colorSchema: ColorSchema.dark,
+        defaultViewKind: ProjectViewKind.table,
+      ),
+    ];
+    for (final step in steps) {
+      await store('a', step);
+      await pumpEventQueue();
+    }
+
+    expect(seen, [todoist, ...steps]);
+  });
+
   test('switching the account switches the settings', () async {
     await store('a', todoist);
     await store('b', const UserSettings(weekStart: 1));

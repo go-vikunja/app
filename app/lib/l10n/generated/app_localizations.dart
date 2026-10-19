@@ -1118,11 +1118,131 @@ abstract class AppLocalizations {
   /// **'Favourites'**
   String get projectsFavouritesHeading;
 
+  /// The row of the Favorites list in the Favourites section of the Projects tab; the list's own title is projectFavouritesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Favourite tasks'**
+  String get projectsFavouriteTasks;
+
   /// No description provided for @projectsAllHeading.
   ///
   /// In en, this message translates to:
   /// **'All projects'**
   String get projectsAllHeading;
+
+  /// No description provided for @projectsShowArchived.
+  ///
+  /// In en, this message translates to:
+  /// **'Show archived projects'**
+  String get projectsShowArchived;
+
+  /// Semantic label of the icon on an archived project in the project tree.
+  ///
+  /// In en, this message translates to:
+  /// **'Archived'**
+  String get projectArchived;
+
+  /// No description provided for @projectArchivedNote.
+  ///
+  /// In en, this message translates to:
+  /// **'This project is archived. It is not possible to create new or edit tasks for it.'**
+  String get projectArchivedNote;
+
+  /// No description provided for @savedFiltersHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved filters'**
+  String get savedFiltersHeading;
+
+  /// App bar title of a saved filter's list while the filter is not among those the last sync saw.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved filter'**
+  String get savedFilterUnknownTitle;
+
+  /// Under the Favorites list in the Projects tab.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 open task} other{{count} open tasks}}'**
+  String smartListOpenTaskCount(int count);
+
+  /// Above a saved filter's list, which shows its last download.
+  ///
+  /// In en, this message translates to:
+  /// **'The server applies this filter. Shown as of {when}; new tasks and changes made elsewhere appear after the next download.'**
+  String smartListFilterNotice(String when);
+
+  /// No description provided for @smartListFilterNotLoadedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The server applies the saved filter “{title}”. Its tasks download when you open it online.'**
+  String smartListFilterNotLoadedBody(String title);
+
+  /// No description provided for @smartListFilterDownloadingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading this filter…'**
+  String get smartListFilterDownloadingTitle;
+
+  /// No description provided for @smartListFilterDownloadingBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The server applies the saved filter “{title}”. Its tasks are on their way.'**
+  String smartListFilterDownloadingBody(String title);
+
+  /// No description provided for @smartListFilterGoneTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'This saved filter is gone'**
+  String get smartListFilterGoneTitle;
+
+  /// No description provided for @smartListFilterGoneBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The last sync no longer found it. It may have been deleted on the web.'**
+  String get smartListFilterGoneBody;
+
+  /// No description provided for @smartListFilterDownloadFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t download this filter'**
+  String get smartListFilterDownloadFailedTitle;
+
+  /// No description provided for @smartListFilterDownloadFailedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The server applies the saved filter “{title}”. Pull down to try again.'**
+  String smartListFilterDownloadFailedBody(String title);
+
+  /// No description provided for @favoritesEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No favourite tasks'**
+  String get favoritesEmptyTitle;
+
+  /// No description provided for @favoritesEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark a task as a favourite with its star to find it here.'**
+  String get favoritesEmptyBody;
+
+  /// No description provided for @appearanceHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'Appearance'**
+  String get appearanceHeading;
+
+  /// No description provided for @appearanceSystemColors.
+  ///
+  /// In en, this message translates to:
+  /// **'Use system colours'**
+  String get appearanceSystemColors;
+
+  /// Under the switch for Android's dynamic colours; the switch applies to the whole device.
+  ///
+  /// In en, this message translates to:
+  /// **'The colours of your wallpaper instead of the app\'s blue'**
+  String get appearanceSystemColorsSubtitle;
 
   /// No description provided for @projectChildCount.
   ///
@@ -1333,6 +1453,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =1{1 year ago} other{{count} years ago}}'**
   String relativeYearsAgo(int count);
+
+  /// A moment less than a minute away, in either direction, once the user picked the relative date display on the web.
+  ///
+  /// In en, this message translates to:
+  /// **'just now'**
+  String get relativeJustNow;
+
+  /// The web's long date displays: a written-out date and its time of day.
+  ///
+  /// In en, this message translates to:
+  /// **'{date} at {time}'**
+  String momentDateAtTime(String date, String time);
 
   /// No description provided for @taskDetailDueDate.
   ///
@@ -3954,6 +4086,24 @@ abstract class AppLocalizations {
   /// **'List'**
   String get projectViewList;
 
+  /// A project view whose title is exactly "Gantt", the server's default name.
+  ///
+  /// In en, this message translates to:
+  /// **'Gantt'**
+  String get projectViewGantt;
+
+  /// A project view whose title is exactly "Table", the server's default name.
+  ///
+  /// In en, this message translates to:
+  /// **'Table'**
+  String get projectViewTable;
+
+  /// A project view whose title is exactly "Kanban", the server's default name.
+  ///
+  /// In en, this message translates to:
+  /// **'Kanban'**
+  String get projectViewKanban;
+
   /// No description provided for @projectViewSwitch.
   ///
   /// In en, this message translates to:
@@ -4169,6 +4319,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'My Open Tasks'**
   String get savedFilterMyOpenTasks;
+
+  /// A project whose title is exactly "Inbox", the name the server gives every user's first project.
+  ///
+  /// In en, this message translates to:
+  /// **'Inbox'**
+  String get projectInboxTitle;
+
+  /// The list of the user's favourite tasks, which the server offers as a project of its own while any task is a favourite.
+  ///
+  /// In en, this message translates to:
+  /// **'Favourites'**
+  String get projectFavouritesTitle;
 
   /// Above the Overview when it shows the last download of the saved filter picked for it on the web.
   ///

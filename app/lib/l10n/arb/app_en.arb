@@ -539,7 +539,81 @@
   "projectsEmptyTitle": "No projects yet",
   "projectsEmptyBody": "Create your first project on the web and it will show up here.",
   "projectsFavouritesHeading": "Favourites",
+  "projectsFavouriteTasks": "Favourite tasks",
+  "@projectsFavouriteTasks": {
+    "description": "The row of the Favorites list in the Favourites section of the Projects tab; the list's own title is projectFavouritesTitle."
+  },
   "projectsAllHeading": "All projects",
+  "projectsShowArchived": "Show archived projects",
+  "projectArchived": "Archived",
+  "@projectArchived": {
+    "description": "Semantic label of the icon on an archived project in the project tree."
+  },
+  "projectArchivedNote": "This project is archived. It is not possible to create new or edit tasks for it.",
+  "savedFiltersHeading": "Saved filters",
+  "savedFilterUnknownTitle": "Saved filter",
+  "@savedFilterUnknownTitle": {
+    "description": "App bar title of a saved filter's list while the filter is not among those the last sync saw."
+  },
+  "smartListOpenTaskCount": "{count, plural, =1{1 open task} other{{count} open tasks}}",
+  "@smartListOpenTaskCount": {
+    "description": "Under the Favorites list in the Projects tab.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "smartListFilterNotice": "The server applies this filter. Shown as of {when}; new tasks and changes made elsewhere appear after the next download.",
+  "@smartListFilterNotice": {
+    "description": "Above a saved filter's list, which shows its last download.",
+    "placeholders": {
+      "when": {
+        "type": "String",
+        "example": "5 minutes ago"
+      }
+    }
+  },
+  "smartListFilterNotLoadedBody": "The server applies the saved filter “{title}”. Its tasks download when you open it online.",
+  "@smartListFilterNotLoadedBody": {
+    "placeholders": {
+      "title": {
+        "type": "String",
+        "example": "Due this week"
+      }
+    }
+  },
+  "smartListFilterDownloadingTitle": "Downloading this filter…",
+  "smartListFilterDownloadingBody": "The server applies the saved filter “{title}”. Its tasks are on their way.",
+  "@smartListFilterDownloadingBody": {
+    "placeholders": {
+      "title": {
+        "type": "String",
+        "example": "Due this week"
+      }
+    }
+  },
+  "smartListFilterGoneTitle": "This saved filter is gone",
+  "smartListFilterGoneBody": "The last sync no longer found it. It may have been deleted on the web.",
+  "smartListFilterDownloadFailedTitle": "Couldn't download this filter",
+  "smartListFilterDownloadFailedBody": "The server applies the saved filter “{title}”. Pull down to try again.",
+  "@smartListFilterDownloadFailedBody": {
+    "placeholders": {
+      "title": {
+        "type": "String",
+        "example": "Due this week"
+      }
+    }
+  },
+  "favoritesEmptyTitle": "No favourite tasks",
+  "favoritesEmptyBody": "Mark a task as a favourite with its star to find it here.",
+  "appearanceHeading": "Appearance",
+  "appearanceSystemColors": "Use system colours",
+  "appearanceSystemColorsSubtitle": "The colours of your wallpaper instead of the app's blue",
+  "@appearanceSystemColorsSubtitle": {
+    "description": "Under the switch for Android's dynamic colours; the switch applies to the whole device."
+  },
   "projectChildCount": "{count, plural, =1{1 subproject} other{{count} subprojects}}",
   "@projectChildCount": {
     "placeholders": {
@@ -721,6 +795,24 @@
       "count": {
         "type": "int",
         "example": "2"
+      }
+    }
+  },
+  "relativeJustNow": "just now",
+  "@relativeJustNow": {
+    "description": "A moment less than a minute away, in either direction, once the user picked the relative date display on the web."
+  },
+  "momentDateAtTime": "{date} at {time}",
+  "@momentDateAtTime": {
+    "description": "The web's long date displays: a written-out date and its time of day.",
+    "placeholders": {
+      "date": {
+        "type": "String",
+        "example": "Monday, October 19, 2026"
+      },
+      "time": {
+        "type": "String",
+        "example": "14:05"
       }
     }
   },
@@ -2362,6 +2454,18 @@
   "@projectViewList": {
     "description": "A project view whose title is exactly \"List\", the server's default name."
   },
+  "projectViewGantt": "Gantt",
+  "@projectViewGantt": {
+    "description": "A project view whose title is exactly \"Gantt\", the server's default name."
+  },
+  "projectViewTable": "Table",
+  "@projectViewTable": {
+    "description": "A project view whose title is exactly \"Table\", the server's default name."
+  },
+  "projectViewKanban": "Kanban",
+  "@projectViewKanban": {
+    "description": "A project view whose title is exactly \"Kanban\", the server's default name."
+  },
   "projectViewSwitch": "Switch view",
   "projectSort": "Sort",
   "projectSortCurrent": "Sorted: {sort}",
@@ -2468,6 +2572,14 @@
   "savedFilterMyOpenTasks": "My Open Tasks",
   "@savedFilterMyOpenTasks": {
     "description": "The default saved filter every user gets, whose title the server sends as exactly \"My Open Tasks\"."
+  },
+  "projectInboxTitle": "Inbox",
+  "@projectInboxTitle": {
+    "description": "A project whose title is exactly \"Inbox\", the name the server gives every user's first project."
+  },
+  "projectFavouritesTitle": "Favourites",
+  "@projectFavouritesTitle": {
+    "description": "The list of the user's favourite tasks, which the server offers as a project of its own while any task is a favourite."
   },
   "overviewFilterNotice": "Filter: {title}, as of {when}. Tasks created here show after the next sync.",
   "@overviewFilterNotice": {

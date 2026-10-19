@@ -19,7 +19,6 @@ import 'package:vikunja_mobile/features/quick_add/application/quick_add_service_
 import 'package:vikunja_mobile/features/quick_add/presentation/magic_suggestions.dart';
 import 'package:vikunja_mobile/features/quick_add/presentation/quick_add_help_sheet.dart';
 import 'package:vikunja_mobile/features/sync/presentation/first_sync_screen.dart';
-import 'package:vikunja_mobile/features/sync/presentation/offline_notice.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/task_edit_page.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/assignee_picker.dart';
@@ -669,6 +668,116 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    for (final (name, size) in const [
+      ('above the bar on a small phone', Size(320, 640)),
+      ('beside the rail on a phone in landscape', Size(740, 360)),
+    ]) {
+      testWidgets('the offline banner $name, with every tab, at 200 % in '
+          'dark mode (${locale.languageCode})', (tester) async {
+        usePhoneSurface(tester, logicalSize: size);
+        useAccessibilityExtremes(tester);
+        useLocale(tester, locale);
+        final now = DateTime.now();
+        final data = richData(
+          status: SyncFailed(
+            failure: const NetworkFailure(NetworkProblem.unreachable),
+            lastSyncedAt: now.subtract(const Duration(days: 3)),
+          ),
+        );
+        data.engine.onRefresh = () async =>
+            throw const NetworkFailure(NetworkProblem.unreachable);
+        await pumpSignedInApp(tester, sync: data);
+        final l10n = lookupAppLocalizations(locale);
+
+        expect(
+          find.textContaining(l10n.offlineNotice, findRichText: true),
+          findsOneWidget,
+        );
+        await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+        await scrollToEnd(tester, find.byType(CustomScrollView));
+        expect(tester.takeException(), isNull);
+        for (final tab in [
+          l10n.tabUpcoming,
+          l10n.tabProjects,
+          l10n.tabAccount,
+        ]) {
+          await openTab(tester, tab);
+          expect(tester.takeException(), isNull);
+        }
+        await scrollToEnd(tester, find.byType(ListView));
+        expect(tester.takeException(), isNull);
+      });
+    }
+
+    testWidgets('projects tab sections with archived projects, a saved '
+        'filter and the Favorites list at 200 % in dark mode '
+        '(${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      final data = richData();
+      data.projects.all = [
+        ...data.projects.all,
+        sampleProject(
+          id: 3,
+          title: 'An archived project with a long title',
+          archived: true,
+        ),
+      ];
+      data.projects.savedFilters = const [
+        SavedFilterRef(
+          projectId: -2,
+          title: 'A saved filter with a rather long title',
+          isFavorite: true,
+        ),
+        SavedFilterRef(projectId: -3, title: 'My Open Tasks'),
+      ];
+      data.listPreferences.setProjectTree(
+        const ProjectTreePreferences(showArchived: true),
+      );
+      data.tasks.setSavedFilterSnapshot(
+        -2,
+        ListSnapshot(
+          positions: const {1: 0, 2: 1, 6: 2},
+          loadedAt: DateTime.now(),
+        ),
+      );
+      await pumpSignedInApp(tester, sync: data);
+      final l10n = lookupAppLocalizations(locale);
+
+      await openTab(tester, l10n.tabProjects);
+      await scrollToEnd(tester, find.byType(CustomScrollView));
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.byTooltip(l10n.moreActions));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.projectsShowArchived), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      containerOf(tester).read(appRouterProvider).go(AppRoutes.project(3));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.projectArchivedNote), findsOneWidget);
+      await scrollToEnd(tester, find.byType(CustomScrollView));
+      expect(tester.takeException(), isNull);
+
+      containerOf(tester).read(appRouterProvider).go(AppRoutes.project(-2));
+      await tester.pumpAndSettle();
+      await scrollToEnd(tester, find.byType(CustomScrollView));
+      expect(tester.takeException(), isNull);
+
+      // Never downloaded: the download the fake answers with nothing.
+      containerOf(tester).read(appRouterProvider).go(AppRoutes.project(-3));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.smartListFilterDownloadingTitle), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      containerOf(tester)
+          .read(appRouterProvider)
+          .go(AppRoutes.project(Project.favoritesId));
+      await tester.pumpAndSettle();
+      await scrollToEnd(tester, find.byType(CustomScrollView));
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('upcoming with every section and its sheets at 200 % in '
         'dark mode (${locale.languageCode})', (tester) async {
       useWorstCase(tester, locale);
@@ -885,7 +994,10 @@ void main() {
           throw const NetworkFailure(NetworkProblem.unreachable);
       await tester.tap(find.byTooltip(l10n.refresh));
       await tester.pumpAndSettle();
-      expect(find.byType(OfflineNotice), findsOneWidget);
+      expect(
+        find.textContaining(l10n.offlineNotice, findRichText: true),
+        findsOneWidget,
+      );
       await scrollToEnd(tester, find.byType(CustomScrollView));
       expect(tester.takeException(), isNull);
     });

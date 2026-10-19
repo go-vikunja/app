@@ -1,6 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/repositories/project_repository.dart';
+import 'package:vikunja_mobile/core/repositories/task_lists.dart';
+import 'package:vikunja_mobile/core/sync/saved_filters.dart';
+import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine.dart';
 
 /// Projects from the account's database; a refresh is a full sync run.
@@ -26,6 +30,12 @@ final class LocalProjectRepository implements ProjectRepository {
     }
     return null;
   }
+
+  @override
+  Stream<List<SavedFilterRef>> watchSavedFilters() => _db.syncStateDao
+      .watchValue(SyncStateKeys.savedFilters)
+      .map((stored) => sortedByTitle(decodeSavedFilters(stored)))
+      .distinct(listEquals);
 
   @override
   void dispose() {}

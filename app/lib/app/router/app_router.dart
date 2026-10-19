@@ -21,6 +21,7 @@ import 'package:vikunja_mobile/features/onboarding/presentation/overview/server_
 import 'package:vikunja_mobile/features/overview/presentation/overview_screen.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_tasks_screen.dart';
 import 'package:vikunja_mobile/features/projects/presentation/projects_screen.dart';
+import 'package:vikunja_mobile/features/smart_lists/presentation/smart_list_screen.dart';
 import 'package:vikunja_mobile/features/sync/application/sync_status_queries.dart';
 import 'package:vikunja_mobile/features/sync/presentation/first_sync_screen.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/task_edit_page.dart';
@@ -224,8 +225,18 @@ GoRouter appRouter(Ref ref) {
                     path: ':id',
                     redirect: (context, state) =>
                         _idParam(state) == null ? AppRoutes.projects : null,
-                    builder: (context, state) =>
-                        ProjectTasksScreen(projectId: _idParam(state)!),
+                    // The page stays when only the id changes (its key is
+                    // the route's path); the screen must not.
+                    builder: (context, state) => switch (_idParam(state)!) {
+                      final id when id < 0 => SmartListScreen(
+                        key: ValueKey(id),
+                        pseudoProjectId: id,
+                      ),
+                      final id => ProjectTasksScreen(
+                        key: ValueKey(id),
+                        projectId: id,
+                      ),
+                    },
                   ),
                 ],
               ),
@@ -264,7 +275,8 @@ final class _AppSchemeLinks with WidgetsBindingObserver {
 }
 
 /// The `:id` of a route; negative for a task created on this device and
-/// not yet sent.
+/// not yet sent, and for a project, a list that is no project (Favorites or
+/// a saved filter).
 int? _idParam(GoRouterState state) =>
     int.tryParse(state.pathParameters['id'] ?? '');
 

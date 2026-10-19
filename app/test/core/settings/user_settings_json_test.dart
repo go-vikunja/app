@@ -14,6 +14,10 @@ void main() {
       filterIdUsedOnOverview: -553,
       minimumPriority: 4,
       commentSortOrder: CommentSortOrder.newestFirst,
+      dateDisplay: DateDisplay.weekdayDayMonthYear,
+      timeFormat: TimeFormat.twelveHour,
+      colorSchema: ColorSchema.dark,
+      defaultViewKind: ProjectViewKind.table,
     );
 
     expect(decodeUserSettings(encodeUserSettings(settings)), settings);
@@ -74,6 +78,59 @@ void main() {
     expect(settings.minimumPriority, 0);
     expect(settings.effectiveMinimumPriority, 2);
     expect(settings.commentSortOrder, CommentSortOrder.oldestFirst);
+  });
+
+  test('every date display, time format, colour scheme and default view '
+      'round-trips', () {
+    for (final display in DateDisplay.values) {
+      final settings = UserSettings(dateDisplay: display);
+      expect(decodeUserSettings(encodeUserSettings(settings)), settings);
+    }
+    for (final format in TimeFormat.values) {
+      final settings = UserSettings(timeFormat: format);
+      expect(decodeUserSettings(encodeUserSettings(settings)), settings);
+    }
+    for (final schema in ColorSchema.values) {
+      final settings = UserSettings(colorSchema: schema);
+      expect(decodeUserSettings(encodeUserSettings(settings)), settings);
+    }
+    for (final kind in ProjectViewKind.values) {
+      final settings = UserSettings(defaultViewKind: kind);
+      expect(decodeUserSettings(encodeUserSettings(settings)), settings);
+    }
+  });
+
+  test('unset display settings are not stored, so they stay unset', () {
+    final encoded = encodeUserSettings(const UserSettings());
+
+    expect(encoded, isNot(contains('date_display')));
+    expect(encoded, isNot(contains('time_format')));
+    expect(encoded, isNot(contains('default_view')));
+    expect(encoded, contains('"color_schema":"auto"'));
+  });
+
+  test('settings stored before the display settings read as never set', () {
+    final settings = decodeUserSettings(
+      '{"week_start": 1, "timezone": "Europe/Berlin", '
+      '"comment_sort_order": "desc"}',
+    );
+
+    expect(settings.dateDisplay, isNull);
+    expect(settings.timeFormat, isNull);
+    expect(settings.colorSchema, ColorSchema.auto);
+    expect(settings.defaultViewKind, isNull);
+    expect(settings.commentSortOrder, CommentSortOrder.newestFirst);
+  });
+
+  test('odd display settings fall back to unset and auto', () {
+    for (final odd in ['5', '"Relative"', '"12H"', '"first"', 'null', '[]']) {
+      final settings = decodeUserSettings(
+        '{"date_display": $odd, "time_format": $odd, '
+        '"color_schema": $odd, "default_view": $odd}',
+      );
+
+      expect(settings, const UserSettings(), reason: odd);
+    }
   });
 
   test('comments come oldest first unless the stored order says desc', () {

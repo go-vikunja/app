@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
@@ -182,7 +183,7 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
             titleController: _title,
             projectTitle: ref
                 .watch(projectByIdProvider(draft.projectId))
-                ?.title,
+                ?.displayTitle(l10n),
             onChanged: _update,
             onPickProject: () => unawaited(_pickProject()),
             onPickLabels: () => unawaited(_pickLabels()),

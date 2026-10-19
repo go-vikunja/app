@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/features/overview/application/open_tasks_provider.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/tasks/application/relation_search.dart';
@@ -118,7 +119,9 @@ class _AddRelationSheetState extends ConsumerState<AddRelationSheet> {
                   task: other,
                   projectTitle: other.projectId == widget.task.projectId
                       ? null
-                      : ref.watch(projectByIdProvider(other.projectId))?.title,
+                      : ref
+                            .watch(projectByIdProvider(other.projectId))
+                            ?.displayTitle(l10n),
                   onTap: () =>
                       Navigator.of(context)
                           .pop(TaskRelationRef(_kind, other.id)),

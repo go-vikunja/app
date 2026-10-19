@@ -14,11 +14,20 @@ List<ProjectView> listViewsOf(Project? project) =>
       return byPosition != 0 ? byPosition : a.id.compareTo(b.id);
     });
 
-/// The view to show: the remembered one while it is still a list view, else
-/// the first; 0 for a project without list views.
-int resolveViewId(List<ProjectView> views, {required int? remembered}) {
+/// The view to show, the web's way: the remembered one while [views] still
+/// has it, else the first of the user's default kind (null: the first by
+/// position), else the first; 0 without views. Fed list views only, so a
+/// default other than list falls back to the first list view.
+int resolveViewId(
+  List<ProjectView> views, {
+  required int? remembered,
+  ProjectViewKind? defaultKind,
+}) {
   if (views.any((view) => view.id == remembered)) return remembered!;
-  return views.firstOrNull?.id ?? 0;
+  final ofDefaultKind = defaultKind == null
+      ? null
+      : views.where((view) => view.kind == defaultKind).firstOrNull;
+  return (ofDefaultKind ?? views.firstOrNull)?.id ?? 0;
 }
 
 @immutable

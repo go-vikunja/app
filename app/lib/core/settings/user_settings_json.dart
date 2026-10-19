@@ -17,6 +17,10 @@ String encodeUserSettings(UserSettings settings) => jsonEncode({
   'filter_id_used_on_overview': ?settings.filterIdUsedOnOverview,
   'minimum_priority': settings.minimumPriority,
   'comment_sort_order': settings.commentSortOrder.wireName,
+  'date_display': ?settings.dateDisplay?.wireName,
+  'time_format': ?settings.timeFormat?.wireName,
+  'color_schema': settings.colorSchema.wireName,
+  'default_view': ?settings.defaultViewKind?.wireName,
 });
 
 UserSettings decodeUserSettings(String? stored) {
@@ -61,5 +65,12 @@ UserSettings decodeUserSettings(String? stored) {
       _ => 0,
     },
     commentSortOrder: CommentSortOrder.fromWire(json['comment_sort_order']),
+    dateDisplay: DateDisplay.fromWire(json['date_display']),
+    timeFormat: TimeFormat.fromWire(json['time_format']),
+    colorSchema: ColorSchema.fromWire(json['color_schema']),
+    defaultViewKind: switch (json['default_view']) {
+      final String kind => ProjectViewKind.fromWire(kind),
+      _ => null,
+    },
   );
 }

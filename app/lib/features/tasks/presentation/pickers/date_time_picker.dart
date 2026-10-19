@@ -1,16 +1,21 @@
 import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/l10n/picker_localizations.dart';
 import 'package:vikunja_mobile/features/tasks/application/date_shortcuts.dart';
+import 'package:vikunja_mobile/features/tasks/application/display_settings.dart';
 
 /// A date with a time: the Material date picker followed by the time
 /// picker, or one Cupertino wheel. Starts from [current], else today at the
 /// breakpoint time for [now]; a cancelled time picker keeps that time.
-/// Returns a local instant, or null when the user backed out.
+/// The calendar starts the week and the clock counts the hours as
+/// [display] says. Returns a local instant, or null when the user backed
+/// out.
 Future<DateTime?> pickDateTime(
   BuildContext context, {
   required DateTime? current,
   required DateTime now,
+  required DisplaySettings display,
 }) {
   final initial =
       current?.toLocal() ?? dayWithTime(now, current: null, now: now);
@@ -19,10 +24,17 @@ Future<DateTime?> pickDateTime(
       context: context,
       builder: (context) => _CupertinoDateTimeSheet(
         initial: initial,
-        use24Hour: MediaQuery.alwaysUse24HourFormatOf(context),
+        use24Hour:
+            display.use24HourFormat ??
+            MediaQuery.alwaysUse24HourFormatOf(context),
       ),
     ),
-    _ => _pickWithMaterialDialogs(context, initial: initial, now: now),
+    _ => _pickWithMaterialDialogs(
+      context,
+      initial: initial,
+      now: now,
+      display: display,
+    ),
   };
 }
 
@@ -30,18 +42,25 @@ Future<DateTime?> _pickWithMaterialDialogs(
   BuildContext context, {
   required DateTime initial,
   required DateTime now,
+  required DisplaySettings display,
 }) async {
+  final formats = pickerFormatsBuilder(
+    firstDayOfWeekIndex: display.firstDayOfWeekIndex,
+    use24HourFormat: display.use24HourFormat,
+  );
   final day = await showDatePicker(
     context: context,
     initialDate: initial,
     firstDate: DateTime(2000),
     lastDate: DateTime(now.year + 50, 12, 31),
     currentDate: now,
+    builder: formats,
   );
   if (day == null || !context.mounted) return null;
   final time = await showTimePicker(
     context: context,
     initialTime: TimeOfDay.fromDateTime(initial),
+    builder: formats,
   );
   return DateTime(
     day.year,

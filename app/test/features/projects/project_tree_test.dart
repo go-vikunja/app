@@ -34,6 +34,27 @@ void main() {
     expect(titles(work.children.last.children), ['Grandchild']);
   });
 
+  test('at the same position an umlaut sorts with its letter', () {
+    final tree = buildProjectTree([
+      sampleProject(id: 1, title: 'Zuhause'),
+      sampleProject(id: 2, title: 'Übersicht'),
+      sampleProject(id: 3, title: 'Bugs'),
+    ]);
+
+    expect(titles(tree), ['Bugs', 'Übersicht', 'Zuhause']);
+  });
+
+  test('archived projects on request, in their place; pseudo ones never', () {
+    final tree = buildProjectTree(projects, includeArchived: true);
+
+    expect(titles(tree), ['Old', 'Home', 'Orphan', 'Work']);
+    expect(titles(tree.last.children), [
+      'Archived child',
+      'A child',
+      'b child',
+    ]);
+  });
+
   test('favourites exclude archived and pseudo projects', () {
     expect(favouriteProjects(projects).map((p) => p.title), ['Home']);
   });

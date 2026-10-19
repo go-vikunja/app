@@ -94,16 +94,35 @@ final class LocalTaskRepository
   Future<void> refreshProjectList(int projectId, {required int viewId}) async {
     await _sync.refresh();
     if (viewId == 0) return;
-    final read = _read;
-    if (read == null) {
-      throw StateError('A view download needs the read client');
-    }
     await downloadViewSnapshot(
       db: _db,
-      client: read,
+      client: _readClient('A view download'),
       perPage: _perPage,
       projectId: projectId,
       viewId: viewId,
+      now: _now,
+    );
+  }
+
+  @override
+  Stream<List<Task>> watchFavoriteTasks() => _db.tasksDao.watchFavoriteTasks();
+
+  @override
+  Stream<SavedFilterTasks> watchSavedFilterTasks(int pseudoProjectId) => _db
+      .tasksDao
+      .watchOpenTasksInList(savedFilterSnapshotKey(pseudoProjectId))
+      .map(
+        (list) => SavedFilterTasks(tasks: list.tasks, loadedAt: list.loadedAt),
+      );
+
+  @override
+  Future<void> refreshSavedFilter(int pseudoProjectId) async {
+    await _sync.refresh();
+    await downloadSavedFilter(
+      db: _db,
+      client: _readClient('A saved filter download'),
+      perPage: _perPage,
+      pseudoProjectId: pseudoProjectId,
       now: _now,
     );
   }
@@ -211,6 +230,9 @@ final class LocalTaskRepository
     );
     if (queued) _drainQuietly();
   }
+
+  VikunjaReadClient _readClient(String purpose) =>
+      _read ?? (throw StateError('$purpose needs the read client'));
 
   static DateChange? _restore(DateTime? date) =>
       date == null ? null : DateChange.set(date);

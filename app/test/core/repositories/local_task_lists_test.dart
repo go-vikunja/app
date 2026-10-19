@@ -284,4 +284,241 @@ void main() {
       expect(snapshot.loadedAt, monday);
     });
   });
+
+  group('Favorites', () {
+    setUp(() async {
+      final child = sampleProject(id: 10, title: 'Old child', parent: 8);
+      await db.projectsDao.upsertAll([child]);
+      await db.tasksDao.upsertAll([
+        sampleTask(id: 11, title: 'Undated', projectId: 7, favorite: true),
+        sampleTask(
+          id: 12,
+          title: 'Friday',
+          projectId: 9,
+          due: friday,
+          favorite: true,
+        ),
+        sampleTask(
+          id: 13,
+          title: 'Done',
+          projectId: 7,
+          done: true,
+          favorite: true,
+        ),
+        sampleTask(
+          id: 14,
+          title: 'Archived',
+          projectId: 8,
+          due: monday,
+          favorite: true,
+        ),
+        sampleTask(
+          id: 15,
+          title: 'Archived child',
+          projectId: 10,
+          favorite: true,
+        ),
+        sampleTask(
+          id: 16,
+          title: 'Monday',
+          projectId: 7,
+          due: monday,
+          favorite: true,
+        ),
+      ], syncRunId: 'run');
+    });
+
+    test('are the open favourite tasks outside archived projects and their '
+        'subprojects, by due date, then newest', () async {
+      expect(ids(await repository.watchFavoriteTasks().first), [16, 12, 11]);
+    });
+
+    test('follow the favourites, done and deletes made here at once, and '
+        'an archived project coming back', () async {
+      final seen = <List<int>>[];
+      final subscription = repository.watchFavoriteTasks().listen(
+        (tasks) => seen.add(ids(tasks)),
+      );
+      addTearDown(subscription.cancel);
+      await pumpEventQueue();
+
+      await repository.setFavorite(5, favorite: true);
+      await repository.setFavorite(11, favorite: false);
+      await repository.setDone(16, done: true);
+      await repository.deleteTask(12);
+      await pumpEventQueue();
+
+      expect(seen.last, [5]);
+
+      await db.projectsDao.upsertAll([sampleProject(id: 8, title: 'Old')]);
+      await pumpEventQueue();
+
+      expect(seen.last, [14, 5, 15]);
+    });
+
+    test('none at all is an empty list', () async {
+      await repository.setFavorite(11, favorite: false);
+      await repository.setFavorite(12, favorite: false);
+      await repository.setFavorite(16, favorite: false);
+
+      expect(await repository.watchFavoriteTasks().first, isEmpty);
+    });
+  });
+
+  group('saved filter', () {
+    const urgent = Project(id: -3, title: 'Urgent');
+    const mine = Project(id: -14, title: 'My Open Tasks');
+    const firstPage =
+        'project -14 tasks done = false sort=id desc per_page=2 page=1';
+
+    setUp(() {
+      read
+        ..pseudoProjects = [mine, urgent]
+        ..savedFilterTasks[-14] = {1, 2, 3, 4, 5}
+        ..savedFilterTasks[-3] = {2};
+    });
+
+    test('never downloaded has no tasks and no time', () async {
+      final list = await repository.watchSavedFilterTasks(-14).first;
+
+      expect(list.tasks, isEmpty);
+      expect(list.loadedAt, isNull);
+    });
+
+    test("shows its download's open tasks by due date, then newest, and "
+        'follows done and deletes made here at once', () async {
+      await db.listSnapshotsDao.replace(savedFilterSnapshotKey(-14), {
+        1: 0,
+        2: 1,
+        3: 2,
+        4: 3,
+      }, loadedAt: monday);
+      final seen = <SavedFilterTasks>[];
+      final subscription = repository
+          .watchSavedFilterTasks(-14)
+          .listen(seen.add);
+      addTearDown(subscription.cancel);
+      await pumpEventQueue();
+
+      expect(ids(seen.last.tasks), [4, 2, 1]);
+      expect(seen.last.loadedAt, monday);
+
+      await repository.setDone(4, done: true);
+      await repository.deleteTask(1);
+      await pumpEventQueue();
+
+      expect(ids(seen.last.tasks), [2]);
+    });
+
+    test('a refresh syncs, then downloads the open tasks from every page '
+        'into its own snapshot', () async {
+      await db.listSnapshotsDao.replace(overviewSnapshotKey(-14), {
+        1: 0,
+      }, loadedAt: monday);
+
+      await repository.refreshSavedFilter(-14);
+
+      expect(sync.refreshCalls, 1);
+      expect(read.requests, [
+        firstPage,
+        firstPage.replaceFirst('page=1', 'page=2'),
+      ]);
+      final snapshot = await db.listSnapshotsDao.load(
+        savedFilterSnapshotKey(-14),
+      );
+      expect(snapshot.taskIds, [5, 4, 2, 1]);
+      expect(snapshot.loadedAt, now);
+      // What the server matched shows, archived projects included.
+      expect(ids((await repository.watchSavedFilterTasks(-14).first).tasks), [
+        5,
+        4,
+        2,
+        1,
+      ]);
+      expect(
+        (await db.listSnapshotsDao.load(overviewSnapshotKey(-14))).taskIds,
+        [1],
+      );
+    });
+
+    test('each filter has its own download, rewritten with its time on '
+        'every refresh', () async {
+      await repository.refreshSavedFilter(-3);
+      final later = now.add(const Duration(minutes: 10));
+      final repository2 = LocalTaskRepository(
+        db,
+        sync,
+        sender,
+        write,
+        read: read,
+        now: () => later,
+      );
+      await repository2.refreshSavedFilter(-3);
+      await repository.refreshSavedFilter(-14);
+
+      final urgentList = await db.listSnapshotsDao.load(
+        savedFilterSnapshotKey(-3),
+      );
+      expect(urgentList.taskIds, [2]);
+      expect(urgentList.loadedAt, later);
+      expect(
+        (await db.listSnapshotsDao.load(savedFilterSnapshotKey(-14))).taskIds,
+        [5, 4, 2, 1],
+      );
+    });
+
+    test("relative dates are rounded in the user's time zone setting, as "
+        'the web asks for them', () async {
+      await repository.refreshSavedFilter(-3);
+      expect(read.tasks.queries.last.filterTimezone, isNull);
+
+      await db.syncStateDao.write({
+        SyncStateKeys.userSettings: encodeUserSettings(
+          const UserSettings(timezone: 'Europe/Berlin'),
+        ),
+      });
+      await repository.refreshSavedFilter(-3);
+      final query = read.tasks.queries.last;
+      expect(query.filterTimezone, 'Europe/Berlin');
+      expect(query.filter, 'done = false');
+      expect(query.sort, TaskQuery.dueDateSort);
+    });
+
+    test('a failed sync or download passes through and keeps the previous '
+        'download', () async {
+      await db.listSnapshotsDao.replace(savedFilterSnapshotKey(-14), {
+        1: 0,
+      }, loadedAt: monday);
+
+      sync.error = const ServerFailure(502);
+      await expectLater(
+        repository.refreshSavedFilter(-14),
+        throwsA(isA<ServerFailure>()),
+      );
+      expect(read.requests, isEmpty);
+
+      sync.error = null;
+      read.beforeRequest = (request) async {
+        if (request.endsWith('page=2')) {
+          throw const NetworkFailure(NetworkProblem.unreachable);
+        }
+      };
+      await expectLater(
+        repository.refreshSavedFilter(-14),
+        throwsA(isA<NetworkFailure>()),
+      );
+      read
+        ..beforeRequest = null
+        ..pseudoProjects = [urgent];
+      await expectLater(
+        repository.refreshSavedFilter(-14),
+        throwsA(isA<NotFound>()),
+      );
+      final snapshot = await db.listSnapshotsDao.load(
+        savedFilterSnapshotKey(-14),
+      );
+      expect(snapshot.taskIds, [1]);
+      expect(snapshot.loadedAt, monday);
+    });
+  });
 }

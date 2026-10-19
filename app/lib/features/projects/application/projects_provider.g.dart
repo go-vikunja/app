@@ -332,3 +332,53 @@ final class ViewPreferencesFamily extends $Family
   @override
   String toString() => r'viewPreferencesProvider';
 }
+
+/// What the Projects tab shows of the tree; the defaults while nobody is
+/// signed in.
+
+@ProviderFor(projectTreePreferences)
+final projectTreePreferencesProvider = ProjectTreePreferencesProvider._();
+
+/// What the Projects tab shows of the tree; the defaults while nobody is
+/// signed in.
+
+final class ProjectTreePreferencesProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<ProjectTreePreferences>,
+          ProjectTreePreferences,
+          Stream<ProjectTreePreferences>
+        >
+    with
+        $FutureModifier<ProjectTreePreferences>,
+        $StreamProvider<ProjectTreePreferences> {
+  /// What the Projects tab shows of the tree; the defaults while nobody is
+  /// signed in.
+  ProjectTreePreferencesProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'projectTreePreferencesProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$projectTreePreferencesHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<ProjectTreePreferences> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<ProjectTreePreferences> create(Ref ref) {
+    return projectTreePreferences(ref);
+  }
+}
+
+String _$projectTreePreferencesHash() =>
+    r'3108dd67ca1fe00a9d0e0bcc7bb56ad880fa6cdd';

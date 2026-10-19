@@ -106,6 +106,22 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
+  /// The open favourite tasks among [watchActiveOpenTasks], in its order.
+  Stream<List<Task>> watchFavoriteTasks() =>
+      watchTables({..._readTables, projects}, loadFavoriteTasks);
+
+  Future<List<Task>> loadFavoriteTasks() async {
+    final archived = await _archivedProjectIds();
+    final favorite =
+        tasks.done.equals(false) & tasks.isFavorite.equals(true) & _visible;
+    return await _load(
+      where: archived.isEmpty
+          ? favorite
+          : favorite & tasks.projectId.isNotIn(archived),
+      orderBy: _byDueDate,
+    );
+  }
+
   Future<List<int>> _archivedProjectIds() async {
     final query = selectOnly(
       projects,

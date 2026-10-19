@@ -39,6 +39,17 @@ abstract interface class TaskRepository {
   /// syncs.
   Future<void> refreshProjectList(int projectId, {required int viewId});
 
+  /// The open tasks marked as favourite, outside archived projects, nearest
+  /// due date first (none last), then newest first: the Favorites list.
+  Stream<List<Task>> watchFavoriteTasks();
+
+  /// A saved filter's list ([pseudoProjectId] is -2 or lower).
+  Stream<SavedFilterTasks> watchSavedFilterTasks(int pseudoProjectId);
+
+  /// Runs the sync and downloads the saved filter's open tasks; throws the
+  /// `VikunjaFailure` of the download.
+  Future<void> refreshSavedFilter(int pseudoProjectId);
+
   Future<void> refreshOpenTasks();
 
   /// Writes apply to the local row at once and are queued for the server;

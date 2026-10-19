@@ -48,3 +48,10 @@ Stream<ProjectListSource> projectListSource(
 Stream<ViewPreferences> viewPreferences(Ref ref, String listKey) =>
     ref.watch(listPreferencesProvider)?.watchView(listKey) ??
     Stream.value(const ViewPreferences());
+
+/// What the Projects tab shows of the tree; the defaults while nobody is
+/// signed in.
+@riverpod
+Stream<ProjectTreePreferences> projectTreePreferences(Ref ref) =>
+    ref.watch(listPreferencesProvider)?.watchProjectTree() ??
+    Stream.value(const ProjectTreePreferences());

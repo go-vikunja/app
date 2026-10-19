@@ -200,4 +200,81 @@ void main() {
       ]);
     });
   });
+
+  group('project tree', () {
+    test('starts without archived projects, every project open', () async {
+      final tree = await preferences.watchProjectTree().first;
+
+      expect(tree, const ProjectTreePreferences());
+      expect(tree.showArchived, isFalse);
+      expect(tree.collapsed, isEmpty);
+    });
+
+    test('the toggle and the collapsed projects survive the round '
+        'trip', () async {
+      const saved = ProjectTreePreferences(
+        showArchived: true,
+        collapsed: {12, 3, 40},
+      );
+
+      await preferences.saveProjectTree(saved);
+
+      expect(await preferences.watchProjectTree().first, saved);
+      expect(
+        await db.listPreferencesDao.read('projects'),
+        '{"show_archived":true,"collapsed":[3,12,40]}',
+      );
+    });
+
+    test('streams on change only', () async {
+      final seen = <ProjectTreePreferences>[];
+      final subscription = preferences.watchProjectTree().listen(seen.add);
+      addTearDown(subscription.cancel);
+      await pumpEventQueue();
+
+      await preferences.saveProjectTree(
+        const ProjectTreePreferences(collapsed: {7}),
+      );
+      await preferences.saveProjectTree(
+        const ProjectTreePreferences(collapsed: {7}),
+      );
+      await preferences.saveView('view:70', const ViewPreferences());
+      await preferences.saveProjectTree(
+        const ProjectTreePreferences(showArchived: true, collapsed: {7}),
+      );
+      await pumpEventQueue();
+
+      expect(seen, const [
+        ProjectTreePreferences(),
+        ProjectTreePreferences(collapsed: {7}),
+        ProjectTreePreferences(showArchived: true, collapsed: {7}),
+      ]);
+    });
+
+    test('an unreadable value is the default, field by field', () async {
+      for (final (stored, expected) in [
+        ('', const ProjectTreePreferences()),
+        ('[true]', const ProjectTreePreferences()),
+        (
+          '{"show_archived": "yes", "collapsed": "7"}',
+          const ProjectTreePreferences(),
+        ),
+        (
+          '{"show_archived": true, "collapsed": {"7": true}}',
+          const ProjectTreePreferences(showArchived: true),
+        ),
+        (
+          '{"collapsed": [7, "8", 9.5, null, 10]}',
+          const ProjectTreePreferences(collapsed: {7, 10}),
+        ),
+      ]) {
+        await db.listPreferencesDao.write('projects', stored);
+        expect(
+          await preferences.watchProjectTree().first,
+          expected,
+          reason: stored,
+        );
+      }
+    });
+  });
 }

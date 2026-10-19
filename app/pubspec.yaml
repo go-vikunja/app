@@ -15,6 +15,7 @@ dependencies:
   dio: ^5.11.1
   drift: ^2.35.2
   drift_flutter: ^0.3.1
+  dynamic_color: ^2.1.0
   flutter:
     sdk: flutter
   flutter_local_notifications: ^22.3.2

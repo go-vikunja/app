@@ -8,9 +8,10 @@ final class FakeListPreferences implements ListPreferences {
   final Map<String, ViewPreferences> views = {};
   final Map<int, int> lastViews = {};
   UpcomingPreferences upcoming = const UpcomingPreferences();
+  ProjectTreePreferences projectTree = const ProjectTreePreferences();
 
-  /// Every save, in order: `view <listKey>`, `remember <projectId> <viewId>`
-  /// or `upcoming`.
+  /// Every save, in order: `view <listKey>`, `remember <projectId> <viewId>`,
+  /// `upcoming` or `projectTree`.
   final List<String> saves = [];
 
   final _changes = StreamController<void>.broadcast();
@@ -76,5 +77,22 @@ final class FakeListPreferences implements ListPreferences {
       onCancel: () => subscription?.cancel(),
     );
     return controller.stream;
+  }
+
+  @override
+  Stream<ProjectTreePreferences> watchProjectTree() =>
+      _watch(() => projectTree);
+
+  @override
+  Future<void> saveProjectTree(ProjectTreePreferences preferences) async {
+    saves.add('projectTree');
+    projectTree = preferences;
+    _changes.add(null);
+  }
+
+  /// Sets [projectTree] for every watcher without recording a save.
+  void setProjectTree(ProjectTreePreferences preferences) {
+    projectTree = preferences;
+    _changes.add(null);
   }
 }

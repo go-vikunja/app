@@ -15,6 +15,7 @@ final class LocalListPreferences implements ListPreferences {
   static String viewKey(String listKey) => 'list:$listKey';
   static String lastViewKey(int projectId) => 'last_view:$projectId';
   static const upcomingKey = 'upcoming';
+  static const projectTreeKey = 'projects';
 
   @override
   Stream<ViewPreferences> watchView(String listKey) => _db.listPreferencesDao
@@ -49,6 +50,17 @@ final class LocalListPreferences implements ListPreferences {
   Future<void> saveUpcoming(UpcomingPreferences preferences) => _db
       .listPreferencesDao
       .write(upcomingKey, encodeUpcomingPreferences(preferences));
+
+  @override
+  Stream<ProjectTreePreferences> watchProjectTree() => _db.listPreferencesDao
+      .watchValue(projectTreeKey)
+      .map(decodeProjectTreePreferences)
+      .distinct();
+
+  @override
+  Future<void> saveProjectTree(ProjectTreePreferences preferences) => _db
+      .listPreferencesDao
+      .write(projectTreeKey, encodeProjectTreePreferences(preferences));
 }
 
 String encodeViewPreferences(ViewPreferences preferences) => jsonEncode({
@@ -103,6 +115,23 @@ UpcomingPreferences decodeUpcomingPreferences(String? stored) {
     showWithoutDueDate: switch (json['show_without_due_date']) {
       final bool show => show,
       _ => defaults.showWithoutDueDate,
+    },
+  );
+}
+
+String encodeProjectTreePreferences(ProjectTreePreferences preferences) =>
+    jsonEncode({
+      'show_archived': preferences.showArchived,
+      'collapsed': preferences.collapsed.toList()..sort(),
+    });
+
+ProjectTreePreferences decodeProjectTreePreferences(String? stored) {
+  final json = _decode(stored);
+  return ProjectTreePreferences(
+    showArchived: json['show_archived'] == true,
+    collapsed: switch (json['collapsed']) {
+      final List<Object?> ids => Set.unmodifiable(ids.whereType<int>()),
+      _ => const {},
     },
   );
 }

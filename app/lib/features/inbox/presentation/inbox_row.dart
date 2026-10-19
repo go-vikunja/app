@@ -1,13 +1,14 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/activity/activity_item.dart';
 import 'package:vikunja_mobile/features/common/presentation/initials_avatar.dart';
 import 'package:vikunja_mobile/features/inbox/presentation/activity_texts.dart';
-import 'package:vikunja_mobile/features/tasks/presentation/relative_time.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
 
 /// One notification: who did what, the comment for a comment, the task's
 /// title and when; bold with a dot while unread.
-class InboxRow extends StatelessWidget {
+class InboxRow extends ConsumerWidget {
   const new({
     required this.item,
     required this.now,
@@ -20,19 +21,25 @@ class InboxRow extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
+    final formatter = MomentFormatter.watch(context, ref);
     final unread = !item.isRead;
     final detailStyle = theme.textTheme.bodyMedium?.copyWith(
       color: colors.onSurfaceVariant,
     );
     // Without an identifier the text names the task by its title already.
+    final title = item.taskIdentifier != null ? item.taskTitle : null;
     final details = [
-      if (item.taskIdentifier != null) ?item.taskTitle,
-      formatRelativeTime(l10n, item.created, now: now),
+      ?title,
+      formatter.relative(item.created, now: now),
     ].join(' · ');
+    final spokenDetails = switch (formatter.semanticsLabel(item.created)) {
+      final created? => [?title, created].join(' · '),
+      null => null,
+    };
 
     return ListTile(
       onTap: onTap,
@@ -52,7 +59,7 @@ class InboxRow extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodyMedium,
             ),
-          Text(details, style: detailStyle),
+          Text(details, semanticsLabel: spokenDetails, style: detailStyle),
         ],
       ),
       trailing: unread

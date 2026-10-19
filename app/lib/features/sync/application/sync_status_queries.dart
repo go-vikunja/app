@@ -1,4 +1,3 @@
-import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 
 /// Routing keeps the shell away until the engine has reported (null) and
@@ -12,7 +11,3 @@ bool needsFirstSync(SyncStatus? status) => switch (status) {
 
 bool isSyncingQuietly(SyncStatus? status) =>
     status is SyncRunning && !status.initial;
-
-/// The last run could not reach the server; the saved data is what there is.
-bool isOffline(SyncStatus? status) =>
-    status is SyncFailed && status.failure is NetworkFailure;

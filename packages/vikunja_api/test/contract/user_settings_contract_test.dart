@@ -74,6 +74,10 @@ void main() {
               ],
               'play_sound_when_done': false,
               'comment_sort_order': 'desc',
+              'date_display': 'weekdayDayMonthYear',
+              'time_format': '12h',
+              'color_schema': 'dark',
+              'default_view': 'kanban',
             },
           };
           await despiteWriteRaces(
@@ -99,6 +103,10 @@ void main() {
             before.settings.commentSortOrder,
             CommentSortOrder.oldestFirst,
           );
+          expect(before.settings.dateDisplay, isNull);
+          expect(before.settings.timeFormat, isNull);
+          expect(before.settings.colorSchema, ColorSchema.auto);
+          expect(before.settings.defaultViewKind, isNull);
         });
 
         for (final apiVersion in ApiVersion.values) {
@@ -120,6 +128,10 @@ void main() {
                   Duration(days: 1),
                 ],
                 commentSortOrder: CommentSortOrder.newestFirst,
+                dateDisplay: DateDisplay.weekdayDayMonthYear,
+                timeFormat: TimeFormat.twelveHour,
+                colorSchema: ColorSchema.dark,
+                defaultViewKind: ProjectViewKind.kanban,
               ),
             );
           });

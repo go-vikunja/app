@@ -3,16 +3,20 @@ import 'package:material_ui/material_ui.dart';
 abstract final class AppTheme {
   static const seedColor = Color(0xFF1973FF);
 
-  static ThemeData light() => _build(Brightness.light);
+  /// [colorScheme] replaces the brand colours, e.g. with the system's.
+  static ThemeData light({ColorScheme? colorScheme}) =>
+      _build(colorScheme ?? _seeded(Brightness.light));
 
-  static ThemeData dark() => _build(Brightness.dark);
+  static ThemeData dark({ColorScheme? colorScheme}) =>
+      _build(colorScheme ?? _seeded(Brightness.dark));
 
-  static ThemeData _build(Brightness brightness) {
-    final colorScheme = ColorScheme.fromSeed(
-      seedColor: seedColor,
-      brightness: brightness,
-      dynamicSchemeVariant: DynamicSchemeVariant.fidelity,
-    );
+  static ColorScheme _seeded(Brightness brightness) => ColorScheme.fromSeed(
+    seedColor: seedColor,
+    brightness: brightness,
+    dynamicSchemeVariant: DynamicSchemeVariant.fidelity,
+  );
+
+  static ThemeData _build(ColorScheme colorScheme) {
     final base = ThemeData(colorScheme: colorScheme);
     return base.copyWith(
       inputDecorationTheme: const InputDecorationThemeData(

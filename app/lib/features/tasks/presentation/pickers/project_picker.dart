@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/theme/hex_color.dart';
+import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 import 'package:vikunja_mobile/features/tasks/application/default_project.dart';
 
@@ -99,7 +100,7 @@ class _ProjectList extends StatelessWidget {
             Icons.folder_outlined,
             color: color ?? colors.onSurfaceVariant,
           ),
-          title: Text(project.title),
+          title: Text(project.displayTitle(l10n)),
           selected: selected,
           trailing: selected ? const Icon(Icons.check) : null,
           onTap: () => Navigator.of(context).pop(project),

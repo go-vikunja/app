@@ -48,5 +48,12 @@ UserSettings parseUserSettings(Object? json) {
       _ => 0,
     },
     commentSortOrder: CommentSortOrder.fromWire(frontend['comment_sort_order']),
+    dateDisplay: DateDisplay.fromWire(frontend['date_display']),
+    timeFormat: TimeFormat.fromWire(frontend['time_format']),
+    colorSchema: ColorSchema.fromWire(frontend['color_schema']),
+    defaultViewKind: switch (frontend['default_view']) {
+      final String kind => ProjectViewKind.fromWire(kind),
+      _ => null,
+    },
   );
 }

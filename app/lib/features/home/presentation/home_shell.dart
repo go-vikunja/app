@@ -15,10 +15,13 @@ import 'package:vikunja_mobile/features/session/application/sign_in_controller.d
 import 'package:vikunja_mobile/features/session/application/sign_out_controller.dart';
 import 'package:vikunja_mobile/features/sync/application/foreground_sync_scheduler_providers.dart';
 import 'package:vikunja_mobile/features/sync/application/inactive_outboxes.dart';
+import 'package:vikunja_mobile/features/sync/application/offline_state.dart';
 import 'package:vikunja_mobile/features/sync/application/startup_sync.dart';
+import 'package:vikunja_mobile/features/sync/presentation/offline_banner.dart';
 
-/// The signed-in app: the tab bar around the Overview, Upcoming, Projects
-/// and Account branches, the session check when the app opens or resumes,
+/// The signed-in app: the tab bar (or, in a wide window, the rail) around
+/// the Overview, Upcoming, Projects and Account branches, the offline
+/// banner, the session check when the app opens or resumes,
 /// the quiet sync when it opens, the scheduler that keeps syncing while it
 /// is in front, the other accounts' outboxes, the notification schedulers
 /// of every signed-in account, and the switch from one account to another.
@@ -140,6 +143,55 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     final signingIn = ref.watch(signInControllerProvider) is SignInInProgress;
     final onFirstTab = widget.navigationShell.currentIndex == 0;
 
+    final destinations = [
+      AdaptiveDestination(
+        icon: Icons.task_alt_outlined,
+        selectedIcon: Icons.task_alt,
+        label: l10n.tabOverview,
+      ),
+      AdaptiveDestination(
+        icon: Icons.event_outlined,
+        selectedIcon: Icons.event,
+        label: l10n.tabUpcoming,
+      ),
+      AdaptiveDestination(
+        icon: Icons.folder_outlined,
+        selectedIcon: Icons.folder,
+        label: l10n.tabProjects,
+      ),
+      AdaptiveDestination(
+        icon: Icons.person_outline,
+        selectedIcon: Icons.person,
+        label: l10n.tabAccount,
+      ),
+    ];
+    final rail = usesNavigationRail(context);
+    final offline = ref.watch(offlineProvider.select((state) => state != null));
+    final content = Builder(
+      // Below the scaffold, whose bar takes the bottom inset.
+      builder: (context) {
+        // The rail takes the inset on its side, the banner the one below.
+        final ltr = Directionality.of(context) == TextDirection.ltr;
+        final padding = MediaQuery.of(context)
+            .removePadding(removeLeft: rail && ltr, removeRight: rail && !ltr);
+        return Column(
+          children: [
+            Expanded(
+              child: MediaQuery(
+                data: padding.removePadding(removeBottom: offline),
+                child: OfflineBannerArea(
+                  child: _resettingTabs
+                      ? const SizedBox.expand()
+                      : widget.navigationShell,
+                ),
+              ),
+            ),
+            MediaQuery(data: padding, child: const OfflineBanner()),
+          ],
+        );
+      },
+    );
+
     // On Android before 12, back on the root route finishes the activity and
     // with it the isolate, which would cut off a token exchange or sign-out.
     // Back on another tab's root returns to the first tab instead, as Android
@@ -151,34 +203,33 @@ class _HomeShellState extends ConsumerState<HomeShell> {
           widget.navigationShell.goBranch(0);
         }
       },
-      child: Scaffold(
-        body: _resettingTabs ? const SizedBox.expand() : widget.navigationShell,
-        bottomNavigationBar: AdaptiveNavigationBar(
-          selectedIndex: widget.navigationShell.currentIndex,
-          onDestinationSelected: _selectTab,
-          destinations: [
-            AdaptiveDestination(
-              icon: Icons.task_alt_outlined,
-              selectedIcon: Icons.task_alt,
-              label: l10n.tabOverview,
+      // The same structure with the rail as with the bar, so a rotation
+      // keeps the content, the banner among it, which screen readers would
+      // otherwise announce again. The rail is outside the scaffold, whose
+      // snackbars then stay beside it rather than across it.
+      child: Row(
+        children: [
+          if (rail) ...[
+            AdaptiveNavigationRail(
+              selectedIndex: widget.navigationShell.currentIndex,
+              onDestinationSelected: _selectTab,
+              destinations: destinations,
             ),
-            AdaptiveDestination(
-              icon: Icons.event_outlined,
-              selectedIcon: Icons.event,
-              label: l10n.tabUpcoming,
-            ),
-            AdaptiveDestination(
-              icon: Icons.folder_outlined,
-              selectedIcon: Icons.folder,
-              label: l10n.tabProjects,
-            ),
-            AdaptiveDestination(
-              icon: Icons.person_outline,
-              selectedIcon: Icons.person,
-              label: l10n.tabAccount,
-            ),
+            const VerticalDivider(width: 1, thickness: 1),
           ],
-        ),
+          Expanded(
+            child: Scaffold(
+              body: content,
+              bottomNavigationBar: rail
+                  ? null
+                  : AdaptiveNavigationBar(
+                      selectedIndex: widget.navigationShell.currentIndex,
+                      onDestinationSelected: _selectTab,
+                      destinations: destinations,
+                    ),
+            ),
+          ),
+        ],
       ),
     );
   }

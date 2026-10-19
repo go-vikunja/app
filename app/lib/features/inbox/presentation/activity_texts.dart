@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/activity/activity_item.dart';
+import 'package:vikunja_mobile/core/text/project_titles.dart';
 
 /// The web's notification texts with the doer's name in front, e.g.
 /// "Anna commented on #12"; a name the payload lacks falls back like the
@@ -21,7 +22,10 @@ String describeInboxRow(AppLocalizations l10n, ActivityItem item) {
     ActivityKind.taskDeleted => l10n.inboxTaskDeleted(doer, task),
     ActivityKind.projectCreated => l10n.inboxProjectCreated(
       doer,
-      item.projectTitle ?? l10n.inboxUnnamed,
+      switch (item.projectTitle) {
+        final title? => projectDisplayTitle(l10n, title),
+        null => l10n.inboxUnnamed,
+      },
     ),
     ActivityKind.teamMemberAdded => switch (item.targetName) {
       _ when item.targetIsMe => l10n.inboxAddedYouToTeam(doer, team),

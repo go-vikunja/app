@@ -1,4 +1,5 @@
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 
 /// Projects as this device knows them. The stream carries the local state;
 /// the first subscription fills it, and a failed first load is the stream's
@@ -11,6 +12,9 @@ abstract interface class ProjectRepository {
 
   /// From the local state, without a network call.
   Project? find(int id);
+
+  /// The saved filters the last project sync saw, by title.
+  Stream<List<SavedFilterRef>> watchSavedFilters();
 
   void dispose();
 }
