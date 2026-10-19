@@ -168,6 +168,34 @@ void main() {
       },
     );
 
+    test('a pushed notification is stored at once and as handled; the badge '
+        'counts it, unless it is a reminder', () async {
+      await repository.receive(sampleNotification(id: 5, name: 'task.comment'));
+      await repository.receive(
+        sampleNotification(id: 6, name: 'task.reminder'),
+      );
+
+      expect((await repository.watchAll().first).map((n) => n.id), [6, 5]);
+      expect(await repository.watchUnreadCount().first, 1);
+      expect(await db.serverNotificationsDao.unhandledUnread(), isEmpty);
+      expect(read.requests, isEmpty);
+    });
+
+    test(
+      'a pushed copy of a stored notification keeps its read mark',
+      () async {
+        await repository.receive(sampleNotification(id: 5));
+        await db.serverNotificationsDao.markRead([5], at: noon);
+
+        await repository.receive(sampleNotification(id: 5));
+
+        expect((await db.serverNotificationsDao.find(5))!.readAt, noon);
+        expect(await db.serverNotificationsDao.pendingReads(), [
+          (id: 5, read: true),
+        ]);
+      },
+    );
+
     test('pull-to-refresh reads back far enough to take what was read on '
         'the web', () async {
       read.serverNotifications = [

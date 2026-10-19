@@ -17,6 +17,10 @@ abstract interface class ActivityRepository {
   /// the stored ones.
   Future<void> refresh({bool wholeWindow = false});
 
+  /// Stores a notification the server pushed, as handled: the inbox shows
+  /// it, so it never becomes an OS notification as well.
+  Future<void> receive(ServerNotification notification);
+
   /// Also takes the notification off the system's tray.
   Future<void> markRead(int notificationId);
 

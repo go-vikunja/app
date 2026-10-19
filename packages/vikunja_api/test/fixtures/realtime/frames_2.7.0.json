@@ -1,0 +1,717 @@
+{
+ "source": "Frames received from Vikunja 2.7.0 over /api/v1/ws and /api/v2/ws on 2026-10-19",
+ "server": [
+  {
+   "case": "subscribe before auth (v2)",
+   "frame": {
+    "error": "auth_required"
+   }
+  },
+  {
+   "case": "auth B (v2)",
+   "frame": {
+    "action": "auth.success",
+    "success": true
+   }
+  },
+  {
+   "case": "subscribe task.updated",
+   "frame": {
+    "event": "task.updated",
+    "error": "invalid_event"
+   }
+  },
+  {
+   "case": "auth without token on authenticated socket",
+   "frame": {
+    "error": "invalid_token"
+   }
+  }
+ ],
+ "notifications": [
+  {
+   "case": "comment by B on A's task",
+   "frame": {
+    "event": "notification.created",
+    "data": {
+     "id": 185,
+     "notification": {
+      "comment": {
+       "author": {
+        "created": "2026-10-19T12:44:17Z",
+        "id": 169,
+        "name": "",
+        "updated": "2026-10-19T12:44:17Z",
+        "username": "probe5002775a"
+       },
+       "comment": "<p>hello from B</p>",
+       "created": "2026-10-19T12:45:30.581110651Z",
+       "id": 263,
+       "reactions": null,
+       "updated": "2026-10-19T12:45:30.581117151Z"
+      },
+      "doer": {
+       "created": "2026-10-19T12:44:17Z",
+       "id": 169,
+       "name": "",
+       "updated": "2026-10-19T12:44:17Z",
+       "username": "probe5002775a"
+      },
+      "mentioned": false,
+      "project": {
+       "background_blur_hash": "",
+       "background_information": null,
+       "created": "2026-10-19T12:44:17Z",
+       "description": "",
+       "hex_color": "",
+       "id": 473,
+       "identifier": "",
+       "is_archived": false,
+       "is_favorite": false,
+       "max_permission": null,
+       "owner": null,
+       "parent_project_id": 0,
+       "position": 30998528,
+       "title": "WS probe",
+       "updated": "2026-10-19T12:45:30Z",
+       "views": null
+      },
+      "task": {
+       "assignees": null,
+       "attachments": null,
+       "bucket_id": 0,
+       "cover_image_attachment_id": 0,
+       "created": "2026-10-19T12:44:17Z",
+       "created_by": null,
+       "description": "",
+       "done": false,
+       "done_at": "0001-01-01T00:00:00Z",
+       "due_date": "0001-01-01T00:00:00Z",
+       "end_date": "0001-01-01T00:00:00Z",
+       "hex_color": "",
+       "id": 3248,
+       "identifier": "#1",
+       "index": 1,
+       "is_favorite": false,
+       "labels": null,
+       "percent_done": 0,
+       "position": 0,
+       "priority": 0,
+       "project_id": 473,
+       "reactions": null,
+       "related_tasks": null,
+       "reminders": null,
+       "repeat_after": 0,
+       "repeat_mode": 0,
+       "start_date": "0001-01-01T00:00:00Z",
+       "title": "ws-comment",
+       "updated": "2026-10-19T12:44:17Z"
+      }
+     },
+     "name": "task.comment",
+     "read_at": "0001-01-01T00:00:00Z",
+     "created": "2026-10-19T12:45:30Z"
+    }
+   }
+  },
+  {
+   "case": "B assigns A",
+   "frame": {
+    "event": "notification.created",
+    "data": {
+     "id": 186,
+     "notification": {
+      "assignee": {
+       "created": "2026-10-19T12:44:16Z",
+       "id": 168,
+       "name": "",
+       "updated": "2026-10-19T12:44:16Z",
+       "username": "probed4174e9b"
+      },
+      "doer": {
+       "created": "2026-10-19T12:44:17Z",
+       "id": 169,
+       "name": "",
+       "updated": "2026-10-19T12:44:17Z",
+       "username": "probe5002775a"
+      },
+      "project": {
+       "background_blur_hash": "",
+       "background_information": null,
+       "created": "2026-10-19T12:44:17Z",
+       "description": "",
+       "hex_color": "",
+       "id": 473,
+       "identifier": "",
+       "is_archived": false,
+       "is_favorite": false,
+       "max_permission": null,
+       "owner": null,
+       "parent_project_id": 0,
+       "position": 30998528,
+       "title": "WS probe",
+       "updated": "2026-10-19T12:45:30Z",
+       "views": null
+      },
+      "task": {
+       "assignees": null,
+       "attachments": null,
+       "bucket_id": 0,
+       "cover_image_attachment_id": 0,
+       "created": "2026-10-19T12:44:17Z",
+       "created_by": null,
+       "description": "",
+       "done": false,
+       "done_at": "0001-01-01T00:00:00Z",
+       "due_date": "0001-01-01T00:00:00Z",
+       "end_date": "0001-01-01T00:00:00Z",
+       "hex_color": "",
+       "id": 3249,
+       "identifier": "#2",
+       "index": 2,
+       "is_favorite": false,
+       "labels": null,
+       "percent_done": 0,
+       "position": 0,
+       "priority": 0,
+       "project_id": 473,
+       "reactions": null,
+       "related_tasks": null,
+       "reminders": null,
+       "repeat_after": 0,
+       "repeat_mode": 0,
+       "start_date": "0001-01-01T00:00:00Z",
+       "title": "ws-assign",
+       "updated": "2026-10-19T12:45:30Z"
+      }
+     },
+     "name": "task.assigned",
+     "read_at": "0001-01-01T00:00:00Z",
+     "created": "2026-10-19T12:45:30Z"
+    }
+   }
+  },
+  {
+   "case": "B mentions A in a comment",
+   "frame": {
+    "event": "notification.created",
+    "data": {
+     "id": 187,
+     "notification": {
+      "comment": {
+       "author": {
+        "created": "2026-10-19T12:44:17Z",
+        "id": 169,
+        "name": "",
+        "updated": "2026-10-19T12:44:17Z",
+        "username": "probe5002775a"
+       },
+       "comment": "<p><mention-user data-id=\"probed4174e9b\" data-label=\"probed4174e9b\"></mention-user> look</p>",
+       "created": "2026-10-19T12:45:30.932206059Z",
+       "id": 264,
+       "reactions": null,
+       "updated": "2026-10-19T12:45:30.932207892Z"
+      },
+      "doer": {
+       "created": "2026-10-19T12:44:17Z",
+       "id": 169,
+       "name": "",
+       "updated": "2026-10-19T12:44:17Z",
+       "username": "probe5002775a"
+      },
+      "mentioned": true,
+      "project": {
+       "background_blur_hash": "",
+       "background_information": null,
+       "created": "2026-10-19T12:44:17Z",
+       "description": "",
+       "hex_color": "",
+       "id": 473,
+       "identifier": "",
+       "is_archived": false,
+       "is_favorite": false,
+       "max_permission": null,
+       "owner": null,
+       "parent_project_id": 0,
+       "position": 30998528,
+       "title": "WS probe",
+       "updated": "2026-10-19T12:45:30Z",
+       "views": null
+      },
+      "task": {
+       "assignees": null,
+       "attachments": null,
+       "bucket_id": 0,
+       "cover_image_attachment_id": 0,
+       "created": "2026-10-19T12:44:17Z",
+       "created_by": null,
+       "description": "",
+       "done": false,
+       "done_at": "0001-01-01T00:00:00Z",
+       "due_date": "0001-01-01T00:00:00Z",
+       "end_date": "0001-01-01T00:00:00Z",
+       "hex_color": "",
+       "id": 3250,
+       "identifier": "#3",
+       "index": 3,
+       "is_favorite": false,
+       "labels": null,
+       "percent_done": 0,
+       "position": 0,
+       "priority": 0,
+       "project_id": 473,
+       "reactions": null,
+       "related_tasks": null,
+       "reminders": null,
+       "repeat_after": 0,
+       "repeat_mode": 0,
+       "start_date": "0001-01-01T00:00:00Z",
+       "title": "ws-mention_comment",
+       "updated": "2026-10-19T12:44:17Z"
+      }
+     },
+     "name": "task.comment",
+     "read_at": "0001-01-01T00:00:00Z",
+     "created": "2026-10-19T12:45:30Z"
+    }
+   }
+  },
+  {
+   "case": "B mentions A in the description",
+   "frame": {
+    "event": "notification.created",
+    "data": {
+     "id": 188,
+     "notification": {
+      "doer": {
+       "created": "2026-10-19T12:44:17Z",
+       "id": 169,
+       "name": "",
+       "updated": "2026-10-19T12:44:17Z",
+       "username": "probe5002775a"
+      },
+      "is_new": false,
+      "project": {
+       "background_blur_hash": "",
+       "background_information": null,
+       "created": "2026-10-19T12:44:17Z",
+       "description": "",
+       "hex_color": "",
+       "id": 473,
+       "identifier": "",
+       "is_archived": false,
+       "is_favorite": false,
+       "max_permission": null,
+       "owner": null,
+       "parent_project_id": 0,
+       "position": 30998528,
+       "title": "WS probe",
+       "updated": "2026-10-19T12:45:31Z",
+       "views": null
+      },
+      "task": {
+       "assignees": [],
+       "attachments": null,
+       "bucket_id": 0,
+       "cover_image_attachment_id": 0,
+       "created": "2026-10-19T12:44:17Z",
+       "created_by": {
+        "created": "2026-10-19T12:44:16Z",
+        "id": 168,
+        "name": "",
+        "updated": "2026-10-19T12:44:16Z",
+        "username": "probed4174e9b"
+       },
+       "description": "<p>see <mention-user data-id=\"probed4174e9b\" data-label=\"probed4174e9b\"></mention-user></p>",
+       "done": false,
+       "done_at": "0001-01-01T00:00:00Z",
+       "due_date": "0001-01-01T00:00:00Z",
+       "end_date": "0001-01-01T00:00:00Z",
+       "hex_color": "",
+       "id": 3251,
+       "identifier": "#4",
+       "index": 4,
+       "is_favorite": false,
+       "labels": null,
+       "percent_done": 0,
+       "position": 0,
+       "priority": 0,
+       "project_id": 473,
+       "reactions": null,
+       "related_tasks": {},
+       "reminders": null,
+       "repeat_after": 0,
+       "repeat_mode": 0,
+       "start_date": "0001-01-01T00:00:00Z",
+       "title": "ws-mention_desc",
+       "updated": "2026-10-19T12:45:31Z"
+      }
+     },
+     "name": "task.mentioned",
+     "read_at": "0001-01-01T00:00:00Z",
+     "created": "2026-10-19T12:45:31Z"
+    }
+   }
+  },
+  {
+   "case": "B deletes A's task",
+   "frame": {
+    "event": "notification.created",
+    "data": {
+     "id": 189,
+     "notification": {
+      "doer": {
+       "created": "2026-10-19T12:44:17Z",
+       "id": 169,
+       "name": "",
+       "updated": "2026-10-19T12:44:17Z",
+       "username": "probe5002775a"
+      },
+      "task": {
+       "assignees": null,
+       "attachments": null,
+       "bucket_id": 0,
+       "cover_image_attachment_id": 0,
+       "created": "2026-10-19T12:44:17Z",
+       "created_by": {
+        "created": "2026-10-19T12:44:16Z",
+        "id": 168,
+        "name": "",
+        "updated": "2026-10-19T12:44:16Z",
+        "username": "probed4174e9b"
+       },
+       "description": "",
+       "done": false,
+       "done_at": "0001-01-01T00:00:00Z",
+       "due_date": "0001-01-01T00:00:00Z",
+       "end_date": "0001-01-01T00:00:00Z",
+       "hex_color": "",
+       "id": 3252,
+       "identifier": "#5",
+       "index": 5,
+       "is_favorite": false,
+       "labels": null,
+       "percent_done": 0,
+       "position": 0,
+       "priority": 0,
+       "project_id": 473,
+       "reactions": null,
+       "related_tasks": {},
+       "reminders": null,
+       "repeat_after": 0,
+       "repeat_mode": 0,
+       "start_date": "0001-01-01T00:00:00Z",
+       "title": "ws-delete",
+       "updated": "2026-10-19T12:44:17Z"
+      }
+     },
+     "name": "task.deleted",
+     "read_at": "0001-01-01T00:00:00Z",
+     "created": "2026-10-19T12:45:31Z"
+    }
+   }
+  },
+  {
+   "case": "B adds A to a team",
+   "frame": {
+    "event": "notification.created",
+    "data": {
+     "id": 190,
+     "notification": {
+      "doer": {
+       "created": "2026-10-19T12:44:17Z",
+       "id": 169,
+       "name": "",
+       "updated": "2026-10-19T12:44:17Z",
+       "username": "probe5002775a"
+      },
+      "member": {
+       "created": "2026-10-19T12:44:16Z",
+       "id": 168,
+       "name": "",
+       "updated": "2026-10-19T12:44:16Z",
+       "username": "probed4174e9b"
+      },
+      "team": {
+       "created": "2026-10-19T12:45:31Z",
+       "created_by": {
+        "created": "2026-10-19T12:44:17Z",
+        "id": 169,
+        "name": "",
+        "updated": "2026-10-19T12:44:17Z",
+        "username": "probe5002775a"
+       },
+       "description": "",
+       "external_id": "",
+       "id": 1,
+       "is_public": false,
+       "members": [
+        {
+         "admin": true,
+         "created": "2026-10-19T12:44:17Z",
+         "id": 169,
+         "name": "",
+         "updated": "2026-10-19T12:44:17Z",
+         "username": "probe5002775a"
+        }
+       ],
+       "name": "ws probe team",
+       "updated": "2026-10-19T12:45:31Z"
+      }
+     },
+     "name": "team.member.added",
+     "read_at": "0001-01-01T00:00:00Z",
+     "created": "2026-10-19T12:45:31Z"
+    }
+   }
+  },
+  {
+   "case": "B creates a task in A's subscribed project",
+   "frame": {
+    "event": "notification.created",
+    "data": {
+     "id": 191,
+     "notification": {
+      "doer": {
+       "created": "2026-10-19T12:44:17Z",
+       "id": 169,
+       "name": "",
+       "updated": "2026-10-19T12:44:17Z",
+       "username": "probe5002775a"
+      },
+      "project": {
+       "background_blur_hash": "",
+       "background_information": null,
+       "created": "2026-10-19T12:44:17Z",
+       "description": "",
+       "hex_color": "",
+       "id": 473,
+       "identifier": "",
+       "is_archived": false,
+       "is_favorite": false,
+       "max_permission": null,
+       "owner": null,
+       "parent_project_id": 0,
+       "position": 30998528,
+       "title": "WS probe",
+       "updated": "2026-10-19T12:45:31Z",
+       "views": null
+      },
+      "task": {
+       "assignees": [],
+       "attachments": null,
+       "bucket_id": 0,
+       "cover_image_attachment_id": 0,
+       "created": "2026-10-19T12:45:31.266037298Z",
+       "created_by": {
+        "created": "2026-10-19T12:44:17Z",
+        "id": 169,
+        "name": "",
+        "updated": "2026-10-19T12:44:17Z",
+        "username": "probe5002775a"
+       },
+       "description": "",
+       "done": false,
+       "done_at": "0001-01-01T00:00:00Z",
+       "due_date": "0001-01-01T00:00:00Z",
+       "end_date": "0001-01-01T00:00:00Z",
+       "hex_color": "",
+       "id": 3254,
+       "identifier": "#7",
+       "index": 7,
+       "is_favorite": false,
+       "labels": null,
+       "percent_done": 0,
+       "position": 0,
+       "priority": 0,
+       "project_id": 473,
+       "reactions": null,
+       "related_tasks": null,
+       "reminders": null,
+       "repeat_after": 0,
+       "repeat_mode": 0,
+       "start_date": "0001-01-01T00:00:00Z",
+       "title": "created by B",
+       "updated": "2026-10-19T12:45:31.266038964Z"
+      }
+     },
+     "name": "task.created",
+     "read_at": "0001-01-01T00:00:00Z",
+     "created": "2026-10-19T12:45:31Z"
+    }
+   }
+  },
+  {
+   "case": "B creates a child project in A's subscribed project",
+   "frame": {
+    "event": "notification.created",
+    "data": {
+     "id": 192,
+     "notification": {
+      "doer": {
+       "created": "2026-10-19T12:44:17Z",
+       "id": 169,
+       "name": "",
+       "updated": "2026-10-19T12:44:17Z",
+       "username": "probe5002775a"
+      },
+      "project": {
+       "background_blur_hash": "",
+       "background_information": null,
+       "created": "2026-10-19T12:45:31.332567262Z",
+       "description": "",
+       "hex_color": "",
+       "id": 474,
+       "identifier": "",
+       "is_archived": false,
+       "is_favorite": false,
+       "max_permission": null,
+       "owner": {
+        "created": "0001-01-01T00:00:00Z",
+        "id": 169,
+        "name": "",
+        "updated": "0001-01-01T00:00:00Z",
+        "username": "probe5002775a"
+       },
+       "parent_project_id": 473,
+       "position": 31064064,
+       "title": "child by B",
+       "updated": "2026-10-19T12:45:31.332753054Z",
+       "views": [
+        {
+         "bucket_configuration": null,
+         "bucket_configuration_mode": "none",
+         "created": "2026-10-19T12:45:31.332851012Z",
+         "default_bucket_id": 0,
+         "done_bucket_id": 0,
+         "filter": {
+          "filter": "done = false",
+          "filter_include_nulls": false,
+          "order_by": null,
+          "s": "",
+          "sort_by": null
+         },
+         "id": 2604,
+         "position": 100,
+         "project_id": 474,
+         "title": "List",
+         "updated": "2026-10-19T12:45:31.332946429Z",
+         "view_kind": "list"
+        },
+        {
+         "bucket_configuration": null,
+         "bucket_configuration_mode": "none",
+         "created": "2026-10-19T12:45:31.333342264Z",
+         "default_bucket_id": 0,
+         "done_bucket_id": 0,
+         "filter": null,
+         "id": 2605,
+         "position": 200,
+         "project_id": 474,
+         "title": "Gantt",
+         "updated": "2026-10-19T12:45:31.333373889Z",
+         "view_kind": "gantt"
+        },
+        {
+         "bucket_configuration": null,
+         "bucket_configuration_mode": "none",
+         "created": "2026-10-19T12:45:31.333639389Z",
+         "default_bucket_id": 0,
+         "done_bucket_id": 0,
+         "filter": null,
+         "id": 2606,
+         "position": 300,
+         "project_id": 474,
+         "title": "Table",
+         "updated": "2026-10-19T12:45:31.333666139Z",
+         "view_kind": "table"
+        },
+        {
+         "bucket_configuration": null,
+         "bucket_configuration_mode": "manual",
+         "created": "2026-10-19T12:45:31.333931557Z",
+         "default_bucket_id": 1948,
+         "done_bucket_id": 1950,
+         "filter": null,
+         "id": 2607,
+         "position": 400,
+         "project_id": 474,
+         "title": "Kanban",
+         "updated": "2026-10-19T12:45:31.334436391Z",
+         "view_kind": "kanban"
+        }
+       ]
+      }
+     },
+     "name": "project.created",
+     "read_at": "0001-01-01T00:00:00Z",
+     "created": "2026-10-19T12:45:31Z"
+    }
+   }
+  },
+  {
+   "case": "task.reminder from the cron",
+   "frame": {
+    "event": "notification.created",
+    "data": {
+     "id": 193,
+     "notification": {
+      "project": {
+       "background_blur_hash": "",
+       "background_information": null,
+       "created": "2026-10-19T12:44:17Z",
+       "description": "",
+       "hex_color": "",
+       "id": 473,
+       "identifier": "",
+       "is_archived": false,
+       "is_favorite": false,
+       "max_permission": null,
+       "owner": null,
+       "parent_project_id": 0,
+       "position": 30998528,
+       "title": "WS probe",
+       "updated": "2026-10-19T12:45:49Z",
+       "views": null
+      },
+      "reminder": null,
+      "task": {
+       "assignees": null,
+       "attachments": null,
+       "bucket_id": 0,
+       "cover_image_attachment_id": 0,
+       "created": "2026-10-19T12:44:17Z",
+       "created_by": null,
+       "description": "",
+       "done": false,
+       "done_at": "0001-01-01T00:00:00Z",
+       "due_date": "0001-01-01T00:00:00Z",
+       "end_date": "0001-01-01T00:00:00Z",
+       "hex_color": "",
+       "id": 3253,
+       "identifier": "#6",
+       "index": 6,
+       "is_favorite": false,
+       "labels": null,
+       "percent_done": 0,
+       "position": 0,
+       "priority": 0,
+       "project_id": 473,
+       "reactions": null,
+       "related_tasks": null,
+       "reminders": null,
+       "repeat_after": 0,
+       "repeat_mode": 0,
+       "start_date": "0001-01-01T00:00:00Z",
+       "title": "ws-reminder",
+       "updated": "2026-10-19T12:45:49Z"
+      }
+     },
+     "name": "task.reminder",
+     "read_at": "0001-01-01T00:00:00Z",
+     "created": "2026-10-19T12:47:00Z"
+    }
+   }
+  }
+ ]
+}

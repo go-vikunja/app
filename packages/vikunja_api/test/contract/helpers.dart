@@ -8,9 +8,10 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 // The contract tests need the servers of test_servers/docker-compose.yaml:
 // VIKUNJA_CONTRACT=1 flutter test --tags contract
 //
-// /login, /register and, before 2.7.0, /api/v1/oauth/token share a limit of
-// 10 requests per minute and IP that cannot be switched off, so each server
-// gets one user per run and every unauthenticated call waits out a 429.
+// /login, /register, the /ws upgrade and, before 2.7.0, /api/v1/oauth/token
+// share a limit of 10 requests per minute and IP that cannot be switched
+// off, so each server gets one user per run and every unauthenticated call
+// waits out a 429.
 final String? contractSkip = Platform.environment['VIKUNJA_CONTRACT'] != '1'
     ? 'Set VIKUNJA_CONTRACT=1 and start test_servers/docker-compose.yaml'
     : null;
@@ -42,6 +43,8 @@ Future<T> patiently<T>(Future<T> Function() call) async {
       final failure = switch (error) {
         final VikunjaFailure failure => failure,
         final DioException exception => normalizeError(exception),
+        RealtimeUpgradeRefused(statusCode: 429, :final retryAfter) =>
+          RateLimited(retryAfter: retryAfter),
         _ => null,
       };
       if (failure is! RateLimited || attempt == 8) rethrow;

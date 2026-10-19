@@ -498,7 +498,7 @@ Mobile widget examples [I] (filter field names come from the shared DSL):
   - `{"action":"auth","token":"<JWT>"}`
   - `{"action":"subscribe","event":"notification.created"}`
   - `{"action":"unsubscribe","event":…}`
-- Server → client messages: `{"action":"auth.success","success":true}`, `{"event":"…","data":…}`, `{"error":"invalid_event"|"forbidden","event":…}`, `{"action":"unsubscribed","reason":…}`.
+- Server → client messages: `{"action":"auth.success","success":true}`, `{"event":"…","data":…}`, `{"error":"invalid_token"|"auth_required"|"invalid_event","event"?:…}`. Probed on 2.7.0 (2026-10-19, step 17): `forbidden` and `unsubscribed` are never sent, subscribes are never acknowledged, `data` of `notification.created` equals the `GET /notifications` item, and the upgrade shares the per-IP limit of login and registration ([D46](../decisions.md#d46-realtime-in-the-foreground-one-websocket-for-the-active-account-while-the-app-is-in-front-pushed-notifications-stored-at-once-and-a-sync-nudged-for-the-task-they-name-re-auth-on-every-token-change-quiet-fallback-to-polling)).
 - Subscribable events are **only** `notification.created`, `timer.created`, `timer.updated` and `timer.deleted` (`connection.go:337-342`).
   - Timer events require the `time_tracking` license.
 - Sockets close when a session is revoked (2.7.0).

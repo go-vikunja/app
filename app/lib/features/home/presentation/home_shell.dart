@@ -16,6 +16,7 @@ import 'package:vikunja_mobile/features/session/application/sign_out_controller.
 import 'package:vikunja_mobile/features/sync/application/foreground_sync_scheduler_providers.dart';
 import 'package:vikunja_mobile/features/sync/application/inactive_outboxes.dart';
 import 'package:vikunja_mobile/features/sync/application/offline_state.dart';
+import 'package:vikunja_mobile/features/sync/application/realtime_connection_providers.dart';
 import 'package:vikunja_mobile/features/sync/application/startup_sync.dart';
 import 'package:vikunja_mobile/features/sync/presentation/offline_banner.dart';
 
@@ -23,7 +24,8 @@ import 'package:vikunja_mobile/features/sync/presentation/offline_banner.dart';
 /// the Overview, Upcoming, Projects and Account branches, the offline
 /// banner, the session check when the app opens or resumes,
 /// the quiet sync when it opens, the scheduler that keeps syncing while it
-/// is in front, the other accounts' outboxes, the notification schedulers
+/// is in front, the socket that brings the server's notifications at once,
+/// the other accounts' outboxes, the notification schedulers
 /// of every signed-in account, and the switch from one account to another.
 class HomeShell extends ConsumerStatefulWidget {
   const new({required this.navigationShell, super.key});
@@ -45,6 +47,15 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   void initState() {
     super.initState();
     _lifecycle = AppLifecycleListener(onResume: _checkSession);
+    // A provider nobody listens to is paused; these run while the shell is
+    // up. Not in build: every rebuild, a tab switch among them, closes the
+    // last build's listeners before it adds its own, which would pause and
+    // restart each of them (a new socket, a reset sync timer).
+    ref
+      ..listenManual(foregroundSyncSchedulerProvider, (_, _) {})
+      ..listenManual(realtimeConnectionProvider, (_, _) {})
+      ..listenManual(inactiveOutboxesProvider, (_, _) {})
+      ..listenManual(accountNotificationSchedulersProvider, (_, _) {});
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkSession();
       _syncQuietly();
@@ -124,12 +135,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
         accountsProvider.select((accounts) => accounts.value?.activeAccountId),
         _onActiveAccountChanged,
       )
-      ..listen(signOutControllerProvider, _onSignOutChanged)
-      // A provider nobody listens to is paused; these run while the shell
-      // is up.
-      ..listen(foregroundSyncSchedulerProvider, (_, _) {})
-      ..listen(inactiveOutboxesProvider, (_, _) {})
-      ..listen(accountNotificationSchedulersProvider, (_, _) {});
+      ..listen(signOutControllerProvider, _onSignOutChanged);
     final signedIn = ref.watch(
       accountsProvider.select(
         (accounts) => accounts.value?.activeAccount != null,

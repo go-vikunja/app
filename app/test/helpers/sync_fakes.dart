@@ -8,6 +8,7 @@ import 'package:vikunja_mobile/core/attachments/attachment_image_providers.dart'
 import 'package:vikunja_mobile/core/db/account_database_files.dart';
 import 'package:vikunja_mobile/core/outbox/pending_task_ids_source.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
+import 'package:vikunja_mobile/core/realtime/realtime_providers.dart';
 import 'package:vikunja_mobile/core/repositories/activity_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences_providers.dart';
@@ -27,6 +28,7 @@ import 'package:vikunja_mobile/features/sync/application/inactive_outboxes.dart'
 
 import 'activity_fakes.dart';
 import 'list_preferences_fakes.dart';
+import 'realtime_fakes.dart';
 import 'subscription_fakes.dart';
 import 'task_details_fakes.dart';
 import 'task_edits.dart';
@@ -872,6 +874,13 @@ final class SyncFakes {
   final accounts = <String, AccountDataFakes>{};
   final files = FakeAccountDatabaseFiles();
 
+  /// Refuses every upgrade, so no screen test opens a socket or waits on
+  /// one; a test of the realtime path lets it accept.
+  final realtime = FakeRealtimeConnector(accepts: false);
+
+  /// How often the foreground activity sync ran for the active account.
+  int foregroundActivityRuns = 0;
+
   /// The outboxes of inactive accounts: an account's queued ops are the
   /// pending changes of its task repository.
   late final outboxes = FakeAccountOutboxes(
@@ -924,8 +933,12 @@ final class SyncFakes {
     // The real one syncs the activity on the foreground ticks, which opens
     // the inactive accounts' databases.
     foregroundActivityProvider.overrideWithValue(
-      ForegroundActivity(syncActive: () async {}, syncInactive: () async {}),
+      ForegroundActivity(
+        syncActive: () async => foregroundActivityRuns++,
+        syncInactive: () async {},
+      ),
     ),
+    realtimeConnectorProvider.overrideWithValue(realtime),
     // The real one opens the account's database.
     accountPendingChangesProvider.overrideWith(
       (ref, accountId) => forAccount(accountId).tasks.watchPendingChanges(),

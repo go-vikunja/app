@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
@@ -142,6 +143,32 @@ void main() {
       expect(find.bySemanticsLabel(en.inboxButton(0)), findsOneWidget);
       expect(en.inboxButton(0), en.inboxTitle);
       semantics.dispose();
+    });
+
+    testWidgets('counts a notification the server pushes at once', (
+      tester,
+    ) async {
+      data.realtime.accepts = true;
+      await pumpSignedInApp(tester, sync: data, now: now);
+      expect(data.realtime.connectCalls, 1);
+
+      data.realtime.lastSocket.push(
+        RealtimeNotification(
+          inboxNotification(
+            id: 7,
+            name: 'task.assigned',
+            created: DateTime(2026, 10, 13, 14, 30),
+            payload: {'doer': anna, 'task': plants, 'assignee': me},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.descendant(of: find.byType(InboxButton), matching: find.text('5')),
+        findsOneWidget,
+      );
+      expect(data.activity.notifications.first.id, 7);
     });
 
     testWidgets('opens the inbox over the shell', (tester) async {

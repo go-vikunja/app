@@ -45,6 +45,11 @@ final class LocalActivityRepository implements ActivityRepository {
   }
 
   @override
+  Future<void> receive(ServerNotification notification) async {
+    await _db.serverNotificationsDao.upsertAll([notification], handled: true);
+  }
+
+  @override
   Future<void> markRead(int notificationId) async {
     await _db.serverNotificationsDao.markRead([notificationId], at: _now());
     await _withdrawQuietly([notificationId]);

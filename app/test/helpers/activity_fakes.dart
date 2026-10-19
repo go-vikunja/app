@@ -61,6 +61,24 @@ final class FakeActivityRepository implements ActivityRepository {
     if (refreshFailure case final failure?) throw failure;
   }
 
+  /// What [receive] was handed, in order.
+  final List<ServerNotification> received = [];
+
+  /// Thrown by [receive] while set.
+  Exception? receiveFailure;
+
+  /// Replaces the one with the same id, else goes first.
+  @override
+  Future<void> receive(ServerNotification notification) async {
+    if (receiveFailure case final failure?) throw failure;
+    received.add(notification);
+    final index = _notifications.indexWhere((n) => n.id == notification.id);
+    _notifications = index < 0
+        ? [notification, ..._notifications]
+        : (List.of(_notifications)..[index] = notification);
+    _emit();
+  }
+
   @override
   Future<void> markRead(int notificationId) async {
     markedRead.add(notificationId);

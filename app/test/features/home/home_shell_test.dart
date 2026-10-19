@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/realtime/realtime_connection.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/home/presentation/account_tab.dart';
@@ -14,6 +15,7 @@ import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_
 import 'package:vikunja_mobile/features/overview/presentation/overview_screen.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_tasks_screen.dart';
 import 'package:vikunja_mobile/features/projects/presentation/projects_screen.dart';
+import 'package:vikunja_mobile/features/sync/application/realtime_connection_providers.dart';
 import 'package:vikunja_mobile/features/sync/presentation/first_sync_screen.dart';
 import 'package:vikunja_mobile/features/sync/presentation/offline_banner.dart';
 import 'package:vikunja_mobile/features/sync/presentation/sync_progress_bar.dart';
@@ -544,6 +546,22 @@ void main() {
       await tester.pumpAndSettle();
     });
 
+    testWidgets('switching tabs neither restarts the wait nor pulls the '
+        'activity again', (tester) async {
+      await pumpSignedInApp(tester, sync: data, now: now);
+      expect(data.foregroundActivityRuns, 1);
+
+      await tester.pump(const Duration(seconds: 40));
+      await openTab(tester, en.tabUpcoming);
+      await openTab(tester, en.tabAccount);
+      await openTab(tester, en.tabOverview);
+      await tester.pump(const Duration(seconds: 20));
+
+      expect(data.engine.refreshCalls, 1);
+      expect(data.foregroundActivityRuns, 1);
+      await tester.pumpAndSettle();
+    });
+
     testWidgets('waits longer while the server is unreachable', (tester) async {
       await pumpSignedInApp(tester, sync: data, now: now);
       data.engine.onRefresh = () async =>
@@ -680,6 +698,77 @@ void main() {
 
       expect(bobData.engine.refreshCalls, 0);
       expect(data.engine.refreshCalls, 0);
+    });
+  });
+
+  group('realtime', () {
+    setUp(() => data.realtime.accepts = true);
+
+    testWidgets("the shell keeps the active account's socket open", (
+      tester,
+    ) async {
+      await pumpSignedInApp(tester, sync: data, now: now);
+
+      expect(data.realtime.urls, [
+        Uri.parse('wss://tasks.example.org/vikunja/api/v2/ws'),
+      ]);
+      expect(
+        containerOf(tester).read(realtimeConnectionProvider)?.state,
+        RealtimeState.live,
+      );
+    });
+
+    testWidgets('switching tabs keeps the socket', (tester) async {
+      await pumpSignedInApp(tester, sync: data, now: now);
+
+      await openTab(tester, en.tabUpcoming);
+      await openTab(tester, en.tabAccount);
+      await openTab(tester, en.tabOverview);
+
+      expect(data.realtime.connectCalls, 1);
+      expect(data.realtime.lastSocket.isClosed, isFalse);
+    });
+
+    testWidgets('signing out closes the socket before the logout request, '
+        'and the close the logout causes is ignored', (tester) async {
+      final auth = AuthFakes();
+      int? closedAtLogout;
+      auth.accountGateway.onLogout = (_) async {
+        final socket = data.realtime.lastSocket;
+        closedAtLogout = socket.closedWith;
+        socket.serverClose(1008, 'session revoked');
+      };
+      await pumpSignedInApp(tester, sync: data, auth: auth, now: now);
+      data.realtime.lastSocket.awaitsServerClose = true;
+
+      await openTab(tester, en.tabAccount);
+      await tapInAccountTab(tester, en.homeSignOut);
+      await tester.tap(
+        find.widgetWithText(TextButton, en.signOutDialogConfirm),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(HomeShell), findsNothing);
+      expect(closedAtLogout, 1000);
+      expect(auth.tokenGateway.refreshedTokens, isEmpty);
+      expect(data.realtime.connectCalls, 1);
+    });
+
+    testWidgets('a session revoked elsewhere reaches the session manager, '
+        'which asks for a new sign-in', (tester) async {
+      final auth = AuthFakes();
+      auth.tokenGateway.onRefresh = (_) async =>
+          throw const SessionEnded(SessionEndReason.expired);
+      await pumpSignedInApp(tester, sync: data, auth: auth, now: now);
+
+      data.realtime.lastSocket.serverClose(1008, 'session revoked');
+      await tester.pumpAndSettle();
+
+      expect(auth.tokenGateway.refreshedTokens, hasLength(1));
+      final accounts = containerOf(tester).read(accountsProvider).value!;
+      expect(accounts.activeAccount!.account.needsReauth, isTrue);
+      expect(containerOf(tester).read(realtimeConnectionProvider), isNull);
+      expect(data.realtime.connectCalls, 1);
     });
   });
 }

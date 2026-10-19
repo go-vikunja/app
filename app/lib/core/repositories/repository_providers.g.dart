@@ -117,7 +117,7 @@ final class AccountDioProvider extends $FunctionalProvider<Dio, Dio, Dio>
   }
 }
 
-String _$accountDioHash() => r'855a91badf2f5ef12c8cf4b0b811470ee66c504d';
+String _$accountDioHash() => r'f1bef9762bc3c2291cc847f0765500ddcdecf9ee';
 
 /// The authenticated client of one account, shared by its read and write
 /// clients. Kept alive by the sync engine and the outbox sender that use

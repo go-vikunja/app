@@ -55,7 +55,7 @@ Dio accountDio(Ref ref, String accountId) {
   final dio = createAuthenticatedDio(
     base: ref.watch(dioProvider),
     connection: _connectionOf(ref, accountId),
-    tokens: _AccountTokens(ref.watch(sessionManagersProvider), accountId),
+    tokens: AccountTokens(ref.watch(sessionManagersProvider), accountId),
     interceptors: [if (kDebugMode) RequestLogInterceptor()],
   );
   ref.onDispose(dio.close);
@@ -90,7 +90,7 @@ ServerConnection _connectionOf(Ref ref, String accountId) {
 
 /// Looks the session manager up on every request: a new sign-in replaces
 /// the manager, and a client built before it must use the new session.
-final class _AccountTokens implements AccessTokenSource {
+final class AccountTokens implements AccessTokenSource {
   const new(this._sessions, this._accountId);
 
   final SessionManagers _sessions;

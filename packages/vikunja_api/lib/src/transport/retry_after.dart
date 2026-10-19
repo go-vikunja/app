@@ -6,12 +6,20 @@ import 'package:dio/dio.dart';
 /// or an HTTP date) or, as servers before 2.7.0 send no `Retry-After`, from
 /// `X-RateLimit-Reset`. Absolute times are measured against the response's
 /// `Date` header, so a wrong device clock does not matter.
-Duration? retryAfterOf(Headers headers, {DateTime Function()? now}) {
+Duration? retryAfterOf(Headers headers, {DateTime Function()? now}) =>
+    retryAfterFromHeaders(headers.value, now: now);
+
+/// [retryAfterOf] over a case-insensitive header lookup, e.g. of a dart:io
+/// response.
+Duration? retryAfterFromHeaders(
+  String? Function(String name) header, {
+  DateTime Function()? now,
+}) {
   DateTime serverNow() =>
-      _httpDate(headers.value(HttpHeaders.dateHeader)) ??
+      _httpDate(header(HttpHeaders.dateHeader)) ??
       (now ?? DateTime.now)().toUtc();
 
-  final retryAfter = headers.value(HttpHeaders.retryAfterHeader)?.trim();
+  final retryAfter = header(HttpHeaders.retryAfterHeader)?.trim();
   if (retryAfter != null && retryAfter.isNotEmpty) {
     final seconds = int.tryParse(retryAfter);
     if (seconds != null) return seconds < 0 ? null : Duration(seconds: seconds);
@@ -19,7 +27,7 @@ Duration? retryAfterOf(Headers headers, {DateTime Function()? now}) {
     if (date != null) return _nonNegative(date.difference(serverNow()));
   }
 
-  final reset = int.tryParse(headers.value('x-ratelimit-reset')?.trim() ?? '');
+  final reset = int.tryParse(header('x-ratelimit-reset')?.trim() ?? '');
   if (reset == null) return null;
   final resetAt = DateTime.fromMillisecondsSinceEpoch(
     reset * 1000,
