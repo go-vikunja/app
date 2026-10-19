@@ -17,6 +17,7 @@ import 'package:vikunja_mobile/features/common/presentation/list_note.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
 import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
 import 'package:vikunja_mobile/features/overview/application/due_date_groups.dart';
+import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/smart_lists/application/smart_list_providers.dart';
 import 'package:vikunja_mobile/features/sync/application/offline_state.dart';
@@ -317,7 +318,7 @@ class _Sections extends StatelessWidget {
               final project = projectsById[task.projectId];
               // The server refuses changes to the tasks of an archived
               // project, which a saved filter can list.
-              final archived = project?.isArchived ?? false;
+              final archived = isArchivedInTree(task.projectId, projectsById);
               return TaskRow(
                 key: ValueKey(task.id),
                 task: task,

@@ -5,6 +5,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/core/outbox/apply_task_changes.dart';
 
+import 'sample_data.dart';
 import 'task_edits.dart';
 
 /// A server-like fake for the outbox sender: [serverTasks] are the tasks
@@ -20,9 +21,10 @@ import 'task_edits.dart';
 /// `RelatedTaskMissing` once the rest of the update is applied, as the
 /// real port tries every other request first, and a temporary id with an
 /// `ArgumentError`, as the real port refuses one. Kanban placements follow
-/// as a move, then a position, per view (see [bucketSlots]). Every request
-/// is logged; [beforeRequest] can fail or hold a request, [afterRequest]
-/// can lose its answer.
+/// as a move, then a position, per view (see [bucketSlots]), and list
+/// positions after them (see [listPositions]). Every request is logged;
+/// [beforeRequest] can fail or hold a request, [afterRequest] can lose its
+/// answer.
 final class FakeWriteClient implements VikunjaWriteClient {
   new({DateTime Function()? clock}) : _clock = clock ?? DateTime.now;
 
@@ -59,9 +61,26 @@ final class FakeWriteClient implements VikunjaWriteClient {
   /// answered as a plain manual board.
   final Map<int, ProjectView> serverViews = {};
 
+  /// The position of each task per list view, by view id, then task id,
+  /// as the server holds them: stored as sent.
+  final Map<int, Map<int, double>> listPositions = {};
+
+  /// What a list position write fails with, by view id, like a read share
+  /// (`Forbidden`) or a view that is gone (`NotFound` code 3014).
+  final Map<int, VikunjaFailure> refusedListViews = {};
+
+  /// The projects [projects] moves, by id.
+  final Map<int, Project> serverProjects = {};
+
+  /// What moving a project fails with, by project id, like a write share
+  /// moving it under another project (`Forbidden(code: 1)`).
+  final Map<int, VikunjaFailure> refusedProjects = {};
+
   /// `create <title>`, `update <id>`, `delete <id>`,
   /// `move <id> view <view> bucket <bucket>`,
-  /// `position <id> view <view> <position>`, `create label <title>`,
+  /// `position <id> view <view> <position>` (kanban and list views alike),
+  /// `move project <id> to <position> under <parent>`,
+  /// `create label <title>`,
   /// `create bucket view <view> <title> limit <limit> at <position>`,
   /// `update bucket <id> view <view> <title> limit <limit> at <position>`,
   /// `delete bucket <id> view <view>`,
@@ -100,6 +119,9 @@ final class FakeWriteClient implements VikunjaWriteClient {
 
   @override
   late final FakeProjectViewsWritePort views = FakeProjectViewsWritePort(this);
+
+  @override
+  late final FakeProjectsWritePort projects = FakeProjectsWritePort(this);
 
   Future<void> _request(String description) async {
     requests.add(description);
@@ -190,6 +212,12 @@ final class FakeTasksWritePort implements TasksWritePort {
     for (final MapEntry(key: viewId, value: placement)
         in changes.kanban?.entries ?? _noPlacements) {
       await _place(id, viewId, placement, now: now);
+    }
+    for (final MapEntry(key: viewId, value: position)
+        in changes.positions?.entries ?? const <MapEntry<int, double>>[]) {
+      await _client._request('position $id view $viewId $position');
+      if (_client.refusedListViews[viewId] case final failure?) throw failure;
+      (_client.listPositions[viewId] ??= {})[id] = position;
     }
     _client.updates.add((id, changes));
     return _client.serverTasks[id]!;
@@ -540,6 +568,60 @@ final class FakeProjectViewsWritePort implements ProjectViewsWritePort {
       doneBucketId: next.doneBucketId,
       defaultBucketId: next.defaultBucketId,
     );
+  }
+}
+
+/// Like the server: moves a project of [FakeWriteClient.serverProjects]
+/// and answers with it as stored, `updated` bumped and every other field
+/// kept, or refuses as the server does: a project or parent that does not
+/// exist (`NotFound` code 3001), an archived project or parent
+/// (`DomainError` code 3008), the project itself as the parent (3010), one
+/// of its descendants (3011), a pseudo project (3009), and what
+/// [FakeWriteClient.refusedProjects] holds for the project. A position
+/// below 0.1 is an `ArgumentError` before any request, as in the real port.
+final class FakeProjectsWritePort implements ProjectsWritePort {
+  new(this._client);
+
+  final FakeWriteClient _client;
+
+  @override
+  Future<Project> move(
+    int projectId, {
+    required double position,
+    required int parentProjectId,
+  }) async {
+    if (!(position >= 0.1)) throw ArgumentError.value(position, 'position');
+    final description =
+        'move project $projectId to $position under $parentProjectId';
+    await _client._request(description);
+    final projects = _client.serverProjects;
+    final project = projects[projectId];
+    if (project == null) throw const NotFound(code: 3001);
+    if (project.isArchived) throw const DomainError(412, code: 3008);
+    if (_client.refusedProjects[projectId] case final failure?) throw failure;
+    if (parentProjectId != 0) {
+      if (parentProjectId == projectId) {
+        throw const DomainError(412, code: 3010);
+      }
+      if (parentProjectId < 0) throw const DomainError(412, code: 3009);
+      final parent = projects[parentProjectId];
+      if (parent == null) throw const NotFound(code: 3001);
+      if (parent.isArchived) throw const DomainError(412, code: 3008);
+      for (Project? above = parent; above != null && !above.isTopLevel;) {
+        if (above.parentProjectId == projectId) {
+          throw const DomainError(412, code: 3011);
+        }
+        above = projects[above.parentProjectId];
+      }
+    }
+    final moved = projects[projectId] = movedProject(
+      project,
+      position: position,
+      parentProjectId: parentProjectId,
+      updated: _client._clock().toUtc(),
+    );
+    await _client.afterRequest?.call(description);
+    return moved;
   }
 }
 

@@ -201,7 +201,7 @@ void main() {
             perPage: only.info.maxItemsPerPage,
           );
           addTearDown(tasks.dispose);
-          projects = LocalProjectRepository(db, engine);
+          projects = LocalProjectRepository(db, engine, writes);
           addTearDown(projects.dispose);
           await engine.ensureInitialSync();
         });

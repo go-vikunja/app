@@ -1262,6 +1262,120 @@ abstract class AppLocalizations {
   /// **'Hide subprojects of {title}'**
   String projectCollapse(String title);
 
+  /// Screen reader action on a task of a list sorted manually (among the top-level tasks), on a project in the project tree (among its siblings) and on a kanban card (within its column): one place up.
+  ///
+  /// In en, this message translates to:
+  /// **'Move up'**
+  String get moveUp;
+
+  /// No description provided for @movedUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Moved up'**
+  String get movedUp;
+
+  /// Screen reader action on a task of a list sorted manually (among the top-level tasks), on a project in the project tree (among its siblings) and on a kanban card (within its column): one place down.
+  ///
+  /// In en, this message translates to:
+  /// **'Move down'**
+  String get moveDown;
+
+  /// No description provided for @movedDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Moved down'**
+  String get movedDown;
+
+  /// Screen reader action on a subproject in the project tree: it moves right after its parent, on the parent's level.
+  ///
+  /// In en, this message translates to:
+  /// **'Move out of {project}'**
+  String projectMoveOut(String project);
+
+  /// No description provided for @projectMovedOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Moved out of {project}'**
+  String projectMovedOut(String project);
+
+  /// Screen reader action on a project in the project tree: it becomes the last subproject of the project right above it on its level.
+  ///
+  /// In en, this message translates to:
+  /// **'Move into {project}'**
+  String projectMoveInto(String project);
+
+  /// Announced to screen readers once a project was moved under another one, by the action or by dragging it.
+  ///
+  /// In en, this message translates to:
+  /// **'Moved into {project}'**
+  String projectMovedInto(String project);
+
+  /// Announced to screen readers once a subproject was dragged to the top level of the project tree.
+  ///
+  /// In en, this message translates to:
+  /// **'Moved to the top level'**
+  String get projectMovedToTopLevel;
+
+  /// No description provided for @projectMoveNeedsConnection.
+  ///
+  /// In en, this message translates to:
+  /// **'Moving a project needs a connection to the server.'**
+  String get projectMoveNeedsConnection;
+
+  /// Announced to screen readers when a project is to be moved while the server has not yet confirmed the previous move; nothing moves.
+  ///
+  /// In en, this message translates to:
+  /// **'A project is still being moved'**
+  String get projectMoveWait;
+
+  /// The server did not answer in time and may have moved the project anyway.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t confirm the move. Check your connection and pull down to refresh.'**
+  String get projectMoveUnconfirmed;
+
+  /// No description provided for @projectMoveAdminOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Only project admins can move a project under another one.'**
+  String get projectMoveAdminOnly;
+
+  /// No description provided for @projectMoveForbidden.
+  ///
+  /// In en, this message translates to:
+  /// **'You don\'t have permission to move this project.'**
+  String get projectMoveForbidden;
+
+  /// No description provided for @projectMoveArchived.
+  ///
+  /// In en, this message translates to:
+  /// **'Archived projects can\'t be moved, and nothing can be moved into them.'**
+  String get projectMoveArchived;
+
+  /// The server refused the new parent: the project itself, one of its subprojects or a saved filter.
+  ///
+  /// In en, this message translates to:
+  /// **'The project can\'t be moved there.'**
+  String get projectMoveNotPossible;
+
+  /// No description provided for @projectMoveGone.
+  ///
+  /// In en, this message translates to:
+  /// **'The project or its new parent no longer exists.'**
+  String get projectMoveGone;
+
+  /// The server's own reason, untranslated, when the app has no words for it.
+  ///
+  /// In en, this message translates to:
+  /// **'The server refused the move: {message}'**
+  String projectMoveRefused(String message);
+
+  /// No description provided for @projectMoveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The project couldn\'t be moved.'**
+  String get projectMoveFailed;
+
   /// App bar title while the project of a task list is not in the local project list.
   ///
   /// In en, this message translates to:
@@ -2053,6 +2167,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The column no longer exists.'**
   String get syncProblemColumnMissing;
+
+  /// No description provided for @syncProblemListNotReorderable.
+  ///
+  /// In en, this message translates to:
+  /// **'This list can\'t be reordered.'**
+  String get syncProblemListNotReorderable;
+
+  /// No description provided for @syncProblemListMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'The list no longer exists.'**
+  String get syncProblemListMissing;
 
   /// No description provided for @syncProblemRejected.
   ///
@@ -4493,30 +4619,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Moved to {column}'**
   String boardMovedTo(String column);
-
-  /// Screen reader action on a kanban card: one place up within its column.
-  ///
-  /// In en, this message translates to:
-  /// **'Move up'**
-  String get boardMoveUp;
-
-  /// No description provided for @boardMovedUp.
-  ///
-  /// In en, this message translates to:
-  /// **'Moved up'**
-  String get boardMovedUp;
-
-  /// Screen reader action on a kanban card: one place down within its column.
-  ///
-  /// In en, this message translates to:
-  /// **'Move down'**
-  String get boardMoveDown;
-
-  /// No description provided for @boardMovedDown.
-  ///
-  /// In en, this message translates to:
-  /// **'Moved down'**
-  String get boardMovedDown;
 
   /// Tooltip, also read by screen readers, of the menu button in a kanban column's header (the web's "bucket options"); names the column so that the buttons of a board tell apart.
   ///

@@ -1,9 +1,12 @@
+import 'package:flutter/semantics.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/theme/hex_color.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
 
+/// A project in the Projects tab; in the tree with its depth, its children
+/// count and expand control, and [actions] for screen readers.
 class ProjectRow extends StatelessWidget {
   const new({
     required this.project,
@@ -12,6 +15,7 @@ class ProjectRow extends StatelessWidget {
     this.childCount = 0,
     this.expanded = false,
     this.onToggleExpanded,
+    this.actions = const {},
     super.key,
   });
 
@@ -21,6 +25,10 @@ class ProjectRow extends StatelessWidget {
   final int childCount;
   final bool expanded;
   final VoidCallback? onToggleExpanded;
+  final Map<CustomSemanticsAction, VoidCallback> actions;
+
+  /// Where a row of [depth] starts its content.
+  static double indentOf(int depth) => 16 + depth * 20.0;
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +40,7 @@ class ProjectRow extends StatelessWidget {
     return ListTile(
       onTap: onTap,
       contentPadding: EdgeInsetsDirectional.only(
-        start: 16 + depth * 20.0,
+        start: indentOf(depth),
         end: 8,
       ),
       leading: ExcludeSemantics(
@@ -43,7 +51,10 @@ class ProjectRow extends StatelessWidget {
                 child: const SizedBox.square(dimension: 16),
               ),
       ),
-      title: Text(title),
+      title: Semantics(
+        customSemanticsActions: actions.isEmpty ? null : actions,
+        child: Text(title),
+      ),
       subtitle: childCount > 0
           ? Text(l10n.projectChildCount(childCount))
           : null,

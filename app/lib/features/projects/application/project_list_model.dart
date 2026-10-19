@@ -105,7 +105,7 @@ ProjectListModel buildProjectListModel(
     for (final task in source.projectTasks) placed(task),
     for (final copy in standIns.values) placed(copy),
   ];
-  final positions = source.snapshot.positions;
+  final positions = effectivePositionsOf(source);
   final separateDone =
       kind == ViewFilterKind.openOnly || kind == ViewFilterKind.none;
 
@@ -158,6 +158,13 @@ ProjectListModel buildProjectListModel(
       );
   }
 }
+
+/// The view's positions by task id as the manual order uses them: a queued
+/// one wins over the downloaded one. Membership stays the download's.
+Map<int, double> effectivePositionsOf(ProjectListSource source) =>
+    source.queuedPositions.isEmpty
+    ? source.snapshot.positions
+    : {...source.snapshot.positions, ...source.queuedPositions};
 
 Iterable<int> _parentIds(Task task) =>
     task.parentTasks.map((parent) => parent.id);

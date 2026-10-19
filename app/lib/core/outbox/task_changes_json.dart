@@ -6,8 +6,9 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 /// the wire names, absent for unchanged, an empty string for a cleared date,
 /// label and assignee deltas as `{"added": [...], "removed": [...]}`,
 /// relation deltas as `{"added": [{"kind", "other"}], "removed": [...]}`,
-/// and kanban placements as `{"<view id>": {"bucket_id", "position"}}`
-/// (`position` absent to keep the server's).
+/// kanban placements as `{"<view id>": {"bucket_id", "position"}}`
+/// (`position` absent to keep the server's) and list positions as
+/// `{"<view id>": <position>}`.
 String encodeTaskChanges(TaskChanges changes) =>
     jsonEncode(taskChangesToJson(changes));
 
@@ -38,6 +39,8 @@ Map<String, Object?> taskChangesToJson(TaskChanges changes) => {
   if (changes.relations case final relations?)
     'relations': _relationsJson(relations),
   if (changes.kanban case final kanban?) 'kanban': _kanbanJson(kanban),
+  if (changes.positions case final positions?)
+    'positions': _positionsJson(positions),
 };
 
 TaskChanges taskChangesFromJson(Map<String, Object?> json) => TaskChanges(
@@ -68,6 +71,7 @@ TaskChanges taskChangesFromJson(Map<String, Object?> json) => TaskChanges(
   },
   relations: _relationChange(json['relations']),
   kanban: _kanban(json['kanban']),
+  positions: _positions(json['positions']),
 );
 
 /// Instants in UTC; `reminder` is absent while a relative one has none.
@@ -166,6 +170,21 @@ Map<int, BucketPlacement>? _kanban(Object? value) => switch (value) {
             _ => null,
           },
         ),
+  },
+  _ => null,
+};
+
+Map<String, Object?> _positionsJson(Map<int, double> positions) => {
+  for (final MapEntry(key: viewId, value: position)
+      in positions.entries.toList()..sort((a, b) => a.key.compareTo(b.key)))
+    '$viewId': position,
+};
+
+Map<int, double>? _positions(Object? value) => switch (value) {
+  final Map<String, Object?> map => {
+    for (final MapEntry(:key, :value) in map.entries)
+      if ((int.tryParse(key), value) case (final viewId?, final num position))
+        viewId: position.toDouble(),
   },
   _ => null,
 };

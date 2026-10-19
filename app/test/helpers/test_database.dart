@@ -16,7 +16,7 @@ Future<List<Task>> projectTasksIn(
   int projectId, {
   bool showDone = true,
 }) async {
-  final source = await db.tasksDao.loadProjectList(projectId, '');
+  final source = await db.tasksDao.loadProjectList(projectId, viewId: 0);
   return [
     for (final task in source.projectTasks)
       if (showDone || !task.done) task,

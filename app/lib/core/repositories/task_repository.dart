@@ -61,6 +61,15 @@ abstract interface class TaskRepository {
     bool? done,
   });
 
+  /// Queues the task's [position] in a list view sorted manually; like the
+  /// other writes, it applies at once (as the list source's queued
+  /// positions until sent).
+  Future<void> positionTask(
+    int taskId, {
+    required int viewId,
+    required double position,
+  });
+
   /// The open tasks marked as favourite, outside archived projects, nearest
   /// due date first (none last), then newest first: the Favorites list.
   Stream<List<Task>> watchFavoriteTasks();

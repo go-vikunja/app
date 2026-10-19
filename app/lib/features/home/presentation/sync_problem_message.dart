@@ -10,11 +10,15 @@ String describeSyncProblem(AppLocalizations l10n, SyncProblem problem) {
     OutboxOperationKind.deleteTask => l10n.syncProblemDeleteFailed,
   };
   final why = switch (problem.failure) {
+    Forbidden() when _onlyReorders(problem.changes) =>
+      l10n.syncProblemListNotReorderable,
     Forbidden() => l10n.syncProblemForbidden,
     RelatedTaskMissing() => l10n.syncProblemRelatedTaskMissing,
     NotFound(code: 3001) => l10n.syncProblemProjectMissing,
     NotFound(code: 8002) => l10n.syncProblemLabelMissing,
     NotFound(code: 1005) => l10n.syncProblemUserMissing,
+    NotFound(code: 3014) when _namesOnlyListViews(problem.changes) =>
+      l10n.syncProblemListMissing,
     NotFound(code: 10001 || 3014) ||
     DomainError(code: 10002) => l10n.syncProblemColumnMissing,
     NotFound() => l10n.syncProblemTaskMissing,
@@ -28,3 +32,16 @@ String describeSyncProblem(AppLocalizations l10n, SyncProblem problem) {
   };
   return '$what $why';
 }
+
+/// The update changes list positions and nothing else, so its only write
+/// is the position's.
+bool _onlyReorders(TaskChanges? changes) =>
+    changes != null &&
+    (changes.positions?.isNotEmpty ?? false) &&
+    changes == TaskChanges(positions: changes.positions);
+
+/// Of the update's requests only the list positions name a view.
+bool _namesOnlyListViews(TaskChanges? changes) =>
+    changes != null &&
+    (changes.positions?.isNotEmpty ?? false) &&
+    (changes.kanban?.isEmpty ?? true);

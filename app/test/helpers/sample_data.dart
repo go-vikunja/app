@@ -22,6 +22,29 @@ Project sampleProject({
   views: views,
 );
 
+/// [project] at [position] under [parentProjectId] (and with [updated] when
+/// given), everything else kept.
+Project movedProject(
+  Project project, {
+  required double position,
+  required int parentProjectId,
+  DateTime? updated,
+}) => Project(
+  id: project.id,
+  title: project.title,
+  description: project.description,
+  identifier: project.identifier,
+  hexColor: project.hexColor,
+  parentProjectId: parentProjectId,
+  isArchived: project.isArchived,
+  isFavorite: project.isFavorite,
+  position: position,
+  owner: project.owner,
+  views: project.views,
+  created: project.created,
+  updated: updated ?? project.updated,
+);
+
 /// A list view shaped like the one the server makes for a new project:
 /// `done = false` unless [filter] says otherwise ('' for none).
 ProjectView sampleListView({

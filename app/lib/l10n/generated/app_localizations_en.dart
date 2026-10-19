@@ -776,6 +776,79 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get moveUp => 'Move up';
+
+  @override
+  String get movedUp => 'Moved up';
+
+  @override
+  String get moveDown => 'Move down';
+
+  @override
+  String get movedDown => 'Moved down';
+
+  @override
+  String projectMoveOut(String project) {
+    return 'Move out of $project';
+  }
+
+  @override
+  String projectMovedOut(String project) {
+    return 'Moved out of $project';
+  }
+
+  @override
+  String projectMoveInto(String project) {
+    return 'Move into $project';
+  }
+
+  @override
+  String projectMovedInto(String project) {
+    return 'Moved into $project';
+  }
+
+  @override
+  String get projectMovedToTopLevel => 'Moved to the top level';
+
+  @override
+  String get projectMoveNeedsConnection =>
+      'Moving a project needs a connection to the server.';
+
+  @override
+  String get projectMoveWait => 'A project is still being moved';
+
+  @override
+  String get projectMoveUnconfirmed =>
+      'Couldn\'t confirm the move. Check your connection and pull down to refresh.';
+
+  @override
+  String get projectMoveAdminOnly =>
+      'Only project admins can move a project under another one.';
+
+  @override
+  String get projectMoveForbidden =>
+      'You don\'t have permission to move this project.';
+
+  @override
+  String get projectMoveArchived =>
+      'Archived projects can\'t be moved, and nothing can be moved into them.';
+
+  @override
+  String get projectMoveNotPossible => 'The project can\'t be moved there.';
+
+  @override
+  String get projectMoveGone =>
+      'The project or its new parent no longer exists.';
+
+  @override
+  String projectMoveRefused(String message) {
+    return 'The server refused the move: $message';
+  }
+
+  @override
+  String get projectMoveFailed => 'The project couldn\'t be moved.';
+
+  @override
   String get projectUnknownTitle => 'Project';
 
   @override
@@ -1402,6 +1475,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get syncProblemColumnMissing => 'The column no longer exists.';
+
+  @override
+  String get syncProblemListNotReorderable => 'This list can\'t be reordered.';
+
+  @override
+  String get syncProblemListMissing => 'The list no longer exists.';
 
   @override
   String get syncProblemRejected => 'The server rejected the change.';
@@ -2967,18 +3046,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String boardMovedTo(String column) {
     return 'Moved to $column';
   }
-
-  @override
-  String get boardMoveUp => 'Move up';
-
-  @override
-  String get boardMovedUp => 'Moved up';
-
-  @override
-  String get boardMoveDown => 'Move down';
-
-  @override
-  String get boardMovedDown => 'Moved down';
 
   @override
   String boardColumnOptionsFor(String column) {

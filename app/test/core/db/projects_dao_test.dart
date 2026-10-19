@@ -130,6 +130,29 @@ void main() {
     );
   });
 
+  test("a project's move writes only its position and parent and reaches "
+      'the stream', () async {
+    await db.projectsDao.upsertAll([
+      work,
+      sampleProject(id: 2, title: 'Home', position: 1),
+    ]);
+    final seen = <List<Project>>[];
+    final subscription = db.projectsDao.watchAll().listen(seen.add);
+    addTearDown(subscription.cancel);
+    await pumpEventQueue();
+
+    await db.projectsDao.moveProject(1, position: 0.5, parentProjectId: 2);
+    await pumpEventQueue();
+
+    expect(seen.last.map((p) => p.id), [1, 2]);
+    expect(
+      seen.last.first,
+      movedProject(work, position: 0.5, parentProjectId: 2),
+    );
+    expect(seen.last.first.owner, alice);
+    expect(seen.last.first.views.map((v) => v.id), [11, 12]);
+  });
+
   test('the stream follows projects, views and owners', () async {
     final seen = <List<Project>>[];
     final subscription = db.projectsDao.watchAll().listen(seen.add);

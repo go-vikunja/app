@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v1/projects/1034",
+  "status": 412,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"code\":3011,\"message\":\"This project cannot have a cyclic relationship to a parent project.\"}\n"
+}

@@ -642,6 +642,87 @@
       }
     }
   },
+  "moveUp": "Move up",
+  "@moveUp": {
+    "description": "Screen reader action on a task of a list sorted manually (among the top-level tasks), on a project in the project tree (among its siblings) and on a kanban card (within its column): one place up."
+  },
+  "movedUp": "Moved up",
+  "moveDown": "Move down",
+  "@moveDown": {
+    "description": "Screen reader action on a task of a list sorted manually (among the top-level tasks), on a project in the project tree (among its siblings) and on a kanban card (within its column): one place down."
+  },
+  "movedDown": "Moved down",
+  "projectMoveOut": "Move out of {project}",
+  "@projectMoveOut": {
+    "description": "Screen reader action on a subproject in the project tree: it moves right after its parent, on the parent's level.",
+    "placeholders": {
+      "project": {
+        "type": "String",
+        "example": "Work"
+      }
+    }
+  },
+  "projectMovedOut": "Moved out of {project}",
+  "@projectMovedOut": {
+    "placeholders": {
+      "project": {
+        "type": "String",
+        "example": "Work"
+      }
+    }
+  },
+  "projectMoveInto": "Move into {project}",
+  "@projectMoveInto": {
+    "description": "Screen reader action on a project in the project tree: it becomes the last subproject of the project right above it on its level.",
+    "placeholders": {
+      "project": {
+        "type": "String",
+        "example": "Work"
+      }
+    }
+  },
+  "projectMovedInto": "Moved into {project}",
+  "@projectMovedInto": {
+    "description": "Announced to screen readers once a project was moved under another one, by the action or by dragging it.",
+    "placeholders": {
+      "project": {
+        "type": "String",
+        "example": "Work"
+      }
+    }
+  },
+  "projectMovedToTopLevel": "Moved to the top level",
+  "@projectMovedToTopLevel": {
+    "description": "Announced to screen readers once a subproject was dragged to the top level of the project tree."
+  },
+  "projectMoveNeedsConnection": "Moving a project needs a connection to the server.",
+  "projectMoveWait": "A project is still being moved",
+  "@projectMoveWait": {
+    "description": "Announced to screen readers when a project is to be moved while the server has not yet confirmed the previous move; nothing moves."
+  },
+  "projectMoveUnconfirmed": "Couldn't confirm the move. Check your connection and pull down to refresh.",
+  "@projectMoveUnconfirmed": {
+    "description": "The server did not answer in time and may have moved the project anyway."
+  },
+  "projectMoveAdminOnly": "Only project admins can move a project under another one.",
+  "projectMoveForbidden": "You don't have permission to move this project.",
+  "projectMoveArchived": "Archived projects can't be moved, and nothing can be moved into them.",
+  "projectMoveNotPossible": "The project can't be moved there.",
+  "@projectMoveNotPossible": {
+    "description": "The server refused the new parent: the project itself, one of its subprojects or a saved filter."
+  },
+  "projectMoveGone": "The project or its new parent no longer exists.",
+  "projectMoveRefused": "The server refused the move: {message}",
+  "@projectMoveRefused": {
+    "description": "The server's own reason, untranslated, when the app has no words for it.",
+    "placeholders": {
+      "message": {
+        "type": "String",
+        "example": "Invalid data"
+      }
+    }
+  },
+  "projectMoveFailed": "The project couldn't be moved.",
   "projectUnknownTitle": "Project",
   "@projectUnknownTitle": {
     "description": "App bar title while the project of a task list is not in the local project list."
@@ -1155,6 +1236,8 @@
   "syncProblemRelationToItself": "A task cannot be related to itself.",
   "syncProblemColumnFull": "This column is full.",
   "syncProblemColumnMissing": "The column no longer exists.",
+  "syncProblemListNotReorderable": "This list can't be reordered.",
+  "syncProblemListMissing": "The list no longer exists.",
   "syncProblemRejected": "The server rejected the change.",
   "syncProblemUnexpected": "The server answered in an unexpected way.",
   "syncProblemFailedAt": "Failed {when}",
@@ -2720,16 +2803,6 @@
       }
     }
   },
-  "boardMoveUp": "Move up",
-  "@boardMoveUp": {
-    "description": "Screen reader action on a kanban card: one place up within its column."
-  },
-  "boardMovedUp": "Moved up",
-  "boardMoveDown": "Move down",
-  "@boardMoveDown": {
-    "description": "Screen reader action on a kanban card: one place down within its column."
-  },
-  "boardMovedDown": "Moved down",
   "boardColumnOptionsFor": "Options for “{column}”",
   "@boardColumnOptionsFor": {
     "description": "Tooltip, also read by screen readers, of the menu button in a kanban column's header (the web's \"bucket options\"); names the column so that the buttons of a board tell apart.",

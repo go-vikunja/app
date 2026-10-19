@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
@@ -19,6 +20,8 @@ import 'package:vikunja_mobile/features/onboarding/presentation/connect/connecti
 import 'package:vikunja_mobile/features/projects/presentation/board/board_column.dart';
 import 'package:vikunja_mobile/features/projects/presentation/board/new_column_tile.dart';
 import 'package:vikunja_mobile/features/projects/presentation/board/project_board.dart';
+import 'package:vikunja_mobile/features/projects/presentation/project_row.dart';
+import 'package:vikunja_mobile/features/projects/presentation/reorder_slot.dart';
 import 'package:vikunja_mobile/features/quick_add/application/quick_add_plan.dart';
 import 'package:vikunja_mobile/features/quick_add/application/quick_add_service_provider.dart';
 import 'package:vikunja_mobile/features/quick_add/presentation/magic_suggestions.dart';
@@ -29,6 +32,7 @@ import 'package:vikunja_mobile/features/tasks/presentation/edit/task_edit_page.d
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/assignee_picker.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/relations/add_relation_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
 import 'package:vikunja_mobile/features/upcoming/presentation/upcoming_screen.dart';
 
 import '../features/accounts/accounts_harness.dart';
@@ -929,6 +933,105 @@ void main() {
       containerOf(tester).read(appRouterProvider).go(AppRoutes.project(1));
       await tester.pumpAndSettle();
       await scrollToEnd(tester, find.byType(CustomScrollView));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a list and the project tree put in order by dragging and '
+        'by the screen reader actions at 200 % in dark mode '
+        '(${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      const work = 'Work with a very long project title';
+      const child = 'Child project with another long title';
+      final data = richData();
+      data.projects.all = [
+        sampleProject(
+          id: 1,
+          title: work,
+          position: 100,
+          views: [sampleListView(id: 11, projectId: 1)],
+        ),
+        sampleProject(id: 2, title: child, parent: 1, position: 10),
+        sampleProject(
+          id: 3,
+          title: 'Another project with a long title',
+          position: 200,
+        ),
+      ];
+      data.tasks.setSnapshot(
+        'view:11',
+        ListSnapshot(
+          positions: {for (var id = 1; id <= 6; id++) id: id * 100.0},
+          loadedAt: DateTime.now(),
+        ),
+      );
+      data.projects.moveFailure = const Forbidden(code: 1);
+      await pumpSignedInApp(tester, sync: data);
+      final l10n = lookupAppLocalizations(locale);
+
+      List<String> actionsOf(Finder finder) => [
+        for (final id
+            in tester
+                    .getSemantics(finder)
+                    .getSemanticsData()
+                    .customSemanticsActionIds ??
+                const <int>[])
+          CustomSemanticsAction.getAction(id)!.label!,
+      ];
+
+      Future<void> hold(Finder row) async {
+        final gesture = await tester.startGesture(
+          tester.getTopLeft(row) + const Offset(60, 24),
+        );
+        await tester.pump(const Duration(milliseconds: 600));
+        expect(find.byType(LiftedRows), findsOneWidget);
+        await gesture.moveBy(const Offset(0, 30));
+        await tester.pump();
+        await gesture.moveBy(const Offset(0, 30));
+        await tester.pump();
+        expect(tester.takeException(), isNull);
+        await gesture.up();
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+      }
+
+      containerOf(tester).read(appRouterProvider).go(AppRoutes.project(1));
+      await tester.pumpAndSettle();
+      final firstTask = find.textContaining('Task 1 ');
+      expect(actionsOf(firstTask), [l10n.moveDown]);
+      await hold(find.ancestor(of: firstTask, matching: find.byType(TaskRow)));
+
+      await openTab(tester, l10n.tabProjects);
+      final childRow = find.ancestor(
+        of: find.text(child),
+        matching: find.byType(ProjectRow),
+      );
+      await tester.scrollUntilVisible(
+        find.text(child),
+        200,
+        scrollable: find
+            .descendant(
+              of: find.byType(CustomScrollView),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      await tester.pumpAndSettle();
+      expect(
+        actionsOf(find.text(child)),
+        unorderedEquals([l10n.projectMoveOut(work)]),
+      );
+      await hold(childRow);
+
+      final node = tester.getSemantics(find.text(child));
+      node.owner!.performAction(
+        node.id,
+        SemanticsAction.customAction,
+        CustomSemanticsAction.getIdentifier(
+          CustomSemanticsAction(label: l10n.projectMoveOut(work)),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.projectMoveAdminOnly), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 

@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
@@ -12,8 +13,8 @@ import 'package:vikunja_mobile/features/tasks/presentation/task_summary.dart';
 
 /// One task in a list, with the web row's content: the done control, the
 /// texts that open the detail sheet (one semantics node that reads them
-/// all), and the favourite star. The controls are indicators only without
-/// their callbacks.
+/// all, with [actions] for screen readers), and the favourite star. The
+/// controls are indicators only without their callbacks.
 class TaskRow extends ConsumerWidget {
   const new({
     required this.task,
@@ -27,6 +28,7 @@ class TaskRow extends ConsumerWidget {
     this.onTap,
     this.onDoneChanged,
     this.onFavoriteChanged,
+    this.actions = const {},
     super.key,
   });
 
@@ -52,6 +54,7 @@ class TaskRow extends ConsumerWidget {
   final VoidCallback? onTap;
   final ValueChanged<bool>? onDoneChanged;
   final ValueChanged<bool>? onFavoriteChanged;
+  final Map<CustomSemanticsAction, VoidCallback> actions;
 
   static const _indentPerLevel = 22.0;
   static const _maxIndentedLevels = 4;
@@ -109,6 +112,7 @@ class TaskRow extends ConsumerWidget {
       leading: TaskDoneControl(done: task.done, onChanged: onDoneChanged),
       title: Semantics(
         label: semanticsLabel,
+        customSemanticsActions: actions.isEmpty ? null : actions,
         child: ExcludeSemantics(
           child: taskColor == null
               ? title

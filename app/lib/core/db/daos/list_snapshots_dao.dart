@@ -60,6 +60,32 @@ final class ListSnapshotsDao extends DatabaseAccessor<AppDatabase>
   Stream<ListSnapshot> watch(String listKey) =>
       watchTables({listSnapshots, listSnapshotTasks}, () => load(listKey));
 
+  /// The server accepted these list positions of the task, by view id:
+  /// each downloaded view takes its position until the next download,
+  /// which brings the server's (it may have spread equal positions apart).
+  /// A view never downloaded is left alone.
+  Future<void> applySentPositions(int taskId, Map<int, double> positions) =>
+      transaction(() async {
+        for (final MapEntry(key: viewId, value: position)
+            in positions.entries) {
+          final listKey = 'view:$viewId';
+          final header = await (select(
+            listSnapshots,
+          )..where((s) => s.listKey.equals(listKey))).getSingleOrNull();
+          if (header == null) continue;
+          await into(listSnapshotTasks).insert(
+            ListSnapshotTaskRow(
+              listKey: listKey,
+              taskId: taskId,
+              position: position,
+            ),
+            onConflict: DoUpdate(
+              (_) => ListSnapshotTasksCompanion(position: Value(position)),
+            ),
+          );
+        }
+      });
+
   /// Removes the snapshots whose key starts with [prefix], except [keep].
   Future<void> removeAll(String prefix, {Set<String> keep = const {}}) =>
       transaction(() async {

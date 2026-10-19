@@ -122,7 +122,7 @@ void main() {
       ]);
       await db.outboxDao.queueDelete(7, now: now);
 
-      final list = await db.tasksDao.loadProjectList(7, 'view:70');
+      final list = await db.tasksDao.loadProjectList(7, viewId: 70);
 
       expect(ids(list.projectTasks), [3, 2, 1]);
       expect(list.tasksById.keys.toSet(), {1, 2, 3, 4, 5});
@@ -140,7 +140,7 @@ void main() {
       ]);
       await db.outboxDao.queueDelete(2, now: now);
 
-      final list = await db.tasksDao.loadProjectList(7, 'view:70');
+      final list = await db.tasksDao.loadProjectList(7, viewId: 70);
 
       expect(list.tasksById.keys, [1]);
     });
@@ -170,7 +170,7 @@ void main() {
         ),
       ]);
 
-      final list = await db.tasksDao.loadProjectList(7, 'view:70');
+      final list = await db.tasksDao.loadProjectList(7, viewId: 70);
 
       expect(list.tasksById.keys.toSet(), {1, 2, 3});
     });
@@ -209,7 +209,7 @@ void main() {
 
         final list = await db.tasksDao.loadProjectList(
           7,
-          'view:70',
+          viewId: 70,
           includeDone: false,
         );
 
@@ -217,7 +217,7 @@ void main() {
         expect(list.tasksById.keys.toSet(), {1, 2, 3, 5});
         expect(list.omitsDoneTasks, isTrue);
 
-        final all = await db.tasksDao.loadProjectList(7, 'view:70');
+        final all = await db.tasksDao.loadProjectList(7, viewId: 70);
         expect(ids(all.projectTasks), [5, 4, 3, 2, 1]);
         expect(all.omitsDoneTasks, isFalse);
 
@@ -225,7 +225,7 @@ void main() {
         await db.outboxDao.queueDelete(2, now: now);
         final rest = await db.tasksDao.loadProjectList(
           7,
-          'view:70',
+          viewId: 70,
           includeDone: false,
         );
         expect(rest.omitsDoneTasks, isFalse);
@@ -236,7 +236,7 @@ void main() {
       await upsert([sampleTask(id: 1, title: 'Task', projectId: 7)]);
       final seen = <ListSnapshot>[];
       final subscription = db.tasksDao
-          .watchProjectList(7, 'view:70')
+          .watchProjectList(7, viewId: 70)
           .listen((list) => seen.add(list.snapshot));
       addTearDown(subscription.cancel);
       await pumpEventQueue();
@@ -251,6 +251,63 @@ void main() {
       expect(seen.first.loadedAt, isNull);
       expect(seen.last.positions, {1: 2.5, 42: 1});
       expect(seen.last.loadedAt, now);
+    });
+
+    test("carries the view's unsent positions and follows the queue", () async {
+      await upsert([
+        sampleTask(id: 1, title: 'Moved', projectId: 7),
+        sampleTask(id: 2, title: 'Moved elsewhere', projectId: 7),
+        sampleTask(id: 3, title: 'Deleted', projectId: 7),
+      ]);
+      final seen = <Map<int, double>>[];
+      final subscription = db.tasksDao
+          .watchProjectList(7, viewId: 70)
+          .listen((list) => seen.add(list.queuedPositions));
+      addTearDown(subscription.cancel);
+      await pumpEventQueue();
+
+      await db.outboxDao.queueUpdate(
+        1,
+        const TaskChanges(positions: {70: 1.5, 71: 9}),
+        now: now,
+      );
+      await db.outboxDao.queueUpdate(
+        2,
+        const TaskChanges(positions: {71: 4}),
+        now: now,
+      );
+      await db.outboxDao.queueUpdate(
+        3,
+        const TaskChanges(positions: {70: 3}),
+        now: now,
+      );
+      await db.outboxDao.queueDelete(3, now: now);
+      await db.outboxDao.queueUpdate(
+        1,
+        const TaskChanges(title: 'Renamed'),
+        now: now,
+      );
+      await pumpEventQueue();
+      expect(seen.last, {1: 1.5});
+
+      final op = (await db.outboxDao.all()).first;
+      await db.outboxDao.remove(op.id);
+      await pumpEventQueue();
+      expect(seen.last, isEmpty);
+      expect(seen.first, isEmpty);
+    });
+
+    test('a project without a list view has no queued positions', () async {
+      await upsert([sampleTask(id: 1, title: 'Task', projectId: 7)]);
+      await db.outboxDao.queueUpdate(
+        1,
+        const TaskChanges(positions: {0: 1}),
+        now: now,
+      );
+
+      final list = await db.tasksDao.loadProjectList(7, viewId: 0);
+
+      expect(list.queuedPositions, isEmpty);
     });
   });
 
@@ -359,6 +416,38 @@ void main() {
   });
 
   group('snapshots', () {
+    test('sent positions go into the downloaded views only', () async {
+      await db.listSnapshotsDao.replace('view:70', {
+        1: 1,
+        2: 2,
+      }, loadedAt: monday);
+
+      await db.listSnapshotsDao.applySentPositions(1, {70: 3, 71: 5});
+      await db.listSnapshotsDao.applySentPositions(9, {70: 0.5});
+
+      final snapshot = await db.listSnapshotsDao.load('view:70');
+      expect(snapshot.positions, {9: 0.5, 2: 2, 1: 3});
+      expect(snapshot.taskIds, [9, 2, 1]);
+      expect(snapshot.loadedAt, monday);
+      expect((await db.listSnapshotsDao.load('view:71')).loadedAt, isNull);
+    });
+
+    test("a sent position keeps a board card's bucket", () async {
+      await db.kanbanDao.replaceBoard(
+        80,
+        buckets: const [Bucket(id: 5, viewId: 80, title: 'To-Do', position: 1)],
+        slots: {1: (bucketId: 5, position: 1)},
+        loadedPages: const {},
+        loadedAt: monday,
+      );
+
+      await db.listSnapshotsDao.applySentPositions(1, {80: 7});
+
+      expect((await db.kanbanDao.load(80)).slots, {
+        1: (bucketId: 5, position: 7.0),
+      });
+    });
+
     test('a replacement drops the tasks of the previous download', () async {
       await db.listSnapshotsDao.replace('view:70', {
         1: 1,

@@ -52,18 +52,21 @@ void main() {
           ),
         ),
         const TaskChanges(kanban: {7: BucketPlacement(bucketId: 2)}),
+        const TaskChanges(positions: {7: 1}),
       ];
 
       expect(singles.map((c) => c.isEmpty), everyElement(isFalse));
     });
 
-    test('is true with empty id-set, relation and kanban changes', () {
+    test('is true with empty id-set, relation, kanban and position '
+        'changes', () {
       expect(
         const TaskChanges(
           labels: IdSetChange(),
           assignees: IdSetChange(),
           relations: RelationChange(),
           kanban: {},
+          positions: {},
         ).isEmpty,
         isTrue,
       );
@@ -175,6 +178,86 @@ void main() {
         const TaskChanges(done: true)
             .merge(const TaskChanges(kanban: {7: toDone})),
         const TaskChanges(done: true, kanban: {7: toDone}),
+      );
+    });
+  });
+
+  group('TaskChanges.merge of list positions', () {
+    test('per view, the later position wins', () {
+      const earlier = TaskChanges(positions: {7: 100, 8: 5});
+      const later = TaskChanges(positions: {7: 50});
+
+      expect(earlier.merge(later).positions, {7: 50, 8: 5});
+      expect(later.merge(earlier).positions, {7: 100, 8: 5});
+    });
+
+    test('positions on one side only are kept', () {
+      const placed = TaskChanges(positions: {7: 100});
+
+      expect(placed.merge(const TaskChanges(title: 'Renamed')).positions, {
+        7: 100,
+      });
+      expect(const TaskChanges(title: 'Renamed').merge(placed).positions, {
+        7: 100,
+      });
+      expect(
+        const TaskChanges(title: 'Renamed')
+            .merge(const TaskChanges())
+            .positions,
+        isNull,
+      );
+    });
+
+    test('a later done change keeps them', () {
+      expect(
+        const TaskChanges(
+          done: false,
+          positions: {7: 100},
+        ).merge(const TaskChanges(done: true)),
+        const TaskChanges(done: true, positions: {7: 100}),
+      );
+      expect(
+        const TaskChanges(positions: {7: 100})
+            .merge(const TaskChanges(done: true, positions: {8: 5})),
+        const TaskChanges(done: true, positions: {7: 100, 8: 5}),
+      );
+    });
+
+    test('a later project move drops the earlier positions', () {
+      const placed = TaskChanges(positions: {7: 100, 8: 5});
+
+      expect(
+        placed.merge(const TaskChanges(projectId: 2)),
+        const TaskChanges(projectId: 2),
+      );
+      expect(
+        placed.merge(const TaskChanges(projectId: 2, positions: {9: 1})),
+        const TaskChanges(projectId: 2, positions: {9: 1}),
+      );
+    });
+
+    test('positions after a project move are kept', () {
+      expect(
+        const TaskChanges(projectId: 2)
+            .merge(const TaskChanges(positions: {9: 1})),
+        const TaskChanges(projectId: 2, positions: {9: 1}),
+      );
+    });
+
+    test('merge independently of kanban placements', () {
+      const placement = BucketPlacement(bucketId: 2, position: 55);
+
+      expect(
+        const TaskChanges(kanban: {7: placement})
+            .merge(const TaskChanges(positions: {8: 3})),
+        const TaskChanges(kanban: {7: placement}, positions: {8: 3}),
+      );
+      expect(
+        const TaskChanges(
+          kanban: {7: placement},
+          positions: {8: 3},
+        ).merge(const TaskChanges(done: true)),
+        const TaskChanges(done: true, positions: {8: 3}),
       );
     });
   });
@@ -486,6 +569,34 @@ void main() {
       expect(const TaskChanges(kanban: {}), isNot(const TaskChanges()));
     });
 
+    test('compares list positions per view, in any order', () {
+      expect(
+        const TaskChanges(positions: {7: 1, 8: 2}),
+        const TaskChanges(positions: {8: 2, 7: 1}),
+      );
+      expect(
+        const TaskChanges(positions: {7: 1, 8: 2}).hashCode,
+        const TaskChanges(positions: {8: 2, 7: 1}).hashCode,
+      );
+      expect(
+        const TaskChanges(positions: {7: 1}),
+        isNot(const TaskChanges(positions: {8: 1})),
+      );
+      expect(
+        const TaskChanges(positions: {7: 1}),
+        isNot(const TaskChanges(positions: {7: 2})),
+      );
+      expect(
+        const TaskChanges(positions: {7: 1}),
+        isNot(const TaskChanges(positions: {7: 1, 8: 2})),
+      );
+      expect(const TaskChanges(positions: {}), isNot(const TaskChanges()));
+      expect(
+        const TaskChanges(positions: {7: 1}),
+        isNot(const TaskChanges(kanban: {7: BucketPlacement(bucketId: 1)})),
+      );
+    });
+
     test('compares reminders element by element', () {
       final morning = TaskReminder(reminder: monday);
       const hourBefore = TaskReminder(
@@ -535,6 +646,7 @@ void main() {
         done: true,
         dueDate: DateChange.set(monday),
         kanban: const {7: BucketPlacement(bucketId: 2, position: 55)},
+        positions: const {8: 12.5},
       ).toString();
 
       expect(text, isNot(contains('Secret')));
@@ -542,6 +654,7 @@ void main() {
       expect(text, contains('title'));
       expect(text, contains('done: true'));
       expect(text, contains('BucketPlacement(2, 55.0)'));
+      expect(text, contains('positions: {8: 12.5}'));
     });
 
     test('is short without any field', () {

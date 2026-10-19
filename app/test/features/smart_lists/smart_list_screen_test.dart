@@ -398,6 +398,30 @@ void main() {
       expect(plainRow.onFavoriteChanged, isNotNull);
     });
 
+    testWidgets('so does a task of a project below an archived one', (
+      tester,
+    ) async {
+      data.projects.all = [
+        ...data.projects.all,
+        sampleProject(id: 4, title: 'Old child', parent: 3),
+      ];
+      data.tasks.all = [
+        ...data.tasks.all,
+        sampleTask(id: 7, title: 'Inherited', projectId: 4),
+      ];
+      data.tasks.setSavedFilterSnapshot(
+        filter.projectId,
+        ListSnapshot(positions: const {4: 0, 7: 0}, loadedAt: now),
+      );
+      await openList(tester, filter.projectId);
+
+      final row = tester.widget<TaskRow>(
+        find.widgetWithText(TaskRow, 'Inherited'),
+      );
+      expect(row.onDoneChanged, isNull);
+      expect(row.onFavoriteChanged, isNull);
+    });
+
     testWidgets('downloaded and empty says nothing matches', (tester) async {
       data.tasks.setSavedFilterSnapshot(
         filter.projectId,

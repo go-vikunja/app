@@ -214,6 +214,25 @@ final class RetryingProjectViewsWrites implements ProjectViewsWritePort {
   );
 }
 
+final class RetryingProjectsWrites implements ProjectsWritePort {
+  new(this._projects);
+
+  final ProjectsWritePort _projects;
+
+  @override
+  Future<Project> move(
+    int projectId, {
+    required double position,
+    required int parentProjectId,
+  }) => despiteWriteRaces(
+    () => _projects.move(
+      projectId,
+      position: position,
+      parentProjectId: parentProjectId,
+    ),
+  );
+}
+
 /// [connection] restricted to [version], so a client built over it uses
 /// that API version.
 ServerConnection onlyVersion(ServerConnection connection, ApiVersion version) =>

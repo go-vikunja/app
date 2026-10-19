@@ -90,11 +90,12 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
   /// and relations and queues it, merged into the task's unsent update op
   /// when there is one, or into its create while that has not left the
   /// device: reminders fold into the create, while labels, assignees,
-  /// relations, kanban placements and done, which need the task's id on the
-  /// server, stay queued behind it; a project move drops the placements
-  /// queued before it. A temporary id whose create was answered meanwhile
-  /// is followed to the server id, the task's own and those its relations
-  /// name. False when the task is unknown here or queued for deletion.
+  /// relations, kanban placements, list positions and done, which need the
+  /// task's id on the server, stay queued behind it; a project move drops
+  /// the placements and positions queued before it. A temporary id whose
+  /// create was answered meanwhile is followed to the server id, the task's
+  /// own and those its relations name. False when the task is unknown here
+  /// or queued for deletion.
   Future<bool> queueUpdate(
     int localOrServerId,
     TaskChanges requested, {
@@ -689,6 +690,9 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
       taskTitle: task?.title ?? '',
       failure: decodeFailure(error),
       failedAt: op.lastAttemptAt ?? op.createdAt,
+      changes: kind == OutboxOperationKind.updateTask
+          ? decodeTaskChanges(op.payload)
+          : null,
     );
   }
 
@@ -823,8 +827,8 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
             ..limit(1))
           .getSingleOrNull();
 
-  /// The create now goes to another project, so the placements queued
-  /// behind it would name views of the previous one.
+  /// The create now goes to another project, so the placements and
+  /// positions queued behind it would name views of the previous one.
   Future<void> _dropUnsentPlacements(int taskId) async {
     final existing = await _unsentUpdate(taskId);
     if (existing == null) return;

@@ -99,6 +99,19 @@ final class ProjectsDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
+  /// Changes only the project's position and parent, as a move answered by
+  /// the server; the next sync stores the whole project again.
+  Future<void> moveProject(
+    int projectId, {
+    required double position,
+    required int parentProjectId,
+  }) => (update(projects)..where((p) => p.id.equals(projectId))).write(
+    ProjectsCompanion(
+      position: Value(position),
+      parentProjectId: Value(parentProjectId),
+    ),
+  );
+
   /// Views go with their project through the foreign key.
   Future<int> purgeNotIn(Iterable<int> ids) =>
       (delete(projects)..where((p) => p.id.isNotIn(ids))).go();

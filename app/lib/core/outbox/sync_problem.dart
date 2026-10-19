@@ -14,6 +14,7 @@ final class SyncProblem {
     required this.taskTitle,
     required this.failure,
     required this.failedAt,
+    this.changes,
   });
 
   final String operationId;
@@ -22,4 +23,8 @@ final class SyncProblem {
   final String taskTitle;
   final VikunjaFailure failure;
   final DateTime failedAt;
+
+  /// What the failed update would have changed, which tells which of its
+  /// requests the server refused; null for a create or a delete.
+  final TaskChanges? changes;
 }

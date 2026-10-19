@@ -24,7 +24,8 @@ final class WriteClient implements VikunjaWriteClient {
       notifications = _NotificationsWriteApi(transport),
       subscriptions = _SubscriptionsWriteApi(transport),
       buckets = _BucketsWriteApi(transport),
-      views = _ProjectViewsWriteApi(transport);
+      views = _ProjectViewsWriteApi(transport),
+      projects = _ProjectsWriteApi(transport);
 
   @override
   final TasksWritePort tasks;
@@ -43,6 +44,60 @@ final class WriteClient implements VikunjaWriteClient {
 
   @override
   final ProjectViewsWritePort views;
+
+  @override
+  final ProjectsWritePort projects;
+}
+
+final class _ProjectsWriteApi implements ProjectsWritePort {
+  new(this._transport);
+
+  final _WriteTransport _transport;
+
+  @override
+  Future<Project> move(
+    int projectId, {
+    required double position,
+    required int parentProjectId,
+  }) async {
+    if (!position.isFinite || position < _minProjectPosition) {
+      throw ArgumentError.value(
+        position,
+        'position',
+        'Below $_minProjectPosition the server renumbers every sibling',
+      );
+    }
+    final path = '/projects/$projectId';
+    final changes = {
+      'position': position,
+      'parent_project_id': parentProjectId,
+    };
+    switch (_transport.version) {
+      case ApiVersion.v2:
+        final response = await _transport.send(
+          'PATCH',
+          path,
+          body: changes,
+          contentType: mergePatchContentType,
+          acceptNotModified: true,
+        );
+        if (response.statusCode != _notModified) return _parse(response);
+        return _parse(await _transport.send('GET', path));
+      case ApiVersion.v1:
+        // A full replace: hex_color and identifier left out are cleared,
+        // is_favorite and is_archived reset, a missing position renumbers.
+        final current = _transport.decode<Map<String, Object?>>(
+          await _transport.send('GET', path),
+          (json) => objectOf(json, 'project'),
+        );
+        return _parse(
+          await _transport.send('POST', path, body: {...current, ...changes}),
+        );
+    }
+  }
+
+  Project _parse(Response<Object?> response) =>
+      _transport.decode<Project>(response, parseProject);
 }
 
 final class _BucketsWriteApi implements BucketsWritePort {
@@ -247,6 +302,7 @@ const _relationAlreadyExists = 4008;
 const _relationDoesNotExist = 4009;
 const _alreadySubscribed = 12002;
 const _bucketDoesNotExist = 10001;
+const _minProjectPosition = 0.1;
 
 // A v1 update replaces the task with the body: every field the server sent
 // goes back so that assignees, reminders and the fields this client does not
@@ -296,6 +352,7 @@ final class _TasksWriteApi implements TasksWritePort {
     final sentRelations =
         relations != null && await _sendRelations(id, relations, answer);
     final changedByMoves = await _sendPlacements(id, changes.kanban, answer);
+    await _sendPositions(id, changes.positions);
     final sentAny = sentLabelsOrAssignees || sentRelations || changedByMoves;
     // A move is answered with the identifier of the old project (the server
     // builds it before moving). The server keeps only one reminder per
@@ -582,6 +639,17 @@ final class _TasksWriteApi implements TasksWritePort {
       }
     }
     return changed;
+  }
+
+  Future<void> _sendPositions(int id, Map<int, double>? positions) async {
+    for (final MapEntry(key: viewId, value: position)
+        in (positions ?? const {}).entries) {
+      await _transport.send(
+        _transport.updateMethod,
+        '/tasks/$id/position',
+        body: {'project_view_id': viewId, 'position': position},
+      );
+    }
   }
 
   Future<Task> _read(int id) async {

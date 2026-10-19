@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "PATCH /api/v2/projects/1035",
+  "status": 403,
+  "headers": {
+    "content-type": "application/problem+json"
+  },
+  "body": "{\"$schema\":\"http://localhost/api/v2/schemas/VikunjaErrorModel.json\",\"title\":\"Forbidden\",\"status\":403,\"detail\":\"Forbidden\"}\n"
+}

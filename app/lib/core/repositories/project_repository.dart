@@ -16,5 +16,18 @@ abstract interface class ProjectRepository {
   /// The saved filters the last project sync saw, by title.
   Stream<List<SavedFilterRef>> watchSavedFilters();
 
+  /// Moves the project to [position] under [parentProjectId] (0: the top
+  /// level) on the server, online and without the outbox; once answered,
+  /// the stored project follows at once and a sync runs quietly. Throws the
+  /// `VikunjaFailure` (offline a `NetworkFailure`) and changes nothing
+  /// then. A [position] below 0.1 is an `ArgumentError` before any request:
+  /// the server would renumber every sibling, at the top level those of
+  /// every user.
+  Future<void> moveProject(
+    int projectId, {
+    required double position,
+    required int parentProjectId,
+  });
+
   void dispose();
 }

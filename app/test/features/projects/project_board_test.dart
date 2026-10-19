@@ -576,7 +576,7 @@ void main() {
         ),
       ]);
       expect(tester.takeAnnouncements(), [
-        isAccessibilityAnnouncement(en.boardMovedDown),
+        isAccessibilityAnnouncement(en.movedDown),
       ]);
     });
 
@@ -796,7 +796,7 @@ void main() {
         unorderedEquals([
           en.boardMoveTo('Doing'),
           en.boardMoveTo('Done'),
-          en.boardMoveDown,
+          en.moveDown,
         ]),
       );
       expect(
@@ -804,8 +804,8 @@ void main() {
         unorderedEquals([
           en.boardMoveTo('Doing'),
           en.boardMoveTo('Done'),
-          en.boardMoveUp,
-          en.boardMoveDown,
+          en.moveUp,
+          en.moveDown,
         ]),
       );
       expect(
@@ -813,7 +813,7 @@ void main() {
         unorderedEquals([
           en.boardMoveTo('To-Do'),
           en.boardMoveTo('Done'),
-          en.boardMoveUp,
+          en.moveUp,
         ]),
       );
 
@@ -829,7 +829,7 @@ void main() {
         isAccessibilityAnnouncement(en.boardMovedTo('Doing')),
       ]);
 
-      performAction(tester, 'Read book', en.boardMoveUp);
+      performAction(tester, 'Read book', en.moveUp);
       await tester.pumpAndSettle();
       expect(data.tasks.placements.last, (
         5,
@@ -838,7 +838,7 @@ void main() {
         null,
       ));
       expect(tester.takeAnnouncements(), [
-        isAccessibilityAnnouncement(en.boardMovedUp),
+        isAccessibilityAnnouncement(en.movedUp),
       ]);
 
       performAction(tester, 'Write report', en.boardMoveTo('Done'));
@@ -870,7 +870,7 @@ void main() {
         unorderedEquals([
           en.boardMoveTo('Later (2)'),
           en.boardMoveTo('Later (3)'),
-          en.boardMoveDown,
+          en.moveDown,
         ]),
       );
 
@@ -902,8 +902,8 @@ void main() {
       ];
       await pumpBoard(tester);
 
-      expect(actionsOf(tester, 'Fix bike'), isNot(contains(en.boardMoveDown)));
-      expect(actionsOf(tester, 'Read book'), contains(en.boardMoveUp));
+      expect(actionsOf(tester, 'Fix bike'), isNot(contains(en.moveDown)));
+      expect(actionsOf(tester, 'Read book'), contains(en.moveUp));
       expect(
         actionsOf(tester, 'Plan trip'),
         unorderedEquals([en.boardMoveTo('To-Do'), en.boardMoveTo('Doing')]),

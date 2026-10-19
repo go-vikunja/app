@@ -782,6 +782,80 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get moveUp => 'Nach oben verschieben';
+
+  @override
+  String get movedUp => 'Nach oben verschoben';
+
+  @override
+  String get moveDown => 'Nach unten verschieben';
+
+  @override
+  String get movedDown => 'Nach unten verschoben';
+
+  @override
+  String projectMoveOut(String project) {
+    return 'Aus $project herausnehmen';
+  }
+
+  @override
+  String projectMovedOut(String project) {
+    return 'Aus $project herausgenommen';
+  }
+
+  @override
+  String projectMoveInto(String project) {
+    return 'In $project verschieben';
+  }
+
+  @override
+  String projectMovedInto(String project) {
+    return 'In $project verschoben';
+  }
+
+  @override
+  String get projectMovedToTopLevel => 'Auf die oberste Ebene verschoben';
+
+  @override
+  String get projectMoveNeedsConnection =>
+      'Zum Verschieben eines Projekts brauchst du eine Verbindung zum Server.';
+
+  @override
+  String get projectMoveWait => 'Ein Projekt wird noch verschoben';
+
+  @override
+  String get projectMoveUnconfirmed =>
+      'Das Verschieben ließ sich nicht bestätigen. Prüf deine Verbindung und zieh nach unten, um neu zu laden.';
+
+  @override
+  String get projectMoveAdminOnly =>
+      'Nur Projekt-Admins können ein Projekt unter ein anderes verschieben.';
+
+  @override
+  String get projectMoveForbidden =>
+      'Du darfst dieses Projekt nicht verschieben.';
+
+  @override
+  String get projectMoveArchived =>
+      'Archivierte Projekte lassen sich nicht verschieben und nehmen keine Projekte auf.';
+
+  @override
+  String get projectMoveNotPossible =>
+      'Dorthin lässt sich das Projekt nicht verschieben.';
+
+  @override
+  String get projectMoveGone =>
+      'Das Projekt oder sein neues übergeordnetes Projekt gibt es nicht mehr.';
+
+  @override
+  String projectMoveRefused(String message) {
+    return 'Der Server hat das Verschieben abgelehnt: $message';
+  }
+
+  @override
+  String get projectMoveFailed => 'Das Projekt konnte nicht verschoben werden.';
+
+  @override
   String get projectUnknownTitle => 'Projekt';
 
   @override
@@ -1416,6 +1490,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get syncProblemColumnMissing => 'Die Spalte gibt es nicht mehr.';
+
+  @override
+  String get syncProblemListNotReorderable =>
+      'Diese Liste kann nicht umsortiert werden.';
+
+  @override
+  String get syncProblemListMissing => 'Die Liste gibt es nicht mehr.';
 
   @override
   String get syncProblemRejected => 'Der Server hat die Änderung abgelehnt.';
@@ -2997,18 +3078,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String boardMovedTo(String column) {
     return 'Nach $column verschoben';
   }
-
-  @override
-  String get boardMoveUp => 'Nach oben verschieben';
-
-  @override
-  String get boardMovedUp => 'Nach oben verschoben';
-
-  @override
-  String get boardMoveDown => 'Nach unten verschieben';
-
-  @override
-  String get boardMovedDown => 'Nach unten verschoben';
 
   @override
   String boardColumnOptionsFor(String column) {

@@ -50,6 +50,13 @@ abstract interface class TasksWritePort {
   /// full bucket is a `DomainError` code 10004, a bucket that is gone or
   /// not one of a manual view's (filter mode) a `NotFound` code 10001 or a
   /// `DomainError` code 10002.
+  ///
+  /// [TaskChanges.positions] follow, per view: the position (v2 `PUT`, v1
+  /// `POST /tasks/{id}/position`) without a read-back. The server may store
+  /// another value (it spreads equal positions, below 0.01 it renumbers the
+  /// view). A view the task cannot be placed in (a read share, another
+  /// project's view, a saved filter's view the task does not match) is a
+  /// `Forbidden`, a view that is gone a `NotFound` code 3014.
   Future<Task> update(int id, TaskChanges changes);
 
   /// A task that is already gone (404 with Vikunja code 4002) counts as
@@ -152,6 +159,29 @@ abstract interface class ProjectViewsWritePort {
   });
 }
 
+abstract interface class ProjectsWritePort {
+  /// Puts the project at [position] under [parentProjectId] (0 for the top
+  /// level) and returns it as stored; every other field stays. A position
+  /// below 0.1 is an [ArgumentError] before any request: the server would
+  /// renumber all siblings, for the top level those of every user.
+  ///
+  /// v2 sends a merge-patch with both fields (an unchanged project answers
+  /// 304 and is read). v1 has only a full replace, which clears what it is
+  /// not sent: the adapter reads the project and posts it back whole.
+  ///
+  /// Reordering needs write permission (`Forbidden` otherwise), a parent
+  /// change admin permission on the project and the new parent
+  /// (`Forbidden` code 1). An archived project or parent is a
+  /// `DomainError` code 3008; the project itself as the parent code 3010,
+  /// one of its descendants code 3011, a pseudo project code 3009. A
+  /// project or parent that does not exist is a `NotFound` code 3001.
+  Future<Project> move(
+    int projectId, {
+    required double position,
+    required int parentProjectId,
+  });
+}
+
 abstract interface class VikunjaWriteClient {
   TasksWritePort get tasks;
   LabelsWritePort get labels;
@@ -159,6 +189,7 @@ abstract interface class VikunjaWriteClient {
   SubscriptionsWritePort get subscriptions;
   BucketsWritePort get buckets;
   ProjectViewsWritePort get views;
+  ProjectsWritePort get projects;
 }
 
 /// [dio] is an authenticated client from `createAuthenticatedDio`; the

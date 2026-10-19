@@ -1147,4 +1147,147 @@ void main() {
       expect(await pendingOf(1), isNull);
     });
   });
+
+  group('list positions', () {
+    const reordered = TaskChanges(positions: {70: 1.5});
+
+    test('are queued and kept as pending, without touching the row', () async {
+      await queue(1, reordered);
+
+      expect(await pendingOf(1), reordered);
+      expect(decodeTaskChanges((await ops()).single.payload), reordered);
+      expect((await db.tasksDao.find(1))!.position, 0);
+    });
+
+    test('merge per view: the later position on a view wins, other views '
+        'and fields stay', () async {
+      await queue(1, reordered);
+      await queue(1, const TaskChanges(title: 'Renamed', positions: {71: 4}));
+      await queue(1, const TaskChanges(positions: {70: 0.75}));
+
+      const merged = TaskChanges(
+        title: 'Renamed',
+        positions: {70: 0.75, 71: 4},
+      );
+      expect(decodeTaskChanges((await ops()).single.payload), merged);
+      expect(await pendingOf(1), merged);
+    });
+
+    test('stay when the task is marked done or open, which no position '
+        'sets back', () async {
+      await queue(1, reordered);
+      await queue(1, done);
+      await queue(1, const TaskChanges(done: false));
+
+      const kept = TaskChanges(done: false, positions: {70: 1.5});
+      expect(decodeTaskChanges((await ops()).single.payload), kept);
+      expect(await pendingOf(1), kept);
+    });
+
+    test('are dropped by a later project move, as they name the previous '
+        "project's views", () async {
+      await queue(1, reordered.merge(favorite));
+
+      await queue(1, const TaskChanges(projectId: 8));
+
+      const moved = TaskChanges(isFavorite: true, projectId: 8);
+      expect(decodeTaskChanges((await ops()).single.payload), moved);
+      expect(await pendingOf(1), moved);
+    });
+
+    test('wait behind a create that has not left the device, and go when it '
+        'moves to another project', () async {
+      final id = await db.outboxDao.queueCreate(
+        const NewTask(projectId: 7, title: 'New'),
+        now: now,
+      );
+      await queue(id, const TaskChanges(title: 'Renamed').merge(reordered));
+
+      var all = await ops();
+      expect(all.map((op) => op.kind), ['createTask', 'updateTask']);
+      expect(decodeNewTask(all.first.payload).title, 'Renamed');
+      expect(decodeTaskChanges(all.last.payload), reordered);
+      expect(await pendingOf(id), reordered);
+
+      await queue(id, const TaskChanges(projectId: 8));
+
+      all = await ops();
+      expect(all.map((op) => op.kind), ['createTask']);
+      expect(decodeNewTask(all.single.payload).projectId, 8);
+      expect(await pendingOf(id), isNull);
+    });
+
+    test('follow the create to the server id', () async {
+      final id = await db.outboxDao.queueCreate(
+        const NewTask(projectId: 7, title: 'New'),
+        now: now,
+      );
+      await queue(id, reordered);
+      final create = (await ops()).first;
+
+      await db.outboxDao.completeCreate(
+        create.id,
+        sampleTask(id: 50, title: 'New', projectId: 7),
+        at: later,
+      );
+
+      final follower = (await ops()).single;
+      expect(follower.taskId, 50);
+      expect(decodeTaskChanges(follower.payload), reordered);
+      expect(await pendingOf(50), reordered);
+    });
+
+    test('a rejected create keeps them queued behind it', () async {
+      final id = await db.outboxDao.queueCreate(
+        const NewTask(projectId: 7, title: 'New'),
+        now: now,
+      );
+      final create = (await ops()).single;
+      await db.outboxDao.markSending(create.id, at: now);
+      await queue(id, const TaskChanges(title: 'Renamed').merge(reordered));
+
+      await db.outboxDao.markFailed(create.id, const ValidationFailed());
+
+      final all = await ops();
+      expect(decodeNewTask(all.first.payload).title, 'Renamed');
+      expect(decodeTaskChanges(all.last.payload), reordered);
+    });
+
+    test('survive the labels and edges a sync forgets', () async {
+      await queue(
+        1,
+        reordered.merge(const TaskChanges(labels: IdSetChange(added: {5}))),
+      );
+      await queue(
+        2,
+        reordered.merge(
+          TaskChanges(
+            relations: RelationChange(
+              added: {const TaskRelationRef(TaskRelationKind.related, 3)},
+            ),
+          ),
+        ),
+      );
+
+      await db.outboxDao.forgetLabels({5});
+      await db.outboxDao.forgetRelatedTasks({3});
+
+      expect(
+        [for (final op in await ops()) decodeTaskChanges(op.payload)],
+        [reordered, reordered],
+      );
+    });
+
+    test('a refused one names its changes in the sync problem', () async {
+      await queue(1, reordered);
+      final op = (await ops()).single;
+      await db.outboxDao.markSending(op.id, at: now);
+
+      await db.outboxDao.markFailed(op.id, const Forbidden());
+
+      final problem = (await db.outboxDao.loadProblems()).single;
+      expect(problem.changes, reordered);
+      expect(await pendingOf(1), reordered);
+    });
+  });
 }

@@ -62,6 +62,7 @@ final class TaskChanges {
     this.reminders,
     this.relations,
     this.kanban,
+    this.positions,
   });
 
   final String? title;
@@ -100,6 +101,10 @@ final class TaskChanges {
   /// endpoints after the body; the server bumps no `updated` for them.
   final Map<int, BucketPlacement>? kanban;
 
+  /// List positions by project view id, sent through the task's position
+  /// endpoint after [kanban]; the server bumps no `updated` for them.
+  final Map<int, double>? positions;
+
   bool get isEmpty =>
       title == null &&
       description == null &&
@@ -118,14 +123,16 @@ final class TaskChanges {
       (assignees?.isEmpty ?? true) &&
       reminders == null &&
       (relations?.isEmpty ?? true) &&
-      (kanban?.isEmpty ?? true);
+      (kanban?.isEmpty ?? true) &&
+      (positions?.isEmpty ?? true);
 
   /// [later] wins where both set a field. A project move in [later] drops
-  /// the earlier placements: they name the previous project's views, and
-  /// the server puts a moved task on top of the new project's buckets. So
-  /// does a [done] in [later] that differs from this one's: the moves go
-  /// after the body, and one into or out of a done bucket would set the
-  /// done state back.
+  /// the earlier placements and positions: they name the previous
+  /// project's views, and the server puts a moved task on top of the new
+  /// project's views. A [done] in [later] that differs from this one's
+  /// drops the earlier placements too: the moves go after the body, and
+  /// one into or out of a done bucket would set the done state back. List
+  /// positions do not touch the done state, so they stay.
   TaskChanges merge(TaskChanges later) => TaskChanges(
     title: later.title ?? title,
     description: later.description ?? description,
@@ -153,6 +160,12 @@ final class TaskChanges {
           when later.projectId != null ||
               (later.done != null && later.done != done) =>
         later.kanban,
+      (final earlier?, final later?) => {...earlier, ...later},
+      (final earlier, null) => earlier,
+      (null, final later) => later,
+    },
+    positions: switch ((positions, later.positions)) {
+      _ when later.projectId != null => later.positions,
       (final earlier?, final later?) => {...earlier, ...later},
       (final earlier, null) => earlier,
       (null, final later) => later,
@@ -186,7 +199,8 @@ final class TaskChanges {
       other.assignees == assignees &&
       _sameReminders(other.reminders, reminders) &&
       other.relations == relations &&
-      _samePlacements(other.kanban, kanban);
+      _sameMaps(other.kanban, kanban) &&
+      _sameMaps(other.positions, positions);
 
   static bool _sameReminders(List<TaskReminder>? a, List<TaskReminder>? b) {
     if (a == null || b == null) return a == b;
@@ -197,14 +211,18 @@ final class TaskChanges {
     return true;
   }
 
-  static bool _samePlacements(
-    Map<int, BucketPlacement>? a,
-    Map<int, BucketPlacement>? b,
-  ) {
+  static bool _sameMaps<V>(Map<int, V>? a, Map<int, V>? b) {
     if (a == null || b == null) return a == b;
     if (a.length != b.length) return false;
     return a.entries.every((entry) => b[entry.key] == entry.value);
   }
+
+  static int? _hashMap<V>(Map<int, V>? map) => switch (map) {
+    final map? => Object.hashAllUnordered(
+      map.entries.map((entry) => Object.hash(entry.key, entry.value)),
+    ),
+    null => null,
+  };
 
   @override
   int get hashCode => Object.hash(
@@ -228,12 +246,8 @@ final class TaskChanges {
       null => null,
     },
     relations,
-    switch (kanban) {
-      final map? => Object.hashAllUnordered(
-        map.entries.map((entry) => Object.hash(entry.key, entry.value)),
-      ),
-      null => null,
-    },
+    _hashMap(kanban),
+    _hashMap(positions),
   );
 
   /// Names the fields set, without user text such as the title.
@@ -258,6 +272,7 @@ final class TaskChanges {
       if (reminders != null) 'reminders: ${reminders!.length}',
       if (relations != null) 'relations',
       if (kanban != null) 'kanban: $kanban',
+      if (positions != null) 'positions: $positions',
     ];
     return 'TaskChanges(${fields.join(', ')})';
   }

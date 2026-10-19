@@ -6,7 +6,6 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
-import 'package:vikunja_mobile/app/theme/hex_color.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
@@ -20,13 +19,15 @@ import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_note.dart';
-import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
 import 'package:vikunja_mobile/features/common/presentation/option_sheet.dart';
 import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
 import 'package:vikunja_mobile/features/projects/application/board_moves.dart';
+import 'package:vikunja_mobile/features/projects/application/list_moves.dart';
 import 'package:vikunja_mobile/features/projects/application/project_list_model.dart';
+import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/projects/presentation/board/project_board.dart';
+import 'package:vikunja_mobile/features/projects/presentation/project_list_body.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_view_labels.dart';
 import 'package:vikunja_mobile/features/sync/application/offline_state.dart';
 import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
@@ -35,9 +36,7 @@ import 'package:vikunja_mobile/features/tasks/application/minimum_priority_provi
 import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/follow/follow_controller.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/relative_time.dart';
-import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_list_actions.dart';
-import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
 
 enum _Action { toggleShowDone, follow }
 
@@ -75,9 +74,10 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
   /// view opens.
   static const _staleAfter = Duration(minutes: 5);
 
-  /// After the board's own moves were sent, it downloads again this much
-  /// later, so the server's positions and done column effects show.
-  static const _afterPlacementsSent = Duration(seconds: 2);
+  /// After the view's own moves were sent, it downloads again this much
+  /// later, so the server's positions (spread apart where equal, or all
+  /// recalculated) and the board's done column effects show.
+  static const _afterQueuedSent = Duration(seconds: 2);
 
   /// Room after the last item of a board's column, to scroll it clear of
   /// the floating action button.
@@ -95,9 +95,9 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
   int? _chosenViewId;
   var _viewId = 0;
   var _showsBoard = false;
-  int? _placementsQueuedIn;
-  Set<int> _queuedPlacementIds = const {};
-  Timer? _afterPlacements;
+  int? _queuedIn;
+  Set<int> _queuedIds = const {};
+  Timer? _afterQueued;
   final _quietlyRefreshed = <int>{};
   final _quietlyRefreshing = <int>{};
   final _quietFailures = <int, Object>{};
@@ -120,7 +120,7 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
 
   @override
   void dispose() {
-    _afterPlacements?.cancel();
+    _afterQueued?.cancel();
     _follow.dispose();
     super.dispose();
   }
@@ -164,9 +164,9 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
     clearLeavingTasks();
     _quietFailures.clear();
     _lastShown = null;
-    _placementsQueuedIn = null;
-    _queuedPlacementIds = const {};
-    _afterPlacements?.cancel();
+    _queuedIn = null;
+    _queuedIds = const {};
+    _afterQueued?.cancel();
   }
 
   static DateTime? _loadedAtOf(Object source) => switch (source) {
@@ -191,22 +191,21 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
     });
   }
 
-  /// Shortly after one of the board's queued placements left the queue
-  /// (sent or discarded), and no other one meanwhile, the board downloads
-  /// again; one that stays queued, failed, holds back nothing.
-  void _followPlacements(int viewId, BoardSource? source) {
-    if (source == null) return;
-    final before = _placementsQueuedIn == viewId
-        ? _queuedPlacementIds
-        : const <int>{};
-    _placementsQueuedIn = viewId;
-    _queuedPlacementIds = source.queued.keys.toSet();
-    if (before.every(_queuedPlacementIds.contains)) return;
-    _afterPlacements?.cancel();
-    _afterPlacements = Timer(_afterPlacementsSent, () {
-      _afterPlacements = null;
-      if (mounted && _showsBoard && _viewId == viewId) {
-        unawaited(_refreshQuietly(viewId, board: true));
+  /// Shortly after one of the view's own queued moves (the board's
+  /// placements, the list's positions; by task id) left the queue (sent or
+  /// discarded), and no other one meanwhile, the view downloads again; one
+  /// that stays queued, failed, holds back nothing.
+  void _followQueued(int viewId, Set<int>? queued, {required bool board}) {
+    if (queued == null) return;
+    final before = _queuedIn == viewId ? _queuedIds : const <int>{};
+    _queuedIn = viewId;
+    _queuedIds = queued;
+    if (before.every(queued.contains)) return;
+    _afterQueued?.cancel();
+    _afterQueued = Timer(_afterQueuedSent, () {
+      _afterQueued = null;
+      if (mounted && _showsBoard == board && _viewId == viewId) {
+        unawaited(_refreshQuietly(viewId, board: board));
       }
     });
   }
@@ -359,17 +358,25 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
       final boardSource = boardSourceProvider(widget.projectId, viewId);
       ref.listen(
         boardSource,
-        (_, next) => _followPlacements(viewId, next.value),
+        (_, next) =>
+            _followQueued(viewId, next.value?.queued.keys.toSet(), board: true),
       );
       source = ref.watch(boardSource);
     } else {
-      source = ref.watch(
-        projectListSourceProvider(
-          widget.projectId,
-          viewId: viewId,
-          includeDone: showsDoneTasks(kind, preferences),
+      final listSource = projectListSourceProvider(
+        widget.projectId,
+        viewId: viewId,
+        includeDone: showsDoneTasks(kind, preferences),
+      );
+      ref.listen(
+        listSource,
+        (_, next) => _followQueued(
+          viewId,
+          next.value?.queuedPositions.keys.toSet(),
+          board: false,
         ),
       );
+      source = ref.watch(listSource);
     }
     final repository = ref.watch(taskRepositoryProvider);
     final now = ref.watch(clockTickProvider);
@@ -377,7 +384,7 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
     final pendingIds =
         ref.watch(pendingTaskIdsProvider).unwrapPrevious().value ?? const {};
     final offline = ref.watch(offlineProvider) != null;
-    final archived = project?.isArchived ?? false;
+    final archived = isArchivedInTree(widget.projectId, projectsById);
     // Until then the view shown may still change.
     final ready =
         _rememberedLoaded &&
@@ -493,16 +500,27 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
           final list = value as ProjectListSource;
           final shownKind = shown?.kind ?? kind;
           final shownPreferences = shown?.preferences ?? preferences;
+          final leaving = leavingTasksIn(list.tasksById);
           final model = buildProjectListModel(
             list,
             kind: shownKind,
             preferences: shownPreferences,
-            leaving: leavingTasksIn(list.tasksById),
+            leaving: leaving,
           );
           final loadedAt = list.snapshot.loadedAt;
-          return _ProjectList(
+          // Before its first download the view's order is made up.
+          final reorderView =
+              loadedAt != null &&
+                  listIsReorderable(
+                    projectId: widget.projectId,
+                    view: shownView,
+                    sort: shownPreferences.sort,
+                    archived: archived,
+                  )
+              ? shownView
+              : null;
+          return ProjectListBody(
             projectId: widget.projectId,
-            project: project,
             projectsById: projectsById,
             model: model,
             source: list,
@@ -536,6 +554,19 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
                 unawaited(setTaskDone(task, done: done)),
             onFavoriteChanged: (task, {required favorite}) =>
                 unawaited(setTaskFavorite(task, favorite: favorite)),
+            leavingIds: leaving.keys.toSet(),
+            onReorder: reorderView == null || repository == null
+                ? null
+                : (positions) => unawaited(() async {
+                    for (final MapEntry(key: taskId, value: position)
+                        in positions.entries) {
+                      await repository.positionTask(
+                        taskId,
+                        viewId: reorderView.id,
+                        position: position,
+                      );
+                    }
+                  }()),
           );
         },
       ),
@@ -605,171 +636,6 @@ class _ViewSwitcher extends StatelessWidget {
         ],
       ),
     );
-  }
-}
-
-class _ProjectList extends StatelessWidget {
-  const new({
-    required this.projectId,
-    required this.project,
-    required this.projectsById,
-    required this.model,
-    required this.source,
-    required this.kind,
-    required this.view,
-    required this.preferences,
-    required this.offline,
-    required this.downloadFailed,
-    required this.header,
-    required this.now,
-    required this.minimumPriority,
-    required this.pendingIds,
-    required this.onDoneChanged,
-    required this.onFavoriteChanged,
-  });
-
-  final int projectId;
-  final Project? project;
-  final Map<int, Project> projectsById;
-  final ProjectListModel model;
-  final ProjectListSource source;
-  final ViewFilterKind kind;
-  final ProjectView? view;
-  final ViewPreferences preferences;
-
-  /// The device is offline, as far as the last sync or download knows.
-  final bool offline;
-
-  /// The view's download failed for a reason other than the connection.
-  final bool downloadFailed;
-  final Widget? header;
-  final DateTime now;
-  final int minimumPriority;
-  final Set<int> pendingIds;
-  final void Function(Task task, {required bool done}) onDoneChanged;
-  final void Function(Task task, {required bool favorite}) onFavoriteChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    if (model.isEmpty) {
-      return CenteredScrollView(header: header, child: _emptyState(l10n));
-    }
-    final doneRows = model.doneRows ?? const [];
-    return CustomScrollView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      slivers: [
-        if (header case final header?) NoticeSliver(notice: header),
-        _rows(model.rows),
-        if (doneRows.isNotEmpty) ...[
-          SliverToBoxAdapter(
-            child: ListSectionHeader(
-              title: l10n.projectTasksDoneSection,
-              count: doneRows.where((row) => row.depth == 0).length,
-            ),
-          ),
-          _rows(doneRows),
-        ],
-        // Room for the floating action button below the last row.
-        const SliverSafeArea(
-          top: false,
-          sliver: SliverToBoxAdapter(child: SizedBox(height: 88)),
-        ),
-      ],
-    );
-  }
-
-  Widget _rows(List<ProjectListRow> rows) {
-    // A subtask with two parents in the list is in it twice.
-    final occurrences = <int, int>{};
-    final keys = [
-      for (final row in rows)
-        ValueKey((
-          row.task.id,
-          occurrences.update(
-            row.task.id,
-            (count) => count + 1,
-            ifAbsent: () => 0,
-          ),
-        )),
-    ];
-    return SliverList.builder(
-      itemCount: rows.length,
-      itemBuilder: (context, index) {
-        final row = rows[index];
-        final task = row.task;
-        final elsewhere = task.projectId == projectId
-            ? null
-            : projectsById[task.projectId];
-        // The server refuses changes to the tasks of an archived project.
-        final archived = projectsById[task.projectId]?.isArchived ?? false;
-        return TaskRow(
-          key: keys[index],
-          task: task,
-          now: now,
-          minimumPriority: minimumPriority,
-          depth: row.depth,
-          parentTitle: row.parent?.title,
-          projectTitle: elsewhere?.displayTitle(context.l10n),
-          projectColor: parseHexColor(elsewhere?.hexColor ?? ''),
-          pending: pendingIds.contains(task.id),
-          onTap: () => unawaited(showTaskDetail(context, task: task)),
-          onDoneChanged: archived
-              ? null
-              : (done) => onDoneChanged(task, done: done),
-          onFavoriteChanged: archived
-              ? null
-              : (favorite) => onFavoriteChanged(task, favorite: favorite),
-        );
-      },
-    );
-  }
-
-  Widget _emptyState(AppLocalizations l10n) {
-    final filter = describeViewFilter(view?.filter);
-    return switch (kind) {
-      ViewFilterKind.other when source.snapshot.loadedAt == null && offline =>
-        EmptyState(
-          icon: Icons.cloud_download_outlined,
-          title: l10n.projectViewNotLoadedTitle,
-          body: l10n.projectViewNotLoadedBody(filter),
-        ),
-      ViewFilterKind.other
-          when source.snapshot.loadedAt == null && downloadFailed =>
-        EmptyState(
-          icon: Icons.cloud_off_outlined,
-          title: l10n.projectViewDownloadFailedTitle,
-          body: l10n.projectViewDownloadFailedBody(filter),
-        ),
-      ViewFilterKind.other when source.snapshot.loadedAt == null => EmptyState(
-        icon: Icons.cloud_download_outlined,
-        title: l10n.projectViewDownloadingTitle,
-        body: l10n.projectViewDownloadingBody(filter),
-      ),
-      ViewFilterKind.other => EmptyState(
-        icon: Icons.filter_alt_outlined,
-        title: l10n.projectViewEmptyTitle,
-        body: l10n.projectViewEmptyBody,
-      ),
-      ViewFilterKind.doneOnly => EmptyState(
-        icon: Icons.task_alt,
-        title: l10n.projectTasksEmptyDoneTitle,
-        body: l10n.projectTasksEmptyDoneBody,
-      ),
-      ViewFilterKind.openOnly
-          when !preferences.showDone &&
-              (source.projectTasks.isNotEmpty || source.omitsDoneTasks) =>
-        EmptyState(
-          icon: Icons.task_alt,
-          title: l10n.projectTasksEmptyTitle,
-          body: l10n.projectTasksEmptyBody,
-        ),
-      _ => EmptyState(
-        icon: Icons.task_alt,
-        title: l10n.projectTasksEmptyAllTitle,
-        body: l10n.projectTasksEmptyAllBody,
-      ),
-    };
   }
 }
 

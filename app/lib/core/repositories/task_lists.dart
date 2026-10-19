@@ -74,6 +74,7 @@ final class ProjectListSource {
     this.tasksById = const {},
     this.snapshot = const ListSnapshot(),
     this.omitsDoneTasks = false,
+    this.queuedPositions = const {},
   });
 
   /// The project's tasks: every one, or without the done ones the view's
@@ -89,6 +90,10 @@ final class ProjectListSource {
 
   /// The project has done tasks that [projectTasks] leaves out.
   final bool omitsDoneTasks;
+
+  /// The positions queued for this view and not yet sent, by task id; they
+  /// win over the [snapshot]'s in the manual order.
+  final Map<int, double> queuedPositions;
 }
 
 typedef BoardSlot = ({int bucketId, double position});

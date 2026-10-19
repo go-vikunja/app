@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "PATCH /api/v2/projects/1036",
+  "status": 412,
+  "headers": {
+    "content-type": "application/problem+json"
+  },
+  "body": "{\"$schema\":\"http://localhost/api/v2/schemas/VikunjaErrorModel.json\",\"title\":\"Precondition Failed\",\"status\":412,\"detail\":\"This project cannot belong a dynamically generated project.\",\"code\":3009}\n"
+}

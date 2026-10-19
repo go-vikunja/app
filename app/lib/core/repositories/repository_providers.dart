@@ -281,6 +281,7 @@ ProjectRepository accountProjectRepository(Ref ref, String accountId) {
   final repository = LocalProjectRepository(
     ref.watch(appDatabaseProvider(accountId)),
     ref.watch(syncEngineProvider(accountId)),
+    ref.watch(writeClientProvider(accountId)),
   );
   ref.onDispose(repository.dispose);
   return repository;

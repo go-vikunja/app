@@ -17,6 +17,7 @@ import 'package:vikunja_mobile/core/db/watch_tables.dart';
 import 'package:vikunja_mobile/core/outbox/apply_task_changes.dart';
 import 'package:vikunja_mobile/core/outbox/task_changes_json.dart';
 import 'package:vikunja_mobile/core/outbox/task_relation_inverse.dart';
+import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/sync/archived_projects.dart';
 
@@ -169,23 +170,24 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
 
   /// What a project's list view is built from: the project's tasks (done
   /// ones only with [includeDone] or when the view's last download has
-  /// them), every task reachable from them as a subtask in any project, and
-  /// the view's last download ([listKey]).
+  /// them), every task reachable from them as a subtask in any project, the
+  /// view's last download and the positions queued for the view; [viewId]
+  /// 0 stands for a project without a list view.
   Stream<ProjectListSource> watchProjectList(
-    int projectId,
-    String listKey, {
+    int projectId, {
+    required int viewId,
     bool includeDone = true,
-  }) => watchTables({
-    ..._readTables,
-    listSnapshots,
-    listSnapshotTasks,
-  }, () => loadProjectList(projectId, listKey, includeDone: includeDone));
+  }) => watchTables(
+    {..._readTables, listSnapshots, listSnapshotTasks},
+    () => loadProjectList(projectId, viewId: viewId, includeDone: includeDone),
+  );
 
   Future<ProjectListSource> loadProjectList(
-    int projectId,
-    String listKey, {
+    int projectId, {
+    required int viewId,
     bool includeDone = true,
   }) async {
+    final listKey = listKeyFor(projectId: projectId, viewId: viewId);
     final inProject = tasks.projectId.equals(projectId) & _visible;
     final projectTasks = await _load(
       where: includeDone
@@ -216,7 +218,26 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
       snapshot: await attachedDatabase.listSnapshotsDao.load(listKey),
       omitsDoneTasks:
           !includeDone && await _hasDoneTasksOutside(projectId, listKey),
+      queuedPositions: viewId == 0
+          ? const {}
+          : await _queuedPositions(projectId, viewId),
     );
+  }
+
+  /// The unsent positions of the project's tasks on the view, by task id.
+  Future<Map<int, double>> _queuedPositions(int projectId, int viewId) async {
+    final query = selectOnly(tasks)
+      ..addColumns([tasks.id, tasks.pendingChanges])
+      ..where(
+        tasks.projectId.equals(projectId) &
+            _visible &
+            tasks.pendingChanges.like('%"positions"%'),
+      );
+    return {
+      for (final row in await query.get())
+        row.read(tasks.id)!: ?decodeTaskChanges(row.read(tasks.pendingChanges)!)
+            .positions?[viewId],
+    };
   }
 
   /// What a kanban view's board is built from, see [BoardSource].

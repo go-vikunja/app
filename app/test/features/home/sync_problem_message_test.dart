@@ -9,6 +9,7 @@ void main() {
   SyncProblem problem(
     VikunjaFailure failure, {
     OutboxOperationKind kind = OutboxOperationKind.updateTask,
+    TaskChanges? changes,
   }) => SyncProblem(
     operationId: 'op',
     kind: kind,
@@ -16,6 +17,7 @@ void main() {
     taskTitle: 'Pay the bill',
     failure: failure,
     failedAt: DateTime.utc(2026, 10, 10, 12),
+    changes: changes,
   );
 
   test('names what failed by the kind of change', () {
@@ -111,6 +113,54 @@ void main() {
     expect(
       describeSyncProblem(de, problem(const DomainError(412, code: 10004))),
       '${de.syncProblemUpdateFailed} Diese Spalte ist voll.',
+    );
+  });
+
+  test('explains a reorder the list refused, where only the position '
+      'write can have been refused', () {
+    const reorder = TaskChanges(positions: {70: 0.5});
+    String describe(VikunjaFailure failure, TaskChanges changes) =>
+        describeSyncProblem(en, problem(failure, changes: changes));
+
+    expect(
+      describe(const Forbidden(), reorder),
+      endsWith(en.syncProblemListNotReorderable),
+    );
+    expect(
+      describe(const NotFound(code: 3014), reorder),
+      endsWith(en.syncProblemListMissing),
+    );
+    expect(
+      describe(
+        const NotFound(code: 3014),
+        reorder.merge(const TaskChanges(title: 'Renamed')),
+      ),
+      endsWith(en.syncProblemListMissing),
+    );
+    expect(
+      describe(
+        const Forbidden(),
+        reorder.merge(const TaskChanges(title: 'Renamed')),
+      ),
+      endsWith(en.syncProblemForbidden),
+    );
+    expect(
+      describe(
+        const NotFound(code: 3014),
+        reorder.merge(
+          const TaskChanges(kanban: {80: BucketPlacement(bucketId: 2)}),
+        ),
+      ),
+      endsWith(en.syncProblemColumnMissing),
+    );
+    expect(
+      describe(const DomainError(412, code: 3008), reorder),
+      endsWith(en.syncProblemProjectArchived),
+    );
+    expect(
+      describeSyncProblem(de, problem(const Forbidden(), changes: reorder)),
+      '${de.syncProblemUpdateFailed} Diese Liste kann nicht umsortiert '
+      'werden.',
     );
   });
 

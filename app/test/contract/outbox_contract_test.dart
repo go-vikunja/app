@@ -107,6 +107,9 @@ final class _FlakyWriteClient implements VikunjaWriteClient {
 
   @override
   ProjectViewsWritePort get views => _real.views;
+
+  @override
+  ProjectsWritePort get projects => _real.projects;
 }
 
 final class _FlakyTasks implements TasksWritePort {

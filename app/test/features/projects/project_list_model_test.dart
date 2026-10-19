@@ -39,6 +39,7 @@ void main() {
 
   ProjectListSource source({
     Map<int, double> positions = const {},
+    Map<int, double> queuedPositions = const {},
     DateTime? loadedAt,
     List<Task>? tasks,
   }) {
@@ -56,6 +57,7 @@ void main() {
         grandchild.id: grandchild,
       },
       snapshot: ListSnapshot(positions: positions, loadedAt: loadedAt),
+      queuedPositions: queuedPositions,
     );
   }
 
@@ -99,6 +101,43 @@ void main() {
             if (row.depth == 0) row.task.id,
         ],
         [8, 6, 1, 7],
+      );
+    });
+
+    test('a queued position wins over the downloaded one, also for a task '
+        'the download did not have', () {
+      final model = buildProjectListModel(
+        source(
+          positions: {1: 10, 7: 20, 6: 5},
+          queuedPositions: {6: 15, 8: 30},
+        ),
+        kind: ViewFilterKind.openOnly,
+        preferences: const ViewPreferences(),
+      );
+
+      expect(
+        [
+          for (final row in model.rows)
+            if (row.depth == 0) row.task.id,
+        ],
+        [1, 6, 7, 8],
+      );
+    });
+
+    test('a queued position adds no task to a view the device cannot '
+        'evaluate', () {
+      final model = buildProjectListModel(
+        source(positions: {7: 20, 1: 10}, queuedPositions: {8: 15, 7: 5}),
+        kind: ViewFilterKind.other,
+        preferences: const ViewPreferences(),
+      );
+
+      expect(
+        [
+          for (final row in model.rows)
+            if (row.depth == 0) row.task.id,
+        ],
+        [7, 1],
       );
     });
 

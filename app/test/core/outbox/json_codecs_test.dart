@@ -220,6 +220,34 @@ void main() {
         {7: const BucketPlacement(bucketId: 4)},
       );
     });
+
+    test('list positions are keyed by view, beside the kanban placements', () {
+      const changes = TaskChanges(
+        kanban: {80: BucketPlacement(bucketId: 3)},
+        positions: {71: 0.5, 70: 32768},
+      );
+
+      final json = encodeTaskChanges(changes);
+
+      expect(jsonDecode(json), {
+        'kanban': {
+          '80': {'bucket_id': 3},
+        },
+        'positions': {'70': 32768.0, '71': 0.5},
+      });
+      expect(json.indexOf('"70"'), lessThan(json.indexOf('"71"')));
+      expect(decodeTaskChanges(json), changes);
+      expect(decodeTaskChanges('{"positions":{"5":7}}').positions, {5: 7.0});
+    });
+
+    test('a payload from before step 22 has no positions; one without a '
+        'view or a number is skipped', () {
+      expect(decodeTaskChanges('{"done":true}').positions, isNull);
+      expect(
+        decodeTaskChanges('{"positions":{"x":1,"6":"2","7":3.5}}').positions,
+        {7: 3.5},
+      );
+    });
   });
 
   group('NewTask', () {

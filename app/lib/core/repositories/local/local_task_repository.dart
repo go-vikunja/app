@@ -7,7 +7,6 @@ import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/outbox/outbox_sender.dart';
 import 'package:vikunja_mobile/core/outbox/pending_task_ids_source.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
-import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/local/shared_latest.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
@@ -86,7 +85,7 @@ final class LocalTaskRepository
     bool includeDone = true,
   }) => _db.tasksDao.watchProjectList(
     projectId,
-    listKeyFor(projectId: projectId, viewId: viewId),
+    viewId: viewId,
     includeDone: includeDone,
   );
 
@@ -139,6 +138,13 @@ final class LocalTaskRepository
     required BucketPlacement placement,
     bool? done,
   }) => _queue(taskId, TaskChanges(kanban: {viewId: placement}, done: done));
+
+  @override
+  Future<void> positionTask(
+    int taskId, {
+    required int viewId,
+    required double position,
+  }) => _queue(taskId, TaskChanges(positions: {viewId: position}));
 
   @override
   Stream<List<Task>> watchFavoriteTasks() => _db.tasksDao.watchFavoriteTasks();

@@ -267,11 +267,11 @@ class _ProjectBoardState extends ConsumerState<ProjectBoard> {
             l10n.boardMovedTo(nameOf(place, other.bucket)),
           ),
       if (reorders && index > 0)
-        CustomSemanticsAction(label: l10n.boardMoveUp): () =>
-            moveTo(column.bucket.id, index - 1, l10n.boardMovedUp),
+        CustomSemanticsAction(label: l10n.moveUp): () =>
+            moveTo(column.bucket.id, index - 1, l10n.movedUp),
       if (reorders && index < lowest)
-        CustomSemanticsAction(label: l10n.boardMoveDown): () =>
-            moveTo(column.bucket.id, index + 1, l10n.boardMovedDown),
+        CustomSemanticsAction(label: l10n.moveDown): () =>
+            moveTo(column.bucket.id, index + 1, l10n.movedDown),
     };
   }
 
@@ -459,7 +459,7 @@ class _ProjectBoardState extends ConsumerState<ProjectBoard> {
         drag.task,
         toBucketId: target.bucketId,
         index: index,
-        moved: index < from ? l10n.boardMovedUp : l10n.boardMovedDown,
+        moved: index < from ? l10n.movedUp : l10n.movedDown,
       ),
     );
   }

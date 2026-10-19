@@ -62,6 +62,20 @@ List<ProjectNode> buildProjectTree(
   ];
 }
 
+/// Archived itself, or below an archived project, which the server treats
+/// alike.
+bool isArchivedInTree(int projectId, Map<int, Project> projectsById) {
+  final seen = <int>{};
+  for (
+    var project = projectsById[projectId];
+    project != null && seen.add(project.id);
+    project = projectsById[project.parentProjectId]
+  ) {
+    if (project.isArchived) return true;
+  }
+  return false;
+}
+
 List<Project> favouriteProjects(List<Project> projects) => [
   for (final project in projects)
     if (project.isFavorite && !project.isArchived && !project.isPseudo) project,

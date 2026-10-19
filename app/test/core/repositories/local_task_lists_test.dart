@@ -254,6 +254,27 @@ void main() {
       expect(read.requests, hasLength(3));
     });
 
+    test('a reorder is queued for the view and shows at once; once sent, '
+        'the download holds it', () async {
+      await db.listSnapshotsDao.replace('view:70', {2: 1, 1: 2}, loadedAt: now);
+      write.serverTasks.addAll({1: tasks[0], 2: tasks[1]});
+      sender.pause();
+
+      await repository.positionTask(1, viewId: 70, position: 0.5);
+
+      var source = await repository.watchProjectList(7, viewId: 70).first;
+      expect(source.queuedPositions, {1: 0.5});
+      expect(source.snapshot.positions, {2: 1, 1: 2});
+      expect(write.requests, isEmpty);
+
+      await sender.resume();
+
+      expect(write.requests, ['update 1', 'position 1 view 70 0.5']);
+      source = await repository.watchProjectList(7, viewId: 70).first;
+      expect(source.queuedPositions, isEmpty);
+      expect(source.snapshot.taskIds, [1, 2]);
+    });
+
     test('a refresh without a list view only syncs', () async {
       await repository.refreshProjectList(7, viewId: 0);
 

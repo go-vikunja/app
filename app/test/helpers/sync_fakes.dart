@@ -31,6 +31,7 @@ import 'activity_fakes.dart';
 import 'bucket_fakes.dart';
 import 'list_preferences_fakes.dart';
 import 'realtime_fakes.dart';
+import 'sample_data.dart';
 import 'subscription_fakes.dart';
 import 'task_details_fakes.dart';
 import 'task_edits.dart';
@@ -216,6 +217,43 @@ final class FakeProjectRepository implements ProjectRepository {
     _savedFilterChanges.stream,
   ).map(sortedByTitle);
 
+  /// Every `moveProject`, in order, recorded before anything else;
+  /// [beforeMove] can hold one. [moveFailure] is thrown instead while set,
+  /// and nothing changes; else the project takes the position and parent
+  /// in [all], like the database once the server answered. A position
+  /// below 0.1 is an `ArgumentError`, as in the real repository.
+  final List<({int projectId, double position, int parentProjectId})> moves =
+      [];
+  Future<void> Function()? beforeMove;
+  Exception? moveFailure;
+
+  @override
+  Future<void> moveProject(
+    int projectId, {
+    required double position,
+    required int parentProjectId,
+  }) async {
+    moves.add((
+      projectId: projectId,
+      position: position,
+      parentProjectId: parentProjectId,
+    ));
+    await beforeMove?.call();
+    if (!(position >= 0.1)) throw ArgumentError.value(position, 'position');
+    if (moveFailure case final failure?) throw failure;
+    all = [
+      for (final project in _all)
+        if (project.id == projectId)
+          movedProject(
+            project,
+            position: position,
+            parentProjectId: parentProjectId,
+          )
+        else
+          project,
+    ];
+  }
+
   @override
   void dispose() {
     disposed = true;
@@ -392,7 +430,40 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
       tasksById: reachable,
       snapshot: snapshot,
       omitsDoneTasks: inProject.any((task) => !loaded(task)),
+      queuedPositions: Map.unmodifiable(_queuedPositions[viewId] ?? const {}),
     );
+  }
+
+  final Map<int, Map<int, double>> _queuedPositions = {};
+
+  /// The list positions queued per view id, by task id: what
+  /// [positionTask] and `updateTask` queued, until a test sets them
+  /// otherwise (an empty map: all sent or discarded).
+  Map<int, Map<int, double>> get queuedPositions => {
+    for (final MapEntry(:key, :value) in _queuedPositions.entries)
+      key: Map.unmodifiable(value),
+  };
+
+  void setQueuedPositions(int viewId, Map<int, double> positions) {
+    _queuedPositions[viewId] = {...positions};
+    _notify();
+  }
+
+  /// What `positionTask` was given, in order, as `(taskId, viewId,
+  /// position)`; [writes] has each as `position 1 view 11 at 32768.0`. The
+  /// position is queued for the view (later ones win).
+  final List<(int, int, double)> positions = [];
+
+  @override
+  Future<void> positionTask(
+    int taskId, {
+    required int viewId,
+    required double position,
+  }) async {
+    positions.add((taskId, viewId, position));
+    final id = remaps[taskId] ?? taskId;
+    (_queuedPositions[viewId] ??= {})[id] = position;
+    await _write('position $taskId view $viewId at $position', (task) => task);
   }
 
   @override
@@ -651,7 +722,8 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
 
   /// Every write, in order, as `create -1 Title`, `update 1`,
   /// `setDone 1 true`, `undoDone 1`, `setFavorite 2 false`, `delete 3`,
-  /// `place …` (see [placements]), `retry <op>`, `discard <op>` or
+  /// `place …` (see [placements]), `position …` (see [positions]),
+  /// `retry <op>`, `discard <op>` or
   /// `sendPending`. A write applies to the
   /// task at once, like the local database; what counts as pending is the
   /// test's to say with [pendingChanges] and [pendingTaskIds].
@@ -757,6 +829,11 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
         queued[serverId] = placement;
       }
     }
+    for (final queued in _queuedPositions.values) {
+      if (queued.remove(localId) case final position?) {
+        queued[serverId] = position;
+      }
+    }
     Task renamed(Task task) =>
         task.id == localId ? taskWithId(task, serverId) : task;
     all = [
@@ -772,7 +849,8 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
 
   /// Relations apply to both tasks when the other one is in [all], as the
   /// server keeps the inverse edge; a temporary id that was remapped is
-  /// followed; kanban placements are queued like [placeTask]'s.
+  /// followed; kanban placements and list positions are queued like
+  /// [placeTask]'s and [positionTask]'s.
   @override
   Future<void> updateTask(int taskId, TaskChanges changes) async {
     updates.add((taskId, changes));
@@ -790,6 +868,10 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
     for (final MapEntry(key: viewId, value: placement)
         in changes.kanban?.entries ?? _noPlacements) {
       (_queuedPlacements[viewId] ??= {})[id] = placement;
+    }
+    for (final MapEntry(key: viewId, value: position)
+        in changes.positions?.entries ?? const <MapEntry<int, double>>[]) {
+      (_queuedPositions[viewId] ??= {})[id] = position;
     }
     await _write(
       'update $taskId',
