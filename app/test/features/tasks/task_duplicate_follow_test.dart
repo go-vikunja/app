@@ -57,13 +57,15 @@ void main() {
     ) async {
       await openDetail(tester, 'Bare task');
 
-      expect(data.subscriptions.calls, ['forTask 2']);
+      // The state comes with the sheet's one read of the details.
+      expect(data.details.calls, ['details 2']);
+      expect(data.subscriptions.calls, isEmpty);
       expect(inSheet(find.byTooltip(en.followTask)), findsOneWidget);
       expect(bell(tester).isSelected, isFalse);
 
       await tapBell(tester);
 
-      expect(data.subscriptions.calls, ['forTask 2', 'setTask 2 true']);
+      expect(data.subscriptions.calls, ['setTask 2 true']);
       expect(inSheet(find.byTooltip(en.unfollowTask)), findsOneWidget);
       expect(bell(tester).isSelected, isTrue);
     });
@@ -71,10 +73,9 @@ void main() {
     testWidgets('its own subscription: on, and a tap unfollows', (
       tester,
     ) async {
-      data.subscriptions.taskStates[2] = const Subscription(
-        entity: SubscriptionEntity.task,
-        entityId: 2,
-      );
+      const own = Subscription(entity: SubscriptionEntity.task, entityId: 2);
+      data.subscriptions.taskStates[2] = own;
+      data.details.detailsByTask[2] = const TaskDetails(subscription: own);
       await openDetail(tester, 'Bare task');
 
       expect(bell(tester).isSelected, isTrue);
@@ -88,9 +89,13 @@ void main() {
 
     testWidgets('inherited from the project: on with a note, and unfollowing '
         'asks whether to stop following just this task', (tester) async {
-      data.subscriptions.taskStates[2] = const Subscription(
+      const inherited = Subscription(
         entity: SubscriptionEntity.project,
         entityId: 1,
+      );
+      data.subscriptions.taskStates[2] = inherited;
+      data.details.detailsByTask[2] = const TaskDetails(
+        subscription: inherited,
       );
       await openDetail(tester, 'Bare task');
 
@@ -105,23 +110,23 @@ void main() {
       expect(find.text(en.followInheritedTaskBody('Work')), findsOneWidget);
       await tester.tap(find.text(en.cancel));
       await tester.pumpAndSettle();
-      expect(data.subscriptions.calls, ['forTask 2']);
+      expect(data.subscriptions.calls, isEmpty);
       expect(bell(tester).isSelected, isTrue);
 
       await tapBell(tester);
       await tester.tap(find.text(en.followInheritedConfirm));
       await tester.pumpAndSettle();
 
-      expect(data.subscriptions.calls, ['forTask 2', 'setTask 2 false']);
+      expect(data.subscriptions.calls, ['setTask 2 false']);
       expect(bell(tester).isSelected, isFalse);
       expect(inSheet(find.text(en.followingViaProject('Work'))), findsNothing);
     });
 
     testWidgets('offline the bell is a dimmed plain button, not an unselected '
         'toggle; a tap says why and asks again', (tester) async {
-      data.subscriptions.readFailure = const NetworkFailure(
-        NetworkProblem.unreachable,
-      );
+      const offline = NetworkFailure(NetworkProblem.unreachable);
+      data.details.detailsFailure = offline;
+      data.subscriptions.readFailure = offline;
       await openDetail(tester, 'Bare task');
 
       expect(bell(tester).isSelected, isNull);
@@ -129,13 +134,15 @@ void main() {
       expect(inSheet(find.byTooltip(en.followTaskUnavailable)), findsOneWidget);
       expect(inSheet(find.byTooltip(en.followTask)), findsNothing);
 
+      // The bell asks again on its own, without the rest of the details.
       await tapBell(tester);
       expect(inSheet(find.text(en.followNeedsConnection)), findsOneWidget);
-      expect(data.subscriptions.calls, ['forTask 2', 'forTask 2']);
+      expect(data.subscriptions.calls, ['forTask 2']);
 
       data.subscriptions.readFailure = null;
       await tapBell(tester);
-      expect(data.subscriptions.calls, ['forTask 2', 'forTask 2', 'forTask 2']);
+      expect(data.subscriptions.calls, ['forTask 2', 'forTask 2']);
+      expect(data.details.calls, ['details 2']);
 
       await tapBell(tester);
       expect(data.subscriptions.calls.last, 'setTask 2 true');
@@ -144,7 +151,7 @@ void main() {
 
     testWidgets('the bell waits while the state loads', (tester) async {
       final loaded = Completer<void>();
-      data.subscriptions.beforeCall = (_) => loaded.future;
+      data.details.beforeCall = (_) => loaded.future;
       await openDetail(tester, 'Bare task');
 
       expect(bell(tester).onPressed, isNull);
@@ -159,6 +166,7 @@ void main() {
         'asking the server', (tester) async {
       await openDetail(tester, 'Fresh task');
 
+      expect(data.details.calls, isEmpty);
       expect(data.subscriptions.calls, isEmpty);
       expect(bell(tester).isSelected, isNull);
       expect(inSheet(find.byTooltip(en.followTaskUnavailable)), findsOneWidget);
@@ -176,9 +184,9 @@ void main() {
       data.tasks.remapTask(-1, 40);
       await tester.pumpAndSettle();
 
-      expect(data.subscriptions.calls, ['forTask 40']);
+      expect(data.details.calls, ['details 40']);
       await tapBell(tester);
-      expect(data.subscriptions.calls.last, 'setTask 40 true');
+      expect(data.subscriptions.calls, ['setTask 40 true']);
     });
 
     testWidgets('a failed change says so and keeps the state', (tester) async {

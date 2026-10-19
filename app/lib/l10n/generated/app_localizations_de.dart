@@ -886,11 +886,6 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String taskDetailIdentifierInProject(String identifier, String project) {
-    return '$identifier in $project';
-  }
-
-  @override
   String get taskDetailDueDate => 'Fällig am';
 
   @override
@@ -898,9 +893,6 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get taskDetailEndDate => 'Enddatum';
-
-  @override
-  String get taskDetailDoneAt => 'Erledigt am';
 
   @override
   String get taskDetailPriority => 'Priorität';
@@ -2805,4 +2797,167 @@ class AppLocalizationsDe extends AppLocalizations {
   String taskSubtaskOfSemantics(String parent) {
     return 'Unteraufgabe von $parent';
   }
+
+  @override
+  String get linkCannotOpen => 'Dieser Link lässt sich nicht öffnen';
+
+  @override
+  String get richTextImage => 'Bild';
+
+  @override
+  String richTextImageFrom(String host) {
+    return 'Bild von $host';
+  }
+
+  @override
+  String get richTextImageFailed => 'Das Bild konnte nicht geladen werden';
+
+  @override
+  String get richTextImageUnsupported =>
+      'Dieses Bild kann hier nicht angezeigt werden';
+
+  @override
+  String get richTextShowImage => 'Im Vollbild zeigen';
+
+  @override
+  String get richTextOpensInBrowser => 'Öffnet im Browser';
+
+  @override
+  String richTextReplyTo(String author) {
+    return 'Antwort auf $author';
+  }
+
+  @override
+  String get imageViewerClose => 'Bild schließen';
+
+  @override
+  String get taskDetailDetailsOffline =>
+      'Anhänge, Kommentare und Reaktionen brauchen eine Verbindung';
+
+  @override
+  String get taskDetailDetailsFailed =>
+      'Anhänge, Kommentare und Reaktionen konnten nicht geladen werden';
+
+  @override
+  String get taskDetailAttachments => 'Anhänge';
+
+  @override
+  String get taskDetailCoverImage => 'Titelbild';
+
+  @override
+  String taskDetailComments(int count) {
+    return 'Kommentare ($count)';
+  }
+
+  @override
+  String get taskDetailShowComments => 'Kommentare anzeigen';
+
+  @override
+  String get taskDetailMoreComments => 'Weitere Kommentare laden';
+
+  @override
+  String get commentsOldestFirst => 'Älteste zuerst';
+
+  @override
+  String get commentsNewestFirst => 'Neueste zuerst';
+
+  @override
+  String get commentsChangeOrder => 'Reihenfolge ändern';
+
+  @override
+  String get commentsLoading => 'Kommentare werden geladen …';
+
+  @override
+  String get commentsNeedConnection => 'Kommentare brauchen eine Verbindung';
+
+  @override
+  String get commentsFailed => 'Kommentare konnten nicht geladen werden';
+
+  @override
+  String commentEdited(String when) {
+    return 'bearbeitet $when';
+  }
+
+  @override
+  String reactionByOne(String user, String reaction) {
+    return '$user hat mit $reaction reagiert';
+  }
+
+  @override
+  String reactionBySeveral(String users, String lastUser, String reaction) {
+    return '$users und $lastUser haben mit $reaction reagiert';
+  }
+
+  @override
+  String reactionByMany(String users, int count, String reaction) {
+    return '$users und $count weitere haben mit $reaction reagiert';
+  }
+
+  @override
+  String taskDetailCreatedBy(String when, String name) {
+    return 'Erstellt $when von $name';
+  }
+
+  @override
+  String taskDetailCreated(String when) {
+    return 'Erstellt $when';
+  }
+
+  @override
+  String taskDetailUpdated(String when) {
+    return 'Aktualisiert $when';
+  }
+
+  @override
+  String taskDetailDoneWhen(String when) {
+    return 'Erledigt $when';
+  }
+
+  @override
+  String get taskDetailOpenProjectHint => 'Öffnet das Projekt';
+
+  @override
+  String get taskOpenNotFound => 'Diese Aufgabe wurde nicht gefunden';
+
+  @override
+  String get taskOpenForbidden => 'Du hast keinen Zugriff auf diese Aufgabe';
+
+  @override
+  String get taskOpenOffline =>
+      'Diese Aufgabe ist nicht auf diesem Gerät. Verbinde dich, um sie zu öffnen.';
+
+  @override
+  String get taskOpenFailed => 'Diese Aufgabe konnte nicht geöffnet werden';
+
+  @override
+  String get deepLinkPickAccountTitle => 'In welchem Konto öffnen?';
+
+  @override
+  String get deepLinkPickAccountBody =>
+      'Diese Aufgabe ist in mehreren deiner Konten.';
+
+  @override
+  String get richTextImageOffline => 'Das Bild braucht eine Verbindung';
+
+  @override
+  String commentsLoaded(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Kommentare geladen',
+      one: '1 Kommentar geladen',
+      zero: 'Keine weiteren Kommentare',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get taskOpening => 'Aufgabe wird geöffnet…';
+
+  @override
+  String get deepLinkSwitchAccountTitle => 'Konto wechseln?';
+
+  @override
+  String get deepLinkSwitchAccountBody =>
+      'Diese Aufgabe ist in einem anderen deiner Konten. Wähl es aus, um zu wechseln und die Aufgabe zu öffnen.';
 }

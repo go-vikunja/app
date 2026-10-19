@@ -213,6 +213,14 @@ final class _TasksWriteApi implements TasksWritePort {
     );
   }
 
+  @override
+  Future<void> markRead(int id) async {
+    await _transport.send(switch (_transport.version) {
+      ApiVersion.v2 => 'PUT',
+      ApiVersion.v1 => 'POST',
+    }, '/tasks/$id/read');
+  }
+
   Future<Task> _patch(int id, Map<String, Object?> body) async {
     final response = await _transport.send(
       'PATCH',

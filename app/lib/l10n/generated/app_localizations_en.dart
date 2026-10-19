@@ -880,11 +880,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String taskDetailIdentifierInProject(String identifier, String project) {
-    return '$identifier in $project';
-  }
-
-  @override
   String get taskDetailDueDate => 'Due date';
 
   @override
@@ -892,9 +887,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get taskDetailEndDate => 'End date';
-
-  @override
-  String get taskDetailDoneAt => 'Done at';
 
   @override
   String get taskDetailPriority => 'Priority';
@@ -2779,4 +2771,166 @@ class AppLocalizationsEn extends AppLocalizations {
   String taskSubtaskOfSemantics(String parent) {
     return 'Subtask of $parent';
   }
+
+  @override
+  String get linkCannotOpen => 'Can\'t open this link';
+
+  @override
+  String get richTextImage => 'Image';
+
+  @override
+  String richTextImageFrom(String host) {
+    return 'Image from $host';
+  }
+
+  @override
+  String get richTextImageFailed => 'The image couldn\'t be loaded';
+
+  @override
+  String get richTextImageUnsupported => 'This image can\'t be shown here';
+
+  @override
+  String get richTextShowImage => 'Show full screen';
+
+  @override
+  String get richTextOpensInBrowser => 'Opens in the browser';
+
+  @override
+  String richTextReplyTo(String author) {
+    return 'Reply to $author';
+  }
+
+  @override
+  String get imageViewerClose => 'Close image';
+
+  @override
+  String get taskDetailDetailsOffline =>
+      'Attachments, comments and reactions need a connection';
+
+  @override
+  String get taskDetailDetailsFailed =>
+      'Attachments, comments and reactions couldn\'t be loaded';
+
+  @override
+  String get taskDetailAttachments => 'Attachments';
+
+  @override
+  String get taskDetailCoverImage => 'Cover image';
+
+  @override
+  String taskDetailComments(int count) {
+    return 'Comments ($count)';
+  }
+
+  @override
+  String get taskDetailShowComments => 'Show comments';
+
+  @override
+  String get taskDetailMoreComments => 'Load more comments';
+
+  @override
+  String get commentsOldestFirst => 'Oldest first';
+
+  @override
+  String get commentsNewestFirst => 'Newest first';
+
+  @override
+  String get commentsChangeOrder => 'Change the order';
+
+  @override
+  String get commentsLoading => 'Loading comments…';
+
+  @override
+  String get commentsNeedConnection => 'Comments need a connection';
+
+  @override
+  String get commentsFailed => 'Comments couldn\'t be loaded';
+
+  @override
+  String commentEdited(String when) {
+    return 'edited $when';
+  }
+
+  @override
+  String reactionByOne(String user, String reaction) {
+    return '$user reacted with $reaction';
+  }
+
+  @override
+  String reactionBySeveral(String users, String lastUser, String reaction) {
+    return '$users and $lastUser reacted with $reaction';
+  }
+
+  @override
+  String reactionByMany(String users, int count, String reaction) {
+    return '$users and $count more reacted with $reaction';
+  }
+
+  @override
+  String taskDetailCreatedBy(String when, String name) {
+    return 'Created $when by $name';
+  }
+
+  @override
+  String taskDetailCreated(String when) {
+    return 'Created $when';
+  }
+
+  @override
+  String taskDetailUpdated(String when) {
+    return 'Updated $when';
+  }
+
+  @override
+  String taskDetailDoneWhen(String when) {
+    return 'Done $when';
+  }
+
+  @override
+  String get taskDetailOpenProjectHint => 'Opens the project';
+
+  @override
+  String get taskOpenNotFound => 'This task wasn\'t found';
+
+  @override
+  String get taskOpenForbidden => 'You don\'t have access to this task';
+
+  @override
+  String get taskOpenOffline =>
+      'This task isn\'t on this device. Connect to open it.';
+
+  @override
+  String get taskOpenFailed => 'This task couldn\'t be opened';
+
+  @override
+  String get deepLinkPickAccountTitle => 'Open in which account?';
+
+  @override
+  String get deepLinkPickAccountBody =>
+      'This task is in more than one of your accounts.';
+
+  @override
+  String get richTextImageOffline => 'The image needs a connection';
+
+  @override
+  String commentsLoaded(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count comments loaded',
+      one: '1 comment loaded',
+      zero: 'No more comments',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get taskOpening => 'Opening the task…';
+
+  @override
+  String get deepLinkSwitchAccountTitle => 'Switch accounts?';
+
+  @override
+  String get deepLinkSwitchAccountBody =>
+      'This task is in another of your accounts. Choose it to switch and open the task.';
 }

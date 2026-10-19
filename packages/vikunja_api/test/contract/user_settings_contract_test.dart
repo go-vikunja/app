@@ -73,6 +73,7 @@ void main() {
                 {'relative_period': 'soon'},
               ],
               'play_sound_when_done': false,
+              'comment_sort_order': 'desc',
             },
           };
           await despiteWriteRaces(
@@ -94,6 +95,10 @@ void main() {
           expect(before.settings.quickAddMagicMode, QuickAddMagicMode.vikunja);
           expect(before.settings.quickAddDefaultReminders, isEmpty);
           expect(before.settings.weekStart, 0);
+          expect(
+            before.settings.commentSortOrder,
+            CommentSortOrder.oldestFirst,
+          );
         });
 
         for (final apiVersion in ApiVersion.values) {
@@ -114,6 +119,7 @@ void main() {
                   Duration(minutes: -15),
                   Duration(days: 1),
                 ],
+                commentSortOrder: CommentSortOrder.newestFirst,
               ),
             );
           });

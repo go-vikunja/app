@@ -21,10 +21,25 @@ void main() {
     });
   });
 
-  test('the defaults: no overview filter, no minimum priority', () {
+  test('the defaults: no overview filter, no minimum priority, oldest '
+      'comments first', () {
     const settings = UserSettings();
     expect(settings.filterIdUsedOnOverview, isNull);
     expect(settings.minimumPriority, 0);
+    expect(settings.commentSortOrder, CommentSortOrder.oldestFirst);
+  });
+
+  test('comment sort orders by wire name, the web default otherwise', () {
+    expect(CommentSortOrder.fromWire('asc'), CommentSortOrder.oldestFirst);
+    expect(CommentSortOrder.fromWire('desc'), CommentSortOrder.newestFirst);
+    for (final other in [null, '', 'DESC', 'newest', 1, true]) {
+      expect(
+        CommentSortOrder.fromWire(other),
+        CommentSortOrder.oldestFirst,
+        reason: '$other',
+      );
+    }
+    expect(CommentSortOrder.newestFirst.wireName, 'desc');
   });
 
   group('equality', () {
@@ -88,6 +103,23 @@ void main() {
       expect(otherFilter, isNot(base));
       expect(noFilter, isNot(base));
       expect(otherPriority, isNot(base));
+    });
+
+    test('the comment sort order counts', () {
+      const newestFirst = UserSettings(
+        defaultProjectId: 3,
+        weekStart: 1,
+        timezone: 'Europe/Berlin',
+        language: 'de-DE',
+        quickAddMagicMode: QuickAddMagicMode.todoist,
+        quickAddDefaultReminders: [Duration(minutes: -15)],
+        filterIdUsedOnOverview: -553,
+        minimumPriority: 3,
+        commentSortOrder: CommentSortOrder.newestFirst,
+      );
+
+      expect(newestFirst, isNot(base));
+      expect(newestFirst.hashCode, isNot(base.hashCode));
     });
   });
 }

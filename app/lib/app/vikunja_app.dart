@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/theme/app_theme.dart';
+import 'package:vikunja_mobile/features/deep_links/presentation/deep_link_listener.dart';
 import 'package:vikunja_mobile/features/notifications/presentation/notification_tap_listener.dart';
 import 'package:vikunja_mobile/features/quick_add/presentation/new_task_shortcut.dart';
 
@@ -19,7 +20,11 @@ class VikunjaApp extends ConsumerWidget {
       supportedLocales: appSupportedLocales,
       routerConfig: ref.watch(appRouterProvider),
       builder: (context, child) => NotificationTapListener(
-        child: NewTaskShortcutListener(child: child ?? const SizedBox.shrink()),
+        child: DeepLinkListener(
+          child: NewTaskShortcutListener(
+            child: child ?? const SizedBox.shrink(),
+          ),
+        ),
       ),
       debugShowCheckedModeBanner: false,
     );

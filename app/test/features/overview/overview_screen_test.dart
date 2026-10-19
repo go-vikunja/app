@@ -323,9 +323,10 @@ void main() {
     await tester.tap(find.text('Write report'));
     await tester.pumpAndSettle();
 
-    expect(find.byType(TaskDetailSheet), findsOneWidget);
+    final sheet = find.byType(TaskDetailSheet);
+    expect(sheet, findsOneWidget);
     expect(
-      find.text(en.taskDetailIdentifierInProject('WORK-3', 'Work')),
+      find.descendant(of: sheet, matching: find.text('WORK-3')),
       findsOneWidget,
     );
   });

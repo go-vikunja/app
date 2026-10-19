@@ -10,9 +10,11 @@ import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/activity/activity_notifier.dart';
 import 'package:vikunja_mobile/core/activity/activity_tray.dart';
+import 'package:vikunja_mobile/core/attachments/attachment_image_providers.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/auth/session_manager.dart';
 import 'package:vikunja_mobile/core/auth/sign_out.dart';
+import 'package:vikunja_mobile/core/avatar/avatar_providers.dart';
 import 'package:vikunja_mobile/core/background/background_providers.dart';
 import 'package:vikunja_mobile/core/background/background_runner_channel.dart';
 import 'package:vikunja_mobile/core/db/account_database_files.dart';
@@ -358,13 +360,17 @@ UserRepository? userRepository(Ref ref) {
 }
 
 /// The last step of a sign-out: makes a background run in another isolate
-/// let go of the account, cancels the account's notifications (scheduled
+/// let go of the account, drops its avatars and attachment images from
+/// memory, cancels the account's notifications (scheduled
 /// and in the tray) and forgets their preferences and the background
 /// notes, stops its outbox sender and sync engine, closes its database and
 /// deletes the files.
 @Riverpod(keepAlive: true)
 AccountDataWiper accountDataWiper(Ref ref) => (accountId) async {
   BackgroundRunnerChannel.release(accountId);
+  ref
+    ..invalidate(accountAvatarCacheProvider(accountId))
+    ..invalidate(accountAttachmentImagesProvider(accountId));
   await _disposeQuietly('Background notes', accountId, () async {
     await ref.read(backgroundRunLogProvider).forget(accountId);
     await ref

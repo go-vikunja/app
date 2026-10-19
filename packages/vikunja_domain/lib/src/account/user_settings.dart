@@ -14,6 +14,20 @@ enum QuickAddMagicMode {
       values.where((mode) => mode.wireName == value).firstOrNull ?? vikunja;
 }
 
+/// `frontend_settings.comment_sort_order`; the web defaults to `asc`.
+enum CommentSortOrder {
+  oldestFirst('asc'),
+  newestFirst('desc');
+
+  new(this.wireName);
+
+  final String wireName;
+
+  static CommentSortOrder fromWire(Object? value) =>
+      values.where((order) => order.wireName == value).firstOrNull ??
+      oldestFirst;
+}
+
 /// The signed-in user's settings as the server stores them, read with the
 /// user (`GET /user`). Read-only until step 30.
 @immutable
@@ -27,6 +41,7 @@ final class UserSettings {
     this.quickAddDefaultReminders = const [],
     this.filterIdUsedOnOverview,
     this.minimumPriority = 0,
+    this.commentSortOrder = CommentSortOrder.oldestFirst,
   });
 
   /// Null when unset (the server's 0).
@@ -49,6 +64,8 @@ final class UserSettings {
   /// `frontend_settings.minimum_priority`; 0 when unset.
   final int minimumPriority;
 
+  final CommentSortOrder commentSortOrder;
+
   /// The lowest priority a task row shows; the web reads an unset value
   /// as medium.
   int get effectiveMinimumPriority => minimumPriority > 0 ? minimumPriority : 2;
@@ -66,7 +83,8 @@ final class UserSettings {
         quickAddDefaultReminders,
       ) &&
       other.filterIdUsedOnOverview == filterIdUsedOnOverview &&
-      other.minimumPriority == minimumPriority;
+      other.minimumPriority == minimumPriority &&
+      other.commentSortOrder == commentSortOrder;
 
   @override
   int get hashCode => Object.hash(
@@ -78,6 +96,7 @@ final class UserSettings {
     Object.hashAll(quickAddDefaultReminders),
     filterIdUsedOnOverview,
     minimumPriority,
+    commentSortOrder,
   );
 
   static bool _sameDurations(List<Duration> a, List<Duration> b) {

@@ -180,6 +180,9 @@ final class FakeTasksWritePort implements TasksWritePort {
   }
 
   @override
+  Future<void> markRead(int id) => _client._request('markRead $id');
+
+  @override
   Future<void> delete(int id) async {
     await _client._request('delete $id');
     _client.deletes.add(id);

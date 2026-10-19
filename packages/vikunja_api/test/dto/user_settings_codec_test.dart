@@ -20,6 +20,7 @@ void main() {
         'play_sound_when_done': false,
         'filter_id_used_on_overview': -553,
         'minimum_priority': 3,
+        'comment_sort_order': 'desc',
       },
       'extra_settings_links': null,
     });
@@ -35,9 +36,30 @@ void main() {
         quickAddDefaultReminders: [Duration(minutes: -15), Duration(hours: 1)],
         filterIdUsedOnOverview: -553,
         minimumPriority: 3,
+        commentSortOrder: CommentSortOrder.newestFirst,
       ),
     );
     expect(settings.effectiveMinimumPriority, 3);
+  });
+
+  test('comments oldest first unless the web stored desc', () {
+    for (final (stored, expected) in [
+      ('asc', CommentSortOrder.oldestFirst),
+      ('desc', CommentSortOrder.newestFirst),
+      ('DESC', CommentSortOrder.oldestFirst),
+      (null, CommentSortOrder.oldestFirst),
+      (1, CommentSortOrder.oldestFirst),
+    ]) {
+      final settings = parseUserSettings({
+        'frontend_settings': {'comment_sort_order': stored},
+      });
+
+      expect(settings.commentSortOrder, expected, reason: '$stored');
+    }
+    expect(
+      parseUserSettings({'frontend_settings': null}).commentSortOrder,
+      CommentSortOrder.oldestFirst,
+    );
   });
 
   test('the web writes null for no overview filter', () {

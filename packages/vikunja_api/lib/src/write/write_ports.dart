@@ -48,6 +48,11 @@ abstract interface class TasksWritePort {
   /// with its labels, assignees, attachments and reminders and adds a
   /// `copiedfrom` relation; returns the copy. Not idempotent.
   Future<Task> duplicate(int id);
+
+  /// v2 `PUT /tasks/{id}/read`, v1 `POST`: clears the task's unread flag.
+  /// Idempotent and unconditional on the server (a read, missing or
+  /// inaccessible task all answer 200), so there is nothing to tolerate.
+  Future<void> markRead(int id);
 }
 
 abstract interface class LabelsWritePort {

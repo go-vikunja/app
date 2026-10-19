@@ -57,12 +57,14 @@ final class FollowController extends ValueNotifier<FollowState> {
   bool inherits(Subscription subscription) =>
       subscription.entity != entity || subscription.entityId != _id;
 
-  Future<void> load(int id) async {
+  /// Reads the state, or takes it from [pending] when another read of the
+  /// entity carries it, like the detail sheet's.
+  Future<void> load(int id, {Future<Subscription?>? pending}) async {
     _id = id;
     final generation = ++_generation;
     _set(const FollowUnknown(loading: true));
     try {
-      final subscription = await _read(id);
+      final subscription = await (pending ?? _read(id));
       if (generation == _generation) _set(FollowKnown(subscription));
     } on Object catch (error) {
       _log.fine('Loading the subscription failed: ${error.runtimeType}');

@@ -1,0 +1,522 @@
+{
+	"source": "frontend/src/helpers/parseTaskIdFromUrl.ts and parseTaskIdFromUrl.test.ts, Vikunja main e7d7f173 (2.7.0)",
+	"generatedBy": "step10/tools/ptid.mjs (re-implementation; every upstream vector re-checked)",
+	"algorithm": [
+		"Return null for an empty href.",
+		"Resolve href against the window origin with the WHATWG URL parser (new URL(href, window.location.origin)); return null if it throws.",
+		"Accepted bases, in order: (1) {origin: window.location.origin, path: BASE_URL with trailing slash}; (2) only if /info frontend_url is non-empty, parses as a URL and has scheme http or https: {origin: frontend_url origin, path: frontend_url path with a trailing slash appended if missing}.",
+		"For each base: the resolved origin (scheme://host[:port], default ports dropped, scheme and host lowercased) must equal the base origin; the resolved pathname (still percent-encoded, query and hash excluded) must start with base path + \"tasks/\"; the remainder must match ^\\d+$ (ASCII digits, nothing after); the number must be > 0. First match wins.",
+		"Otherwise null."
+	],
+	"contexts": {
+		"default": {
+			"windowOrigin": "http://localhost:3000",
+			"basePath": "/",
+			"frontendUrl": ""
+		},
+		"basePathVikunja": {
+			"windowOrigin": "http://localhost:3000",
+			"basePath": "/vikunja/",
+			"frontendUrl": ""
+		},
+		"frontendUrlRoot": {
+			"windowOrigin": "http://localhost:3000",
+			"basePath": "/",
+			"frontendUrl": "https://vikunja.example.com/"
+		},
+		"frontendUrlPath": {
+			"windowOrigin": "http://localhost:3000",
+			"basePath": "/",
+			"frontendUrl": "https://example.com/vikunja/"
+		},
+		"frontendUrlMalformed": {
+			"windowOrigin": "http://localhost:3000",
+			"basePath": "/",
+			"frontendUrl": "not a url"
+		},
+		"frontendUrlPathNoSlash": {
+			"windowOrigin": "http://localhost:3000",
+			"basePath": "/",
+			"frontendUrl": "https://example.com/vikunja"
+		},
+		"frontendUrlNonHttp": {
+			"windowOrigin": "http://localhost:3000",
+			"basePath": "/",
+			"frontendUrl": "ftp://example.com/"
+		}
+	},
+	"expectedValueNotes": "expected is the task id (int) or null; a string marks a value that is not a safe integer in JS (port should treat it as null).",
+	"upstreamVectorCount": 29,
+	"upstreamMismatches": 0,
+	"vectors": [
+		{
+			"upstream": true,
+			"test": "parses an absolute same-origin task url",
+			"context": "default",
+			"href": "http://localhost:3000/tasks/123",
+			"expected": 123
+		},
+		{
+			"upstream": true,
+			"test": "parses a relative task url",
+			"context": "default",
+			"href": "/tasks/123",
+			"expected": 123
+		},
+		{
+			"upstream": true,
+			"test": "ignores query string and hash after the id",
+			"context": "default",
+			"href": "http://localhost:3000/tasks/42?foo=bar",
+			"expected": 42
+		},
+		{
+			"upstream": true,
+			"test": "ignores query string and hash after the id",
+			"context": "default",
+			"href": "http://localhost:3000/tasks/42#comment-1",
+			"expected": 42
+		},
+		{
+			"upstream": true,
+			"test": "rejects other origins",
+			"context": "default",
+			"href": "https://other.example.com/tasks/123",
+			"expected": null
+		},
+		{
+			"upstream": true,
+			"test": "rejects other origins",
+			"context": "default",
+			"href": "http://localhost:4000/tasks/123",
+			"expected": null
+		},
+		{
+			"upstream": true,
+			"test": "rejects non-task routes and malformed ids",
+			"context": "default",
+			"href": "/tasks/abc",
+			"expected": null
+		},
+		{
+			"upstream": true,
+			"test": "rejects non-task routes and malformed ids",
+			"context": "default",
+			"href": "/tasks/12abc",
+			"expected": null
+		},
+		{
+			"upstream": true,
+			"test": "rejects non-task routes and malformed ids",
+			"context": "default",
+			"href": "/tasks/12/edit",
+			"expected": null
+		},
+		{
+			"upstream": true,
+			"test": "rejects non-task routes and malformed ids",
+			"context": "default",
+			"href": "/tasks/",
+			"expected": null
+		},
+		{
+			"upstream": true,
+			"test": "rejects non-task routes and malformed ids",
+			"context": "default",
+			"href": "/tasks/0",
+			"expected": null
+		},
+		{
+			"upstream": true,
+			"test": "rejects non-task routes and malformed ids",
+			"context": "default",
+			"href": "/projects/5",
+			"expected": null
+		},
+		{
+			"upstream": true,
+			"test": "rejects non-task routes and malformed ids",
+			"context": "default",
+			"href": "/tasks/by/upcoming",
+			"expected": null
+		},
+		{
+			"upstream": true,
+			"test": "rejects non-task routes and malformed ids",
+			"context": "default",
+			"href": "not a url",
+			"expected": null
+		},
+		{
+			"upstream": true,
+			"test": "rejects non-task routes and malformed ids",
+			"context": "default",
+			"href": "",
+			"expected": null
+		},
+		{
+			"upstream": true,
+			"test": "respects a non-root base path",
+			"context": "basePathVikunja",
+			"href": "http://localhost:3000/vikunja/tasks/7",
+			"expected": 7
+		},
+		{
+			"upstream": true,
+			"test": "respects a non-root base path",
+			"context": "basePathVikunja",
+			"href": "/vikunja/tasks/7",
+			"expected": 7
+		},
+		{
+			"upstream": true,
+			"test": "respects a non-root base path",
+			"context": "basePathVikunja",
+			"href": "http://localhost:3000/tasks/7",
+			"expected": null
+		},
+		{
+			"upstream": true,
+			"test": "accepts urls from the configured frontend url",
+			"context": "frontendUrlRoot",
+			"href": "https://vikunja.example.com/tasks/9",
+			"expected": 9
+		},
+		{
+			"upstream": true,
+			"test": "accepts urls from the configured frontend url",
+			"context": "frontendUrlRoot",
+			"href": "http://localhost:3000/tasks/9",
+			"expected": 9
+		},
+		{
+			"upstream": true,
+			"test": "accepts urls from the configured frontend url",
+			"context": "frontendUrlRoot",
+			"href": "https://other.example.com/tasks/9",
+			"expected": null
+		},
+		{
+			"upstream": true,
+			"test": "accepts urls from the configured frontend url",
+			"context": "frontendUrlRoot",
+			"href": "https://vikunja.example.com.evil.com/tasks/9",
+			"expected": null
+		},
+		{
+			"upstream": true,
+			"test": "accepts urls from the configured frontend url",
+			"context": "frontendUrlRoot",
+			"href": "https://evil.vikunja.example.com/tasks/9",
+			"expected": null
+		},
+		{
+			"upstream": true,
+			"test": "respects a path in the configured frontend url",
+			"context": "frontendUrlPath",
+			"href": "https://example.com/vikunja/tasks/9",
+			"expected": 9
+		},
+		{
+			"upstream": true,
+			"test": "respects a path in the configured frontend url",
+			"context": "frontendUrlPath",
+			"href": "https://example.com/tasks/9",
+			"expected": null
+		},
+		{
+			"upstream": true,
+			"test": "only accepts the current origin when no frontend url is configured",
+			"context": "default",
+			"href": "http://localhost:3000/tasks/9",
+			"expected": 9
+		},
+		{
+			"upstream": true,
+			"test": "only accepts the current origin when no frontend url is configured",
+			"context": "default",
+			"href": "https://vikunja.example.com/tasks/9",
+			"expected": null
+		},
+		{
+			"upstream": true,
+			"test": "falls back to the current origin when the configured frontend url is malformed",
+			"context": "frontendUrlMalformed",
+			"href": "http://localhost:3000/tasks/9",
+			"expected": 9
+		},
+		{
+			"upstream": true,
+			"test": "falls back to the current origin when the configured frontend url is malformed",
+			"context": "frontendUrlMalformed",
+			"href": "https://vikunja.example.com/tasks/9",
+			"expected": null
+		},
+		{
+			"upstream": false,
+			"note": "trailing slash: rest is \"5/\"",
+			"context": "default",
+			"href": "http://localhost:3000/tasks/5/",
+			"expected": null
+		},
+		{
+			"upstream": false,
+			"note": "leading zeros are digits; Number(\"007\") is 7",
+			"context": "default",
+			"href": "/tasks/007",
+			"expected": 7
+		},
+		{
+			"upstream": false,
+			"note": "sign is not a digit",
+			"context": "default",
+			"href": "/tasks/-5",
+			"expected": null
+		},
+		{
+			"upstream": false,
+			"note": "sign is not a digit",
+			"context": "default",
+			"href": "/tasks/+5",
+			"expected": null
+		},
+		{
+			"upstream": false,
+			"note": "dot is not a digit",
+			"context": "default",
+			"href": "/tasks/5.0",
+			"expected": null
+		},
+		{
+			"upstream": false,
+			"note": "exponent is not a digit",
+			"context": "default",
+			"href": "/tasks/1e3",
+			"expected": null
+		},
+		{
+			"upstream": false,
+			"note": "pathname keeps percent-encoding, %35 is not decoded to 5 (Dart: use Uri.path, which stays encoded)",
+			"context": "default",
+			"href": "/tasks/%35",
+			"expected": null
+		},
+		{
+			"upstream": false,
+			"note": "non-ASCII digit: \\d is ASCII-only in JS without the u flag; the pathname is percent-encoded anyway",
+			"context": "default",
+			"href": "/tasks/٥",
+			"expected": null
+		},
+		{
+			"upstream": false,
+			"note": "scheme and host compare case-insensitively (URL lowercases them)",
+			"context": "default",
+			"href": "HTTP://LOCALHOST:3000/tasks/5",
+			"expected": 5
+		},
+		{
+			"upstream": false,
+			"note": "path is case-sensitive",
+			"context": "default",
+			"href": "http://localhost:3000/TASKS/5",
+			"expected": null
+		},
+		{
+			"upstream": false,
+			"note": "protocol-relative, resolved against the window origin",
+			"context": "default",
+			"href": "//localhost:3000/tasks/5",
+			"expected": 5
+		},
+		{
+			"upstream": false,
+			"note": "protocol-relative to another host",
+			"context": "default",
+			"href": "//evil.example/tasks/5",
+			"expected": null
+		},
+		{
+			"upstream": false,
+			"note": "scheme differs, so the origin differs",
+			"context": "default",
+			"href": "https://localhost:3000/tasks/5",
+			"expected": null
+		},
+		{
+			"upstream": false,
+			"note": "default port 80 differs from :3000",
+			"context": "default",
+			"href": "http://localhost/tasks/5",
+			"expected": null
+		},
+		{
+			"upstream": false,
+			"note": "userinfo is not part of the origin",
+			"context": "default",
+			"href": "http://user:pass@localhost:3000/tasks/5",
+			"expected": 5
+		},
+		{
+			"upstream": false,
+			"note": "dot segments are resolved before matching",
+			"context": "default",
+			"href": "http://localhost:3000/foo/../tasks/5",
+			"expected": 5
+		},
+		{
+			"upstream": false,
+			"note": "relative without leading slash resolves against the origin root",
+			"context": "default",
+			"href": "tasks/5",
+			"expected": 5
+		},
+		{
+			"upstream": false,
+			"note": "WHATWG URL trims leading/trailing C0 controls and spaces (Dart Uri.parse does not; trim first)",
+			"context": "default",
+			"href": " /tasks/5 ",
+			"expected": 5
+		},
+		{
+			"upstream": false,
+			"note": "WHATWG URL removes tab and newline anywhere in the input (Dart does not)",
+			"context": "default",
+			"href": "/ta\tsks/5",
+			"expected": 5
+		},
+		{
+			"upstream": false,
+			"note": "backslash is a path separator for http(s) in WHATWG URL (Dart does not treat it so)",
+			"context": "default",
+			"href": "/tasks\\5",
+			"expected": 5
+		},
+		{
+			"upstream": false,
+			"note": "opaque origin \"null\"",
+			"context": "default",
+			"href": "javascript:alert(1)//tasks/5",
+			"expected": null
+		},
+		{
+			"upstream": false,
+			"note": "opaque origin \"null\"",
+			"context": "default",
+			"href": "mailto:a@localhost:3000/tasks/5",
+			"expected": null
+		},
+		{
+			"upstream": false,
+			"note": "JS returns 1e20 (imprecise double); a Dart port should reject ids that do not fit (int.tryParse null or > 2^53-1)",
+			"context": "default",
+			"href": "http://localhost:3000/tasks/99999999999999999999",
+			"expected": "100000000000000000000"
+		},
+		{
+			"upstream": false,
+			"note": "JS rounds to 9007199254740992; above Number.MAX_SAFE_INTEGER",
+			"context": "default",
+			"href": "http://localhost:3000/tasks/9007199254740993",
+			"expected": "9007199254740992"
+		},
+		{
+			"upstream": false,
+			"note": "empty segment: rest is \"/5\"",
+			"context": "default",
+			"href": "http://localhost:3000/tasks//5",
+			"expected": null
+		},
+		{
+			"upstream": false,
+			"note": "matrix parameter makes rest non-numeric",
+			"context": "default",
+			"href": "http://localhost:3000/tasks/5;x",
+			"expected": null
+		},
+		{
+			"upstream": false,
+			"note": "trailing slash under a base path",
+			"context": "basePathVikunja",
+			"href": "/vikunja/tasks/7/",
+			"expected": null
+		},
+		{
+			"upstream": false,
+			"note": "prefix is base path + \"tasks/\", so the slash is required",
+			"context": "basePathVikunja",
+			"href": "/vikunjatasks/7",
+			"expected": null
+		},
+		{
+			"upstream": false,
+			"note": "explicit default port normalises away",
+			"context": "frontendUrlRoot",
+			"href": "https://vikunja.example.com:443/tasks/9",
+			"expected": 9
+		},
+		{
+			"upstream": false,
+			"note": "host is lowercased",
+			"context": "frontendUrlRoot",
+			"href": "https://VIKUNJA.example.com/tasks/9",
+			"expected": 9
+		},
+		{
+			"upstream": false,
+			"note": "trailing-dot host is a different origin",
+			"context": "frontendUrlRoot",
+			"href": "https://vikunja.example.com./tasks/9",
+			"expected": null
+		},
+		{
+			"upstream": false,
+			"note": "http vs https: different origin",
+			"context": "frontendUrlRoot",
+			"href": "http://vikunja.example.com/tasks/9",
+			"expected": null
+		},
+		{
+			"upstream": false,
+			"note": "relative hrefs always resolve against the window origin, never the frontend url",
+			"context": "frontendUrlRoot",
+			"href": "/tasks/9",
+			"expected": 9
+		},
+		{
+			"upstream": false,
+			"note": "query and hash ignored on the frontend-url base too",
+			"context": "frontendUrlPath",
+			"href": "https://example.com/vikunja/tasks/9?x=1#comment-2",
+			"expected": 9
+		},
+		{
+			"upstream": false,
+			"note": "a frontend url without trailing slash gets one appended",
+			"context": "frontendUrlPathNoSlash",
+			"href": "https://example.com/vikunja/tasks/9",
+			"expected": 9
+		},
+		{
+			"upstream": false,
+			"note": "and therefore does not match without the slash",
+			"context": "frontendUrlPathNoSlash",
+			"href": "https://example.com/vikunjatasks/9",
+			"expected": null
+		},
+		{
+			"upstream": false,
+			"note": "a non-http(s) frontend url is ignored",
+			"context": "frontendUrlNonHttp",
+			"href": "ftp://example.com/tasks/9",
+			"expected": null
+		},
+		{
+			"upstream": false,
+			"note": "the window origin still works",
+			"context": "frontendUrlNonHttp",
+			"href": "http://localhost:3000/tasks/9",
+			"expected": 9
+		}
+	]
+}

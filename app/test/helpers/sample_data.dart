@@ -71,6 +71,7 @@ Task sampleTask({
   double position = 0,
   DateTime? updated,
   DateTime? created,
+  User? createdBy,
   String hexColor = '',
   Map<TaskRelationKind, List<Task>> relatedTasks = const {},
   List<int> subtaskIds = const [],
@@ -98,6 +99,7 @@ Task sampleTask({
   description: description,
   position: position,
   created: created?.toUtc(),
+  createdBy: createdBy,
   hexColor: hexColor,
   relatedTasks: {
     ...relatedTasks,
@@ -113,6 +115,49 @@ Task sampleTask({
       ],
   },
 );
+
+/// An attachment as the task read lists it: a PNG unless [mime] says
+/// otherwise.
+TaskAttachment sampleAttachment({
+  required int id,
+  int taskId = 1,
+  String name = 'photo.png',
+  String mime = 'image/png',
+  int size = 2048,
+  DateTime? created,
+  User? createdBy = const User(id: 9, username: 'anna', name: 'Anna'),
+}) => TaskAttachment(
+  id: id,
+  taskId: taskId,
+  name: name,
+  mime: mime,
+  size: size,
+  created: (created ?? DateTime.utc(2026, 10, 12, 9)).toUtc(),
+  createdBy: createdBy,
+);
+
+/// A comment by [author], created [created] (default: 9:00 plus [id]
+/// minutes on 2026-10-12) and edited at [updated] (default: never).
+TaskComment sampleComment({
+  required int id,
+  String html = '<p>Looks good</p>',
+  User author = const User(id: 9, username: 'anna', name: 'Anna'),
+  DateTime? created,
+  DateTime? updated,
+  Reactions reactions = const {},
+}) {
+  final at =
+      (created ?? DateTime.utc(2026, 10, 12, 9).add(Duration(minutes: id)))
+          .toUtc();
+  return TaskComment(
+    id: id,
+    html: html,
+    author: author,
+    created: at,
+    updated: (updated ?? at).toUtc(),
+    reactions: reactions,
+  );
+}
 
 /// What a list row carries for a related task: the bare task, no relations
 /// of its own; lists look the full task up by id.

@@ -283,6 +283,36 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
     return {for (final task in found) task.id: task};
   }
 
+  /// The local project whose identifier equals [identifier] ignoring case,
+  /// and its task with [index] unless that is not local; null without such
+  /// a project. Compared here, because SQLite's `lower()` folds ASCII only
+  /// (`ÄB`, `STRAßE`); the server stores identifiers upper-cased and unique.
+  Future<({int projectId, Task? task})?> findByIdentifier(
+    String identifier,
+    int index,
+  ) async {
+    final wanted = identifier.toLowerCase();
+    final candidates = selectOnly(projects)
+      ..addColumns([projects.id, projects.identifier])
+      ..where(
+        projects.id.isBiggerThanValue(0) & projects.identifier.equals('').not(),
+      );
+    final projectId = [
+      for (final row in await candidates.get())
+        if (row.read(projects.identifier)!.toLowerCase() == wanted)
+          row.read(projects.id)!,
+    ].firstOrNull;
+    if (projectId == null) return null;
+    final found = await _load(
+      where:
+          tasks.projectId.equals(projectId) &
+          tasks.taskIndex.equals(index) &
+          _visible,
+      orderBy: const [],
+    );
+    return (projectId: projectId, task: found.firstOrNull);
+  }
+
   /// The stored row, a task queued for deletion included.
   Future<TaskRow?> findRow(int id) =>
       (select(tasks)..where((t) => t.id.equals(id))).getSingleOrNull();

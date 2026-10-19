@@ -8,6 +8,7 @@ environment:
   sdk: ^3.13.0
 
 dependencies:
+  html: ^0.15.7
   meta: ^1.16.0
   vikunja_domain:
     path: ../vikunja_domain

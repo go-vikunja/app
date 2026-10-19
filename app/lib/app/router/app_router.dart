@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -6,6 +7,7 @@ import 'package:vikunja_mobile/app/router/root_modal_routes.dart';
 import 'package:vikunja_mobile/app/router/splash_screen.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/links/deep_link_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/home/presentation/account_tab.dart';
@@ -91,10 +93,21 @@ GoRouter appRouter(Ref ref) {
     ..onDispose(syncStatus.dispose)
     ..onDispose(onboarded.dispose);
 
+  // Before the router exists: its own observer, which routes what the
+  // platform pushes, registers once the app subscribes to it, so this one
+  // is asked first.
+  final links = _AppSchemeLinks(ref.read(deepLinkRelayProvider).accept);
+  WidgetsBinding.instance.addObserver(links);
+  ref.onDispose(() => WidgetsBinding.instance.removeObserver(links));
+
   final rootNavigatorKey = GlobalKey<NavigatorState>();
   final router = GoRouter(
     navigatorKey: rootNavigatorKey,
     initialLocation: AppRoutes.splash,
+    // A link that starts the app arrives as the platform's default route;
+    // the start still goes through the splash, and the deep-link source
+    // reads the link itself.
+    overridePlatformDefaultLocation: true,
     observers: [ref.watch(rootModalRoutesProvider)],
     refreshListenable: Listenable.merge([
       currentServer,
@@ -103,6 +116,10 @@ GoRouter appRouter(Ref ref) {
       onboarded,
     ]),
     redirect: (context, state) {
+      // Never a route; [_AppSchemeLinks] takes these before they get here.
+      if (ref.read(deepLinkRelayProvider).accept(state.uri)) {
+        return AppRoutes.splash;
+      }
       final registry = ref.read(accountsProvider);
       return _redirect(
         location: state.matchedLocation,
@@ -228,6 +245,22 @@ GoRouter appRouter(Ref ref) {
   );
   ref.onDispose(router.dispose);
   return router;
+}
+
+/// Takes every URI of the app's own scheme that the platform pushes (a
+/// task link, an OAuth callback that arrived after its sign-in ended) for
+/// the deep-link relay, so that the router never treats one as a route.
+/// go_router's `onEnter` could block them too, but with an `onEnter` every
+/// route parse is asynchronous, the first one included, and the app's
+/// first frame would be empty.
+final class _AppSchemeLinks with WidgetsBindingObserver {
+  new(this._accept);
+
+  final bool Function(Uri uri) _accept;
+
+  @override
+  Future<bool> didPushRouteInformation(RouteInformation routeInformation) =>
+      SynchronousFuture(_accept(routeInformation.uri));
 }
 
 /// The `:id` of a route; negative for a task created on this device and

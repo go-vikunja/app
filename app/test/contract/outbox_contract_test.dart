@@ -139,6 +139,12 @@ final class _FlakyTasks implements TasksWritePort {
     _maybeFail();
     return _client._real.tasks.duplicate(id);
   }
+
+  @override
+  Future<void> markRead(int id) {
+    _maybeFail();
+    return _client._real.tasks.markRead(id);
+  }
 }
 
 Matcher _within1s(DateTime expected) => predicate<DateTime?>(

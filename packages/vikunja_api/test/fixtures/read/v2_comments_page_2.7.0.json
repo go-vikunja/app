@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "GET /api/v2/tasks/17/comments?page=1&per_page=3",
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"$schema\":\"http://localhost:34527/api/v2/schemas/PaginatedTaskComment.json\",\"items\":[{\"id\":71,\"comment\":\"<p>A comment 0</p>\",\"author\":{\"id\":3,\"name\":\"\",\"username\":\"p10a941d3a\",\"created\":\"2026-10-19T06:21:46Z\",\"updated\":\"2026-10-19T06:21:46Z\"},\"reactions\":{\"ok\":[{\"id\":4,\"name\":\"\",\"username\":\"p10bb8325b\",\"created\":\"2026-10-19T06:21:47Z\",\"updated\":\"2026-10-19T06:28:07Z\"}]},\"created\":\"2026-10-19T06:22:57Z\",\"updated\":\"2026-10-19T06:22:57Z\"},{\"id\":72,\"comment\":\"<p>A comment 1</p>\",\"author\":{\"id\":3,\"name\":\"\",\"username\":\"p10a941d3a\",\"created\":\"2026-10-19T06:21:46Z\",\"updated\":\"2026-10-19T06:21:46Z\"},\"reactions\":null,\"created\":\"2026-10-19T06:22:58Z\",\"updated\":\"2026-10-19T06:22:58Z\"},{\"id\":73,\"comment\":\"<p>A comment 2</p>\",\"author\":{\"id\":3,\"name\":\"\",\"username\":\"p10a941d3a\",\"created\":\"2026-10-19T06:21:46Z\",\"updated\":\"2026-10-19T06:21:46Z\"},\"reactions\":null,\"created\":\"2026-10-19T06:22:58Z\",\"updated\":\"2026-10-19T06:22:58Z\"}],\"total\":7,\"page\":1,\"per_page\":3,\"total_pages\":3}"
+}

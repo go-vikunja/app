@@ -37,6 +37,7 @@ import '../helpers/pump_app.dart';
 import '../helpers/sample_data.dart';
 import '../helpers/server_connections.dart';
 import '../helpers/sync_fakes.dart';
+import '../helpers/task_details_fakes.dart';
 
 // Layout overflows are reported as test failures, so reaching the end of each
 // scenario without an exception is the assertion.
@@ -148,6 +149,125 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets('task detail sheet with a rich description, attachments and '
+        'comments at 200 % in dark mode (${locale.languageCode})', (
+      tester,
+    ) async {
+      useWorstCase(tester, locale);
+      final l10n = lookupAppLocalizations(locale);
+      final data = richData();
+      const root = 'https://tasks.example.org/vikunja';
+      const maxi = User(
+        id: 1,
+        username: 'maximiliane',
+        name: 'Maximiliane Musterfrau-Beispielhausen',
+      );
+      data.tasks.all = [
+        data.tasks.all.first.copyWith(
+          description: [
+            '<h1>A heading that is long enough to wrap</h1>',
+            '<p>Text with <strong>bold</strong>, <em>italic</em>, ',
+            '<code>code</code>, <a href="https://example.com">a link</a>, ',
+            '<mention-user data-id="maximiliane" ',
+            'data-label="Maximiliane Musterfrau-Beispielhausen">',
+            '</mention-user> and <a href="$root/tasks/2">$root/tasks/2</a>',
+            ' and <a href="$root/tasks/99">$root/tasks/99</a></p>',
+            '<ul data-type="taskList"><li data-type="taskItem" ',
+            'data-checked="true"><label><input type="checkbox" checked>',
+            '<span></span></label><div><p>A checked item with a long ',
+            'text</p></div></li></ul>',
+            '<ol start="3"><li><p>Third</p></li></ol>',
+            '<blockquote><p>A quote</p></blockquote>',
+            '<pre><code>final longLine = "does not wrap but scrolls";',
+            '</code></pre>',
+            '<table><tr><th>Header cell</th><th>Another header</th></tr>',
+            '<tr><td colspan="2">A cell across both columns</td></tr>',
+            '</table>',
+            '<img src="$root/api/v2/tasks/1/attachments/3" alt="Photo">',
+            '<img src="https://cdn.example.com/very-long-image-name.png">',
+          ].join(),
+        ),
+        ...data.tasks.all.skip(1),
+      ];
+      data.details
+        ..detailsByTask[1] = TaskDetails(
+          attachments: [
+            sampleAttachment(
+              id: 3,
+              name: 'a-photo-with-a-rather-long-file-name.png',
+              size: 3456789,
+            ),
+            sampleAttachment(
+              id: 4,
+              name: 'quarterly-report-final-version.pdf',
+              mime: 'application/pdf',
+            ),
+          ],
+          coverImageAttachmentId: 3,
+          reactions: const {
+            '👍': [maxi],
+            '🎉': [maxi],
+          },
+          commentCount: 2,
+        )
+        ..commentsByTask[1] = [
+          sampleComment(
+            id: 1,
+            author: maxi,
+            html: '<p>A first comment long enough to wrap onto lines</p>',
+            reactions: const {
+              '👀': [maxi],
+            },
+          ),
+          sampleComment(
+            id: 2,
+            html: [
+              '<blockquote data-comment-id="1"><p>A first comment</p>',
+              '</blockquote><p>A reply</p>',
+            ].join(),
+            updated: DateTime.now().toUtc(),
+          ),
+        ];
+      data.attachmentImages.fallback = samplePngImage;
+      await pumpSignedInApp(tester, sync: data);
+
+      await tapRow(tester, 'Task 1 ');
+      expect(find.byType(TaskDetailSheet), findsOneWidget);
+      await scrollToEnd(tester, find.byType(TaskDetailSheet));
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(find.text(l10n.taskDetailShowComments));
+      await tester.pumpAndSettle();
+      await scrollToEnd(tester, find.byType(TaskDetailSheet));
+      expect(find.text(l10n.richTextReplyTo(maxi.name)), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      final photo = find.text('a-photo-with-a-rather-long-file-name.png');
+      await tester.scrollUntilVisible(
+        photo,
+        -200,
+        scrollable: find
+            .descendant(
+              of: find.byType(TaskDetailSheet),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      for (var i = 0; i < 20; i++) {
+        final y = tester.getCenter(photo).dy;
+        if (y > 120 && y < 560) break;
+        await tester.drag(
+          find.byType(TaskDetailSheet),
+          Offset(0, y < 120 ? 150 : -150),
+        );
+        await tester.pumpAndSettle();
+      }
+      await tester.tap(photo);
+      await tester.pumpAndSettle();
+      expect(find.byTooltip(l10n.imageViewerClose), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('task relations, adding one and following at 200 % in '
         'dark mode (${locale.languageCode})', (tester) async {
       useWorstCase(tester, locale);
@@ -166,9 +286,11 @@ void main() {
         ),
         ...tasks.skip(1),
       ];
-      data.subscriptions.taskStates[1] = const Subscription(
-        entity: SubscriptionEntity.project,
-        entityId: 1,
+      data.details.detailsByTask[1] = const TaskDetails(
+        subscription: Subscription(
+          entity: SubscriptionEntity.project,
+          entityId: 1,
+        ),
       );
       await pumpSignedInApp(tester, sync: data);
 

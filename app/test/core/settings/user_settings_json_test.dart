@@ -13,6 +13,7 @@ void main() {
       quickAddDefaultReminders: [Duration(minutes: -15), Duration(days: 1)],
       filterIdUsedOnOverview: -553,
       minimumPriority: 4,
+      commentSortOrder: CommentSortOrder.newestFirst,
     );
 
     expect(decodeUserSettings(encodeUserSettings(settings)), settings);
@@ -37,7 +38,8 @@ void main() {
       '{"default_project_id": -1, "week_start": 9, "timezone": 3, '
       '"language": null, "quick_add_magic_mode": "loud", '
       '"quick_add_default_reminders": [600, "x", 1.5, null], '
-      '"filter_id_used_on_overview": -1, "minimum_priority": 6}',
+      '"filter_id_used_on_overview": -1, "minimum_priority": 6, '
+      '"comment_sort_order": "newest"}',
     );
 
     expect(
@@ -71,5 +73,23 @@ void main() {
     expect(settings.filterIdUsedOnOverview, isNull);
     expect(settings.minimumPriority, 0);
     expect(settings.effectiveMinimumPriority, 2);
+    expect(settings.commentSortOrder, CommentSortOrder.oldestFirst);
+  });
+
+  test('comments come oldest first unless the stored order says desc', () {
+    CommentSortOrder decode(String value) =>
+        decodeUserSettings('{"comment_sort_order": $value}').commentSortOrder;
+
+    expect(decode('"desc"'), CommentSortOrder.newestFirst);
+    expect(decode('"asc"'), CommentSortOrder.oldestFirst);
+    for (final odd in ['"DESC"', '""', 'null', '1', '["desc"]']) {
+      expect(decode(odd), CommentSortOrder.oldestFirst, reason: odd);
+    }
+    expect(
+      encodeUserSettings(
+        const UserSettings(commentSortOrder: CommentSortOrder.newestFirst),
+      ),
+      contains('"comment_sort_order":"desc"'),
+    );
   });
 }

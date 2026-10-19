@@ -129,6 +129,9 @@ final class RetryingTasksWrites implements TasksWritePort {
 
   @override
   Future<Task> duplicate(int id) => _writes.duplicate(id);
+
+  @override
+  Future<void> markRead(int id) => _writes.markRead(id);
 }
 
 final class RetryingLabelsWrites implements LabelsWritePort {

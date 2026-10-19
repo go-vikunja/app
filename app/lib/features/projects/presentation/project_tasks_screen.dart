@@ -572,13 +572,7 @@ class _ProjectList extends StatelessWidget {
           projectTitle: elsewhere?.title,
           projectColor: parseHexColor(elsewhere?.hexColor ?? ''),
           pending: pendingIds.contains(task.id),
-          onTap: () => unawaited(
-            showTaskDetail(
-              context,
-              task: task,
-              project: projectsById[task.projectId] ?? project,
-            ),
-          ),
+          onTap: () => unawaited(showTaskDetail(context, task: task)),
           onDoneChanged: (done) => onDoneChanged(task, done: done),
           onFavoriteChanged: (favorite) =>
               onFavoriteChanged(task, favorite: favorite),

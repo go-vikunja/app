@@ -2,12 +2,14 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:vikunja_api/src/dto/comment_codec.dart';
 import 'package:vikunja_api/src/dto/json_values.dart';
 import 'package:vikunja_api/src/dto/label_codec.dart';
 import 'package:vikunja_api/src/dto/notification_codec.dart';
 import 'package:vikunja_api/src/dto/project_codec.dart';
 import 'package:vikunja_api/src/dto/subscription_codec.dart';
 import 'package:vikunja_api/src/dto/task_codec.dart';
+import 'package:vikunja_api/src/dto/task_details_codec.dart';
 import 'package:vikunja_api/src/dto/user_codec.dart';
 import 'package:vikunja_api/src/errors/normalize_error.dart';
 import 'package:vikunja_api/src/read/read_ports.dart';
@@ -28,7 +30,9 @@ final class ReadClient implements VikunjaReadClient {
       users = _UsersApi(transport),
       notifications = _NotificationsApi(transport),
       subscriptions = _SubscriptionsApi(transport),
-      avatars = _AvatarsApi(transport);
+      avatars = _AvatarsApi(transport),
+      comments = _CommentsApi(transport),
+      attachments = _AttachmentsApi(transport);
 
   @override
   final ProjectsPort projects;
@@ -50,6 +54,85 @@ final class ReadClient implements VikunjaReadClient {
 
   @override
   final AvatarsPort avatars;
+
+  @override
+  final CommentsPort comments;
+
+  @override
+  final AttachmentsPort attachments;
+}
+
+final class _CommentsApi implements CommentsPort {
+  new(this._transport);
+
+  final _ReadTransport _transport;
+
+  @override
+  Future<Page<TaskComment>> list(
+    int taskId, {
+    int page = 1,
+    int? perPage,
+    bool newestFirst = false,
+  }) async {
+    final response = await _transport.get(
+      '/tasks/$taskId/comments',
+      query: {
+        'page': page,
+        'per_page': ?perPage,
+        'order_by': newestFirst ? 'desc' : 'asc',
+      },
+    );
+    final comments = _transport.page(
+      response,
+      page: page,
+      perPage: perPage,
+      parse: parseTaskComment,
+    );
+    // The server sorts by `created` alone, which it keeps to the second.
+    final sorted = [...comments.items]..sort(_byCreatedThenId);
+    return Page(
+      items: List.unmodifiable(newestFirst ? sorted.reversed : sorted),
+      page: comments.page,
+      perPage: comments.perPage,
+      totalPages: comments.totalPages,
+      total: comments.total,
+    );
+  }
+
+  static int _byCreatedThenId(TaskComment a, TaskComment b) {
+    final byCreated = (a.created?.microsecondsSinceEpoch ?? 0).compareTo(
+      b.created?.microsecondsSinceEpoch ?? 0,
+    );
+    return byCreated != 0 ? byCreated : a.id.compareTo(b.id);
+  }
+}
+
+final class _AttachmentsApi implements AttachmentsPort {
+  new(this._transport);
+
+  final _ReadTransport _transport;
+
+  @override
+  Future<AttachmentBlob> fetch(
+    int taskId,
+    int attachmentId, {
+    AttachmentPreviewSize? preview,
+  }) async {
+    final (:bytes, :contentType) = await _transport.getCappedBytes(
+      '/tasks/$taskId/attachments/$attachmentId',
+      query: {'preview_size': ?preview?.wireName},
+      // The server answers the original for anything it cannot preview,
+      // so a preview request has to take any image.
+      accept: preview == null ? '*/*' : 'image/*',
+      maxBytes: maxAttachmentBytes,
+    );
+    return AttachmentBlob(
+      bytes: bytes,
+      contentType: contentType.isEmpty
+          ? 'application/octet-stream'
+          : contentType,
+    );
+  }
 }
 
 final class _AvatarsApi implements AvatarsPort {
@@ -271,6 +354,59 @@ final class _TasksApi implements TasksPort {
     return _transport.decode<Task>(response, parseTask);
   }
 
+  @override
+  Future<TaskDetails> readDetails(int id) async {
+    final response = await _transport.get(
+      '/tasks/$id',
+      query: {
+        'expand': [for (final expand in _detailExpands) expand.wireName],
+      },
+    );
+    return _transport.decode<TaskDetails>(response, parseTaskDetails);
+  }
+
+  static const List<TaskExpand> _detailExpands = [
+    TaskExpand.reactions,
+    TaskExpand.commentCount,
+    TaskExpand.isUnread,
+  ];
+
+  @override
+  Future<Task> readByIndex(String project, int index) async {
+    // A URI drops a `.` or `..` segment even when escaped, so such an
+    // identifier cannot be named in a path; the project id still works.
+    if (project == '.' || project == '..') throw const NotFound(code: 3001);
+    final response = await _transport.get(
+      '/projects/${Uri.encodeComponent(project)}/tasks/by-index/$index',
+      allowTemporaryRedirect: _transport.version == ApiVersion.v2,
+    );
+    if (response.statusCode != _temporaryRedirect) {
+      return _transport.decode<Task>(response, parseTask);
+    }
+    final target = _byIndexLocation.firstMatch(
+      response.headers.value('location') ?? '',
+    );
+    if (target == null) {
+      throw const UnexpectedResponse(
+        _temporaryRedirect,
+        message: 'a redirect elsewhere than to another task index',
+      );
+    }
+    final followed = await _transport.get(
+      target[1]!,
+      query: Uri(query: target[2]).queryParametersAll,
+    );
+    return _transport.decode<Task>(followed, parseTask);
+  }
+
+  static const _temporaryRedirect = 307;
+
+  // The server writes its own prefix, whatever path it is served under, so
+  // only the part after it is kept and joined to the account's base.
+  static final _byIndexLocation = RegExp(
+    r'^/api/v2(/projects/\d+/tasks/by-index/\d+)(?:\?(.*))?$',
+  );
+
   Future<Page<Task>> _listTasks(
     String path,
     TaskQuery query, {
@@ -303,9 +439,11 @@ final class _ReadTransport {
   final ApiVersion version;
   final Uri _base;
 
+  /// [allowTemporaryRedirect] hands a 307 back instead of failing.
   Future<Response<Object?>> get(
     String path, {
     Map<String, Object?> query = const {},
+    bool allowTemporaryRedirect = false,
   }) async {
     try {
       return await _dio.get<Object?>(
@@ -315,6 +453,7 @@ final class _ReadTransport {
           responseType: ResponseType.json,
           headers: {'Accept': 'application/json'},
           listFormat: ListFormat.multi,
+          validateStatus: allowTemporaryRedirect ? _successOr307 : null,
         ),
       );
     } on DioException catch (error) {
@@ -322,6 +461,99 @@ final class _ReadTransport {
       throw normalizeError(error);
     }
   }
+
+  static bool _successOr307(int? status) =>
+      status != null && (status >= 200 && status < 300 || status == 307);
+
+  /// The body as it streams in, refused once it is longer than [maxBytes]
+  /// (by its `Content-Length` or by what arrives), with the media type of
+  /// the response without parameters.
+  Future<({Uint8List bytes, String contentType})> getCappedBytes(
+    String path, {
+    required Map<String, Object?> query,
+    required String accept,
+    required int maxBytes,
+  }) async {
+    // Only a cancel closes the connection: dio does not pass the end of a
+    // subscription on to the source.
+    final cancel = CancelToken();
+    final Response<ResponseBody> response;
+    try {
+      response = await _dio.get<ResponseBody>(
+        _base.replace(path: '${_base.path}$path').toString(),
+        queryParameters: query,
+        cancelToken: cancel,
+        options: Options(
+          responseType: ResponseType.stream,
+          headers: {'Accept': accept},
+        ),
+      );
+    } on DioException catch (error) {
+      if (error.type == DioExceptionType.cancel) rethrow;
+      throw normalizeError(await _withReadErrorBody(error, cancel));
+    }
+    final contentType =
+        (response.headers.value(Headers.contentTypeHeader) ?? '')
+            .split(';')
+            .first
+            .trim()
+            .toLowerCase();
+    final body = response.data;
+    if (body == null) {
+      throw UnexpectedResponse(response.statusCode, message: 'no body');
+    }
+    final tooLarge = UnexpectedResponse(
+      response.statusCode,
+      message: 'a body larger than $maxBytes bytes',
+    );
+    final declared = int.tryParse(
+      response.headers.value(Headers.contentLengthHeader) ?? '',
+    );
+    if (declared != null && declared > maxBytes) {
+      cancel.cancel();
+      throw tooLarge;
+    }
+    final bytes = BytesBuilder(copy: false);
+    try {
+      await for (final chunk in body.stream) {
+        bytes.add(chunk);
+        if (bytes.length > maxBytes) break;
+      }
+    } on DioException catch (error) {
+      if (error.type == DioExceptionType.cancel) rethrow;
+      throw normalizeError(error);
+    }
+    if (bytes.length > maxBytes) {
+      cancel.cancel();
+      throw tooLarge;
+    }
+    return (bytes: bytes.takeBytes(), contentType: contentType);
+  }
+
+  // An error answer to a streamed request still streams; its small JSON
+  // body carries the error code.
+  static Future<DioException> _withReadErrorBody(
+    DioException error,
+    CancelToken cancel,
+  ) async {
+    final response = error.response;
+    final body = response?.data;
+    if (response == null || body is! ResponseBody) return error;
+    final bytes = BytesBuilder(copy: false);
+    try {
+      await for (final chunk in body.stream) {
+        bytes.add(chunk);
+        if (bytes.length > _maxErrorBodyBytes) break;
+      }
+    } on Object {
+      return error;
+    }
+    if (bytes.length > _maxErrorBodyBytes) cancel.cancel();
+    response.data = bytes.takeBytes();
+    return error;
+  }
+
+  static const int _maxErrorBodyBytes = 64 * 1024;
 
   Future<Response<List<int>>> getBytes(
     String path, {

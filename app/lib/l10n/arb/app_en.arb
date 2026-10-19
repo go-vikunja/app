@@ -724,23 +724,9 @@
       }
     }
   },
-  "taskDetailIdentifierInProject": "{identifier} in {project}",
-  "@taskDetailIdentifierInProject": {
-    "placeholders": {
-      "identifier": {
-        "type": "String",
-        "example": "WORK-12"
-      },
-      "project": {
-        "type": "String",
-        "example": "Work"
-      }
-    }
-  },
   "taskDetailDueDate": "Due date",
   "taskDetailStartDate": "Start date",
   "taskDetailEndDate": "End date",
-  "taskDetailDoneAt": "Done at",
   "taskDetailPriority": "Priority",
   "taskDetailProgress": "Progress",
   "taskPercentDone": "{percent}% done",
@@ -2527,5 +2513,202 @@
         "example": "Plan the trip"
       }
     }
-  }
+  },
+  "linkCannotOpen": "Can't open this link",
+  "@linkCannotOpen": {
+    "description": "A link in a task description that no app on the device can open."
+  },
+  "richTextImage": "Image",
+  "@richTextImage": {
+    "description": "Read by screen readers for an image in a description or comment without a description of its own."
+  },
+  "richTextImageFrom": "Image from {host}",
+  "@richTextImageFrom": {
+    "description": "Stands in for an image on another website, which the app does not load by itself.",
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "example.com"
+      }
+    }
+  },
+  "richTextImageFailed": "The image couldn't be loaded",
+  "richTextImageUnsupported": "This image can't be shown here",
+  "@richTextImageUnsupported": {
+    "description": "An attachment image in a format the app does not draw, such as SVG."
+  },
+  "richTextShowImage": "Show full screen",
+  "@richTextShowImage": {
+    "description": "Screen reader hint on an image that opens full screen."
+  },
+  "richTextOpensInBrowser": "Opens in the browser",
+  "@richTextOpensInBrowser": {
+    "description": "Screen reader hint on the stand-in for an image on another website."
+  },
+  "richTextReplyTo": "Reply to {author}",
+  "@richTextReplyTo": {
+    "description": "Above a quote of another comment inside a comment.",
+    "placeholders": {
+      "author": {
+        "type": "String",
+        "example": "Anna"
+      }
+    }
+  },
+  "imageViewerClose": "Close image",
+  "taskDetailDetailsOffline": "Attachments, comments and reactions need a connection",
+  "taskDetailDetailsFailed": "Attachments, comments and reactions couldn't be loaded",
+  "taskDetailAttachments": "Attachments",
+  "taskDetailCoverImage": "Cover image",
+  "@taskDetailCoverImage": {
+    "description": "Badge on the attachment the task uses as its cover image."
+  },
+  "taskDetailComments": "Comments ({count})",
+  "@taskDetailComments": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "taskDetailShowComments": "Show comments",
+  "taskDetailMoreComments": "Load more comments",
+  "commentsOldestFirst": "Oldest first",
+  "commentsNewestFirst": "Newest first",
+  "commentsChangeOrder": "Change the order",
+  "@commentsChangeOrder": {
+    "description": "Screen reader hint on the button that shows the comments' order."
+  },
+  "commentsLoading": "Loading comments…",
+  "commentsNeedConnection": "Comments need a connection",
+  "commentsFailed": "Comments couldn't be loaded",
+  "commentEdited": "edited {when}",
+  "@commentEdited": {
+    "description": "After a comment's time when it was changed later.",
+    "placeholders": {
+      "when": {
+        "type": "String",
+        "example": "2 hours ago"
+      }
+    }
+  },
+  "reactionByOne": "{user} reacted with {reaction}",
+  "@reactionByOne": {
+    "placeholders": {
+      "user": {
+        "type": "String",
+        "example": "Anna"
+      },
+      "reaction": {
+        "type": "String",
+        "example": "👍"
+      }
+    }
+  },
+  "reactionBySeveral": "{users} and {lastUser} reacted with {reaction}",
+  "@reactionBySeveral": {
+    "placeholders": {
+      "users": {
+        "type": "String",
+        "example": "Anna, Ben"
+      },
+      "lastUser": {
+        "type": "String",
+        "example": "Carla"
+      },
+      "reaction": {
+        "type": "String",
+        "example": "👍"
+      }
+    }
+  },
+  "reactionByMany": "{users} and {count} more reacted with {reaction}",
+  "@reactionByMany": {
+    "description": "The first ten people who reacted, then how many more did.",
+    "placeholders": {
+      "users": {
+        "type": "String",
+        "example": "Anna, Ben, Carla"
+      },
+      "count": {
+        "type": "int",
+        "example": "4"
+      },
+      "reaction": {
+        "type": "String",
+        "example": "👍"
+      }
+    }
+  },
+  "taskDetailCreatedBy": "Created {when} by {name}",
+  "@taskDetailCreatedBy": {
+    "placeholders": {
+      "when": {
+        "type": "String",
+        "example": "2 days ago"
+      },
+      "name": {
+        "type": "String",
+        "example": "Anna"
+      }
+    }
+  },
+  "taskDetailCreated": "Created {when}",
+  "@taskDetailCreated": {
+    "placeholders": {
+      "when": {
+        "type": "String",
+        "example": "2 days ago"
+      }
+    }
+  },
+  "taskDetailUpdated": "Updated {when}",
+  "@taskDetailUpdated": {
+    "placeholders": {
+      "when": {
+        "type": "String",
+        "example": "1 hour ago"
+      }
+    }
+  },
+  "taskDetailDoneWhen": "Done {when}",
+  "@taskDetailDoneWhen": {
+    "placeholders": {
+      "when": {
+        "type": "String",
+        "example": "1 hour ago"
+      }
+    }
+  },
+  "taskDetailOpenProjectHint": "Opens the project",
+  "@taskDetailOpenProjectHint": {
+    "description": "Screen reader hint on a project in the task's project path."
+  },
+  "taskOpenNotFound": "This task wasn't found",
+  "taskOpenForbidden": "You don't have access to this task",
+  "taskOpenOffline": "This task isn't on this device. Connect to open it.",
+  "taskOpenFailed": "This task couldn't be opened",
+  "deepLinkPickAccountTitle": "Open in which account?",
+  "deepLinkPickAccountBody": "This task is in more than one of your accounts.",
+  "richTextImageOffline": "The image needs a connection",
+  "@richTextImageOffline": {
+    "description": "An attachment image in a description or comment that could not load without a connection; a tap tries again."
+  },
+  "commentsLoaded": "{count, plural, =0{No more comments} =1{1 comment loaded} other{{count} comments loaded}}",
+  "@commentsLoaded": {
+    "description": "Read by screen readers once a page of comments the user asked for has arrived.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "taskOpening": "Opening the task…",
+  "@taskOpening": {
+    "description": "While a task that is not on this device is read from the server, e.g. after tapping a link to it."
+  },
+  "deepLinkSwitchAccountTitle": "Switch accounts?",
+  "deepLinkSwitchAccountBody": "This task is in another of your accounts. Choose it to switch and open the task."
 }

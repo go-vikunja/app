@@ -1250,7 +1250,8 @@ final class UserRepositoryProvider
 String _$userRepositoryHash() => r'28da8498a99ef2100dbc72f90b776490a8e9c948';
 
 /// The last step of a sign-out: makes a background run in another isolate
-/// let go of the account, cancels the account's notifications (scheduled
+/// let go of the account, drops its avatars and attachment images from
+/// memory, cancels the account's notifications (scheduled
 /// and in the tray) and forgets their preferences and the background
 /// notes, stops its outbox sender and sync engine, closes its database and
 /// deletes the files.
@@ -1259,7 +1260,8 @@ String _$userRepositoryHash() => r'28da8498a99ef2100dbc72f90b776490a8e9c948';
 final accountDataWiperProvider = AccountDataWiperProvider._();
 
 /// The last step of a sign-out: makes a background run in another isolate
-/// let go of the account, cancels the account's notifications (scheduled
+/// let go of the account, drops its avatars and attachment images from
+/// memory, cancels the account's notifications (scheduled
 /// and in the tray) and forgets their preferences and the background
 /// notes, stops its outbox sender and sync engine, closes its database and
 /// deletes the files.
@@ -1273,7 +1275,8 @@ final class AccountDataWiperProvider
         >
     with $Provider<AccountDataWiper> {
   /// The last step of a sign-out: makes a background run in another isolate
-  /// let go of the account, cancels the account's notifications (scheduled
+  /// let go of the account, drops its avatars and attachment images from
+  /// memory, cancels the account's notifications (scheduled
   /// and in the tray) and forgets their preferences and the background
   /// notes, stops its outbox sender and sync engine, closes its database and
   /// deletes the files.
@@ -1310,4 +1313,4 @@ final class AccountDataWiperProvider
   }
 }
 
-String _$accountDataWiperHash() => r'd9cfe5b63ed7616a4be6c477a18d8f07dabde3e6';
+String _$accountDataWiperHash() => r'101be929f741ffe5eccfc25e8b1b72f0850cdf25';

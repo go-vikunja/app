@@ -11,9 +11,13 @@ class MainActivity : FlutterActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         // Reopened from Recents, the activity gets the task's root intent
         // again; when a home screen shortcut started the task, quick_actions
-        // would report that shortcut a second time.
+        // would report that shortcut a second time, and when a task link
+        // started it, Flutter's deep linking would open the task again. A
+        // restore after the process died replays the launch intent too.
         if ((intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) != 0) {
-            intent = Intent(intent).setAction(Intent.ACTION_MAIN).replaceExtras(Bundle())
+            intent = Intent(intent).setAction(Intent.ACTION_MAIN).replaceExtras(Bundle()).setData(null)
+        } else if (savedInstanceState != null && intent.data != null) {
+            intent = Intent(intent).setData(null)
         }
         super.onCreate(savedInstanceState)
     }

@@ -16,6 +16,7 @@ String encodeUserSettings(UserSettings settings) => jsonEncode({
   ],
   'filter_id_used_on_overview': ?settings.filterIdUsedOnOverview,
   'minimum_priority': settings.minimumPriority,
+  'comment_sort_order': settings.commentSortOrder.wireName,
 });
 
 UserSettings decodeUserSettings(String? stored) {
@@ -59,5 +60,6 @@ UserSettings decodeUserSettings(String? stored) {
       final int priority when priority >= 1 && priority <= 5 => priority,
       _ => 0,
     },
+    commentSortOrder: CommentSortOrder.fromWire(json['comment_sort_order']),
   );
 }

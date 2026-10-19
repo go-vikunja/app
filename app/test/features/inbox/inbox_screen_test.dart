@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/features/accounts/application/account_switcher.dart';
@@ -229,8 +230,14 @@ void main() {
       );
     });
 
-    testWidgets('on a task that is not on this device says so', (tester) async {
+    testWidgets('on a task that is not on this device reads it online', (
+      tester,
+    ) async {
       data.activity.notifications = [mentioned];
+      data.resolver.online[const TaskById(99)] = sampleTask(
+        id: 99,
+        title: 'Old chore',
+      );
       await openInbox(tester);
 
       await tester.tap(
@@ -239,9 +246,47 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(data.activity.markedRead, [1]);
-      expect(find.byType(TaskDetailSheet), findsNothing);
-      expect(find.text(en.inboxTaskNotLocal), findsOneWidget);
+      expect(data.resolver.onlineRequests, [const TaskById(99)]);
+      expect(find.byType(InboxScreen), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(TaskDetailSheet),
+          matching: find.text('Old chore'),
+        ),
+        findsOneWidget,
+      );
     });
+
+    for (final (name, failure, message) in [
+      ('gone on the server', null, en.taskOpenNotFound),
+      (
+        'not readable any more',
+        const Forbidden() as Exception,
+        en.taskOpenForbidden,
+      ),
+      (
+        'not on this device while offline',
+        const NetworkFailure(NetworkProblem.unreachable),
+        en.taskOpenOffline,
+      ),
+    ]) {
+      testWidgets('on a task $name says so', (tester) async {
+        data.activity.notifications = [mentioned];
+        if (failure != null) {
+          data.resolver.failures[const TaskById(99)] = failure;
+        }
+        await openInbox(tester);
+
+        await tester.tap(
+          inInbox(find.text(en.inboxMentioned('Anna Example', '#3'))),
+        );
+        await tester.pumpAndSettle();
+
+        expect(data.activity.markedRead, [1]);
+        expect(find.byType(TaskDetailSheet), findsNothing);
+        expect(find.text(message), findsOneWidget);
+      });
+    }
 
     testWidgets('on a read row marks nothing; a deleted task says so', (
       tester,

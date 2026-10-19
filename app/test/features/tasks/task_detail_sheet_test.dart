@@ -17,7 +17,9 @@ void main() {
 
   setUp(() {
     data = SyncFakes(now: now);
-    data.projects.all = [sampleProject(id: 1, title: 'Work')];
+    data.projects.all = [
+      sampleProject(id: 1, title: 'Work', identifier: 'WORK'),
+    ];
     data.tasks.all = [
       sampleTask(
         id: 1,
@@ -63,10 +65,8 @@ void main() {
     Finder inSheet(String text) =>
         find.descendant(of: sheet, matching: find.text(text));
     expect(inSheet('Quarterly report'), findsOneWidget);
-    expect(
-      inSheet(en.taskDetailIdentifierInProject('WORK-1', 'Work')),
-      findsOneWidget,
-    );
+    expect(inSheet('WORK-1'), findsOneWidget);
+    expect(inSheet('Work'), findsOneWidget);
     final done = tester.widget<CheckboxListTile>(
       find.descendant(of: sheet, matching: find.byType(CheckboxListTile)),
     );
@@ -86,7 +86,8 @@ void main() {
     expect(inSheet('AE'), findsOneWidget);
     expect(inSheet('Alice Example'), findsOneWidget);
     expect(inSheet('bob'), findsOneWidget);
-    expect(inSheet('Numbers & charts\n• revenue'), findsOneWidget);
+    expect(inSheet('Numbers & charts'), findsOneWidget);
+    expect(inSheet('revenue'), findsOneWidget);
     expect(
       find.descendant(
         of: sheet,
@@ -103,10 +104,7 @@ void main() {
 
     final sheet = find.byType(TaskDetailSheet);
     expect(
-      find.descendant(
-        of: sheet,
-        matching: find.text(en.taskDetailIdentifierInProject('#2', 'Work')),
-      ),
+      find.descendant(of: sheet, matching: find.text('WORK-2')),
       findsOneWidget,
     );
     expect(
@@ -193,10 +191,7 @@ void main() {
     );
     expect(find.descendant(of: sheet, matching: find.text('#0')), findsNothing);
     expect(
-      find.descendant(
-        of: sheet,
-        matching: find.text(en.taskDetailIdentifierInProject('#0', 'Work')),
-      ),
+      find.descendant(of: sheet, matching: find.text('WORK-0')),
       findsNothing,
     );
   });
@@ -215,7 +210,7 @@ void main() {
     expect(
       find.descendant(
         of: find.byType(TaskDetailSheet),
-        matching: find.text(en.taskDetailIdentifierInProject('#0', 'Work')),
+        matching: find.text('WORK-0'),
       ),
       findsOneWidget,
     );

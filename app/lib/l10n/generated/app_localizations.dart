@@ -1334,12 +1334,6 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{1 year ago} other{{count} years ago}}'**
   String relativeYearsAgo(int count);
 
-  /// No description provided for @taskDetailIdentifierInProject.
-  ///
-  /// In en, this message translates to:
-  /// **'{identifier} in {project}'**
-  String taskDetailIdentifierInProject(String identifier, String project);
-
   /// No description provided for @taskDetailDueDate.
   ///
   /// In en, this message translates to:
@@ -1357,12 +1351,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'End date'**
   String get taskDetailEndDate;
-
-  /// No description provided for @taskDetailDoneAt.
-  ///
-  /// In en, this message translates to:
-  /// **'Done at'**
-  String get taskDetailDoneAt;
 
   /// No description provided for @taskDetailPriority.
   ///
@@ -4223,6 +4211,258 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Subtask of {parent}'**
   String taskSubtaskOfSemantics(String parent);
+
+  /// A link in a task description that no app on the device can open.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t open this link'**
+  String get linkCannotOpen;
+
+  /// Read by screen readers for an image in a description or comment without a description of its own.
+  ///
+  /// In en, this message translates to:
+  /// **'Image'**
+  String get richTextImage;
+
+  /// Stands in for an image on another website, which the app does not load by itself.
+  ///
+  /// In en, this message translates to:
+  /// **'Image from {host}'**
+  String richTextImageFrom(String host);
+
+  /// No description provided for @richTextImageFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The image couldn\'t be loaded'**
+  String get richTextImageFailed;
+
+  /// An attachment image in a format the app does not draw, such as SVG.
+  ///
+  /// In en, this message translates to:
+  /// **'This image can\'t be shown here'**
+  String get richTextImageUnsupported;
+
+  /// Screen reader hint on an image that opens full screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Show full screen'**
+  String get richTextShowImage;
+
+  /// Screen reader hint on the stand-in for an image on another website.
+  ///
+  /// In en, this message translates to:
+  /// **'Opens in the browser'**
+  String get richTextOpensInBrowser;
+
+  /// Above a quote of another comment inside a comment.
+  ///
+  /// In en, this message translates to:
+  /// **'Reply to {author}'**
+  String richTextReplyTo(String author);
+
+  /// No description provided for @imageViewerClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close image'**
+  String get imageViewerClose;
+
+  /// No description provided for @taskDetailDetailsOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Attachments, comments and reactions need a connection'**
+  String get taskDetailDetailsOffline;
+
+  /// No description provided for @taskDetailDetailsFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Attachments, comments and reactions couldn\'t be loaded'**
+  String get taskDetailDetailsFailed;
+
+  /// No description provided for @taskDetailAttachments.
+  ///
+  /// In en, this message translates to:
+  /// **'Attachments'**
+  String get taskDetailAttachments;
+
+  /// Badge on the attachment the task uses as its cover image.
+  ///
+  /// In en, this message translates to:
+  /// **'Cover image'**
+  String get taskDetailCoverImage;
+
+  /// No description provided for @taskDetailComments.
+  ///
+  /// In en, this message translates to:
+  /// **'Comments ({count})'**
+  String taskDetailComments(int count);
+
+  /// No description provided for @taskDetailShowComments.
+  ///
+  /// In en, this message translates to:
+  /// **'Show comments'**
+  String get taskDetailShowComments;
+
+  /// No description provided for @taskDetailMoreComments.
+  ///
+  /// In en, this message translates to:
+  /// **'Load more comments'**
+  String get taskDetailMoreComments;
+
+  /// No description provided for @commentsOldestFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Oldest first'**
+  String get commentsOldestFirst;
+
+  /// No description provided for @commentsNewestFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Newest first'**
+  String get commentsNewestFirst;
+
+  /// Screen reader hint on the button that shows the comments' order.
+  ///
+  /// In en, this message translates to:
+  /// **'Change the order'**
+  String get commentsChangeOrder;
+
+  /// No description provided for @commentsLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading comments…'**
+  String get commentsLoading;
+
+  /// No description provided for @commentsNeedConnection.
+  ///
+  /// In en, this message translates to:
+  /// **'Comments need a connection'**
+  String get commentsNeedConnection;
+
+  /// No description provided for @commentsFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Comments couldn\'t be loaded'**
+  String get commentsFailed;
+
+  /// After a comment's time when it was changed later.
+  ///
+  /// In en, this message translates to:
+  /// **'edited {when}'**
+  String commentEdited(String when);
+
+  /// No description provided for @reactionByOne.
+  ///
+  /// In en, this message translates to:
+  /// **'{user} reacted with {reaction}'**
+  String reactionByOne(String user, String reaction);
+
+  /// No description provided for @reactionBySeveral.
+  ///
+  /// In en, this message translates to:
+  /// **'{users} and {lastUser} reacted with {reaction}'**
+  String reactionBySeveral(String users, String lastUser, String reaction);
+
+  /// The first ten people who reacted, then how many more did.
+  ///
+  /// In en, this message translates to:
+  /// **'{users} and {count} more reacted with {reaction}'**
+  String reactionByMany(String users, int count, String reaction);
+
+  /// No description provided for @taskDetailCreatedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Created {when} by {name}'**
+  String taskDetailCreatedBy(String when, String name);
+
+  /// No description provided for @taskDetailCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Created {when}'**
+  String taskDetailCreated(String when);
+
+  /// No description provided for @taskDetailUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Updated {when}'**
+  String taskDetailUpdated(String when);
+
+  /// No description provided for @taskDetailDoneWhen.
+  ///
+  /// In en, this message translates to:
+  /// **'Done {when}'**
+  String taskDetailDoneWhen(String when);
+
+  /// Screen reader hint on a project in the task's project path.
+  ///
+  /// In en, this message translates to:
+  /// **'Opens the project'**
+  String get taskDetailOpenProjectHint;
+
+  /// No description provided for @taskOpenNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'This task wasn\'t found'**
+  String get taskOpenNotFound;
+
+  /// No description provided for @taskOpenForbidden.
+  ///
+  /// In en, this message translates to:
+  /// **'You don\'t have access to this task'**
+  String get taskOpenForbidden;
+
+  /// No description provided for @taskOpenOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'This task isn\'t on this device. Connect to open it.'**
+  String get taskOpenOffline;
+
+  /// No description provided for @taskOpenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'This task couldn\'t be opened'**
+  String get taskOpenFailed;
+
+  /// No description provided for @deepLinkPickAccountTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Open in which account?'**
+  String get deepLinkPickAccountTitle;
+
+  /// No description provided for @deepLinkPickAccountBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This task is in more than one of your accounts.'**
+  String get deepLinkPickAccountBody;
+
+  /// An attachment image in a description or comment that could not load without a connection; a tap tries again.
+  ///
+  /// In en, this message translates to:
+  /// **'The image needs a connection'**
+  String get richTextImageOffline;
+
+  /// Read by screen readers once a page of comments the user asked for has arrived.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No more comments} =1{1 comment loaded} other{{count} comments loaded}}'**
+  String commentsLoaded(int count);
+
+  /// While a task that is not on this device is read from the server, e.g. after tapping a link to it.
+  ///
+  /// In en, this message translates to:
+  /// **'Opening the task…'**
+  String get taskOpening;
+
+  /// No description provided for @deepLinkSwitchAccountTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch accounts?'**
+  String get deepLinkSwitchAccountTitle;
+
+  /// No description provided for @deepLinkSwitchAccountBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This task is in another of your accounts. Choose it to switch and open the task.'**
+  String get deepLinkSwitchAccountBody;
 }
 
 class _AppLocalizationsDelegate

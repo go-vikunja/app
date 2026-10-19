@@ -339,9 +339,7 @@ class _UpcomingSections extends StatelessWidget {
                 projectTitle: project?.title,
                 projectColor: parseHexColor(project?.hexColor ?? ''),
                 pending: pendingIds.contains(task.id),
-                onTap: () => unawaited(
-                  showTaskDetail(context, task: task, project: project),
-                ),
+                onTap: () => unawaited(showTaskDetail(context, task: task)),
                 onDoneChanged: (done) => onDoneChanged(task, done: done),
                 onFavoriteChanged: (favorite) =>
                     onFavoriteChanged(task, favorite: favorite),

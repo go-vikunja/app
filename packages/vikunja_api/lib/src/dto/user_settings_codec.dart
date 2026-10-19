@@ -47,5 +47,6 @@ UserSettings parseUserSettings(Object? json) {
       final int priority when priority >= 1 && priority <= 5 => priority,
       _ => 0,
     },
+    commentSortOrder: CommentSortOrder.fromWire(frontend['comment_sort_order']),
   );
 }

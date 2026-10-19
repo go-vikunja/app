@@ -56,9 +56,31 @@ final class FakeSyncClient implements VikunjaReadClient {
   @override
   AvatarsPort get avatars => throw UnimplementedError();
 
+  @override
+  late final FakeCommentsPort comments = FakeCommentsPort(this);
+
+  @override
+  late final FakeAttachmentsPort attachments = FakeAttachmentsPort(this);
+
   /// The subscription each task / project shows on a single read.
   final Map<int, Subscription> taskSubscriptions = {};
   final Map<int, Subscription> projectSubscriptions = {};
+
+  /// What a details read answers per task of [allTasks]; absent: nothing
+  /// beyond the row, with the task's subscription.
+  final Map<int, TaskDetails> taskDetails = {};
+
+  /// Every comment per task id, in the order the server stored them.
+  final Map<int, List<TaskComment>> taskComments = {};
+
+  /// The bytes the server answers per `(task, attachment, preview)`.
+  final Map<(int, int, AttachmentPreviewSize?), AttachmentBlob>
+  attachmentBlobs = {};
+
+  /// Addresses a task had before it moved, `(project id, index)` to its
+  /// id: a by-index read of one answers the task, as v2 does after its
+  /// redirect.
+  final Map<(int, int), int> retiredIndexes = {};
 
   /// The server's notifications for the user, newest first.
   List<ServerNotification> serverNotifications = [];
@@ -261,6 +283,45 @@ final class FakeTasksPort implements TasksPort {
     throw const NotFound(code: 4002);
   }
 
+  @override
+  Future<TaskDetails> readDetails(int id) async {
+    await _client._request('task details $id');
+    if (!_client.allTasks.any((task) => task.id == id)) {
+      throw const NotFound(code: 4002);
+    }
+    return _client.taskDetails[id] ??
+        TaskDetails(subscription: _client.taskSubscriptions[id]);
+  }
+
+  /// [project] is a project id when it is all digits, else an identifier
+  /// compared ignoring case; like the server, a project the user cannot
+  /// read is `Forbidden` and an unknown one `NotFound` 3001.
+  @override
+  Future<Task> readByIndex(String project, int index) async {
+    await _client._request('task by-index $project $index');
+    final projectId = int.tryParse(project);
+    final found = _client.allProjects.where(
+      (candidate) => projectId != null
+          ? candidate.id == projectId
+          : candidate.identifier.isNotEmpty &&
+                candidate.identifier.toLowerCase() == project.toLowerCase(),
+    );
+    final match = found.firstOrNull;
+    if (match == null) throw const NotFound(code: 3001);
+    if (_client.forbiddenProjects.contains(match.id)) {
+      throw const Forbidden();
+    }
+    final retired = _client.retiredIndexes[(match.id, index)];
+    for (final task in _client.allTasks) {
+      if (retired != null
+          ? task.id == retired
+          : task.projectId == match.id && task.index == index) {
+        return task;
+      }
+    }
+    throw const NotFound(code: 4002);
+  }
+
   Page<Task> _serve(List<Task> all, TaskQuery query) {
     queries.add(query);
     final matches = _predicate(query.filter);
@@ -456,5 +517,58 @@ final class FakeSubscriptionsPort implements SubscriptionsPort {
   Future<Subscription?> forProject(int projectId) async {
     await _client._request('subscription project $projectId');
     return _client.projectSubscriptions[projectId];
+  }
+}
+
+/// Pages of [FakeSyncClient.taskComments] in the server's order: by
+/// `created` to the second only, ties in id order whichever the direction,
+/// like 2.7.0.
+final class FakeCommentsPort implements CommentsPort {
+  new(this._client);
+
+  final FakeSyncClient _client;
+
+  @override
+  Future<Page<TaskComment>> list(
+    int taskId, {
+    int page = 1,
+    int? perPage,
+    bool newestFirst = false,
+  }) async {
+    await _client._request(
+      'comments $taskId page $page ${newestFirst ? 'desc' : 'asc'}',
+    );
+    if (!_client.allTasks.any((task) => task.id == taskId)) {
+      throw const NotFound(code: 4002);
+    }
+    int second(TaskComment comment) =>
+        (comment.created?.millisecondsSinceEpoch ?? 0) ~/ 1000;
+    final ordered = [...?_client.taskComments[taskId]]
+      ..sort((a, b) {
+        final byCreated = newestFirst
+            ? second(b).compareTo(second(a))
+            : second(a).compareTo(second(b));
+        return byCreated != 0 ? byCreated : a.id.compareTo(b.id);
+      });
+    return _client._page(ordered, page: page, perPage: perPage);
+  }
+}
+
+final class FakeAttachmentsPort implements AttachmentsPort {
+  new(this._client);
+
+  final FakeSyncClient _client;
+
+  @override
+  Future<AttachmentBlob> fetch(
+    int taskId,
+    int attachmentId, {
+    AttachmentPreviewSize? preview,
+  }) async {
+    await _client._request(
+      'attachment $taskId $attachmentId ${preview?.wireName ?? 'original'}',
+    );
+    return _client.attachmentBlobs[(taskId, attachmentId, preview)] ??
+        (throw const NotFound(code: 4002));
   }
 }

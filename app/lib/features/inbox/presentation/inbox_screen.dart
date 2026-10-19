@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/misc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/router/pop_pages_over_shell.dart';
@@ -19,17 +20,17 @@ import 'package:vikunja_mobile/features/common/presentation/list_section_header.
 import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
 import 'package:vikunja_mobile/features/inbox/application/activity_sections.dart';
 import 'package:vikunja_mobile/features/inbox/application/inbox_providers.dart';
-import 'package:vikunja_mobile/features/inbox/application/local_task_lookup.dart';
 import 'package:vikunja_mobile/features/inbox/presentation/inbox_row.dart';
-import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/open/task_opener.dart';
 
 final _log = Logger('Inbox');
 
 enum _Action { markAllRead }
 
 /// The server's notifications for the active account as this device holds
-/// them, newest first by day; a tap marks one read and opens its task or
-/// project when it is on this device.
+/// them, newest first by day; a tap marks one read and opens its task
+/// (read online when it is not on this device) or its project when that is
+/// on this device.
 class InboxScreen extends ConsumerStatefulWidget {
   const new({super.key});
 
@@ -81,17 +82,13 @@ class _InboxScreenState extends ConsumerState<InboxScreen>
     }
   }
 
+  /// A task that is not on this device is read online.
   Future<void> _openTask(int? taskId) async {
-    final tasks = ref.read(taskRepositoryProvider);
-    if (tasks == null) return;
-    final task = taskId == null ? null : await findLocalTask(tasks, taskId);
-    if (!mounted) return;
-    if (task == null) {
+    if (taskId == null) {
       _showSnackBar(context.l10n.inboxTaskNotLocal);
       return;
     }
-    final project = ref.read(projectRepositoryProvider)?.find(task.projectId);
-    await showTaskDetail(context, task: task, project: project);
+    await ref.read(taskOpenerProvider).openInActiveAccount(TaskById(taskId));
   }
 
   /// The project's screen is in a tab: the pages over the shell go first,

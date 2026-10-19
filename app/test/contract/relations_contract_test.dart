@@ -76,6 +76,12 @@ final class _SwitchableTasks implements TasksWritePort {
     _client._check();
     return despiteWriteRaces(() => _client._real.tasks.duplicate(id));
   }
+
+  @override
+  Future<void> markRead(int id) {
+    _client._check();
+    return _client._real.tasks.markRead(id);
+  }
 }
 
 /// Both calls are safe to repeat over the lost write races of the shared

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/misc.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/activity/activity_providers.dart';
 import 'package:vikunja_mobile/core/activity/foreground_activity.dart';
+import 'package:vikunja_mobile/core/attachments/attachment_image_providers.dart';
 import 'package:vikunja_mobile/core/db/account_database_files.dart';
 import 'package:vikunja_mobile/core/outbox/pending_task_ids_source.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
@@ -13,8 +14,10 @@ import 'package:vikunja_mobile/core/repositories/list_preferences_providers.dart
 import 'package:vikunja_mobile/core/repositories/project_repository.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/subscription_repository_providers.dart';
+import 'package:vikunja_mobile/core/repositories/task_details_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
+import 'package:vikunja_mobile/core/repositories/task_resolver_providers.dart';
 import 'package:vikunja_mobile/core/settings/user_settings_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
@@ -24,6 +27,7 @@ import 'package:vikunja_mobile/features/sync/application/inactive_outboxes.dart'
 import 'activity_fakes.dart';
 import 'list_preferences_fakes.dart';
 import 'subscription_fakes.dart';
+import 'task_details_fakes.dart';
 import 'task_edits.dart';
 
 /// Replays [current] to every subscriber when it has one, then forwards
@@ -733,6 +737,7 @@ final class AccountDataFakes {
     );
     projects = FakeProjectRepository(engine);
     tasks = FakeTaskRepository(engine);
+    resolver = FakeTaskResolver(local: () => tasks.all);
   }
 
   late final FakeSyncEngine engine;
@@ -741,6 +746,11 @@ final class AccountDataFakes {
   final listPreferences = FakeListPreferences();
   final activity = FakeActivityRepository();
   final subscriptions = FakeSubscriptionRepository();
+  final details = FakeTaskDetailsRepository();
+
+  /// Resolves the account's [tasks] locally, the rest from its `online`.
+  late final FakeTaskResolver resolver;
+  final attachmentImages = FakeAttachmentImages();
 
   /// What `userSettingsProvider` reports while the account is active.
   UserSettings get settings => _settings;
@@ -781,6 +791,9 @@ final class SyncFakes {
   FakeActivityRepository get activity => shared.activity;
   FakeListPreferences get listPreferences => shared.listPreferences;
   FakeSubscriptionRepository get subscriptions => shared.subscriptions;
+  FakeTaskDetailsRepository get details => shared.details;
+  FakeTaskResolver get resolver => shared.resolver;
+  FakeAttachmentImages get attachmentImages => shared.attachmentImages;
 
   AccountDataFakes forAccount(String accountId) =>
       accounts[accountId] ?? shared;
@@ -805,6 +818,15 @@ final class SyncFakes {
     ),
     accountSubscriptionRepositoryProvider.overrideWith(
       (ref, accountId) => forAccount(accountId).subscriptions,
+    ),
+    accountTaskDetailsRepositoryProvider.overrideWith(
+      (ref, accountId) => forAccount(accountId).details,
+    ),
+    accountTaskResolverProvider.overrideWith(
+      (ref, accountId) => forAccount(accountId).resolver,
+    ),
+    accountAttachmentImagesProvider.overrideWith(
+      (ref, accountId) => forAccount(accountId).attachmentImages,
     ),
     // The real one syncs the activity on the foreground ticks, which opens
     // the inactive accounts' databases.

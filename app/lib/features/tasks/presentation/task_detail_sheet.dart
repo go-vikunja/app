@@ -1,45 +1,67 @@
 import 'dart:async';
 
 import 'package:cupertino_ui/cupertino_ui.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/app/router/pop_pages_over_shell.dart';
+import 'package:vikunja_mobile/app/theme/hex_color.dart';
+import 'package:vikunja_mobile/core/attachments/attachment_image_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/subscription_repository.dart';
 import 'package:vikunja_mobile/core/repositories/subscription_repository_providers.dart';
+import 'package:vikunja_mobile/core/repositories/task_details_repository.dart';
+import 'package:vikunja_mobile/core/repositories/task_details_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
-import 'package:vikunja_mobile/core/text/html_to_text.dart';
-import 'package:vikunja_mobile/features/common/presentation/initials_avatar.dart';
+import 'package:vikunja_mobile/core/settings/user_settings_providers.dart';
+import 'package:vikunja_mobile/features/common/presentation/user_avatar.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
 import 'package:vikunja_mobile/features/tasks/application/relation_search.dart';
-import 'package:vikunja_mobile/features/tasks/application/task_providers.dart';
+import 'package:vikunja_mobile/features/tasks/application/task_identifier.dart';
+import 'package:vikunja_mobile/features/tasks/application/task_providers.dart'
+    show taskByIdProvider;
+import 'package:vikunja_mobile/features/tasks/application/task_row_content.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/confirm_dialog.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/delete_task_dialog.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/details/attachment_row.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/details/comments_controller.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/details/comments_section.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/details/details_notice.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/details/project_breadcrumb.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/details/reaction_chips.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/details/task_details_controller.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/details/task_metadata_line.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/favourite_button.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/follow/follow_button.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/follow/follow_controller.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/moment_format.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/open/task_opener.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/relations/add_relation_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/relations/related_tasks_section.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/relations/subtasks_section.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/rich_text/rich_html.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/rich_text/rich_link_actions.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_chips.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_formatting.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/task_row_parts.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_write_feedback.dart';
 
 final _log = Logger('TaskDetail');
 
-/// Shows what this device knows about [task]; only whether the user
-/// follows it is read from the server. [messengerBelow] is the messenger of
-/// the sheet this one opens over, see [TaskDetailSheet.messengerBelow].
+/// Shows what this device knows about [task] and, online, what only the
+/// server has (attachments, reactions, comments, whether the user follows
+/// it). [messengerBelow] is the messenger of the sheet this one opens over,
+/// see [TaskDetailSheet.messengerBelow].
 Future<void> showTaskDetail(
   BuildContext context, {
   required Task task,
-  Project? project,
   GlobalKey<ScaffoldMessengerState>? messengerBelow,
 }) {
   switch (Theme.of(context).platform) {
@@ -49,7 +71,6 @@ Future<void> showTaskDetail(
         showDragHandle: true,
         scrollableBuilder: (context, scrollController) => TaskDetailSheet(
           task: task,
-          project: project,
           scrollController: scrollController,
           messengerBelow: messengerBelow,
         ),
@@ -69,7 +90,6 @@ Future<void> showTaskDetail(
           maxChildSize: 0.95,
           builder: (context, scrollController) => TaskDetailSheet(
             task: task,
-            project: project,
             scrollController: scrollController,
             messengerBelow: messengerBelow,
           ),
@@ -83,18 +103,18 @@ enum _SheetAction { duplicate, delete }
 /// Follows the local row of [task] while it is open, so a done toggle here,
 /// the server's answer to it (a repeating task's next occurrence) and the
 /// id a queued create gets show; [task] itself is the fallback once the row
-/// is gone. Messages about what happens in the sheet show inside it.
+/// is gone. Its project is watched too. What only the server has is read
+/// once on opening; offline the sheet says so in one line and shows the
+/// rest. Messages about what happens in the sheet show inside it.
 class TaskDetailSheet extends ConsumerStatefulWidget {
   const new({
     required this.task,
     required this.scrollController,
-    this.project,
     this.messengerBelow,
     super.key,
   });
 
   final Task task;
-  final Project? project;
   final ScrollController scrollController;
 
   /// Where a message outlasting this sheet shows once it closes: the sheet
@@ -114,23 +134,90 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
     write: (id, {required subscribed}) =>
         _subscriptions().setTaskSubscribed(id, subscribed: subscribed),
   );
+  late final _details = TaskDetailsController(
+    read: (id) => _detailsRepository().details(id),
+    markRead: (id) => _detailsRepository().markRead(id),
+  );
+  late final _comments = CommentsController(
+    read: (id, {required page, required newestFirst}) =>
+        _detailsRepository().comments(id, page: page, newestFirst: newestFirst),
+  );
   bool _duplicating = false;
+  bool _openingLinkedTask = false;
+  CommentsState _commentsBefore = const CommentsState();
 
   @override
   void initState() {
     super.initState();
-    if (widget.task.id > 0) unawaited(_follow.load(widget.task.id));
+    _comments.addListener(_announceComments);
+    ref.listenManual(
+      userSettingsProvider.select((settings) => settings.value),
+      (_, settings) {
+        if (settings == null) return;
+        _comments.useDefaultOrder(
+          newestFirst:
+              settings.commentSortOrder == CommentSortOrder.newestFirst,
+        );
+      },
+      fireImmediately: true,
+    );
+    if (widget.task.id > 0) _loadDetails(widget.task.id);
   }
 
   @override
   void dispose() {
     _follow.dispose();
+    _details.dispose();
+    _comments.dispose();
     super.dispose();
   }
 
   SubscriptionRepository _subscriptions() =>
       ref.read(subscriptionRepositoryProvider) ??
       (throw StateError('No account is signed in'));
+
+  TaskDetailsRepository _detailsRepository() =>
+      ref.read(taskDetailsRepositoryProvider) ??
+      (throw StateError('No account is signed in'));
+
+  /// One read for the details and the follow bell.
+  void _loadDetails(int taskId) {
+    _comments.forTask(taskId);
+    final details = _details.load(taskId);
+    unawaited(
+      _follow.load(
+        taskId,
+        pending: details.then((details) => details.subscription),
+      ),
+    );
+  }
+
+  void _announceComments() {
+    final before = _commentsBefore;
+    final after = _commentsBefore = _comments.value;
+    // Also runs from initState, where no inherited widget may be read.
+    if (!mounted || !before.loading || after.loading) return;
+    final message = commentsResultAnnouncement(
+      context.l10n,
+      before: before,
+      after: after,
+    );
+    if (message == null) return;
+    unawaited(
+      SemanticsService.sendAnnouncement(
+        View.of(context),
+        message,
+        Directionality.of(context),
+      ),
+    );
+  }
+
+  /// The details again, and the images that failed for a reason that may
+  /// have passed.
+  void _retryDetails(int taskId) {
+    ref.read(attachmentImagesProvider)?.forgetFailures();
+    _loadDetails(taskId);
+  }
 
   void _showMessage(String text) {
     _messenger.currentState
@@ -218,14 +305,51 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
   /// Another sheet over this one, which closing brings back.
   void _open(Task other) {
     if (!mounted) return;
-    unawaited(
-      showTaskDetail(
-        context,
-        task: other,
-        project: ref.read(projectByIdProvider(other.projectId)),
-        messengerBelow: _messenger,
-      ),
-    );
+    unawaited(showTaskDetail(context, task: other, messengerBelow: _messenger));
+  }
+
+  /// A task link in the description or a comment, in this sheet's account;
+  /// one not on this device is read online, with progress at the top and
+  /// further taps ignored meanwhile.
+  Future<void> _openLinkedTask(int taskId) async {
+    if (_openingLinkedTask) return;
+    final accountId = ref.read(activeAccountIdProvider);
+    if (accountId == null) return;
+    final l10n = context.l10n;
+    setState(() => _openingLinkedTask = true);
+    try {
+      final task = await ref
+          .read(taskOpenerProvider)
+          .resolve(accountId, TaskById(taskId));
+      if (mounted && ref.read(activeAccountIdProvider) == accountId) {
+        _open(task);
+      }
+    } on Object catch (error) {
+      _log.info('Opening a linked task failed: ${error.runtimeType}');
+      if (mounted) _showMessage(taskOpenFailureText(l10n, error));
+    } finally {
+      if (mounted) setState(() => _openingLinkedTask = false);
+    }
+  }
+
+  void _openLink(String href) => unawaited(
+    openRichTextLink(
+      ref,
+      href,
+      openTask: (taskId) => unawaited(_openLinkedTask(taskId)),
+      showMessage: (text) {
+        if (mounted) _showMessage(text(context.l10n));
+      },
+    ),
+  );
+
+  /// The project's screen is in a tab: the sheets close and the pages
+  /// over the shell go as if the user went back.
+  Future<void> _openProject(Project project) async {
+    final router = GoRouter.of(context);
+    ref.read(rootModalRoutesProvider).closeAll();
+    if (!await popPagesOverShell(router)) return;
+    router.go(AppRoutes.project(project.id));
   }
 
   /// Works offline: the subtask and its relation are queued, the create
@@ -307,14 +431,12 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
     // A queued create named by the server while the sheet is open.
     ref.listen(taskByIdProvider(widget.task.id), (_, next) {
       final id = next.value?.id;
-      if (id != null && id > 0 && _follow.id != id) {
-        unawaited(_follow.load(id));
-      }
+      if (id != null && id > 0 && _details.id != id) _loadDetails(id);
     });
-    final project = widget.project;
+    final project = ref.watch(projectByIdProvider(task.projectId));
+    final projects = ref.watch(projectsProvider).value ?? const <Project>[];
     final projectTitles = {
-      for (final project in ref.watch(projectsProvider).value ?? <Project>[])
-        project.id: project.title,
+      for (final project in projects) project.id: project.title,
     };
     String? otherProjectTitle(Task other) => other.projectId == task.projectId
         ? null
@@ -326,9 +448,10 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
             .value
             ?.contains(task.id) ??
         false;
-    final description = htmlToPlainText(task.description);
     final repeat = formatRepeat(l10n, task);
     final percent = (task.percentDone * 100).round();
+    final color = parseHexColor(task.hexColor);
+    final checklist = checklistStatistics(task.description);
 
     return ScaffoldMessenger(
       key: _messenger,
@@ -336,330 +459,448 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
         backgroundColor: colors.surface,
         body: SafeArea(
           top: false,
-          child: ListView(
-            controller: widget.scrollController,
-            // iOS has no other way to close the keyboard of the subtask
-            // field, which keeps it up for the next one.
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+          child: ListenableBuilder(
+            listenable: Listenable.merge([_details, _comments]),
+            builder: (context, _) {
+              final details = switch (_details.value) {
+                TaskDetailsLoaded(:final details) when task.id > 0 => details,
+                _ => null,
+              };
+              return ListView(
+                controller: widget.scrollController,
+                // iOS has no other way to close the keyboard of the subtask
+                // field, which keeps it up for the next one.
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                 children: [
-                  IconButton(
-                    onPressed: repository == null ? null : () => _edit(task),
-                    tooltip: l10n.taskEdit,
-                    icon: const Icon(Icons.edit_outlined),
-                  ),
-                  ValueListenableBuilder(
-                    valueListenable: _follow,
-                    builder: (context, state, _) => FollowButton(
-                      state: task.id < 0 ? const FollowUnknown() : state,
-                      onPressed: () =>
-                          unawaited(_toggleFollow(task, projectTitles)),
-                    ),
-                  ),
-                  FavouriteButton(
-                    isFavorite: task.isFavorite,
-                    onChanged: repository == null
-                        ? null
-                        : (favorite) => unawaited(
-                            writeTaskFavorite(
-                              repository,
-                              task,
-                              favorite: favorite,
-                            ),
-                          ),
-                  ),
-                  PopupMenuButton<_SheetAction>(
-                    tooltip: l10n.moreActions,
-                    enabled: repository != null,
-                    onSelected: (action) => switch (action) {
-                      _SheetAction.duplicate => unawaited(
-                        _duplicate(repository!, task),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      IconButton(
+                        onPressed: repository == null
+                            ? null
+                            : () => _edit(task),
+                        tooltip: l10n.taskEdit,
+                        icon: const Icon(Icons.edit_outlined),
                       ),
-                      _SheetAction.delete => unawaited(
-                        _delete(repository!, task),
-                      ),
-                    },
-                    itemBuilder: (context) => [
-                      PopupMenuItem(
-                        value: _SheetAction.duplicate,
-                        enabled: !_duplicating,
-                        child: Row(
-                          children: [
-                            const Icon(Icons.content_copy_outlined),
-                            const SizedBox(width: 12),
-                            Flexible(child: Text(l10n.taskDuplicate)),
-                          ],
+                      ValueListenableBuilder(
+                        valueListenable: _follow,
+                        builder: (context, state, _) => FollowButton(
+                          state: task.id < 0 ? const FollowUnknown() : state,
+                          onPressed: () =>
+                              unawaited(_toggleFollow(task, projectTitles)),
                         ),
                       ),
-                      PopupMenuItem(
-                        value: _SheetAction.delete,
-                        child: Row(
-                          children: [
-                            Icon(Icons.delete_outline, color: colors.error),
-                            const SizedBox(width: 12),
-                            Flexible(
-                              child: Text(
-                                l10n.taskDelete,
-                                style: TextStyle(color: colors.error),
+                      FavouriteButton(
+                        isFavorite: task.isFavorite,
+                        onChanged: repository == null
+                            ? null
+                            : (favorite) => unawaited(
+                                writeTaskFavorite(
+                                  repository,
+                                  task,
+                                  favorite: favorite,
+                                ),
+                              ),
+                      ),
+                      PopupMenuButton<_SheetAction>(
+                        tooltip: l10n.moreActions,
+                        enabled: repository != null,
+                        onSelected: (action) => switch (action) {
+                          _SheetAction.duplicate => unawaited(
+                            _duplicate(repository!, task),
+                          ),
+                          _SheetAction.delete => unawaited(
+                            _delete(repository!, task),
+                          ),
+                        },
+                        itemBuilder: (context) => [
+                          PopupMenuItem(
+                            value: _SheetAction.duplicate,
+                            enabled: !_duplicating,
+                            child: Row(
+                              children: [
+                                const Icon(Icons.content_copy_outlined),
+                                const SizedBox(width: 12),
+                                Flexible(child: Text(l10n.taskDuplicate)),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: _SheetAction.delete,
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete_outline, color: colors.error),
+                                const SizedBox(width: 12),
+                                Flexible(
+                                  child: Text(
+                                    l10n.taskDelete,
+                                    style: TextStyle(color: colors.error),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        tooltip: l10n.taskDetailClose,
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
+                  SizedBox(
+                    height: 4,
+                    child: _duplicating || _openingLinkedTask
+                        ? const LinearProgressIndicator()
+                        : null,
+                  ),
+                  // A task not yet sent has no identifier until the server
+                  // assigns one.
+                  if (task.id > 0 || color != null)
+                    Row(
+                      children: [
+                        if (color != null) ...[
+                          ColorDot(color: color),
+                          const SizedBox(width: 8),
+                        ],
+                        if (task.id > 0)
+                          Flexible(
+                            child: Text(
+                              taskIdentifierIn(task, project),
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: colors.onSurfaceVariant,
                               ),
                             ),
-                          ],
+                          ),
+                      ],
+                    ),
+                  // One node: the heading, its tap and the hint together.
+                  MergeSemantics(
+                    child: Semantics(
+                      header: true,
+                      button: repository != null,
+                      hint: repository == null ? null : l10n.taskEdit,
+                      child: InkWell(
+                        onTap: repository == null ? null : () => _edit(task),
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          constraints: const BoxConstraints(minHeight: 48),
+                          alignment: AlignmentDirectional.centerStart,
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Text(
+                            task.title,
+                            style: task.done
+                                ? theme.textTheme.titleLarge?.copyWith(
+                                    decoration: TextDecoration.lineThrough,
+                                    color: colors.onSurfaceVariant,
+                                  )
+                                : theme.textTheme.titleLarge,
+                          ),
                         ),
                       ),
-                    ],
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    tooltip: l10n.taskDetailClose,
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
-              ),
-              SizedBox(
-                height: 4,
-                child: _duplicating ? const LinearProgressIndicator() : null,
-              ),
-              // One node: the heading, its tap and the hint together.
-              MergeSemantics(
-                child: Semantics(
-                  header: true,
-                  button: repository != null,
-                  hint: repository == null ? null : l10n.taskEdit,
-                  child: InkWell(
-                    onTap: repository == null ? null : () => _edit(task),
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      constraints: const BoxConstraints(minHeight: 48),
-                      alignment: AlignmentDirectional.centerStart,
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Text(
-                        task.title,
-                        style: task.done
-                            ? theme.textTheme.titleLarge?.copyWith(
-                                decoration: TextDecoration.lineThrough,
-                                color: colors.onSurfaceVariant,
-                              )
-                            : theme.textTheme.titleLarge,
-                      ),
                     ),
                   ),
-                ),
-              ),
-              // A task not yet sent has no identifier until the server
-              // assigns one.
-              if (task.id > 0 || project != null)
-                Text(
-                  switch ((task.id > 0, project)) {
-                    (true, final project?) =>
-                      l10n.taskDetailIdentifierInProject(
-                        task.displayIdentifier,
-                        project.title,
-                      ),
-                    (true, null) => task.displayIdentifier,
-                    (false, _) => project!.title,
-                  },
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: colors.onSurfaceVariant,
-                  ),
-                ),
-              ValueListenableBuilder(
-                valueListenable: _follow,
-                builder: (context, state, _) => switch (state) {
-                  FollowKnown(:final subscription?)
-                      when task.id > 0 && _follow.inherits(subscription) =>
-                    _InheritedFollowNote(
-                      projectTitle: projectTitles[subscription.entityId],
+                  if (project != null)
+                    ProjectBreadcrumb(
+                      path: projectPath(project, projects),
+                      onOpen: (project) => unawaited(_openProject(project)),
                     ),
-                  _ => const SizedBox.shrink(),
-                },
-              ),
-              const SizedBox(height: 4),
-              CheckboxListTile.adaptive(
-                value: task.done,
-                onChanged: repository == null
-                    ? null
-                    : (done) => unawaited(
-                        writeTaskDone(repository, task, done: done ?? false),
+                  if (checklist.total > 0)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: ChecklistSummary(
+                          statistics: checklist,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: colors.onSurfaceVariant,
+                          ),
+                        ),
                       ),
-                title: Text(l10n.taskDone),
-                controlAffinity: ListTileControlAffinity.leading,
-                contentPadding: EdgeInsets.zero,
-              ),
-              if (pending || PriorityChip.shows(task.priority)) ...[
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    if (PriorityChip.shows(task.priority))
-                      PriorityChip(priority: task.priority),
-                    if (pending) const _PendingChip(),
+                    ),
+                  ValueListenableBuilder(
+                    valueListenable: _follow,
+                    builder: (context, state, _) => switch (state) {
+                      FollowKnown(:final subscription?)
+                          when task.id > 0 && _follow.inherits(subscription) =>
+                        _InheritedFollowNote(
+                          projectTitle: projectTitles[subscription.entityId],
+                        ),
+                      _ => const SizedBox.shrink(),
+                    },
+                  ),
+                  const SizedBox(height: 4),
+                  CheckboxListTile.adaptive(
+                    value: task.done,
+                    onChanged: repository == null
+                        ? null
+                        : (done) => unawaited(
+                            writeTaskDone(
+                              repository,
+                              task,
+                              done: done ?? false,
+                            ),
+                          ),
+                    title: Text(l10n.taskDone),
+                    controlAffinity: ListTileControlAffinity.leading,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  if (pending || PriorityChip.shows(task.priority)) ...[
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        if (PriorityChip.shows(task.priority))
+                          PriorityChip(priority: task.priority),
+                        if (pending) const _PendingChip(),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
                   ],
-                ),
-                const SizedBox(height: 8),
-              ],
-              if (task.dueDate case final dueDate?)
-                _Property(
-                  icon: Icons.event,
-                  label: l10n.taskDetailDueDate,
-                  value: formatMoment(context, dueDate),
-                ),
-              if (task.startDate case final startDate?)
-                _Property(
-                  icon: Icons.play_arrow_outlined,
-                  label: l10n.taskDetailStartDate,
-                  value: formatMoment(context, startDate),
-                ),
-              if (task.endDate case final endDate?)
-                _Property(
-                  icon: Icons.stop_outlined,
-                  label: l10n.taskDetailEndDate,
-                  value: formatMoment(context, endDate),
-                ),
-              if (task.doneAt case final doneAt? when task.done)
-                _Property(
-                  icon: Icons.check,
-                  label: l10n.taskDetailDoneAt,
-                  value: formatMoment(context, doneAt),
-                ),
-              if (task.priority != TaskPriority.unset)
-                _Property(
-                  icon: Icons.flag_outlined,
-                  label: l10n.taskDetailPriority,
-                  value: priorityLabel(l10n, task.priority),
-                ),
-              if (percent > 0)
-                _Property(
-                  icon: Icons.percent,
-                  label: l10n.taskDetailProgress,
-                  value: l10n.taskPercentDone(percent),
-                ),
-              if (repeat != null)
-                _Property(
-                  icon: Icons.repeat,
-                  label: l10n.taskDetailRepeat,
-                  value: repeat,
-                ),
-              if (task.reminders.isNotEmpty)
-                _Property(
-                  icon: Icons.alarm,
-                  label: l10n.taskDetailReminders,
-                  value: [
-                    for (final reminder in task.reminders)
-                      formatReminder(
-                        l10n,
-                        reminder,
-                        formatAbsolute: (moment) =>
-                            formatMoment(context, moment),
-                      ),
-                  ].join('\n'),
-                ),
-              if (task.labels.isNotEmpty)
-                _PropertyBlock(
-                  icon: Icons.label_outline,
-                  label: l10n.taskDetailLabels,
-                  child: Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: [
-                      for (final label in task.labels) LabelChip(label: label),
-                    ],
-                  ),
-                ),
-              if (task.assignees.isNotEmpty)
-                _PropertyBlock(
-                  icon: Icons.people_outline,
-                  label: l10n.taskDetailAssignees,
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (final user in task.assignees) _Assignee(user: user),
-                    ],
-                  ),
-                ),
-              if (task.parentTasks.isNotEmpty)
-                ParentTasksBlock(
-                  parents: inCreationOrder(task.parentTasks),
-                  projectTitleOf: otherProjectTitle,
-                  onOpen: _open,
-                  onRemove: repository == null
-                      ? null
-                      : (parent) => unawaited(
-                          _removeRelation(
-                            repository,
-                            task,
-                            TaskRelationKind.parentTask,
-                            parent,
+                  if (task.dueDate case final dueDate?)
+                    _Property(
+                      icon: Icons.event,
+                      label: l10n.taskDetailDueDate,
+                      value: formatMoment(context, dueDate),
+                    ),
+                  if (task.startDate case final startDate?)
+                    _Property(
+                      icon: Icons.play_arrow_outlined,
+                      label: l10n.taskDetailStartDate,
+                      value: formatMoment(context, startDate),
+                    ),
+                  if (task.endDate case final endDate?)
+                    _Property(
+                      icon: Icons.stop_outlined,
+                      label: l10n.taskDetailEndDate,
+                      value: formatMoment(context, endDate),
+                    ),
+                  if (task.priority != TaskPriority.unset)
+                    _Property(
+                      icon: Icons.flag_outlined,
+                      label: l10n.taskDetailPriority,
+                      value: priorityLabel(l10n, task.priority),
+                    ),
+                  if (percent > 0)
+                    _Property(
+                      icon: Icons.percent,
+                      label: l10n.taskDetailProgress,
+                      value: l10n.taskPercentDone(percent),
+                    ),
+                  if (repeat != null)
+                    _Property(
+                      icon: Icons.repeat,
+                      label: l10n.taskDetailRepeat,
+                      value: repeat,
+                    ),
+                  if (task.reminders.isNotEmpty)
+                    _Property(
+                      icon: Icons.alarm,
+                      label: l10n.taskDetailReminders,
+                      value: [
+                        for (final reminder in task.reminders)
+                          formatReminder(
+                            l10n,
+                            reminder,
+                            formatAbsolute: (moment) =>
+                                formatMoment(context, moment),
                           ),
-                        ),
-                ),
-              if (task.subtasks.isNotEmpty || repository != null)
-                SubtasksSection(
-                  // Keeps the typed title and the focus when rows above
-                  // come or go, such as the pending chip.
-                  key: const ValueKey('subtasks'),
-                  subtasks: inCreationOrder(task.subtasks),
-                  projectTitleOf: otherProjectTitle,
-                  onOpen: _open,
-                  onDoneChanged: repository == null
-                      ? null
-                      : (subtask, {required done}) => unawaited(
-                          writeTaskDone(repository, subtask, done: done),
-                        ),
-                  onRemove: repository == null
-                      ? null
-                      : (subtask) => unawaited(
-                          _removeRelation(
-                            repository,
-                            task,
-                            TaskRelationKind.subtask,
-                            subtask,
-                          ),
-                        ),
-                  onAdd: repository == null
-                      ? null
-                      : (title) => _addSubtask(repository, task, title),
-                ),
-              const SizedBox(height: 12),
-              Semantics(
-                header: true,
-                child: Text(
-                  l10n.taskDetailDescription,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    color: colors.primary,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 4),
-              if (description.isEmpty)
-                Text(
-                  l10n.taskDetailNoDescription,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: colors.onSurfaceVariant,
-                  ),
-                )
-              else
-                SelectableText(description, style: theme.textTheme.bodyMedium),
-              RelatedTasksSection(
-                task: task,
-                projectTitleOf: otherProjectTitle,
-                onOpen: _open,
-                onRemove: repository == null
-                    ? null
-                    : (kind, other) => unawaited(
-                        _removeRelation(repository, task, kind, other),
+                      ].join('\n'),
+                    ),
+                  if (task.labels.isNotEmpty)
+                    _PropertyBlock(
+                      icon: Icons.label_outline,
+                      label: l10n.taskDetailLabels,
+                      child: Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          for (final label in rowLabels(task.labels))
+                            LabelChip(label: label),
+                        ],
                       ),
-                onAdd: repository == null
-                    ? null
-                    : () => unawaited(_addRelation(repository, task)),
-              ),
-            ],
+                    ),
+                  if (task.assignees.isNotEmpty)
+                    _PropertyBlock(
+                      icon: Icons.people_outline,
+                      label: l10n.taskDetailAssignees,
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (final user in task.assignees)
+                            _Assignee(user: user),
+                        ],
+                      ),
+                    ),
+                  if (task.parentTasks.isNotEmpty)
+                    ParentTasksBlock(
+                      parents: inCreationOrder(task.parentTasks),
+                      projectTitleOf: otherProjectTitle,
+                      onOpen: _open,
+                      onRemove: repository == null
+                          ? null
+                          : (parent) => unawaited(
+                              _removeRelation(
+                                repository,
+                                task,
+                                TaskRelationKind.parentTask,
+                                parent,
+                              ),
+                            ),
+                    ),
+                  if (task.subtasks.isNotEmpty || repository != null)
+                    SubtasksSection(
+                      // Keeps the typed title and the focus when rows above
+                      // come or go, such as the pending chip.
+                      key: const ValueKey('subtasks'),
+                      subtasks: inCreationOrder(task.subtasks),
+                      projectTitleOf: otherProjectTitle,
+                      onOpen: _open,
+                      onDoneChanged: repository == null
+                          ? null
+                          : (subtask, {required done}) => unawaited(
+                              writeTaskDone(repository, subtask, done: done),
+                            ),
+                      onRemove: repository == null
+                          ? null
+                          : (subtask) => unawaited(
+                              _removeRelation(
+                                repository,
+                                task,
+                                TaskRelationKind.subtask,
+                                subtask,
+                              ),
+                            ),
+                      onAdd: repository == null
+                          ? null
+                          : (title) => _addSubtask(repository, task, title),
+                    ),
+                  const SizedBox(height: 12),
+                  _SectionHeading(text: l10n.taskDetailDescription),
+                  const SizedBox(height: 4),
+                  _Description(
+                    task: task,
+                    onLink: _openLink,
+                    onTaskLink: (taskId) => unawaited(_openLinkedTask(taskId)),
+                  ),
+                  if (details != null && details.reactions.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: ReactionChips(reactions: details.reactions),
+                    ),
+                  if (_details.value case TaskDetailsFailed(:final failure)
+                      when task.id > 0)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: DetailsNotice(
+                        text: (l10n) => failure is NetworkFailure
+                            ? l10n.taskDetailDetailsOffline
+                            : l10n.taskDetailDetailsFailed,
+                        onRetry: () => _retryDetails(task.id),
+                      ),
+                    ),
+                  if (details != null && details.attachments.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    _SectionHeading(text: l10n.taskDetailAttachments),
+                    for (final attachment in details.attachments)
+                      AttachmentRow(
+                        key: ValueKey(('attachment', attachment.id)),
+                        attachment: attachment,
+                        isCover:
+                            attachment.id == details.coverImageAttachmentId,
+                      ),
+                  ],
+                  RelatedTasksSection(
+                    task: task,
+                    projectTitleOf: otherProjectTitle,
+                    onOpen: _open,
+                    onRemove: repository == null
+                        ? null
+                        : (kind, other) => unawaited(
+                            _removeRelation(repository, task, kind, other),
+                          ),
+                    onAdd: repository == null
+                        ? null
+                        : () => unawaited(_addRelation(repository, task)),
+                  ),
+                  if (details != null && details.commentCount > 0)
+                    ...commentsSection(
+                      count: details.commentCount,
+                      state: _comments.value,
+                      controller: _comments,
+                      onLink: _openLink,
+                      onTaskLink: (taskId) =>
+                          unawaited(_openLinkedTask(taskId)),
+                      projectId: task.projectId,
+                    ),
+                  const SizedBox(height: 16),
+                  TaskMetadataLine(task: task),
+                ],
+              );
+            },
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _SectionHeading extends StatelessWidget {
+  const new({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Semantics(
+      header: true,
+      child: Text(
+        text,
+        style: theme.textTheme.titleSmall?.copyWith(
+          color: theme.colorScheme.primary,
+        ),
+      ),
+    );
+  }
+}
+
+/// Selectable rich text, or "No description" for one without visible
+/// content.
+class _Description extends StatelessWidget {
+  const new({
+    required this.task,
+    required this.onLink,
+    required this.onTaskLink,
+  });
+
+  final Task task;
+  final ValueChanged<String> onLink;
+  final ValueChanged<int> onTaskLink;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final empty = Text(
+      context.l10n.taskDetailNoDescription,
+      style: theme.textTheme.bodyMedium?.copyWith(
+        color: theme.colorScheme.onSurfaceVariant,
+      ),
+    );
+    if (!hasDescription(task)) return empty;
+    return SelectionArea(
+      child: RichHtml(
+        html: task.description,
+        onLink: onLink,
+        onTaskLink: onTaskLink,
+        style: theme.textTheme.bodyLarge,
+        projectId: task.projectId,
+        empty: empty,
       ),
     );
   }
@@ -784,7 +1025,7 @@ class _Assignee extends StatelessWidget {
   Widget build(BuildContext context) => Row(
     mainAxisSize: MainAxisSize.min,
     children: [
-      InitialsAvatar(name: user.displayName),
+      UserAvatar(user: user, radius: 14),
       const SizedBox(width: 6),
       Flexible(
         child: Text(

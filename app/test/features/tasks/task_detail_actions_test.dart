@@ -48,14 +48,20 @@ void main() {
     expect(checkbox().value, isTrue);
     final title = tester.widget<Text>(inSheet(find.text('Bare task')));
     expect(title.style?.decoration, TextDecoration.lineThrough);
-    expect(inSheet(find.text(en.taskDetailDoneAt)), findsOneWidget);
+    expect(
+      inSheet(find.textContaining(en.taskDetailDoneWhen(''))),
+      findsOneWidget,
+    );
     expect(find.text(en.undo), findsNothing);
 
     await tester.tap(inSheet(find.byType(CheckboxListTile)));
     await tester.pumpAndSettle();
     expect(data.tasks.writes.last, 'setDone 2 false');
     expect(checkbox().value, isFalse);
-    expect(inSheet(find.text(en.taskDetailDoneAt)), findsNothing);
+    expect(
+      inSheet(find.textContaining(en.taskDetailDoneWhen(''))),
+      findsNothing,
+    );
   });
 
   testWidgets('the star toggles the favourite from the sheet', (tester) async {

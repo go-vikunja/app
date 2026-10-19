@@ -1,0 +1,5122 @@
+{
+	"meta": {
+		"generatedBy": "step10/tools/oracle.mjs (re-implementation of the Vikunja 2.7.0 editor extension set; no checkout code executed)",
+		"pinned": {
+			"@tiptap/*": "3.31.3",
+			"prosemirror-model": "1.25.11",
+			"prosemirror-view": "1.42.3",
+			"prosemirror-state": "1.4.4",
+			"prosemirror-transform": "1.12.0",
+			"prosemirror-tables": "1.8.5",
+			"linkifyjs": "4.3.3",
+			"lowlight": "3.3.0",
+			"happy-dom (DOM for parsing)": "20.14.5",
+			"dompurify": "3.4.16",
+			"jsdom": "26.1.0"
+		},
+		"context": {
+			"windowOrigin": "https://vikunja.example.com",
+			"basePath": "/",
+			"frontend_url": "https://vikunja.example.com/",
+			"apiRoot": "https://vikunja.example.com",
+			"editable": false,
+			"mentionsEnabled": true,
+			"setContentOptions": {
+				"parseOptions": {
+					"preserveWhitespace": true
+				},
+				"emitUpdate": false
+			}
+		},
+		"omitted": [
+			"Vue node views (MentionUser, TaskLinkView, BlockquoteCommentView): they change only the live DOM, not getHTML()/getJSON()",
+			"Suggestion plugins (slash commands, emoji, mention popup), Placeholder, keymaps, paste handler: no effect on parsing",
+			"Image blob swap (async fetch); data-src/src=\"#\" shape is reproduced"
+		],
+		"caveats": [
+			"style attribute strings are re-serialised by the DOM library (jsdom turns #ff0000 into rgb(255, 0, 0), happy-dom drops \"background-color: null\"); a browser keeps the string TipTap set, e.g. style=\"background-color: null\" on cells without a colour",
+			"data-task-id=\"{{generated}}\" marks a nanoid(8) the editor generated because the input had none (random per load)",
+			"dompurify_project_description is DOMPurify 3.4.16 on a jsdom 26.1.0 window: sanitize(input, {ADD_ATTR:[\"target\"]}) plus the rel hook from ProjectInfo.vue; reference only, task descriptions do not use it",
+			"the trailing <p></p> after a non-paragraph last block comes from StarterKit TrailingNode; it is not in the stored HTML until the web saves the description again"
+		],
+		"dom": "html/json come from a jsdom 26.1.0 window (parse5, the spec HTML parser browsers implement); html_happydom is present only where happy-dom 20.14.5 (the DOM of the web unit tests) differs",
+		"readMe": {
+			"html": "editor.getHTML() after setContent(input): the normalised HTML the read-only web view is built from (node views aside)",
+			"json": "editor.getJSON(): the ProseMirror node/mark tree; the allowlist a native renderer should mirror",
+			"isEmpty": "editor.isEmpty",
+			"taskLinkUpgrade": "taskLink.test.ts vectors re-run with window origin http://localhost:3000 and no frontend_url; taskLinkNodes counts the pills"
+		}
+	},
+	"schema": {
+		"nodes": {
+			"paragraph": {
+				"group": "block",
+				"content": "inline*",
+				"inline": false,
+				"atom": false,
+				"attrs": {}
+			},
+			"taskLink": {
+				"group": "inline",
+				"content": null,
+				"inline": true,
+				"atom": true,
+				"attrs": {
+					"target": null,
+					"rel": null,
+					"href": null
+				}
+			},
+			"mention": {
+				"group": "inline",
+				"content": null,
+				"inline": true,
+				"atom": true,
+				"attrs": {
+					"id": null,
+					"label": null,
+					"mentionSuggestionChar": "@"
+				}
+			},
+			"bulletList": {
+				"group": "block list",
+				"content": "listItem+",
+				"inline": false,
+				"atom": false,
+				"attrs": {}
+			},
+			"doc": {
+				"group": null,
+				"content": "block+",
+				"inline": false,
+				"atom": false,
+				"attrs": {}
+			},
+			"heading": {
+				"group": "block",
+				"content": "inline*",
+				"inline": false,
+				"atom": false,
+				"attrs": {
+					"level": 1
+				}
+			},
+			"horizontalRule": {
+				"group": "block",
+				"content": null,
+				"inline": false,
+				"atom": false,
+				"attrs": {}
+			},
+			"listItem": {
+				"group": null,
+				"content": "paragraph block*",
+				"inline": false,
+				"atom": false,
+				"attrs": {}
+			},
+			"orderedList": {
+				"group": "block list",
+				"content": "listItem+",
+				"inline": false,
+				"atom": false,
+				"attrs": {
+					"start": 1,
+					"type": null
+				}
+			},
+			"text": {
+				"group": "inline",
+				"content": null,
+				"inline": true,
+				"atom": false,
+				"attrs": {}
+			},
+			"blockquote": {
+				"group": "block",
+				"content": "block+",
+				"inline": false,
+				"atom": false,
+				"attrs": {
+					"commentId": null
+				}
+			},
+			"codeBlock": {
+				"group": "block",
+				"content": "text*",
+				"inline": false,
+				"atom": false,
+				"attrs": {
+					"language": null
+				}
+			},
+			"hardBreak": {
+				"group": "inline",
+				"content": null,
+				"inline": true,
+				"atom": false,
+				"attrs": {}
+			},
+			"table": {
+				"group": "block",
+				"content": "tableRow+",
+				"inline": false,
+				"atom": false,
+				"attrs": {}
+			},
+			"tableRow": {
+				"group": null,
+				"content": "(tableCell | tableHeader)*",
+				"inline": false,
+				"atom": false,
+				"attrs": {}
+			},
+			"tableHeader": {
+				"group": null,
+				"content": "block+",
+				"inline": false,
+				"atom": false,
+				"attrs": {
+					"colspan": 1,
+					"rowspan": 1,
+					"colwidth": null,
+					"align": null
+				}
+			},
+			"tableCell": {
+				"group": null,
+				"content": "block+",
+				"inline": false,
+				"atom": false,
+				"attrs": {
+					"colspan": 1,
+					"rowspan": 1,
+					"colwidth": null,
+					"align": null,
+					"backgroundColor": null
+				}
+			},
+			"image": {
+				"group": "block",
+				"content": null,
+				"inline": false,
+				"atom": false,
+				"attrs": {
+					"src": null,
+					"alt": null,
+					"title": null,
+					"id": null,
+					"data-src": null
+				}
+			},
+			"taskList": {
+				"group": "block list",
+				"content": "taskItem+",
+				"inline": false,
+				"atom": false,
+				"attrs": {}
+			},
+			"taskItem": {
+				"group": null,
+				"content": "paragraph block*",
+				"inline": false,
+				"atom": false,
+				"attrs": {
+					"checked": false,
+					"taskId": null
+				}
+			}
+		},
+		"marks": {
+			"link": {
+				"attrs": {
+					"href": null,
+					"target": "_blank",
+					"rel": "noopener noreferrer nofollow",
+					"class": null,
+					"title": null
+				},
+				"inclusive": false
+			},
+			"bold": {
+				"attrs": {},
+				"inclusive": null
+			},
+			"code": {
+				"attrs": {},
+				"inclusive": null
+			},
+			"italic": {
+				"attrs": {},
+				"inclusive": null
+			},
+			"strike": {
+				"attrs": {},
+				"inclusive": null
+			},
+			"subscript": {
+				"attrs": {},
+				"inclusive": null
+			},
+			"superscript": {
+				"attrs": {},
+				"inclusive": null
+			},
+			"underline": {
+				"attrs": {},
+				"inclusive": null
+			}
+		}
+	},
+	"vectors": [
+		{
+			"id": "empty-string",
+			"category": "empty",
+			"input": "",
+			"html": "<p></p>",
+			"isEmpty": true,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": ""
+		},
+		{
+			"id": "empty-paragraph",
+			"category": "empty",
+			"input": "<p></p>",
+			"html": "<p></p>",
+			"isEmpty": true,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<p></p>"
+		},
+		{
+			"id": "whitespace-only",
+			"category": "empty",
+			"input": "   ",
+			"html": "<p></p>",
+			"isEmpty": true,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "   "
+		},
+		{
+			"id": "empty-paragraphs-2",
+			"category": "empty",
+			"input": "<p></p><p></p>",
+			"html": "<p></p><p></p>",
+			"isEmpty": true,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph"
+					},
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<p></p><p></p>"
+		},
+		{
+			"id": "br-only-paragraph",
+			"category": "empty",
+			"input": "<p><br></p>",
+			"html": "<p><br></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "hardBreak"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p><br></p>"
+		},
+		{
+			"id": "plain-text",
+			"category": "plain",
+			"input": "Hello world",
+			"html": "<p>Hello world</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "Hello world"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "Hello world"
+		},
+		{
+			"id": "plain-text-newlines",
+			"category": "plain",
+			"note": "legacy plain text: newlines collapse to spaces",
+			"input": "line one\nline two\n\nline four",
+			"html": "<p>line one<br>line two<br><br>line four</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "line one"
+							},
+							{
+								"type": "hardBreak"
+							},
+							{
+								"type": "text",
+								"text": "line two"
+							},
+							{
+								"type": "hardBreak"
+							},
+							{
+								"type": "hardBreak"
+							},
+							{
+								"type": "text",
+								"text": "line four"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "line one\nline two\n\nline four"
+		},
+		{
+			"id": "legacy-markdown",
+			"category": "plain",
+			"note": "markdown is not converted on display",
+			"input": "# Title\n\n- item\n- [ ] todo\n\n**bold** and `code`",
+			"html": "<p># Title<br><br>- item<br>- [ ] todo<br><br>**bold** and `code`</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "# Title"
+							},
+							{
+								"type": "hardBreak"
+							},
+							{
+								"type": "hardBreak"
+							},
+							{
+								"type": "text",
+								"text": "- item"
+							},
+							{
+								"type": "hardBreak"
+							},
+							{
+								"type": "text",
+								"text": "- [ ] todo"
+							},
+							{
+								"type": "hardBreak"
+							},
+							{
+								"type": "hardBreak"
+							},
+							{
+								"type": "text",
+								"text": "**bold** and `code`"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "# Title\n\n- item\n- [ ] todo\n\n**bold** and `code`"
+		},
+		{
+			"id": "paragraph-newline",
+			"category": "whitespace",
+			"input": "<p>a\nb</p>",
+			"html": "<p>a<br>b</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "a"
+							},
+							{
+								"type": "hardBreak"
+							},
+							{
+								"type": "text",
+								"text": "b"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p>a\nb</p>"
+		},
+		{
+			"id": "paragraph-double-space",
+			"category": "whitespace",
+			"input": "<p>a   b</p>",
+			"html": "<p>a   b</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "a   b"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p>a   b</p>"
+		},
+		{
+			"id": "nbsp",
+			"category": "whitespace",
+			"input": "<p>a&nbsp;&nbsp;b</p>",
+			"html": "<p>a&nbsp;&nbsp;b</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "a  b"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p>a&nbsp;&nbsp;b</p>"
+		},
+		{
+			"id": "block-whitespace-between",
+			"category": "whitespace",
+			"input": "<p>a</p>\n\n<p>b</p>",
+			"html": "<p>a</p><p>b</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "a"
+							}
+						]
+					},
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "b"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p>a</p>\n\n<p>b</p>"
+		},
+		{
+			"id": "ws-newline-between-inline",
+			"category": "whitespace",
+			"note": "TipTap removes text nodes that are exactly \"\\n\" or \"\\n\"+2 whitespace before parsing",
+			"input": "<p><strong>a</strong>\n<em>b</em></p>",
+			"html": "<p><strong>a</strong><em>b</em></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "bold"
+									}
+								],
+								"text": "a"
+							},
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "italic"
+									}
+								],
+								"text": "b"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p><strong>a</strong>\n<em>b</em></p>"
+		},
+		{
+			"id": "ws-newline-3-spaces-between-inline",
+			"category": "whitespace",
+			"input": "<p><strong>a</strong>\n   <em>b</em></p>",
+			"html": "<p><strong>a</strong><br>   <em>b</em></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "bold"
+									}
+								],
+								"text": "a"
+							},
+							{
+								"type": "hardBreak"
+							},
+							{
+								"type": "text",
+								"text": "   "
+							},
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "italic"
+									}
+								],
+								"text": "b"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p><strong>a</strong>\n   <em>b</em></p>"
+		},
+		{
+			"id": "ws-trailing-newline-in-p",
+			"category": "whitespace",
+			"input": "<p>x\n</p>",
+			"html": "<p>x<br></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "x"
+							},
+							{
+								"type": "hardBreak"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p>x\n</p>"
+		},
+		{
+			"id": "ws-leading-trailing-spaces",
+			"category": "whitespace",
+			"input": "<p>  padded  </p>",
+			"html": "<p>  padded  </p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "  padded  "
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p>  padded  </p>"
+		},
+		{
+			"id": "ws-crlf",
+			"category": "whitespace",
+			"input": "<p>a\r\nb\rc</p>",
+			"html": "<p>a<br>b<br>c</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "a"
+							},
+							{
+								"type": "hardBreak"
+							},
+							{
+								"type": "text",
+								"text": "b"
+							},
+							{
+								"type": "hardBreak"
+							},
+							{
+								"type": "text",
+								"text": "c"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p>a\nb\nc</p>"
+		},
+		{
+			"id": "ws-tab",
+			"category": "whitespace",
+			"input": "<p>a\tb</p>",
+			"html": "<p>a\tb</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "a\tb"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p>a\tb</p>"
+		},
+		{
+			"id": "headings-1-6",
+			"category": "block",
+			"input": "<h1>H1</h1><h2>H2</h2><h3>H3</h3><h4>H4</h4><h5>H5</h5><h6>H6</h6>",
+			"html": "<h1>H1</h1><h2>H2</h2><h3>H3</h3><h4>H4</h4><h5>H5</h5><h6>H6</h6><p></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "heading",
+						"attrs": {
+							"level": 1
+						},
+						"content": [
+							{
+								"type": "text",
+								"text": "H1"
+							}
+						]
+					},
+					{
+						"type": "heading",
+						"attrs": {
+							"level": 2
+						},
+						"content": [
+							{
+								"type": "text",
+								"text": "H2"
+							}
+						]
+					},
+					{
+						"type": "heading",
+						"attrs": {
+							"level": 3
+						},
+						"content": [
+							{
+								"type": "text",
+								"text": "H3"
+							}
+						]
+					},
+					{
+						"type": "heading",
+						"attrs": {
+							"level": 4
+						},
+						"content": [
+							{
+								"type": "text",
+								"text": "H4"
+							}
+						]
+					},
+					{
+						"type": "heading",
+						"attrs": {
+							"level": 5
+						},
+						"content": [
+							{
+								"type": "text",
+								"text": "H5"
+							}
+						]
+					},
+					{
+						"type": "heading",
+						"attrs": {
+							"level": 6
+						},
+						"content": [
+							{
+								"type": "text",
+								"text": "H6"
+							}
+						]
+					},
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<h1>H1</h1><h2>H2</h2><h3>H3</h3><h4>H4</h4><h5>H5</h5><h6>H6</h6>"
+		},
+		{
+			"id": "paragraph-attrs-dropped",
+			"category": "block",
+			"input": "<p class=\"x\" style=\"color:red\" align=\"center\" dir=\"rtl\">p</p>",
+			"html": "<p>p</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "p"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p class=\"x\" style=\"color:red\" align=\"center\" dir=\"rtl\">p</p>"
+		},
+		{
+			"id": "hr",
+			"category": "block",
+			"input": "<p>a</p><hr><p>b</p>",
+			"html": "<p>a</p><hr><p>b</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "a"
+							}
+						]
+					},
+					{
+						"type": "horizontalRule"
+					},
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "b"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p>a</p><hr><p>b</p>"
+		},
+		{
+			"id": "hard-break",
+			"category": "inline",
+			"input": "<p>a<br>b<br/>c</p>",
+			"html": "<p>a<br>b<br>c</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "a"
+							},
+							{
+								"type": "hardBreak"
+							},
+							{
+								"type": "text",
+								"text": "b"
+							},
+							{
+								"type": "hardBreak"
+							},
+							{
+								"type": "text",
+								"text": "c"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p>a<br>b<br>c</p>"
+		},
+		{
+			"id": "blockquote",
+			"category": "block",
+			"input": "<blockquote><p>quoted</p></blockquote>",
+			"html": "<blockquote><p>quoted</p></blockquote><p></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "blockquote",
+						"attrs": {
+							"commentId": null
+						},
+						"content": [
+							{
+								"type": "paragraph",
+								"content": [
+									{
+										"type": "text",
+										"text": "quoted"
+									}
+								]
+							}
+						]
+					},
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<blockquote><p>quoted</p></blockquote>"
+		},
+		{
+			"id": "blockquote-text-only",
+			"category": "block",
+			"input": "<blockquote>bare text</blockquote>",
+			"html": "<blockquote><p>bare text</p></blockquote><p></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "blockquote",
+						"attrs": {
+							"commentId": null
+						},
+						"content": [
+							{
+								"type": "paragraph",
+								"content": [
+									{
+										"type": "text",
+										"text": "bare text"
+									}
+								]
+							}
+						]
+					},
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<blockquote>bare text</blockquote>"
+		},
+		{
+			"id": "blockquote-comment-id",
+			"category": "block",
+			"input": "<blockquote data-comment-id=\"12\"><p>reply quote</p></blockquote><p>answer</p>",
+			"html": "<blockquote data-comment-id=\"12\"><p>reply quote</p></blockquote><p>answer</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "blockquote",
+						"attrs": {
+							"commentId": 12
+						},
+						"content": [
+							{
+								"type": "paragraph",
+								"content": [
+									{
+										"type": "text",
+										"text": "reply quote"
+									}
+								]
+							}
+						]
+					},
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "answer"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<blockquote data-comment-id=\"12\"><p>reply quote</p></blockquote><p>answer</p>"
+		},
+		{
+			"id": "blockquote-comment-id-invalid",
+			"category": "block",
+			"input": "<blockquote data-comment-id=\"12abc\"><p>q</p></blockquote><blockquote data-comment-id=\"-3\"><p>q</p></blockquote><blockquote data-comment-id=\"1.5\"><p>q</p></blockquote>",
+			"html": "<blockquote><p>q</p></blockquote><blockquote><p>q</p></blockquote><blockquote><p>q</p></blockquote><p></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "blockquote",
+						"attrs": {
+							"commentId": null
+						},
+						"content": [
+							{
+								"type": "paragraph",
+								"content": [
+									{
+										"type": "text",
+										"text": "q"
+									}
+								]
+							}
+						]
+					},
+					{
+						"type": "blockquote",
+						"attrs": {
+							"commentId": null
+						},
+						"content": [
+							{
+								"type": "paragraph",
+								"content": [
+									{
+										"type": "text",
+										"text": "q"
+									}
+								]
+							}
+						]
+					},
+					{
+						"type": "blockquote",
+						"attrs": {
+							"commentId": null
+						},
+						"content": [
+							{
+								"type": "paragraph",
+								"content": [
+									{
+										"type": "text",
+										"text": "q"
+									}
+								]
+							}
+						]
+					},
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<blockquote data-comment-id=\"12abc\"><p>q</p></blockquote><blockquote data-comment-id=\"-3\"><p>q</p></blockquote><blockquote data-comment-id=\"1.5\"><p>q</p></blockquote>"
+		},
+		{
+			"id": "marks-basic",
+			"category": "mark",
+			"input": "<p><strong>b</strong> <b>b2</b> <em>i</em> <i>i2</i> <u>u</u> <s>s</s> <del>d</del> <strike>st</strike> <code>c</code> <sub>sub</sub> <sup>sup</sup></p>",
+			"html": "<p><strong>b</strong> <strong>b2</strong> <em>i</em> <em>i2</em> <u>u</u> <s>s</s> <s>d</s> <s>st</s> <code>c</code> <sub>sub</sub> <sup>sup</sup></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "bold"
+									}
+								],
+								"text": "b"
+							},
+							{
+								"type": "text",
+								"text": " "
+							},
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "bold"
+									}
+								],
+								"text": "b2"
+							},
+							{
+								"type": "text",
+								"text": " "
+							},
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "italic"
+									}
+								],
+								"text": "i"
+							},
+							{
+								"type": "text",
+								"text": " "
+							},
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "italic"
+									}
+								],
+								"text": "i2"
+							},
+							{
+								"type": "text",
+								"text": " "
+							},
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "underline"
+									}
+								],
+								"text": "u"
+							},
+							{
+								"type": "text",
+								"text": " "
+							},
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "strike"
+									}
+								],
+								"text": "s"
+							},
+							{
+								"type": "text",
+								"text": " "
+							},
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "strike"
+									}
+								],
+								"text": "d"
+							},
+							{
+								"type": "text",
+								"text": " "
+							},
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "strike"
+									}
+								],
+								"text": "st"
+							},
+							{
+								"type": "text",
+								"text": " "
+							},
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "code"
+									}
+								],
+								"text": "c"
+							},
+							{
+								"type": "text",
+								"text": " "
+							},
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "subscript"
+									}
+								],
+								"text": "sub"
+							},
+							{
+								"type": "text",
+								"text": " "
+							},
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "superscript"
+									}
+								],
+								"text": "sup"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p><strong>b</strong> <b>b2</b> <em>i</em> <i>i2</i> <u>u</u> <s>s</s> <del>d</del> <strike>st</strike> <code>c</code> <sub>sub</sub> <sup>sup</sup></p>"
+		},
+		{
+			"id": "marks-style",
+			"category": "mark",
+			"input": "<p><span style=\"font-weight:bold\">b</span> <span style=\"font-style:italic\">i</span> <span style=\"text-decoration:underline\">u</span> <span style=\"text-decoration:line-through\">s</span> <span style=\"vertical-align:sub\">sub</span> <span style=\"vertical-align:super\">sup</span></p>",
+			"html": "<p><strong>b</strong> <em>i</em> <u>u</u> <s>s</s> <sub>sub</sub> <sup>sup</sup></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "bold"
+									}
+								],
+								"text": "b"
+							},
+							{
+								"type": "text",
+								"text": " "
+							},
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "italic"
+									}
+								],
+								"text": "i"
+							},
+							{
+								"type": "text",
+								"text": " "
+							},
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "underline"
+									}
+								],
+								"text": "u"
+							},
+							{
+								"type": "text",
+								"text": " "
+							},
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "strike"
+									}
+								],
+								"text": "s"
+							},
+							{
+								"type": "text",
+								"text": " "
+							},
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "subscript"
+									}
+								],
+								"text": "sub"
+							},
+							{
+								"type": "text",
+								"text": " "
+							},
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "superscript"
+									}
+								],
+								"text": "sup"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p><span style=\"font-weight:bold\">b</span> <span style=\"font-style:italic\">i</span> <span style=\"text-decoration:underline\">u</span> <span style=\"text-decoration:line-through\">s</span> <span style=\"vertical-align:sub\">sub</span> <span style=\"vertical-align:super\">sup</span></p>"
+		},
+		{
+			"id": "marks-nested",
+			"category": "mark",
+			"input": "<p><strong><em><u>all three</u></em></strong> <a href=\"https://example.com\"><strong>bold link</strong></a></p>",
+			"html": "<p><strong><em><u>all three</u></em></strong> <a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://example.com\"><strong>bold link</strong></a></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "bold"
+									},
+									{
+										"type": "italic"
+									},
+									{
+										"type": "underline"
+									}
+								],
+								"text": "all three"
+							},
+							{
+								"type": "text",
+								"text": " "
+							},
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "link",
+										"attrs": {
+											"href": "https://example.com",
+											"target": "_blank",
+											"rel": "noopener noreferrer nofollow",
+											"class": null,
+											"title": null
+										}
+									},
+									{
+										"type": "bold"
+									}
+								],
+								"text": "bold link"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p><strong><em><u>all three</u></em></strong> <a href=\"https://example.com\"><strong>bold link</strong></a></p>"
+		},
+		{
+			"id": "b-font-weight-normal",
+			"category": "mark",
+			"note": "Google Docs style wrapper",
+			"input": "<p><b style=\"font-weight:normal\">not bold</b></p>",
+			"html": "<p>not bold</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "not bold"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p><b style=\"font-weight:normal\">not bold</b></p>"
+		},
+		{
+			"id": "mark-unknown-tags",
+			"category": "mark",
+			"input": "<p><mark>m</mark> <small>s</small> <kbd>k</kbd> <abbr title=\"t\">a</abbr> <font color=\"red\">f</font> <span class=\"x\">span</span></p>",
+			"html": "<p>m s k a f span</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "m s k a f span"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p><mark>m</mark> <small>s</small> <kbd>k</kbd> <abbr title=\"t\">a</abbr> <font color=\"red\">f</font> <span class=\"x\">span</span></p>"
+		},
+		{
+			"id": "bullet-list",
+			"category": "list",
+			"input": "<ul><li><p>one</p></li><li><p>two</p></li></ul>",
+			"html": "<ul><li><p>one</p></li><li><p>two</p></li></ul><p></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "bulletList",
+						"content": [
+							{
+								"type": "listItem",
+								"content": [
+									{
+										"type": "paragraph",
+										"content": [
+											{
+												"type": "text",
+												"text": "one"
+											}
+										]
+									}
+								]
+							},
+							{
+								"type": "listItem",
+								"content": [
+									{
+										"type": "paragraph",
+										"content": [
+											{
+												"type": "text",
+												"text": "two"
+											}
+										]
+									}
+								]
+							}
+						]
+					},
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<ul><li><p>one</p></li><li><p>two</p></li></ul>"
+		},
+		{
+			"id": "bullet-list-bare-li",
+			"category": "list",
+			"input": "<ul><li>one</li><li>two</li></ul>",
+			"html": "<ul><li><p>one</p></li><li><p>two</p></li></ul><p></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "bulletList",
+						"content": [
+							{
+								"type": "listItem",
+								"content": [
+									{
+										"type": "paragraph",
+										"content": [
+											{
+												"type": "text",
+												"text": "one"
+											}
+										]
+									}
+								]
+							},
+							{
+								"type": "listItem",
+								"content": [
+									{
+										"type": "paragraph",
+										"content": [
+											{
+												"type": "text",
+												"text": "two"
+											}
+										]
+									}
+								]
+							}
+						]
+					},
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<ul><li>one</li><li>two</li></ul>"
+		},
+		{
+			"id": "ordered-list-start-type",
+			"category": "list",
+			"input": "<ol start=\"3\" type=\"a\"><li><p>c</p></li><li><p>d</p></li></ol>",
+			"html": "<ol start=\"3\" type=\"a\"><li><p>c</p></li><li><p>d</p></li></ol><p></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "orderedList",
+						"attrs": {
+							"start": 3,
+							"type": "a"
+						},
+						"content": [
+							{
+								"type": "listItem",
+								"content": [
+									{
+										"type": "paragraph",
+										"content": [
+											{
+												"type": "text",
+												"text": "c"
+											}
+										]
+									}
+								]
+							},
+							{
+								"type": "listItem",
+								"content": [
+									{
+										"type": "paragraph",
+										"content": [
+											{
+												"type": "text",
+												"text": "d"
+											}
+										]
+									}
+								]
+							}
+						]
+					},
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<ol start=\"3\" type=\"a\"><li><p>c</p></li><li><p>d</p></li></ol>"
+		},
+		{
+			"id": "nested-lists",
+			"category": "list",
+			"input": "<ul><li><p>a</p><ol><li><p>a.1</p></li></ol></li></ul>",
+			"html": "<ul><li><p>a</p><ol><li><p>a.1</p></li></ol></li></ul><p></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "bulletList",
+						"content": [
+							{
+								"type": "listItem",
+								"content": [
+									{
+										"type": "paragraph",
+										"content": [
+											{
+												"type": "text",
+												"text": "a"
+											}
+										]
+									},
+									{
+										"type": "orderedList",
+										"attrs": {
+											"start": 1,
+											"type": null
+										},
+										"content": [
+											{
+												"type": "listItem",
+												"content": [
+													{
+														"type": "paragraph",
+														"content": [
+															{
+																"type": "text",
+																"text": "a.1"
+															}
+														]
+													}
+												]
+											}
+										]
+									}
+								]
+							}
+						]
+					},
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<ul><li><p>a</p><ol><li><p>a.1</p></li></ol></li></ul>"
+		},
+		{
+			"id": "li-outside-list",
+			"category": "list",
+			"input": "<li>orphan</li>",
+			"html": "<ul><li><p>orphan</p></li></ul><p></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "bulletList",
+						"content": [
+							{
+								"type": "listItem",
+								"content": [
+									{
+										"type": "paragraph",
+										"content": [
+											{
+												"type": "text",
+												"text": "orphan"
+											}
+										]
+									}
+								]
+							}
+						]
+					},
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<li>orphan</li>"
+		},
+		{
+			"id": "tasklist-tiptap-markup",
+			"category": "tasklist",
+			"input": "<ul data-type=\"taskList\"><li data-checked=\"true\" data-type=\"taskItem\" data-task-id=\"abcd1234\"><label><input type=\"checkbox\" checked=\"checked\"><span></span></label><div><p>done</p></div></li><li data-checked=\"false\" data-type=\"taskItem\" data-task-id=\"efgh5678\"><label><input type=\"checkbox\"><span></span></label><div><p>open</p></div></li></ul>",
+			"html": "<ul data-type=\"taskList\"><li data-checked=\"true\" data-task-id=\"abcd1234\" data-type=\"taskItem\"><label><input type=\"checkbox\" checked=\"checked\"><span></span></label><div><p>done</p></div></li><li data-checked=\"false\" data-task-id=\"efgh5678\" data-type=\"taskItem\"><label><input type=\"checkbox\"><span></span></label><div><p>open</p></div></li></ul><p></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "taskList",
+						"content": [
+							{
+								"type": "taskItem",
+								"attrs": {
+									"checked": true,
+									"taskId": "abcd1234"
+								},
+								"content": [
+									{
+										"type": "paragraph",
+										"content": [
+											{
+												"type": "text",
+												"text": "done"
+											}
+										]
+									}
+								]
+							},
+							{
+								"type": "taskItem",
+								"attrs": {
+									"checked": false,
+									"taskId": "efgh5678"
+								},
+								"content": [
+									{
+										"type": "paragraph",
+										"content": [
+											{
+												"type": "text",
+												"text": "open"
+											}
+										]
+									}
+								]
+							}
+						]
+					},
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<ul data-type=\"taskList\"><li data-checked=\"true\" data-type=\"taskItem\" data-task-id=\"abcd1234\"><label><input type=\"checkbox\" checked=\"checked\"><span></span></label><div><p>done</p></div></li><li data-checked=\"false\" data-type=\"taskItem\" data-task-id=\"efgh5678\"><label><input type=\"checkbox\"><span></span></label><div><p>open</p></div></li></ul>"
+		},
+		{
+			"id": "tasklist-no-task-id",
+			"category": "tasklist",
+			"input": "<ul data-type=\"taskList\"><li data-checked=\"false\" data-type=\"taskItem\"><label><input type=\"checkbox\"><span></span></label><div><p>no id</p></div></li></ul>",
+			"html": "<ul data-type=\"taskList\"><li data-checked=\"false\" data-task-id=\"{{generated}}\" data-type=\"taskItem\"><label><input type=\"checkbox\"><span></span></label><div><p>no id</p></div></li></ul><p></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "taskList",
+						"content": [
+							{
+								"type": "taskItem",
+								"attrs": {
+									"checked": false,
+									"taskId": "{{generated}}"
+								},
+								"content": [
+									{
+										"type": "paragraph",
+										"content": [
+											{
+												"type": "text",
+												"text": "no id"
+											}
+										]
+									}
+								]
+							}
+						]
+					},
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<ul data-type=\"taskList\"><li data-checked=\"false\" data-type=\"taskItem\"><label><input type=\"checkbox\"><span></span></label><div><p>no id</p></div></li></ul>"
+		},
+		{
+			"id": "tasklist-duplicate-task-id",
+			"category": "tasklist",
+			"input": "<ul data-type=\"taskList\"><li data-checked=\"false\" data-type=\"taskItem\" data-task-id=\"same1234\"><div><p>a</p></div></li><li data-checked=\"true\" data-type=\"taskItem\" data-task-id=\"same1234\"><div><p>b</p></div></li></ul>",
+			"html": "<ul data-type=\"taskList\"><li data-checked=\"false\" data-task-id=\"same1234\" data-type=\"taskItem\"><label><input type=\"checkbox\"><span></span></label><div><p>a</p></div></li><li data-checked=\"true\" data-task-id=\"{{generated}}\" data-type=\"taskItem\"><label><input type=\"checkbox\" checked=\"checked\"><span></span></label><div><p>b</p></div></li></ul><p></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "taskList",
+						"content": [
+							{
+								"type": "taskItem",
+								"attrs": {
+									"checked": false,
+									"taskId": "same1234"
+								},
+								"content": [
+									{
+										"type": "paragraph",
+										"content": [
+											{
+												"type": "text",
+												"text": "a"
+											}
+										]
+									}
+								]
+							},
+							{
+								"type": "taskItem",
+								"attrs": {
+									"checked": true,
+									"taskId": "{{generated}}"
+								},
+								"content": [
+									{
+										"type": "paragraph",
+										"content": [
+											{
+												"type": "text",
+												"text": "b"
+											}
+										]
+									}
+								]
+							}
+						]
+					},
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<ul data-type=\"taskList\"><li data-checked=\"false\" data-type=\"taskItem\" data-task-id=\"same1234\"><div><p>a</p></div></li><li data-checked=\"true\" data-type=\"taskItem\" data-task-id=\"same1234\"><div><p>b</p></div></li></ul>"
+		},
+		{
+			"id": "tasklist-checked-empty-attr",
+			"category": "tasklist",
+			"input": "<ul data-type=\"taskList\"><li data-type=\"taskItem\" data-checked data-task-id=\"x1\"><div><p>empty data-checked</p></div></li><li data-type=\"taskItem\" data-checked=\"TRUE\" data-task-id=\"x2\"><div><p>uppercase TRUE</p></div></li><li data-type=\"taskItem\" data-task-id=\"x3\"><div><p>missing</p></div></li></ul>",
+			"html": "<ul data-type=\"taskList\"><li data-checked=\"true\" data-task-id=\"x1\" data-type=\"taskItem\"><label><input type=\"checkbox\" checked=\"checked\"><span></span></label><div><p>empty data-checked</p></div></li><li data-checked=\"false\" data-task-id=\"x2\" data-type=\"taskItem\"><label><input type=\"checkbox\"><span></span></label><div><p>uppercase TRUE</p></div></li><li data-checked=\"false\" data-task-id=\"x3\" data-type=\"taskItem\"><label><input type=\"checkbox\"><span></span></label><div><p>missing</p></div></li></ul><p></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "taskList",
+						"content": [
+							{
+								"type": "taskItem",
+								"attrs": {
+									"checked": true,
+									"taskId": "x1"
+								},
+								"content": [
+									{
+										"type": "paragraph",
+										"content": [
+											{
+												"type": "text",
+												"text": "empty data-checked"
+											}
+										]
+									}
+								]
+							},
+							{
+								"type": "taskItem",
+								"attrs": {
+									"checked": false,
+									"taskId": "x2"
+								},
+								"content": [
+									{
+										"type": "paragraph",
+										"content": [
+											{
+												"type": "text",
+												"text": "uppercase TRUE"
+											}
+										]
+									}
+								]
+							},
+							{
+								"type": "taskItem",
+								"attrs": {
+									"checked": false,
+									"taskId": "x3"
+								},
+								"content": [
+									{
+										"type": "paragraph",
+										"content": [
+											{
+												"type": "text",
+												"text": "missing"
+											}
+										]
+									}
+								]
+							}
+						]
+					},
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<ul data-type=\"taskList\"><li data-type=\"taskItem\" data-checked=\"\" data-task-id=\"x1\"><div><p>empty data-checked</p></div></li><li data-type=\"taskItem\" data-checked=\"TRUE\" data-task-id=\"x2\"><div><p>uppercase TRUE</p></div></li><li data-type=\"taskItem\" data-task-id=\"x3\"><div><p>missing</p></div></li></ul>"
+		},
+		{
+			"id": "tasklist-input-checked-only",
+			"category": "tasklist",
+			"note": "checkbox state comes from data-checked only",
+			"input": "<ul data-type=\"taskList\"><li data-type=\"taskItem\" data-task-id=\"y1\"><label><input type=\"checkbox\" checked></label><div><p>input checked, no data-checked</p></div></li></ul>",
+			"html": "<ul data-type=\"taskList\"><li data-checked=\"false\" data-task-id=\"y1\" data-type=\"taskItem\"><label><input type=\"checkbox\"><span></span></label><div><p>input checked, no data-checked</p></div></li></ul><p></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "taskList",
+						"content": [
+							{
+								"type": "taskItem",
+								"attrs": {
+									"checked": false,
+									"taskId": "y1"
+								},
+								"content": [
+									{
+										"type": "paragraph",
+										"content": [
+											{
+												"type": "text",
+												"text": "input checked, no data-checked"
+											}
+										]
+									}
+								]
+							}
+						]
+					},
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<ul data-type=\"taskList\"><li data-type=\"taskItem\" data-task-id=\"y1\"><label><input type=\"checkbox\" checked=\"\"></label><div><p>input checked, no data-checked</p></div></li></ul>"
+		},
+		{
+			"id": "tasklist-nested",
+			"category": "tasklist",
+			"input": "<ul data-type=\"taskList\"><li data-checked=\"false\" data-type=\"taskItem\" data-task-id=\"p1\"><div><p>parent</p><ul data-type=\"taskList\"><li data-checked=\"true\" data-type=\"taskItem\" data-task-id=\"c1\"><div><p>child</p></div></li></ul></div></li></ul>",
+			"html": "<ul data-type=\"taskList\"><li data-checked=\"false\" data-task-id=\"p1\" data-type=\"taskItem\"><label><input type=\"checkbox\"><span></span></label><div><p>parent</p><ul data-type=\"taskList\"><li data-checked=\"true\" data-task-id=\"c1\" data-type=\"taskItem\"><label><input type=\"checkbox\" checked=\"checked\"><span></span></label><div><p>child</p></div></li></ul></div></li></ul><p></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "taskList",
+						"content": [
+							{
+								"type": "taskItem",
+								"attrs": {
+									"checked": false,
+									"taskId": "p1"
+								},
+								"content": [
+									{
+										"type": "paragraph",
+										"content": [
+											{
+												"type": "text",
+												"text": "parent"
+											}
+										]
+									},
+									{
+										"type": "taskList",
+										"content": [
+											{
+												"type": "taskItem",
+												"attrs": {
+													"checked": true,
+													"taskId": "c1"
+												},
+												"content": [
+													{
+														"type": "paragraph",
+														"content": [
+															{
+																"type": "text",
+																"text": "child"
+															}
+														]
+													}
+												]
+											}
+										]
+									}
+								]
+							}
+						]
+					},
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<ul data-type=\"taskList\"><li data-checked=\"false\" data-type=\"taskItem\" data-task-id=\"p1\"><div><p>parent</p><ul data-type=\"taskList\"><li data-checked=\"true\" data-type=\"taskItem\" data-task-id=\"c1\"><div><p>child</p></div></li></ul></div></li></ul>"
+		},
+		{
+			"id": "tasklist-without-data-type-li",
+			"category": "tasklist",
+			"input": "<ul data-type=\"taskList\"><li data-checked=\"true\">plain li in task list</li></ul>",
+			"html": "<ul data-type=\"taskList\"><li data-checked=\"false\" data-task-id=\"{{generated}}\" data-type=\"taskItem\"><label><input type=\"checkbox\"><span></span></label><div><p></p></div></li></ul><ul><li><p>plain li in task list</p></li></ul><p></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "taskList",
+						"content": [
+							{
+								"type": "taskItem",
+								"attrs": {
+									"checked": false,
+									"taskId": "{{generated}}"
+								},
+								"content": [
+									{
+										"type": "paragraph"
+									}
+								]
+							}
+						]
+					},
+					{
+						"type": "bulletList",
+						"content": [
+							{
+								"type": "listItem",
+								"content": [
+									{
+										"type": "paragraph",
+										"content": [
+											{
+												"type": "text",
+												"text": "plain li in task list"
+											}
+										]
+									}
+								]
+							}
+						]
+					},
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<ul data-type=\"taskList\"><li data-checked=\"true\">plain li in task list</li></ul>"
+		},
+		{
+			"id": "tasklist-li-in-plain-ul",
+			"category": "tasklist",
+			"input": "<ul><li data-type=\"taskItem\" data-checked=\"true\" data-task-id=\"z1\"><div><p>task item in plain ul</p></div></li></ul>",
+			"html": "<ul><li><p></p></li></ul><ul data-type=\"taskList\"><li data-checked=\"true\" data-task-id=\"z1\" data-type=\"taskItem\"><label><input type=\"checkbox\" checked=\"checked\"><span></span></label><div><p>task item in plain ul</p></div></li></ul><p></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "bulletList",
+						"content": [
+							{
+								"type": "listItem",
+								"content": [
+									{
+										"type": "paragraph"
+									}
+								]
+							}
+						]
+					},
+					{
+						"type": "taskList",
+						"content": [
+							{
+								"type": "taskItem",
+								"attrs": {
+									"checked": true,
+									"taskId": "z1"
+								},
+								"content": [
+									{
+										"type": "paragraph",
+										"content": [
+											{
+												"type": "text",
+												"text": "task item in plain ul"
+											}
+										]
+									}
+								]
+							}
+						]
+					},
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<ul><li data-type=\"taskItem\" data-checked=\"true\" data-task-id=\"z1\"><div><p>task item in plain ul</p></div></li></ul>"
+		},
+		{
+			"id": "tasklist-github-markdown-html",
+			"category": "tasklist",
+			"input": "<ul><li><input type=\"checkbox\" checked disabled> gfm done</li><li><input type=\"checkbox\" disabled> gfm open</li></ul>",
+			"html": "<ul><li><p> gfm done</p></li><li><p> gfm open</p></li></ul><p></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "bulletList",
+						"content": [
+							{
+								"type": "listItem",
+								"content": [
+									{
+										"type": "paragraph",
+										"content": [
+											{
+												"type": "text",
+												"text": " gfm done"
+											}
+										]
+									}
+								]
+							},
+							{
+								"type": "listItem",
+								"content": [
+									{
+										"type": "paragraph",
+										"content": [
+											{
+												"type": "text",
+												"text": " gfm open"
+											}
+										]
+									}
+								]
+							}
+						]
+					},
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<ul><li><input type=\"checkbox\" checked=\"\" disabled=\"\"> gfm done</li><li><input type=\"checkbox\" disabled=\"\"> gfm open</li></ul>"
+		},
+		{
+			"id": "code-block-language",
+			"category": "code",
+			"input": "<pre><code class=\"language-js\">const a = 1;\n  if (a) {}\n</code></pre>",
+			"html": "<pre><code class=\"language-js\">const a = 1;\n  if (a) {}\n</code></pre><p></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "codeBlock",
+						"attrs": {
+							"language": "js"
+						},
+						"content": [
+							{
+								"type": "text",
+								"text": "const a = 1;\n  if (a) {}\n"
+							}
+						]
+					},
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<pre><code class=\"language-js\">const a = 1;\n  if (a) {}\n</code></pre>"
+		},
+		{
+			"id": "code-block-no-code",
+			"category": "code",
+			"input": "<pre>plain pre\n  text</pre>",
+			"html": "<pre><code>plain pre\n  text</code></pre><p></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "codeBlock",
+						"attrs": {
+							"language": null
+						},
+						"content": [
+							{
+								"type": "text",
+								"text": "plain pre\n  text"
+							}
+						]
+					},
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<pre>plain pre\n  text</pre>"
+		},
+		{
+			"id": "code-block-with-markup",
+			"category": "code",
+			"input": "<pre><code><b>bold?</b> &lt;tag&gt;</code></pre>",
+			"html": "<pre><code>bold? &lt;tag&gt;</code></pre><p></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "codeBlock",
+						"attrs": {
+							"language": null
+						},
+						"content": [
+							{
+								"type": "text",
+								"text": "bold? <tag>"
+							}
+						]
+					},
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<pre><code><b>bold?</b> &lt;tag&gt;</code></pre>"
+		},
+		{
+			"id": "inline-code-with-link",
+			"category": "code",
+			"input": "<p><code>x</code> and <code><a href=\"https://example.com\">l</a></code></p>",
+			"html": "<p><code>x</code> and <code>l</code></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "code"
+									}
+								],
+								"text": "x"
+							},
+							{
+								"type": "text",
+								"text": " and "
+							},
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "code"
+									}
+								],
+								"text": "l"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p><code>x</code> and <code><a href=\"https://example.com\">l</a></code></p>"
+		},
+		{
+			"id": "link-https",
+			"category": "link",
+			"input": "<p><a href=\"https://example.com/a?b=c#d\">ex</a></p>",
+			"html": "<p><a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://example.com/a?b=c#d\">ex</a></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "link",
+										"attrs": {
+											"href": "https://example.com/a?b=c#d",
+											"target": "_blank",
+											"rel": "noopener noreferrer nofollow",
+											"class": null,
+											"title": null
+										}
+									}
+								],
+								"text": "ex"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p><a href=\"https://example.com/a?b=c#d\">ex</a></p>"
+		},
+		{
+			"id": "link-target-rel-kept",
+			"category": "link",
+			"input": "<p><a href=\"https://example.com\" target=\"_self\" rel=\"opener\">x</a></p>",
+			"html": "<p><a target=\"_self\" rel=\"opener\" href=\"https://example.com\">x</a></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "link",
+										"attrs": {
+											"href": "https://example.com",
+											"target": "_self",
+											"rel": "opener",
+											"class": null,
+											"title": null
+										}
+									}
+								],
+								"text": "x"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p><a href=\"https://example.com\" target=\"_self\" rel=\"noopener noreferrer\">x</a></p>"
+		},
+		{
+			"id": "link-title-class",
+			"category": "link",
+			"input": "<p><a href=\"https://example.com\" title=\"t\" class=\"c\" id=\"i\" onclick=\"alert(1)\">x</a></p>",
+			"html": "<p><a target=\"_blank\" rel=\"noopener noreferrer nofollow\" class=\"c\" href=\"https://example.com\" title=\"t\">x</a></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "link",
+										"attrs": {
+											"href": "https://example.com",
+											"target": "_blank",
+											"rel": "noopener noreferrer nofollow",
+											"class": "c",
+											"title": "t"
+										}
+									}
+								],
+								"text": "x"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p><a href=\"https://example.com\" title=\"t\" class=\"c\" id=\"i\">x</a></p>"
+		},
+		{
+			"id": "link-schemes-allowed",
+			"category": "link",
+			"input": "<p><a href=\"http://a.b\">http</a> <a href=\"mailto:a@b.c\">mailto</a> <a href=\"tel:+491\">tel</a> <a href=\"ftp://a.b\">ftp</a> <a href=\"ftps://a.b\">ftps</a> <a href=\"sms:1\">sms</a> <a href=\"callto:1\">callto</a> <a href=\"cid:1\">cid</a> <a href=\"xmpp:a@b\">xmpp</a> <a href=\"git://a.b\">git</a> <a href=\"obsidian://open?x\">obsidian</a> <a href=\"notion://x\">notion</a> <a href=\"message://x\">message</a></p>",
+			"html": "<p><a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"http://a.b\">http</a> <a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"mailto:a@b.c\">mailto</a> <a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"tel:+491\">tel</a> <a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"ftp://a.b\">ftp</a> <a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"ftps://a.b\">ftps</a> <a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"sms:1\">sms</a> <a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"callto:1\">callto</a> <a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"cid:1\">cid</a> <a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"xmpp:a@b\">xmpp</a> <a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"git://a.b\">git</a> <a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"obsidian://open?x\">obsidian</a> <a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"notion://x\">notion</a> <a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"message://x\">message</a></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "link",
+										"attrs": {
+											"href": "http://a.b",
+											"target": "_blank",
+											"rel": "noopener noreferrer nofollow",
+											"class": null,
+											"title": null
+										}
+									}
+								],
+								"text": "http"
+							},
+							{
+								"type": "text",
+								"text": " "
+							},
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "link",
+										"attrs": {
+											"href": "mailto:a@b.c",
+											"target": "_blank",
+											"rel": "noopener noreferrer nofollow",
+											"class": null,
+											"title": null
+										}
+									}
+								],
+								"text": "mailto"
+							},
+							{
+								"type": "text",
+								"text": " "
+							},
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "link",
+										"attrs": {
+											"href": "tel:+491",
+											"target": "_blank",
+											"rel": "noopener noreferrer nofollow",
+											"class": null,
+											"title": null
+										}
+									}
+								],
+								"text": "tel"
+							},
+							{
+								"type": "text",
+								"text": " "
+							},
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "link",
+										"attrs": {
+											"href": "ftp://a.b",
+											"target": "_blank",
+											"rel": "noopener noreferrer nofollow",
+											"class": null,
+											"title": null
+										}
+									}
+								],
+								"text": "ftp"
+							},
+							{
+								"type": "text",
+								"text": " "
+							},
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "link",
+										"attrs": {
+											"href": "ftps://a.b",
+											"target": "_blank",
+											"rel": "noopener noreferrer nofollow",
+											"class": null,
+											"title": null
+										}
+									}
+								],
+								"text": "ftps"
+							},
+							{
+								"type": "text",
+								"text": " "
+							},
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "link",
+										"attrs": {
+											"href": "sms:1",
+											"target": "_blank",
+											"rel": "noopener noreferrer nofollow",
+											"class": null,
+											"title": null
+										}
+									}
+								],
+								"text": "sms"
+							},
+							{
+								"type": "text",
+								"text": " "
+							},
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "link",
+										"attrs": {
+											"href": "callto:1",
+											"target": "_blank",
+											"rel": "noopener noreferrer nofollow",
+											"class": null,
+											"title": null
+										}
+									}
+								],
+								"text": "callto"
+							},
+							{
+								"type": "text",
+								"text": " "
+							},
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "link",
+										"attrs": {
+											"href": "cid:1",
+											"target": "_blank",
+											"rel": "noopener noreferrer nofollow",
+											"class": null,
+											"title": null
+										}
+									}
+								],
+								"text": "cid"
+							},
+							{
+								"type": "text",
+								"text": " "
+							},
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "link",
+										"attrs": {
+											"href": "xmpp:a@b",
+											"target": "_blank",
+											"rel": "noopener noreferrer nofollow",
+											"class": null,
+											"title": null
+										}
+									}
+								],
+								"text": "xmpp"
+							},
+							{
+								"type": "text",
+								"text": " "
+							},
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "link",
+										"attrs": {
+											"href": "git://a.b",
+											"target": "_blank",
+											"rel": "noopener noreferrer nofollow",
+											"class": null,
+											"title": null
+										}
+									}
+								],
+								"text": "git"
+							},
+							{
+								"type": "text",
+								"text": " "
+							},
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "link",
+										"attrs": {
+											"href": "obsidian://open?x",
+											"target": "_blank",
+											"rel": "noopener noreferrer nofollow",
+											"class": null,
+											"title": null
+										}
+									}
+								],
+								"text": "obsidian"
+							},
+							{
+								"type": "text",
+								"text": " "
+							},
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "link",
+										"attrs": {
+											"href": "notion://x",
+											"target": "_blank",
+											"rel": "noopener noreferrer nofollow",
+											"class": null,
+											"title": null
+										}
+									}
+								],
+								"text": "notion"
+							},
+							{
+								"type": "text",
+								"text": " "
+							},
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "link",
+										"attrs": {
+											"href": "message://x",
+											"target": "_blank",
+											"rel": "noopener noreferrer nofollow",
+											"class": null,
+											"title": null
+										}
+									}
+								],
+								"text": "message"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p><a href=\"http://a.b\">http</a> <a href=\"mailto:a@b.c\">mailto</a> <a href=\"tel:+491\">tel</a> <a href=\"ftp://a.b\">ftp</a> <a href=\"ftps://a.b\">ftps</a> <a href=\"sms:1\">sms</a> <a href=\"callto:1\">callto</a> <a href=\"cid:1\">cid</a> <a href=\"xmpp:a@b\">xmpp</a> <a>git</a> <a>obsidian</a> <a>notion</a> <a>message</a></p>"
+		},
+		{
+			"id": "link-relative-and-fragment",
+			"category": "link",
+			"input": "<p><a href=\"/projects/1\">rel</a> <a href=\"#comment-3\">frag</a> <a href=\"www.example.com\">www</a> <a href=\"example.com/x\">bare</a> <a href=\"?q=1\">query</a></p>",
+			"html": "<p><a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"/projects/1\">rel</a> <a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"#comment-3\">frag</a> <a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"www.example.com\">www</a> <a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"example.com/x\">bare</a> <a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"?q=1\">query</a></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "link",
+										"attrs": {
+											"href": "/projects/1",
+											"target": "_blank",
+											"rel": "noopener noreferrer nofollow",
+											"class": null,
+											"title": null
+										}
+									}
+								],
+								"text": "rel"
+							},
+							{
+								"type": "text",
+								"text": " "
+							},
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "link",
+										"attrs": {
+											"href": "#comment-3",
+											"target": "_blank",
+											"rel": "noopener noreferrer nofollow",
+											"class": null,
+											"title": null
+										}
+									}
+								],
+								"text": "frag"
+							},
+							{
+								"type": "text",
+								"text": " "
+							},
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "link",
+										"attrs": {
+											"href": "www.example.com",
+											"target": "_blank",
+											"rel": "noopener noreferrer nofollow",
+											"class": null,
+											"title": null
+										}
+									}
+								],
+								"text": "www"
+							},
+							{
+								"type": "text",
+								"text": " "
+							},
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "link",
+										"attrs": {
+											"href": "example.com/x",
+											"target": "_blank",
+											"rel": "noopener noreferrer nofollow",
+											"class": null,
+											"title": null
+										}
+									}
+								],
+								"text": "bare"
+							},
+							{
+								"type": "text",
+								"text": " "
+							},
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "link",
+										"attrs": {
+											"href": "?q=1",
+											"target": "_blank",
+											"rel": "noopener noreferrer nofollow",
+											"class": null,
+											"title": null
+										}
+									}
+								],
+								"text": "query"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p><a href=\"/projects/1\">rel</a> <a href=\"#comment-3\">frag</a> <a href=\"www.example.com\">www</a> <a href=\"example.com/x\">bare</a> <a href=\"?q=1\">query</a></p>"
+		},
+		{
+			"id": "link-disallowed-schemes",
+			"category": "link",
+			"input": "<p><a href=\"slack://open\">slack</a> <a href=\"vscode://file\">vscode</a> <a href=\"file:///etc/passwd\">file</a> <a href=\"intent://x\">intent</a></p>",
+			"html": "<p>slack vscode file intent</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "slack vscode file intent"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p><a>slack</a> <a>vscode</a> <a>file</a> <a>intent</a></p>"
+		},
+		{
+			"id": "link-empty-href",
+			"category": "link",
+			"input": "<p><a href=\"\">empty</a> <a>no href</a> <a name=\"anchor\">named</a></p>",
+			"html": "<p>empty no href named</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "empty no href named"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p><a href=\"\">empty</a> <a>no href</a> <a name=\"anchor\">named</a></p>"
+		},
+		{
+			"id": "link-autolink-on-load-first-block",
+			"category": "link",
+			"note": "does setContent autolink bare URLs?",
+			"input": "<p>see https://example.com</p><p>and https://example.org here</p>",
+			"html": "<p>see <a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://example.com\">https://example.com</a></p><p>and https://example.org here</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "see "
+							},
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "link",
+										"attrs": {
+											"href": "https://example.com",
+											"target": "_blank",
+											"rel": "noopener noreferrer nofollow",
+											"class": null,
+											"title": null
+										}
+									}
+								],
+								"text": "https://example.com"
+							}
+						]
+					},
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "and https://example.org here"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p>see https://example.com</p><p>and https://example.org here</p>"
+		},
+		{
+			"id": "link-autolink-single-block",
+			"category": "link",
+			"input": "<p>visit https://example.com today</p>",
+			"html": "<p>visit https://example.com today</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "visit https://example.com today"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p>visit https://example.com today</p>"
+		},
+		{
+			"id": "link-autolink-single-block-last-word",
+			"category": "link",
+			"input": "<p>visit https://example.com</p>",
+			"html": "<p>visit https://example.com</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "visit https://example.com"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p>visit https://example.com</p>"
+		},
+		{
+			"id": "tasklink-pill",
+			"category": "tasklink",
+			"input": "<p><a href=\"https://vikunja.example.com/tasks/42\">https://vikunja.example.com/tasks/42</a></p>",
+			"html": "<p><a href=\"https://vikunja.example.com/tasks/42\">https://vikunja.example.com/tasks/42</a></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "taskLink",
+								"attrs": {
+									"target": null,
+									"rel": null,
+									"href": "https://vikunja.example.com/tasks/42"
+								}
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p><a href=\"https://vikunja.example.com/tasks/42\">https://vikunja.example.com/tasks/42</a></p>"
+		},
+		{
+			"id": "tasklink-pill-target-rel",
+			"category": "tasklink",
+			"input": "<p><a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://vikunja.example.com/tasks/42\">https://vikunja.example.com/tasks/42</a></p>",
+			"html": "<p><a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://vikunja.example.com/tasks/42\">https://vikunja.example.com/tasks/42</a></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "taskLink",
+								"attrs": {
+									"target": "_blank",
+									"rel": "noopener noreferrer nofollow",
+									"href": "https://vikunja.example.com/tasks/42"
+								}
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://vikunja.example.com/tasks/42\">https://vikunja.example.com/tasks/42</a></p>"
+		},
+		{
+			"id": "tasklink-custom-text",
+			"category": "tasklink",
+			"input": "<p><a href=\"https://vikunja.example.com/tasks/42\">see task</a></p>",
+			"html": "<p><a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://vikunja.example.com/tasks/42\">see task</a></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "link",
+										"attrs": {
+											"href": "https://vikunja.example.com/tasks/42",
+											"target": "_blank",
+											"rel": "noopener noreferrer nofollow",
+											"class": null,
+											"title": null
+										}
+									}
+								],
+								"text": "see task"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p><a href=\"https://vikunja.example.com/tasks/42\">see task</a></p>"
+		},
+		{
+			"id": "tasklink-relative",
+			"category": "tasklink",
+			"input": "<p><a href=\"/tasks/42\">/tasks/42</a></p>",
+			"html": "<p><a href=\"/tasks/42\">/tasks/42</a></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "taskLink",
+								"attrs": {
+									"target": null,
+									"rel": null,
+									"href": "/tasks/42"
+								}
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p><a href=\"/tasks/42\">/tasks/42</a></p>"
+		},
+		{
+			"id": "tasklink-with-hash",
+			"category": "tasklink",
+			"input": "<p><a href=\"https://vikunja.example.com/tasks/42#comment-7\">https://vikunja.example.com/tasks/42#comment-7</a></p>",
+			"html": "<p><a href=\"https://vikunja.example.com/tasks/42#comment-7\">https://vikunja.example.com/tasks/42#comment-7</a></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "taskLink",
+								"attrs": {
+									"target": null,
+									"rel": null,
+									"href": "https://vikunja.example.com/tasks/42#comment-7"
+								}
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p><a href=\"https://vikunja.example.com/tasks/42#comment-7\">https://vikunja.example.com/tasks/42#comment-7</a></p>"
+		},
+		{
+			"id": "tasklink-other-origin",
+			"category": "tasklink",
+			"input": "<p><a href=\"https://other.example.com/tasks/42\">https://other.example.com/tasks/42</a></p>",
+			"html": "<p><a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://other.example.com/tasks/42\">https://other.example.com/tasks/42</a></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "link",
+										"attrs": {
+											"href": "https://other.example.com/tasks/42",
+											"target": "_blank",
+											"rel": "noopener noreferrer nofollow",
+											"class": null,
+											"title": null
+										}
+									}
+								],
+								"text": "https://other.example.com/tasks/42"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p><a href=\"https://other.example.com/tasks/42\">https://other.example.com/tasks/42</a></p>"
+		},
+		{
+			"id": "tasklink-bare-text-not-linked",
+			"category": "tasklink",
+			"input": "<p>https://vikunja.example.com/tasks/42</p>",
+			"html": "<p>https://vikunja.example.com/tasks/42</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "https://vikunja.example.com/tasks/42"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p>https://vikunja.example.com/tasks/42</p>"
+		},
+		{
+			"id": "mention",
+			"category": "mention",
+			"input": "<p>hi <mention-user data-id=\"jdoe\" data-label=\"Jane Doe\" data-mention-suggestion-char=\"@\"></mention-user> !</p>",
+			"html": "<p>hi <mention-user data-id=\"jdoe\" data-label=\"Jane Doe\" data-mention-suggestion-char=\"@\"></mention-user> !</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "hi "
+							},
+							{
+								"type": "mention",
+								"attrs": {
+									"id": "jdoe",
+									"label": "Jane Doe",
+									"mentionSuggestionChar": "@"
+								}
+							},
+							{
+								"type": "text",
+								"text": " !"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p>hi  !</p>"
+		},
+		{
+			"id": "mention-id-only",
+			"category": "mention",
+			"input": "<p><mention-user data-id=\"jdoe\"></mention-user></p>",
+			"html": "<p><mention-user data-id=\"jdoe\" data-mention-suggestion-char=\"@\"></mention-user></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "mention",
+								"attrs": {
+									"id": "jdoe",
+									"label": null,
+									"mentionSuggestionChar": "@"
+								}
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p></p>"
+		},
+		{
+			"id": "mention-with-inner-text",
+			"category": "mention",
+			"input": "<p><mention-user data-id=\"jdoe\" data-label=\"Jane\">@Jane Doe inner</mention-user></p>",
+			"html": "<p><mention-user data-id=\"jdoe\" data-label=\"Jane\" data-mention-suggestion-char=\"@\"></mention-user></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "mention",
+								"attrs": {
+									"id": "jdoe",
+									"label": "Jane",
+									"mentionSuggestionChar": "@"
+								}
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p>@Jane Doe inner</p>"
+		},
+		{
+			"id": "mention-tiptap-span",
+			"category": "mention",
+			"note": "default TipTap span form is not parsed by Vikunja",
+			"input": "<p><span data-type=\"mention\" data-id=\"jdoe\" data-label=\"Jane\">@Jane</span></p>",
+			"html": "<p>@Jane</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "@Jane"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p><span data-type=\"mention\" data-id=\"jdoe\" data-label=\"Jane\">@Jane</span></p>"
+		},
+		{
+			"id": "mention-hostile-attrs",
+			"category": "mention",
+			"input": "<p><mention-user data-id=\"x\" data-label=\"&lt;img src=x onerror=alert(1)&gt;\" onclick=\"alert(1)\" style=\"color:red\"></mention-user></p>",
+			"html": "<p><mention-user data-id=\"x\" data-label=\"<img src=x onerror=alert(1)>\" data-mention-suggestion-char=\"@\"></mention-user></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "mention",
+								"attrs": {
+									"id": "x",
+									"label": "<img src=x onerror=alert(1)>",
+									"mentionSuggestionChar": "@"
+								}
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p></p>"
+		},
+		{
+			"id": "mention-plain-at-text",
+			"category": "mention",
+			"input": "<p>@jdoe plain text</p>",
+			"html": "<p>@jdoe plain text</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "@jdoe plain text"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p>@jdoe plain text</p>"
+		},
+		{
+			"id": "emoji-unicode",
+			"category": "emoji",
+			"input": "<p>👍 🎉 👨‍👩‍👧</p>",
+			"html": "<p>👍 🎉 👨‍👩‍👧</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "👍 🎉 👨‍👩‍👧"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p>👍 🎉 👨‍👩‍👧</p>"
+		},
+		{
+			"id": "emoji-shortcode-text",
+			"category": "emoji",
+			"input": "<p>:smile: :+1:</p>",
+			"html": "<p>:smile: :+1:</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": ":smile: :+1:"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p>:smile: :+1:</p>"
+		},
+		{
+			"id": "table-basic",
+			"category": "table",
+			"input": "<table><tbody><tr><th><p>H1</p></th><th><p>H2</p></th></tr><tr><td><p>a</p></td><td><p>b</p></td></tr></tbody></table>",
+			"html": "<table style=\"min-width: 50px;\"><colgroup><col style=\"min-width: 25px;\"><col style=\"min-width: 25px;\"></colgroup><tbody><tr><th colspan=\"1\" rowspan=\"1\"><p>H1</p></th><th colspan=\"1\" rowspan=\"1\"><p>H2</p></th></tr><tr><td colspan=\"1\" rowspan=\"1\" style=\"\"><p>a</p></td><td colspan=\"1\" rowspan=\"1\" style=\"\"><p>b</p></td></tr></tbody></table><p></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "table",
+						"content": [
+							{
+								"type": "tableRow",
+								"content": [
+									{
+										"type": "tableHeader",
+										"attrs": {
+											"colspan": 1,
+											"rowspan": 1,
+											"colwidth": null,
+											"align": null
+										},
+										"content": [
+											{
+												"type": "paragraph",
+												"content": [
+													{
+														"type": "text",
+														"text": "H1"
+													}
+												]
+											}
+										]
+									},
+									{
+										"type": "tableHeader",
+										"attrs": {
+											"colspan": 1,
+											"rowspan": 1,
+											"colwidth": null,
+											"align": null
+										},
+										"content": [
+											{
+												"type": "paragraph",
+												"content": [
+													{
+														"type": "text",
+														"text": "H2"
+													}
+												]
+											}
+										]
+									}
+								]
+							},
+							{
+								"type": "tableRow",
+								"content": [
+									{
+										"type": "tableCell",
+										"attrs": {
+											"colspan": 1,
+											"rowspan": 1,
+											"colwidth": null,
+											"align": null,
+											"backgroundColor": null
+										},
+										"content": [
+											{
+												"type": "paragraph",
+												"content": [
+													{
+														"type": "text",
+														"text": "a"
+													}
+												]
+											}
+										]
+									},
+									{
+										"type": "tableCell",
+										"attrs": {
+											"colspan": 1,
+											"rowspan": 1,
+											"colwidth": null,
+											"align": null,
+											"backgroundColor": null
+										},
+										"content": [
+											{
+												"type": "paragraph",
+												"content": [
+													{
+														"type": "text",
+														"text": "b"
+													}
+												]
+											}
+										]
+									}
+								]
+							}
+						]
+					},
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<table><tbody><tr><th><p>H1</p></th><th><p>H2</p></th></tr><tr><td><p>a</p></td><td><p>b</p></td></tr></tbody></table>"
+		},
+		{
+			"id": "table-colspan-rowspan-colwidth",
+			"category": "table",
+			"input": "<table><tr><td colspan=\"2\" colwidth=\"100,50\"><p>wide</p></td></tr><tr><td rowspan=\"2\">bare</td><td>x</td></tr><tr><td>y</td></tr></table>",
+			"html": "<table style=\"width: 150px;\"><colgroup><col style=\"width: 100px;\"><col style=\"width: 50px;\"></colgroup><tbody><tr><td colspan=\"2\" rowspan=\"1\" colwidth=\"100,50\" style=\"\"><p>wide</p></td></tr><tr><td colspan=\"1\" rowspan=\"2\" colwidth=\"100\" style=\"\"><p>bare</p></td><td colspan=\"1\" rowspan=\"1\" colwidth=\"50\" style=\"\"><p>x</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\" colwidth=\"50\" style=\"\"><p>y</p></td></tr></tbody></table><p></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "table",
+						"content": [
+							{
+								"type": "tableRow",
+								"content": [
+									{
+										"type": "tableCell",
+										"attrs": {
+											"colspan": 2,
+											"rowspan": 1,
+											"colwidth": [
+												100,
+												50
+											],
+											"align": null,
+											"backgroundColor": null
+										},
+										"content": [
+											{
+												"type": "paragraph",
+												"content": [
+													{
+														"type": "text",
+														"text": "wide"
+													}
+												]
+											}
+										]
+									}
+								]
+							},
+							{
+								"type": "tableRow",
+								"content": [
+									{
+										"type": "tableCell",
+										"attrs": {
+											"colspan": 1,
+											"rowspan": 2,
+											"colwidth": [
+												100
+											],
+											"align": null,
+											"backgroundColor": null
+										},
+										"content": [
+											{
+												"type": "paragraph",
+												"content": [
+													{
+														"type": "text",
+														"text": "bare"
+													}
+												]
+											}
+										]
+									},
+									{
+										"type": "tableCell",
+										"attrs": {
+											"colspan": 1,
+											"rowspan": 1,
+											"colwidth": [
+												50
+											],
+											"align": null,
+											"backgroundColor": null
+										},
+										"content": [
+											{
+												"type": "paragraph",
+												"content": [
+													{
+														"type": "text",
+														"text": "x"
+													}
+												]
+											}
+										]
+									}
+								]
+							},
+							{
+								"type": "tableRow",
+								"content": [
+									{
+										"type": "tableCell",
+										"attrs": {
+											"colspan": 1,
+											"rowspan": 1,
+											"colwidth": [
+												50
+											],
+											"align": null,
+											"backgroundColor": null
+										},
+										"content": [
+											{
+												"type": "paragraph",
+												"content": [
+													{
+														"type": "text",
+														"text": "y"
+													}
+												]
+											}
+										]
+									}
+								]
+							}
+						]
+					},
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<table><tbody><tr><td colspan=\"2\"><p>wide</p></td></tr><tr><td rowspan=\"2\">bare</td><td>x</td></tr><tr><td>y</td></tr></tbody></table>"
+		},
+		{
+			"id": "table-background-color",
+			"category": "table",
+			"input": "<table><tr><td data-background-color=\"#ff0000\"><p>red</p></td></tr></table>",
+			"html": "<table style=\"min-width: 25px;\"><colgroup><col style=\"min-width: 25px;\"></colgroup><tbody><tr><td colspan=\"1\" rowspan=\"1\" data-background-color=\"#ff0000\" style=\"background-color: rgb(255, 0, 0);\"><p>red</p></td></tr></tbody></table><p></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "table",
+						"content": [
+							{
+								"type": "tableRow",
+								"content": [
+									{
+										"type": "tableCell",
+										"attrs": {
+											"colspan": 1,
+											"rowspan": 1,
+											"colwidth": null,
+											"align": null,
+											"backgroundColor": "#ff0000"
+										},
+										"content": [
+											{
+												"type": "paragraph",
+												"content": [
+													{
+														"type": "text",
+														"text": "red"
+													}
+												]
+											}
+										]
+									}
+								]
+							}
+						]
+					},
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<table><tbody><tr><td data-background-color=\"#ff0000\"><p>red</p></td></tr></tbody></table>",
+			"html_happydom": "<table style=\"min-width: 25px;\"><colgroup><col style=\"min-width: 25px;\"></colgroup><tbody><tr><td colspan=\"1\" rowspan=\"1\" data-background-color=\"#ff0000\" style=\"background-color: #ff0000;\"><p>red</p></td></tr></tbody></table><p></p>"
+		},
+		{
+			"id": "table-background-color-injection",
+			"category": "hostile",
+			"note": "data-background-color is interpolated into style",
+			"input": "<table><tr><td data-background-color=\"red; background-image: url(https://evil.example/t.png); position: fixed\"><p>x</p></td></tr></table>",
+			"html": "<table style=\"min-width: 25px;\"><colgroup><col style=\"min-width: 25px;\"></colgroup><tbody><tr><td colspan=\"1\" rowspan=\"1\" data-background-color=\"red; background-image: url(https://evil.example/t.png); position: fixed\" style=\"background-color: red; background-image: url(&quot;https://evil.example/t.png&quot;); position: fixed;\"><p>x</p></td></tr></tbody></table><p></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "table",
+						"content": [
+							{
+								"type": "tableRow",
+								"content": [
+									{
+										"type": "tableCell",
+										"attrs": {
+											"colspan": 1,
+											"rowspan": 1,
+											"colwidth": null,
+											"align": null,
+											"backgroundColor": "red; background-image: url(https://evil.example/t.png); position: fixed"
+										},
+										"content": [
+											{
+												"type": "paragraph",
+												"content": [
+													{
+														"type": "text",
+														"text": "x"
+													}
+												]
+											}
+										]
+									}
+								]
+							}
+						]
+					},
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<table><tbody><tr><td data-background-color=\"red; background-image: url(https://evil.example/t.png); position: fixed\"><p>x</p></td></tr></tbody></table>"
+		},
+		{
+			"id": "table-thead-tfoot-caption",
+			"category": "table",
+			"note": "happy-dom places caption text in a cell; browsers may differ",
+			"input": "<table><caption>cap</caption><thead><tr><th>h</th></tr></thead><tfoot><tr><td>f</td></tr></tfoot></table>",
+			"html": "<table style=\"min-width: 25px;\"><colgroup><col style=\"min-width: 25px;\"></colgroup><tbody><tr><td colspan=\"1\" rowspan=\"1\" style=\"\"><p>cap</p></td></tr><tr><th colspan=\"1\" rowspan=\"1\"><p>h</p></th></tr><tr><td colspan=\"1\" rowspan=\"1\" style=\"\"><p>f</p></td></tr></tbody></table><p></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "table",
+						"content": [
+							{
+								"type": "tableRow",
+								"content": [
+									{
+										"type": "tableCell",
+										"attrs": {
+											"colspan": 1,
+											"rowspan": 1,
+											"colwidth": null,
+											"align": null,
+											"backgroundColor": null
+										},
+										"content": [
+											{
+												"type": "paragraph",
+												"content": [
+													{
+														"type": "text",
+														"text": "cap"
+													}
+												]
+											}
+										]
+									}
+								]
+							},
+							{
+								"type": "tableRow",
+								"content": [
+									{
+										"type": "tableHeader",
+										"attrs": {
+											"colspan": 1,
+											"rowspan": 1,
+											"colwidth": null,
+											"align": null
+										},
+										"content": [
+											{
+												"type": "paragraph",
+												"content": [
+													{
+														"type": "text",
+														"text": "h"
+													}
+												]
+											}
+										]
+									}
+								]
+							},
+							{
+								"type": "tableRow",
+								"content": [
+									{
+										"type": "tableCell",
+										"attrs": {
+											"colspan": 1,
+											"rowspan": 1,
+											"colwidth": null,
+											"align": null,
+											"backgroundColor": null
+										},
+										"content": [
+											{
+												"type": "paragraph",
+												"content": [
+													{
+														"type": "text",
+														"text": "f"
+													}
+												]
+											}
+										]
+									}
+								]
+							}
+						]
+					},
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<table><caption>cap</caption><thead><tr><th>h</th></tr></thead><tfoot><tr><td>f</td></tr></tfoot></table>"
+		},
+		{
+			"id": "table-cell-align",
+			"category": "table",
+			"input": "<table><tr><td style=\"text-align:center\"><p>c</p></td><th align=\"right\"><p>r</p></th></tr></table>",
+			"html": "<table style=\"min-width: 50px;\"><colgroup><col style=\"min-width: 25px;\"><col style=\"min-width: 25px;\"></colgroup><tbody><tr><td colspan=\"1\" rowspan=\"1\" style=\"text-align: center;\"><p>c</p></td><th colspan=\"1\" rowspan=\"1\" style=\"text-align: right;\"><p>r</p></th></tr></tbody></table><p></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "table",
+						"content": [
+							{
+								"type": "tableRow",
+								"content": [
+									{
+										"type": "tableCell",
+										"attrs": {
+											"colspan": 1,
+											"rowspan": 1,
+											"colwidth": null,
+											"align": "center",
+											"backgroundColor": null
+										},
+										"content": [
+											{
+												"type": "paragraph",
+												"content": [
+													{
+														"type": "text",
+														"text": "c"
+													}
+												]
+											}
+										]
+									},
+									{
+										"type": "tableHeader",
+										"attrs": {
+											"colspan": 1,
+											"rowspan": 1,
+											"colwidth": null,
+											"align": "right"
+										},
+										"content": [
+											{
+												"type": "paragraph",
+												"content": [
+													{
+														"type": "text",
+														"text": "r"
+													}
+												]
+											}
+										]
+									}
+								]
+							}
+						]
+					},
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<table><tbody><tr><td style=\"text-align:center\"><p>c</p></td><th align=\"right\"><p>r</p></th></tr></tbody></table>"
+		},
+		{
+			"id": "table-colgroup-width",
+			"category": "table",
+			"input": "<table><colgroup><col width=\"120\"><col></colgroup><tr><td><p>a</p></td><td><p>b</p></td></tr></table>",
+			"html": "<table style=\"min-width: 145px;\"><colgroup><col style=\"width: 120px;\"><col style=\"min-width: 25px;\"></colgroup><tbody><tr><td colspan=\"1\" rowspan=\"1\" colwidth=\"120\" style=\"\"><p>a</p></td><td colspan=\"1\" rowspan=\"1\" style=\"\"><p>b</p></td></tr></tbody></table><p></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "table",
+						"content": [
+							{
+								"type": "tableRow",
+								"content": [
+									{
+										"type": "tableCell",
+										"attrs": {
+											"colspan": 1,
+											"rowspan": 1,
+											"colwidth": [
+												120
+											],
+											"align": null,
+											"backgroundColor": null
+										},
+										"content": [
+											{
+												"type": "paragraph",
+												"content": [
+													{
+														"type": "text",
+														"text": "a"
+													}
+												]
+											}
+										]
+									},
+									{
+										"type": "tableCell",
+										"attrs": {
+											"colspan": 1,
+											"rowspan": 1,
+											"colwidth": null,
+											"align": null,
+											"backgroundColor": null
+										},
+										"content": [
+											{
+												"type": "paragraph",
+												"content": [
+													{
+														"type": "text",
+														"text": "b"
+													}
+												]
+											}
+										]
+									}
+								]
+							}
+						]
+					},
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<table><colgroup><col width=\"120\"><col></colgroup><tbody><tr><td><p>a</p></td><td><p>b</p></td></tr></tbody></table>"
+		},
+		{
+			"id": "image-attachment-stored-form",
+			"category": "image",
+			"input": "<p><img src=\"#\" data-src=\"https://vikunja.example.com/api/v2/tasks/5/attachments/9\" id=\"tiptap-image-5-9\"></p>",
+			"html": "<p></p><img data-src=\"https://vikunja.example.com/api/v2/tasks/5/attachments/9\" src=\"#\" id=\"tiptap-image-5-9\"><p></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph"
+					},
+					{
+						"type": "image",
+						"attrs": {
+							"src": "#",
+							"alt": null,
+							"title": null,
+							"id": null,
+							"data-src": "https://vikunja.example.com/api/v2/tasks/5/attachments/9"
+						}
+					},
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<p><img src=\"#\" data-src=\"https://vikunja.example.com/api/v2/tasks/5/attachments/9\" id=\"tiptap-image-5-9\"></p>"
+		},
+		{
+			"id": "image-attachment-legacy-src-v1",
+			"category": "image",
+			"input": "<p><img src=\"https://vikunja.example.com/api/v1/tasks/5/attachments/9\" alt=\"screenshot\"></p>",
+			"html": "<p></p><img data-src=\"https://vikunja.example.com/api/v1/tasks/5/attachments/9\" src=\"#\" alt=\"screenshot\" id=\"tiptap-image-5-9\"><p></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph"
+					},
+					{
+						"type": "image",
+						"attrs": {
+							"src": "https://vikunja.example.com/api/v1/tasks/5/attachments/9",
+							"alt": "screenshot",
+							"title": null,
+							"id": null,
+							"data-src": null
+						}
+					},
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<p><img src=\"https://vikunja.example.com/api/v1/tasks/5/attachments/9\" alt=\"screenshot\"></p>"
+		},
+		{
+			"id": "image-attachment-no-version",
+			"category": "image",
+			"input": "<img src=\"https://vikunja.example.com/tasks/5/attachments/9\">",
+			"html": "<img data-src=\"https://vikunja.example.com/tasks/5/attachments/9\" src=\"#\" id=\"tiptap-image-5-9\"><p></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "image",
+						"attrs": {
+							"src": "https://vikunja.example.com/tasks/5/attachments/9",
+							"alt": null,
+							"title": null,
+							"id": null,
+							"data-src": null
+						}
+					},
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<img src=\"https://vikunja.example.com/tasks/5/attachments/9\">"
+		},
+		{
+			"id": "image-attachment-relative",
+			"category": "image",
+			"note": "prefix \"\" does not equal the API root",
+			"input": "<img src=\"/api/v2/tasks/5/attachments/9\">",
+			"html": "<img src=\"/api/v2/tasks/5/attachments/9\"><p></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "image",
+						"attrs": {
+							"src": "/api/v2/tasks/5/attachments/9",
+							"alt": null,
+							"title": null,
+							"id": null,
+							"data-src": null
+						}
+					},
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<img src=\"/api/v2/tasks/5/attachments/9\">"
+		},
+		{
+			"id": "image-attachment-other-host",
+			"category": "image",
+			"input": "<img src=\"https://attacker.example/tasks/5/attachments/9\">",
+			"html": "<img src=\"https://attacker.example/tasks/5/attachments/9\"><p></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "image",
+						"attrs": {
+							"src": "https://attacker.example/tasks/5/attachments/9",
+							"alt": null,
+							"title": null,
+							"id": null,
+							"data-src": null
+						}
+					},
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<img src=\"https://attacker.example/tasks/5/attachments/9\">"
+		},
+		{
+			"id": "image-external",
+			"category": "image",
+			"input": "<p>before <img src=\"https://images.example/cat.png\" alt=\"cat\" title=\"t\" width=\"100\" height=\"50\"> after</p>",
+			"html": "<p>before </p><img src=\"https://images.example/cat.png\" alt=\"cat\" title=\"t\"><p> after</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "before "
+							}
+						]
+					},
+					{
+						"type": "image",
+						"attrs": {
+							"src": "https://images.example/cat.png",
+							"alt": "cat",
+							"title": "t",
+							"id": null,
+							"data-src": null
+						}
+					},
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": " after"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p>before <img src=\"https://images.example/cat.png\" alt=\"cat\" title=\"t\" width=\"100\" height=\"50\"> after</p>"
+		},
+		{
+			"id": "image-data-uri",
+			"category": "image",
+			"input": "<p><img src=\"data:image/png;base64,iVBORw0KGgo=\"></p>",
+			"html": "<p></p>",
+			"isEmpty": true,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<p><img src=\"data:image/png;base64,iVBORw0KGgo=\"></p>"
+		},
+		{
+			"id": "image-no-src",
+			"category": "image",
+			"input": "<p><img alt=\"nothing\"></p>",
+			"html": "<p></p>",
+			"isEmpty": true,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<p><img alt=\"nothing\"></p>"
+		},
+		{
+			"id": "image-planted-id",
+			"category": "image",
+			"input": "<img src=\"https://attacker.example/x.png\" id=\"tiptap-image-5-9\"><img src=\"#\" data-src=\"https://vikunja.example.com/api/v2/tasks/5/attachments/9\" id=\"tiptap-image-5-9\">",
+			"html": "<img src=\"https://attacker.example/x.png\"><img data-src=\"https://vikunja.example.com/api/v2/tasks/5/attachments/9\" src=\"#\" id=\"tiptap-image-5-9\"><p></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "image",
+						"attrs": {
+							"src": "https://attacker.example/x.png",
+							"alt": null,
+							"title": null,
+							"id": null,
+							"data-src": null
+						}
+					},
+					{
+						"type": "image",
+						"attrs": {
+							"src": "#",
+							"alt": null,
+							"title": null,
+							"id": null,
+							"data-src": "https://vikunja.example.com/api/v2/tasks/5/attachments/9"
+						}
+					},
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<img src=\"https://attacker.example/x.png\" id=\"tiptap-image-5-9\"><img src=\"#\" data-src=\"https://vikunja.example.com/api/v2/tasks/5/attachments/9\" id=\"tiptap-image-5-9\">"
+		},
+		{
+			"id": "image-javascript-src",
+			"category": "hostile",
+			"input": "<img src=\"javascript:alert(1)\">",
+			"html": "<img src=\"javascript:alert(1)\"><p></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "image",
+						"attrs": {
+							"src": "javascript:alert(1)",
+							"alt": null,
+							"title": null,
+							"id": null,
+							"data-src": null
+						}
+					},
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<img>"
+		},
+		{
+			"id": "div-wrappers",
+			"category": "structure",
+			"input": "<div><div>in div</div><span>in span</span></div>",
+			"html": "<p>in div</p><p>in span</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "in div"
+							}
+						]
+					},
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "in span"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<div><div>in div</div><span>in span</span></div>"
+		},
+		{
+			"id": "section-article-details",
+			"category": "structure",
+			"input": "<section><article><h2>T</h2><p>x</p></article><details><summary>sum</summary><p>body</p></details></section>",
+			"html": "<h2>T</h2><p>x</p><p>sum</p><p>body</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "heading",
+						"attrs": {
+							"level": 2
+						},
+						"content": [
+							{
+								"type": "text",
+								"text": "T"
+							}
+						]
+					},
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "x"
+							}
+						]
+					},
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "sum"
+							}
+						]
+					},
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "body"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<section><article><h2>T</h2><p>x</p></article><details><summary>sum</summary><p>body</p></details></section>"
+		},
+		{
+			"id": "heading-inside-list",
+			"category": "structure",
+			"input": "<ul><li><h3>heading in li</h3></li></ul>",
+			"html": "<ul><li><p></p></li></ul><h3>heading in li</h3><p></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "bulletList",
+						"content": [
+							{
+								"type": "listItem",
+								"content": [
+									{
+										"type": "paragraph"
+									}
+								]
+							}
+						]
+					},
+					{
+						"type": "heading",
+						"attrs": {
+							"level": 3
+						},
+						"content": [
+							{
+								"type": "text",
+								"text": "heading in li"
+							}
+						]
+					},
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<ul><li><h3>heading in li</h3></li></ul>"
+		},
+		{
+			"id": "unclosed-tags",
+			"category": "structure",
+			"input": "<p><strong>bold <em>both</p><p>next",
+			"html": "<p><strong>bold <em>both</em></strong></p><p><strong><em>next</em></strong></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "bold"
+									}
+								],
+								"text": "bold "
+							},
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "bold"
+									},
+									{
+										"type": "italic"
+									}
+								],
+								"text": "both"
+							}
+						]
+					},
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "bold"
+									},
+									{
+										"type": "italic"
+									}
+								],
+								"text": "next"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p><strong>bold <em>both</em></strong></p><p><strong><em>next</em></strong></p>",
+			"html_happydom": "<p><strong>bold <em>both</em></strong></p><p>next</p>"
+		},
+		{
+			"id": "html-document",
+			"category": "structure",
+			"input": "<!DOCTYPE html><html><head><title>t</title></head><body><p>body</p></body></html>",
+			"html": "<p>body</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "body"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p>body</p>"
+		},
+		{
+			"id": "comment-node",
+			"category": "structure",
+			"input": "<p>a<!-- hidden -->b</p>",
+			"html": "<p>ab</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "ab"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p>ab</p>"
+		},
+		{
+			"id": "entities",
+			"category": "structure",
+			"input": "<p>&lt;script&gt;alert(1)&lt;/script&gt; &amp; &quot; &#39; &copy;</p>",
+			"html": "<p>&lt;script&gt;alert(1)&lt;/script&gt; &amp; \" ' ©</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "<script>alert(1)</script> & \" ' ©"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p>&lt;script&gt;alert(1)&lt;/script&gt; &amp; \" ' ©</p>"
+		},
+		{
+			"id": "deep-nesting",
+			"category": "structure",
+			"input": "<blockquote><blockquote><blockquote><ul><li><ol><li><p>deep</p></li></ol></li></ul></blockquote></blockquote></blockquote>",
+			"html": "<blockquote><blockquote><blockquote><ul><li><p></p></li></ul><ol><li><p>deep</p></li></ol></blockquote></blockquote></blockquote><p></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "blockquote",
+						"attrs": {
+							"commentId": null
+						},
+						"content": [
+							{
+								"type": "blockquote",
+								"attrs": {
+									"commentId": null
+								},
+								"content": [
+									{
+										"type": "blockquote",
+										"attrs": {
+											"commentId": null
+										},
+										"content": [
+											{
+												"type": "bulletList",
+												"content": [
+													{
+														"type": "listItem",
+														"content": [
+															{
+																"type": "paragraph"
+															}
+														]
+													}
+												]
+											},
+											{
+												"type": "orderedList",
+												"attrs": {
+													"start": 1,
+													"type": null
+												},
+												"content": [
+													{
+														"type": "listItem",
+														"content": [
+															{
+																"type": "paragraph",
+																"content": [
+																	{
+																		"type": "text",
+																		"text": "deep"
+																	}
+																]
+															}
+														]
+													}
+												]
+											}
+										]
+									}
+								]
+							}
+						]
+					},
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<blockquote><blockquote><blockquote><ul><li><ol><li><p>deep</p></li></ol></li></ul></blockquote></blockquote></blockquote>"
+		},
+		{
+			"id": "script-tag",
+			"category": "hostile",
+			"input": "<script>alert(1)</script><p>after</p>",
+			"html": "<p>after</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "after"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p>after</p>"
+		},
+		{
+			"id": "script-inline-in-p",
+			"category": "hostile",
+			"input": "<p>a<script>alert(1)</script>b</p>",
+			"html": "<p>ab</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "ab"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p>ab</p>"
+		},
+		{
+			"id": "event-handler-attrs",
+			"category": "hostile",
+			"input": "<p onclick=\"alert(1)\" onmouseover=\"alert(2)\">x</p><h1 onload=\"alert(3)\">h</h1>",
+			"html": "<p>x</p><h1>h</h1><p></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "x"
+							}
+						]
+					},
+					{
+						"type": "heading",
+						"attrs": {
+							"level": 1
+						},
+						"content": [
+							{
+								"type": "text",
+								"text": "h"
+							}
+						]
+					},
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<p>x</p><h1>h</h1>"
+		},
+		{
+			"id": "img-onerror",
+			"category": "hostile",
+			"input": "<img src=\"x\" onerror=\"alert(1)\">",
+			"html": "<img src=\"x\"><p></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "image",
+						"attrs": {
+							"src": "x",
+							"alt": null,
+							"title": null,
+							"id": null,
+							"data-src": null
+						}
+					},
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<img src=\"x\">"
+		},
+		{
+			"id": "iframe",
+			"category": "hostile",
+			"input": "<iframe src=\"https://evil.example\"></iframe><p>after</p>",
+			"html": "<p>after</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "after"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p>after</p>"
+		},
+		{
+			"id": "iframe-srcdoc",
+			"category": "hostile",
+			"input": "<iframe srcdoc=\"&lt;script&gt;alert(1)&lt;/script&gt;\"></iframe>",
+			"html": "<p></p>",
+			"isEmpty": true,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": ""
+		},
+		{
+			"id": "link-javascript",
+			"category": "hostile",
+			"input": "<p><a href=\"javascript:alert(1)\">js</a></p>",
+			"html": "<p>js</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "js"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p><a>js</a></p>"
+		},
+		{
+			"id": "link-javascript-case-ws",
+			"category": "hostile",
+			"input": "<p><a href=\"JaVaScRiPt:alert(1)\">a</a> <a href=\"  javascript:alert(1)\">b</a> <a href=\"java&#x09;script:alert(1)\">c</a> <a href=\"java&#x0A;script:alert(1)\">d</a> <a href=\"&#106;avascript:alert(1)\">e</a></p>",
+			"html": "<p>a b c d e</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "a b c d e"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p><a>a</a> <a>b</a> <a>c</a> <a>d</a> <a>e</a></p>"
+		},
+		{
+			"id": "link-data-vbscript",
+			"category": "hostile",
+			"input": "<p><a href=\"data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==\">data</a> <a href=\"vbscript:msgbox(1)\">vb</a></p>",
+			"html": "<p>data vb</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "data vb"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p><a>data</a> <a>vb</a></p>"
+		},
+		{
+			"id": "svg-script",
+			"category": "hostile",
+			"input": "<svg><script>alert(1)</script><circle r=\"5\"/></svg><p>x</p>",
+			"html": "<p>x</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "x"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<svg><circle r=\"5\"></circle></svg><p>x</p>",
+			"html_happydom": "<p></p>"
+		},
+		{
+			"id": "svg-onload",
+			"category": "hostile",
+			"input": "<svg onload=\"alert(1)\"></svg>",
+			"html": "<p></p>",
+			"isEmpty": true,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<svg></svg>"
+		},
+		{
+			"id": "math",
+			"category": "hostile",
+			"input": "<math><mi xlink:href=\"javascript:alert(1)\">x</mi></math>",
+			"html": "<p>x</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "x"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<math><mi>x</mi></math>"
+		},
+		{
+			"id": "style-tag",
+			"category": "hostile",
+			"input": "<style>body{display:none}</style><p>styled</p>",
+			"html": "<p>styled</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "styled"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p>styled</p>"
+		},
+		{
+			"id": "style-attr-url",
+			"category": "hostile",
+			"input": "<p style=\"background:url(javascript:alert(1))\">x</p>",
+			"html": "<p>x</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "x"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p style=\"background:url(javascript:alert(1))\">x</p>"
+		},
+		{
+			"id": "object-embed",
+			"category": "hostile",
+			"input": "<object data=\"https://evil.example/x.swf\"></object><embed src=\"https://evil.example/x.swf\">",
+			"html": "<p></p>",
+			"isEmpty": true,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": ""
+		},
+		{
+			"id": "form-input-button",
+			"category": "hostile",
+			"input": "<form action=\"https://evil.example\"><input name=\"pw\" type=\"password\"><button>Go</button><textarea>t</textarea><select><option>o</option></select></form>",
+			"html": "<p>Goto</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "Goto"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<form action=\"https://evil.example\"><input name=\"pw\" type=\"password\"><button>Go</button><textarea>t</textarea><select><option>o</option></select></form>"
+		},
+		{
+			"id": "meta-link-base",
+			"category": "hostile",
+			"input": "<meta http-equiv=\"refresh\" content=\"0;url=https://evil.example\"><link rel=\"stylesheet\" href=\"https://evil.example/x.css\"><base href=\"https://evil.example/\"><p>x</p>",
+			"html": "<p>x</p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"text": "x"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p>x</p>"
+		},
+		{
+			"id": "template-noscript",
+			"category": "hostile",
+			"input": "<template><script>alert(1)</script></template><noscript><p>ns</p></noscript>",
+			"html": "<p></p>",
+			"isEmpty": true,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<p>ns</p>"
+		},
+		{
+			"id": "audio-video-source",
+			"category": "hostile",
+			"input": "<video src=\"https://evil.example/v.mp4\" autoplay></video><audio src=\"https://evil.example/a.mp3\"></audio>",
+			"html": "<p></p>",
+			"isEmpty": true,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<video src=\"https://evil.example/v.mp4\" autoplay=\"\"></video><audio src=\"https://evil.example/a.mp3\"></audio>"
+		},
+		{
+			"id": "blockquote-comment-id-injection",
+			"category": "hostile",
+			"input": "<blockquote data-comment-id=\"1 onmouseover=alert(1)\"><p>q</p></blockquote>",
+			"html": "<blockquote><p>q</p></blockquote><p></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "blockquote",
+						"attrs": {
+							"commentId": null
+						},
+						"content": [
+							{
+								"type": "paragraph",
+								"content": [
+									{
+										"type": "text",
+										"text": "q"
+									}
+								]
+							}
+						]
+					},
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<blockquote data-comment-id=\"1 onmouseover=alert(1)\"><p>q</p></blockquote>"
+		},
+		{
+			"id": "code-class-injection",
+			"category": "hostile",
+			"input": "<pre><code class=\"language-js&quot; onmouseover=&quot;alert(1)\" onclick=\"alert(1)\">x</code></pre>",
+			"html": "<pre><code class=\"language-js&quot;\">x</code></pre><p></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "codeBlock",
+						"attrs": {
+							"language": "js\""
+						},
+						"content": [
+							{
+								"type": "text",
+								"text": "x"
+							}
+						]
+					},
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<pre><code class=\"language-js&quot; onmouseover=&quot;alert(1)\">x</code></pre>"
+		},
+		{
+			"id": "tasklink-extra-attr",
+			"category": "hostile",
+			"input": "<p><a href=\"https://vikunja.example.com/tasks/42\" onclick=\"alert(1)\">https://vikunja.example.com/tasks/42</a></p>",
+			"html": "<p><a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://vikunja.example.com/tasks/42\">https://vikunja.example.com/tasks/42</a></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph",
+						"content": [
+							{
+								"type": "text",
+								"marks": [
+									{
+										"type": "link",
+										"attrs": {
+											"href": "https://vikunja.example.com/tasks/42",
+											"target": "_blank",
+											"rel": "noopener noreferrer nofollow",
+											"class": null,
+											"title": null
+										}
+									}
+								],
+								"text": "https://vikunja.example.com/tasks/42"
+							}
+						]
+					}
+				]
+			},
+			"dompurify_project_description": "<p><a href=\"https://vikunja.example.com/tasks/42\">https://vikunja.example.com/tasks/42</a></p>"
+		},
+		{
+			"id": "mutation-xss-noscript",
+			"category": "hostile",
+			"input": "<noscript><p title=\"</noscript><img src=x onerror=alert(1)>\"></noscript>",
+			"html": "<p></p>",
+			"isEmpty": true,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<p></p>"
+		},
+		{
+			"id": "nested-anchor-img-onerror",
+			"category": "hostile",
+			"input": "<a href=\"https://example.com\"><img src=\"x\" onerror=\"alert(1)\"></a>",
+			"html": "<img src=\"x\"><p></p>",
+			"isEmpty": false,
+			"json": {
+				"type": "doc",
+				"content": [
+					{
+						"type": "image",
+						"attrs": {
+							"src": "x",
+							"alt": null,
+							"title": null,
+							"id": null,
+							"data-src": null
+						}
+					},
+					{
+						"type": "paragraph"
+					}
+				]
+			},
+			"dompurify_project_description": "<a href=\"https://example.com\"><img src=\"x\"></a>"
+		}
+	],
+	"taskLinkUpgrade": [
+		{
+			"id": "upgrade-plain-anchor",
+			"input": "<p><a href=\"http://localhost:3000/tasks/123\">http://localhost:3000/tasks/123</a></p>",
+			"taskLinkNodes": 1,
+			"html": "<p><a href=\"http://localhost:3000/tasks/123\">http://localhost:3000/tasks/123</a></p>",
+			"roundTripsUnchanged": true
+		},
+		{
+			"id": "upgrade-with-target-rel",
+			"input": "<p><a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"http://localhost:3000/tasks/123\">http://localhost:3000/tasks/123</a></p>",
+			"taskLinkNodes": 1,
+			"html": "<p><a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"http://localhost:3000/tasks/123\">http://localhost:3000/tasks/123</a></p>",
+			"roundTripsUnchanged": true
+		},
+		{
+			"id": "custom-text-stays-link",
+			"input": "<p><a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"http://localhost:3000/tasks/123\">see this task</a></p>",
+			"taskLinkNodes": 0,
+			"html": "<p><a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"http://localhost:3000/tasks/123\">see this task</a></p>",
+			"roundTripsUnchanged": true
+		},
+		{
+			"id": "non-task-anchor",
+			"input": "<p><a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://example.com/\">https://example.com/</a></p>",
+			"taskLinkNodes": 0,
+			"html": "<p><a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://example.com/\">https://example.com/</a></p>",
+			"roundTripsUnchanged": true
+		},
+		{
+			"id": "other-origin",
+			"input": "<p><a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://other.example.com/tasks/123\">https://other.example.com/tasks/123</a></p>",
+			"taskLinkNodes": 0,
+			"html": "<p><a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://other.example.com/tasks/123\">https://other.example.com/tasks/123</a></p>",
+			"roundTripsUnchanged": true
+		},
+		{
+			"id": "child-markup",
+			"input": "<p><a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"http://localhost:3000/tasks/123\"><u>http://localhost:3000/tasks/123</u></a></p>",
+			"taskLinkNodes": 0,
+			"html": "<p><a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"http://localhost:3000/tasks/123\"><u>http://localhost:3000/tasks/123</u></a></p>",
+			"roundTripsUnchanged": true
+		},
+		{
+			"id": "extra-attribute",
+			"input": "<p><a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"http://localhost:3000/tasks/123\" title=\"x\">http://localhost:3000/tasks/123</a></p>",
+			"taskLinkNodes": 0,
+			"html": "<p><a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"http://localhost:3000/tasks/123\" title=\"x\">http://localhost:3000/tasks/123</a></p>",
+			"roundTripsUnchanged": true
+		},
+		{
+			"id": "two-links-same-task",
+			"input": "<p><a href=\"http://localhost:3000/tasks/123\">http://localhost:3000/tasks/123</a> and <a href=\"http://localhost:3000/tasks/123\">http://localhost:3000/tasks/123</a></p>",
+			"taskLinkNodes": 2,
+			"html": "<p><a href=\"http://localhost:3000/tasks/123\">http://localhost:3000/tasks/123</a> and <a href=\"http://localhost:3000/tasks/123\">http://localhost:3000/tasks/123</a></p>",
+			"roundTripsUnchanged": true
+		},
+		{
+			"id": "text-with-surrounding-whitespace",
+			"input": "<p><a href=\"http://localhost:3000/tasks/123\"> http://localhost:3000/tasks/123 </a></p>",
+			"taskLinkNodes": 1,
+			"html": "<p><a href=\"http://localhost:3000/tasks/123\">http://localhost:3000/tasks/123</a></p>",
+			"roundTripsUnchanged": false
+		},
+		{
+			"id": "relative-href",
+			"input": "<p><a href=\"/tasks/123\">/tasks/123</a></p>",
+			"taskLinkNodes": 1,
+			"html": "<p><a href=\"/tasks/123\">/tasks/123</a></p>",
+			"roundTripsUnchanged": true
+		}
+	]
+}

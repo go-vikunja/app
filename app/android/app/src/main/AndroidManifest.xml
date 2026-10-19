@@ -37,9 +37,30 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!-- Task links on the app's own scheme (task/12, task/PROJ-12). It
+             hands them to MainActivity in the app's own task, where
+             Flutter's built-in deep linking passes them to the router, so a
+             link from another app never starts a second MainActivity in
+             that app's task. -->
+        <activity
+            android:name=".TaskLinkActivity"
+            android:exported="true"
+            android:noHistory="true"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="vikunja-dev.coderoftime.vikunja" android:host="task" />
+            </intent-filter>
+        </activity>
         <!-- Receives the browser sign-in redirect for flutter_web_auth_2.
              The scheme must match oauthCallbackScheme in
-             lib/core/auth/oauth_client.dart. -->
+             lib/core/auth/oauth_client.dart; host and path keep task links
+             of the same scheme away from it, because it completes any
+             pending sign-in with whatever URI of the scheme it gets. -->
         <activity
             android:name="com.linusu.flutter_web_auth_2.CallbackActivity"
             android:exported="true">
@@ -47,7 +68,7 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="vikunja-dev.coderoftime.vikunja" />
+                <data android:scheme="vikunja-dev.coderoftime.vikunja" android:host="oauth" android:path="/callback" />
             </intent-filter>
         </activity>
         <!-- flutter_local_notifications: shows a scheduled notification,
