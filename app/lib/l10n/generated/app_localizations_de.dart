@@ -1412,6 +1412,12 @@ class AppLocalizationsDe extends AppLocalizations {
       'Eine Aufgabe kann nicht mit sich selbst verknüpft werden.';
 
   @override
+  String get syncProblemColumnFull => 'Diese Spalte ist voll.';
+
+  @override
+  String get syncProblemColumnMissing => 'Die Spalte gibt es nicht mehr.';
+
+  @override
   String get syncProblemRejected => 'Der Server hat die Änderung abgelehnt.';
 
   @override
@@ -2897,6 +2903,112 @@ class AppLocalizationsDe extends AppLocalizations {
   String projectViewDownloadFailedBody(String filter) {
     return 'Der Server wendet den Filter „$filter“ dieser Ansicht an. Zieh nach unten, um es erneut zu versuchen.';
   }
+
+  @override
+  String get boardNotLoadedBody =>
+      'Ihre Spalten und Karten laden, wenn du sie online öffnest.';
+
+  @override
+  String get boardDownloadingBody => 'Ihre Spalten und Karten sind unterwegs.';
+
+  @override
+  String get boardDownloadFailedBody =>
+      'Zieh nach unten, um es erneut zu versuchen.';
+
+  @override
+  String get boardNoColumnsTitle => 'Keine Spalten';
+
+  @override
+  String get boardNoColumnsBody =>
+      'Dieses Board hatte beim letzten Laden keine Spalten.';
+
+  @override
+  String get boardFilterColumnsNote =>
+      'Die Spalten dieses Boards entstehen aus Filtern, deshalb lassen sich seine Karten hier nicht verschieben.';
+
+  @override
+  String get boardDoneColumnHint =>
+      'Alle Aufgaben, die in diese Spalte verschoben werden, werden automatisch als erledigt markiert.';
+
+  @override
+  String boardColumnTaskCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Aufgaben',
+      one: '1 Aufgabe',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String boardColumnTaskCountOfLimit(int count, int limit) {
+    String _temp0 = intl.Intl.pluralLogic(
+      limit,
+      locale: localeName,
+      other: '$limit Aufgaben',
+      one: '1 Aufgabe',
+    );
+    return '$count von höchstens $_temp0';
+  }
+
+  @override
+  String get boardColumnFull => 'Voll';
+
+  @override
+  String get boardColumnLimitReached =>
+      'Du hast das Limit dieser Spalte erreicht. Entferne Aufgaben oder erhöhe das Limit, um neue Aufgaben hinzuzufügen.';
+
+  @override
+  String boardTasksLeftInDefaultColumn(int count, String column) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count Aufgaben passten nicht mehr in die Spalte und liegen jetzt in $column.',
+      one:
+          '1 Aufgabe passte nicht mehr in die Spalte und liegt jetzt in $column.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get boardAddTask => 'Eine Aufgabe hinzufügen';
+
+  @override
+  String get boardAddAnotherTask => 'Weitere Aufgabe hinzufügen';
+
+  @override
+  String get boardLoadMore => 'Mehr laden';
+
+  @override
+  String get boardLoadingMore => 'Weitere Aufgaben werden geladen …';
+
+  @override
+  String get boardLoadMoreFailed =>
+      'Weitere Aufgaben ließen sich nicht laden. Versuch es später erneut.';
+
+  @override
+  String boardMoveTo(String column) {
+    return 'Nach $column verschieben';
+  }
+
+  @override
+  String boardMovedTo(String column) {
+    return 'Nach $column verschoben';
+  }
+
+  @override
+  String get boardMoveUp => 'Nach oben verschieben';
+
+  @override
+  String get boardMovedUp => 'Nach oben verschoben';
+
+  @override
+  String get boardMoveDown => 'Nach unten verschieben';
+
+  @override
+  String get boardMovedDown => 'Nach unten verschoben';
 
   @override
   String taskSubtaskOfSemantics(String parent) {

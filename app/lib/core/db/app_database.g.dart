@@ -7040,8 +7040,19 @@ class $ListSnapshotTasksTable extends ListSnapshotTasks
     type: DriftSqlType.double,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _bucketIdMeta = const VerificationMeta(
+    'bucketId',
+  );
   @override
-  List<GeneratedColumn> get $columns => [listKey, taskId, position];
+  late final GeneratedColumn<int> bucketId = GeneratedColumn<int>(
+    'bucket_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [listKey, taskId, position, bucketId];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -7078,6 +7089,12 @@ class $ListSnapshotTasksTable extends ListSnapshotTasks
     } else if (isInserting) {
       context.missing(_positionMeta);
     }
+    if (data.containsKey('bucket_id')) {
+      context.handle(
+        _bucketIdMeta,
+        bucketId.isAcceptableOrUnknown(data['bucket_id']!, _bucketIdMeta),
+      );
+    }
     return context;
   }
 
@@ -7099,6 +7116,10 @@ class $ListSnapshotTasksTable extends ListSnapshotTasks
         DriftSqlType.double,
         data['${effectivePrefix}position'],
       )!,
+      bucketId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}bucket_id'],
+      ),
     );
   }
 
@@ -7113,10 +7134,12 @@ class ListSnapshotTaskRow extends DataClass
   final String listKey;
   final int taskId;
   final double position;
+  final int? bucketId;
   const ListSnapshotTaskRow({
     required this.listKey,
     required this.taskId,
     required this.position,
+    this.bucketId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -7124,6 +7147,9 @@ class ListSnapshotTaskRow extends DataClass
     map['list_key'] = Variable<String>(listKey);
     map['task_id'] = Variable<int>(taskId);
     map['position'] = Variable<double>(position);
+    if (!nullToAbsent || bucketId != null) {
+      map['bucket_id'] = Variable<int>(bucketId);
+    }
     return map;
   }
 
@@ -7132,6 +7158,9 @@ class ListSnapshotTaskRow extends DataClass
       listKey: Value(listKey),
       taskId: Value(taskId),
       position: Value(position),
+      bucketId: bucketId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(bucketId),
     );
   }
 
@@ -7144,6 +7173,7 @@ class ListSnapshotTaskRow extends DataClass
       listKey: serializer.fromJson<String>(json['listKey']),
       taskId: serializer.fromJson<int>(json['taskId']),
       position: serializer.fromJson<double>(json['position']),
+      bucketId: serializer.fromJson<int?>(json['bucketId']),
     );
   }
   @override
@@ -7153,6 +7183,7 @@ class ListSnapshotTaskRow extends DataClass
       'listKey': serializer.toJson<String>(listKey),
       'taskId': serializer.toJson<int>(taskId),
       'position': serializer.toJson<double>(position),
+      'bucketId': serializer.toJson<int?>(bucketId),
     };
   }
 
@@ -7160,16 +7191,19 @@ class ListSnapshotTaskRow extends DataClass
     String? listKey,
     int? taskId,
     double? position,
+    Value<int?> bucketId = const Value.absent(),
   }) => ListSnapshotTaskRow(
     listKey: listKey ?? this.listKey,
     taskId: taskId ?? this.taskId,
     position: position ?? this.position,
+    bucketId: bucketId.present ? bucketId.value : this.bucketId,
   );
   ListSnapshotTaskRow copyWithCompanion(ListSnapshotTasksCompanion data) {
     return ListSnapshotTaskRow(
       listKey: data.listKey.present ? data.listKey.value : this.listKey,
       taskId: data.taskId.present ? data.taskId.value : this.taskId,
       position: data.position.present ? data.position.value : this.position,
+      bucketId: data.bucketId.present ? data.bucketId.value : this.bucketId,
     );
   }
 
@@ -7178,37 +7212,42 @@ class ListSnapshotTaskRow extends DataClass
     return (StringBuffer('ListSnapshotTaskRow(')
           ..write('listKey: $listKey, ')
           ..write('taskId: $taskId, ')
-          ..write('position: $position')
+          ..write('position: $position, ')
+          ..write('bucketId: $bucketId')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(listKey, taskId, position);
+  int get hashCode => Object.hash(listKey, taskId, position, bucketId);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is ListSnapshotTaskRow &&
           other.listKey == this.listKey &&
           other.taskId == this.taskId &&
-          other.position == this.position);
+          other.position == this.position &&
+          other.bucketId == this.bucketId);
 }
 
 class ListSnapshotTasksCompanion extends UpdateCompanion<ListSnapshotTaskRow> {
   final Value<String> listKey;
   final Value<int> taskId;
   final Value<double> position;
+  final Value<int?> bucketId;
   final Value<int> rowid;
   const ListSnapshotTasksCompanion({
     this.listKey = const Value.absent(),
     this.taskId = const Value.absent(),
     this.position = const Value.absent(),
+    this.bucketId = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ListSnapshotTasksCompanion.insert({
     required String listKey,
     required int taskId,
     required double position,
+    this.bucketId = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : listKey = Value(listKey),
        taskId = Value(taskId),
@@ -7217,12 +7256,14 @@ class ListSnapshotTasksCompanion extends UpdateCompanion<ListSnapshotTaskRow> {
     Expression<String>? listKey,
     Expression<int>? taskId,
     Expression<double>? position,
+    Expression<int>? bucketId,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (listKey != null) 'list_key': listKey,
       if (taskId != null) 'task_id': taskId,
       if (position != null) 'position': position,
+      if (bucketId != null) 'bucket_id': bucketId,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -7231,12 +7272,14 @@ class ListSnapshotTasksCompanion extends UpdateCompanion<ListSnapshotTaskRow> {
     Value<String>? listKey,
     Value<int>? taskId,
     Value<double>? position,
+    Value<int?>? bucketId,
     Value<int>? rowid,
   }) {
     return ListSnapshotTasksCompanion(
       listKey: listKey ?? this.listKey,
       taskId: taskId ?? this.taskId,
       position: position ?? this.position,
+      bucketId: bucketId ?? this.bucketId,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -7253,6 +7296,9 @@ class ListSnapshotTasksCompanion extends UpdateCompanion<ListSnapshotTaskRow> {
     if (position.present) {
       map['position'] = Variable<double>(position.value);
     }
+    if (bucketId.present) {
+      map['bucket_id'] = Variable<int>(bucketId.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -7265,6 +7311,7 @@ class ListSnapshotTasksCompanion extends UpdateCompanion<ListSnapshotTaskRow> {
           ..write('listKey: $listKey, ')
           ..write('taskId: $taskId, ')
           ..write('position: $position, ')
+          ..write('bucketId: $bucketId, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -7481,6 +7528,481 @@ class ListPreferenceEntriesCompanion
   }
 }
 
+class $KanbanBucketsTable extends KanbanBuckets
+    with TableInfo<$KanbanBucketsTable, KanbanBucketRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $KanbanBucketsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _viewIdMeta = const VerificationMeta('viewId');
+  @override
+  late final GeneratedColumn<int> viewId = GeneratedColumn<int>(
+    'view_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _bucketIdMeta = const VerificationMeta(
+    'bucketId',
+  );
+  @override
+  late final GeneratedColumn<int> bucketId = GeneratedColumn<int>(
+    'bucket_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _taskLimitMeta = const VerificationMeta(
+    'taskLimit',
+  );
+  @override
+  late final GeneratedColumn<int> taskLimit = GeneratedColumn<int>(
+    'limit',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _taskCountMeta = const VerificationMeta(
+    'taskCount',
+  );
+  @override
+  late final GeneratedColumn<int> taskCount = GeneratedColumn<int>(
+    'count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _positionMeta = const VerificationMeta(
+    'position',
+  );
+  @override
+  late final GeneratedColumn<double> position = GeneratedColumn<double>(
+    'position',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _loadedPagesMeta = const VerificationMeta(
+    'loadedPages',
+  );
+  @override
+  late final GeneratedColumn<int> loadedPages = GeneratedColumn<int>(
+    'loaded_pages',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    viewId,
+    bucketId,
+    title,
+    taskLimit,
+    taskCount,
+    position,
+    loadedPages,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'kanban_buckets';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<KanbanBucketRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('view_id')) {
+      context.handle(
+        _viewIdMeta,
+        viewId.isAcceptableOrUnknown(data['view_id']!, _viewIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_viewIdMeta);
+    }
+    if (data.containsKey('bucket_id')) {
+      context.handle(
+        _bucketIdMeta,
+        bucketId.isAcceptableOrUnknown(data['bucket_id']!, _bucketIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_bucketIdMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('limit')) {
+      context.handle(
+        _taskLimitMeta,
+        taskLimit.isAcceptableOrUnknown(data['limit']!, _taskLimitMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_taskLimitMeta);
+    }
+    if (data.containsKey('count')) {
+      context.handle(
+        _taskCountMeta,
+        taskCount.isAcceptableOrUnknown(data['count']!, _taskCountMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_taskCountMeta);
+    }
+    if (data.containsKey('position')) {
+      context.handle(
+        _positionMeta,
+        position.isAcceptableOrUnknown(data['position']!, _positionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_positionMeta);
+    }
+    if (data.containsKey('loaded_pages')) {
+      context.handle(
+        _loadedPagesMeta,
+        loadedPages.isAcceptableOrUnknown(
+          data['loaded_pages']!,
+          _loadedPagesMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_loadedPagesMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {viewId, bucketId};
+  @override
+  KanbanBucketRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return KanbanBucketRow(
+      viewId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}view_id'],
+      )!,
+      bucketId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}bucket_id'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      taskLimit: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}limit'],
+      )!,
+      taskCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}count'],
+      )!,
+      position: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}position'],
+      )!,
+      loadedPages: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}loaded_pages'],
+      )!,
+    );
+  }
+
+  @override
+  $KanbanBucketsTable createAlias(String alias) {
+    return $KanbanBucketsTable(attachedDatabase, alias);
+  }
+}
+
+class KanbanBucketRow extends DataClass implements Insertable<KanbanBucketRow> {
+  final int viewId;
+  final int bucketId;
+  final String title;
+  final int taskLimit;
+
+  /// The server's total of cards in the bucket, not only the loaded ones.
+  final int taskCount;
+  final double position;
+
+  /// How many pages of the bucket's cards the board holds: what a refresh
+  /// downloads again.
+  final int loadedPages;
+  const KanbanBucketRow({
+    required this.viewId,
+    required this.bucketId,
+    required this.title,
+    required this.taskLimit,
+    required this.taskCount,
+    required this.position,
+    required this.loadedPages,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['view_id'] = Variable<int>(viewId);
+    map['bucket_id'] = Variable<int>(bucketId);
+    map['title'] = Variable<String>(title);
+    map['limit'] = Variable<int>(taskLimit);
+    map['count'] = Variable<int>(taskCount);
+    map['position'] = Variable<double>(position);
+    map['loaded_pages'] = Variable<int>(loadedPages);
+    return map;
+  }
+
+  KanbanBucketsCompanion toCompanion(bool nullToAbsent) {
+    return KanbanBucketsCompanion(
+      viewId: Value(viewId),
+      bucketId: Value(bucketId),
+      title: Value(title),
+      taskLimit: Value(taskLimit),
+      taskCount: Value(taskCount),
+      position: Value(position),
+      loadedPages: Value(loadedPages),
+    );
+  }
+
+  factory KanbanBucketRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return KanbanBucketRow(
+      viewId: serializer.fromJson<int>(json['viewId']),
+      bucketId: serializer.fromJson<int>(json['bucketId']),
+      title: serializer.fromJson<String>(json['title']),
+      taskLimit: serializer.fromJson<int>(json['taskLimit']),
+      taskCount: serializer.fromJson<int>(json['taskCount']),
+      position: serializer.fromJson<double>(json['position']),
+      loadedPages: serializer.fromJson<int>(json['loadedPages']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'viewId': serializer.toJson<int>(viewId),
+      'bucketId': serializer.toJson<int>(bucketId),
+      'title': serializer.toJson<String>(title),
+      'taskLimit': serializer.toJson<int>(taskLimit),
+      'taskCount': serializer.toJson<int>(taskCount),
+      'position': serializer.toJson<double>(position),
+      'loadedPages': serializer.toJson<int>(loadedPages),
+    };
+  }
+
+  KanbanBucketRow copyWith({
+    int? viewId,
+    int? bucketId,
+    String? title,
+    int? taskLimit,
+    int? taskCount,
+    double? position,
+    int? loadedPages,
+  }) => KanbanBucketRow(
+    viewId: viewId ?? this.viewId,
+    bucketId: bucketId ?? this.bucketId,
+    title: title ?? this.title,
+    taskLimit: taskLimit ?? this.taskLimit,
+    taskCount: taskCount ?? this.taskCount,
+    position: position ?? this.position,
+    loadedPages: loadedPages ?? this.loadedPages,
+  );
+  KanbanBucketRow copyWithCompanion(KanbanBucketsCompanion data) {
+    return KanbanBucketRow(
+      viewId: data.viewId.present ? data.viewId.value : this.viewId,
+      bucketId: data.bucketId.present ? data.bucketId.value : this.bucketId,
+      title: data.title.present ? data.title.value : this.title,
+      taskLimit: data.taskLimit.present ? data.taskLimit.value : this.taskLimit,
+      taskCount: data.taskCount.present ? data.taskCount.value : this.taskCount,
+      position: data.position.present ? data.position.value : this.position,
+      loadedPages: data.loadedPages.present
+          ? data.loadedPages.value
+          : this.loadedPages,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('KanbanBucketRow(')
+          ..write('viewId: $viewId, ')
+          ..write('bucketId: $bucketId, ')
+          ..write('title: $title, ')
+          ..write('taskLimit: $taskLimit, ')
+          ..write('taskCount: $taskCount, ')
+          ..write('position: $position, ')
+          ..write('loadedPages: $loadedPages')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    viewId,
+    bucketId,
+    title,
+    taskLimit,
+    taskCount,
+    position,
+    loadedPages,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is KanbanBucketRow &&
+          other.viewId == this.viewId &&
+          other.bucketId == this.bucketId &&
+          other.title == this.title &&
+          other.taskLimit == this.taskLimit &&
+          other.taskCount == this.taskCount &&
+          other.position == this.position &&
+          other.loadedPages == this.loadedPages);
+}
+
+class KanbanBucketsCompanion extends UpdateCompanion<KanbanBucketRow> {
+  final Value<int> viewId;
+  final Value<int> bucketId;
+  final Value<String> title;
+  final Value<int> taskLimit;
+  final Value<int> taskCount;
+  final Value<double> position;
+  final Value<int> loadedPages;
+  final Value<int> rowid;
+  const KanbanBucketsCompanion({
+    this.viewId = const Value.absent(),
+    this.bucketId = const Value.absent(),
+    this.title = const Value.absent(),
+    this.taskLimit = const Value.absent(),
+    this.taskCount = const Value.absent(),
+    this.position = const Value.absent(),
+    this.loadedPages = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  KanbanBucketsCompanion.insert({
+    required int viewId,
+    required int bucketId,
+    required String title,
+    required int taskLimit,
+    required int taskCount,
+    required double position,
+    required int loadedPages,
+    this.rowid = const Value.absent(),
+  }) : viewId = Value(viewId),
+       bucketId = Value(bucketId),
+       title = Value(title),
+       taskLimit = Value(taskLimit),
+       taskCount = Value(taskCount),
+       position = Value(position),
+       loadedPages = Value(loadedPages);
+  static Insertable<KanbanBucketRow> custom({
+    Expression<int>? viewId,
+    Expression<int>? bucketId,
+    Expression<String>? title,
+    Expression<int>? taskLimit,
+    Expression<int>? taskCount,
+    Expression<double>? position,
+    Expression<int>? loadedPages,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (viewId != null) 'view_id': viewId,
+      if (bucketId != null) 'bucket_id': bucketId,
+      if (title != null) 'title': title,
+      if (taskLimit != null) 'limit': taskLimit,
+      if (taskCount != null) 'count': taskCount,
+      if (position != null) 'position': position,
+      if (loadedPages != null) 'loaded_pages': loadedPages,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  KanbanBucketsCompanion copyWith({
+    Value<int>? viewId,
+    Value<int>? bucketId,
+    Value<String>? title,
+    Value<int>? taskLimit,
+    Value<int>? taskCount,
+    Value<double>? position,
+    Value<int>? loadedPages,
+    Value<int>? rowid,
+  }) {
+    return KanbanBucketsCompanion(
+      viewId: viewId ?? this.viewId,
+      bucketId: bucketId ?? this.bucketId,
+      title: title ?? this.title,
+      taskLimit: taskLimit ?? this.taskLimit,
+      taskCount: taskCount ?? this.taskCount,
+      position: position ?? this.position,
+      loadedPages: loadedPages ?? this.loadedPages,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (viewId.present) {
+      map['view_id'] = Variable<int>(viewId.value);
+    }
+    if (bucketId.present) {
+      map['bucket_id'] = Variable<int>(bucketId.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (taskLimit.present) {
+      map['limit'] = Variable<int>(taskLimit.value);
+    }
+    if (taskCount.present) {
+      map['count'] = Variable<int>(taskCount.value);
+    }
+    if (position.present) {
+      map['position'] = Variable<double>(position.value);
+    }
+    if (loadedPages.present) {
+      map['loaded_pages'] = Variable<int>(loadedPages.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('KanbanBucketsCompanion(')
+          ..write('viewId: $viewId, ')
+          ..write('bucketId: $bucketId, ')
+          ..write('title: $title, ')
+          ..write('taskLimit: $taskLimit, ')
+          ..write('taskCount: $taskCount, ')
+          ..write('position: $position, ')
+          ..write('loadedPages: $loadedPages, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -7505,6 +8027,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $ListSnapshotTasksTable(this);
   late final $ListPreferenceEntriesTable listPreferenceEntries =
       $ListPreferenceEntriesTable(this);
+  late final $KanbanBucketsTable kanbanBuckets = $KanbanBucketsTable(this);
   late final Index projectViewsProject = Index(
     'project_views_project',
     'CREATE INDEX project_views_project ON project_views (project_id)',
@@ -7537,6 +8060,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final ListPreferencesDao listPreferencesDao = ListPreferencesDao(
     this as AppDatabase,
   );
+  late final KanbanDao kanbanDao = KanbanDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -7559,6 +8083,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     listSnapshots,
     listSnapshotTasks,
     listPreferenceEntries,
+    kanbanBuckets,
     projectViewsProject,
     tasksProject,
     tasksDoneDue,
@@ -12714,6 +13239,7 @@ typedef $$ListSnapshotTasksTableCreateCompanionBuilder =
       required String listKey,
       required int taskId,
       required double position,
+      Value<int?> bucketId,
       Value<int> rowid,
     });
 typedef $$ListSnapshotTasksTableUpdateCompanionBuilder =
@@ -12721,6 +13247,7 @@ typedef $$ListSnapshotTasksTableUpdateCompanionBuilder =
       Value<String> listKey,
       Value<int> taskId,
       Value<double> position,
+      Value<int?> bucketId,
       Value<int> rowid,
     });
 
@@ -12745,6 +13272,11 @@ class $$ListSnapshotTasksTableFilterComposer
 
   ColumnFilters<double> get position => $composableBuilder(
     column: $table.position,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get bucketId => $composableBuilder(
+    column: $table.bucketId,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -12772,6 +13304,11 @@ class $$ListSnapshotTasksTableOrderingComposer
     column: $table.position,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get bucketId => $composableBuilder(
+    column: $table.bucketId,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$ListSnapshotTasksTableAnnotationComposer
@@ -12791,6 +13328,9 @@ class $$ListSnapshotTasksTableAnnotationComposer
 
   GeneratedColumn<double> get position =>
       $composableBuilder(column: $table.position, builder: (column) => column);
+
+  GeneratedColumn<int> get bucketId =>
+      $composableBuilder(column: $table.bucketId, builder: (column) => column);
 }
 
 class $$ListSnapshotTasksTableTableManager
@@ -12836,11 +13376,13 @@ class $$ListSnapshotTasksTableTableManager
                 Value<String> listKey = const Value.absent(),
                 Value<int> taskId = const Value.absent(),
                 Value<double> position = const Value.absent(),
+                Value<int?> bucketId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ListSnapshotTasksCompanion(
                 listKey: listKey,
                 taskId: taskId,
                 position: position,
+                bucketId: bucketId,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -12848,11 +13390,13 @@ class $$ListSnapshotTasksTableTableManager
                 required String listKey,
                 required int taskId,
                 required double position,
+                Value<int?> bucketId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ListSnapshotTasksCompanion.insert(
                 listKey: listKey,
                 taskId: taskId,
                 position: position,
+                bucketId: bucketId,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -13068,6 +13612,255 @@ typedef $$ListPreferenceEntriesTableProcessedTableManager =
       ListPreferenceRow,
       PrefetchHooks Function()
     >;
+typedef $$KanbanBucketsTableCreateCompanionBuilder =
+    KanbanBucketsCompanion Function({
+      required int viewId,
+      required int bucketId,
+      required String title,
+      required int taskLimit,
+      required int taskCount,
+      required double position,
+      required int loadedPages,
+      Value<int> rowid,
+    });
+typedef $$KanbanBucketsTableUpdateCompanionBuilder =
+    KanbanBucketsCompanion Function({
+      Value<int> viewId,
+      Value<int> bucketId,
+      Value<String> title,
+      Value<int> taskLimit,
+      Value<int> taskCount,
+      Value<double> position,
+      Value<int> loadedPages,
+      Value<int> rowid,
+    });
+
+class $$KanbanBucketsTableFilterComposer
+    extends Composer<_$AppDatabase, $KanbanBucketsTable> {
+  $$KanbanBucketsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get viewId => $composableBuilder(
+    column: $table.viewId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get bucketId => $composableBuilder(
+    column: $table.bucketId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get taskLimit => $composableBuilder(
+    column: $table.taskLimit,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get taskCount => $composableBuilder(
+    column: $table.taskCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get loadedPages => $composableBuilder(
+    column: $table.loadedPages,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$KanbanBucketsTableOrderingComposer
+    extends Composer<_$AppDatabase, $KanbanBucketsTable> {
+  $$KanbanBucketsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get viewId => $composableBuilder(
+    column: $table.viewId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get bucketId => $composableBuilder(
+    column: $table.bucketId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get taskLimit => $composableBuilder(
+    column: $table.taskLimit,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get taskCount => $composableBuilder(
+    column: $table.taskCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get loadedPages => $composableBuilder(
+    column: $table.loadedPages,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$KanbanBucketsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $KanbanBucketsTable> {
+  $$KanbanBucketsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get viewId =>
+      $composableBuilder(column: $table.viewId, builder: (column) => column);
+
+  GeneratedColumn<int> get bucketId =>
+      $composableBuilder(column: $table.bucketId, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<int> get taskLimit =>
+      $composableBuilder(column: $table.taskLimit, builder: (column) => column);
+
+  GeneratedColumn<int> get taskCount =>
+      $composableBuilder(column: $table.taskCount, builder: (column) => column);
+
+  GeneratedColumn<double> get position =>
+      $composableBuilder(column: $table.position, builder: (column) => column);
+
+  GeneratedColumn<int> get loadedPages => $composableBuilder(
+    column: $table.loadedPages,
+    builder: (column) => column,
+  );
+}
+
+class $$KanbanBucketsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $KanbanBucketsTable,
+          KanbanBucketRow,
+          $$KanbanBucketsTableFilterComposer,
+          $$KanbanBucketsTableOrderingComposer,
+          $$KanbanBucketsTableAnnotationComposer,
+          $$KanbanBucketsTableCreateCompanionBuilder,
+          $$KanbanBucketsTableUpdateCompanionBuilder,
+          (
+            KanbanBucketRow,
+            BaseReferences<_$AppDatabase, $KanbanBucketsTable, KanbanBucketRow>,
+          ),
+          KanbanBucketRow,
+          PrefetchHooks Function()
+        > {
+  $$KanbanBucketsTableTableManager(_$AppDatabase db, $KanbanBucketsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$KanbanBucketsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$KanbanBucketsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$KanbanBucketsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> viewId = const Value.absent(),
+                Value<int> bucketId = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<int> taskLimit = const Value.absent(),
+                Value<int> taskCount = const Value.absent(),
+                Value<double> position = const Value.absent(),
+                Value<int> loadedPages = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => KanbanBucketsCompanion(
+                viewId: viewId,
+                bucketId: bucketId,
+                title: title,
+                taskLimit: taskLimit,
+                taskCount: taskCount,
+                position: position,
+                loadedPages: loadedPages,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required int viewId,
+                required int bucketId,
+                required String title,
+                required int taskLimit,
+                required int taskCount,
+                required double position,
+                required int loadedPages,
+                Value<int> rowid = const Value.absent(),
+              }) => KanbanBucketsCompanion.insert(
+                viewId: viewId,
+                bucketId: bucketId,
+                title: title,
+                taskLimit: taskLimit,
+                taskCount: taskCount,
+                position: position,
+                loadedPages: loadedPages,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$KanbanBucketsTable, KanbanBucketRow>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $KanbanBucketsTable,
+                    KanbanBucketRow
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$KanbanBucketsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $KanbanBucketsTable,
+      KanbanBucketRow,
+      $$KanbanBucketsTableFilterComposer,
+      $$KanbanBucketsTableOrderingComposer,
+      $$KanbanBucketsTableAnnotationComposer,
+      $$KanbanBucketsTableCreateCompanionBuilder,
+      $$KanbanBucketsTableUpdateCompanionBuilder,
+      (
+        KanbanBucketRow,
+        BaseReferences<_$AppDatabase, $KanbanBucketsTable, KanbanBucketRow>,
+      ),
+      KanbanBucketRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -13109,4 +13902,6 @@ class $AppDatabaseManager {
       $$ListSnapshotTasksTableTableManager(_db, _db.listSnapshotTasks);
   $$ListPreferenceEntriesTableTableManager get listPreferenceEntries =>
       $$ListPreferenceEntriesTableTableManager(_db, _db.listPreferenceEntries);
+  $$KanbanBucketsTableTableManager get kanbanBuckets =>
+      $$KanbanBucketsTableTableManager(_db, _db.kanbanBuckets);
 }

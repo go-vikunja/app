@@ -87,7 +87,7 @@ void main() {
     });
   });
 
-  group('the app shows list views only', () {
+  group('the app shows list and kanban views', () {
     final project = Project(
       id: 1,
       title: 'Work',
@@ -96,19 +96,36 @@ void main() {
         view(11, ProjectViewKind.list, position: 2),
         view(12, ProjectViewKind.table, position: 3),
         view(13, ProjectViewKind.list, position: 4),
+        view(14, ProjectViewKind.gantt, position: 5),
       ],
     );
-    final listViews = listViewsOf(project);
+    final shownViews = shownViewsOf(project);
 
-    for (final kind in [null, ...ProjectViewKind.values]) {
-      test('default ${kind?.wireName ?? 'first'} opens the first list view, '
-          'the remembered one while it exists', () {
+    test('in position order, without Gantt and Table', () {
+      expect(shownViews.map((view) => view.id), [10, 11, 13]);
+    });
+
+    for (final (kind, opened) in [
+      (null, 10),
+      (ProjectViewKind.list, 11),
+      (ProjectViewKind.kanban, 10),
+      (ProjectViewKind.gantt, 10),
+      (ProjectViewKind.table, 10),
+    ]) {
+      test('default ${kind?.wireName ?? 'first'} opens view $opened, the '
+          'remembered one while it is shown', () {
         expect(
-          resolveViewId(listViews, remembered: null, defaultKind: kind),
-          11,
+          resolveViewId(shownViews, remembered: null, defaultKind: kind),
+          opened,
         );
-        expect(resolveViewId(listViews, remembered: 13, defaultKind: kind), 13);
-        expect(resolveViewId(listViews, remembered: 12, defaultKind: kind), 11);
+        expect(
+          resolveViewId(shownViews, remembered: 13, defaultKind: kind),
+          13,
+        );
+        expect(
+          resolveViewId(shownViews, remembered: 12, defaultKind: kind),
+          opened,
+        );
       });
     }
   });

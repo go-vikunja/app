@@ -186,6 +186,7 @@ final class IncrementalRun {
         await _db.projectsDao.purge(removed);
         await _db.tasksDao.purgeInProjects(removed);
       }
+      await _db.kanbanDao.removeGoneViews();
       if (!setEquals(pulledWhole, pendingBefore)) {
         await _db.syncStateDao.write({
           SyncStateKeys.pendingWholePull: pulledWhole.isEmpty

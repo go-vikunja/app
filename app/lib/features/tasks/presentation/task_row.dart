@@ -3,15 +3,12 @@ import 'dart:math' as math;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
-import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
-import 'package:vikunja_mobile/app/theme/hex_color.dart';
-import 'package:vikunja_mobile/features/tasks/application/task_row_content.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/favourite_button.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_chips.dart';
-import 'package:vikunja_mobile/features/tasks/presentation/task_formatting.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row_parts.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/task_summary.dart';
 
 /// One task in a list, with the web row's content: the done control, the
 /// texts that open the detail sheet (one semantics node that reads them
@@ -64,56 +61,34 @@ class TaskRow extends ConsumerWidget {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    final formatter = MomentFormatter.watch(context, ref);
-    final overdue = task.isOverdue(now);
-    final due = task.dueDate;
-    final dueText = due == null ? null : formatter.relative(due, now: now);
-    final spokenDue = due == null
-        ? null
-        : formatter.semanticsLabel(due) ?? dueText;
+    final summary = TaskSummary.of(
+      task,
+      now: now,
+      minimumPriority: minimumPriority,
+      formatter: MomentFormatter.watch(context, ref),
+      projectTitle: projectTitle,
+    );
+    final TaskSummary(
+      :details,
+      :dueText,
+      :overdue,
+      :showsPriority,
+      :labels,
+      :described,
+      :checklist,
+      :percent,
+      :taskColor,
+    ) = summary;
     final detailStyle = theme.textTheme.bodyMedium?.copyWith(
       color: colors.onSurfaceVariant,
     );
-    // A task not yet sent has no identifier until the server assigns one.
-    final details = [
-      if (task.id > 0) task.displayIdentifier,
-      ?projectTitle,
-    ].join(' · ');
-    final showsPriority = PriorityChip.showsOnRow(
-      task,
-      minimumPriority: minimumPriority,
-    );
-    final labels = rowLabels(task.labels);
-    final described = hasDescription(task);
-    final checklist = checklistStatistics(task.description);
-    final percent = (task.percentDone * 100).round();
-    final taskColor = parseHexColor(task.hexColor);
     final showsChips =
         showsPriority || labels.isNotEmpty || task.assignees.isNotEmpty;
-
-    final semanticsLabel = [
-      task.title,
-      if (parentTitle case final parent? when depth > 0)
-        l10n.taskSubtaskOfSemantics(parent),
-      if (task.done) l10n.taskDoneSemantics,
-      if (details.isNotEmpty) details,
-      if (spokenDue != null && overdue)
-        l10n.taskOverdueSemantics(spokenDue)
-      else if (spokenDue != null)
-        l10n.taskDueSemantics(spokenDue),
-      if (showsPriority)
-        l10n.prioritySemantics(priorityLabel(l10n, task.priority)),
-      for (final label in labels) l10n.labelSemantics(label.title),
-      if (task.assignees.isNotEmpty)
-        l10n.taskAssigneesSemantics(
-          task.assignees.map((user) => user.displayName).join(', '),
-        ),
-      if (described) l10n.taskHasDescription,
-      if (task.repeats) l10n.taskRepeats,
-      if (!checklist.isEmpty) ChecklistSummary.text(l10n, checklist),
-      if (percent > 0) l10n.taskPercentDone(percent),
-      if (pending) l10n.taskNotYetSynced,
-    ].join('\n');
+    final semanticsLabel = summary.semanticsLabel(
+      l10n,
+      parentTitle: depth > 0 ? parentTitle : null,
+      pending: pending,
+    );
 
     final title = Text(
       task.title,
@@ -209,13 +184,7 @@ class TaskRow extends ConsumerWidget {
             if (percent > 0)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
-                child: LinearProgressIndicator(
-                  value: task.percentDone.clamp(0, 1),
-                  minHeight: 4,
-                  borderRadius: BorderRadius.circular(2),
-                  color: colors.onSurfaceVariant,
-                  backgroundColor: colors.surfaceContainerHighest,
-                ),
+                child: TaskProgressBar(percentDone: task.percentDone),
               ),
           ],
         ),

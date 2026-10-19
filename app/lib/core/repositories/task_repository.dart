@@ -39,6 +39,28 @@ abstract interface class TaskRepository {
   /// syncs.
   Future<void> refreshProjectList(int projectId, {required int viewId});
 
+  /// What a kanban view's board is built from.
+  Stream<BoardSource> watchBoard(int projectId, int viewId);
+
+  /// Runs the sync, then downloads the board: every bucket with its first
+  /// page of cards, and again each further page loaded before. Throws the
+  /// `VikunjaFailure` of the download and keeps the previous board then.
+  Future<void> refreshBoard(int projectId, int viewId);
+
+  /// Downloads the next page of one bucket's cards and adds it to the
+  /// board; online only, throws the `VikunjaFailure`.
+  Future<void> loadMoreOfBucket(int projectId, int viewId, int bucketId);
+
+  /// Queues the task's [placement] on the view, with [done] when the move
+  /// changes it (into or out of the done bucket); like the other writes,
+  /// it applies at once.
+  Future<void> placeTask(
+    int taskId, {
+    required int viewId,
+    required BucketPlacement placement,
+    bool? done,
+  });
+
   /// The open tasks marked as favourite, outside archived projects, nearest
   /// due date first (none last), then newest first: the Favorites list.
   Stream<List<Task>> watchFavoriteTasks();

@@ -59,18 +59,22 @@ mixin RefreshableList<W extends ConsumerStatefulWidget> on ConsumerState<W> {
   /// [builder] gets the data and, after a failed refresh or offline (on a
   /// page over the shell), the notice to show above it. [header] stays
   /// above the loading and failure states, for controls that must survive
-  /// them.
+  /// them. [notificationPredicate] picks the scrolls a pull starts from,
+  /// e.g. nested ones too.
   Widget buildRefreshable<T>(
     AsyncValue<T> data, {
     required String loadingLabel,
     required Widget Function(T value, Widget? notice) builder,
     Widget? header,
+    ScrollNotificationPredicate notificationPredicate =
+        defaultScrollNotificationPredicate,
   }) {
     ref.listen(repositoryProvider, (_, _) => setState(onRepositoryReplaced));
     final underBanner = OfflineBannerArea.contains(context);
     final offline = ref.watch(offlineProvider) != null;
     return RefreshIndicator.adaptive(
       onRefresh: refresh,
+      notificationPredicate: notificationPredicate,
       child: switch (data) {
         // Loading again after an account switch still carries the old
         // value, which must not show.

@@ -31,9 +31,9 @@ TaskRow applyTaskChanges(
 );
 
 /// [task] with [changes] folded into the create, for an edit of a task the
-/// server has not been asked for yet. `done`, labels, assignees and
-/// relations are not among a new task's fields and are left out; see
-/// [changesAfterCreate].
+/// server has not been asked for yet. `done`, labels, assignees,
+/// relations and kanban placements are not among a new task's fields and
+/// are left out; see [changesAfterCreate].
 NewTask applyChangesToNewTask(NewTask task, TaskChanges changes) => NewTask(
   projectId: changes.projectId ?? task.projectId,
   title: changes.title ?? task.title,
@@ -55,13 +55,14 @@ NewTask applyChangesToNewTask(NewTask task, TaskChanges changes) => NewTask(
 
 /// What of [changes] a create cannot carry: an update queued behind it,
 /// sent once the server has named the task. The server ignores labels in
-/// a create body, and labels, assignees and relations go through their own
-/// endpoints, which need the task's id.
+/// a create body, and labels, assignees, relations and kanban placements
+/// go through their own endpoints, which need the task's id.
 TaskChanges changesAfterCreate(TaskChanges changes) => TaskChanges(
   done: changes.done,
   labels: changes.labels,
   assignees: changes.assignees,
   relations: changes.relations,
+  kanban: changes.kanban,
 );
 
 /// [changes] without any change to the labels in [labelIds].
@@ -77,6 +78,7 @@ TaskChanges withoutLabels(TaskChanges changes, Set<int> labelIds) {
     changes,
     labels: (labels?.isEmpty ?? true) ? null : labels,
     relations: changes.relations,
+    kanban: changes.kanban,
   );
 }
 
@@ -87,7 +89,17 @@ TaskChanges withRelations(TaskChanges changes, RelationChange? relations) =>
       changes,
       labels: changes.labels,
       relations: (relations?.isEmpty ?? true) ? null : relations,
+      kanban: changes.kanban,
     );
+
+/// [changes] without kanban placements, which a project move makes moot:
+/// they name the previous project's views.
+TaskChanges withoutPlacements(TaskChanges changes) => _rebuilt(
+  changes,
+  labels: changes.labels,
+  relations: changes.relations,
+  kanban: null,
+);
 
 /// [changes] without any edge to the tasks in [taskIds].
 TaskChanges withoutRelatedTasks(TaskChanges changes, Set<int> taskIds) {
@@ -116,6 +128,7 @@ TaskChanges _rebuilt(
   TaskChanges changes, {
   required IdSetChange? labels,
   required RelationChange? relations,
+  required Map<int, BucketPlacement>? kanban,
 }) => TaskChanges(
   title: changes.title,
   description: changes.description,
@@ -134,6 +147,7 @@ TaskChanges _rebuilt(
   assignees: changes.assignees,
   reminders: changes.reminders,
   relations: relations,
+  kanban: kanban,
 );
 
 bool changesDates(TaskChanges changes) =>

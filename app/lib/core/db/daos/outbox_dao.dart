@@ -90,8 +90,9 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
   /// and relations and queues it, merged into the task's unsent update op
   /// when there is one, or into its create while that has not left the
   /// device: reminders fold into the create, while labels, assignees,
-  /// relations and done, which need the task's id on the server, stay
-  /// queued behind it. A temporary id whose create was answered meanwhile
+  /// relations, kanban placements and done, which need the task's id on the
+  /// server, stay queued behind it; a project move drops the placements
+  /// queued before it. A temporary id whose create was answered meanwhile
   /// is followed to the server id, the task's own and those its relations
   /// name. False when the task is unknown here or queued for deletion.
   Future<bool> queueUpdate(
@@ -104,6 +105,7 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
     final row = await _row(taskId);
     if (row == null || row.pendingDelete) return false;
     var queued = changes;
+    var pending = _pendingOf(row);
     if (taskId < 0) {
       final create = await _createOf(taskId);
       if (create != null && _neverReachedServer(create)) {
@@ -116,9 +118,12 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
           ),
         );
         queued = changesAfterCreate(changes);
+        if (changes.projectId != null) {
+          await _dropUnsentPlacements(taskId);
+          pending = withoutPlacements(pending);
+        }
       }
     }
-    var pending = _pendingOf(row);
     if (!queued.isEmpty) {
       final existing = await _unsentUpdate(taskId);
       if (existing != null) {
@@ -817,6 +822,22 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
             ..orderBy([(o) => OrderingTerm.desc(o.sequence)])
             ..limit(1))
           .getSingleOrNull();
+
+  /// The create now goes to another project, so the placements queued
+  /// behind it would name views of the previous one.
+  Future<void> _dropUnsentPlacements(int taskId) async {
+    final existing = await _unsentUpdate(taskId);
+    if (existing == null) return;
+    final kept = withoutPlacements(decodeTaskChanges(existing.payload));
+    if (kept.isEmpty) {
+      await (delete(outbox)..where((o) => o.id.equals(existing.id))).go();
+    } else {
+      await _write(
+        existing.id,
+        OutboxCompanion(payload: Value(encodeTaskChanges(kept))),
+      );
+    }
+  }
 
   Future<OutboxRow?> _newerUnsent(OutboxRow op) =>
       (select(outbox)

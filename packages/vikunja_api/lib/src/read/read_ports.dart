@@ -37,7 +37,8 @@ abstract interface class TasksPort {
   Future<Page<Task>> listInProject(int projectId, TaskQuery query);
 
   /// Tasks through a view: the view's own filter and sort apply server-side
-  /// on top of [query]. Never used with kanban views here.
+  /// on top of [query]. A kanban view answers with buckets on v1; see
+  /// [BucketsPort].
   Future<Page<Task>> listInView(int projectId, int viewId, TaskQuery query);
 
   Future<Task> read(int id, {Set<TaskExpand> expand = const {}});
@@ -56,6 +57,46 @@ abstract interface class TasksPort {
   /// identifiers `.` and `..` cannot be put in a path and are `NotFound`
   /// without a request.
   Future<Task> readByIndex(String project, int index);
+}
+
+/// One column of a board read with its first tasks, in the server's order
+/// (position, then id), each with its [Task.position] in the view and
+/// [Task.bucketId] set to the bucket.
+final class BoardBucket {
+  const new({required this.bucket, required this.tasks});
+
+  final Bucket bucket;
+  final List<Task> tasks;
+}
+
+/// The board of a kanban view. `per_page` and `page` apply to every
+/// bucket on its own, and the server caps them at `max_items_per_page`.
+abstract interface class BucketsPort {
+  /// The buckets with their first [perPage] tasks each and their real
+  /// counts: v1 `GET /projects/{p}/views/{v}/tasks` on a kanban view (a
+  /// bare bucket array; the paging headers count buckets), v2
+  /// `GET …/views/{v}/buckets/tasks`. A filter-mode view answers with
+  /// synthetic buckets whose ids are 0 to n-1. A view that is not a kanban
+  /// view is `UnexpectedResponse` (v1 answers its tasks, v2 a 400 without
+  /// a code).
+  Future<List<BoardBucket>> board(
+    int projectId,
+    int viewId, {
+    int perPage = 50,
+    String? filterTimezone,
+  });
+
+  /// One more page of a bucket: `GET …/views/{v}/tasks` with
+  /// `filter=bucket_id = N`, sorted by position. The server sends
+  /// `bucket_id: 0` on these tasks, so the port sets [bucketId].
+  Future<Page<Task>> bucketTasks(
+    int projectId,
+    int viewId,
+    int bucketId, {
+    required int page,
+    int perPage = 50,
+    String? filterTimezone,
+  });
 }
 
 abstract interface class CommentsPort {
@@ -167,6 +208,7 @@ abstract interface class VikunjaReadClient {
   AvatarsPort get avatars;
   CommentsPort get comments;
   AttachmentsPort get attachments;
+  BucketsPort get buckets;
 }
 
 /// [dio] is an authenticated client from `createAuthenticatedDio`; the

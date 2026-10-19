@@ -43,6 +43,28 @@ ProjectView sampleListView({
       : ViewFilter(filter: filter, search: search),
 );
 
+/// A manual kanban view; the server makes one for a new project with
+/// To-Do, Doing and Done, the first as the default, the last as the done
+/// bucket.
+ProjectView sampleKanbanView({
+  required int id,
+  required int projectId,
+  String title = 'Kanban',
+  double position = 400,
+  int defaultBucketId = 0,
+  int doneBucketId = 0,
+  BucketConfigurationMode mode = BucketConfigurationMode.manual,
+}) => ProjectView(
+  id: id,
+  projectId: projectId,
+  title: title,
+  kind: ProjectViewKind.kanban,
+  position: position,
+  bucketConfigurationMode: mode,
+  defaultBucketId: defaultBucketId,
+  doneBucketId: doneBucketId,
+);
+
 Label sampleLabel({
   required int id,
   required String title,

@@ -259,13 +259,16 @@ void main() {
     expect(find.byType(DataFailureCard), findsNothing);
   });
 
-  testWidgets('the switcher offers the list views and remembers the one '
-      'picked', (tester) async {
+  testWidgets('the switcher offers the list and kanban views and remembers '
+      'the one picked', (tester) async {
     await pumpProject(tester);
 
-    expect(find.byType(ChoiceChip), findsNWidgets(3));
+    expect(find.byType(ChoiceChip), findsNWidgets(4));
     expect(find.widgetWithText(ChoiceChip, en.projectViewList), findsOneWidget);
-    expect(find.widgetWithText(ChoiceChip, 'Kanban'), findsNothing);
+    expect(
+      find.widgetWithText(ChoiceChip, en.projectViewKanban),
+      findsOneWidget,
+    );
 
     await selectView(tester, 'Everything');
 
@@ -295,7 +298,7 @@ void main() {
     await tester.tap(find.widgetWithText(ChoiceChip, 'Everything'));
     await tester.pump();
 
-    expect(find.byType(ChoiceChip), findsNWidgets(3));
+    expect(find.byType(ChoiceChip), findsNWidgets(4));
     expect(
       tester
           .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Everything'))
@@ -319,12 +322,12 @@ void main() {
     await selectView(tester, 'Urgent');
     // Retried a while first; the other view's rows do not stand in.
     expect(find.byType(TaskRow), findsNothing);
-    expect(find.byType(ChoiceChip), findsNWidgets(3));
+    expect(find.byType(ChoiceChip), findsNWidgets(4));
     for (var i = 0; i < 12; i++) {
       await tester.pump(const Duration(seconds: 7));
     }
     expect(find.byType(DataFailureCard), findsOneWidget);
-    expect(find.byType(ChoiceChip), findsNWidgets(3));
+    expect(find.byType(ChoiceChip), findsNWidgets(4));
 
     await selectView(tester, en.projectViewList);
     expect(find.byType(DataFailureCard), findsNothing);
@@ -530,10 +533,19 @@ void main() {
     expect(data.tasks.projectListWatches.last, (1, 12, true));
   });
 
-  testWidgets('a project without list views lists its open tasks and only '
-      'syncs', (tester) async {
+  testWidgets('a project without views the app shows lists its open tasks '
+      'and only syncs', (tester) async {
     data.projects.all = [
-      work(views: const [kanban]),
+      work(
+        views: const [
+          ProjectView(
+            id: 15,
+            projectId: 1,
+            title: 'Gantt',
+            kind: ProjectViewKind.gantt,
+          ),
+        ],
+      ),
     ];
     await pumpProject(tester);
 

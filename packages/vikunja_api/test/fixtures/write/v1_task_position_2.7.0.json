@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v1/tasks/4410/position",
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"task_id\":4410,\"project_view_id\":3706,\"position\":300000}\n"
+}

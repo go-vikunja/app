@@ -90,3 +90,45 @@ final class ProjectListSource {
   /// The project has done tasks that [projectTasks] leaves out.
   final bool omitsDoneTasks;
 }
+
+typedef BoardSlot = ({int bucketId, double position});
+
+/// What a kanban view's board is built from (`buildBoard`): the view's
+/// columns and the cards they held as of the last board download
+/// ([loadedAt] null: never downloaded), the project's tasks as this device
+/// knows them, and the placements it has queued for the view.
+@immutable
+final class BoardSource {
+  const new({
+    this.view,
+    this.buckets = const [],
+    this.snapshot = const {},
+    this.loadedAt,
+    this.projectTasks = const [],
+    this.queued = const {},
+    this.movedHere = const {},
+  });
+
+  /// Null while the view is not stored here.
+  final ProjectView? view;
+
+  /// As downloaded, in bucket position order.
+  final List<Bucket> buckets;
+
+  /// Each downloaded card's bucket and position, by task id; the task may
+  /// be missing here.
+  final Map<int, BoardSlot> snapshot;
+  final DateTime? loadedAt;
+
+  /// The project's open tasks, and the done ones the board can show: those
+  /// in [snapshot], created here or with queued changes, and those created
+  /// or changed after [loadedAt]. Newest first.
+  final List<Task> projectTasks;
+
+  /// The placements queued for this view and not yet sent, by task id.
+  final Map<int, BucketPlacement> queued;
+
+  /// The tasks of [projectTasks] whose move into the project is not sent
+  /// yet, which no download can list.
+  final Set<int> movedHere;
+}

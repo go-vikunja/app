@@ -18,9 +18,10 @@ import 'task_edits.dart';
 /// the other one; an edge to a task the server does not hold fails with
 /// `RelatedTaskMissing` once the rest of the update is applied, as the
 /// real port tries every other request first, and a temporary id with an
-/// `ArgumentError`, as the real port refuses one. Every request is
-/// logged; [beforeRequest] can fail or hold a request, [afterRequest] can
-/// lose its answer.
+/// `ArgumentError`, as the real port refuses one. Kanban placements follow
+/// as a move, then a position, per view (see [bucketSlots]). Every request
+/// is logged; [beforeRequest] can fail or hold a request, [afterRequest]
+/// can lose its answer.
 final class FakeWriteClient implements VikunjaWriteClient {
   new({DateTime Function()? clock}) : _clock = clock ?? DateTime.now;
 
@@ -32,8 +33,27 @@ final class FakeWriteClient implements VikunjaWriteClient {
   /// The id the next create gets.
   int nextId = 100;
 
-  /// `create <title>`, `update <id>`, `delete <id>` and
-  /// `create label <title>`, in order.
+  /// The bucket and position of each task per kanban view, by view id,
+  /// then task id, as the server holds them.
+  final Map<int, Map<int, ({int bucketId, double position})>> bucketSlots = {};
+
+  /// The done and default bucket of each kanban view by view id (0: none),
+  /// for the server's done rules: a move into the done bucket marks the
+  /// task done, and a repeating one comes back open into the default
+  /// bucket, which the move's answer names; a move out of it marks the
+  /// task undone; a done update puts the task into every done bucket and
+  /// fails as a whole when one of them is refused, an undone one takes it
+  /// from the done bucket to the default bucket.
+  final Map<int, ({int doneBucketId, int defaultBucketId})> kanbanViews = {};
+
+  /// What a move into a bucket fails with, by bucket id, like a full one
+  /// (`DomainError(412, code: 10004)`).
+  final Map<int, VikunjaFailure> refusedBuckets = {};
+
+  /// `create <title>`, `update <id>`, `delete <id>`,
+  /// `move <id> view <view> bucket <bucket>`,
+  /// `position <id> view <view> <position>` and `create label <title>`, in
+  /// order; an update's moves and positions follow it.
   final List<String> requests = [];
   final List<NewTask> creates = [];
   final List<(int, TaskChanges)> updates = [];
@@ -117,6 +137,9 @@ final class FakeTasksWritePort implements TasksWritePort {
       for (final ref in relations?.added ?? const <TaskRelationRef>{})
         if (!_client.serverTasks.containsKey(ref.otherTaskId)) ref.otherTaskId,
     ];
+    if (changes.done case final done? when done != current.done) {
+      _checkDoneBuckets(id, done: done, repeats: current.repeats);
+    }
     final applied = withoutRelatedTasks(changes, missing.toSet());
     final now = _client._clock().toUtc();
     var next = applyChangesToTask(
@@ -130,6 +153,9 @@ final class FakeTasksWritePort implements TasksWritePort {
       if (current.repeats) next = reopenRepeating(next, now: now);
     }
     _client.serverTasks[id] = next;
+    if (changes.done case final done? when done != current.done) {
+      _moveForDone(id, done: done, repeats: current.repeats);
+    }
     if (applied.relations case final sent?) {
       final related = applyRelationChange(
         [..._client.serverTasks.values],
@@ -141,8 +167,87 @@ final class FakeTasksWritePort implements TasksWritePort {
         ..addEntries([for (final task in related) MapEntry(task.id, task)]);
     }
     if (missing.isNotEmpty) throw RelatedTaskMissing(missing.first);
+    for (final MapEntry(key: viewId, value: placement)
+        in changes.kanban?.entries ?? _noPlacements) {
+      await _place(id, viewId, placement, now: now);
+    }
     _client.updates.add((id, changes));
     return _client.serverTasks[id]!;
+  }
+
+  void _checkDoneBuckets(int id, {required bool done, required bool repeats}) {
+    if (!done || repeats) return;
+    for (final MapEntry(key: viewId, value: view)
+        in _client.kanbanViews.entries) {
+      final slot = _client.bucketSlots[viewId]?[id];
+      if (view.doneBucketId == 0 || slot?.bucketId == view.doneBucketId) {
+        continue;
+      }
+      if (_client.refusedBuckets[view.doneBucketId] case final failure?) {
+        throw failure;
+      }
+    }
+  }
+
+  void _moveForDone(int id, {required bool done, required bool repeats}) {
+    for (final MapEntry(key: viewId, value: view)
+        in _client.kanbanViews.entries) {
+      final slots = _client.bucketSlots[viewId] ??= {};
+      final slot = slots[id];
+      final target = switch ((done, repeats)) {
+        (true, false) when view.doneBucketId != 0 => view.doneBucketId,
+        (true, true) => view.defaultBucketId,
+        (false, _) when slot != null && slot.bucketId == view.doneBucketId =>
+          view.defaultBucketId,
+        _ => null,
+      };
+      if (target == null || target == 0) continue;
+      slots[id] = (bucketId: target, position: slot?.position ?? 0);
+    }
+  }
+
+  /// The move, then the position when the task stayed in the bucket: a
+  /// repeating task moved into the done bucket goes to the default one.
+  Future<void> _place(
+    int id,
+    int viewId,
+    BucketPlacement placement, {
+    required DateTime now,
+  }) async {
+    final bucketId = placement.bucketId;
+    await _client._request('move $id view $viewId bucket $bucketId');
+    final slots = _client.bucketSlots[viewId] ??= {};
+    final previous = slots[id];
+    if (previous?.bucketId != bucketId) {
+      if (_client.refusedBuckets[bucketId] case final failure?) throw failure;
+    }
+    var answered = bucketId;
+    final view = _client.kanbanViews[viewId];
+    final task = _client.serverTasks[id]!;
+    if (view != null && view.doneBucketId != 0) {
+      if (bucketId == view.doneBucketId && !task.done) {
+        if (task.repeats) {
+          _client.serverTasks[id] = reopenRepeating(
+            copyTask(task, done: true, doneAt: now),
+            now: now,
+          );
+          answered = view.defaultBucketId == 0
+              ? previous?.bucketId ?? bucketId
+              : view.defaultBucketId;
+        } else {
+          _client.serverTasks[id] = copyTask(task, done: true, doneAt: now);
+        }
+      } else if (previous?.bucketId == view.doneBucketId &&
+          bucketId != view.doneBucketId &&
+          task.done) {
+        _client.serverTasks[id] = copyTask(task, done: false, doneAt: null);
+      }
+    }
+    slots[id] = (bucketId: answered, position: previous?.position ?? 0);
+    final position = placement.position;
+    if (position == null || answered != bucketId) return;
+    await _client._request('position $id view $viewId $position');
+    slots[id] = (bucketId: answered, position: position);
   }
 
   @override
@@ -256,3 +361,5 @@ final class FakeSubscriptionsWritePort implements SubscriptionsWritePort {
     subscribed.remove('${entity.wireName}:$id');
   }
 }
+
+const _noPlacements = <MapEntry<int, BucketPlacement>>[];

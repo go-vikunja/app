@@ -3,6 +3,7 @@ import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
+import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/settings/user_settings_json.dart';
 import 'package:vikunja_mobile/core/sync/saved_filters.dart';
 import 'package:vikunja_mobile/core/sync/stable_pages.dart';
@@ -137,6 +138,116 @@ Future<void> downloadViewSnapshot({
   );
   _log.fine('View $viewId of project $projectId: ${tasks.length} tasks');
 }
+
+/// The server's cap on a board's page size, per bucket.
+const _boardPageLimit = 50;
+
+/// A kanban view's board into its buckets and snapshot, in one write: one
+/// board request (the first page of every bucket), then for every bucket
+/// of which more pages were loaded before, those pages again, so the
+/// cards the user scrolled to stay. A card the server lists in two buckets
+/// (a filter-mode board) stays in the first. Relative dates in the view's
+/// filter are rounded in the user's time zone setting. Throws the
+/// download's `VikunjaFailure`; the previous board stays then.
+Future<void> downloadBoard({
+  required AppDatabase db,
+  required VikunjaReadClient client,
+  required int perPage,
+  required int projectId,
+  required int viewId,
+  required DateTime Function() now,
+}) async {
+  final zone = await _timezoneSetting(db);
+  final size = _boardPageSize(perPage);
+  final loadedBefore = await db.kanbanDao.loadedPages(viewId);
+  final columns = await client.buckets.board(
+    projectId,
+    viewId,
+    perPage: size,
+    filterTimezone: zone,
+  );
+  final slots = <int, BoardSlot>{};
+  final loadedPages = <int, int>{};
+  for (final column in columns) {
+    final bucket = column.bucket;
+    void take(Iterable<Task> cards) {
+      for (final task in cards) {
+        slots.putIfAbsent(
+          task.id,
+          () => (bucketId: bucket.id, position: task.position),
+        );
+      }
+    }
+
+    take(column.tasks);
+    var pages = 1;
+    final wanted = loadedBefore[bucket.id] ?? 1;
+    while (pages < wanted && bucket.count > pages * size) {
+      final page = await client.buckets.bucketTasks(
+        projectId,
+        viewId,
+        bucket.id,
+        page: pages + 1,
+        perPage: size,
+        filterTimezone: zone,
+      );
+      pages++;
+      take(page.items);
+      if (page.items.isEmpty) break;
+    }
+    loadedPages[bucket.id] = pages;
+  }
+  await db.kanbanDao.replaceBoard(
+    viewId,
+    buckets: [for (final column in columns) column.bucket],
+    slots: slots,
+    loadedPages: loadedPages,
+    loadedAt: now().toUtc(),
+  );
+  _log.fine(
+    'Board $viewId of project $projectId: ${columns.length} buckets, '
+    '${slots.length} cards',
+  );
+}
+
+/// The next page of one bucket's cards onto the board. Nothing happens
+/// while the board has not been downloaded or no longer has the bucket.
+/// Throws the download's `VikunjaFailure`.
+Future<void> downloadNextBucketPage({
+  required AppDatabase db,
+  required VikunjaReadClient client,
+  required int perPage,
+  required int projectId,
+  required int viewId,
+  required int bucketId,
+}) async {
+  final loaded = (await db.kanbanDao.loadedPages(viewId))[bucketId];
+  if (loaded == null) return;
+  final size = _boardPageSize(perPage);
+  final page = await client.buckets.bucketTasks(
+    projectId,
+    viewId,
+    bucketId,
+    page: loaded + 1,
+    perPage: size,
+    filterTimezone: await _timezoneSetting(db),
+  );
+  await db.kanbanDao.appendToBucket(
+    viewId,
+    bucketId,
+    positions: {for (final task in page.items) task.id: task.position},
+    loadedPages: loaded + 1,
+    count: page.total,
+    last: page.items.length < size,
+  );
+  _log.fine(
+    'Bucket $bucketId of board $viewId: page ${loaded + 1}, '
+    '${page.items.length} cards',
+  );
+}
+
+int _boardPageSize(int perPage) =>
+    perPage < 1 || perPage > _boardPageLimit ? _boardPageLimit : perPage;
 
 /// Null while the user has none stored.
 Future<String?> _timezoneSetting(AppDatabase db) async {

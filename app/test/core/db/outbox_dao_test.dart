@@ -921,4 +921,230 @@ void main() {
       expect(await db.outboxDao.nextInLine(), isNull);
     });
   });
+
+  group('kanban placements', () {
+    const toDoing = TaskChanges(
+      kanban: {80: BucketPlacement(bucketId: 2, position: 32768)},
+    );
+
+    test('are queued and kept as pending, without touching the row', () async {
+      await queue(1, toDoing);
+
+      expect(await pendingOf(1), toDoing);
+      expect(decodeTaskChanges((await ops()).single.payload), toDoing);
+      final task = (await db.tasksDao.find(1))!;
+      expect(task.done, isFalse);
+      expect(task.bucketId, 0);
+    });
+
+    test('merge per view: the later placement on a view wins, other views '
+        'and fields stay', () async {
+      await queue(1, toDoing);
+      await queue(
+        1,
+        const TaskChanges(
+          done: true,
+          kanban: {81: BucketPlacement(bucketId: 13)},
+        ),
+      );
+      await queue(
+        1,
+        const TaskChanges(
+          kanban: {80: BucketPlacement(bucketId: 3, position: 1)},
+        ),
+      );
+
+      const merged = TaskChanges(
+        done: true,
+        kanban: {
+          80: BucketPlacement(bucketId: 3, position: 1),
+          81: BucketPlacement(bucketId: 13),
+        },
+      );
+      expect(decodeTaskChanges((await ops()).single.payload), merged);
+      expect(await pendingOf(1), merged);
+    });
+
+    test('wait behind a create that has not left the device', () async {
+      final id = await db.outboxDao.queueCreate(
+        const NewTask(projectId: 7, title: 'New'),
+        now: now,
+      );
+
+      await queue(id, const TaskChanges(title: 'Renamed').merge(toDoing));
+
+      final all = await ops();
+      expect(all.map((op) => op.kind), ['createTask', 'updateTask']);
+      expect(decodeNewTask(all.first.payload).title, 'Renamed');
+      expect(decodeTaskChanges(all.last.payload), toDoing);
+      expect(await pendingOf(id), toDoing);
+    });
+
+    test('are dropped by a later project move, as they name the previous '
+        "project's views", () async {
+      await queue(1, toDoing.merge(done));
+
+      await queue(1, const TaskChanges(projectId: 8));
+
+      const moved = TaskChanges(done: true, projectId: 8);
+      expect(decodeTaskChanges((await ops()).single.payload), moved);
+      expect(await pendingOf(1), moved);
+    });
+
+    test('behind an unsent create are dropped when the create moves to '
+        'another project', () async {
+      final id = await db.outboxDao.queueCreate(
+        const NewTask(projectId: 7, title: 'New'),
+        now: now,
+      );
+      await queue(id, toDoing);
+      final other = await db.outboxDao.queueCreate(
+        const NewTask(projectId: 7, title: 'Other'),
+        now: now,
+      );
+      await queue(other, toDoing.merge(done));
+
+      await queue(id, const TaskChanges(projectId: 8));
+      await queue(other, const TaskChanges(projectId: 8));
+
+      final all = await ops();
+      expect(all.map((op) => (op.kind, op.taskId)), [
+        ('createTask', id),
+        ('createTask', other),
+        ('updateTask', other),
+      ]);
+      expect(decodeNewTask(all.first.payload).projectId, 8);
+      expect(decodeTaskChanges(all.last.payload), done);
+      expect(await pendingOf(id), isNull);
+      expect(await pendingOf(other), done);
+    });
+
+    test('follow the create to the server id', () async {
+      final id = await db.outboxDao.queueCreate(
+        const NewTask(projectId: 7, title: 'New'),
+        now: now,
+      );
+      await queue(id, toDoing);
+      final create = (await ops()).first;
+
+      await db.outboxDao.completeCreate(
+        create.id,
+        sampleTask(id: 50, title: 'New', projectId: 7),
+        at: later,
+      );
+
+      final follower = (await ops()).single;
+      expect(follower.taskId, 50);
+      expect(decodeTaskChanges(follower.payload), toDoing);
+      expect(await pendingOf(50), toDoing);
+    });
+
+    test('stay pending over a sync and when the op fails, until it is '
+        'removed', () async {
+      await queue(1, toDoing);
+      await db.tasksDao.upsertAll([
+        sampleTask(id: 1, title: 'One', projectId: 7, due: monday),
+      ], syncRunId: 'run-2');
+      expect(await pendingOf(1), toDoing);
+
+      final op = (await ops()).single;
+      await db.outboxDao.markSending(op.id, at: now);
+      await db.outboxDao.markFailed(op.id, const DomainError(412, code: 10004));
+      expect(await pendingOf(1), toDoing);
+      expect(
+        (await db.outboxDao.loadProblems()).single.failure,
+        isA<DomainError>().having((failure) => failure.code, 'code', 10004),
+      );
+
+      await db.outboxDao.remove(op.id);
+      expect(await pendingOf(1), isNull);
+    });
+
+    group('give way to a later change of the done state, whose move would '
+        'set it back', () {
+      const intoDone = TaskChanges(
+        done: true,
+        kanban: {80: BucketPlacement(bucketId: 3, position: 1)},
+      );
+      const open = TaskChanges(done: false);
+
+      test('a drop into the done column, then marked open', () async {
+        await queue(1, intoDone);
+        await queue(1, open);
+
+        expect(decodeTaskChanges((await ops()).single.payload), open);
+        expect(await pendingOf(1), open);
+        expect((await db.tasksDao.find(1))!.done, isFalse);
+      });
+
+      test('a drop out of the done column, then marked done', () async {
+        await queue(3, const TaskChanges(done: false).merge(toDoing));
+        await queue(3, done);
+
+        expect(decodeTaskChanges((await ops()).single.payload), done);
+        expect(await pendingOf(3), done);
+      });
+
+      test('a reorder without a done change, then marked done', () async {
+        await queue(1, toDoing);
+        await queue(1, done);
+
+        expect(decodeTaskChanges((await ops()).single.payload), done);
+        expect(await pendingOf(1), done);
+      });
+
+      test('behind a create that has not left the device', () async {
+        final id = await db.outboxDao.queueCreate(
+          const NewTask(projectId: 7, title: 'New'),
+          now: now,
+        );
+        await queue(id, intoDone);
+        await queue(id, open);
+
+        final all = await ops();
+        expect(all.map((op) => op.kind), ['createTask', 'updateTask']);
+        expect(decodeTaskChanges(all.last.payload), open);
+        expect(await pendingOf(id), open);
+      });
+
+      test('folded in when the placement failed', () async {
+        await queue(1, intoDone);
+        final failed = (await ops()).single;
+        await db.outboxDao.markSending(failed.id, at: now);
+        await queue(1, open);
+        expect(await pendingOf(1), open);
+
+        await db.outboxDao.markFailed(
+          failed.id,
+          const DomainError(412, code: 10004),
+        );
+
+        expect(decodeTaskChanges((await ops()).single.payload), open);
+        expect(await pendingOf(1), open);
+      });
+    });
+
+    test('survive the labels and edges a sync forgets', () async {
+      await queue(
+        1,
+        toDoing.merge(const TaskChanges(labels: IdSetChange(added: {5, 6}))),
+      );
+
+      await db.outboxDao.forgetLabels({5});
+
+      expect(
+        decodeTaskChanges((await ops()).single.payload),
+        toDoing.merge(const TaskChanges(labels: IdSetChange(added: {6}))),
+      );
+    });
+
+    test('are dropped with the task when it is deleted', () async {
+      await queue(1, toDoing);
+
+      await db.outboxDao.queueDelete(1, now: now);
+
+      expect((await ops()).single.kind, 'deleteTask');
+      expect(await pendingOf(1), isNull);
+    });
+  });
 }

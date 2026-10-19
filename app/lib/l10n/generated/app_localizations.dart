@@ -2042,6 +2042,18 @@ abstract class AppLocalizations {
   /// **'A task cannot be related to itself.'**
   String get syncProblemRelationToItself;
 
+  /// No description provided for @syncProblemColumnFull.
+  ///
+  /// In en, this message translates to:
+  /// **'This column is full.'**
+  String get syncProblemColumnFull;
+
+  /// No description provided for @syncProblemColumnMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'The column no longer exists.'**
+  String get syncProblemColumnMissing;
+
   /// No description provided for @syncProblemRejected.
   ///
   /// In en, this message translates to:
@@ -4367,6 +4379,144 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The server applies this view\'s filter “{filter}”. Pull down to try again.'**
   String projectViewDownloadFailedBody(String filter);
+
+  /// Below "This view loads once you're online" for a kanban board never downloaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Its columns and cards download when you open it online.'**
+  String get boardNotLoadedBody;
+
+  /// Below "Downloading this view…" for a kanban board never downloaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Its columns and cards are on their way.'**
+  String get boardDownloadingBody;
+
+  /// Below "Couldn't download this view" for a kanban board never downloaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Pull down to try again.'**
+  String get boardDownloadFailedBody;
+
+  /// No description provided for @boardNoColumnsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No columns'**
+  String get boardNoColumnsTitle;
+
+  /// No description provided for @boardNoColumnsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This board had no columns at the last download.'**
+  String get boardNoColumnsBody;
+
+  /// Above a kanban board whose buckets are defined by filters; the server refuses moves there.
+  ///
+  /// In en, this message translates to:
+  /// **'This board\'s columns come from filters, so its cards can\'t be moved here.'**
+  String get boardFilterColumnsNote;
+
+  /// Tooltip of the double check mark on the done bucket of a kanban board (the web's "done bucket").
+  ///
+  /// In en, this message translates to:
+  /// **'All tasks moved into this column are marked as done automatically.'**
+  String get boardDoneColumnHint;
+
+  /// Read by screen readers after a kanban column's title.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 task} other{{count} tasks}}'**
+  String boardColumnTaskCount(int count);
+
+  /// Read by screen readers after the title of a kanban column with a task limit.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} of at most {limit, plural, =1{1 task} other{{limit} tasks}}'**
+  String boardColumnTaskCountOfLimit(int count, int limit);
+
+  /// Read by screen readers for a kanban column that has reached its task limit.
+  ///
+  /// In en, this message translates to:
+  /// **'Full'**
+  String get boardColumnFull;
+
+  /// Why a full kanban column takes no new task and refuses a dropped card.
+  ///
+  /// In en, this message translates to:
+  /// **'You have reached the column limit. Remove tasks or increase the limit to add new tasks.'**
+  String get boardColumnLimitReached;
+
+  /// After adding several tasks to a kanban column with a task limit: those beyond the limit stay in the board's default column, named by its title.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 task didn\'t fit into the column and went to {column}.} other{{count} tasks didn\'t fit into the column and went to {column}.}}'**
+  String boardTasksLeftInDefaultColumn(int count, String column);
+
+  /// At the bottom of an empty kanban column.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a task'**
+  String get boardAddTask;
+
+  /// At the bottom of a kanban column that has cards.
+  ///
+  /// In en, this message translates to:
+  /// **'Add another task'**
+  String get boardAddAnotherTask;
+
+  /// Below the cards of a kanban column whose other cards are still on the server.
+  ///
+  /// In en, this message translates to:
+  /// **'Load more'**
+  String get boardLoadMore;
+
+  /// No description provided for @boardLoadingMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading more tasks…'**
+  String get boardLoadingMore;
+
+  /// No description provided for @boardLoadMoreFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load more tasks. Try again later.'**
+  String get boardLoadMoreFailed;
+
+  /// Screen reader action on a kanban card.
+  ///
+  /// In en, this message translates to:
+  /// **'Move to {column}'**
+  String boardMoveTo(String column);
+
+  /// Announced to screen readers after a kanban card moved to another column.
+  ///
+  /// In en, this message translates to:
+  /// **'Moved to {column}'**
+  String boardMovedTo(String column);
+
+  /// Screen reader action on a kanban card: one place up within its column.
+  ///
+  /// In en, this message translates to:
+  /// **'Move up'**
+  String get boardMoveUp;
+
+  /// No description provided for @boardMovedUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Moved up'**
+  String get boardMovedUp;
+
+  /// Screen reader action on a kanban card: one place down within its column.
+  ///
+  /// In en, this message translates to:
+  /// **'Move down'**
+  String get boardMoveDown;
+
+  /// No description provided for @boardMovedDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Moved down'**
+  String get boardMovedDown;
 
   /// Read by screen readers for a task nested under another in a project list.
   ///

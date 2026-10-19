@@ -1,8 +1,10 @@
 import 'package:drift/drift.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/db/daos/kanban_dao.dart';
 import 'package:vikunja_mobile/core/db/epoch_millis.dart';
 import 'package:vikunja_mobile/core/db/mappers/label_mappers.dart';
+import 'package:vikunja_mobile/core/db/mappers/project_mappers.dart';
 import 'package:vikunja_mobile/core/db/mappers/task_mappers.dart';
 import 'package:vikunja_mobile/core/db/mappers/user_mappers.dart';
 import 'package:vikunja_mobile/core/db/tables/labels.dart';
@@ -33,6 +35,7 @@ typedef _TaskRows = ({TaskRow task, UserRow? createdBy});
     Users,
     TaskIdRemaps,
     Projects,
+    ProjectViews,
     ListSnapshots,
     ListSnapshotTasks,
   ],
@@ -214,6 +217,76 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
       omitsDoneTasks:
           !includeDone && await _hasDoneTasksOutside(projectId, listKey),
     );
+  }
+
+  /// What a kanban view's board is built from, see [BoardSource].
+  Stream<BoardSource> watchBoard(int projectId, int viewId) => watchTables({
+    ..._readTables,
+    listSnapshots,
+    listSnapshotTasks,
+    projectViews,
+    attachedDatabase.kanbanBuckets,
+  }, () => loadBoard(projectId, viewId));
+
+  /// A long-lived project holds far more done tasks than open ones, so
+  /// only the done ones the board can show are loaded.
+  Future<BoardSource> loadBoard(int projectId, int viewId) async {
+    final board = await attachedDatabase.kanbanDao.load(viewId);
+    final listKey = KanbanDao.boardKey(viewId);
+    var shown =
+        tasks.done.equals(false) |
+        tasks.id.isInQuery(_snapshotTaskIds(listKey)) |
+        tasks.id.isSmallerThanValue(0) |
+        tasks.pendingChanges.isNotNull();
+    if (board.loadedAt case final loadedAt?) {
+      final millis = const EpochMillis().toSql(loadedAt);
+      shown =
+          shown |
+          tasks.created.isBiggerThanValue(millis) |
+          tasks.updated.isBiggerThanValue(millis);
+    }
+    final projectTasks = await _load(
+      where: tasks.projectId.equals(projectId) & _visible & shown,
+      orderBy: _newestFirst,
+    );
+    final view = await (select(
+      projectViews,
+    )..where((v) => v.id.equals(viewId))).getSingleOrNull();
+    final pending = await _pendingBoardChanges(projectId);
+    return BoardSource(
+      view: view == null ? null : projectViewFromRow(view),
+      buckets: board.buckets,
+      snapshot: board.slots,
+      loadedAt: board.loadedAt,
+      projectTasks: projectTasks,
+      queued: {
+        for (final (id, changes) in pending) id: ?changes.kanban?[viewId],
+      },
+      movedHere: {
+        for (final (id, changes) in pending)
+          if (changes.projectId == projectId) id,
+      },
+    );
+  }
+
+  /// The unsent changes of the project's tasks that place them on a board
+  /// or move them into the project.
+  Future<List<(int, TaskChanges)>> _pendingBoardChanges(int projectId) async {
+    final query = selectOnly(tasks)
+      ..addColumns([tasks.id, tasks.pendingChanges])
+      ..where(
+        tasks.projectId.equals(projectId) &
+            _visible &
+            (tasks.pendingChanges.like('%"kanban"%') |
+                tasks.pendingChanges.like('%"project_id"%')),
+      );
+    return [
+      for (final row in await query.get())
+        (
+          row.read(tasks.id)!,
+          decodeTaskChanges(row.read(tasks.pendingChanges)!),
+        ),
+    ];
   }
 
   Future<bool> _hasDoneTasksOutside(int projectId, String listKey) async {

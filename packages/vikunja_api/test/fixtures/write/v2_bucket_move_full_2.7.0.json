@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "PUT /api/v2/projects/664/views/3706/buckets/2779/tasks",
+  "status": 412,
+  "headers": {
+    "content-type": "application/problem+json"
+  },
+  "body": "{\"$schema\":\"http://localhost:34527/api/v2/schemas/VikunjaErrorModel.json\",\"title\":\"Precondition Failed\",\"status\":412,\"detail\":\"You cannot add the task to this bucket as it already exceeded the limit of tasks it can hold.\",\"code\":10004}\n"
+}

@@ -43,7 +43,10 @@ Stream<T> _replaying<T>(T? Function() current, Stream<T> updates) {
       if (current() case final value?) controller.add(value);
       subscription = updates.listen(controller.add, onDone: controller.close);
     },
-    onCancel: () => subscription?.cancel(),
+    // Not returning the inner cancel's future: it completes in the root
+    // zone, which a widget test's fake clock never runs, so `Stream.first`
+    // would never complete.
+    onCancel: () => unawaited(subscription?.cancel()),
   );
   return controller.stream;
 }
@@ -427,6 +430,139 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
     if (refreshProjectListFailure case final failure?) throw failure;
   }
 
+  final Map<int, BoardSource> _boards = {};
+  final Map<int, Map<int, BucketPlacement>> _queuedPlacements = {};
+
+  /// Stores a board download of [view]: its buckets, each listed card's
+  /// bucket and position by task id, and when it was taken (null: never).
+  void setBoard(
+    ProjectView view, {
+    List<Bucket> buckets = const [],
+    Map<int, BoardSlot> snapshot = const {},
+    DateTime? loadedAt,
+  }) {
+    _boards[view.id] = BoardSource(
+      view: view,
+      buckets: buckets,
+      snapshot: snapshot,
+      loadedAt: loadedAt,
+    );
+    _notify();
+  }
+
+  /// The placements queued per view id, by task id: what [placeTask]
+  /// queued, until a test sets them otherwise (an empty map: all sent).
+  Map<int, Map<int, BucketPlacement>> get queuedPlacements => {
+    for (final MapEntry(:key, :value) in _queuedPlacements.entries)
+      key: Map.unmodifiable(value),
+  };
+
+  void setQueuedPlacements(int viewId, Map<int, BucketPlacement> placements) {
+    _queuedPlacements[viewId] = {...placements};
+    _notify();
+  }
+
+  /// Like the database: the project's open tasks and the done ones the
+  /// board can show (listed, created here, queued, or newer than the
+  /// download), newest first.
+  BoardSource board(int projectId, int viewId) {
+    final download = _boards[viewId] ?? const BoardSource();
+    final queued = _queuedPlacements[viewId] ?? const {};
+    final loadedAt = download.loadedAt;
+    bool newer(DateTime? moment) =>
+        loadedAt != null && moment != null && moment.isAfter(loadedAt);
+    bool shown(Task task) =>
+        !task.done ||
+        task.id < 0 ||
+        download.snapshot.containsKey(task.id) ||
+        queued.containsKey(task.id) ||
+        pendingTaskIds.contains(task.id) ||
+        newer(task.created) ||
+        newer(task.updated);
+    return BoardSource(
+      view: download.view,
+      buckets: download.buckets,
+      snapshot: download.snapshot,
+      loadedAt: loadedAt,
+      projectTasks: [
+        for (final task in _all)
+          if (task.projectId == projectId && shown(task)) task,
+      ]..sort(_newestFirst),
+      queued: Map.unmodifiable(queued),
+    );
+  }
+
+  /// Every `watchBoard` as `(projectId, viewId)`.
+  final List<(int, int)> boardWatches = [];
+
+  /// The error `watchBoard` fails with, by view id.
+  final Map<int, Object> boardErrors = {};
+
+  @override
+  Stream<BoardSource> watchBoard(int projectId, int viewId) {
+    boardWatches.add((projectId, viewId));
+    if (boardErrors[viewId] case final error?) return Stream.error(error);
+    return _replaying(
+      () => _all,
+      _changes.stream,
+    ).map((_) => board(projectId, viewId));
+  }
+
+  /// Every `refreshBoard` as `(projectId, viewId)`. Each runs a sync
+  /// through the engine, then [onRefreshBoard] (which can [setBoard]), then
+  /// throws [refreshBoardFailure] when one is set.
+  final List<(int, int)> boardRefreshes = [];
+  Future<void> Function(int projectId, int viewId)? onRefreshBoard;
+  VikunjaFailure? refreshBoardFailure;
+
+  @override
+  Future<void> refreshBoard(int projectId, int viewId) async {
+    boardRefreshes.add((projectId, viewId));
+    await _engine.refresh();
+    await onRefreshBoard?.call(projectId, viewId);
+    if (refreshBoardFailure case final failure?) throw failure;
+  }
+
+  /// Every `loadMoreOfBucket` as `(projectId, viewId, bucketId)`. Each runs
+  /// [onLoadMoreOfBucket], then throws [loadMoreOfBucketFailure] when one
+  /// is set; no sync.
+  final List<(int, int, int)> bucketLoads = [];
+  Future<void> Function(int projectId, int viewId, int bucketId)?
+  onLoadMoreOfBucket;
+  VikunjaFailure? loadMoreOfBucketFailure;
+
+  @override
+  Future<void> loadMoreOfBucket(int projectId, int viewId, int bucketId) async {
+    bucketLoads.add((projectId, viewId, bucketId));
+    await onLoadMoreOfBucket?.call(projectId, viewId, bucketId);
+    if (loadMoreOfBucketFailure case final failure?) throw failure;
+  }
+
+  /// What `placeTask` was given, in order, as `(taskId, viewId, placement,
+  /// done)`; [writes] has each as `place 1 view 5 bucket 3 at 32768.0` or
+  /// `… at null`, plus ` done true` when done is set. The placement is
+  /// queued for the view (later ones win) and done applies to the task.
+  final List<(int, int, BucketPlacement, bool?)> placements = [];
+
+  @override
+  Future<void> placeTask(
+    int taskId, {
+    required int viewId,
+    required BucketPlacement placement,
+    bool? done,
+  }) async {
+    placements.add((taskId, viewId, placement, done));
+    final id = remaps[taskId] ?? taskId;
+    (_queuedPlacements[viewId] ??= {})[id] = placement;
+    await _write(
+      'place $taskId view $viewId bucket ${placement.bucketId} '
+      'at ${placement.position}${done == null ? '' : ' done $done'}',
+      (task) => task.id == id && done != null
+          ? copyTask(task, done: done, doneAt: done ? _doneAt : null)
+          : task,
+    );
+  }
+
   /// Open favourite tasks outside [archivedProjectIds], like the database.
   List<Task> get favoriteTasks => [
     for (final task in activeOpenTasks)
@@ -504,7 +640,8 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
 
   /// Every write, in order, as `create -1 Title`, `update 1`,
   /// `setDone 1 true`, `undoDone 1`, `setFavorite 2 false`, `delete 3`,
-  /// `retry <op>`, `discard <op>` or `sendPending`. A write applies to the
+  /// `place …` (see [placements]), `retry <op>`, `discard <op>` or
+  /// `sendPending`. A write applies to the
   /// task at once, like the local database; what counts as pending is the
   /// test's to say with [pendingChanges] and [pendingTaskIds].
   final List<String> writes = [];
@@ -604,6 +741,11 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
   /// relations of other tasks follow it, and watchers of [localId] follow.
   void remapTask(int localId, int serverId) {
     remaps[localId] = serverId;
+    for (final queued in _queuedPlacements.values) {
+      if (queued.remove(localId) case final placement?) {
+        queued[serverId] = placement;
+      }
+    }
     Task renamed(Task task) =>
         task.id == localId ? taskWithId(task, serverId) : task;
     all = [
@@ -619,7 +761,7 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
 
   /// Relations apply to both tasks when the other one is in [all], as the
   /// server keeps the inverse edge; a temporary id that was remapped is
-  /// followed.
+  /// followed; kanban placements are queued like [placeTask]'s.
   @override
   Future<void> updateTask(int taskId, TaskChanges changes) async {
     updates.add((taskId, changes));
@@ -634,6 +776,10 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
       ...knownUsers,
     };
     final id = remaps[taskId] ?? taskId;
+    for (final MapEntry(key: viewId, value: placement)
+        in changes.kanban?.entries ?? _noPlacements) {
+      (_queuedPlacements[viewId] ??= {})[id] = placement;
+    }
     await _write(
       'update $taskId',
       (task) => task.id == id
@@ -951,3 +1097,5 @@ final class SyncFakes {
     }),
   ];
 }
+
+const _noPlacements = <MapEntry<int, BucketPlacement>>[];

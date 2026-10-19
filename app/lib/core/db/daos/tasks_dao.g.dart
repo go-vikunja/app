@@ -13,6 +13,7 @@ mixin _$TasksDaoMixin on DatabaseAccessor<AppDatabase> {
   $TaskRelationsTable get taskRelations => attachedDatabase.taskRelations;
   $TaskIdRemapsTable get taskIdRemaps => attachedDatabase.taskIdRemaps;
   $ProjectsTable get projects => attachedDatabase.projects;
+  $ProjectViewsTable get projectViews => attachedDatabase.projectViews;
   $ListSnapshotsTable get listSnapshots => attachedDatabase.listSnapshots;
   $ListSnapshotTasksTable get listSnapshotTasks =>
       attachedDatabase.listSnapshotTasks;
@@ -40,6 +41,8 @@ class TasksDaoManager {
       $$TaskIdRemapsTableTableManager(_db.attachedDatabase, _db.taskIdRemaps);
   $$ProjectsTableTableManager get projects =>
       $$ProjectsTableTableManager(_db.attachedDatabase, _db.projects);
+  $$ProjectViewsTableTableManager get projectViews =>
+      $$ProjectViewsTableTableManager(_db.attachedDatabase, _db.projectViews);
   $$ListSnapshotsTableTableManager get listSnapshots =>
       $$ListSnapshotsTableTableManager(_db.attachedDatabase, _db.listSnapshots);
   $$ListSnapshotTasksTableTableManager get listSnapshotTasks =>

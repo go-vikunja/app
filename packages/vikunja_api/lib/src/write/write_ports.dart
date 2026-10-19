@@ -38,6 +38,18 @@ abstract interface class TasksWritePort {
   /// be a server id, else this throws an [ArgumentError] before any
   /// request. A missing other task fails with `RelatedTaskMissing`, never
   /// with the plain `NotFound` code 4002 that means this task is gone.
+  ///
+  /// [TaskChanges.kanban] goes last, per view: the move (v2 `PUT`, v1
+  /// `POST /projects/{task's project}/views/{v}/buckets/{b}/tasks`), then,
+  /// with a position and only when the server put the task into that
+  /// bucket (a repeating task moved into the done bucket reopens in the
+  /// default bucket), the position (v2 `PUT`, v1 `POST
+  /// /tasks/{id}/position`). A move into the bucket the task is in already
+  /// changes nothing, so a repeated call is harmless. A move that changed
+  /// the task (done, `done_at`, a repeating task's dates) is read back. A
+  /// full bucket is a `DomainError` code 10004, a bucket that is gone or
+  /// not one of a manual view's (filter mode) a `NotFound` code 10001 or a
+  /// `DomainError` code 10002.
   Future<Task> update(int id, TaskChanges changes);
 
   /// A task that is already gone (404 with Vikunja code 4002) counts as

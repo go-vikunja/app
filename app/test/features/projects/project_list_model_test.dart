@@ -312,16 +312,17 @@ void main() {
       ],
     );
 
-    test('only list views, by position', () {
-      expect(listViewsOf(project).map((view) => view.id), [11, 12]);
-      expect(listViewsOf(null), isEmpty);
+    test('list and kanban views, by position', () {
+      expect(shownViewsOf(project).map((view) => view.id), [10, 11, 12]);
+      expect(shownViewsOf(null), isEmpty);
     });
 
     test('the remembered view while it exists, else the first', () {
-      final views = listViewsOf(project);
+      final views = shownViewsOf(project);
       expect(resolveViewId(views, remembered: 12), 12);
-      expect(resolveViewId(views, remembered: 10), 11);
-      expect(resolveViewId(views, remembered: null), 11);
+      expect(resolveViewId(views, remembered: 10), 10);
+      expect(resolveViewId(views, remembered: 99), 10);
+      expect(resolveViewId(views, remembered: null), 10);
       expect(resolveViewId(const [], remembered: 12), 0);
     });
   });

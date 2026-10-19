@@ -88,6 +88,32 @@ void main() {
     );
   });
 
+  test('explains a move the board refused', () {
+    String describe(VikunjaFailure failure) =>
+        describeSyncProblem(en, problem(failure));
+    expect(
+      describe(const DomainError(412, code: 10004)),
+      endsWith(en.syncProblemColumnFull),
+    );
+    expect(
+      describe(const NotFound(code: 10001)),
+      endsWith(en.syncProblemColumnMissing),
+    );
+    expect(
+      describe(const DomainError(400, code: 10002)),
+      endsWith(en.syncProblemColumnMissing),
+    );
+    expect(
+      describe(const NotFound(code: 3014)),
+      endsWith(en.syncProblemColumnMissing),
+    );
+    expect(describe(const Forbidden()), endsWith(en.syncProblemForbidden));
+    expect(
+      describeSyncProblem(de, problem(const DomainError(412, code: 10004))),
+      '${de.syncProblemUpdateFailed} Diese Spalte ist voll.',
+    );
+  });
+
   test('is in German', () {
     expect(
       describeSyncProblem(de, problem(const DomainError(412, code: 3008))),

@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v1/projects/664/views/3706/buckets/2779/tasks",
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"bucket_id\":2779,\"bucket\":{\"id\":2779,\"title\":\"Doing\",\"project_view_id\":3706,\"limit\":2,\"count\":2,\"position\":200,\"created\":\"2026-10-19T15:46:42Z\",\"updated\":\"2026-10-19T15:46:47Z\",\"created_by\":null},\"task_id\":4410,\"project_view_id\":3706,\"task\":{\"id\":4410,\"title\":\"Buy milk\",\"description\":\"\\u003cp\\u003eOat, two litres\\u003c/p\\u003e\",\"project_id\":664,\"done\":false,\"done_at\":\"0001-01-01T00:00:00Z\",\"due_date\":\"0001-01-01T00:00:00Z\",\"reminders\":null,\"repeat_after\":0,\"repeat_mode\":0,\"priority\":3,\"start_date\":\"0001-01-01T00:00:00Z\",\"end_date\":\"0001-01-01T00:00:00Z\",\"assignees\":null,\"labels\":[{\"id\":285,\"title\":\"home\",\"description\":\"\",\"hex_color\":\"4caf50\",\"created_by\":{\"id\":250,\"name\":\"\",\"username\":\"fixtureuser\",\"created\":\"2026-10-19T15:46:42Z\",\"updated\":\"2026-10-19T15:46:42Z\"},\"created\":\"2026-10-19T15:46:43Z\",\"updated\":\"2026-10-19T15:46:43Z\"}],\"hex_color\":\"\",\"percent_done\":0,\"identifier\":\"#2\",\"index\":2,\"related_tasks\":{},\"attachments\":null,\"cover_image_attachment_id\":0,\"is_favorite\":false,\"subscription\":{\"id\":4609,\"entity\":\"task\",\"entity_id\":4410,\"created\":\"2026-10-19T15:46:44Z\"},\"created\":\"2026-10-19T15:46:44Z\",\"updated\":\"2026-10-19T15:46:46Z\",\"bucket_id\":0,\"position\":0,\"reactions\":null,\"created_by\":{\"id\":250,\"name\":\"\",\"username\":\"fixtureuser\",\"created\":\"2026-10-19T15:46:42Z\",\"updated\":\"2026-10-19T15:46:42Z\"}}}\n"
+}

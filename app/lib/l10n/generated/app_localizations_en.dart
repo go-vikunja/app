@@ -1398,6 +1398,12 @@ class AppLocalizationsEn extends AppLocalizations {
       'A task cannot be related to itself.';
 
   @override
+  String get syncProblemColumnFull => 'This column is full.';
+
+  @override
+  String get syncProblemColumnMissing => 'The column no longer exists.';
+
+  @override
   String get syncProblemRejected => 'The server rejected the change.';
 
   @override
@@ -2870,6 +2876,109 @@ class AppLocalizationsEn extends AppLocalizations {
   String projectViewDownloadFailedBody(String filter) {
     return 'The server applies this view\'s filter “$filter”. Pull down to try again.';
   }
+
+  @override
+  String get boardNotLoadedBody =>
+      'Its columns and cards download when you open it online.';
+
+  @override
+  String get boardDownloadingBody => 'Its columns and cards are on their way.';
+
+  @override
+  String get boardDownloadFailedBody => 'Pull down to try again.';
+
+  @override
+  String get boardNoColumnsTitle => 'No columns';
+
+  @override
+  String get boardNoColumnsBody =>
+      'This board had no columns at the last download.';
+
+  @override
+  String get boardFilterColumnsNote =>
+      'This board\'s columns come from filters, so its cards can\'t be moved here.';
+
+  @override
+  String get boardDoneColumnHint =>
+      'All tasks moved into this column are marked as done automatically.';
+
+  @override
+  String boardColumnTaskCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tasks',
+      one: '1 task',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String boardColumnTaskCountOfLimit(int count, int limit) {
+    String _temp0 = intl.Intl.pluralLogic(
+      limit,
+      locale: localeName,
+      other: '$limit tasks',
+      one: '1 task',
+    );
+    return '$count of at most $_temp0';
+  }
+
+  @override
+  String get boardColumnFull => 'Full';
+
+  @override
+  String get boardColumnLimitReached =>
+      'You have reached the column limit. Remove tasks or increase the limit to add new tasks.';
+
+  @override
+  String boardTasksLeftInDefaultColumn(int count, String column) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tasks didn\'t fit into the column and went to $column.',
+      one: '1 task didn\'t fit into the column and went to $column.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get boardAddTask => 'Add a task';
+
+  @override
+  String get boardAddAnotherTask => 'Add another task';
+
+  @override
+  String get boardLoadMore => 'Load more';
+
+  @override
+  String get boardLoadingMore => 'Loading more tasks…';
+
+  @override
+  String get boardLoadMoreFailed =>
+      'Couldn\'t load more tasks. Try again later.';
+
+  @override
+  String boardMoveTo(String column) {
+    return 'Move to $column';
+  }
+
+  @override
+  String boardMovedTo(String column) {
+    return 'Moved to $column';
+  }
+
+  @override
+  String get boardMoveUp => 'Move up';
+
+  @override
+  String get boardMovedUp => 'Moved up';
+
+  @override
+  String get boardMoveDown => 'Move down';
+
+  @override
+  String get boardMovedDown => 'Moved down';
 
   @override
   String taskSubtaskOfSemantics(String parent) {

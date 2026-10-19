@@ -61,7 +61,13 @@ void main() {
     now = DateTime.utc(2026, 10, 10, 12);
     settings = const UserSettings();
     client = FakeSyncClient()
-      ..allProjects = [sampleProject(id: 1, title: 'Work')]
+      ..allProjects = [
+        sampleProject(
+          id: 1,
+          title: 'Work',
+          views: [sampleListView(id: 70, projectId: 1)],
+        ),
+      ]
       ..pseudoProjects = [favorites, myOpenTasks]
       ..allTasks = [
         task(1),

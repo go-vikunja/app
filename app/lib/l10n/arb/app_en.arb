@@ -1153,6 +1153,8 @@
   "syncProblemRelatedTaskMissing": "A task it is related to no longer exists on the server.",
   "syncProblemRelationCycle": "The relation would make the tasks depend on each other in a loop.",
   "syncProblemRelationToItself": "A task cannot be related to itself.",
+  "syncProblemColumnFull": "This column is full.",
+  "syncProblemColumnMissing": "The column no longer exists.",
   "syncProblemRejected": "The server rejected the change.",
   "syncProblemUnexpected": "The server answered in an unexpected way.",
   "syncProblemFailedAt": "Failed {when}",
@@ -2616,6 +2618,118 @@
       }
     }
   },
+  "boardNotLoadedBody": "Its columns and cards download when you open it online.",
+  "@boardNotLoadedBody": {
+    "description": "Below \"This view loads once you're online\" for a kanban board never downloaded."
+  },
+  "boardDownloadingBody": "Its columns and cards are on their way.",
+  "@boardDownloadingBody": {
+    "description": "Below \"Downloading this view…\" for a kanban board never downloaded."
+  },
+  "boardDownloadFailedBody": "Pull down to try again.",
+  "@boardDownloadFailedBody": {
+    "description": "Below \"Couldn't download this view\" for a kanban board never downloaded."
+  },
+  "boardNoColumnsTitle": "No columns",
+  "boardNoColumnsBody": "This board had no columns at the last download.",
+  "boardFilterColumnsNote": "This board's columns come from filters, so its cards can't be moved here.",
+  "@boardFilterColumnsNote": {
+    "description": "Above a kanban board whose buckets are defined by filters; the server refuses moves there."
+  },
+  "boardDoneColumnHint": "All tasks moved into this column are marked as done automatically.",
+  "@boardDoneColumnHint": {
+    "description": "Tooltip of the double check mark on the done bucket of a kanban board (the web's \"done bucket\")."
+  },
+  "boardColumnTaskCount": "{count, plural, =1{1 task} other{{count} tasks}}",
+  "@boardColumnTaskCount": {
+    "description": "Read by screen readers after a kanban column's title.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "boardColumnTaskCountOfLimit": "{count} of at most {limit, plural, =1{1 task} other{{limit} tasks}}",
+  "@boardColumnTaskCountOfLimit": {
+    "description": "Read by screen readers after the title of a kanban column with a task limit.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      },
+      "limit": {
+        "type": "int",
+        "example": "5"
+      }
+    }
+  },
+  "boardColumnFull": "Full",
+  "@boardColumnFull": {
+    "description": "Read by screen readers for a kanban column that has reached its task limit."
+  },
+  "boardColumnLimitReached": "You have reached the column limit. Remove tasks or increase the limit to add new tasks.",
+  "@boardColumnLimitReached": {
+    "description": "Why a full kanban column takes no new task and refuses a dropped card."
+  },
+  "boardTasksLeftInDefaultColumn": "{count, plural, =1{1 task didn't fit into the column and went to {column}.} other{{count} tasks didn't fit into the column and went to {column}.}}",
+  "@boardTasksLeftInDefaultColumn": {
+    "description": "After adding several tasks to a kanban column with a task limit: those beyond the limit stay in the board's default column, named by its title.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "2"
+      },
+      "column": {
+        "type": "String",
+        "example": "To-Do"
+      }
+    }
+  },
+  "boardAddTask": "Add a task",
+  "@boardAddTask": {
+    "description": "At the bottom of an empty kanban column."
+  },
+  "boardAddAnotherTask": "Add another task",
+  "@boardAddAnotherTask": {
+    "description": "At the bottom of a kanban column that has cards."
+  },
+  "boardLoadMore": "Load more",
+  "@boardLoadMore": {
+    "description": "Below the cards of a kanban column whose other cards are still on the server."
+  },
+  "boardLoadingMore": "Loading more tasks…",
+  "boardLoadMoreFailed": "Couldn't load more tasks. Try again later.",
+  "boardMoveTo": "Move to {column}",
+  "@boardMoveTo": {
+    "description": "Screen reader action on a kanban card.",
+    "placeholders": {
+      "column": {
+        "type": "String",
+        "example": "Doing"
+      }
+    }
+  },
+  "boardMovedTo": "Moved to {column}",
+  "@boardMovedTo": {
+    "description": "Announced to screen readers after a kanban card moved to another column.",
+    "placeholders": {
+      "column": {
+        "type": "String",
+        "example": "Doing"
+      }
+    }
+  },
+  "boardMoveUp": "Move up",
+  "@boardMoveUp": {
+    "description": "Screen reader action on a kanban card: one place up within its column."
+  },
+  "boardMovedUp": "Moved up",
+  "boardMoveDown": "Move down",
+  "@boardMoveDown": {
+    "description": "Screen reader action on a kanban card: one place down within its column."
+  },
+  "boardMovedDown": "Moved down",
   "taskSubtaskOfSemantics": "Subtask of {parent}",
   "@taskSubtaskOfSemantics": {
     "description": "Read by screen readers for a task nested under another in a project list.",

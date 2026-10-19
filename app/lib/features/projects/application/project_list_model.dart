@@ -4,11 +4,14 @@ import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 
-/// The project's list views, as the web orders its view tabs.
-List<ProjectView> listViewsOf(Project? project) =>
+/// The project's views the app shows, its list and kanban views, as the
+/// web orders its view tabs.
+List<ProjectView> shownViewsOf(Project? project) =>
     [
       for (final view in project?.views ?? const <ProjectView>[])
-        if (view.kind == ProjectViewKind.list) view,
+        if (view.kind == ProjectViewKind.list ||
+            view.kind == ProjectViewKind.kanban)
+          view,
     ]..sort((a, b) {
       final byPosition = a.position.compareTo(b.position);
       return byPosition != 0 ? byPosition : a.id.compareTo(b.id);
@@ -16,8 +19,8 @@ List<ProjectView> listViewsOf(Project? project) =>
 
 /// The view to show, the web's way: the remembered one while [views] still
 /// has it, else the first of the user's default kind (null: the first by
-/// position), else the first; 0 without views. Fed list views only, so a
-/// default other than list falls back to the first list view.
+/// position), else the first; 0 without views. Fed the views the app
+/// shows, so a default of a kind it hides falls back to the first view.
 int resolveViewId(
   List<ProjectView> views, {
   required int? remembered,

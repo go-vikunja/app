@@ -2,6 +2,7 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:vikunja_api/src/dto/bucket_codec.dart';
 import 'package:vikunja_api/src/dto/comment_codec.dart';
 import 'package:vikunja_api/src/dto/json_values.dart';
 import 'package:vikunja_api/src/dto/label_codec.dart';
@@ -32,7 +33,8 @@ final class ReadClient implements VikunjaReadClient {
       subscriptions = _SubscriptionsApi(transport),
       avatars = _AvatarsApi(transport),
       comments = _CommentsApi(transport),
-      attachments = _AttachmentsApi(transport);
+      attachments = _AttachmentsApi(transport),
+      buckets = _BucketsApi(transport);
 
   @override
   final ProjectsPort projects;
@@ -60,6 +62,86 @@ final class ReadClient implements VikunjaReadClient {
 
   @override
   final AttachmentsPort attachments;
+
+  @override
+  final BucketsPort buckets;
+}
+
+final class _BucketsApi implements BucketsPort {
+  new(this._transport);
+
+  final _ReadTransport _transport;
+
+  @override
+  Future<List<BoardBucket>> board(
+    int projectId,
+    int viewId, {
+    int perPage = 50,
+    String? filterTimezone,
+  }) async {
+    final response = await _transport.get(
+      switch (_transport.version) {
+        ApiVersion.v2 => '/projects/$projectId/views/$viewId/buckets/tasks',
+        ApiVersion.v1 => '/projects/$projectId/views/$viewId/tasks',
+      },
+      query: {
+        'per_page': perPage,
+        if (filterTimezone case final zone? when zone.isNotEmpty)
+          'filter_timezone': zone,
+      },
+    );
+    // v2 wraps the buckets without page fields; v1 sends them bare, with
+    // paging headers that count buckets, not tasks.
+    final buckets = switch ((_transport.version, response.data)) {
+      (ApiVersion.v2, {'items': final List<Object?> items}) => items,
+      (ApiVersion.v1, final List<Object?> items) => items,
+      _ => throw UnexpectedResponse(
+        response.statusCode,
+        message: 'not a board',
+      ),
+    };
+    return _transport.decode<List<BoardBucket>>(
+      response,
+      (_) => List.unmodifiable(
+        buckets.map((json) {
+          final bucket = parseBucket(json);
+          return BoardBucket(
+            bucket: bucket,
+            tasks: bucketTasksOf(json, bucketId: bucket.id),
+          );
+        }),
+      ),
+    );
+  }
+
+  @override
+  Future<Page<Task>> bucketTasks(
+    int projectId,
+    int viewId,
+    int bucketId, {
+    required int page,
+    int perPage = 50,
+    String? filterTimezone,
+  }) async {
+    final query = TaskQuery(
+      filter: 'bucket_id = $bucketId',
+      sort: const [TaskSort(TaskSortField.position)],
+      page: page,
+      perPage: perPage,
+      filterTimezone: filterTimezone,
+    );
+    final response = await _transport.get(
+      '/projects/$projectId/views/$viewId/tasks',
+      query: taskQueryParameters(
+        query,
+        version: _transport.version,
+        inView: true,
+      ),
+    );
+    return _transport
+        .page(response, page: page, perPage: perPage, parse: parseTask)
+        .map((task) => task.copyWith(bucketId: bucketId));
+  }
 }
 
 final class _CommentsApi implements CommentsPort {

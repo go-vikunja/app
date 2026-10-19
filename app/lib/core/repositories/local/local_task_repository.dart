@@ -105,6 +105,42 @@ final class LocalTaskRepository
   }
 
   @override
+  Stream<BoardSource> watchBoard(int projectId, int viewId) =>
+      _db.tasksDao.watchBoard(projectId, viewId);
+
+  @override
+  Future<void> refreshBoard(int projectId, int viewId) async {
+    await _sync.refresh();
+    await downloadBoard(
+      db: _db,
+      client: _readClient('A board download'),
+      perPage: _perPage,
+      projectId: projectId,
+      viewId: viewId,
+      now: _now,
+    );
+  }
+
+  @override
+  Future<void> loadMoreOfBucket(int projectId, int viewId, int bucketId) =>
+      downloadNextBucketPage(
+        db: _db,
+        client: _readClient('A bucket download'),
+        perPage: _perPage,
+        projectId: projectId,
+        viewId: viewId,
+        bucketId: bucketId,
+      );
+
+  @override
+  Future<void> placeTask(
+    int taskId, {
+    required int viewId,
+    required BucketPlacement placement,
+    bool? done,
+  }) => _queue(taskId, TaskChanges(kanban: {viewId: placement}, done: done));
+
+  @override
   Stream<List<Task>> watchFavoriteTasks() => _db.tasksDao.watchFavoriteTasks();
 
   @override

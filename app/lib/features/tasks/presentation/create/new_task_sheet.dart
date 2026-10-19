@@ -9,9 +9,12 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 import 'package:vikunja_mobile/core/settings/user_settings_providers.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
+import 'package:vikunja_mobile/features/projects/application/board_moves.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/quick_add/application/project_references.dart';
 import 'package:vikunja_mobile/features/quick_add/application/quick_add_lines.dart';
@@ -37,18 +40,51 @@ final _log = Logger('NewTaskSheet');
 /// The quick way to new tasks: one line per task with Quick Add Magic, the
 /// project the tasks go to unless a line names one, and optionally a due
 /// date for lines without a date. [projectId] preselects the list's own
-/// project.
-Future<void> showNewTaskSheet(BuildContext context, {int? projectId}) =>
-    showModalBottomSheet<void>(
-      context: context,
-      // Over the tab bar, not inside the tab's own navigator.
-      useRootNavigator: true,
-      routeSettings: const RouteSettings(name: newTaskSheetRouteName),
-      isScrollControlled: true,
-      useSafeArea: true,
-      showDragHandle: true,
-      builder: (context) => NewTaskSheet(projectId: projectId),
-    );
+/// project; with [column] the tasks that go to it are placed on top of that
+/// board column.
+Future<void> showNewTaskSheet(
+  BuildContext context, {
+  int? projectId,
+  NewTaskColumn? column,
+}) => showModalBottomSheet<void>(
+  context: context,
+  // Over the tab bar, not inside the tab's own navigator.
+  useRootNavigator: true,
+  routeSettings: const RouteSettings(name: newTaskSheetRouteName),
+  isScrollControlled: true,
+  useSafeArea: true,
+  showDragHandle: true,
+  builder: (context) => NewTaskSheet(projectId: projectId, column: column),
+);
+
+/// The board column a project's new tasks go on top of.
+@immutable
+final class NewTaskColumn {
+  const new({
+    required this.viewId,
+    required this.bucketId,
+    required this.defaultBucket,
+    this.topPosition,
+    this.done = false,
+    this.room,
+  });
+
+  final int viewId;
+  final int bucketId;
+
+  /// Where the server puts the tasks the column has no room for, and
+  /// reopens a repeating task marked done.
+  final Bucket defaultBucket;
+
+  /// The position of the column's first card; null when it is empty.
+  final double? topPosition;
+
+  /// The view's done column, whose tasks are done.
+  final bool done;
+
+  /// How many more tasks the column takes; null without a limit.
+  final int? room;
+}
 
 /// The New task sheet's route, so that the app shortcut does not stack a
 /// second one on it.
@@ -65,9 +101,10 @@ const Set<DateShortcut> _quickShortcuts = {
 const _chipIconBox = BoxConstraints.tightFor(width: 20, height: 20);
 
 class NewTaskSheet extends ConsumerStatefulWidget {
-  const new({this.projectId, super.key});
+  const new({this.projectId, this.column, super.key});
 
   final int? projectId;
+  final NewTaskColumn? column;
 
   @override
   ConsumerState<NewTaskSheet> createState() => _NewTaskSheetState();
@@ -80,6 +117,11 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
   DateTime? _due;
   bool _adding = false;
   String? _error;
+
+  // After a partly failed add the sheet stays open for the rest, which
+  // goes above what was placed and into the room that is left.
+  late double? _columnTop = widget.column?.topPosition;
+  late int? _columnRoom = widget.column?.room;
 
   // The plans of the lines typed so far, valid for what they were made with.
   QuickAddService? _service;
@@ -255,6 +297,7 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     final router = GoRouter.of(context);
+    final repository = ref.read(taskRepositoryProvider);
     final prefixes = _prefixes;
     setState(() {
       _adding = true;
@@ -273,6 +316,7 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
         'Quick add failed after ${partly.createdTaskIds.length} of '
         '${partly.lineCount} lines: ${partly.cause.runtimeType}',
       );
+      final left = await _placeInColumn(repository, partly.createdTaskIds);
       if (!mounted) return;
       // The lines added are queued; only the rest may be added again.
       _text.value = TextEditingValue(
@@ -285,7 +329,11 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
       );
       setState(() {
         _adding = false;
-        _error = '$added ${_failureText(l10n, partly.cause)}';
+        _error = [
+          added,
+          ?_leftInDefaultColumn(l10n, left),
+          _failureText(l10n, partly.cause),
+        ].join(' ');
       });
       return;
     } on Object catch (error) {
@@ -297,10 +345,12 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
       });
       return;
     }
+    final left = await _placeInColumn(repository, result.createdTaskIds);
     if (!mounted) return;
     navigator.pop();
 
     final warnings = [
+      ?_leftInDefaultColumn(l10n, left),
       if (result.labelsNotCreated.isNotEmpty)
         l10n.newTaskLabelsNotCreated(result.labelsNotCreated.join(', ')),
       if (result.unresolvedAssignees.isNotEmpty)
@@ -337,6 +387,72 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
       ),
     );
   }
+
+  /// Queues the board placement of the [created] tasks that went to the
+  /// column's project, as many as the column has room for, and returns how
+  /// many did not fit: those stay in the default column, as the server
+  /// would refuse to move them. A line naming another project leaves its
+  /// task there; a repeating task added to the done column is marked done
+  /// as a drop there does (`MarkCardDone`).
+  Future<int> _placeInColumn(
+    TaskRepository? repository,
+    List<int> created,
+  ) async {
+    final column = widget.column;
+    if (column == null || repository == null || created.isEmpty) return 0;
+    var left = 0;
+    try {
+      final placed = <int>[];
+      final reopened = <int>[];
+      for (final id in created) {
+        final task = await repository.watchTask(id).first;
+        if (task == null || task.projectId != widget.projectId) continue;
+        if (column.done && task.repeats) {
+          reopened.add(id);
+        } else if (_columnRoom case final room? when placed.length >= room) {
+          left++;
+        } else {
+          placed.add(id);
+        }
+      }
+      final positions = positionsOnTop(_columnTop, count: placed.length);
+      for (final (index, id) in placed.indexed) {
+        await repository.placeTask(
+          id,
+          viewId: column.viewId,
+          placement: BucketPlacement(
+            bucketId: column.bucketId,
+            position: positions[index],
+          ),
+          done: column.done ? true : null,
+        );
+      }
+      for (final id in reopened) {
+        await repository.placeTask(
+          id,
+          viewId: column.viewId,
+          placement: BucketPlacement(bucketId: column.defaultBucket.id),
+          done: true,
+        );
+      }
+      _columnTop = positions.firstOrNull ?? _columnTop;
+      if (_columnRoom case final room?) _columnRoom = room - placed.length;
+    } on Object catch (error) {
+      // The tasks are queued; without the placement they land in the
+      // view's default column.
+      _log.warning('Placing new tasks failed: ${error.runtimeType}');
+    }
+    return left;
+  }
+
+  String? _leftInDefaultColumn(AppLocalizations l10n, int count) =>
+      switch (widget.column) {
+        final column? when count > 0 => l10n.boardTasksLeftInDefaultColumn(
+          count,
+          column.defaultBucket.title,
+        ),
+        _ => null,
+      };
 
   static String _failureText(AppLocalizations l10n, Object error) =>
       switch (error) {

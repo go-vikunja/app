@@ -1,4 +1,5 @@
 import 'package:meta/meta.dart';
+import 'package:vikunja_domain/src/kanban/bucket_placement.dart';
 import 'package:vikunja_domain/src/task/id_set_change.dart';
 import 'package:vikunja_domain/src/task/relation_change.dart';
 import 'package:vikunja_domain/src/task/task.dart';
@@ -60,6 +61,7 @@ final class TaskChanges {
     this.assignees,
     this.reminders,
     this.relations,
+    this.kanban,
   });
 
   final String? title;
@@ -94,6 +96,10 @@ final class TaskChanges {
   /// relation endpoints; the server keeps the inverse edges.
   final RelationChange? relations;
 
+  /// Bucket placements by project view id, sent through the kanban
+  /// endpoints after the body; the server bumps no `updated` for them.
+  final Map<int, BucketPlacement>? kanban;
+
   bool get isEmpty =>
       title == null &&
       description == null &&
@@ -111,9 +117,15 @@ final class TaskChanges {
       (labels?.isEmpty ?? true) &&
       (assignees?.isEmpty ?? true) &&
       reminders == null &&
-      (relations?.isEmpty ?? true);
+      (relations?.isEmpty ?? true) &&
+      (kanban?.isEmpty ?? true);
 
-  /// [later] wins where both set a field.
+  /// [later] wins where both set a field. A project move in [later] drops
+  /// the earlier placements: they name the previous project's views, and
+  /// the server puts a moved task on top of the new project's buckets. So
+  /// does a [done] in [later] that differs from this one's: the moves go
+  /// after the body, and one into or out of a done bucket would set the
+  /// done state back.
   TaskChanges merge(TaskChanges later) => TaskChanges(
     title: later.title ?? title,
     description: later.description ?? description,
@@ -133,6 +145,15 @@ final class TaskChanges {
     reminders: later.reminders ?? reminders,
     relations: switch ((relations, later.relations)) {
       (final earlier?, final later?) => earlier.merge(later),
+      (final earlier, null) => earlier,
+      (null, final later) => later,
+    },
+    kanban: switch ((kanban, later.kanban)) {
+      _
+          when later.projectId != null ||
+              (later.done != null && later.done != done) =>
+        later.kanban,
+      (final earlier?, final later?) => {...earlier, ...later},
       (final earlier, null) => earlier,
       (null, final later) => later,
     },
@@ -164,7 +185,8 @@ final class TaskChanges {
       other.labels == labels &&
       other.assignees == assignees &&
       _sameReminders(other.reminders, reminders) &&
-      other.relations == relations;
+      other.relations == relations &&
+      _samePlacements(other.kanban, kanban);
 
   static bool _sameReminders(List<TaskReminder>? a, List<TaskReminder>? b) {
     if (a == null || b == null) return a == b;
@@ -173,6 +195,15 @@ final class TaskChanges {
       if (a[i] != b[i]) return false;
     }
     return true;
+  }
+
+  static bool _samePlacements(
+    Map<int, BucketPlacement>? a,
+    Map<int, BucketPlacement>? b,
+  ) {
+    if (a == null || b == null) return a == b;
+    if (a.length != b.length) return false;
+    return a.entries.every((entry) => b[entry.key] == entry.value);
   }
 
   @override
@@ -197,5 +228,37 @@ final class TaskChanges {
       null => null,
     },
     relations,
+    switch (kanban) {
+      final map? => Object.hashAllUnordered(
+        map.entries.map((entry) => Object.hash(entry.key, entry.value)),
+      ),
+      null => null,
+    },
   );
+
+  /// Names the fields set, without user text such as the title.
+  @override
+  String toString() {
+    final fields = [
+      if (title != null) 'title',
+      if (description != null) 'description',
+      if (done != null) 'done: $done',
+      if (isFavorite != null) 'isFavorite: $isFavorite',
+      if (priority != null) 'priority: $priority',
+      if (percentDone != null) 'percentDone: $percentDone',
+      if (hexColor != null) 'hexColor',
+      if (dueDate != null) 'dueDate',
+      if (startDate != null) 'startDate',
+      if (endDate != null) 'endDate',
+      if (repeatAfter != null) 'repeatAfter: $repeatAfter',
+      if (repeatMode != null) 'repeatMode: ${repeatMode!.name}',
+      if (projectId != null) 'projectId: $projectId',
+      if (labels != null) 'labels: $labels',
+      if (assignees != null) 'assignees: $assignees',
+      if (reminders != null) 'reminders: ${reminders!.length}',
+      if (relations != null) 'relations',
+      if (kanban != null) 'kanban: $kanban',
+    ];
+    return 'TaskChanges(${fields.join(', ')})';
+  }
 }

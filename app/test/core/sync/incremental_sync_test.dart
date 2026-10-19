@@ -669,6 +669,59 @@ void main() {
       expect(requestsFor('project '), isEmpty);
     });
 
+    test('the downloads of views that are gone go, in an incremental and in '
+        'a full run', () async {
+      Project work(List<ProjectView> views) => Project(
+        id: 1,
+        title: 'Work',
+        position: 1,
+        updated: base,
+        views: views,
+      );
+      final list = sampleListView(id: 10, projectId: 1);
+      final board = sampleKanbanView(id: 11, projectId: 1);
+      client.allProjects = [
+        work([list, board]),
+        ...projects().skip(1),
+      ];
+      final sync = await synced();
+      Future<void> download() async {
+        await db.listSnapshotsDao.replace('view:10', {1: 1}, loadedAt: now);
+        await db.kanbanDao.replaceBoard(
+          11,
+          buckets: const [
+            Bucket(id: 5, viewId: 11, title: 'To-Do', position: 1),
+          ],
+          slots: const {1: (bucketId: 5, position: 1)},
+          loadedPages: const {},
+          loadedAt: now,
+        );
+      }
+
+      await download();
+      client.allProjects = [
+        work([list]),
+        ...projects().skip(1),
+      ];
+      await sync.refresh();
+
+      expect((await db.kanbanDao.load(11)).buckets, isEmpty);
+      expect((await db.listSnapshotsDao.load('view:11')).loadedAt, isNull);
+      expect((await db.listSnapshotsDao.load('view:10')).loadedAt, now);
+
+      client.allProjects = [
+        work([list, board]),
+        ...projects().skip(1),
+      ];
+      await sync.refresh();
+      await download();
+      client.allProjects = projects().skip(1).toList();
+      await sync.fullResync();
+
+      expect((await db.kanbanDao.load(11)).buckets, isEmpty);
+      expect((await db.listSnapshotsDao.load('view:10')).loadedAt, isNull);
+    });
+
     test('a deleted label leaves its tasks and a renamed one shows on them '
         'without the tasks changing', () async {
       final sync = await synced();

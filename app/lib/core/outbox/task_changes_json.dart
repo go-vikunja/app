@@ -4,8 +4,10 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 
 /// `TaskChanges` as stored in the outbox and in `tasks.pending_changes`:
 /// the wire names, absent for unchanged, an empty string for a cleared date,
-/// label and assignee deltas as `{"added": [...], "removed": [...]}`, and
-/// relation deltas as `{"added": [{"kind", "other"}], "removed": [...]}`.
+/// label and assignee deltas as `{"added": [...], "removed": [...]}`,
+/// relation deltas as `{"added": [{"kind", "other"}], "removed": [...]}`,
+/// and kanban placements as `{"<view id>": {"bucket_id", "position"}}`
+/// (`position` absent to keep the server's).
 String encodeTaskChanges(TaskChanges changes) =>
     jsonEncode(taskChangesToJson(changes));
 
@@ -35,6 +37,7 @@ Map<String, Object?> taskChangesToJson(TaskChanges changes) => {
     'reminders': remindersToJson(reminders),
   if (changes.relations case final relations?)
     'relations': _relationsJson(relations),
+  if (changes.kanban case final kanban?) 'kanban': _kanbanJson(kanban),
 };
 
 TaskChanges taskChangesFromJson(Map<String, Object?> json) => TaskChanges(
@@ -64,6 +67,7 @@ TaskChanges taskChangesFromJson(Map<String, Object?> json) => TaskChanges(
     _ => null,
   },
   relations: _relationChange(json['relations']),
+  kanban: _kanban(json['kanban']),
 );
 
 /// Instants in UTC; `reminder` is absent while a relative one has none.
@@ -137,6 +141,33 @@ Set<TaskRelationRef> _refs(Object? value) => {
       if (item case {'kind': final String wire, 'other': final int other})
         if (TaskRelationKind.fromWire(wire) case final kind?)
           TaskRelationRef(kind, other),
+};
+
+Map<String, Object?> _kanbanJson(Map<int, BucketPlacement> kanban) => {
+  for (final MapEntry(key: viewId, value: placement)
+      in kanban.entries.toList()..sort((a, b) => a.key.compareTo(b.key)))
+    '$viewId': {
+      'bucket_id': placement.bucketId,
+      'position': ?placement.position,
+    },
+};
+
+Map<int, BucketPlacement>? _kanban(Object? value) => switch (value) {
+  final Map<String, Object?> map => {
+    for (final MapEntry(:key, :value) in map.entries)
+      if ((int.tryParse(key), value) case (
+        final viewId?,
+        {'bucket_id': final int bucketId},
+      ))
+        viewId: BucketPlacement(
+          bucketId: bucketId,
+          position: switch (value) {
+            {'position': final num position} => position.toDouble(),
+            _ => null,
+          },
+        ),
+  },
+  _ => null,
 };
 
 String _dateJson(DateChange change) => switch (change) {

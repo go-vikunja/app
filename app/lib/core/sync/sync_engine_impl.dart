@@ -483,6 +483,7 @@ final class DefaultSyncEngine implements SyncEngine {
     await _db.transaction(() async {
       await _db.projectsDao.upsertAll(byId.values);
       await _db.projectsDao.purgeNotIn(byId.keys);
+      await _db.kanbanDao.removeGoneViews();
       await storeSavedFilters(_db, savedFiltersIn(pseudo));
     });
     _log.info('Sync run ${current.runId}: ${byId.length} projects');

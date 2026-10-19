@@ -12,14 +12,15 @@ class ListSnapshots extends Table {
   Set<Column<Object>> get primaryKey => {listKey};
 }
 
-/// The tasks of that download and their positions in the list. No foreign
-/// key on `task_id`: the server may list a task this device does not have
-/// yet.
+/// The tasks of that download and their positions in the list, and on a
+/// kanban view's board their bucket. No foreign key on `task_id`: the
+/// server may list a task this device does not have yet.
 @DataClassName('ListSnapshotTaskRow')
 class ListSnapshotTasks extends Table {
   TextColumn get listKey => text()();
   IntColumn get taskId => integer()();
   RealColumn get position => real()();
+  IntColumn get bucketId => integer().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => {listKey, taskId};

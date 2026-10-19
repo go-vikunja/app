@@ -51,19 +51,130 @@ void main() {
             removed: {const TaskRelationRef(TaskRelationKind.related, 1)},
           ),
         ),
+        const TaskChanges(kanban: {7: BucketPlacement(bucketId: 2)}),
       ];
 
       expect(singles.map((c) => c.isEmpty), everyElement(isFalse));
     });
 
-    test('is true with empty id-set and relation changes', () {
+    test('is true with empty id-set, relation and kanban changes', () {
       expect(
         const TaskChanges(
           labels: IdSetChange(),
           assignees: IdSetChange(),
           relations: RelationChange(),
+          kanban: {},
         ).isEmpty,
         isTrue,
+      );
+    });
+  });
+
+  group('TaskChanges.merge of kanban placements', () {
+    const toDoing = BucketPlacement(bucketId: 2, position: 55);
+    const toDone = BucketPlacement(bucketId: 3, position: 10);
+    const otherView = BucketPlacement(bucketId: 20);
+    const placedOnNewProject = TaskChanges(kanban: {9: toDone});
+
+    test('per view, the later placement wins', () {
+      const earlier = TaskChanges(kanban: {7: toDoing, 8: otherView});
+      const later = TaskChanges(kanban: {7: toDone});
+
+      expect(earlier.merge(later).kanban, {7: toDone, 8: otherView});
+      expect(later.merge(earlier).kanban, {7: toDoing, 8: otherView});
+    });
+
+    test('a later placement without a position replaces one with it', () {
+      const earlier = TaskChanges(kanban: {7: toDoing});
+      const later = TaskChanges(kanban: {7: BucketPlacement(bucketId: 2)});
+
+      expect(earlier.merge(later).kanban, {
+        7: const BucketPlacement(bucketId: 2),
+      });
+    });
+
+    test('a placement on one side only is kept', () {
+      const placed = TaskChanges(kanban: {7: toDoing});
+
+      expect(placed.merge(const TaskChanges(title: 'Renamed')).kanban, {
+        7: toDoing,
+      });
+      expect(const TaskChanges(done: true).merge(placed).kanban, {7: toDoing});
+      expect(
+        const TaskChanges(done: true).merge(const TaskChanges()).kanban,
+        isNull,
+      );
+    });
+
+    test('a later done change drops a placement queued with the other done '
+        'state, as its move would set it back', () {
+      const intoDone = TaskChanges(done: true, kanban: {7: toDone});
+      const outOfDone = TaskChanges(done: false, kanban: {7: toDoing});
+
+      expect(
+        intoDone.merge(const TaskChanges(done: false)),
+        const TaskChanges(done: false),
+      );
+      expect(
+        outOfDone.merge(const TaskChanges(done: true)),
+        const TaskChanges(done: true),
+      );
+    });
+
+    test('a later done change drops a placement queued without one', () {
+      const placed = TaskChanges(kanban: {7: toDoing, 8: otherView});
+
+      expect(
+        placed.merge(const TaskChanges(done: true)),
+        const TaskChanges(done: true),
+      );
+    });
+
+    test('a later done change keeps only its own placements, so one on '
+        "another view's done bucket cannot undo it", () {
+      const intoDone = TaskChanges(done: true, kanban: {8: otherView});
+
+      expect(
+        const TaskChanges(done: false, kanban: {7: toDoing}).merge(intoDone),
+        intoDone,
+      );
+    });
+
+    test('a later change to the same done state keeps the placements', () {
+      const intoDone = TaskChanges(done: true, kanban: {7: toDone});
+
+      expect(intoDone.merge(const TaskChanges(done: true)), intoDone);
+      expect(
+        intoDone.merge(const TaskChanges(done: true, kanban: {8: otherView})),
+        const TaskChanges(done: true, kanban: {7: toDone, 8: otherView}),
+      );
+    });
+
+    test('a later project move drops the earlier placements', () {
+      const placed = TaskChanges(kanban: {7: toDoing, 8: otherView});
+
+      expect(
+        placed.merge(const TaskChanges(projectId: 2)),
+        const TaskChanges(projectId: 2),
+      );
+      expect(
+        placed.merge(const TaskChanges(projectId: 2, kanban: {9: toDone})),
+        const TaskChanges(projectId: 2, kanban: {9: toDone}),
+      );
+    });
+
+    test('a placement after a project move is kept', () {
+      expect(
+        const TaskChanges(projectId: 2).merge(placedOnNewProject),
+        const TaskChanges(projectId: 2, kanban: {9: toDone}),
+      );
+    });
+
+    test('rides along with a done change', () {
+      expect(
+        const TaskChanges(done: true)
+            .merge(const TaskChanges(kanban: {7: toDone})),
+        const TaskChanges(done: true, kanban: {7: toDone}),
       );
     });
   });
@@ -348,6 +459,33 @@ void main() {
       );
     });
 
+    test('compares kanban placements per view, in any order', () {
+      const a = BucketPlacement(bucketId: 2, position: 55);
+      const b = BucketPlacement(bucketId: 20);
+
+      expect(
+        const TaskChanges(kanban: {7: a, 8: b}),
+        const TaskChanges(kanban: {8: b, 7: a}),
+      );
+      expect(
+        const TaskChanges(kanban: {7: a, 8: b}).hashCode,
+        const TaskChanges(kanban: {8: b, 7: a}).hashCode,
+      );
+      expect(
+        const TaskChanges(kanban: {7: a}),
+        isNot(const TaskChanges(kanban: {8: a})),
+      );
+      expect(
+        const TaskChanges(kanban: {7: a}),
+        isNot(const TaskChanges(kanban: {7: b})),
+      );
+      expect(
+        const TaskChanges(kanban: {7: a}),
+        isNot(const TaskChanges(kanban: {7: a, 8: b})),
+      );
+      expect(const TaskChanges(kanban: {}), isNot(const TaskChanges()));
+    });
+
     test('compares reminders element by element', () {
       final morning = TaskReminder(reminder: monday);
       const hourBefore = TaskReminder(
@@ -386,6 +524,28 @@ void main() {
         const TaskChanges(reminders: []),
         const TaskChanges(reminders: []),
       );
+    });
+  });
+
+  group('toString', () {
+    test('names the fields set without their user text', () {
+      final text = TaskChanges(
+        title: 'Secret plan',
+        description: '<p>Hidden</p>',
+        done: true,
+        dueDate: DateChange.set(monday),
+        kanban: const {7: BucketPlacement(bucketId: 2, position: 55)},
+      ).toString();
+
+      expect(text, isNot(contains('Secret')));
+      expect(text, isNot(contains('Hidden')));
+      expect(text, contains('title'));
+      expect(text, contains('done: true'));
+      expect(text, contains('BucketPlacement(2, 55.0)'));
+    });
+
+    test('is short without any field', () {
+      expect(const TaskChanges().toString(), 'TaskChanges()');
     });
   });
 }

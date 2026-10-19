@@ -35,6 +35,12 @@ final class FakeSyncClient implements VikunjaReadClient {
   /// at 0, and only a view's task list shows them.
   final Map<int, Map<int, double>> viewPositions = {};
 
+  /// Each kanban view's buckets by view id, and the bucket and position of
+  /// each of its tasks by view id, then task id: what [buckets] serves. A
+  /// bucket's count is the number of tasks of [allTasks] in it.
+  final Map<int, List<Bucket>> viewBuckets = {};
+  final Map<int, Map<int, ({int bucketId, double position})>> bucketSlots = {};
+
   /// Called before every request with its description; throwing fails the
   /// request, awaiting holds it.
   Future<void> Function(String request)? beforeRequest;
@@ -52,6 +58,8 @@ final class FakeSyncClient implements VikunjaReadClient {
   late final FakeNotificationsPort notifications = FakeNotificationsPort(this);
   @override
   late final FakeSubscriptionsPort subscriptions = FakeSubscriptionsPort(this);
+  @override
+  late final FakeBucketsPort buckets = FakeBucketsPort(this);
 
   @override
   AvatarsPort get avatars => throw UnimplementedError();
@@ -437,6 +445,95 @@ final class FakeTasksPort implements TasksPort {
     return '${query.filter ?? '(all)'}'
         '${descending.isEmpty ? '' : ' sort=${descending.join(',')}'}'
         ' per_page=${query.perPage} page=${query.page}';
+  }
+}
+
+/// The boards of [FakeSyncClient.viewBuckets] like 2.7.0 through the real
+/// port: a page size per bucket capped at the server's, cards by position
+/// then id, each with its position and bucket. A view without buckets
+/// answers `NotFound` 3014.
+final class FakeBucketsPort implements BucketsPort {
+  new(this._client);
+
+  final FakeSyncClient _client;
+
+  /// The `filterTimezone` of every read, in order.
+  final List<String?> timezones = [];
+
+  @override
+  Future<List<BoardBucket>> board(
+    int projectId,
+    int viewId, {
+    int perPage = 50,
+    String? filterTimezone,
+  }) async {
+    await _client._request(
+      'board project $projectId view $viewId per_page=$perPage',
+    );
+    timezones.add(filterTimezone);
+    final buckets = _client.viewBuckets[viewId];
+    if (buckets == null) throw const NotFound(code: 3014);
+    final size = perPage > _client.maxPerPage ? _client.maxPerPage : perPage;
+    return [
+      for (final bucket in buckets)
+        _boardBucket(projectId, bucket, _cardsIn(projectId, bucket), size),
+    ];
+  }
+
+  BoardBucket _boardBucket(
+    int projectId,
+    Bucket bucket,
+    List<Task> cards,
+    int size,
+  ) => BoardBucket(
+    bucket: Bucket(
+      id: bucket.id,
+      viewId: bucket.viewId,
+      title: bucket.title,
+      limit: bucket.limit,
+      count: cards.length,
+      position: bucket.position,
+    ),
+    tasks: [
+      for (final task in cards.take(size)) task.copyWith(bucketId: bucket.id),
+    ],
+  );
+
+  @override
+  Future<Page<Task>> bucketTasks(
+    int projectId,
+    int viewId,
+    int bucketId, {
+    required int page,
+    int perPage = 50,
+    String? filterTimezone,
+  }) async {
+    await _client._request(
+      'bucket $bucketId of view $viewId page $page per_page=$perPage',
+    );
+    timezones.add(filterTimezone);
+    final buckets = _client.viewBuckets[viewId];
+    if (buckets == null) throw const NotFound(code: 3014);
+    final bucket = buckets.where((bucket) => bucket.id == bucketId).firstOrNull;
+    final cards = bucket == null ? <Task>[] : _cardsIn(projectId, bucket);
+    return _client._page(
+      [for (final task in cards) task.copyWith(bucketId: bucketId)],
+      page: page,
+      perPage: perPage,
+    );
+  }
+
+  List<Task> _cardsIn(int projectId, Bucket bucket) {
+    final slots = _client.bucketSlots[bucket.viewId] ?? const {};
+    return [
+      for (final task in _client.allTasks)
+        if (slots[task.id] case final slot?
+            when task.projectId == projectId && slot.bucketId == bucket.id)
+          task.copyWith(position: slot.position),
+    ]..sort((a, b) {
+      final byPosition = a.position.compareTo(b.position);
+      return byPosition != 0 ? byPosition : a.id.compareTo(b.id);
+    });
   }
 }
 

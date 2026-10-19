@@ -283,7 +283,7 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 6);
+    await verifier.migrateAndValidate(db, 7);
 
     final parent = (await db.tasksDao.find(60))!;
     expect(parent.subtasks.map((task) => task.id), [61]);
@@ -309,6 +309,59 @@ void main() {
     expect(await db.listPreferencesDao.read('upcoming'), isNull);
     await db.listPreferencesDao.write('upcoming', '{}');
     expect(await db.listPreferencesDao.read('upcoming'), '{}');
+  });
+
+  test('v6 → v7 keeps the list snapshots and adds the kanban buckets and '
+      "the cards' buckets", () async {
+    final verifier = SchemaVerifier(GeneratedHelper());
+    final schema = await verifier.schemaAt(6);
+    schema.rawDatabase
+      ..execute(
+        'INSERT INTO projects (id, title, description, identifier, hex_color, '
+        'parent_project_id, is_archived, is_favorite, position, owner_id, '
+        'created, updated) '
+        "VALUES (7, 'Work', '', '', '', 0, 0, 0, 1.0, NULL, NULL, NULL)",
+      )
+      ..execute(
+        'INSERT INTO project_views (id, project_id, title, kind, position, '
+        'filter_json, bucket_configuration_mode, default_bucket_id, '
+        'done_bucket_id) '
+        "VALUES (70, 7, 'List', 'list', 100.0, NULL, 'none', 0, 0), "
+        "(71, 7, 'Kanban', 'kanban', 400.0, NULL, 'manual', 11, 13)",
+      )
+      ..execute(
+        'INSERT INTO list_snapshots (list_key, loaded_at) '
+        "VALUES ('view:70', 1760000000000)",
+      )
+      ..execute(
+        'INSERT INTO list_snapshot_tasks (list_key, task_id, position) '
+        "VALUES ('view:70', 60, 2.0), ('view:70', 61, 1.0)",
+      );
+    final db = AppDatabase(schema.newConnection());
+    addTearDown(db.close);
+
+    await verifier.migrateAndValidate(db, 7);
+
+    final snapshot = await db.listSnapshotsDao.load('view:70');
+    expect(snapshot.positions, {61: 1, 60: 2});
+    expect(
+      snapshot.loadedAt,
+      DateTime.fromMillisecondsSinceEpoch(1760000000000, isUtc: true),
+    );
+    expect((await db.kanbanDao.load(71)).buckets, isEmpty);
+    await db.kanbanDao.replaceBoard(
+      71,
+      buckets: const [
+        Bucket(id: 11, viewId: 71, title: 'To-Do', count: 1, position: 100),
+      ],
+      slots: const {60: (bucketId: 11, position: 65536)},
+      loadedPages: const {},
+      loadedAt: DateTime.utc(2026, 10, 19, 12),
+    );
+    final board = await db.kanbanDao.load(71);
+    expect(board.buckets.single.title, 'To-Do');
+    expect(board.slots, {60: (bucketId: 11, position: 65536.0)});
+    expect(board.loadedAt, DateTime.utc(2026, 10, 19, 12));
   });
 }
 

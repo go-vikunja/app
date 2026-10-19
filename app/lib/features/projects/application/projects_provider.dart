@@ -43,6 +43,12 @@ Stream<ProjectListSource> projectListSource(
         ) ??
     const Stream.empty();
 
+/// Stays loading while no account is signed in.
+@riverpod
+Stream<BoardSource> boardSource(Ref ref, int projectId, int viewId) =>
+    ref.watch(taskRepositoryProvider)?.watchBoard(projectId, viewId) ??
+    const Stream.empty();
+
 /// [listKey] from `listKeyFor`; the defaults while nobody is signed in.
 @riverpod
 Stream<ViewPreferences> viewPreferences(Ref ref, String listKey) =>

@@ -1,4 +1,6 @@
 export 'src/attachments/attachment_preview.dart';
+export 'src/kanban/board.dart';
+export 'src/kanban/item_position.dart';
 export 'src/links/attachment_urls.dart';
 export 'src/links/task_links.dart';
 export 'src/links/task_reference.dart';

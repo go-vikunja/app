@@ -15,8 +15,11 @@ String describeSyncProblem(AppLocalizations l10n, SyncProblem problem) {
     NotFound(code: 3001) => l10n.syncProblemProjectMissing,
     NotFound(code: 8002) => l10n.syncProblemLabelMissing,
     NotFound(code: 1005) => l10n.syncProblemUserMissing,
+    NotFound(code: 10001 || 3014) ||
+    DomainError(code: 10002) => l10n.syncProblemColumnMissing,
     NotFound() => l10n.syncProblemTaskMissing,
     DomainError(code: 3008) => l10n.syncProblemProjectArchived,
+    DomainError(code: 10004) => l10n.syncProblemColumnFull,
     DomainError(code: 4023) => l10n.syncProblemRelationCycle,
     DomainError(code: 4010) => l10n.syncProblemRelationToItself,
     DomainError(code: 4007) => l10n.syncProblemRejected,

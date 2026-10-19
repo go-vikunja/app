@@ -249,6 +249,90 @@ final class ProjectListSourceFamily extends $Family
   String toString() => r'projectListSourceProvider';
 }
 
+/// Stays loading while no account is signed in.
+
+@ProviderFor(boardSource)
+final boardSourceProvider = BoardSourceFamily._();
+
+/// Stays loading while no account is signed in.
+
+final class BoardSourceProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<BoardSource>,
+          BoardSource,
+          Stream<BoardSource>
+        >
+    with $FutureModifier<BoardSource>, $StreamProvider<BoardSource> {
+  /// Stays loading while no account is signed in.
+  BoardSourceProvider._({
+    required BoardSourceFamily super.from,
+    required (int, int) super.argument,
+  }) : super(
+         retry: null,
+         name: r'boardSourceProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$boardSourceHash();
+
+  @override
+  String toString() {
+    return r'boardSourceProvider'
+        ''
+        '$argument';
+  }
+
+  @$internal
+  @override
+  $StreamProviderElement<BoardSource> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<BoardSource> create(Ref ref) {
+    final argument = this.argument as (int, int);
+    return boardSource(ref, argument.$1, argument.$2);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is BoardSourceProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$boardSourceHash() => r'792dcddf997f1ba671376c8acaae9e1616e8c416';
+
+/// Stays loading while no account is signed in.
+
+final class BoardSourceFamily extends $Family
+    with $FunctionalFamilyOverride<Stream<BoardSource>, (int, int)> {
+  BoardSourceFamily._()
+    : super(
+        retry: null,
+        name: r'boardSourceProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// Stays loading while no account is signed in.
+
+  BoardSourceProvider call(int projectId, int viewId) =>
+      BoardSourceProvider._(argument: (projectId, viewId), from: this);
+
+  @override
+  String toString() => r'boardSourceProvider';
+}
+
 /// [listKey] from `listKeyFor`; the defaults while nobody is signed in.
 
 @ProviderFor(viewPreferences)

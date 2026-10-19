@@ -180,6 +180,46 @@ void main() {
         ),
       );
     });
+
+    test('kanban placements are keyed by view, the position left out to '
+        "keep the server's", () {
+      const changes = TaskChanges(
+        done: true,
+        kanban: {
+          81: BucketPlacement(bucketId: 13, position: 32768.5),
+          80: BucketPlacement(bucketId: 3),
+        },
+      );
+
+      final json = encodeTaskChanges(changes);
+
+      expect(jsonDecode(json), {
+        'done': true,
+        'kanban': {
+          '80': {'bucket_id': 3},
+          '81': {'bucket_id': 13, 'position': 32768.5},
+        },
+      });
+      expect(json.indexOf('"80"'), lessThan(json.indexOf('"81"')));
+      expect(decodeTaskChanges(json), changes);
+      expect(
+        decodeTaskChanges('{"kanban":{"5":{"bucket_id":2,"position":7}}}')
+            .kanban,
+        {5: const BucketPlacement(bucketId: 2, position: 7)},
+      );
+    });
+
+    test('a payload from before step 20 places nothing; a placement without '
+        'a view or bucket id is skipped', () {
+      expect(decodeTaskChanges('{"done":true}').kanban, isNull);
+      expect(
+        decodeTaskChanges(
+          '{"kanban":{"x":{"bucket_id":1},"6":{"position":2},'
+          '"7":{"bucket_id":4}}}',
+        ).kanban,
+        {7: const BucketPlacement(bucketId: 4)},
+      );
+    });
   });
 
   group('NewTask', () {

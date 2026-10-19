@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:vikunja_api/src/dto/bucket_codec.dart';
 import 'package:vikunja_api/src/dto/json_values.dart';
 import 'package:vikunja_api/src/dto/label_codec.dart';
 import 'package:vikunja_api/src/dto/subscription_codec.dart';
@@ -176,7 +177,8 @@ final class _TasksWriteApi implements TasksWritePort {
     );
     final sentRelations =
         relations != null && await _sendRelations(id, relations, answer);
-    final sentAny = sentLabelsOrAssignees || sentRelations;
+    final changedByMoves = await _sendPlacements(id, changes.kanban, answer);
+    final sentAny = sentLabelsOrAssignees || sentRelations || changedByMoves;
     // A move is answered with the identifier of the old project (the server
     // builds it before moving). The server keeps only one reminder per
     // instant but answers with the list from before that: new reminders as
@@ -426,6 +428,44 @@ final class _TasksWriteApi implements TasksWritePort {
     }
   }
 
+  /// Per view, the move and then, when the task landed where it was sent,
+  /// the position. Returns whether a move changed the task itself (into or
+  /// out of a done bucket, a repeating task reopened), which bumps its
+  /// `updated`; a plain move leaves the task as it is and costs no read.
+  Future<bool> _sendPlacements(
+    int id,
+    Map<int, BucketPlacement>? placements,
+    Task stored,
+  ) async {
+    var changed = false;
+    for (final MapEntry(key: viewId, value: placement)
+        in (placements ?? const {}).entries) {
+      final move = _transport.decode(
+        await _transport.send(
+          _transport.updateMethod,
+          '/projects/${stored.projectId}/views/$viewId/buckets/'
+          '${placement.bucketId}/tasks',
+          body: {'task_id': id},
+        ),
+        parseBucketMove,
+      );
+      if (move.task case final echoed? when echoed.updated != stored.updated) {
+        changed = true;
+      }
+      // A repeating task moved into the done bucket is reopened in the
+      // default bucket; a position would be for the wrong bucket.
+      if (placement.position case final position?
+          when move.bucketId == placement.bucketId) {
+        await _transport.send(
+          _transport.updateMethod,
+          '/tasks/$id/position',
+          body: {'project_view_id': viewId, 'position': position},
+        );
+      }
+    }
+    return changed;
+  }
+
   Future<Task> _read(int id) async {
     final response = await _transport.send('GET', '/tasks/$id');
     return _transport.decode<Task>(response, parseTask);
@@ -467,6 +507,13 @@ final class _WriteTransport {
   String get createMethod => switch (version) {
     ApiVersion.v2 => 'POST',
     ApiVersion.v1 => 'PUT',
+  };
+
+  /// The verb of the kanban move and position writes, the reverse of
+  /// [createMethod].
+  String get updateMethod => switch (version) {
+    ApiVersion.v2 => 'PUT',
+    ApiVersion.v1 => 'POST',
   };
 
   Future<Response<Object?>> send(

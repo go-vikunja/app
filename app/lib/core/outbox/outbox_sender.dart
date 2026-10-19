@@ -376,7 +376,7 @@ final class OutboxSender {
       case OutboxOperationKind.createTask:
         await _applyCreate(op, task!);
       case OutboxOperationKind.updateTask:
-        await _applyUpdate(op, task!);
+        await _applyUpdate(op, task!, changes!);
       case OutboxOperationKind.deleteTask:
         await _applyDelete(op);
     }
@@ -454,14 +454,19 @@ final class OutboxSender {
   }
 
   /// The server's task replaces the row, except for the fields a later op
-  /// of the task still carries. Nothing is written after dispose: sign-out
-  /// closes the database behind a request in flight, and an op left in
-  /// `sending` is reset at the next start and sent again.
-  Future<void> _applyUpdate(OutboxRow op, Task task) async {
+  /// of the task still carries, and the sent kanban placements move the
+  /// card on the downloaded boards, which no sync would. Nothing is
+  /// written after dispose: sign-out closes the database behind a request
+  /// in flight, and an op left in `sending` is reset at the next start and
+  /// sent again.
+  Future<void> _applyUpdate(OutboxRow op, Task task, TaskChanges sent) async {
     if (_disposed) return;
     await _db.transaction(() async {
       await _db.outboxDao.remove(op.id);
       await _db.tasksDao.upsertAll([task]);
+      if (sent.kanban case final placements? when placements.isNotEmpty) {
+        await _db.kanbanDao.applySentPlacements(task.id, placements);
+      }
     });
   }
 

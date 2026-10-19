@@ -1,11 +1,13 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/app/widgets/adaptive_navigation_bar.dart';
 import 'package:vikunja_mobile/core/auth/web_authenticator.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
@@ -14,6 +16,7 @@ import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
 import 'package:vikunja_mobile/features/home/presentation/reauth_banner.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connection_error_card.dart';
+import 'package:vikunja_mobile/features/projects/presentation/board/board_column.dart';
 import 'package:vikunja_mobile/features/quick_add/application/quick_add_plan.dart';
 import 'package:vikunja_mobile/features/quick_add/application/quick_add_service_provider.dart';
 import 'package:vikunja_mobile/features/quick_add/presentation/magic_suggestions.dart';
@@ -123,6 +126,66 @@ void main() {
               '<p>Some description text that is long enough to wrap.</p>',
         ),
     ];
+    return data;
+  }
+
+  /// A project whose kanban view opens: four columns, a long title, a full
+  /// one, the done one and an empty one.
+  SyncFakes kanbanData({bool archived = false}) {
+    final now = DateTime.now();
+    final data = richData();
+    final kanban = sampleKanbanView(
+      id: 14,
+      projectId: 1,
+      title: 'A kanban view with a long title',
+      defaultBucketId: 21,
+      doneBucketId: 23,
+    );
+    data.projects.all = [
+      sampleProject(
+        id: 1,
+        title: 'Work with a very long project title',
+        archived: archived,
+        views: [sampleListView(id: 11, projectId: 1), kanban],
+      ),
+    ];
+    data.tasks.all = [
+      ...data.tasks.all,
+      sampleTask(id: 7, title: 'Finished', done: true, doneAt: now),
+    ];
+    data.tasks.setBoard(
+      kanban,
+      buckets: const [
+        Bucket(
+          id: 21,
+          viewId: 14,
+          title: 'A column whose title is long enough to wrap twice',
+          count: 30,
+          position: 1,
+        ),
+        Bucket(
+          id: 22,
+          viewId: 14,
+          title: 'Doing',
+          count: 2,
+          limit: 2,
+          position: 2,
+        ),
+        Bucket(id: 23, viewId: 14, title: 'Done', count: 1, position: 3),
+        Bucket(id: 24, viewId: 14, title: 'Empty', position: 4),
+      ],
+      snapshot: const {
+        1: (bucketId: 21, position: 1),
+        2: (bucketId: 21, position: 2),
+        3: (bucketId: 21, position: 3),
+        4: (bucketId: 21, position: 4),
+        5: (bucketId: 22, position: 5),
+        6: (bucketId: 22, position: 6),
+        7: (bucketId: 23, position: 7),
+      },
+      loadedAt: now,
+    );
+    data.listPreferences.lastViews[1] = 14;
     return data;
   }
 
@@ -644,6 +707,92 @@ void main() {
           }
           expect(tester.takeException(), isNull);
           await close();
+        },
+        variant: const TargetPlatformVariant({
+          TargetPlatform.android,
+          TargetPlatform.iOS,
+        }),
+      );
+    }
+
+    for (final (name, size) in const [
+      ('on a small phone', Size(320, 640)),
+      ('beside the rail on a phone in landscape', Size(740, 360)),
+      ('on a tablet in landscape', Size(1280, 800)),
+    ]) {
+      testWidgets('a kanban board $name at 200 % in dark mode '
+          '(${locale.languageCode})', (tester) async {
+        usePhoneSurface(tester, logicalSize: size);
+        useAccessibilityExtremes(tester);
+        useLocale(tester, locale);
+        await pumpSignedInApp(tester, sync: kanbanData());
+        containerOf(tester).read(appRouterProvider).go(AppRoutes.project(1));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(BoardColumnView), findsNWidgets(4));
+        expect(tester.takeException(), isNull);
+        await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+        await scrollToEnd(tester, find.byType(BoardColumnView).first);
+        expect(tester.takeException(), isNull);
+
+        final board = tester.state<ScrollableState>(
+          find
+              .descendant(
+                of: find.byType(SingleChildScrollView),
+                matching: find.byType(Scrollable),
+              )
+              .first,
+        );
+        for (var i = 0; i < 20 && board.position.extentAfter > 0; i++) {
+          board.position.jumpTo(
+            (board.position.pixels + 300).clamp(
+              0,
+              board.position.maxScrollExtent,
+            ),
+          );
+          await tester.pumpAndSettle();
+        }
+        expect(board.position.extentAfter, 0);
+        expect(find.text('Empty'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+    }
+
+    for (final archived in [false, true]) {
+      testWidgets(
+        'in landscape the columns of ${archived ? 'an archived' : 'a'} '
+        "project's board end above the tab bar, or at the screen's bottom "
+        'beside the rail, at 200 % in dark mode (${locale.languageCode})',
+        (tester) async {
+          final apple = defaultTargetPlatform == TargetPlatform.iOS;
+          final size = apple ? const Size(844, 390) : const Size(740, 360);
+          usePhoneSurface(tester, logicalSize: size);
+          if (apple) {
+            tester.view.padding = const FakeViewPadding(
+              left: 47 * 3,
+              right: 47 * 3,
+              bottom: 21 * 3,
+            );
+            addTearDown(tester.view.resetPadding);
+          }
+          useAccessibilityExtremes(tester);
+          useLocale(tester, locale);
+          await pumpSignedInApp(tester, sync: kanbanData(archived: archived));
+          containerOf(tester).read(appRouterProvider).go(AppRoutes.project(1));
+          await tester.pumpAndSettle();
+
+          final visibleBottom = apple
+              ? tester.getRect(find.byType(AdaptiveNavigationBar)).top
+              : size.height;
+          for (final column in find.byType(BoardColumnView).evaluate()) {
+            expect(
+              tester
+                  .getRect(find.byElementPredicate((e) => e == column))
+                  .bottom,
+              lessThanOrEqualTo(visibleBottom),
+            );
+          }
+          expect(tester.takeException(), isNull);
         },
         variant: const TargetPlatformVariant({
           TargetPlatform.android,

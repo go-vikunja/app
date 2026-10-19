@@ -23,8 +23,10 @@ import 'package:vikunja_mobile/features/common/presentation/list_note.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
 import 'package:vikunja_mobile/features/common/presentation/option_sheet.dart';
 import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
+import 'package:vikunja_mobile/features/projects/application/board_moves.dart';
 import 'package:vikunja_mobile/features/projects/application/project_list_model.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
+import 'package:vikunja_mobile/features/projects/presentation/board/project_board.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_view_labels.dart';
 import 'package:vikunja_mobile/features/sync/application/offline_state.dart';
 import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
@@ -39,20 +41,23 @@ import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
 
 enum _Action { toggleShowDone, follow }
 
-/// What the list was last built from, kept on screen while another view or
-/// its preferences load.
+/// What the view was last built from (a [ProjectListSource] or a
+/// [BoardSource]), kept on screen while another view or its preferences
+/// load.
 typedef _Shown = ({
   Object? repository,
-  ProjectListSource source,
+  Object source,
   ViewFilterKind kind,
   ProjectView? view,
   ViewPreferences preferences,
 });
 
-/// A project's list views from the local database: the web's subtask
-/// nesting and sort, the view's own filter where the device can evaluate
-/// it and the server's last answer where it cannot. An archived project
-/// says so and offers no new task, as the server refuses changes to it.
+/// A project's list and kanban views from the local database. A list view
+/// has the web's subtask nesting and sort, the view's own filter where the
+/// device can evaluate it and the server's last answer where it cannot; a
+/// kanban view is a board as of its last download with this device's
+/// changes on top. An archived project says so and offers no new task, as
+/// the server refuses changes to it.
 class ProjectTasksScreen extends ConsumerStatefulWidget {
   const new({required this.projectId, super.key});
 
@@ -70,6 +75,14 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
   /// view opens.
   static const _staleAfter = Duration(minutes: 5);
 
+  /// After the board's own moves were sent, it downloads again this much
+  /// later, so the server's positions and done column effects show.
+  static const _afterPlacementsSent = Duration(seconds: 2);
+
+  /// Room after the last item of a board's column, to scroll it clear of
+  /// the floating action button.
+  static const _fabRoom = 80.0;
+
   late final _follow = FollowController(
     entity: SubscriptionEntity.project,
     read: (id) => _subscriptions().forProject(id),
@@ -81,6 +94,10 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
   int? _rememberedViewId;
   int? _chosenViewId;
   var _viewId = 0;
+  var _showsBoard = false;
+  int? _placementsQueuedIn;
+  Set<int> _queuedPlacementIds = const {};
+  Timer? _afterPlacements;
   final _quietlyRefreshed = <int>{};
   final _quietlyRefreshing = <int>{};
   final _quietFailures = <int, Object>{};
@@ -103,6 +120,7 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
 
   @override
   void dispose() {
+    _afterPlacements?.cancel();
     _follow.dispose();
     super.dispose();
   }
@@ -131,9 +149,14 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
   ProviderListenable<Object?> get repositoryProvider => taskRepositoryProvider;
 
   @override
-  Future<void>? startRefresh() => ref
-      .read(taskRepositoryProvider)
-      ?.refreshProjectList(widget.projectId, viewId: _viewId);
+  Future<void>? startRefresh() => _download(_viewId, board: _showsBoard);
+
+  Future<void>? _download(int viewId, {required bool board}) {
+    final repository = ref.read(taskRepositoryProvider);
+    return board
+        ? repository?.refreshBoard(widget.projectId, viewId)
+        : repository?.refreshProjectList(widget.projectId, viewId: viewId);
+  }
 
   @override
   void onRepositoryReplaced() {
@@ -141,19 +164,50 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
     clearLeavingTasks();
     _quietFailures.clear();
     _lastShown = null;
+    _placementsQueuedIn = null;
+    _queuedPlacementIds = const {};
+    _afterPlacements?.cancel();
   }
 
-  bool _isStale(ListSnapshot snapshot) {
-    final loadedAt = snapshot.loadedAt;
-    return loadedAt == null ||
-        ref.read(clockProvider)().difference(loadedAt) >= _staleAfter;
-  }
+  static DateTime? _loadedAtOf(Object source) => switch (source) {
+    BoardSource(:final loadedAt) => loadedAt,
+    ProjectListSource(:final snapshot) => snapshot.loadedAt,
+    _ => null,
+  };
 
-  void _refreshWhenStale(int viewId, ListSnapshot snapshot) {
+  bool _isStale(DateTime? loadedAt) =>
+      loadedAt == null ||
+      ref.read(clockProvider)().difference(loadedAt) >= _staleAfter;
+
+  void _refreshWhenStale(
+    int viewId,
+    DateTime? loadedAt, {
+    required bool board,
+  }) {
     if (viewId == 0 || !_quietlyRefreshed.add(viewId)) return;
-    if (!_isStale(snapshot)) return;
+    if (!_isStale(loadedAt)) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) unawaited(_refreshQuietly(viewId));
+      if (mounted) unawaited(_refreshQuietly(viewId, board: board));
+    });
+  }
+
+  /// Shortly after one of the board's queued placements left the queue
+  /// (sent or discarded), and no other one meanwhile, the board downloads
+  /// again; one that stays queued, failed, holds back nothing.
+  void _followPlacements(int viewId, BoardSource? source) {
+    if (source == null) return;
+    final before = _placementsQueuedIn == viewId
+        ? _queuedPlacementIds
+        : const <int>{};
+    _placementsQueuedIn = viewId;
+    _queuedPlacementIds = source.queued.keys.toSet();
+    if (before.every(_queuedPlacementIds.contains)) return;
+    _afterPlacements?.cancel();
+    _afterPlacements = Timer(_afterPlacementsSent, () {
+      _afterPlacements = null;
+      if (mounted && _showsBoard && _viewId == viewId) {
+        unawaited(_refreshQuietly(viewId, board: true));
+      }
     });
   }
 
@@ -171,24 +225,22 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
     final stale =
         shown != null &&
         shown.view?.id == viewId &&
-        _isStale(shown.source.snapshot);
+        _isStale(_loadedAtOf(shown.source));
     if (!stale && !_quietFailures.containsKey(viewId)) return;
     setState(() {
       _quietFailures.remove(viewId);
       if (refreshFailure is NetworkFailure) clearRefreshFailure();
     });
-    unawaited(_refreshQuietly(viewId));
+    unawaited(_refreshQuietly(viewId, board: _showsBoard));
   }
 
   /// Offline the list shows the local data with the offline notice; a
   /// failure here is not the user's to handle, it only picks the words of
   /// a view never downloaded.
-  Future<void> _refreshQuietly(int viewId) async {
-    _quietlyRefreshing.add(viewId);
+  Future<void> _refreshQuietly(int viewId, {required bool board}) async {
+    if (!_quietlyRefreshing.add(viewId)) return;
     try {
-      await ref
-          .read(taskRepositoryProvider)
-          ?.refreshProjectList(widget.projectId, viewId: viewId);
+      await _download(viewId, board: board);
     } on Object catch (error) {
       if (mounted) setState(() => _quietFailures[viewId] = error);
     } finally {
@@ -282,7 +334,7 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
         project.id: project,
     };
     final project = projectsById[widget.projectId];
-    final views = listViewsOf(project);
+    final views = shownViewsOf(project);
     final viewId = _viewId = resolveViewId(
       views,
       remembered: _chosenViewId ?? _rememberedViewId,
@@ -293,19 +345,32 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
       ),
     );
     final view = views.where((view) => view.id == viewId).firstOrNull;
+    final board = _showsBoard = view?.kind == ProjectViewKind.kanban;
     final kind = view == null
         ? ViewFilterKind.openOnly
         : classifyViewFilter(view.filter);
     final listKey = listKeyFor(projectId: widget.projectId, viewId: viewId);
-    final preferencesValue = ref.watch(viewPreferencesProvider(listKey));
+    final preferencesValue = board
+        ? const AsyncData(ViewPreferences())
+        : ref.watch(viewPreferencesProvider(listKey));
     final preferences = preferencesValue.value ?? const ViewPreferences();
-    final source = ref.watch(
-      projectListSourceProvider(
-        widget.projectId,
-        viewId: viewId,
-        includeDone: showsDoneTasks(kind, preferences),
-      ),
-    );
+    final AsyncValue<Object> source;
+    if (board) {
+      final boardSource = boardSourceProvider(widget.projectId, viewId);
+      ref.listen(
+        boardSource,
+        (_, next) => _followPlacements(viewId, next.value),
+      );
+      source = ref.watch(boardSource);
+    } else {
+      source = ref.watch(
+        projectListSourceProvider(
+          widget.projectId,
+          viewId: viewId,
+          includeDone: showsDoneTasks(kind, preferences),
+        ),
+      );
+    }
     final repository = ref.watch(taskRepositoryProvider);
     final now = ref.watch(clockTickProvider);
     final minimumPriority = ref.watch(minimumPriorityProvider);
@@ -318,9 +383,9 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
         _rememberedLoaded &&
         !(projects.isLoading && !projects.hasValue) &&
         !(preferencesValue.isLoading && !preferencesValue.hasValue);
-    final current = ready ? source : const AsyncLoading<ProjectListSource>();
+    final current = ready ? source : const AsyncLoading<Object>();
     final lastShown = _lastShown;
-    final AsyncValue<ProjectListSource> shownData;
+    final AsyncValue<Object> shownData;
     switch (current) {
       // Not while a failed load is retried: the rows of another view would
       // pass for this one's.
@@ -335,7 +400,7 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
           view: view,
           preferences: preferences,
         );
-        _refreshWhenStale(viewId, value.snapshot);
+        _refreshWhenStale(viewId, _loadedAtOf(value), board: board);
         shownData = current;
       default:
         shownData = current;
@@ -349,17 +414,26 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
           )
         : null;
     final downloadFailure = refreshFailure ?? _quietFailures[viewId];
+    final offlineOrUnreachable = offline || downloadFailure is NetworkFailure;
+    final downloadFailed =
+        downloadFailure != null && downloadFailure is! NetworkFailure;
+    final archivedNote = archived
+        ? ListNote(icon: Icons.archive_outlined, text: l10n.projectArchivedNote)
+        : null;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(project?.displayTitle(l10n) ?? l10n.projectUnknownTitle),
         actions: [
           RefreshButton(onPressed: refreshing ? null : refresh),
-          IconButton(
-            onPressed: () => unawaited(_chooseSort(listKey, preferences)),
-            tooltip: l10n.projectSortCurrent(sortLabel(l10n, preferences.sort)),
-            icon: const Icon(Icons.sort),
-          ),
+          if (!board)
+            IconButton(
+              onPressed: () => unawaited(_chooseSort(listKey, preferences)),
+              tooltip: l10n.projectSortCurrent(
+                sortLabel(l10n, preferences.sort),
+              ),
+              icon: const Icon(Icons.sort),
+            ),
           PopupMenuButton<_Action>(
             tooltip: l10n.moreActions,
             onSelected: (action) => switch (action) {
@@ -367,7 +441,7 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
               _Action.follow => unawaited(_toggleFollow()),
             },
             itemBuilder: (context) => [
-              if (kind == ViewFilterKind.openOnly)
+              if (!board && kind == ViewFilterKind.openOnly)
                 CheckedPopupMenuItem(
                   value: _Action.toggleShowDone,
                   checked: preferences.showDone,
@@ -392,38 +466,55 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
         shownData,
         loadingLabel: l10n.projectTasksLoading,
         header: switcher,
+        // A board's columns scroll inside its horizontal scroll.
+        notificationPredicate: board
+            ? (notification) => notification.metrics.axis == Axis.vertical
+            : defaultScrollNotificationPredicate,
         builder: (value, notice) {
           final shown = _lastShown;
-          final shownKind = shown?.kind ?? kind;
           final shownView = shown == null ? view : shown.view;
+          if (value is BoardSource) {
+            final boardView = shownView ?? value.view;
+            if (boardView == null) return const SizedBox.shrink();
+            return _BoardBody(
+              projectId: widget.projectId,
+              view: boardView,
+              source: value,
+              archived: archived,
+              offline: offlineOrUnreachable,
+              downloadFailed: downloadFailed,
+              notes: [?switcher, ?notice, ?archivedNote],
+              now: now,
+              minimumPriority: minimumPriority,
+              pendingIds: pendingIds,
+              bottomPadding: archived ? 0 : _fabRoom,
+            );
+          }
+          final list = value as ProjectListSource;
+          final shownKind = shown?.kind ?? kind;
           final shownPreferences = shown?.preferences ?? preferences;
           final model = buildProjectListModel(
-            value,
+            list,
             kind: shownKind,
             preferences: shownPreferences,
-            leaving: leavingTasksIn(value.tasksById),
+            leaving: leavingTasksIn(list.tasksById),
           );
-          final loadedAt = value.snapshot.loadedAt;
+          final loadedAt = list.snapshot.loadedAt;
           return _ProjectList(
             projectId: widget.projectId,
             project: project,
             projectsById: projectsById,
             model: model,
-            source: value,
+            source: list,
             kind: shownKind,
             view: shownView,
             preferences: shownPreferences,
-            offline: offline || downloadFailure is NetworkFailure,
-            downloadFailed:
-                downloadFailure != null && downloadFailure is! NetworkFailure,
+            offline: offlineOrUnreachable,
+            downloadFailed: downloadFailed,
             header: stackedNotes([
               ?switcher,
               ?notice,
-              if (archived)
-                ListNote(
-                  icon: Icons.archive_outlined,
-                  text: l10n.projectArchivedNote,
-                ),
+              ?archivedNote,
               if (shownKind == ViewFilterKind.other && loadedAt != null)
                 ListNote(
                   icon: Icons.filter_alt_outlined,
@@ -482,7 +573,7 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
   }
 }
 
-/// One chip per list view, when the project has more than one.
+/// One chip per view the app shows, when the project has more than one.
 class _ViewSwitcher extends StatelessWidget {
   const new({
     required this.views,
@@ -679,5 +770,99 @@ class _ProjectList extends StatelessWidget {
         body: l10n.projectTasksEmptyAllBody,
       ),
     };
+  }
+}
+
+/// A kanban view's body: the board as of its last download, or why there
+/// is none yet in the words of a list view never downloaded.
+class _BoardBody extends StatelessWidget {
+  const new({
+    required this.projectId,
+    required this.view,
+    required this.source,
+    required this.archived,
+    required this.offline,
+    required this.downloadFailed,
+    required this.notes,
+    required this.now,
+    required this.minimumPriority,
+    required this.pendingIds,
+    required this.bottomPadding,
+  });
+
+  final int projectId;
+  final ProjectView view;
+  final BoardSource source;
+  final bool archived;
+
+  /// The device is offline, as far as the last sync or download knows.
+  final bool offline;
+
+  /// The board's download failed for a reason other than the connection.
+  final bool downloadFailed;
+  final List<Widget> notes;
+  final DateTime now;
+  final int minimumPriority;
+  final Set<int> pendingIds;
+  final double bottomPadding;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final downloaded = source.loadedAt != null;
+    final header = stackedNotes([
+      ...notes,
+      if (downloaded &&
+          view.bucketConfigurationMode == BucketConfigurationMode.filter)
+        ListNote(
+          icon: Icons.filter_alt_outlined,
+          text: l10n.boardFilterColumnsNote,
+        ),
+    ]);
+    if (!downloaded) {
+      return CenteredScrollView(
+        header: header,
+        child: switch ((offline, downloadFailed)) {
+          (true, _) => EmptyState(
+            icon: Icons.cloud_download_outlined,
+            title: l10n.projectViewNotLoadedTitle,
+            body: l10n.boardNotLoadedBody,
+          ),
+          (_, true) => EmptyState(
+            icon: Icons.cloud_off_outlined,
+            title: l10n.projectViewDownloadFailedTitle,
+            body: l10n.boardDownloadFailedBody,
+          ),
+          _ => EmptyState(
+            icon: Icons.cloud_download_outlined,
+            title: l10n.projectViewDownloadingTitle,
+            body: l10n.boardDownloadingBody,
+          ),
+        },
+      );
+    }
+    if (source.buckets.isEmpty) {
+      return CenteredScrollView(
+        header: header,
+        child: EmptyState(
+          icon: Icons.view_kanban_outlined,
+          title: l10n.boardNoColumnsTitle,
+          body: l10n.boardNoColumnsBody,
+        ),
+      );
+    }
+    return ProjectBoard(
+      key: ValueKey(view.id),
+      projectId: projectId,
+      view: view,
+      source: source,
+      readOnly: boardIsReadOnly(view, archived: archived),
+      offline: offline,
+      now: now,
+      minimumPriority: minimumPriority,
+      pendingIds: pendingIds,
+      header: header,
+      bottomPadding: bottomPadding,
+    );
   }
 }
