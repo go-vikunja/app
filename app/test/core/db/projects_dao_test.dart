@@ -89,6 +89,47 @@ void main() {
     expect(await db.select(db.projectViews).get(), isEmpty);
   });
 
+  test('a single view loads by id', () async {
+    await db.projectsDao.upsertAll([work]);
+
+    final found = await db.projectsDao.loadView(12);
+
+    expect(found, kanban);
+    expect(found?.defaultBucketId, 3);
+    expect(found?.bucketConfigurationMode, BucketConfigurationMode.manual);
+    expect(await db.projectsDao.loadView(99), isNull);
+  });
+
+  test("a view's bucket change writes only the given ids and reaches the "
+      'stream', () async {
+    await db.projectsDao.upsertAll([work]);
+    final seen = <List<Project>>[];
+    final subscription = db.projectsDao.watchAll().listen(seen.add);
+    addTearDown(subscription.cancel);
+    await pumpEventQueue();
+
+    await db.projectsDao.setViewBuckets(12, doneBucketId: 0);
+    await pumpEventQueue();
+
+    var found = seen.last.single.views.firstWhere((v) => v.id == 12);
+    expect(found.doneBucketId, 0);
+    expect(found.defaultBucketId, 3);
+    expect(found.title, 'Kanban');
+    expect(found.kind, ProjectViewKind.kanban);
+    expect(found.position, 1);
+
+    await db.projectsDao.setViewBuckets(12, defaultBucketId: 5);
+    await db.projectsDao.setViewBuckets(11);
+    await pumpEventQueue();
+
+    found = seen.last.single.views.firstWhere((v) => v.id == 12);
+    expect((found.doneBucketId, found.defaultBucketId), (0, 5));
+    expect(
+      seen.last.single.views.firstWhere((v) => v.id == 11).filter?.filter,
+      'done = false',
+    );
+  });
+
   test('the stream follows projects, views and owners', () async {
     final seen = <List<Project>>[];
     final subscription = db.projectsDao.watchAll().listen(seen.add);

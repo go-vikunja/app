@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/db/daos/kanban_dao.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 
 import '../../helpers/sample_data.dart';
@@ -261,6 +262,173 @@ void main() {
         bucketId: 1,
         position: 65536.0,
       ));
+    });
+  });
+
+  group('a single bucket', () {
+    List<int> counts(StoredBoard board) => [
+      for (final bucket in board.buckets) bucket.count,
+    ];
+
+    test('the buckets alone come in board order', () async {
+      await download();
+
+      expect(await db.kanbanDao.buckets(80), [todo, doing, doneBucket]);
+      expect(await db.kanbanDao.buckets(81), isEmpty);
+    });
+
+    test('a created one joins the board with its count and one page', () async {
+      await download(loadedPages: {1: 2});
+
+      await db.kanbanDao.putBucket(
+        const Bucket(id: 9, viewId: 80, title: 'Review', position: 400),
+      );
+
+      final stored = await db.kanbanDao.load(80);
+      expect(
+        stored.buckets.last,
+        const Bucket(id: 9, viewId: 80, title: 'Review', position: 400),
+      );
+      expect(await db.kanbanDao.loadedPages(80), {1: 2, 2: 1, 3: 1, 9: 1});
+      expect(stored.loadedAt, now);
+    });
+
+    test('a created one a download already stored keeps its count and '
+        'pages', () async {
+      await download(loadedPages: {2: 2});
+
+      await db.kanbanDao.putBucket(
+        const Bucket(id: 2, viewId: 80, title: 'Doing now', position: 250),
+      );
+
+      final stored = await db.kanbanDao.buckets(80);
+      expect(
+        stored[1],
+        const Bucket(
+          id: 2,
+          viewId: 80,
+          title: 'Doing now',
+          position: 250,
+          count: 1,
+        ),
+      );
+      expect((await db.kanbanDao.loadedPages(80))[2], 2);
+    });
+
+    test('an update changes title, limit and position and keeps the count, '
+        'the pages and the cards', () async {
+      await download(loadedPages: {1: 2});
+
+      final updated = await db.kanbanDao.updateBucket(
+        80,
+        1,
+        title: 'Backlog',
+        limit: 1,
+        position: 250,
+      );
+
+      expect(updated, isTrue);
+      final stored = await db.kanbanDao.load(80);
+      expect(stored.buckets, [
+        doing,
+        const Bucket(
+          id: 1,
+          viewId: 80,
+          title: 'Backlog',
+          limit: 1,
+          count: 2,
+          position: 250,
+        ),
+        doneBucket,
+      ]);
+      expect(stored.slots[2], (bucketId: 1, position: 131072.0));
+      expect((await db.kanbanDao.loadedPages(80))[1], 2);
+    });
+
+    test('an update of a bucket the board lacks writes nothing', () async {
+      await download();
+
+      expect(
+        await db.kanbanDao.updateBucket(
+          80,
+          9,
+          title: 'Gone',
+          limit: 0,
+          position: 1,
+        ),
+        isFalse,
+      );
+      expect(await db.kanbanDao.buckets(80), [todo, doing, doneBucket]);
+    });
+
+    test('a deleted one goes and its cards move to the target with their '
+        'positions and its count', () async {
+      await download();
+
+      await db.kanbanDao.removeBucket(80, 1, movesTo: 2);
+
+      final stored = await db.kanbanDao.load(80);
+      expect([for (final b in stored.buckets) b.id], [2, 3]);
+      expect(counts(stored), [3, 1]);
+      expect(stored.slots, {
+        1: (bucketId: 2, position: 65536.0),
+        2: (bucketId: 2, position: 131072.0),
+        3: (bucketId: 2, position: 32768.0),
+        4: (bucketId: 3, position: 65536.0),
+      });
+      expect(await db.kanbanDao.loadedPages(80), {2: 1, 3: 1});
+      expect(stored.loadedAt, now);
+    });
+
+    test('a deleted one without a target on the board takes its cards '
+        'along until the next download', () async {
+      await download();
+
+      await db.kanbanDao.removeBucket(80, 1);
+      await db.kanbanDao.removeBucket(80, 2, movesTo: 9);
+
+      final stored = await db.kanbanDao.load(80);
+      expect([for (final b in stored.buckets) b.id], [3]);
+      expect(stored.slots, {4: (bucketId: 3, position: 65536.0)});
+    });
+
+    test('deleting a bucket the board lacks changes nothing', () async {
+      await download();
+
+      await db.kanbanDao.removeBucket(80, 9, movesTo: 1);
+
+      final stored = await db.kanbanDao.load(80);
+      expect(stored.buckets, [todo, doing, doneBucket]);
+      expect(stored.slots, hasLength(4));
+    });
+
+    test('each change reaches a watched board', () async {
+      await download();
+      final seen = <BoardSource>[];
+      final subscription = db.tasksDao.watchBoard(7, 80).listen(seen.add);
+      addTearDown(subscription.cancel);
+      await pumpEventQueue();
+
+      await db.kanbanDao.putBucket(
+        const Bucket(id: 9, viewId: 80, title: 'Review', position: 400),
+      );
+      await pumpEventQueue();
+      expect(seen.last.buckets, hasLength(4));
+
+      await db.kanbanDao.updateBucket(
+        80,
+        9,
+        title: 'Check',
+        limit: 0,
+        position: 400,
+      );
+      await pumpEventQueue();
+      expect(seen.last.buckets.last.title, 'Check');
+
+      await db.kanbanDao.removeBucket(80, 1, movesTo: 9);
+      await pumpEventQueue();
+      expect([for (final b in seen.last.buckets) b.id], [2, 3, 9]);
+      expect(seen.last.snapshot[1]?.bucketId, 9);
     });
   });
 

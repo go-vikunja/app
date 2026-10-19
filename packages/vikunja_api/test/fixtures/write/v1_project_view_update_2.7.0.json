@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v1/projects/842/views/4712",
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"id\":4712,\"title\":\"Kanban\",\"project_id\":842,\"view_kind\":\"kanban\",\"filter\":null,\"position\":400,\"bucket_configuration_mode\":\"manual\",\"bucket_configuration\":null,\"default_bucket_id\":3546,\"done_bucket_id\":3547,\"updated\":\"2026-10-19T18:34:09.218442966Z\",\"created\":\"2026-10-19T18:34:03Z\"}\n"
+}

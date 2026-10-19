@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "DELETE /api/v1/projects/842/views/4713/buckets/3551",
+  "status": 412,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"code\":10003,\"message\":\"You cannot remove the last bucket on this project view.\"}\n"
+}

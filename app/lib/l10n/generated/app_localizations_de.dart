@@ -3011,6 +3011,187 @@ class AppLocalizationsDe extends AppLocalizations {
   String get boardMovedDown => 'Nach unten verschoben';
 
   @override
+  String boardColumnOptionsFor(String column) {
+    return 'Optionen für „$column“';
+  }
+
+  @override
+  String get boardColumnSaving => 'Spalte wird gespeichert …';
+
+  @override
+  String get boardColumnRename => 'Umbenennen';
+
+  @override
+  String boardColumnLimit(String limit) {
+    return 'Limit: $limit';
+  }
+
+  @override
+  String get boardColumnLimitNotSet => 'Nicht festgelegt';
+
+  @override
+  String get boardDoneColumn => 'Erledigt-Spalte';
+
+  @override
+  String get boardDoneColumnHintExtended =>
+      'Alle Aufgaben, die in die Erledigt-Spalte verschoben werden, werden automatisch als erledigt markiert. Aufgaben, die anderswo als erledigt markiert werden, kommen ebenfalls in diese Spalte.';
+
+  @override
+  String get boardDefaultColumn => 'Standard-Spalte';
+
+  @override
+  String get boardDefaultColumnHint =>
+      'Wenn Aufgaben ohne Angabe einer Spalte erstellt werden, werden sie zu dieser Spalte hinzugefügt.';
+
+  @override
+  String get boardColumnMoveLeft => 'Nach links verschieben';
+
+  @override
+  String get boardColumnMoveRight => 'Nach rechts verschieben';
+
+  @override
+  String get boardColumnMovedLeft => 'Spalte nach links verschoben';
+
+  @override
+  String get boardColumnMovedRight => 'Spalte nach rechts verschoben';
+
+  @override
+  String get boardColumnDelete => 'Löschen';
+
+  @override
+  String get boardColumnDeleteLast =>
+      'Du kannst die letzte Spalte nicht entfernen.';
+
+  @override
+  String get boardColumnRenameTitle => 'Spalte umbenennen';
+
+  @override
+  String get boardColumnTitleLabel => 'Titel';
+
+  @override
+  String get boardColumnTitleHint => 'Gib einen Spaltentitel ein …';
+
+  @override
+  String get boardColumnTitleEmpty => 'Gib einen Titel ein.';
+
+  @override
+  String get boardColumnSave => 'Speichern';
+
+  @override
+  String get boardNewColumn => 'Neue Spalte';
+
+  @override
+  String get boardNewColumnCreate => 'Erstellen';
+
+  @override
+  String get boardCreateColumn => 'Spalte erstellen';
+
+  @override
+  String get boardColumnLimitTitle => 'Spaltenlimit';
+
+  @override
+  String get boardColumnLimitLabel => 'Limit';
+
+  @override
+  String boardColumnLimitHelp(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Gerade sind $count Aufgaben in dieser Spalte.',
+      one: 'Gerade ist 1 Aufgabe in dieser Spalte.',
+    );
+    return '$_temp0 Lass das Feld leer für kein Limit.';
+  }
+
+  @override
+  String get boardColumnLimitBelowCount =>
+      'Das ist weniger, als sie gerade enthält. Bis Aufgaben herausgenommen werden, nimmt sie keine neuen auf.';
+
+  @override
+  String get boardDeleteColumnTitle => 'Spalte löschen';
+
+  @override
+  String boardDeleteColumnBody(String column) {
+    return 'Bist du sicher, dass du die Spalte „$column“ löschen möchtest?';
+  }
+
+  @override
+  String boardDeleteColumnTasksMove(String column) {
+    return 'Ihre Aufgaben werden nicht gelöscht, sondern kommen nach „$column“.';
+  }
+
+  @override
+  String boardDeleteColumnBecomesDefault(String column) {
+    return '„$column“ wird zur Standard-Spalte.';
+  }
+
+  @override
+  String get boardDeleteColumnConfirm => 'Löschen';
+
+  @override
+  String get boardColumnCreated => 'Spalte erstellt';
+
+  @override
+  String get boardColumnRenamed => 'Spalte umbenannt';
+
+  @override
+  String get boardColumnLimitSaved => 'Spaltenlimit gespeichert';
+
+  @override
+  String get boardDoneColumnSaved => 'Erledigt-Spalte gespeichert';
+
+  @override
+  String get boardDefaultColumnSaved => 'Standard-Spalte gespeichert';
+
+  @override
+  String get boardColumnDeleted => 'Spalte gelöscht';
+
+  @override
+  String get boardColumnNeedsConnection =>
+      'Zum Ändern von Spalten brauchst du eine Verbindung zum Server.';
+
+  @override
+  String get boardColumnUnconfirmed =>
+      'Die Änderung ließ sich nicht bestätigen. Prüf deine Verbindung und zieh nach unten, um das Board neu zu laden.';
+
+  @override
+  String get boardColumnAdminOnly =>
+      'Nur Projekt-Admins können die Erledigt- oder Standard-Spalte festlegen.';
+
+  @override
+  String get boardColumnDeleteAdminOnly =>
+      'Nur Projekt-Admins können die Spalte für neue Aufgaben löschen, solange Aufgaben darin sind.';
+
+  @override
+  String boardColumnDeleteFailedNewDefault(String newDefault, String column) {
+    return '„$newDefault“ ist jetzt die Standard-Spalte, aber „$column“ ließ sich nicht löschen.';
+  }
+
+  @override
+  String get boardColumnForbidden =>
+      'Du darfst die Spalten dieses Boards nicht ändern.';
+
+  @override
+  String get boardColumnLastOne => 'Ein Board braucht mindestens eine Spalte.';
+
+  @override
+  String get boardColumnArchived =>
+      'Dieses Projekt ist archiviert, deshalb lassen sich seine Spalten nicht ändern.';
+
+  @override
+  String get boardColumnInvalid =>
+      'Der Server hat diesen Titel oder dieses Limit nicht angenommen.';
+
+  @override
+  String boardColumnChangeRefused(String message) {
+    return 'Der Server hat die Änderung abgelehnt: $message';
+  }
+
+  @override
+  String get boardColumnChangeFailed =>
+      'Die Änderung konnte nicht gespeichert werden.';
+
+  @override
   String taskSubtaskOfSemantics(String parent) {
     return 'Unteraufgabe von $parent';
   }

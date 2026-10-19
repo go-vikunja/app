@@ -17,6 +17,8 @@ import 'package:vikunja_mobile/features/common/presentation/data_failure_card.da
 import 'package:vikunja_mobile/features/home/presentation/reauth_banner.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connection_error_card.dart';
 import 'package:vikunja_mobile/features/projects/presentation/board/board_column.dart';
+import 'package:vikunja_mobile/features/projects/presentation/board/new_column_tile.dart';
+import 'package:vikunja_mobile/features/projects/presentation/board/project_board.dart';
 import 'package:vikunja_mobile/features/quick_add/application/quick_add_plan.dart';
 import 'package:vikunja_mobile/features/quick_add/application/quick_add_service_provider.dart';
 import 'package:vikunja_mobile/features/quick_add/presentation/magic_suggestions.dart';
@@ -738,7 +740,10 @@ void main() {
         final board = tester.state<ScrollableState>(
           find
               .descendant(
-                of: find.byType(SingleChildScrollView),
+                of: find.descendant(
+                  of: find.byType(ProjectBoard),
+                  matching: find.byType(SingleChildScrollView),
+                ),
                 matching: find.byType(Scrollable),
               )
               .first,
@@ -754,9 +759,119 @@ void main() {
         }
         expect(board.position.extentAfter, 0);
         expect(find.text('Empty'), findsOneWidget);
+        expect(
+          tester.getRect(find.byType(NewColumnTile)).right,
+          lessThanOrEqualTo(size.width),
+        );
         expect(tester.takeException(), isNull);
+        await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
       });
     }
+
+    testWidgets(
+      "a kanban column's menu, sheets and delete confirmation at 200 % in "
+      'dark mode with the keyboard up (${locale.languageCode})',
+      (tester) async {
+        useWorstCase(tester, locale);
+        final l10n = lookupAppLocalizations(locale);
+        await pumpSignedInApp(tester, sync: kanbanData());
+        containerOf(tester).read(appRouterProvider).go(AppRoutes.project(1));
+        await tester.pumpAndSettle();
+
+        Future<void> openMenu() async {
+          await tester.tap(
+            find.byTooltip(
+              l10n.boardColumnOptionsFor(
+                'A column whose title is long enough to wrap twice',
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
+        }
+
+        Future<void> choose(String item) async {
+          final entry = find
+              .ancestor(
+                of: find.text(item),
+                matching: find.byWidgetPredicate(
+                  (widget) => widget is PopupMenuItem,
+                ),
+              )
+              .first;
+          await tester.ensureVisible(entry);
+          await tester.pumpAndSettle();
+          await tester.tap(entry);
+          await tester.pumpAndSettle();
+        }
+
+        Future<void> withKeyboard() async {
+          tester.view.viewInsets = const FakeViewPadding(bottom: 260 * 3);
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
+        }
+
+        Future<void> closeSheet() async {
+          tester.view.resetViewInsets();
+          await tester.binding.handlePopRoute();
+          await tester.pumpAndSettle();
+        }
+
+        await openMenu();
+        expect(find.text(l10n.boardDefaultColumnHint), findsOneWidget);
+        await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+        await tester.ensureVisible(find.text(l10n.boardColumnDelete));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        await choose(l10n.boardColumnLimit(l10n.boardColumnLimitNotSet));
+        await withKeyboard();
+        await tester.enterText(find.byType(TextField), '3');
+        await tester.pumpAndSettle();
+        expect(find.text(l10n.boardColumnLimitBelowCount), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await closeSheet();
+
+        await openMenu();
+        await choose(l10n.boardColumnRename);
+        await withKeyboard();
+        await tester.enterText(find.byType(TextField), '');
+        await tester.pumpAndSettle();
+        expect(find.text(l10n.boardColumnTitleEmpty), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await closeSheet();
+
+        await openMenu();
+        await choose(l10n.boardColumnDelete);
+        expect(find.text(l10n.boardDeleteColumnTitle), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await tester.tap(find.text(l10n.cancel));
+        await tester.pumpAndSettle();
+
+        final board = tester.state<ScrollableState>(
+          find
+              .descendant(
+                of: find.descendant(
+                  of: find.byType(ProjectBoard),
+                  matching: find.byType(SingleChildScrollView),
+                ),
+                matching: find.byType(Scrollable),
+              )
+              .first,
+        );
+        board.position.jumpTo(board.position.maxScrollExtent);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text(l10n.boardCreateColumn));
+        await tester.pumpAndSettle();
+        await withKeyboard();
+        expect(find.text(l10n.boardNewColumn), findsOneWidget);
+        await closeSheet();
+        expect(tester.takeException(), isNull);
+      },
+      variant: const TargetPlatformVariant({
+        TargetPlatform.android,
+        TargetPlatform.iOS,
+      }),
+    );
 
     for (final archived in [false, true]) {
       testWidgets(

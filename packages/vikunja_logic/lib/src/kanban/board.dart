@@ -39,19 +39,25 @@ typedef _Listed = ({int bucketId, double position});
 /// unsent changes applied) and the unsent placements on this view by task
 /// id in [queued].
 ///
-/// A task's column is its queued placement; else the done bucket when the
-/// task is done and the view has one; else the default bucket (the
-/// leftmost when the view names none) when it was downloaded in the done
-/// bucket but is open now; else the downloaded bucket. Tasks the download
-/// did not list show only when they are newer than it (a temporary id,
-/// created or updated after [loadedAt], as a task moved into the project
-/// is, or in [movedHere], whose move into the project is not sent yet), on
-/// top of the default bucket or, done, the done bucket; older ones are on
-/// pages not downloaded yet. A view filter the device can evaluate
-/// (none, `done = false`, `done = true`) is applied to every card; under
-/// any other filter newer tasks wait for the next download. A filter-mode
-/// view shows the download only: the server decides its buckets and
-/// refuses moves.
+/// A task's column is its queued placement; else, when its done state may
+/// have changed after the download (a done change in [queuedDoneChanges];
+/// for a done task, done after [loadedAt], or `updated` after it when the
+/// done moment is unknown; for an open one, `updated` after it), the done
+/// bucket for a done task when the view has one and the default bucket
+/// (the leftmost when the view names none) for an open task downloaded in
+/// the done bucket, as the server moves them; else the downloaded bucket,
+/// or the default bucket when that is gone. Choosing or clearing the done
+/// bucket moves no task on the server, so a done task downloaded elsewhere
+/// stays there, and so does an open one in the done bucket. Tasks the
+/// download did not list show only when they are newer than it (a
+/// temporary id, created or updated after [loadedAt], as a task moved into
+/// the project is, or in [movedHere], whose move into the project is not
+/// sent yet), on top of the default bucket or, done, the done bucket; older
+/// ones are on pages not downloaded yet. A view filter the device can
+/// evaluate (none, `done = false`, `done = true`) is applied to every card;
+/// under any other filter newer tasks wait for the next download. A
+/// filter-mode view shows the download only: the server decides its
+/// buckets and refuses moves.
 List<BoardColumn> buildBoard({
   required ProjectView view,
   required List<Bucket> buckets,
@@ -60,8 +66,9 @@ List<BoardColumn> buildBoard({
   required List<Task> projectTasks,
   required Map<int, BucketPlacement> queued,
   Set<int> movedHere = const {},
+  Set<int> queuedDoneChanges = const {},
 }) {
-  final columns = [...buckets]..sort(_compareBuckets);
+  final columns = [...buckets]..sort(compareBucketOrder);
   if (columns.isEmpty) return const [];
   final columnIds = {for (final bucket in columns) bucket.id};
   final byFilter =
@@ -100,9 +107,14 @@ List<BoardColumn> buildBoard({
         null,
       );
     }
+    final doneMayHaveChanged =
+        queuedDoneChanges.contains(task.id) ||
+        _doneChangedAfter(task, loadedAt);
     final bucketId = switch (listed.bucketId) {
-      _ when task.done && doneId != null => doneId,
-      final listedId when !task.done && listedId == doneId => defaultId,
+      _ when doneMayHaveChanged && task.done && doneId != null => doneId,
+      final listedId
+          when doneMayHaveChanged && !task.done && listedId == doneId =>
+        defaultId,
       final listedId when columnIds.contains(listedId) => listedId,
       _ => defaultId,
     };
@@ -159,11 +171,24 @@ bool _matches(Task task, ViewFilterKind filter) => switch (filter) {
 
 bool _isNewer(Task task, DateTime? loadedAt) {
   if (loadedAt == null || task.id < 0) return true;
-  bool after(DateTime? time) => time != null && time.isAfter(loadedAt);
-  return after(task.created) || after(task.updated);
+  return _after(task.created, loadedAt) || _after(task.updated, loadedAt);
 }
 
-int _compareBuckets(Bucket a, Bucket b) {
+/// Every edit moves `updated`; `done_at` dates a done state exactly.
+bool _doneChangedAfter(Task task, DateTime? loadedAt) {
+  if (loadedAt == null) return true;
+  if (task.doneAt case final doneAt? when task.done) {
+    return doneAt.isAfter(loadedAt);
+  }
+  return _after(task.updated, loadedAt);
+}
+
+bool _after(DateTime? time, DateTime loadedAt) =>
+    time != null && time.isAfter(loadedAt);
+
+/// The board's column order: position, then id, as the server keeps
+/// positions as sent and lists ties in storage order.
+int compareBucketOrder(Bucket a, Bucket b) {
   final byPosition = a.position.compareTo(b.position);
   return byPosition != 0 ? byPosition : a.id.compareTo(b.id);
 }

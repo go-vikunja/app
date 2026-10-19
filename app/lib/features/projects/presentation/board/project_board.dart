@@ -4,18 +4,27 @@ import 'dart:math' as math;
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/core/repositories/bucket_repository.dart';
+import 'package:vikunja_mobile/core/repositories/bucket_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
 import 'package:vikunja_mobile/features/projects/application/board_moves.dart';
 import 'package:vikunja_mobile/features/projects/presentation/board/board_card.dart';
 import 'package:vikunja_mobile/features/projects/presentation/board/board_column.dart';
+import 'package:vikunja_mobile/features/projects/presentation/board/column_changes.dart';
+import 'package:vikunja_mobile/features/projects/presentation/board/column_menu.dart';
+import 'package:vikunja_mobile/features/projects/presentation/board/column_sheets.dart';
+import 'package:vikunja_mobile/features/projects/presentation/board/new_column_tile.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
+
+final _log = Logger('Board');
 
 /// A card picked up from the column of [bucketId].
 @immutable
@@ -28,11 +37,17 @@ final class _CardDrag {
 
 typedef _DropTarget = ({int bucketId, int index});
 
+/// A column change on its way to the server; a null bucket id for a new
+/// column.
+typedef _ColumnChangeSent = ({int? bucketId});
+
 /// A kanban view as a board: fixed-width columns side by side, snapping to
 /// a column on a phone. Unless [readOnly], a long press lifts a card to
 /// drop it elsewhere (the board and the column scroll near their edges),
 /// screen readers move cards with the card's actions, and each column adds
 /// tasks on its top. Moves queue through the repository like every write.
+/// The columns themselves change online, one change at a time, through
+/// each header's menu and a "Create a column" tile after the last column.
 class ProjectBoard extends ConsumerStatefulWidget {
   const new({
     required this.projectId,
@@ -52,7 +67,8 @@ class ProjectBoard extends ConsumerStatefulWidget {
   final ProjectView view;
   final BoardSource source;
 
-  /// A filter-mode board or an archived project's: nothing moves or adds.
+  /// A filter-mode board or an archived project's: nothing moves, adds or
+  /// changes its columns.
   final bool readOnly;
 
   /// Further pages then load only when asked for.
@@ -112,6 +128,12 @@ class _ProjectBoardState extends ConsumerState<ProjectBoard> {
   /// nothing or failed is not asked for on every scroll step.
   final _scrollLoadedAt = <int, int>{};
 
+  _ColumnChangeSent? _columnChange;
+
+  /// A column moved, which the board brings into view once it shows at its
+  /// new index.
+  ({int bucketId, int toIndex, bool right})? _following;
+
   @override
   void initState() {
     super.initState();
@@ -139,6 +161,7 @@ class _ProjectBoardState extends ConsumerState<ProjectBoard> {
         projectTasks: source.projectTasks,
         queued: source.queued,
         movedHere: source.movedHere,
+        queuedDoneChanges: source.queuedDoneChanges,
       );
     }
     return _columns;
@@ -270,16 +293,8 @@ class _ProjectBoardState extends ConsumerState<ProjectBoard> {
         final column = droppedOn == null
             ? -1
             : _board.indexWhere((c) => c.bucket.id == droppedOn);
-        final position = _horizontal.position;
         if (_snaps && column >= 0) {
-          _horizontal.animateTo(
-            (column * _snapGrid.step).clamp(
-              position.minScrollExtent,
-              position.maxScrollExtent,
-            ),
-            duration: const Duration(milliseconds: 250),
-            curve: Curves.easeOut,
-          );
+          _settleOn(column);
         } else {
           // A jump ends ballistic: with no card held, the board settles on
           // a column.
@@ -292,6 +307,19 @@ class _ProjectBoardState extends ConsumerState<ProjectBoard> {
       _dragging = null;
       _dropTarget = null;
     });
+  }
+
+  void _settleOn(int column) {
+    if (!_horizontal.hasClients) return;
+    final position = _horizontal.position;
+    _horizontal.animateTo(
+      (column * _snapGrid.step).clamp(
+        position.minScrollExtent,
+        position.maxScrollExtent,
+      ),
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOut,
+    );
   }
 
   /// While a card is held, the drop target follows the columns moving
@@ -495,6 +523,257 @@ class _ProjectBoardState extends ConsumerState<ProjectBoard> {
     );
   }
 
+  /// Sends one column change, announcing [changed] once the server took it
+  /// and the stored board follows; a failure changes nothing and says why.
+  Future<bool> _changeColumns(
+    ColumnChange change, {
+    required int? bucketId,
+    required String changed,
+    required Future<void> Function(BucketRepository repository) send,
+  }) async {
+    final repository = ref.read(bucketRepositoryProvider);
+    if (repository == null || _columnChange != null) return false;
+    final l10n = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() {
+      _columnChange = (bucketId: bucketId);
+      _following = null;
+    });
+    try {
+      await send(repository);
+      if (!mounted) return true;
+      unawaited(HapticFeedback.selectionClick());
+      _announce(changed);
+      return true;
+    } on Object catch (error) {
+      _log.warning('Changing a column failed: ${error.runtimeType}');
+      unawaited(HapticFeedback.heavyImpact());
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(content: Text(columnChangeFailureText(l10n, error, change))),
+        );
+      return false;
+    } finally {
+      if (mounted) setState(() => _columnChange = null);
+    }
+  }
+
+  Future<void> _createColumn() async {
+    final l10n = context.l10n;
+    final title = await showColumnTitleSheet(
+      context,
+      title: l10n.boardNewColumn,
+      actionLabel: l10n.boardNewColumnCreate,
+    );
+    if (title == null || !mounted) return;
+    await _changeColumns(
+      ColumnChange.create,
+      bucketId: null,
+      changed: l10n.boardColumnCreated,
+      send: (repository) =>
+          repository.create(widget.projectId, widget.view.id, title),
+    );
+  }
+
+  void _onColumnAction(BoardColumn column, ColumnAction action) {
+    final bucket = column.bucket;
+    final view = widget.view;
+    unawaited(switch (action) {
+      ColumnAction.rename => _renameColumn(bucket),
+      ColumnAction.limit => _limitColumn(column),
+      ColumnAction.done => _changeColumns(
+        ColumnChange.done,
+        bucketId: bucket.id,
+        changed: context.l10n.boardDoneColumnSaved,
+        send: (repository) => repository.setDoneBucket(
+          widget.projectId,
+          view.id,
+          view.doneBucketId == bucket.id ? null : bucket.id,
+        ),
+      ),
+      ColumnAction.defaultColumn => _changeColumns(
+        ColumnChange.defaultColumn,
+        bucketId: bucket.id,
+        changed: context.l10n.boardDefaultColumnSaved,
+        send: (repository) => repository.setDefaultBucket(
+          widget.projectId,
+          view.id,
+          view.defaultBucketId == bucket.id ? null : bucket.id,
+        ),
+      ),
+      ColumnAction.moveLeft => _moveColumn(bucket, by: -1),
+      ColumnAction.moveRight => _moveColumn(bucket, by: 1),
+      ColumnAction.delete => _deleteColumn(column),
+    });
+  }
+
+  Future<void> _renameColumn(Bucket bucket) async {
+    final l10n = context.l10n;
+    final title = await showColumnTitleSheet(
+      context,
+      title: l10n.boardColumnRenameTitle,
+      actionLabel: l10n.boardColumnSave,
+      initial: bucket.title,
+    );
+    if (title == null || title == bucket.title || !mounted) return;
+    await _changeColumns(
+      ColumnChange.rename,
+      bucketId: bucket.id,
+      changed: l10n.boardColumnRenamed,
+      send: (repository) =>
+          repository.rename(widget.projectId, widget.view.id, bucket.id, title),
+    );
+  }
+
+  Future<void> _limitColumn(BoardColumn column) async {
+    final l10n = context.l10n;
+    final bucket = column.bucket;
+    final limit = await showColumnLimitSheet(
+      context,
+      current: bucket.limit,
+      count: column.shownCount,
+    );
+    if (limit == null || limit == bucket.limit || !mounted) return;
+    await _changeColumns(
+      ColumnChange.limit,
+      bucketId: bucket.id,
+      changed: l10n.boardColumnLimitSaved,
+      send: (repository) => repository.setLimit(
+        widget.projectId,
+        widget.view.id,
+        bucket.id,
+        limit,
+      ),
+    );
+  }
+
+  /// [by] places to the right, or to the left when negative.
+  Future<void> _moveColumn(Bucket bucket, {required int by}) async {
+    final l10n = context.l10n;
+    final from = _columns.indexWhere((column) => column.bucket.id == bucket.id);
+    final to = from + by;
+    if (from < 0 || to < 0 || to >= _columns.length) return;
+    final moved = await _changeColumns(
+      ColumnChange.move,
+      bucketId: bucket.id,
+      changed: by < 0 ? l10n.boardColumnMovedLeft : l10n.boardColumnMovedRight,
+      send: (repository) => repository.move(
+        widget.projectId,
+        widget.view.id,
+        bucket.id,
+        toIndex: to,
+      ),
+    );
+    if (moved && mounted) {
+      setState(
+        () => _following = (bucketId: bucket.id, toIndex: to, right: by > 0),
+      );
+    }
+  }
+
+  Future<void> _deleteColumn(BoardColumn column) async {
+    final l10n = context.l10n;
+    final bucket = column.bucket;
+    final holdsTasks = columnHoldsTasks(column);
+    final plan = planBucketDeletion(
+      widget.source.buckets,
+      bucket.id,
+      defaultBucketId: widget.view.defaultBucketId,
+      holdsTasks: holdsTasks,
+    );
+    if (plan == null) return;
+    final confirmed = await confirmDeleteColumn(
+      context,
+      column: bucket.title,
+      tasksGoTo: holdsTasks ? plan.tasksGoTo.title : null,
+      becomesDefault: plan.defaultFirst,
+    );
+    if (!confirmed || !mounted) return;
+    await _changeColumns(
+      plan.defaultFirst
+          ? ColumnChange.deleteAfterNewDefault
+          : ColumnChange.delete,
+      bucketId: bucket.id,
+      changed: l10n.boardColumnDeleted,
+      send: (repository) =>
+          repository.delete(widget.projectId, widget.view.id, bucket.id),
+    );
+  }
+
+  Widget _menuOf(BoardColumn column, int index) {
+    final view = widget.view;
+    final bucketId = column.bucket.id;
+    final change = _columnChange;
+    return ColumnMenuButton(
+      bucket: column.bucket,
+      isDone: view.doneBucketId != 0 && view.doneBucketId == bucketId,
+      isDefault: view.defaultBucketId != 0 && view.defaultBucketId == bucketId,
+      canMoveLeft: _canMove(bucketId, index - 1),
+      canMoveRight: _canMove(bucketId, index + 1),
+      canDelete: _columns.length > 1,
+      saving: change != null && change.bucketId == bucketId,
+      enabled: change == null,
+      onSelected: (action) => _onColumnAction(column, action),
+    );
+  }
+
+  /// Not past either end, nor between two columns of one position that
+  /// the column's id does not sort between.
+  bool _canMove(int bucketId, int toIndex) =>
+      toIndex >= 0 &&
+      toIndex < _columns.length &&
+      planBucketMove(widget.source.buckets, bucketId, toIndex) != null;
+
+  /// Moving the column for screen readers; the rest of the menu is its
+  /// button's.
+  Map<CustomSemanticsAction, VoidCallback> _headerActionsOf(
+    BoardColumn column,
+    int index,
+  ) {
+    final l10n = context.l10n;
+    final bucket = column.bucket;
+    return {
+      if (_canMove(bucket.id, index - 1))
+        CustomSemanticsAction(label: l10n.boardColumnMoveLeft): () =>
+            unawaited(_moveColumn(bucket, by: -1)),
+      if (_canMove(bucket.id, index + 1))
+        CustomSemanticsAction(label: l10n.boardColumnMoveRight): () =>
+            unawaited(_moveColumn(bucket, by: 1)),
+    };
+  }
+
+  /// Once a moved column shows at its new place, the board brings it into
+  /// view, where the user is still working with it: a phone's settles on
+  /// it, a wider one scrolls just far enough.
+  void _followMovedColumn(List<BoardColumn> columns) {
+    final following = _following;
+    if (following == null) return;
+    final index = columns.indexWhere(
+      (column) => column.bucket.id == following.bucketId,
+    );
+    if (index != following.toIndex) return;
+    _following = null;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_horizontal.hasClients) return;
+      if (_snaps) {
+        _settleOn(index);
+        return;
+      }
+      final column = _columnKeys[following.bucketId]?.currentContext
+          ?.findRenderObject();
+      if (column == null || !column.attached) return;
+      _horizontal.position.ensureVisible(
+        column,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+        alignmentPolicy: following.right
+            ? ScrollPositionAlignmentPolicy.keepVisibleAtEnd
+            : ScrollPositionAlignmentPolicy.keepVisibleAtStart,
+      );
+    });
+  }
+
   Widget _card(
     BuildContext context,
     BoardColumn column,
@@ -536,7 +815,9 @@ class _ProjectBoardState extends ConsumerState<ProjectBoard> {
   Widget build(BuildContext context) {
     final columns = _board;
     final view = widget.view;
+    final manages = !widget.readOnly;
     final insets = MediaQuery.paddingOf(context);
+    _followMovedColumn(columns);
     return LayoutBuilder(
       builder: (context, constraints) {
         // In landscape the first and last columns stay clear of a notch.
@@ -587,9 +868,26 @@ class _ProjectBoardState extends ConsumerState<ProjectBoard> {
                   onLoadMore: () => unawaited(_loadMore(column.bucket.id)),
                   onNearEnd: () => _loadMoreOnScroll(column),
                   onAddTask: widget.readOnly ? null : () => _addTaskTo(column),
+                  menu: manages ? _menuOf(column, i) : null,
+                  headerActions: manages
+                      ? _headerActionsOf(column, i)
+                      : const {},
                   draggedTaskId: _dragging?.task.id,
                   dropIndex: _dropLineIn(column),
                   endPadding: widget.bottomPadding,
+                ),
+              ],
+              if (manages) ...[
+                const SizedBox(width: _gap),
+                NewColumnTile(
+                  width: columnWidth,
+                  creating: switch (_columnChange) {
+                    (bucketId: null) => true,
+                    _ => false,
+                  },
+                  onPressed: _columnChange == null
+                      ? () => unawaited(_createColumn())
+                      : null,
                 ),
               ],
             ],

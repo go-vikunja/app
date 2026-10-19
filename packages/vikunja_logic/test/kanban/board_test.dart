@@ -70,6 +70,15 @@ Task _old(int id, {bool done = false, int projectId = 1}) => task(
   updated: _before,
 );
 
+// Changed on the server after the download, so its done state may be new.
+Task _changed(int id, {bool done = false}) => task(
+  id,
+  done: done,
+  doneAt: done ? _after : null,
+  created: _before,
+  updated: _after,
+);
+
 final List<Task> _downloadedTasks = [_old(1), _old(2), _old(3), _old(4)];
 
 List<BoardColumn> _build({
@@ -81,6 +90,7 @@ List<BoardColumn> _build({
   List<Task>? tasks,
   Map<int, BucketPlacement> queued = const {},
   Set<int> movedHere = const {},
+  Set<int> queuedDoneChanges = const {},
 }) => buildBoard(
   view: view,
   buckets: buckets ?? _buckets,
@@ -89,6 +99,7 @@ List<BoardColumn> _build({
   projectTasks: tasks ?? _downloadedTasks,
   queued: queued,
   movedHere: movedHere,
+  queuedDoneChanges: queuedDoneChanges,
 );
 
 Map<int, List<int>> _idsByBucket(List<BoardColumn> board) => {
@@ -114,6 +125,19 @@ void main() {
       );
 
       expect([for (final c in board) c.bucket.id], [2, 1, 3]);
+    });
+
+    test('are the order of compareBucketOrder', () {
+      final tied = [_bucket(5, 0), _bucket(4, 0), _bucket(3, -1)];
+      final board = _build(buckets: tied, snapshot: const {}, tasks: const []);
+
+      expect([for (final c in board) c.bucket.id], [3, 4, 5]);
+      expect(
+        [
+          for (final b in [...tied]..sort(compareBucketOrder)) b.id,
+        ],
+        [3, 4, 5],
+      );
     });
 
     test('are none without buckets', () {
@@ -152,9 +176,11 @@ void main() {
       expect(_idsByBucket(board)[_toDo], [1, 2, 3]);
     });
 
-    test('is the done bucket for a done task', () {
+    test('is the done bucket for a task marked done after the download, '
+        'here or on the server', () {
       final board = _build(
-        tasks: [_old(1), _old(2, done: true), _old(3), _old(4, done: true)],
+        tasks: [_old(1), _old(2, done: true), _old(3), _changed(4, done: true)],
+        queuedDoneChanges: {2},
       );
 
       expect(_idsByBucket(board), {
@@ -168,17 +194,17 @@ void main() {
         'a done bucket', () {
       final board = _build(
         view: _view(doneBucketId: 0),
-        tasks: [_old(1), _old(2, done: true), _old(3), _old(4)],
+        tasks: [_old(1), _changed(2, done: true), _old(3), _old(4)],
       );
 
       expect(_idsByBucket(board)[_toDo], [1, 2, 3]);
     });
 
-    test('is the default bucket for an open task downloaded in the done '
-        'bucket', () {
+    test('is the default bucket for a task downloaded in the done bucket '
+        'and marked open after the download', () {
       final board = _build(
         snapshot: {..._snapshot, 5: (bucketId: _done, position: 10)},
-        tasks: [..._downloadedTasks, _old(5)],
+        tasks: [..._downloadedTasks, _changed(5)],
       );
 
       expect(_idsByBucket(board)[_toDo], [5, 1, 2, 3]);
@@ -189,7 +215,7 @@ void main() {
       final board = _build(
         view: _view(defaultBucketId: 0),
         snapshot: {..._snapshot, 5: (bucketId: _done, position: 10)},
-        tasks: [..._downloadedTasks, _old(5)],
+        tasks: [..._downloadedTasks, _changed(5)],
       );
 
       expect(_idsByBucket(board)[_toDo], [5, 1, 2, 3]);
@@ -201,7 +227,7 @@ void main() {
         view: _view(defaultBucketId: 99),
         buckets: [_bucket(_doing, 50), ..._buckets.skip(1)],
         snapshot: {..._snapshot, 5: (bucketId: _done, position: 10)},
-        tasks: [..._downloadedTasks, _old(5)],
+        tasks: [..._downloadedTasks, _changed(5)],
       );
 
       expect(_idsByBucket(board)[_doing], [5, 4]);
@@ -220,6 +246,7 @@ void main() {
       final board = _build(
         snapshot: {..._snapshot, 5: (bucketId: _done, position: 10)},
         tasks: [_old(1), _old(2, done: true), _old(3), _old(4), _old(5)],
+        queuedDoneChanges: {2, 5},
         queued: {
           2: const BucketPlacement(bucketId: _doing, position: 70),
           5: const BucketPlacement(bucketId: _done, position: 20),
@@ -231,6 +258,122 @@ void main() {
         _doing: [4, 2],
         _done: [5],
       });
+    });
+  });
+
+  group('the done rule after a done bucket change', () {
+    test('leaves a done task in its downloaded bucket when it did not '
+        'change after the download', () {
+      final board = _build(
+        tasks: [_old(1), _old(2, done: true), _old(3), _old(4, done: true)],
+      );
+
+      expect(_idsByBucket(board), {
+        _toDo: [1, 2, 3],
+        _doing: [4],
+        _done: <int>[],
+      });
+    });
+
+    test('leaves an open task in the done bucket when it did not change '
+        'after the download', () {
+      final board = _build(
+        view: _view(doneBucketId: _doing),
+        tasks: [..._downloadedTasks],
+      );
+
+      expect(_idsByBucket(board)[_doing], [4]);
+    });
+
+    test('moves a task done after the download into the new done bucket', () {
+      final board = _build(
+        view: _view(doneBucketId: _doing),
+        tasks: [_old(1), _changed(2, done: true), _old(3), _old(4)],
+      );
+
+      expect(_idsByBucket(board), {
+        _toDo: [1, 3],
+        _doing: [4, 2],
+        _done: <int>[],
+      });
+    });
+
+    test('moves a task marked done here by its done moment, and leaves one '
+        'done before the download', () {
+      final board = _build(
+        view: _view(doneBucketId: _doing),
+        tasks: [
+          _old(1),
+          task(2, done: true, doneAt: _after, updated: _before),
+          task(3, done: true, doneAt: _before, updated: _before),
+          _old(4),
+        ],
+      );
+
+      expect(_idsByBucket(board)[_toDo], [1, 3]);
+      expect(_idsByBucket(board)[_doing], [4, 2]);
+    });
+
+    test('leaves a done task edited after the download, but done before '
+        'it, in its downloaded bucket', () {
+      final board = _build(
+        view: _view(doneBucketId: _doing),
+        tasks: [
+          _old(1),
+          task(2, done: true, doneAt: _before, updated: _after),
+          _old(3),
+          _old(4),
+        ],
+      );
+
+      expect(_idsByBucket(board)[_toDo], [1, 2, 3]);
+      expect(_idsByBucket(board)[_doing], [4]);
+    });
+
+    test('goes by the update of a done task without a done moment', () {
+      final board = _build(
+        view: _view(doneBucketId: _doing),
+        tasks: [
+          _old(1),
+          task(2, done: true, updated: _after),
+          task(3, done: true, updated: _before),
+          _old(4),
+        ],
+      );
+
+      expect(_idsByBucket(board)[_toDo], [1, 3]);
+      expect(_idsByBucket(board)[_doing], [4, 2]);
+    });
+
+    test('moves a task opened here out of the new done bucket', () {
+      final board = _build(
+        view: _view(doneBucketId: _doing),
+        queuedDoneChanges: {4},
+      );
+
+      expect(_idsByBucket(board)[_toDo], [4, 1, 2, 3]);
+      expect(_idsByBucket(board)[_doing], isEmpty);
+    });
+
+    test('keeps a changed open task in a done bucket that is also the '
+        'default', () {
+      final board = _build(
+        view: _view(defaultBucketId: _doing, doneBucketId: _doing),
+        tasks: [_old(1), _old(2), _old(3), _changed(4)],
+      );
+
+      expect(_idsByBucket(board)[_doing], [4]);
+    });
+
+    test('ignores a done change of a task without one in a view without a '
+        'done bucket', () {
+      final board = _build(
+        view: _view(doneBucketId: 0),
+        snapshot: {..._snapshot, 5: (bucketId: _done, position: 10)},
+        tasks: [..._downloadedTasks, _changed(5)],
+      );
+
+      expect(_idsByBucket(board)[_done], [5]);
     });
   });
 
@@ -419,6 +562,7 @@ void main() {
           5: (bucketId: _done, position: 250),
           6: (bucketId: _done, position: 350),
         },
+        queuedDoneChanges: {3},
       );
       expect(_idsByBucket(withDone)[_done], [5, 3, 6]);
     });
@@ -504,7 +648,7 @@ void main() {
 
     test('count a task the done rule moved', () {
       final board = _build(
-        tasks: [_old(1), _old(2), _old(3), _old(4, done: true)],
+        tasks: [_old(1), _old(2), _old(3), _changed(4, done: true)],
       );
 
       expect(_column(board, _doing).shownCount, 0);
@@ -654,9 +798,9 @@ void main() {
       );
 
       expect(_idsByBucket(board), {
-        _toDo: <int>[],
+        _toDo: [2],
         _doing: <int>[],
-        _done: [2],
+        _done: <int>[],
       });
     });
 

@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "PUT /api/v1/projects/842/views/4712/buckets",
+  "status": 201,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"id\":3552,\"title\":\"Later\",\"project_view_id\":4712,\"limit\":0,\"count\":0,\"position\":232783872,\"created\":\"2026-10-19T18:34:06.141632964Z\",\"updated\":\"2026-10-19T18:34:06.141692964Z\",\"created_by\":{\"id\":318,\"name\":\"\",\"username\":\"fixtureuser\",\"created\":\"2026-10-19T18:34:03Z\",\"updated\":\"2026-10-19T18:34:03Z\"}}\n"
+}

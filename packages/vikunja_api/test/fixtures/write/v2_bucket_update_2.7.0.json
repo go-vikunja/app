@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "PUT /api/v2/projects/842/views/4712/buckets/3553",
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"id\":3553,\"title\":\"Some day\",\"project_view_id\":4712,\"limit\":0,\"count\":0,\"position\":600,\"created\":\"0001-01-01T00:00:00Z\",\"updated\":\"2026-10-19T18:34:08.702718947Z\",\"created_by\":null}\n"
+}

@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "PATCH /api/v2/projects/842/views/4712",
+  "status": 400,
+  "headers": {
+    "content-type": "application/problem+json"
+  },
+  "body": "{\"$schema\":\"http://localhost/api/v2/schemas/VikunjaErrorModel.json\",\"title\":\"Bad Request\",\"status\":400,\"detail\":\"This bucket does not belong to that project.\",\"code\":10002}\n"
+}

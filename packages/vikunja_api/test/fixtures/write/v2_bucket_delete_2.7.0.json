@@ -1,0 +1,7 @@
+{
+  "server": "2.7.0",
+  "request": "DELETE /api/v2/projects/842/views/4712/buckets/3553",
+  "status": 204,
+  "headers": {},
+  "body": ""
+}

@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:vikunja_api/src/dto/bucket_codec.dart';
 import 'package:vikunja_api/src/dto/json_values.dart';
 import 'package:vikunja_api/src/dto/label_codec.dart';
+import 'package:vikunja_api/src/dto/project_codec.dart';
 import 'package:vikunja_api/src/dto/subscription_codec.dart';
 import 'package:vikunja_api/src/dto/task_codec.dart';
 import 'package:vikunja_api/src/errors/normalize_error.dart';
@@ -21,7 +22,9 @@ final class WriteClient implements VikunjaWriteClient {
     : tasks = _TasksWriteApi(transport),
       labels = _LabelsWriteApi(transport),
       notifications = _NotificationsWriteApi(transport),
-      subscriptions = _SubscriptionsWriteApi(transport);
+      subscriptions = _SubscriptionsWriteApi(transport),
+      buckets = _BucketsWriteApi(transport),
+      views = _ProjectViewsWriteApi(transport);
 
   @override
   final TasksWritePort tasks;
@@ -34,6 +37,120 @@ final class WriteClient implements VikunjaWriteClient {
 
   @override
   final SubscriptionsWritePort subscriptions;
+
+  @override
+  final BucketsWritePort buckets;
+
+  @override
+  final ProjectViewsWritePort views;
+}
+
+final class _BucketsWriteApi implements BucketsWritePort {
+  new(this._transport);
+
+  final _WriteTransport _transport;
+
+  @override
+  Future<Bucket> create(
+    int projectId,
+    int viewId, {
+    required String title,
+    int limit = 0,
+    double? position,
+  }) async {
+    final response = await _transport.send(
+      _transport.createMethod,
+      '/projects/$projectId/views/$viewId/buckets',
+      body: encodeBucket(title: title, limit: limit, position: position),
+    );
+    return _transport.decode<Bucket>(response, parseBucket);
+  }
+
+  @override
+  Future<Bucket> update(
+    int projectId,
+    int viewId, {
+    required int bucketId,
+    required String title,
+    required int limit,
+    required double position,
+  }) async {
+    await _transport.send(
+      _transport.updateMethod,
+      '/projects/$projectId/views/$viewId/buckets/$bucketId',
+      body: encodeBucket(title: title, limit: limit, position: position),
+    );
+    return Bucket(
+      id: bucketId,
+      viewId: viewId,
+      title: title,
+      limit: limit,
+      position: position,
+    );
+  }
+
+  @override
+  Future<void> delete(int projectId, int viewId, int bucketId) async {
+    try {
+      await _transport.send(
+        'DELETE',
+        '/projects/$projectId/views/$viewId/buckets/$bucketId',
+      );
+    } on NotFound catch (failure) {
+      if (failure.code != _bucketDoesNotExist) rethrow;
+    }
+  }
+}
+
+final class _ProjectViewsWriteApi implements ProjectViewsWritePort {
+  new(this._transport);
+
+  final _WriteTransport _transport;
+
+  @override
+  Future<ProjectView> setBuckets(
+    int projectId,
+    int viewId, {
+    int? doneBucketId,
+    int? defaultBucketId,
+  }) async {
+    final path = '/projects/$projectId/views/$viewId';
+    final changes = {
+      'done_bucket_id': ?doneBucketId,
+      'default_bucket_id': ?defaultBucketId,
+    };
+    if (changes.isEmpty) return _parse(await _transport.send('GET', path));
+    switch (_transport.version) {
+      case ApiVersion.v2:
+        final response = await _transport.send(
+          'PATCH',
+          path,
+          body: changes,
+          contentType: mergePatchContentType,
+          acceptNotModified: true,
+        );
+        if (response.statusCode != _notModified) return _parse(response);
+        return _parse(await _transport.send('GET', path));
+      case ApiVersion.v1:
+        // A full replace: a field left out is cleared, a missing view_kind
+        // turns the board into a list view.
+        final current = _transport.decode<Map<String, Object?>>(
+          await _transport.send('GET', path),
+          (json) => objectOf(json, 'project view'),
+        );
+        return _parse(
+          await _transport.send('POST', path, body: {...current, ...changes}),
+        );
+    }
+  }
+
+  ProjectView _parse(Response<Object?> response) =>
+      _transport.decode<ProjectView>(
+        response,
+        (json) =>
+            parseProjectView(json) ??
+            (throw const MalformedJson('project view of an unknown kind')),
+      );
 }
 
 final class _SubscriptionsWriteApi implements SubscriptionsWritePort {
@@ -129,6 +246,7 @@ const _userAlreadyAssigned = 4021;
 const _relationAlreadyExists = 4008;
 const _relationDoesNotExist = 4009;
 const _alreadySubscribed = 12002;
+const _bucketDoesNotExist = 10001;
 
 // A v1 update replaces the task with the body: every field the server sent
 // goes back so that assignees, reminders and the fields this client does not

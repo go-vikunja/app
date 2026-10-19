@@ -75,6 +75,30 @@ final class ProjectsDao extends DatabaseAccessor<AppDatabase>
     });
   }
 
+  Future<ProjectView?> loadView(int viewId) async {
+    final row = await (select(
+      projectViews,
+    )..where((v) => v.id.equals(viewId))).getSingleOrNull();
+    return row == null ? null : projectViewFromRow(row);
+  }
+
+  /// Changes only the given bucket ids of the view (0: none), as a done or
+  /// default bucket change answered by the server; the next sync stores
+  /// the whole view again.
+  Future<void> setViewBuckets(
+    int viewId, {
+    int? doneBucketId,
+    int? defaultBucketId,
+  }) async {
+    if (doneBucketId == null && defaultBucketId == null) return;
+    await (update(projectViews)..where((v) => v.id.equals(viewId))).write(
+      ProjectViewsCompanion(
+        doneBucketId: Value.absentIfNull(doneBucketId),
+        defaultBucketId: Value.absentIfNull(defaultBucketId),
+      ),
+    );
+  }
+
   /// Views go with their project through the foreign key.
   Future<int> purgeNotIn(Iterable<int> ids) =>
       (delete(projects)..where((p) => p.id.isNotIn(ids))).go();

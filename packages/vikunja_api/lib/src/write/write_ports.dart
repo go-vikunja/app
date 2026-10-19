@@ -94,11 +94,71 @@ abstract interface class SubscriptionsWritePort {
   Future<void> unsubscribe(SubscriptionEntity entity, int id);
 }
 
+/// The buckets of a manual kanban view: project write permission, refused
+/// with 403 for a read share and with `DomainError` code 3008 while the
+/// project is archived. The view id must be the bucket's own view: the
+/// server counts and re-points by the URL's view. A bucket that does not
+/// exist is a `NotFound` code 10001; a title the server refuses (empty) a
+/// `ValidationFailed`.
+abstract interface class BucketsWritePort {
+  /// v2 `POST`, v1 `PUT /projects/{p}/views/{v}/buckets` with `{title,
+  /// limit, position}`. Without a [position] the server picks `id × 65536`,
+  /// usually the rightmost. Not idempotent. The answer has `count` 0.
+  Future<Bucket> create(
+    int projectId,
+    int viewId, {
+    required String title,
+    int limit = 0,
+    double? position,
+  });
+
+  /// v2 `PUT`, v1 `POST /projects/{p}/views/{v}/buckets/{b}`: the server
+  /// replaces title, limit and position together, so all three are sent.
+  /// Returns what was sent with `count` 0: the answer's count and dates are
+  /// not the stored ones.
+  Future<Bucket> update(
+    int projectId,
+    int viewId, {
+    required int bucketId,
+    required String title,
+    required int limit,
+    required double position,
+  });
+
+  /// `DELETE /projects/{p}/views/{v}/buckets/{b}`. The server moves the
+  /// bucket's tasks to the view's default bucket (else its leftmost),
+  /// positions kept, and clears the view's done or default bucket when it
+  /// was this one. The last bucket of a view is a `DomainError` code 10003.
+  /// A bucket that is gone already (404 code 10001) counts as deleted.
+  Future<void> delete(int projectId, int viewId, int bucketId);
+}
+
+abstract interface class ProjectViewsWritePort {
+  /// Changes only the given bucket ids of a kanban view, 0 clearing one,
+  /// and returns the view as stored. Project admin permission (403 for
+  /// write shares too); allowed on an archived project. Setting or clearing
+  /// the done bucket changes no task. A bucket of another view is a
+  /// `DomainError` code 10002; an id that does not exist is stored as 0.
+  ///
+  /// v2 sends a merge-patch with only these ids (an unchanged view answers
+  /// 304 and is read). v1 has only a full replace, which turns a view sent
+  /// without its kind into a list view: the adapter reads the view and
+  /// posts every field back with the change.
+  Future<ProjectView> setBuckets(
+    int projectId,
+    int viewId, {
+    int? doneBucketId,
+    int? defaultBucketId,
+  });
+}
+
 abstract interface class VikunjaWriteClient {
   TasksWritePort get tasks;
   LabelsWritePort get labels;
   NotificationsWritePort get notifications;
   SubscriptionsWritePort get subscriptions;
+  BucketsWritePort get buckets;
+  ProjectViewsWritePort get views;
 }
 
 /// [dio] is an authenticated client from `createAuthenticatedDio`; the

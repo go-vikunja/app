@@ -10,6 +10,7 @@ import 'package:vikunja_mobile/core/outbox/pending_task_ids_source.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/realtime/realtime_providers.dart';
 import 'package:vikunja_mobile/core/repositories/activity_repository_providers.dart';
+import 'package:vikunja_mobile/core/repositories/bucket_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences_providers.dart';
 import 'package:vikunja_mobile/core/repositories/project_repository.dart';
@@ -27,6 +28,7 @@ import 'package:vikunja_mobile/features/accounts/application/account_switcher.da
 import 'package:vikunja_mobile/features/sync/application/inactive_outboxes.dart';
 
 import 'activity_fakes.dart';
+import 'bucket_fakes.dart';
 import 'list_preferences_fakes.dart';
 import 'realtime_fakes.dart';
 import 'subscription_fakes.dart';
@@ -462,6 +464,14 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
     _notify();
   }
 
+  Set<int> _queuedDoneChanges = const {};
+
+  /// The tasks whose done change the board takes as not sent yet.
+  void setQueuedDoneChanges(Set<int> taskIds) {
+    _queuedDoneChanges = {...taskIds};
+    _notify();
+  }
+
   /// Like the database: the project's open tasks and the done ones the
   /// board can show (listed, created here, queued, or newer than the
   /// download), newest first.
@@ -489,6 +499,7 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
           if (task.projectId == projectId && shown(task)) task,
       ]..sort(_newestFirst),
       queued: Map.unmodifiable(queued),
+      queuedDoneChanges: Set.unmodifiable(_queuedDoneChanges),
     );
   }
 
@@ -989,6 +1000,9 @@ final class AccountDataFakes {
   final subscriptions = FakeSubscriptionRepository();
   final details = FakeTaskDetailsRepository();
 
+  /// Changes the boards of [tasks] and the views of [projects].
+  late final buckets = FakeBucketRepository(tasks: tasks, projects: projects);
+
   /// Resolves the account's [tasks] locally, the rest from its `online`.
   late final FakeTaskResolver resolver;
   final attachmentImages = FakeAttachmentImages();
@@ -1040,6 +1054,7 @@ final class SyncFakes {
   FakeListPreferences get listPreferences => shared.listPreferences;
   FakeSubscriptionRepository get subscriptions => shared.subscriptions;
   FakeTaskDetailsRepository get details => shared.details;
+  FakeBucketRepository get buckets => shared.buckets;
   FakeTaskResolver get resolver => shared.resolver;
   FakeAttachmentImages get attachmentImages => shared.attachmentImages;
 
@@ -1069,6 +1084,9 @@ final class SyncFakes {
     ),
     accountTaskDetailsRepositoryProvider.overrideWith(
       (ref, accountId) => forAccount(accountId).details,
+    ),
+    accountBucketRepositoryProvider.overrideWith(
+      (ref, accountId) => forAccount(accountId).buckets,
     ),
     accountTaskResolverProvider.overrideWith(
       (ref, accountId) => forAccount(accountId).resolver,

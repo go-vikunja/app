@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/auth/sign_out_providers.dart';
+import 'package:vikunja_mobile/core/repositories/bucket_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/subscription_repository_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_providers.dart';
@@ -42,6 +43,7 @@ void main() {
     expect(container.read(labelRepositoryProvider), isNull);
     expect(container.read(userRepositoryProvider), isNull);
     expect(container.read(subscriptionRepositoryProvider), isNull);
+    expect(container.read(bucketRepositoryProvider), isNull);
     final projects = container.listen(projectsProvider, (_, _) {});
     expect(projects.read(), const AsyncLoading<List<Project>>());
     final status = container.listen(syncStatusProvider, (_, _) {});
@@ -98,6 +100,10 @@ void main() {
       expect(
         container.read(subscriptionRepositoryProvider),
         same(dataFor(bob.id).subscriptions),
+      );
+      expect(
+        container.read(bucketRepositoryProvider),
+        same(dataFor(bob.id).buckets),
       );
       // The old account's data must not linger while the new one loads.
       expect(

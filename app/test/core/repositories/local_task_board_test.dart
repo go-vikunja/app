@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/outbox/outbox_sender.dart';
 import 'package:vikunja_mobile/core/outbox/task_changes_json.dart';
@@ -109,6 +110,30 @@ void main() {
       [7, 6, 5, 4, 3, 2, 1],
       reason: 'the done task the board lists comes along',
     );
+  });
+
+  test('the board counts as loaded when its request went out, so what '
+      'the server changes meanwhile is newer', () async {
+    var clock = now;
+    final timed = LocalTaskRepository(
+      db,
+      sync,
+      sender,
+      write,
+      read: read,
+      perPage: 2,
+      now: () => clock,
+    );
+    addTearDown(timed.dispose);
+    read.beforeRequest = (request) async {
+      if (request.startsWith('board')) {
+        clock = now.add(const Duration(minutes: 1));
+      }
+    };
+
+    await timed.refreshBoard(7, 80);
+
+    expect((await timed.watchBoard(7, 80).first).loadedAt, now);
   });
 
   test("the page size is the server's, at most 50 per bucket", () async {
@@ -295,5 +320,27 @@ void main() {
     final source = await repository.watchBoard(7, 80).first;
     expect(source.movedHere, {20});
     expect(source.projectTasks.map((task) => task.id), contains(20));
+  });
+
+  test('the tasks whose done change is not sent yet are named, a title '
+      'that reads "done" is not one', () async {
+    await repository.refreshBoard(7, 80);
+    sender.pause();
+
+    await repository.updateTask(7, const TaskChanges(done: false));
+    await repository.updateTask(1, const TaskChanges(title: 'done'));
+
+    final source = await repository.watchBoard(7, 80).first;
+    expect(source.queuedDoneChanges, {7});
+    final reopened = buildBoard(
+      view: board,
+      buckets: source.buckets,
+      snapshot: source.snapshot,
+      loadedAt: source.loadedAt,
+      projectTasks: source.projectTasks,
+      queued: source.queued,
+      queuedDoneChanges: source.queuedDoneChanges,
+    ).firstWhere((column) => column.tasks.any((task) => task.id == 7));
+    expect(reopened.bucket.id, todo.id);
   });
 }

@@ -266,11 +266,15 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
         for (final (id, changes) in pending)
           if (changes.projectId == projectId) id,
       },
+      queuedDoneChanges: {
+        for (final (id, changes) in pending)
+          if (changes.done != null) id,
+      },
     );
   }
 
-  /// The unsent changes of the project's tasks that place them on a board
-  /// or move them into the project.
+  /// The unsent changes of the project's tasks that place them on a board,
+  /// mark them done or open, or move them into the project.
   Future<List<(int, TaskChanges)>> _pendingBoardChanges(int projectId) async {
     final query = selectOnly(tasks)
       ..addColumns([tasks.id, tasks.pendingChanges])
@@ -278,6 +282,7 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
         tasks.projectId.equals(projectId) &
             _visible &
             (tasks.pendingChanges.like('%"kanban"%') |
+                tasks.pendingChanges.like('%"done"%') |
                 tasks.pendingChanges.like('%"project_id"%')),
       );
     return [

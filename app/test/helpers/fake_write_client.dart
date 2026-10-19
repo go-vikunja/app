@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/core/outbox/apply_task_changes.dart';
 
 import 'task_edits.dart';
@@ -50,9 +51,22 @@ final class FakeWriteClient implements VikunjaWriteClient {
   /// (`DomainError(412, code: 10004)`).
   final Map<int, VikunjaFailure> refusedBuckets = {};
 
+  /// The buckets of each kanban view by view id, then bucket id, for
+  /// [buckets] and [views]; their counts are not kept.
+  final Map<int, Map<int, Bucket>> serverBuckets = {};
+
+  /// The kanban views [views] answers with, by id; a view missing here is
+  /// answered as a plain manual board.
+  final Map<int, ProjectView> serverViews = {};
+
   /// `create <title>`, `update <id>`, `delete <id>`,
   /// `move <id> view <view> bucket <bucket>`,
-  /// `position <id> view <view> <position>` and `create label <title>`, in
+  /// `position <id> view <view> <position>`, `create label <title>`,
+  /// `create bucket view <view> <title> limit <limit> at <position>`,
+  /// `update bucket <id> view <view> <title> limit <limit> at <position>`,
+  /// `delete bucket <id> view <view>`,
+  /// `view <view> buckets done <id> default <id>` (null: unchanged) and
+  /// `read view <view>` (both null), in
   /// order; an update's moves and positions follow it.
   final List<String> requests = [];
   final List<NewTask> creates = [];
@@ -80,6 +94,12 @@ final class FakeWriteClient implements VikunjaWriteClient {
   @override
   late final FakeSubscriptionsWritePort subscriptions =
       FakeSubscriptionsWritePort(this);
+
+  @override
+  late final FakeBucketsWritePort buckets = FakeBucketsWritePort(this);
+
+  @override
+  late final FakeProjectViewsWritePort views = FakeProjectViewsWritePort(this);
 
   Future<void> _request(String description) async {
     requests.add(description);
@@ -361,5 +381,182 @@ final class FakeSubscriptionsWritePort implements SubscriptionsWritePort {
     subscribed.remove('${entity.wireName}:$id');
   }
 }
+
+/// Like the server: a create without a position lands at `id × 65536`; an
+/// update replaces title, limit and position and answers with what was
+/// sent; a delete refuses the last bucket of a view (412 code 10003),
+/// clears the view's done or default bucket when it was this one, and
+/// moves the bucket's tasks (in [FakeWriteClient.bucketSlots]) to the
+/// default bucket, else to the leftmost one counted before the delete, so
+/// deleting the leftmost while no other default is set leaves them in no
+/// bucket, as the server's bug does. A bucket that is gone counts as
+/// deleted, as the real port tolerates it.
+final class FakeBucketsWritePort implements BucketsWritePort {
+  new(this._client);
+
+  final FakeWriteClient _client;
+
+  /// The id the next bucket create gets.
+  int nextBucketId = 700;
+
+  @override
+  Future<Bucket> create(
+    int projectId,
+    int viewId, {
+    required String title,
+    int limit = 0,
+    double? position,
+  }) async {
+    final description =
+        'create bucket view $viewId $title limit $limit at $position';
+    await _client._request(description);
+    final id = nextBucketId++;
+    final created = Bucket(
+      id: id,
+      viewId: viewId,
+      title: title,
+      limit: limit,
+      position: position == null || position == 0 ? id * 65536.0 : position,
+    );
+    (_client.serverBuckets[viewId] ??= {})[id] = created;
+    await _client.afterRequest?.call(description);
+    return created;
+  }
+
+  @override
+  Future<Bucket> update(
+    int projectId,
+    int viewId, {
+    required int bucketId,
+    required String title,
+    required int limit,
+    required double position,
+  }) async {
+    await _client._request(
+      'update bucket $bucketId view $viewId $title limit $limit at $position',
+    );
+    final buckets = _client.serverBuckets[viewId] ?? const {};
+    if (!buckets.containsKey(bucketId)) throw const NotFound(code: 10001);
+    return _client.serverBuckets[viewId]![bucketId] = Bucket(
+      id: bucketId,
+      viewId: viewId,
+      title: title,
+      limit: limit,
+      position: position,
+    );
+  }
+
+  @override
+  Future<void> delete(int projectId, int viewId, int bucketId) async {
+    await _client._request('delete bucket $bucketId view $viewId');
+    final buckets = _client.serverBuckets[viewId];
+    if (buckets == null || !buckets.containsKey(bucketId)) return;
+    if (buckets.length <= 1) throw const DomainError(412, code: 10003);
+    var view =
+        _client.kanbanViews[viewId] ?? (doneBucketId: 0, defaultBucketId: 0);
+    view = (
+      doneBucketId: view.doneBucketId == bucketId ? 0 : view.doneBucketId,
+      defaultBucketId: view.defaultBucketId == bucketId
+          ? 0
+          : view.defaultBucketId,
+    );
+    _client.kanbanViews[viewId] = view;
+    if (_client.serverViews[viewId] case final stored?) {
+      _client.serverViews[viewId] = _withBuckets(
+        stored,
+        doneBucketId: view.doneBucketId,
+        defaultBucketId: view.defaultBucketId,
+      );
+    }
+    final leftmost = ([...buckets.values]..sort(compareBucketOrder)).first;
+    final target = view.defaultBucketId != 0
+        ? view.defaultBucketId
+        : leftmost.id;
+    if (_client.bucketSlots[viewId] case final slots?) {
+      final moved = [
+        for (final MapEntry(key: taskId, value: slot) in slots.entries)
+          if (slot.bucketId == bucketId) (taskId, slot.position),
+      ];
+      for (final (taskId, position) in moved) {
+        if (target == bucketId) {
+          slots.remove(taskId);
+        } else {
+          slots[taskId] = (bucketId: target, position: position);
+        }
+      }
+    }
+    buckets.remove(bucketId);
+  }
+}
+
+/// Stores the done and default bucket in [FakeWriteClient.kanbanViews] and
+/// [FakeWriteClient.serverViews]: 0 clears one, a bucket of another view
+/// fails with 400 code 10002, an unknown id is stored as 0.
+final class FakeProjectViewsWritePort implements ProjectViewsWritePort {
+  new(this._client);
+
+  final FakeWriteClient _client;
+
+  @override
+  Future<ProjectView> setBuckets(
+    int projectId,
+    int viewId, {
+    int? doneBucketId,
+    int? defaultBucketId,
+  }) async {
+    await _client._request(
+      doneBucketId == null && defaultBucketId == null
+          ? 'read view $viewId'
+          : 'view $viewId buckets done $doneBucketId default $defaultBucketId',
+    );
+    int? checked(int? id) {
+      if (id == null || id == 0) return id;
+      if (_client.serverBuckets[viewId]?.containsKey(id) ?? false) return id;
+      final elsewhere = _client.serverBuckets.entries.any(
+        (entry) => entry.key != viewId && entry.value.containsKey(id),
+      );
+      if (elsewhere) throw const DomainError(400, code: 10002);
+      return 0;
+    }
+
+    final done = checked(doneBucketId);
+    final defaultId = checked(defaultBucketId);
+    final current =
+        _client.kanbanViews[viewId] ?? (doneBucketId: 0, defaultBucketId: 0);
+    final next = (
+      doneBucketId: done ?? current.doneBucketId,
+      defaultBucketId: defaultId ?? current.defaultBucketId,
+    );
+    _client.kanbanViews[viewId] = next;
+    return _client.serverViews[viewId] = _withBuckets(
+      _client.serverViews[viewId] ??
+          ProjectView(
+            id: viewId,
+            projectId: projectId,
+            title: 'Kanban',
+            kind: ProjectViewKind.kanban,
+            bucketConfigurationMode: BucketConfigurationMode.manual,
+          ),
+      doneBucketId: next.doneBucketId,
+      defaultBucketId: next.defaultBucketId,
+    );
+  }
+}
+
+ProjectView _withBuckets(
+  ProjectView view, {
+  required int doneBucketId,
+  required int defaultBucketId,
+}) => ProjectView(
+  id: view.id,
+  projectId: view.projectId,
+  title: view.title,
+  kind: view.kind,
+  position: view.position,
+  filter: view.filter,
+  bucketConfigurationMode: view.bucketConfigurationMode,
+  defaultBucketId: defaultBucketId,
+  doneBucketId: doneBucketId,
+);
 
 const _noPlacements = <MapEntry<int, BucketPlacement>>[];

@@ -147,6 +147,73 @@ final class RetryingLabelsWrites implements LabelsWritePort {
       despiteWriteRaces(() => _labels.create(label));
 }
 
+final class RetryingBucketsWrites implements BucketsWritePort {
+  new(this._buckets);
+
+  final BucketsWritePort _buckets;
+
+  @override
+  Future<Bucket> create(
+    int projectId,
+    int viewId, {
+    required String title,
+    int limit = 0,
+    double? position,
+  }) => despiteWriteRaces(
+    () => _buckets.create(
+      projectId,
+      viewId,
+      title: title,
+      limit: limit,
+      position: position,
+    ),
+  );
+
+  @override
+  Future<Bucket> update(
+    int projectId,
+    int viewId, {
+    required int bucketId,
+    required String title,
+    required int limit,
+    required double position,
+  }) => despiteWriteRaces(
+    () => _buckets.update(
+      projectId,
+      viewId,
+      bucketId: bucketId,
+      title: title,
+      limit: limit,
+      position: position,
+    ),
+  );
+
+  @override
+  Future<void> delete(int projectId, int viewId, int bucketId) =>
+      despiteWriteRaces(() => _buckets.delete(projectId, viewId, bucketId));
+}
+
+final class RetryingProjectViewsWrites implements ProjectViewsWritePort {
+  new(this._views);
+
+  final ProjectViewsWritePort _views;
+
+  @override
+  Future<ProjectView> setBuckets(
+    int projectId,
+    int viewId, {
+    int? doneBucketId,
+    int? defaultBucketId,
+  }) => despiteWriteRaces(
+    () => _views.setBuckets(
+      projectId,
+      viewId,
+      doneBucketId: doneBucketId,
+      defaultBucketId: defaultBucketId,
+    ),
+  );
+}
+
 /// [connection] restricted to [version], so a client built over it uses
 /// that API version.
 ServerConnection onlyVersion(ServerConnection connection, ApiVersion version) =>

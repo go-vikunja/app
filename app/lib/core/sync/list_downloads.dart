@@ -157,6 +157,8 @@ Future<void> downloadBoard({
   required int viewId,
   required DateTime Function() now,
 }) async {
+  // A change the server makes while the board is read counts as newer.
+  final startedAt = now().toUtc();
   final zone = await _timezoneSetting(db);
   final size = _boardPageSize(perPage);
   final loadedBefore = await db.kanbanDao.loadedPages(viewId);
@@ -202,7 +204,7 @@ Future<void> downloadBoard({
     buckets: [for (final column in columns) column.bucket],
     slots: slots,
     loadedPages: loadedPages,
-    loadedAt: now().toUtc(),
+    loadedAt: startedAt,
   );
   _log.fine(
     'Board $viewId of project $projectId: ${columns.length} buckets, '

@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v2/projects/842/views/4712/buckets",
+  "status": 201,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"id\":3553,\"title\":\"Someday\",\"project_view_id\":4712,\"limit\":3,\"count\":0,\"position\":500,\"created\":\"2026-10-19T18:34:06.660958782Z\",\"updated\":\"2026-10-19T18:34:06.66103149Z\",\"created_by\":{\"id\":318,\"name\":\"\",\"username\":\"fixtureuser\",\"created\":\"2026-10-19T18:34:03Z\",\"updated\":\"2026-10-19T18:34:03Z\"}}\n"
+}

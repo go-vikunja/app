@@ -1,13 +1,14 @@
 import 'dart:math' as math;
 
+import 'package:flutter/semantics.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/features/projects/application/board_moves.dart';
 
-/// One column of a kanban board: the bucket's title, done marker and count
-/// pinned above its cards, then the next page's loader and "Add a task",
+/// One column of a kanban board: the bucket's title, done marker, count and
+/// menu pinned above its cards, then the next page's loader and "Add a task",
 /// all in one scroll view so that nothing overflows a short column. A board
 /// drives the drag through its state: where a card would go and the
 /// scrolling near the column's ends.
@@ -21,6 +22,8 @@ class BoardColumnView extends StatefulWidget {
     required this.onLoadMore,
     required this.onNearEnd,
     this.onAddTask,
+    this.menu,
+    this.headerActions = const {},
     this.draggedTaskId,
     this.dropIndex,
     this.endPadding = 0,
@@ -39,6 +42,12 @@ class BoardColumnView extends StatefulWidget {
 
   /// Null hides "Add a task", e.g. on a board whose cards cannot move.
   final VoidCallback? onAddTask;
+
+  /// At the header's end, a node of its own beside the header's.
+  final Widget? menu;
+
+  /// The header's screen reader actions.
+  final Map<CustomSemanticsAction, VoidCallback> headerActions;
 
   /// The card being dragged, which stays alive while it scrolls away.
   final int? draggedTaskId;
@@ -174,6 +183,8 @@ class BoardColumnViewState extends State<BoardColumnView> {
                     count: column.shownCount,
                     full: full,
                     isDoneColumn: widget.isDoneColumn,
+                    menu: widget.menu,
+                    actions: widget.headerActions,
                   ),
                 ),
               ),
@@ -238,12 +249,16 @@ class _ColumnHeader extends StatelessWidget {
     required this.count,
     required this.full,
     required this.isDoneColumn,
+    required this.menu,
+    required this.actions,
   });
 
   final Bucket bucket;
   final int count;
   final bool full;
   final bool isDoneColumn;
+  final Widget? menu;
+  final Map<CustomSemanticsAction, VoidCallback> actions;
 
   @override
   Widget build(BuildContext context) {
@@ -260,37 +275,58 @@ class _ColumnHeader extends StatelessWidget {
       if (full) l10n.boardColumnFull,
       if (isDoneColumn) l10n.boardDoneColumnHint,
     ].join('\n');
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-      child: Semantics(
-        header: true,
-        container: true,
-        label: spoken,
-        child: ExcludeSemantics(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (isDoneColumn) ...[
-                Tooltip(
-                  message: l10n.boardDoneColumnHint,
-                  child: Icon(Icons.done_all, size: 20, color: colors.primary),
-                ),
-                const SizedBox(width: 6),
-              ],
-              Expanded(
-                child: Text(bucket.title, style: theme.textTheme.titleSmall),
+    final heading = Semantics(
+      header: true,
+      container: true,
+      label: spoken,
+      customSemanticsActions: actions.isEmpty ? null : actions,
+      child: ExcludeSemantics(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (isDoneColumn) ...[
+              Tooltip(
+                message: l10n.boardDoneColumnHint,
+                child: Icon(Icons.done_all, size: 20, color: colors.primary),
               ),
-              const SizedBox(width: 8),
-              Text(
-                limited ? '$count/${bucket.limit}' : '$count',
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: full ? colors.error : colors.onSurfaceVariant,
-                  fontWeight: full ? FontWeight.w700 : null,
-                ),
-              ),
+              const SizedBox(width: 6),
             ],
-          ),
+            Expanded(
+              child: Text(bucket.title, style: theme.textTheme.titleSmall),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              limited ? '$count/${bucket.limit}' : '$count',
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: full ? colors.error : colors.onSurfaceVariant,
+                fontWeight: full ? FontWeight.w700 : null,
+              ),
+            ),
+          ],
         ),
+      ),
+    );
+    final menu = this.menu;
+    if (menu == null) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+        child: heading,
+      );
+    }
+    // The button's own padding stands in for the header's at its end.
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(start: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 12, bottom: 8),
+              child: heading,
+            ),
+          ),
+          menu,
+        ],
       ),
     );
   }

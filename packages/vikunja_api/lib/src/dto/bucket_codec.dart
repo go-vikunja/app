@@ -16,6 +16,14 @@ Bucket parseBucket(Object? json) {
   );
 }
 
+/// v1 and v2 create and update body. Never an `id` or `project_view_id`:
+/// v1 lets those override the URL's.
+Map<String, Object?> encodeBucket({
+  required String title,
+  required int limit,
+  double? position,
+}) => {'title': title, 'limit': limit, 'position': ?position};
+
 /// The tasks of a bucket in a board read. An empty bucket has no `tasks`
 /// key at all.
 List<Task> bucketTasksOf(Object? json, {required int bucketId}) =>

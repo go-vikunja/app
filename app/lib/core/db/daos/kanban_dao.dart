@@ -136,29 +136,11 @@ final class KanbanDao extends DatabaseAccessor<AppDatabase>
     final header = await (select(
       listSnapshots,
     )..where((s) => s.listKey.equals(key))).getSingleOrNull();
-    final buckets =
-        await (select(kanbanBuckets)
-              ..where((b) => b.viewId.equals(viewId))
-              ..orderBy([
-                (b) => OrderingTerm.asc(b.position),
-                (b) => OrderingTerm.asc(b.bucketId),
-              ]))
-            .get();
     final rows = await (select(
       listSnapshotTasks,
     )..where((t) => t.listKey.equals(key) & t.bucketId.isNotNull())).get();
     return (
-      buckets: [
-        for (final row in buckets)
-          Bucket(
-            id: row.bucketId,
-            viewId: viewId,
-            title: row.title,
-            limit: row.taskLimit,
-            count: row.taskCount,
-            position: row.position,
-          ),
-      ],
+      buckets: await buckets(viewId),
       slots: {
         for (final row in rows)
           row.taskId: (bucketId: row.bucketId!, position: row.position),
@@ -166,6 +148,103 @@ final class KanbanDao extends DatabaseAccessor<AppDatabase>
       loadedAt: header?.loadedAt,
     );
   }
+
+  /// In position order, then id.
+  Future<List<Bucket>> buckets(int viewId) async {
+    final rows =
+        await (select(kanbanBuckets)
+              ..where((b) => b.viewId.equals(viewId))
+              ..orderBy([
+                (b) => OrderingTerm.asc(b.position),
+                (b) => OrderingTerm.asc(b.bucketId),
+              ]))
+            .get();
+    return [
+      for (final row in rows)
+        Bucket(
+          id: row.bucketId,
+          viewId: viewId,
+          title: row.title,
+          limit: row.taskLimit,
+          count: row.taskCount,
+          position: row.position,
+        ),
+    ];
+  }
+
+  /// A bucket the server just created, holding [Bucket.count] tasks and one
+  /// page of them. A download that already stored it keeps its count.
+  Future<void> putBucket(Bucket bucket) => into(kanbanBuckets).insert(
+    KanbanBucketRow(
+      viewId: bucket.viewId,
+      bucketId: bucket.id,
+      title: bucket.title,
+      taskLimit: bucket.limit,
+      taskCount: bucket.count,
+      position: bucket.position,
+      loadedPages: 1,
+    ),
+    onConflict: DoUpdate(
+      (_) => KanbanBucketsCompanion(
+        title: Value(bucket.title),
+        taskLimit: Value(bucket.limit),
+        position: Value(bucket.position),
+      ),
+    ),
+  );
+
+  /// Title, limit and position as the server stored them; the count and
+  /// the pages loaded stay. False when the board does not have the bucket.
+  Future<bool> updateBucket(
+    int viewId,
+    int bucketId, {
+    required String title,
+    required int limit,
+    required double position,
+  }) async {
+    final updated =
+        await (update(kanbanBuckets)..where(
+              (b) => b.viewId.equals(viewId) & b.bucketId.equals(bucketId),
+            ))
+            .write(
+              KanbanBucketsCompanion(
+                title: Value(title),
+                taskLimit: Value(limit),
+                position: Value(position),
+              ),
+            );
+    return updated > 0;
+  }
+
+  /// The server deleted the bucket and moved its tasks to [movesTo] with
+  /// their positions: the cards follow, and so does the count. Without
+  /// [movesTo], or when the board does not have it, the cards leave the
+  /// board until the next download.
+  Future<void> removeBucket(
+    int viewId,
+    int bucketId, {
+    int? movesTo,
+  }) => transaction(() async {
+    final doomed = await _bucket(viewId, bucketId);
+    if (doomed == null) return;
+    final key = boardKey(viewId);
+    final target = movesTo == null || movesTo == bucketId
+        ? null
+        : await _bucket(viewId, movesTo);
+    if (target == null) {
+      await (delete(listSnapshotTasks)
+            ..where((t) => t.listKey.equals(key) & t.bucketId.equals(bucketId)))
+          .go();
+    } else {
+      await (update(listSnapshotTasks)
+            ..where((t) => t.listKey.equals(key) & t.bucketId.equals(bucketId)))
+          .write(ListSnapshotTasksCompanion(bucketId: Value(target.bucketId)));
+      await _setCount(target, target.taskCount + doomed.taskCount);
+    }
+    await (delete(kanbanBuckets)
+          ..where((b) => b.viewId.equals(viewId) & b.bucketId.equals(bucketId)))
+        .go();
+  });
 
   /// How many pages of each bucket's cards the board holds, by bucket id.
   Future<Map<int, int>> loadedPages(int viewId) async {

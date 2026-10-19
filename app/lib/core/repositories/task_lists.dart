@@ -107,6 +107,7 @@ final class BoardSource {
     this.projectTasks = const [],
     this.queued = const {},
     this.movedHere = const {},
+    this.queuedDoneChanges = const {},
   });
 
   /// Null while the view is not stored here.
@@ -131,4 +132,8 @@ final class BoardSource {
   /// The tasks of [projectTasks] whose move into the project is not sent
   /// yet, which no download can list.
   final Set<int> movedHere;
+
+  /// The tasks of [projectTasks] whose done change is not sent yet: the
+  /// board moves them into or out of the done bucket as the server will.
+  final Set<int> queuedDoneChanges;
 }

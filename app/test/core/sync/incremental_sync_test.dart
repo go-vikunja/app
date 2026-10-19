@@ -722,6 +722,50 @@ void main() {
       expect((await db.listSnapshotsDao.load('view:10')).loadedAt, isNull);
     });
 
+    test("a board's done or default bucket changed elsewhere is stored, "
+        "though only the view's updated moved and its board stays", () async {
+      Project work(ProjectView board) => Project(
+        id: 1,
+        title: 'Work',
+        position: 1,
+        updated: base,
+        views: [board],
+      );
+      client.allProjects = [
+        work(
+          sampleKanbanView(
+            id: 11,
+            projectId: 1,
+            defaultBucketId: 5,
+            doneBucketId: 7,
+          ),
+        ),
+        ...projects().skip(1),
+      ];
+      final sync = await synced();
+      await db.kanbanDao.replaceBoard(
+        11,
+        buckets: const [
+          Bucket(id: 5, viewId: 11, title: 'To-Do', position: 1),
+          Bucket(id: 6, viewId: 11, title: 'Doing', position: 2),
+          Bucket(id: 7, viewId: 11, title: 'Done', position: 3),
+        ],
+        slots: const {1: (bucketId: 5, position: 1)},
+        loadedPages: const {},
+        loadedAt: now,
+      );
+      client.allProjects = [
+        work(sampleKanbanView(id: 11, projectId: 1, defaultBucketId: 6)),
+        ...projects().skip(1),
+      ];
+
+      await sync.refresh();
+
+      final view = await db.projectsDao.loadView(11);
+      expect((view?.defaultBucketId, view?.doneBucketId), (6, 0));
+      expect((await db.kanbanDao.load(11)).buckets, hasLength(3));
+    });
+
     test('a deleted label leaves its tasks and a renamed one shows on them '
         'without the tasks changing', () async {
       final sync = await synced();

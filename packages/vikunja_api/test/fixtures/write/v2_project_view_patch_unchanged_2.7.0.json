@@ -1,0 +1,7 @@
+{
+  "server": "2.7.0",
+  "request": "PATCH /api/v2/projects/842/views/4712",
+  "status": 304,
+  "headers": {},
+  "body": ""
+}

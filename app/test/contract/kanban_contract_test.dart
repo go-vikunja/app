@@ -189,6 +189,8 @@ void main() {
             loadedAt: source.loadedAt,
             projectTasks: source.projectTasks,
             queued: source.queued,
+            movedHere: source.movedHere,
+            queuedDoneChanges: source.queuedDoneChanges,
           );
         }
 

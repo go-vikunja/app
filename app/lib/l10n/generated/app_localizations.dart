@@ -4518,6 +4518,300 @@ abstract class AppLocalizations {
   /// **'Moved down'**
   String get boardMovedDown;
 
+  /// Tooltip, also read by screen readers, of the menu button in a kanban column's header (the web's "bucket options"); names the column so that the buttons of a board tell apart.
+  ///
+  /// In en, this message translates to:
+  /// **'Options for “{column}”'**
+  String boardColumnOptionsFor(String column);
+
+  /// Read by screen readers for the progress indicator in a kanban column's header while a change to the column is sent.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving the column…'**
+  String get boardColumnSaving;
+
+  /// Item of a kanban column's menu.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename'**
+  String get boardColumnRename;
+
+  /// Item of a kanban column's menu, with the column's task limit or boardColumnLimitNotSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Limit: {limit}'**
+  String boardColumnLimit(String limit);
+
+  /// A kanban column without a task limit, as in "Limit: Not set".
+  ///
+  /// In en, this message translates to:
+  /// **'Not set'**
+  String get boardColumnLimitNotSet;
+
+  /// Checkable item of a kanban column's menu that makes it the board's done column (the web's "done bucket").
+  ///
+  /// In en, this message translates to:
+  /// **'Done column'**
+  String get boardDoneColumn;
+
+  /// Under the "Done column" menu item.
+  ///
+  /// In en, this message translates to:
+  /// **'All tasks moved into the done column are marked as done automatically. All tasks marked as done elsewhere move there as well.'**
+  String get boardDoneColumnHintExtended;
+
+  /// Checkable item of a kanban column's menu that makes it the board's default column (the web's "default bucket").
+  ///
+  /// In en, this message translates to:
+  /// **'Default column'**
+  String get boardDefaultColumn;
+
+  /// Under the "Default column" menu item.
+  ///
+  /// In en, this message translates to:
+  /// **'When creating tasks without specifying a column, they will be added to this column.'**
+  String get boardDefaultColumnHint;
+
+  /// Item of a kanban column's menu and screen reader action on its header: one place to the left on the board.
+  ///
+  /// In en, this message translates to:
+  /// **'Move left'**
+  String get boardColumnMoveLeft;
+
+  /// Item of a kanban column's menu and screen reader action on its header: one place to the right on the board.
+  ///
+  /// In en, this message translates to:
+  /// **'Move right'**
+  String get boardColumnMoveRight;
+
+  /// No description provided for @boardColumnMovedLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'Column moved left'**
+  String get boardColumnMovedLeft;
+
+  /// No description provided for @boardColumnMovedRight.
+  ///
+  /// In en, this message translates to:
+  /// **'Column moved right'**
+  String get boardColumnMovedRight;
+
+  /// Item of a kanban column's menu.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get boardColumnDelete;
+
+  /// Under the disabled "Delete" item of the only column of a kanban board.
+  ///
+  /// In en, this message translates to:
+  /// **'You can\'t delete the last column.'**
+  String get boardColumnDeleteLast;
+
+  /// No description provided for @boardColumnRenameTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename column'**
+  String get boardColumnRenameTitle;
+
+  /// Label of the text field for a kanban column's title.
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get boardColumnTitleLabel;
+
+  /// No description provided for @boardColumnTitleHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the new column title…'**
+  String get boardColumnTitleHint;
+
+  /// Under the title field of a kanban column when it is empty or only spaces.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a title.'**
+  String get boardColumnTitleEmpty;
+
+  /// No description provided for @boardColumnSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get boardColumnSave;
+
+  /// Title of the sheet that creates a kanban column.
+  ///
+  /// In en, this message translates to:
+  /// **'New column'**
+  String get boardNewColumn;
+
+  /// Action of the sheet that creates a kanban column.
+  ///
+  /// In en, this message translates to:
+  /// **'Create'**
+  String get boardNewColumnCreate;
+
+  /// At the end of a kanban board, after its last column.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a column'**
+  String get boardCreateColumn;
+
+  /// No description provided for @boardColumnLimitTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Column limit'**
+  String get boardColumnLimitTitle;
+
+  /// No description provided for @boardColumnLimitLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Limit'**
+  String get boardColumnLimitLabel;
+
+  /// Under the limit field of a kanban column.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 task is in this column now.} other{{count} tasks are in this column now.}} Leave it empty for no limit.'**
+  String boardColumnLimitHelp(int count);
+
+  /// Under the limit field of a kanban column when the limit typed is below the tasks in it, which the server accepts.
+  ///
+  /// In en, this message translates to:
+  /// **'That\'s fewer than it holds now. It takes no new tasks until some move out.'**
+  String get boardColumnLimitBelowCount;
+
+  /// No description provided for @boardDeleteColumnTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete the column'**
+  String get boardDeleteColumnTitle;
+
+  /// No description provided for @boardDeleteColumnBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete the column “{column}”?'**
+  String boardDeleteColumnBody(String column);
+
+  /// Second line of the confirmation before deleting a kanban column that holds tasks; names the column the server moves them to.
+  ///
+  /// In en, this message translates to:
+  /// **'Its tasks aren\'t deleted but move to “{column}”.'**
+  String boardDeleteColumnTasksMove(String column);
+
+  /// Line of the confirmation before deleting the kanban column new tasks go to while it holds tasks: the app first makes the named column the default for every member, so that the server doesn't lose the tasks.
+  ///
+  /// In en, this message translates to:
+  /// **'“{column}” becomes the default column.'**
+  String boardDeleteColumnBecomesDefault(String column);
+
+  /// No description provided for @boardDeleteColumnConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get boardDeleteColumnConfirm;
+
+  /// Announced to screen readers once the server created a kanban column.
+  ///
+  /// In en, this message translates to:
+  /// **'Column created'**
+  String get boardColumnCreated;
+
+  /// No description provided for @boardColumnRenamed.
+  ///
+  /// In en, this message translates to:
+  /// **'Column renamed'**
+  String get boardColumnRenamed;
+
+  /// No description provided for @boardColumnLimitSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Column limit saved'**
+  String get boardColumnLimitSaved;
+
+  /// No description provided for @boardDoneColumnSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Done column saved'**
+  String get boardDoneColumnSaved;
+
+  /// No description provided for @boardDefaultColumnSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Default column saved'**
+  String get boardDefaultColumnSaved;
+
+  /// No description provided for @boardColumnDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Column deleted'**
+  String get boardColumnDeleted;
+
+  /// No description provided for @boardColumnNeedsConnection.
+  ///
+  /// In en, this message translates to:
+  /// **'Changing columns needs a connection to the server.'**
+  String get boardColumnNeedsConnection;
+
+  /// A change to a kanban column timed out; the server may have made it.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t confirm the change. Check your connection and pull down to refresh the board.'**
+  String get boardColumnUnconfirmed;
+
+  /// No description provided for @boardColumnAdminOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Only project admins can choose the done or default column.'**
+  String get boardColumnAdminOnly;
+
+  /// Deleting the column the server puts new tasks into, while it has tasks, needs another default column first, which only project admins may choose.
+  ///
+  /// In en, this message translates to:
+  /// **'Only project admins can delete the column new tasks go to while it holds tasks.'**
+  String get boardColumnDeleteAdminOnly;
+
+  /// Deleting a kanban column failed after the app had made another column the default for it, and putting the old default back failed too.
+  ///
+  /// In en, this message translates to:
+  /// **'“{newDefault}” is now the default column; deleting “{column}” failed.'**
+  String boardColumnDeleteFailedNewDefault(String newDefault, String column);
+
+  /// No description provided for @boardColumnForbidden.
+  ///
+  /// In en, this message translates to:
+  /// **'You don\'t have permission to change this board\'s columns.'**
+  String get boardColumnForbidden;
+
+  /// No description provided for @boardColumnLastOne.
+  ///
+  /// In en, this message translates to:
+  /// **'A board needs at least one column.'**
+  String get boardColumnLastOne;
+
+  /// No description provided for @boardColumnArchived.
+  ///
+  /// In en, this message translates to:
+  /// **'This project is archived, so its columns can\'t be changed.'**
+  String get boardColumnArchived;
+
+  /// No description provided for @boardColumnInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'The server didn\'t accept this title or limit.'**
+  String get boardColumnInvalid;
+
+  /// A change to a kanban column failed for another reason; the reason is the server's message.
+  ///
+  /// In en, this message translates to:
+  /// **'The server refused the change: {message}'**
+  String boardColumnChangeRefused(String message);
+
+  /// No description provided for @boardColumnChangeFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The change couldn\'t be saved.'**
+  String get boardColumnChangeFailed;
+
   /// Read by screen readers for a task nested under another in a project list.
   ///
   /// In en, this message translates to:

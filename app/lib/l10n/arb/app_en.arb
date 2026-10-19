@@ -2730,6 +2730,190 @@
     "description": "Screen reader action on a kanban card: one place down within its column."
   },
   "boardMovedDown": "Moved down",
+  "boardColumnOptionsFor": "Options for “{column}”",
+  "@boardColumnOptionsFor": {
+    "description": "Tooltip, also read by screen readers, of the menu button in a kanban column's header (the web's \"bucket options\"); names the column so that the buttons of a board tell apart.",
+    "placeholders": {
+      "column": {
+        "type": "String",
+        "example": "Doing"
+      }
+    }
+  },
+  "boardColumnSaving": "Saving the column…",
+  "@boardColumnSaving": {
+    "description": "Read by screen readers for the progress indicator in a kanban column's header while a change to the column is sent."
+  },
+  "boardColumnRename": "Rename",
+  "@boardColumnRename": {
+    "description": "Item of a kanban column's menu."
+  },
+  "boardColumnLimit": "Limit: {limit}",
+  "@boardColumnLimit": {
+    "description": "Item of a kanban column's menu, with the column's task limit or boardColumnLimitNotSet.",
+    "placeholders": {
+      "limit": {
+        "type": "String",
+        "example": "5"
+      }
+    }
+  },
+  "boardColumnLimitNotSet": "Not set",
+  "@boardColumnLimitNotSet": {
+    "description": "A kanban column without a task limit, as in \"Limit: Not set\"."
+  },
+  "boardDoneColumn": "Done column",
+  "@boardDoneColumn": {
+    "description": "Checkable item of a kanban column's menu that makes it the board's done column (the web's \"done bucket\")."
+  },
+  "boardDoneColumnHintExtended": "All tasks moved into the done column are marked as done automatically. All tasks marked as done elsewhere move there as well.",
+  "@boardDoneColumnHintExtended": {
+    "description": "Under the \"Done column\" menu item."
+  },
+  "boardDefaultColumn": "Default column",
+  "@boardDefaultColumn": {
+    "description": "Checkable item of a kanban column's menu that makes it the board's default column (the web's \"default bucket\")."
+  },
+  "boardDefaultColumnHint": "When creating tasks without specifying a column, they will be added to this column.",
+  "@boardDefaultColumnHint": {
+    "description": "Under the \"Default column\" menu item."
+  },
+  "boardColumnMoveLeft": "Move left",
+  "@boardColumnMoveLeft": {
+    "description": "Item of a kanban column's menu and screen reader action on its header: one place to the left on the board."
+  },
+  "boardColumnMoveRight": "Move right",
+  "@boardColumnMoveRight": {
+    "description": "Item of a kanban column's menu and screen reader action on its header: one place to the right on the board."
+  },
+  "boardColumnMovedLeft": "Column moved left",
+  "boardColumnMovedRight": "Column moved right",
+  "boardColumnDelete": "Delete",
+  "@boardColumnDelete": {
+    "description": "Item of a kanban column's menu."
+  },
+  "boardColumnDeleteLast": "You can't delete the last column.",
+  "@boardColumnDeleteLast": {
+    "description": "Under the disabled \"Delete\" item of the only column of a kanban board."
+  },
+  "boardColumnRenameTitle": "Rename column",
+  "boardColumnTitleLabel": "Title",
+  "@boardColumnTitleLabel": {
+    "description": "Label of the text field for a kanban column's title."
+  },
+  "boardColumnTitleHint": "Enter the new column title…",
+  "boardColumnTitleEmpty": "Enter a title.",
+  "@boardColumnTitleEmpty": {
+    "description": "Under the title field of a kanban column when it is empty or only spaces."
+  },
+  "boardColumnSave": "Save",
+  "boardNewColumn": "New column",
+  "@boardNewColumn": {
+    "description": "Title of the sheet that creates a kanban column."
+  },
+  "boardNewColumnCreate": "Create",
+  "@boardNewColumnCreate": {
+    "description": "Action of the sheet that creates a kanban column."
+  },
+  "boardCreateColumn": "Create a column",
+  "@boardCreateColumn": {
+    "description": "At the end of a kanban board, after its last column."
+  },
+  "boardColumnLimitTitle": "Column limit",
+  "boardColumnLimitLabel": "Limit",
+  "boardColumnLimitHelp": "{count, plural, =1{1 task is in this column now.} other{{count} tasks are in this column now.}} Leave it empty for no limit.",
+  "@boardColumnLimitHelp": {
+    "description": "Under the limit field of a kanban column.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "boardColumnLimitBelowCount": "That's fewer than it holds now. It takes no new tasks until some move out.",
+  "@boardColumnLimitBelowCount": {
+    "description": "Under the limit field of a kanban column when the limit typed is below the tasks in it, which the server accepts."
+  },
+  "boardDeleteColumnTitle": "Delete the column",
+  "boardDeleteColumnBody": "Are you sure you want to delete the column “{column}”?",
+  "@boardDeleteColumnBody": {
+    "placeholders": {
+      "column": {
+        "type": "String",
+        "example": "Doing"
+      }
+    }
+  },
+  "boardDeleteColumnTasksMove": "Its tasks aren't deleted but move to “{column}”.",
+  "@boardDeleteColumnTasksMove": {
+    "description": "Second line of the confirmation before deleting a kanban column that holds tasks; names the column the server moves them to.",
+    "placeholders": {
+      "column": {
+        "type": "String",
+        "example": "To-Do"
+      }
+    }
+  },
+  "boardDeleteColumnBecomesDefault": "“{column}” becomes the default column.",
+  "@boardDeleteColumnBecomesDefault": {
+    "description": "Line of the confirmation before deleting the kanban column new tasks go to while it holds tasks: the app first makes the named column the default for every member, so that the server doesn't lose the tasks.",
+    "placeholders": {
+      "column": {
+        "type": "String",
+        "example": "Doing"
+      }
+    }
+  },
+  "boardDeleteColumnConfirm": "Delete",
+  "boardColumnCreated": "Column created",
+  "@boardColumnCreated": {
+    "description": "Announced to screen readers once the server created a kanban column."
+  },
+  "boardColumnRenamed": "Column renamed",
+  "boardColumnLimitSaved": "Column limit saved",
+  "boardDoneColumnSaved": "Done column saved",
+  "boardDefaultColumnSaved": "Default column saved",
+  "boardColumnDeleted": "Column deleted",
+  "boardColumnNeedsConnection": "Changing columns needs a connection to the server.",
+  "boardColumnUnconfirmed": "Couldn't confirm the change. Check your connection and pull down to refresh the board.",
+  "@boardColumnUnconfirmed": {
+    "description": "A change to a kanban column timed out; the server may have made it."
+  },
+  "boardColumnAdminOnly": "Only project admins can choose the done or default column.",
+  "boardColumnDeleteAdminOnly": "Only project admins can delete the column new tasks go to while it holds tasks.",
+  "@boardColumnDeleteAdminOnly": {
+    "description": "Deleting the column the server puts new tasks into, while it has tasks, needs another default column first, which only project admins may choose."
+  },
+  "boardColumnDeleteFailedNewDefault": "“{newDefault}” is now the default column; deleting “{column}” failed.",
+  "@boardColumnDeleteFailedNewDefault": {
+    "description": "Deleting a kanban column failed after the app had made another column the default for it, and putting the old default back failed too.",
+    "placeholders": {
+      "newDefault": {
+        "type": "String",
+        "example": "Doing"
+      },
+      "column": {
+        "type": "String",
+        "example": "Backlog"
+      }
+    }
+  },
+  "boardColumnForbidden": "You don't have permission to change this board's columns.",
+  "boardColumnLastOne": "A board needs at least one column.",
+  "boardColumnArchived": "This project is archived, so its columns can't be changed.",
+  "boardColumnInvalid": "The server didn't accept this title or limit.",
+  "boardColumnChangeRefused": "The server refused the change: {message}",
+  "@boardColumnChangeRefused": {
+    "description": "A change to a kanban column failed for another reason; the reason is the server's message.",
+    "placeholders": {
+      "message": {
+        "type": "String",
+        "example": "Forbidden"
+      }
+    }
+  },
+  "boardColumnChangeFailed": "The change couldn't be saved.",
   "taskSubtaskOfSemantics": "Subtask of {parent}",
   "@taskSubtaskOfSemantics": {
     "description": "Read by screen readers for a task nested under another in a project list.",

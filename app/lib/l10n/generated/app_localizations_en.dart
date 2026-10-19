@@ -2981,6 +2981,185 @@ class AppLocalizationsEn extends AppLocalizations {
   String get boardMovedDown => 'Moved down';
 
   @override
+  String boardColumnOptionsFor(String column) {
+    return 'Options for “$column”';
+  }
+
+  @override
+  String get boardColumnSaving => 'Saving the column…';
+
+  @override
+  String get boardColumnRename => 'Rename';
+
+  @override
+  String boardColumnLimit(String limit) {
+    return 'Limit: $limit';
+  }
+
+  @override
+  String get boardColumnLimitNotSet => 'Not set';
+
+  @override
+  String get boardDoneColumn => 'Done column';
+
+  @override
+  String get boardDoneColumnHintExtended =>
+      'All tasks moved into the done column are marked as done automatically. All tasks marked as done elsewhere move there as well.';
+
+  @override
+  String get boardDefaultColumn => 'Default column';
+
+  @override
+  String get boardDefaultColumnHint =>
+      'When creating tasks without specifying a column, they will be added to this column.';
+
+  @override
+  String get boardColumnMoveLeft => 'Move left';
+
+  @override
+  String get boardColumnMoveRight => 'Move right';
+
+  @override
+  String get boardColumnMovedLeft => 'Column moved left';
+
+  @override
+  String get boardColumnMovedRight => 'Column moved right';
+
+  @override
+  String get boardColumnDelete => 'Delete';
+
+  @override
+  String get boardColumnDeleteLast => 'You can\'t delete the last column.';
+
+  @override
+  String get boardColumnRenameTitle => 'Rename column';
+
+  @override
+  String get boardColumnTitleLabel => 'Title';
+
+  @override
+  String get boardColumnTitleHint => 'Enter the new column title…';
+
+  @override
+  String get boardColumnTitleEmpty => 'Enter a title.';
+
+  @override
+  String get boardColumnSave => 'Save';
+
+  @override
+  String get boardNewColumn => 'New column';
+
+  @override
+  String get boardNewColumnCreate => 'Create';
+
+  @override
+  String get boardCreateColumn => 'Create a column';
+
+  @override
+  String get boardColumnLimitTitle => 'Column limit';
+
+  @override
+  String get boardColumnLimitLabel => 'Limit';
+
+  @override
+  String boardColumnLimitHelp(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tasks are in this column now.',
+      one: '1 task is in this column now.',
+    );
+    return '$_temp0 Leave it empty for no limit.';
+  }
+
+  @override
+  String get boardColumnLimitBelowCount =>
+      'That\'s fewer than it holds now. It takes no new tasks until some move out.';
+
+  @override
+  String get boardDeleteColumnTitle => 'Delete the column';
+
+  @override
+  String boardDeleteColumnBody(String column) {
+    return 'Are you sure you want to delete the column “$column”?';
+  }
+
+  @override
+  String boardDeleteColumnTasksMove(String column) {
+    return 'Its tasks aren\'t deleted but move to “$column”.';
+  }
+
+  @override
+  String boardDeleteColumnBecomesDefault(String column) {
+    return '“$column” becomes the default column.';
+  }
+
+  @override
+  String get boardDeleteColumnConfirm => 'Delete';
+
+  @override
+  String get boardColumnCreated => 'Column created';
+
+  @override
+  String get boardColumnRenamed => 'Column renamed';
+
+  @override
+  String get boardColumnLimitSaved => 'Column limit saved';
+
+  @override
+  String get boardDoneColumnSaved => 'Done column saved';
+
+  @override
+  String get boardDefaultColumnSaved => 'Default column saved';
+
+  @override
+  String get boardColumnDeleted => 'Column deleted';
+
+  @override
+  String get boardColumnNeedsConnection =>
+      'Changing columns needs a connection to the server.';
+
+  @override
+  String get boardColumnUnconfirmed =>
+      'Couldn\'t confirm the change. Check your connection and pull down to refresh the board.';
+
+  @override
+  String get boardColumnAdminOnly =>
+      'Only project admins can choose the done or default column.';
+
+  @override
+  String get boardColumnDeleteAdminOnly =>
+      'Only project admins can delete the column new tasks go to while it holds tasks.';
+
+  @override
+  String boardColumnDeleteFailedNewDefault(String newDefault, String column) {
+    return '“$newDefault” is now the default column; deleting “$column” failed.';
+  }
+
+  @override
+  String get boardColumnForbidden =>
+      'You don\'t have permission to change this board\'s columns.';
+
+  @override
+  String get boardColumnLastOne => 'A board needs at least one column.';
+
+  @override
+  String get boardColumnArchived =>
+      'This project is archived, so its columns can\'t be changed.';
+
+  @override
+  String get boardColumnInvalid =>
+      'The server didn\'t accept this title or limit.';
+
+  @override
+  String boardColumnChangeRefused(String message) {
+    return 'The server refused the change: $message';
+  }
+
+  @override
+  String get boardColumnChangeFailed => 'The change couldn\'t be saved.';
+
+  @override
   String taskSubtaskOfSemantics(String parent) {
     return 'Subtask of $parent';
   }

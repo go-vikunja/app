@@ -10,6 +10,8 @@ import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/projects/presentation/board/board_card.dart';
 import 'package:vikunja_mobile/features/projects/presentation/board/board_column.dart';
+import 'package:vikunja_mobile/features/projects/presentation/board/column_menu.dart';
+import 'package:vikunja_mobile/features/projects/presentation/board/new_column_tile.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
@@ -331,6 +333,23 @@ void main() {
       expect(find.byTooltip(en.boardDoneColumnHint), findsOneWidget);
     });
 
+    testWidgets('an open task downloaded in the done column stays there '
+        'until it is reopened here', (tester) async {
+      data.tasks.all = [
+        for (final task in tasks())
+          if (task.id == 6) sampleTask(id: 6, title: 'Finished') else task,
+      ];
+      await pumpBoard(tester);
+
+      expect(cardsIn(tester, 'Done'), ['Finished']);
+
+      data.tasks.setQueuedDoneChanges({6});
+      await tester.pumpAndSettle();
+
+      expect(cardsIn(tester, 'Done'), isEmpty);
+      expect(cardsIn(tester, 'To-Do'), contains('Finished'));
+    });
+
     testWidgets('a header reads title, count, limit and done hint as one '
         'heading', (tester) async {
       final semantics = tester.ensureSemantics();
@@ -471,8 +490,8 @@ void main() {
       expect(position.pixels, 340 + 8);
     });
 
-    testWidgets('in landscape the first and last columns stay clear of the '
-        'notch', (tester) async {
+    testWidgets('in landscape the first column and the tile after the last '
+        'stay clear of the notch', (tester) async {
       tester.view.padding = const FakeViewPadding(left: 47 * 3, right: 47 * 3);
       addTearDown(tester.view.resetPadding);
       storeBoard(columns: [...buckets(), bucket(24, 'Later')]);
@@ -489,7 +508,7 @@ void main() {
       );
       board.position.jumpTo(board.position.maxScrollExtent);
       await tester.pumpAndSettle();
-      expect(tester.getRect(columnOf('Later')).right, 844 - 47 - 12);
+      expect(tester.getRect(find.byType(NewColumnTile)).right, 844 - 47 - 12);
     }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 
     testWidgets('a tap opens the task', (tester) async {
@@ -1164,6 +1183,9 @@ void main() {
       expect(find.text(en.boardAddTask), findsNothing);
       expect(find.text(en.boardAddAnotherTask), findsNothing);
       expect(actionsOf(tester, 'Call Anna'), isEmpty);
+      expect(find.byType(ColumnMenuButton), findsNothing);
+      expect(find.byType(NewColumnTile), findsNothing);
+      expect(actionsOf(tester, 'Urgent'), isEmpty);
 
       await dragCard(tester, 'Call Anna', aboveCard(tester, 'Fix bike'));
       expect(data.tasks.placements, isEmpty);
@@ -1179,6 +1201,8 @@ void main() {
       expect(find.text(en.projectArchivedNote), findsOneWidget);
       expect(find.byType(FloatingActionButton), findsNothing);
       expect(find.text(en.boardAddAnotherTask), findsNothing);
+      expect(find.byType(ColumnMenuButton), findsNothing);
+      expect(find.byType(NewColumnTile), findsNothing);
 
       await dragCard(tester, 'Call Anna', aboveCard(tester, 'Fix bike'));
       expect(data.tasks.placements, isEmpty);
