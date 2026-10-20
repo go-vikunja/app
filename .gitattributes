@@ -1,0 +1,3 @@
+# Built by tool/build_editor.sh: one minified line, diffs say nothing.
+app/assets/editor/editor.html -diff linguist-generated=true
+app/editor/package-lock.json linguist-generated=true

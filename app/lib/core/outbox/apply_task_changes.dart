@@ -129,15 +129,45 @@ Set<int> relatedTaskIds(TaskChanges changes) => {
     ref.otherTaskId,
 };
 
+/// [changes] checked against [base] from now on: the user chose their
+/// description over [base], the one changed on the web they saw, but not
+/// over a change made after that.
+TaskChanges withDescriptionBase(TaskChanges changes, String base) => _rebuilt(
+  changes,
+  description: (html: changes.description, base: base, toggles: null),
+  labels: changes.labels,
+  relations: changes.relations,
+  kanban: changes.kanban,
+  positions: changes.positions,
+);
+
+/// [changes] without their description: the user chose the server's.
+TaskChanges withoutDescription(TaskChanges changes) => _rebuilt(
+  changes,
+  description: (html: null, base: null, toggles: null),
+  labels: changes.labels,
+  relations: changes.relations,
+  kanban: changes.kanban,
+  positions: changes.positions,
+);
+
+/// A [description] of null keeps the description, its base and its taps.
 TaskChanges _rebuilt(
   TaskChanges changes, {
   required IdSetChange? labels,
   required RelationChange? relations,
   required Map<int, BucketPlacement>? kanban,
   required Map<int, double>? positions,
+  ({String? html, String? base, List<ChecklistToggle>? toggles})? description,
 }) => TaskChanges(
   title: changes.title,
-  description: changes.description,
+  description: description == null ? changes.description : description.html,
+  descriptionBase: description == null
+      ? changes.descriptionBase
+      : description.base,
+  checklistToggles: description == null
+      ? changes.checklistToggles
+      : description.toggles,
   done: changes.done,
   isFavorite: changes.isFavorite,
   priority: changes.priority,

@@ -105,7 +105,45 @@ final class LocalProjectRepository implements ProjectRepository {
   }
 
   @override
-  Future<void> updateProject(int projectId, ProjectChanges changes) async {
+  Future<void> updateProject(int projectId, ProjectChanges changes) =>
+      _update(projectId, changes);
+
+  @override
+  Future<String?> updateDescription(
+    int projectId,
+    String html, {
+    required String base,
+  }) async {
+    String? changed;
+    try {
+      await _update(
+        projectId,
+        ProjectChanges(description: html),
+        rebaseDescription: (current) {
+          if (current == base ||
+              current == html ||
+              (isRichTextEmpty(current) && isRichTextEmpty(base))) {
+            return html;
+          }
+          changed = current;
+          throw const DescriptionConflict();
+        },
+      );
+    } on DescriptionConflict {
+      final current = changed;
+      if (current == null) rethrow;
+      _log.info('The description of project $projectId changed on the server');
+      await _db.projectsDao.updateProject(projectId, description: current);
+      return current;
+    }
+    return null;
+  }
+
+  Future<void> _update(
+    int projectId,
+    ProjectChanges changes, {
+    String Function(String current)? rebaseDescription,
+  }) async {
     final identifier = changes.identifier?.trim();
     if (identifier != null && identifier.runes.length > _maxIdentifierLength) {
       throw ArgumentError.value(changes.identifier, 'identifier');
@@ -115,6 +153,7 @@ final class LocalProjectRepository implements ProjectRepository {
         final title? => _checkedTitle(title),
         null => null,
       },
+      description: changes.description,
       identifier: identifier,
       hexColor: changes.hexColor,
       parentProjectId: changes.parentProjectId,
@@ -135,11 +174,16 @@ final class LocalProjectRepository implements ProjectRepository {
             ),
           )
         : requested;
-    final answered = await _write.projects.update(projectId, sent);
+    final answered = await _write.projects.update(
+      projectId,
+      sent,
+      rebaseDescription: rebaseDescription,
+    );
     await _db.transaction(() async {
       await _db.projectsDao.updateProject(
         projectId,
         title: sent.title == null ? null : answered.title,
+        description: sent.description == null ? null : answered.description,
         identifier: sent.identifier == null ? null : answered.identifier,
         hexColor: sent.hexColor == null ? null : answered.hexColor,
         parentProjectId: sent.parentProjectId == null
@@ -188,6 +232,7 @@ final class LocalProjectRepository implements ProjectRepository {
     double position,
   ) => ProjectChanges(
     title: changes.title,
+    description: changes.description,
     identifier: changes.identifier,
     hexColor: changes.hexColor,
     parentProjectId: changes.parentProjectId,

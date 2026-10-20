@@ -95,16 +95,21 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
   /// the placements and positions queued before it. A temporary id whose
   /// create was answered meanwhile is followed to the server id, the task's
   /// own and those its relations name. False when the task is unknown here
-  /// or queued for deletion.
+  /// or queued for deletion, or its description is not [ifDescription]
+  /// when that is given.
   Future<bool> queueUpdate(
     int localOrServerId,
     TaskChanges requested, {
     required DateTime now,
+    String? ifDescription,
   }) => transaction(() async {
     final taskId = await attachedDatabase.tasksDao.resolveId(localOrServerId);
     final changes = await _withResolvedRelations(requested);
     final row = await _row(taskId);
     if (row == null || row.pendingDelete) return false;
+    if (ifDescription != null && row.description != ifDescription) {
+      return false;
+    }
     var queued = changes;
     var pending = _pendingOf(row);
     if (taskId < 0) {
@@ -472,6 +477,45 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
     }
     await attachedDatabase.tasksDao.forgetRelatedTasks(taskIds);
   }
+
+  /// A failed update goes back to the queue with [base] as its description
+  /// base, so its description overwrites the server's while that is still
+  /// [base] and fails again when it changed once more.
+  Future<void> retryOverwritingDescription(String id, {required String base}) =>
+      transaction(() async {
+        final op = await find(id);
+        if (op == null || !_isFailedUpdate(op)) return;
+        await _write(
+          id,
+          _retaken(
+            encodeTaskChanges(
+              withDescriptionBase(decodeTaskChanges(op.payload), base),
+            ),
+          ),
+        );
+        await _refreshPendingChanges(op.taskId);
+      });
+
+  /// A failed update without its description, back in the queue with what
+  /// else it changes, or gone when that was all; false when the op is gone,
+  /// not an update or no longer failed. The row keeps the description until
+  /// the server's is stored.
+  Future<bool> dropDescription(String id) => transaction(() async {
+    final op = await find(id);
+    if (op == null || !_isFailedUpdate(op)) return false;
+    final rest = withoutDescription(decodeTaskChanges(op.payload));
+    if (rest.isEmpty) {
+      await (delete(outbox)..where((o) => o.id.equals(id))).go();
+    } else {
+      await _write(id, _retaken(encodeTaskChanges(rest)));
+    }
+    await _refreshPendingChanges(op.taskId);
+    return true;
+  });
+
+  static bool _isFailedUpdate(OutboxRow op) =>
+      op.kind == OutboxOperationKind.updateTask.name &&
+      op.state == OutboxState.failed.name;
 
   /// A failed op goes back to the queue with a clean slate.
   Future<void> retry(String id) => _write(

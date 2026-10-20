@@ -3978,4 +3978,230 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get clearSearch => 'Clear search';
+
+  @override
+  String get descriptionEditorTitle => 'Description';
+
+  @override
+  String get descriptionEditorPlaceholder => 'Write a description…';
+
+  @override
+  String get descriptionEditorLoading => 'Opening the editor…';
+
+  @override
+  String get descriptionEditorFailed => 'The editor could not be opened.';
+
+  @override
+  String get descriptionEditorSaved => 'Description saved';
+
+  @override
+  String get descriptionEditorSaveFailed =>
+      'The description could not be saved. Try again.';
+
+  @override
+  String get descriptionEditorLeaveTitle => 'Save the description?';
+
+  @override
+  String get descriptionEditorLeaveBody =>
+      'Your changes to the description are not saved yet.';
+
+  @override
+  String get descriptionEditorChangedTitle =>
+      'The description changed meanwhile';
+
+  @override
+  String get descriptionEditorChangedBody =>
+      'It was changed on the web since you started editing. Overwrite that change with yours, or reload it and lose your edits?';
+
+  @override
+  String get descriptionEditorOverwrite => 'Overwrite';
+
+  @override
+  String get descriptionEditorReload => 'Reload';
+
+  @override
+  String get descriptionEditorStoppedKept =>
+      'The editor stopped. Reload it to go on with your changes.';
+
+  @override
+  String get descriptionEditorStoppedLost =>
+      'The editor stopped, and your latest changes are lost. Reload it to go on.';
+
+  @override
+  String get descriptionEditorImage => 'Image (not shown while editing)';
+
+  @override
+  String get descriptionEditorRestoreTitle => 'Restore unsaved changes?';
+
+  @override
+  String get descriptionEditorRestoreBody =>
+      'You left this description with changes that were not saved.';
+
+  @override
+  String get descriptionEditorRestore => 'Restore';
+
+  @override
+  String get editorToolbar => 'Text formatting';
+
+  @override
+  String get editorBold => 'Bold';
+
+  @override
+  String get editorItalic => 'Italic';
+
+  @override
+  String get editorUnderline => 'Underline';
+
+  @override
+  String get editorStrike => 'Strikethrough';
+
+  @override
+  String get editorCode => 'Inline code';
+
+  @override
+  String get editorTextStyle => 'Text style';
+
+  @override
+  String get editorParagraph => 'Paragraph';
+
+  @override
+  String editorHeading(int level) {
+    return 'Heading $level';
+  }
+
+  @override
+  String get editorBulletList => 'Bulleted list';
+
+  @override
+  String get editorOrderedList => 'Numbered list';
+
+  @override
+  String get editorTaskList => 'Checklist';
+
+  @override
+  String get editorQuote => 'Quote';
+
+  @override
+  String get editorCodeBlock => 'Code block';
+
+  @override
+  String get editorLink => 'Link';
+
+  @override
+  String get editorTable => 'Table';
+
+  @override
+  String get editorInsertTable => 'Insert table';
+
+  @override
+  String get editorAddRow => 'Add row';
+
+  @override
+  String get editorAddColumn => 'Add column';
+
+  @override
+  String get editorDeleteRow => 'Delete row';
+
+  @override
+  String get editorDeleteColumn => 'Delete column';
+
+  @override
+  String get editorDeleteTable => 'Delete table';
+
+  @override
+  String get editorDivider => 'Divider';
+
+  @override
+  String get editorUndo => 'Undo';
+
+  @override
+  String get editorRedo => 'Redo';
+
+  @override
+  String get editorClearFormatting => 'Clear formatting';
+
+  @override
+  String get editorLinkAddTitle => 'Add link';
+
+  @override
+  String get editorLinkEditTitle => 'Edit link';
+
+  @override
+  String get editorLinkAddress => 'Web address';
+
+  @override
+  String get editorLinkApply => 'Apply';
+
+  @override
+  String get editorLinkRemove => 'Remove link';
+
+  @override
+  String get editorMentions => 'People to mention';
+
+  @override
+  String get editorMentionsSearching => 'Searching…';
+
+  @override
+  String get editorMentionsNone => 'No one found';
+
+  @override
+  String get editorMentionsFromDevice =>
+      'No connection: people this device knows';
+
+  @override
+  String get taskDetailEditDescription => 'Edit description';
+
+  @override
+  String get taskDetailAddDescription => 'Add description';
+
+  @override
+  String get checklistItemChecked => 'Checked';
+
+  @override
+  String get checklistItemUnchecked => 'Unchecked';
+
+  @override
+  String get projectEditDescription => 'Description';
+
+  @override
+  String get projectEditNoDescription => 'No description';
+
+  @override
+  String get syncProblemDescriptionConflict =>
+      'The description was changed on the web too.';
+
+  @override
+  String get syncProblemKeepMine => 'Keep my version';
+
+  @override
+  String get syncProblemUseWebs => 'Use the web version';
+
+  @override
+  String editorMentionsFound(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count people found',
+      one: '1 person found',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get syncProblemCompare => 'Compare versions';
+
+  @override
+  String get syncProblemCompareTitle => 'Which description should stay?';
+
+  @override
+  String get syncProblemYourVersion => 'Your version';
+
+  @override
+  String get syncProblemWebVersion => 'Web version';
+
+  @override
+  String get syncProblemWebTaskGone => 'This task is no longer on the server.';
+
+  @override
+  String get syncProblemNoDescription => 'No description';
 }

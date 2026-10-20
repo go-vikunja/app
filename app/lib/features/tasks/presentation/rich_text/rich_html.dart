@@ -7,12 +7,15 @@ import 'package:vikunja_mobile/features/tasks/application/link_targets.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/rich_text/rich_text_view.dart';
 
 /// Parses [html] of the active account once per change and draws it with
-/// [RichTextView]; [empty] stands in when it has nothing visible.
+/// [RichTextView]; [empty] stands in when it has nothing visible. A tap on
+/// a checkbox goes to [onToggleTaskItem] with the exact HTML the item was
+/// parsed from.
 class RichHtml extends ConsumerStatefulWidget {
   const new({
     required this.html,
     required this.onLink,
     required this.onTaskLink,
+    this.onToggleTaskItem,
     this.empty,
     this.style,
     this.projectId,
@@ -23,6 +26,7 @@ class RichHtml extends ConsumerStatefulWidget {
   final String html;
   final ValueChanged<String> onLink;
   final ValueChanged<int> onTaskLink;
+  final void Function(String html, RichTaskItem item)? onToggleTaskItem;
   final Widget? empty;
   final TextStyle? style;
   final int? projectId;
@@ -51,14 +55,19 @@ class _RichHtmlState extends ConsumerState<RichHtml> {
   @override
   Widget build(BuildContext context) {
     final bases = ref.watch(activeLinkBasesProvider);
+    final html = widget.html;
     final document = bases == null
         ? const RichDocument([])
-        : _parse(widget.html, bases);
+        : _parse(html, bases);
     if (document.isEmpty && widget.empty != null) return widget.empty!;
+    final onToggle = widget.onToggleTaskItem;
     return RichTextView(
       document: document,
       onLink: widget.onLink,
       onTaskLink: widget.onTaskLink,
+      onToggleTaskItem: onToggle == null
+          ? null
+          : (item) => onToggle(html, item),
       style: widget.style,
       projectId: widget.projectId,
       replyAuthorOf: widget.replyAuthorOf,

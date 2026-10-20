@@ -436,6 +436,110 @@ void main() {
     });
   });
 
+  group('TaskChanges.merge of description changes', () {
+    const first = ChecklistToggle.byId('a', checked: true);
+    const second = ChecklistToggle.byPosition(
+      ordinal: 2,
+      text: 'Milk',
+      checked: false,
+    );
+    const tap = TaskChanges(
+      description: '<p>1</p>',
+      descriptionBase: '<p>0</p>',
+      checklistToggles: [first],
+    );
+
+    test('the earliest base stays and taps append', () {
+      expect(
+        tap.merge(
+          const TaskChanges(
+            description: '<p>2</p>',
+            descriptionBase: '<p>1</p>',
+            checklistToggles: [second],
+          ),
+        ),
+        const TaskChanges(
+          description: '<p>2</p>',
+          descriptionBase: '<p>0</p>',
+          checklistToggles: [first, second],
+        ),
+      );
+    });
+
+    test('an edit before or after taps makes the whole change an edit', () {
+      const edit = TaskChanges(
+        description: '<p>e</p>',
+        descriptionBase: '<p>1</p>',
+      );
+      expect(
+        tap.merge(edit),
+        const TaskChanges(description: '<p>e</p>', descriptionBase: '<p>0</p>'),
+      );
+      expect(
+        const TaskChanges(
+          description: '<p>e</p>',
+          descriptionBase: '<p>0</p>',
+        ).merge(tap),
+        const TaskChanges(description: '<p>1</p>', descriptionBase: '<p>0</p>'),
+      );
+    });
+
+    test('an earlier description without a base keeps the change '
+        'unchecked', () {
+      expect(
+        const TaskChanges(description: '<p>u</p>').merge(tap),
+        const TaskChanges(description: '<p>1</p>'),
+      );
+    });
+
+    test('a change without a description keeps the other side whole', () {
+      expect(tap.merge(const TaskChanges(done: true)), _with(tap, done: true));
+      expect(const TaskChanges(done: true).merge(tap), _with(tap, done: true));
+    });
+
+    test('takes part in equality, the hash and toString without text', () {
+      expect(
+        tap,
+        isNot(
+          const TaskChanges(
+            description: '<p>1</p>',
+            descriptionBase: '<p>0</p>',
+          ),
+        ),
+      );
+      expect(
+        tap,
+        isNot(
+          const TaskChanges(
+            description: '<p>1</p>',
+            descriptionBase: '<p>x</p>',
+            checklistToggles: [first],
+          ),
+        ),
+      );
+      expect(
+        tap.hashCode,
+        const TaskChanges(
+          description: '<p>1</p>',
+          descriptionBase: '<p>0</p>',
+          checklistToggles: [first],
+        ).hashCode,
+      );
+      final text = tap
+          .merge(
+            const TaskChanges(
+              description: '<p>2</p>',
+              checklistToggles: [second],
+            ),
+          )
+          .toString();
+      expect(text, contains('descriptionBase'));
+      expect(text, contains('checklistToggles: 2'));
+      expect(text, isNot(contains('<p>')));
+      expect(text, isNot(contains('Milk')));
+    });
+  });
+
   group('TaskChanges.merge of relations', () {
     const parent = TaskRelationRef(TaskRelationKind.parentTask, 1);
     const blocks = TaskRelationRef(TaskRelationKind.blocking, 2);
@@ -662,3 +766,10 @@ void main() {
     });
   });
 }
+
+TaskChanges _with(TaskChanges changes, {required bool done}) => TaskChanges(
+  description: changes.description,
+  descriptionBase: changes.descriptionBase,
+  checklistToggles: changes.checklistToggles,
+  done: done,
+);

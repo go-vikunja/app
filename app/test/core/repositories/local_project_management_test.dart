@@ -140,6 +140,79 @@ void main() {
       expect(sync.refreshAfterWriteCalls, 1);
     });
 
+    test('a description is sent alone and stored as answered, byte for '
+        'byte', () async {
+      const html = '<p>Plans\r\n<strong>now</strong> \u{1F600}</p>';
+
+      await repository.updateProject(
+        1,
+        const ProjectChanges(description: html),
+      );
+
+      expect(server.requests, ['update project 1 ProjectChanges(description)']);
+      expect(server.serverProjects[1]!.description, html);
+      final edited = (await stored(1))!;
+      expect(edited.description, html);
+      expect(edited.title, 'Work');
+      expect(edited.identifier, 'WRK');
+    });
+
+    test('a description edit is written while the server still has the '
+        'one it started from', () async {
+      expect(
+        await repository.updateDescription(
+          1,
+          '<p>Office, edited</p>',
+          base: '<p>Office</p>',
+        ),
+        isNull,
+      );
+
+      expect(server.serverProjects[1]!.description, '<p>Office, edited</p>');
+      expect((await stored(1))!.description, '<p>Office, edited</p>');
+    });
+
+    test('a description changed on the web meanwhile is not overwritten: it '
+        'is stored and returned, and nothing is written', () async {
+      server.serverProjects[1] = copyProject(
+        work,
+        description: '<p>From the web</p>',
+      );
+
+      expect(
+        await repository.updateDescription(
+          1,
+          '<p>Mine</p>',
+          base: '<p>Office</p>',
+        ),
+        '<p>From the web</p>',
+      );
+
+      expect(server.serverProjects[1]!.description, '<p>From the web</p>');
+      expect((await stored(1))!.description, '<p>From the web</p>');
+
+      expect(
+        await repository.updateDescription(
+          1,
+          '<p>Mine</p>',
+          base: '<p>From the web</p>',
+        ),
+        isNull,
+      );
+      expect(server.serverProjects[1]!.description, '<p>Mine</p>');
+    });
+
+    test('an empty description counts as unchanged however it is '
+        'written', () async {
+      server.serverProjects[1] = copyProject(work, description: '<p></p>');
+
+      expect(
+        await repository.updateDescription(1, '<p>First</p>', base: ''),
+        isNull,
+      );
+      expect(server.serverProjects[1]!.description, '<p>First</p>');
+    });
+
     test('a new identifier is stored as answered and renames the stored '
         'tasks of the project', () async {
       await db.tasksDao.upsertAll([

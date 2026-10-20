@@ -20,16 +20,21 @@ const _monospace = TextStyle(
 const _maxTableColumns = 50;
 const _maxTableSlots = 5000;
 
+const _checkboxTapTarget = 48.0;
+
 /// A description or comment from the web editor's schema, drawn with the
 /// app's theme: nothing in it loads or opens by itself. A tap on a link
 /// goes to [onLink] with the href as the text has it, one on a task pill
 /// to [onTaskLink]; attachment images load through the account's
-/// authenticated client, other images only stand in as a link.
+/// authenticated client, other images only stand in as a link. With
+/// [onToggleTaskItem] the checkboxes that can be toggled in place (those
+/// with a source offset) take taps; the others stay read-only.
 class RichTextView extends StatefulWidget {
   const new({
     required this.document,
     required this.onLink,
     required this.onTaskLink,
+    this.onToggleTaskItem,
     this.style,
     this.projectId,
     this.replyAuthorOf,
@@ -39,6 +44,7 @@ class RichTextView extends StatefulWidget {
   final RichDocument document;
   final ValueChanged<String> onLink;
   final ValueChanged<int> onTaskLink;
+  final ValueChanged<RichTaskItem>? onToggleTaskItem;
 
   /// The body text; the theme's `bodyMedium` when null.
   final TextStyle? style;
@@ -345,58 +351,123 @@ final class _Renderer {
   ]);
 
   /// The item's own text and its checkbox are one node with the checked
-  /// state; a nested list inside follows on its own.
+  /// state, and its tap when it can be toggled; a nested list inside
+  /// follows on its own. When the text holds something else to tap, the
+  /// checkbox is a node of its own, named by the text, so the two taps stay
+  /// apart.
   Widget taskItem(RichTaskItem item, _BlockStyle style, int listDepth) {
     final own = item.blocks.where((block) => !_isList(block)).toList();
     final nested = item.blocks.where(_isList).toList();
     final itemStyle = style.copyWith(struck: item.checked || style.struck);
-    final lineHeight = (style.text.fontSize ?? 14) * (style.text.height ?? 1.4);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: column([
-            MergeSemantics(
+    final lineHeight = textScaler.scale(
+      (style.text.fontSize ?? 14) * (style.text.height ?? 1.4),
+    );
+    final icon = Icon(
+      item.checked ? Icons.check_box : Icons.check_box_outline_blank,
+      size: 18,
+      color: item.checked ? colors.primary : colors.onSurfaceVariant,
+    );
+    final text = column(blocks(own, itemStyle, listDepth: listDepth + 1));
+    final onToggle = view.onToggleTaskItem;
+    final Widget row;
+    if (onToggle == null || item.sourceOffset == null) {
+      row = MergeSemantics(
+        child: Semantics(
+          checked: item.checked,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 20,
+                height: lineHeight,
+                child: ExcludeSemantics(child: icon),
+              ),
+              const SizedBox(width: 6),
+              Expanded(child: text),
+            ],
+          ),
+        ),
+      );
+    } else {
+      void toggle() => onToggle(item);
+      final checkbox = SizedBox.square(
+        dimension: _checkboxTapTarget,
+        child: ExcludeSemantics(
+          child: InkResponse(
+            onTap: toggle,
+            radius: _checkboxTapTarget / 2,
+            child: Center(child: icon),
+          ),
+        ),
+      );
+      final textBeside = Padding(
+        padding: EdgeInsets.only(
+          top: math.max(0, (_checkboxTapTarget - lineHeight) / 2),
+        ),
+        child: text,
+      );
+      row = _hasTapTargets(own)
+          ? Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Semantics(
+                  container: true,
+                  checked: item.checked,
+                  label: checklistItemText(item),
+                  onTap: toggle,
+                  child: checkbox,
+                ),
+                Expanded(child: textBeside),
+              ],
+            )
+          : MergeSemantics(
               child: Semantics(
                 checked: item.checked,
+                onTap: toggle,
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SizedBox(
-                      width: 20,
-                      height: textScaler.scale(lineHeight),
-                      child: ExcludeSemantics(
-                        child: Icon(
-                          item.checked
-                              ? Icons.check_box
-                              : Icons.check_box_outline_blank,
-                          size: 18,
-                          color: item.checked
-                              ? colors.primary
-                              : colors.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: column(
-                        blocks(own, itemStyle, listDepth: listDepth + 1),
-                      ),
-                    ),
+                    checkbox,
+                    Expanded(child: textBeside),
                   ],
                 ),
               ),
-            ),
-            if (nested.isNotEmpty)
-              Padding(
-                padding: const EdgeInsetsDirectional.only(start: 26),
-                child: column(blocks(nested, style, listDepth: listDepth + 1)),
-              ),
-          ]),
+            );
+    }
+    return column([
+      row,
+      if (nested.isNotEmpty)
+        Padding(
+          padding: const EdgeInsetsDirectional.only(start: 26),
+          child: column(blocks(nested, style, listDepth: listDepth + 1)),
         ),
-      ],
-    );
+    ]);
   }
+
+  /// Links, task pills and images take taps of their own.
+  static bool _hasTapTargets(List<RichBlock> blocks) => blocks.any(
+    (block) => switch (block) {
+      RichParagraph(:final inlines) ||
+      RichHeading(:final inlines) => inlines.any(
+        (inline) => switch (inline) {
+          RichTextRun(:final href) => href != null,
+          RichTaskLink() => true,
+          RichHardBreak() || RichMention() => false,
+        },
+      ),
+      RichBlockquote(:final blocks) => _hasTapTargets(blocks),
+      RichTable(:final rows) => rows.any(
+        (row) => row.cells.any((cell) => _hasTapTargets(cell.blocks)),
+      ),
+      RichBulletList(:final items) || RichOrderedList(:final items) =>
+        items.any((item) => _hasTapTargets(item.blocks)),
+      RichTaskList(:final items) => items.any(
+        (item) => _hasTapTargets(item.blocks),
+      ),
+      RichImage() => true,
+      RichCodeBlock() || RichHorizontalRule() => false,
+    },
+  );
 
   static bool _isList(RichBlock block) =>
       block is RichBulletList ||

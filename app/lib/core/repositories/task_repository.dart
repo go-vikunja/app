@@ -1,4 +1,5 @@
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 
@@ -110,6 +111,34 @@ abstract interface class TaskRepository {
   /// Applies the fields set in [changes] at once and queues them.
   Future<void> updateTask(int taskId, TaskChanges changes);
 
+  /// Queues [html], an edit in the editor that started from the
+  /// description [base], as the task's description; nothing when they are
+  /// equal or both empty (`''` and the editor's `<p></p>`). When the
+  /// server's description is no longer [base] at send time (it changed on
+  /// the web), the change fails with `DescriptionConflict` instead of
+  /// overwriting it, and waits as a sync problem for [keepMyDescription] or
+  /// [useWebDescription]. False when the task is not on this device (or
+  /// queued for deletion), so nothing could be queued.
+  Future<bool> updateDescription(
+    int taskId,
+    String html, {
+    required String base,
+  });
+
+  /// Sets [item], parsed from the description [html], to [checked],
+  /// changing only its checkbox, and queues that as a description change.
+  /// When the server's description changed meanwhile, the tap is applied
+  /// to the server's instead (by the item's `data-task-id`, else its
+  /// position and text; dropped when the item is gone). False, with
+  /// nothing changed, when the task's description is no longer [html] or
+  /// [item] cannot be toggled in it: the view is stale.
+  Future<bool> toggleChecklistItem(
+    int taskId, {
+    required String html,
+    required RichTaskItem item,
+    required bool checked,
+  });
+
   Future<void> setDone(int taskId, {required bool done});
 
   /// Takes back a done of [previous], which may already have been answered:
@@ -140,6 +169,26 @@ abstract interface class TaskRepository {
   /// Drops the queued change and restores the row from the server. Throws
   /// the `VikunjaFailure` of that read and changes nothing then.
   Future<void> discardSyncProblem(String operationId);
+
+  /// The description the server has now for the task of a
+  /// `DescriptionConflict`, to show next to the queued one; null when the
+  /// server no longer has the task. Throws the `VikunjaFailure` of the read.
+  Future<String?> webDescription(String operationId);
+
+  /// "Keep mine" for a `DescriptionConflict`: the change goes again and
+  /// overwrites [webDescription], the one from the web the user saw; when
+  /// the web changed it once more by the time it is sent, the change fails
+  /// again instead.
+  Future<void> keepMyDescription(
+    String operationId, {
+    required String webDescription,
+  });
+
+  /// "Use the web's" for a `DescriptionConflict`: the queued description
+  /// goes and the server's comes back; the other fields of the change are
+  /// still sent. Throws the `VikunjaFailure` of the server read and changes
+  /// nothing then.
+  Future<void> useWebDescription(String operationId);
 
   /// "Send now": drains the queue at once, backoffs included. Returns the
   /// failure the oldest change still waits out afterwards, null when the

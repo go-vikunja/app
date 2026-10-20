@@ -130,6 +130,7 @@ final class ProjectsDao extends DatabaseAccessor<AppDatabase>
   Future<void> updateProject(
     int projectId, {
     String? title,
+    String? description,
     String? identifier,
     String? hexColor,
     int? parentProjectId,
@@ -139,6 +140,7 @@ final class ProjectsDao extends DatabaseAccessor<AppDatabase>
     await (update(projects)..where((p) => p.id.equals(projectId))).write(
       ProjectsCompanion(
         title: Value.absentIfNull(title),
+        description: Value.absentIfNull(description),
         identifier: Value.absentIfNull(identifier),
         hexColor: Value.absentIfNull(hexColor),
         parentProjectId: Value.absentIfNull(parentProjectId),

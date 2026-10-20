@@ -31,6 +31,7 @@ void main() {
       expect(const ProjectChanges().isEmpty, isTrue);
       for (final changes in const [
         ProjectChanges(title: 'a'),
+        ProjectChanges(description: ''),
         ProjectChanges(identifier: ''),
         ProjectChanges(hexColor: ''),
         ProjectChanges(parentProjectId: 0),
@@ -56,6 +57,10 @@ void main() {
         isNot(const ProjectChanges(hexColor: '')),
       );
       expect(
+        const ProjectChanges(description: '<p>a</p>'),
+        isNot(const ProjectChanges(description: '<p>b</p>')),
+      );
+      expect(
         const ProjectChanges(isFavorite: true),
         isNot(const ProjectChanges(isFavorite: true, position: 0.5)),
       );
@@ -64,6 +69,7 @@ void main() {
     test('names the fields set without user text', () {
       final text = const ProjectChanges(
         title: 'Secret',
+        description: '<p>Hidden</p>',
         identifier: 'SEC',
         hexColor: 'abcdef',
         parentProjectId: 4,
@@ -73,12 +79,14 @@ void main() {
       ).toString();
 
       expect(text, contains('title'));
+      expect(text, contains('description'));
       expect(text, contains('identifier'));
       expect(text, contains('parentProjectId: 4'));
       expect(text, contains('isFavorite: true'));
       expect(text, contains('isArchived: false'));
       expect(text, contains('position: 0.5'));
       expect(text, isNot(contains('Secret')));
+      expect(text, isNot(contains('Hidden')));
       expect(text, isNot(contains('SEC')));
       expect(text, isNot(contains('abcdef')));
     });

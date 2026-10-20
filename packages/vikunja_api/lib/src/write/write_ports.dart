@@ -58,7 +58,20 @@ abstract interface class TasksWritePort {
   /// view). A view the task cannot be placed in (a read share, another
   /// project's view, a saved filter's view the task does not match) is a
   /// `Forbidden`, a view that is gone a `NotFound` code 3014.
-  Future<Task> update(int id, TaskChanges changes);
+  ///
+  /// [TaskChanges.descriptionBase] and [TaskChanges.checklistToggles] are
+  /// never sent. With [rebaseDescription] and a [TaskChanges.description],
+  /// the description sent is what [rebaseDescription] returns for the one
+  /// the server has right before the write; what it throws ends the call
+  /// before any write. v1 passes the description of the read its full
+  /// replace makes anyway, v2 reads the task first. The server has no
+  /// preconditions, so a change on the web between that read and the write
+  /// is still overwritten.
+  Future<Task> update(
+    int id,
+    TaskChanges changes, {
+    String Function(String current)? rebaseDescription,
+  });
 
   /// A task that is already gone (404 with Vikunja code 4002) counts as
   /// deleted and does not throw.
@@ -245,7 +258,17 @@ abstract interface class ProjectsWritePort {
   /// An identifier change renames every task's identifier without bumping
   /// the tasks' `updated`; archiving and unarchiving cascade to every
   /// descendant and bump theirs.
-  Future<Project> update(int projectId, ProjectChanges changes);
+  ///
+  /// With [rebaseDescription] and a [ProjectChanges.description], the
+  /// description sent is what [rebaseDescription] returns for the one the
+  /// server has right before the write, as for a task's; what it throws
+  /// ends the call before any write. v1 passes the description of the read
+  /// its full replace makes anyway, v2 reads the project first.
+  Future<Project> update(
+    int projectId,
+    ProjectChanges changes, {
+    String Function(String current)? rebaseDescription,
+  });
 
   /// `DELETE /projects/{id}`: the server deletes the project's tasks and its
   /// whole subtree, also projects of other users in it. Admin permission

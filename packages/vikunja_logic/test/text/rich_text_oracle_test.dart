@@ -43,8 +43,8 @@ Map<String, Object?> _paragraph([String? text]) => {
 // that are neither an attachment nor an absolute http(s) URL are dropped,
 // a relative attachment URL counts as this server's, a table cell colour
 // is kept only when it parses as a colour, and the attributes the app does
-// not use (link target/rel/class/title, ordered list type, cell colwidth,
-// task item ids) are not modelled.
+// not use (link target/rel/class/title, ordered list type, cell colwidth)
+// are not modelled; a task item id the web generates is null.
 final Map<String, _Difference> _differences = {
   'br-only-paragraph': (
     reason: 'a paragraph with only a hard break shows nothing, so it is empty',
@@ -229,9 +229,13 @@ Map<String, Object?>? _normalize(
     case 'orderedList':
       return build(type, attrs: {'start': attrs['start']}, content: children());
     case 'taskItem':
+      final taskId = attrs['taskId'];
       return build(
         type,
-        attrs: {'checked': attrs['checked']},
+        attrs: {
+          'checked': attrs['checked'],
+          'taskId': taskId == '{{generated}}' ? null : taskId,
+        },
         content: children(),
       );
     case 'codeBlock':

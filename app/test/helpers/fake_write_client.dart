@@ -251,11 +251,23 @@ final class FakeTasksWritePort implements TasksWritePort {
     return created;
   }
 
+  /// With [rebaseDescription] the description stored (and recorded in
+  /// `updates`) is what it returns for the server's; what it throws ends
+  /// the call before anything changes.
   @override
-  Future<Task> update(int id, TaskChanges changes) async {
+  Future<Task> update(
+    int id,
+    TaskChanges requested, {
+    String Function(String current)? rebaseDescription,
+  }) async {
     await _client._request('update $id');
     final current = _client.serverTasks[id];
     if (current == null) throw const NotFound(code: 4002);
+    final changes = rebaseDescription == null || requested.description == null
+        ? requested
+        : requested.merge(
+            TaskChanges(description: rebaseDescription(current.description)),
+          );
     final labelIds = {
       ..._client.serverLabels.keys,
       ...current.labels.map((label) => label.id),
@@ -926,16 +938,34 @@ final class FakeProjectsWritePort implements ProjectsWritePort {
     return created;
   }
 
+  /// With [rebaseDescription], what it returns for the project's
+  /// description is written; what it throws ends the call before that.
   @override
-  Future<Project> update(int projectId, ProjectChanges changes) async {
-    if (changes.position case final position? when !(position >= 0.1)) {
+  Future<Project> update(
+    int projectId,
+    ProjectChanges requested, {
+    String Function(String current)? rebaseDescription,
+  }) async {
+    if (requested.position case final position? when !(position >= 0.1)) {
       throw ArgumentError.value(position, 'changes.position');
     }
-    final description = 'update project $projectId $changes';
+    final description = 'update project $projectId $requested';
     await _client._request(description);
     final project = _projects[projectId];
     if (project == null) throw const NotFound(code: 3001);
-    if (changes.isEmpty) return project;
+    if (requested.isEmpty) return project;
+    final changes = rebaseDescription == null || requested.description == null
+        ? requested
+        : ProjectChanges(
+            title: requested.title,
+            description: rebaseDescription(project.description),
+            identifier: requested.identifier,
+            hexColor: requested.hexColor,
+            parentProjectId: requested.parentProjectId,
+            isFavorite: requested.isFavorite,
+            isArchived: requested.isArchived,
+            position: requested.position,
+          );
     if (_client.refusedProjects[projectId] case final failure?) throw failure;
     final unarchiving = changes.isArchived == false && project.isArchived;
     if (project.isArchived && !unarchiving) {
@@ -970,6 +1000,7 @@ final class FakeProjectsWritePort implements ProjectsWritePort {
     final updated = _projects[projectId] = copyProject(
       project,
       title: changes.title,
+      description: changes.description,
       identifier: identifier,
       hexColor: switch (changes.hexColor) {
         final hex? => _normalizedHex(hex),

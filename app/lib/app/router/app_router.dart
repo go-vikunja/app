@@ -10,6 +10,8 @@ import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/links/deep_link_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
+import 'package:vikunja_mobile/features/description_editor/application/description_target.dart';
+import 'package:vikunja_mobile/features/description_editor/presentation/description_editor_page.dart';
 import 'package:vikunja_mobile/features/home/presentation/account_tab.dart';
 import 'package:vikunja_mobile/features/home/presentation/home_shell.dart';
 import 'package:vikunja_mobile/features/inbox/presentation/inbox_screen.dart';
@@ -56,6 +58,11 @@ abstract final class AppRoutes {
 
   /// Full screen over the shell, from the detail sheet or a new task.
   static String taskEdit(int id) => '$home/tasks/$id/edit';
+
+  /// The description editor over the shell, from the detail sheet and the
+  /// edit pages.
+  static String taskDescription(int id) => '$home/tasks/$id/description';
+  static String projectDescription(int id) => '$home/project/$id/description';
 
   /// Full screen over the shell, from the project's menu; outside
   /// [projects], which would count them as the tab.
@@ -194,6 +201,28 @@ GoRouter appRouter(Ref ref) {
             _idParam(state) == null ? AppRoutes.overview : null,
         builder: (context, state) =>
             AccountBoundScreen(child: TaskEditPage(taskId: _idParam(state)!)),
+      ),
+      GoRoute(
+        path: '${AppRoutes.home}/tasks/:id/description',
+        parentNavigatorKey: rootNavigatorKey,
+        redirect: (context, state) =>
+            _idParam(state) == null ? AppRoutes.overview : null,
+        builder: (context, state) => AccountBoundScreen(
+          child: DescriptionEditorPage(
+            target: TaskDescriptionTarget(_idParam(state)!),
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '${AppRoutes.home}/project/:id/description',
+        parentNavigatorKey: rootNavigatorKey,
+        redirect: (context, state) =>
+            _idParam(state) == null ? AppRoutes.projects : null,
+        builder: (context, state) => AccountBoundScreen(
+          child: DescriptionEditorPage(
+            target: ProjectDescriptionTarget(_idParam(state)!),
+          ),
+        ),
       ),
       GoRoute(
         path: '${AppRoutes.home}/project/:id/edit',

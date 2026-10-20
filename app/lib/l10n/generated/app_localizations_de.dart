@@ -4019,4 +4019,233 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get clearSearch => 'Suche leeren';
+
+  @override
+  String get descriptionEditorTitle => 'Beschreibung';
+
+  @override
+  String get descriptionEditorPlaceholder => 'Beschreibung schreiben …';
+
+  @override
+  String get descriptionEditorLoading => 'Editor wird geöffnet …';
+
+  @override
+  String get descriptionEditorFailed =>
+      'Der Editor konnte nicht geöffnet werden.';
+
+  @override
+  String get descriptionEditorSaved => 'Beschreibung gespeichert';
+
+  @override
+  String get descriptionEditorSaveFailed =>
+      'Die Beschreibung konnte nicht gespeichert werden. Versuch es noch einmal.';
+
+  @override
+  String get descriptionEditorLeaveTitle => 'Beschreibung speichern?';
+
+  @override
+  String get descriptionEditorLeaveBody =>
+      'Deine Änderungen an der Beschreibung sind noch nicht gespeichert.';
+
+  @override
+  String get descriptionEditorChangedTitle =>
+      'Die Beschreibung wurde inzwischen geändert';
+
+  @override
+  String get descriptionEditorChangedBody =>
+      'Sie wurde im Web geändert, seit du mit dem Bearbeiten begonnen hast. Diese Änderung mit deiner überschreiben oder neu laden und deine Änderungen verwerfen?';
+
+  @override
+  String get descriptionEditorOverwrite => 'Überschreiben';
+
+  @override
+  String get descriptionEditorReload => 'Neu laden';
+
+  @override
+  String get descriptionEditorStoppedKept =>
+      'Der Editor wurde beendet. Lade ihn neu, um mit deinen Änderungen weiterzumachen.';
+
+  @override
+  String get descriptionEditorStoppedLost =>
+      'Der Editor wurde beendet, deine letzten Änderungen sind verloren. Lade ihn neu, um weiterzumachen.';
+
+  @override
+  String get descriptionEditorImage => 'Bild (beim Bearbeiten nicht sichtbar)';
+
+  @override
+  String get descriptionEditorRestoreTitle =>
+      'Ungespeicherte Änderungen wiederherstellen?';
+
+  @override
+  String get descriptionEditorRestoreBody =>
+      'Du hast diese Beschreibung mit Änderungen verlassen, die nicht gespeichert wurden.';
+
+  @override
+  String get descriptionEditorRestore => 'Wiederherstellen';
+
+  @override
+  String get editorToolbar => 'Textformatierung';
+
+  @override
+  String get editorBold => 'Fett';
+
+  @override
+  String get editorItalic => 'Kursiv';
+
+  @override
+  String get editorUnderline => 'Unterstrichen';
+
+  @override
+  String get editorStrike => 'Durchgestrichen';
+
+  @override
+  String get editorCode => 'Code im Text';
+
+  @override
+  String get editorTextStyle => 'Textstil';
+
+  @override
+  String get editorParagraph => 'Absatz';
+
+  @override
+  String editorHeading(int level) {
+    return 'Überschrift $level';
+  }
+
+  @override
+  String get editorBulletList => 'Aufzählung';
+
+  @override
+  String get editorOrderedList => 'Nummerierte Liste';
+
+  @override
+  String get editorTaskList => 'Checkliste';
+
+  @override
+  String get editorQuote => 'Zitat';
+
+  @override
+  String get editorCodeBlock => 'Codeblock';
+
+  @override
+  String get editorLink => 'Link';
+
+  @override
+  String get editorTable => 'Tabelle';
+
+  @override
+  String get editorInsertTable => 'Tabelle einfügen';
+
+  @override
+  String get editorAddRow => 'Zeile hinzufügen';
+
+  @override
+  String get editorAddColumn => 'Spalte hinzufügen';
+
+  @override
+  String get editorDeleteRow => 'Zeile löschen';
+
+  @override
+  String get editorDeleteColumn => 'Spalte löschen';
+
+  @override
+  String get editorDeleteTable => 'Tabelle löschen';
+
+  @override
+  String get editorDivider => 'Trennlinie';
+
+  @override
+  String get editorUndo => 'Rückgängig';
+
+  @override
+  String get editorRedo => 'Wiederholen';
+
+  @override
+  String get editorClearFormatting => 'Formatierung entfernen';
+
+  @override
+  String get editorLinkAddTitle => 'Link hinzufügen';
+
+  @override
+  String get editorLinkEditTitle => 'Link bearbeiten';
+
+  @override
+  String get editorLinkAddress => 'Webadresse';
+
+  @override
+  String get editorLinkApply => 'Übernehmen';
+
+  @override
+  String get editorLinkRemove => 'Link entfernen';
+
+  @override
+  String get editorMentions => 'Personen zum Erwähnen';
+
+  @override
+  String get editorMentionsSearching => 'Suche läuft …';
+
+  @override
+  String get editorMentionsNone => 'Niemand gefunden';
+
+  @override
+  String get editorMentionsFromDevice =>
+      'Keine Verbindung: Personen, die dieses Gerät kennt';
+
+  @override
+  String get taskDetailEditDescription => 'Beschreibung bearbeiten';
+
+  @override
+  String get taskDetailAddDescription => 'Beschreibung hinzufügen';
+
+  @override
+  String get checklistItemChecked => 'Abgehakt';
+
+  @override
+  String get checklistItemUnchecked => 'Nicht abgehakt';
+
+  @override
+  String get projectEditDescription => 'Beschreibung';
+
+  @override
+  String get projectEditNoDescription => 'Keine Beschreibung';
+
+  @override
+  String get syncProblemDescriptionConflict =>
+      'Die Beschreibung wurde auch im Web geändert.';
+
+  @override
+  String get syncProblemKeepMine => 'Meine Version behalten';
+
+  @override
+  String get syncProblemUseWebs => 'Web-Version übernehmen';
+
+  @override
+  String editorMentionsFound(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Personen gefunden',
+      one: '1 Person gefunden',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get syncProblemCompare => 'Versionen vergleichen';
+
+  @override
+  String get syncProblemCompareTitle => 'Welche Beschreibung soll bleiben?';
+
+  @override
+  String get syncProblemYourVersion => 'Deine Version';
+
+  @override
+  String get syncProblemWebVersion => 'Web-Version';
+
+  @override
+  String get syncProblemWebTaskGone =>
+      'Diese Aufgabe gibt es auf dem Server nicht mehr.';
+
+  @override
+  String get syncProblemNoDescription => 'Keine Beschreibung';
 }

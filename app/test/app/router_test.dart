@@ -44,7 +44,9 @@ void main() {
     for (final location in [
       AppRoutes.home,
       AppRoutes.taskEdit(7),
+      AppRoutes.taskDescription(7),
       AppRoutes.projectEdit(1),
+      AppRoutes.projectDescription(1),
       AppRoutes.projectViews(1),
       AppRoutes.inbox,
       AppRoutes.search,

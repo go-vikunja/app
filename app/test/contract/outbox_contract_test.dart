@@ -135,9 +135,17 @@ final class _FlakyTasks implements TasksWritePort {
   }
 
   @override
-  Future<Task> update(int id, TaskChanges changes) {
+  Future<Task> update(
+    int id,
+    TaskChanges changes, {
+    String Function(String current)? rebaseDescription,
+  }) {
     _maybeFail();
-    return _client._real.tasks.update(id, changes);
+    return _client._real.tasks.update(
+      id,
+      changes,
+      rebaseDescription: rebaseDescription,
+    );
   }
 
   @override

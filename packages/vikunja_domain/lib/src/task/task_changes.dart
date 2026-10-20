@@ -1,5 +1,6 @@
 import 'package:meta/meta.dart';
 import 'package:vikunja_domain/src/kanban/bucket_placement.dart';
+import 'package:vikunja_domain/src/task/checklist_toggle.dart';
 import 'package:vikunja_domain/src/task/id_set_change.dart';
 import 'package:vikunja_domain/src/task/relation_change.dart';
 import 'package:vikunja_domain/src/task/task.dart';
@@ -46,6 +47,8 @@ final class TaskChanges {
   const new({
     this.title,
     this.description,
+    this.descriptionBase,
+    this.checklistToggles,
     this.done,
     this.isFavorite,
     this.priority,
@@ -67,6 +70,17 @@ final class TaskChanges {
 
   final String? title;
   final String? description;
+
+  /// The description the first unsent change of [description] started
+  /// from, never sent: when the server's differs at send time, someone
+  /// changed it meanwhile. Null sends [description] unchecked.
+  final String? descriptionBase;
+
+  /// Set when [description] differs from [descriptionBase] only by these
+  /// checkbox taps, in order, so they can be applied again to a description
+  /// changed meanwhile; null for an edit in the editor.
+  final List<ChecklistToggle>? checklistToggles;
+
   final bool? done;
   final bool? isFavorite;
   final int? priority;
@@ -132,10 +146,23 @@ final class TaskChanges {
   /// project's views. A [done] in [later] that differs from this one's
   /// drops the earlier placements too: the moves go after the body, and
   /// one into or out of a done bucket would set the done state back. List
-  /// positions do not touch the done state, so they stay.
+  /// positions do not touch the done state, so they stay. The earliest
+  /// description base stays, and taps stay taps only while every
+  /// description change was one.
   TaskChanges merge(TaskChanges later) => TaskChanges(
     title: later.title ?? title,
     description: later.description ?? description,
+    descriptionBase: description != null
+        ? descriptionBase
+        : later.descriptionBase,
+    checklistToggles: switch ((description, later.description)) {
+      (_, null) => checklistToggles,
+      (null, _) => later.checklistToggles,
+      _ => switch ((checklistToggles, later.checklistToggles)) {
+        (final earlier?, final later?) => [...earlier, ...later],
+        _ => null,
+      },
+    },
     done: later.done ?? done,
     isFavorite: later.isFavorite ?? isFavorite,
     priority: later.priority ?? priority,
@@ -184,6 +211,8 @@ final class TaskChanges {
       other is TaskChanges &&
       other.title == title &&
       other.description == description &&
+      other.descriptionBase == descriptionBase &&
+      _sameLists(other.checklistToggles, checklistToggles) &&
       other.done == done &&
       other.isFavorite == isFavorite &&
       other.priority == priority &&
@@ -197,12 +226,12 @@ final class TaskChanges {
       other.projectId == projectId &&
       other.labels == labels &&
       other.assignees == assignees &&
-      _sameReminders(other.reminders, reminders) &&
+      _sameLists(other.reminders, reminders) &&
       other.relations == relations &&
       _sameMaps(other.kanban, kanban) &&
       _sameMaps(other.positions, positions);
 
-  static bool _sameReminders(List<TaskReminder>? a, List<TaskReminder>? b) {
+  static bool _sameLists<T>(List<T>? a, List<T>? b) {
     if (a == null || b == null) return a == b;
     if (a.length != b.length) return false;
     for (var i = 0; i < a.length; i++) {
@@ -227,7 +256,10 @@ final class TaskChanges {
   @override
   int get hashCode => Object.hash(
     title,
-    description,
+    Object.hash(description, descriptionBase, switch (checklistToggles) {
+      final list? => Object.hashAll(list),
+      null => null,
+    }),
     done,
     isFavorite,
     priority,
@@ -256,6 +288,9 @@ final class TaskChanges {
     final fields = [
       if (title != null) 'title',
       if (description != null) 'description',
+      if (descriptionBase != null) 'descriptionBase',
+      if (checklistToggles != null)
+        'checklistToggles: ${checklistToggles!.length}',
       if (done != null) 'done: $done',
       if (isFavorite != null) 'isFavorite: $isFavorite',
       if (priority != null) 'priority: $priority',

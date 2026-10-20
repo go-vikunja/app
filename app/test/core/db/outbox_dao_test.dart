@@ -1290,4 +1290,160 @@ void main() {
       expect(await pendingOf(1), reordered);
     });
   });
+
+  group('description changes', () {
+    const tap = TaskChanges(
+      description: '<p>tapped</p>',
+      descriptionBase: '',
+      checklistToggles: [ChecklistToggle.byId('a', checked: true)],
+    );
+
+    test('a guarded change goes only on the description it was made '
+        'from', () async {
+      expect(
+        await db.outboxDao.queueUpdate(1, tap, now: now, ifDescription: 'x'),
+        isFalse,
+      );
+      expect(await ops(), isEmpty);
+      expect((await db.tasksDao.find(1))!.description, '');
+
+      expect(
+        await db.outboxDao.queueUpdate(1, tap, now: now, ifDescription: ''),
+        isTrue,
+      );
+      expect((await db.tasksDao.find(1))!.description, '<p>tapped</p>');
+      expect(await pendingOf(1), tap);
+    });
+
+    test('a second guarded change made from the same description is refused '
+        'once the first applied', () async {
+      await db.outboxDao.queueUpdate(1, tap, now: now, ifDescription: '');
+
+      expect(
+        await db.outboxDao.queueUpdate(1, tap, now: now, ifDescription: ''),
+        isFalse,
+      );
+      expect(decodeTaskChanges((await ops()).single.payload), tap);
+    });
+
+    test('folds into a create that has not left the device, without base '
+        'and taps', () async {
+      final id = await db.outboxDao.queueCreate(
+        const NewTask(projectId: 7, title: 'New', description: '<p>a</p>'),
+        now: now,
+      );
+
+      expect(
+        await db.outboxDao.queueUpdate(
+          id,
+          const TaskChanges(
+            description: '<p>b</p>',
+            descriptionBase: '<p>a</p>',
+            checklistToggles: [],
+          ),
+          now: now,
+          ifDescription: '<p>a</p>',
+        ),
+        isTrue,
+      );
+
+      final op = (await ops()).single;
+      expect(op.kind, 'createTask');
+      expect(decodeNewTask(op.payload).description, '<p>b</p>');
+      expect((await db.tasksDao.findRow(id))!.pendingChanges, isNull);
+    });
+
+    test('survive the labels and edges a sync forgets', () async {
+      await queue(
+        1,
+        tap.merge(const TaskChanges(labels: IdSetChange(added: {5}))),
+      );
+
+      await db.outboxDao.forgetLabels({5});
+
+      expect(decodeTaskChanges((await ops()).single.payload), tap);
+    });
+
+    Future<OutboxRow> failedWith(TaskChanges changes) async {
+      await queue(1, changes);
+      final op = (await ops()).single;
+      await db.outboxDao.markSending(op.id, at: now);
+      await db.outboxDao.markFailed(op.id, const DescriptionConflict());
+      return op;
+    }
+
+    test('a conflict is a problem that names it', () async {
+      await failedWith(tap);
+
+      final problem = (await db.outboxDao.loadProblems()).single;
+      expect(problem.failure, isA<DescriptionConflict>());
+      expect(problem.changes, tap);
+    });
+
+    test('Keep mine queues the change again with the web description as '
+        'its base, which later changes keep', () async {
+      final op = await failedWith(tap.merge(favorite));
+
+      await db.outboxDao.retryOverwritingDescription(op.id, base: '<p>web</p>');
+
+      final retaken = (await ops()).single;
+      expect(retaken.state, OutboxState.pending.name);
+      expect(retaken.lastError, isNull);
+      const rebased = TaskChanges(
+        description: '<p>tapped</p>',
+        descriptionBase: '<p>web</p>',
+        isFavorite: true,
+      );
+      expect(decodeTaskChanges(retaken.payload), rebased);
+      expect(await pendingOf(1), rebased);
+      expect(await db.outboxDao.loadProblems(), isEmpty);
+
+      await queue(
+        1,
+        const TaskChanges(
+          description: '<p>later</p>',
+          descriptionBase: '<p>tapped</p>',
+        ),
+      );
+      expect(
+        decodeTaskChanges((await ops()).single.payload).descriptionBase,
+        '<p>web</p>',
+      );
+    });
+
+    test("Use the web's takes the description out of the change and queues "
+        'the rest again', () async {
+      final op = await failedWith(tap.merge(favorite));
+
+      expect(await db.outboxDao.dropDescription(op.id), isTrue);
+
+      final rest = (await ops()).single;
+      expect(rest.state, OutboxState.pending.name);
+      expect(decodeTaskChanges(rest.payload), favorite);
+      expect(await pendingOf(1), favorite);
+    });
+
+    test(
+      "Use the web's drops a change that was only the description",
+      () async {
+        final op = await failedWith(tap);
+
+        expect(await db.outboxDao.dropDescription(op.id), isTrue);
+
+        expect(await ops(), isEmpty);
+        expect(await pendingOf(1), isNull);
+      },
+    );
+
+    test('both leave an op alone that is no longer failed', () async {
+      await queue(1, tap);
+      final op = (await ops()).single;
+
+      await db.outboxDao.retryOverwritingDescription(op.id, base: '<p>web</p>');
+      expect(await db.outboxDao.dropDescription(op.id), isFalse);
+      expect(await db.outboxDao.dropDescription('gone'), isFalse);
+
+      expect(decodeTaskChanges((await ops()).single.payload), tap);
+    });
+  });
 }

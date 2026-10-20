@@ -3607,5 +3607,117 @@
   "labelTasksGoneTitle": "This label is gone",
   "labelTasksGoneBody": "It may have been deleted, here or on the web.",
   "projectViewEmptyMatchingBody": "No task matches this view's filter.",
-  "clearSearch": "Clear search"
+  "clearSearch": "Clear search",
+  "descriptionEditorTitle": "Description",
+  "descriptionEditorPlaceholder": "Write a description…",
+  "@descriptionEditorPlaceholder": {
+    "description": "Shown in the empty editor."
+  },
+  "descriptionEditorLoading": "Opening the editor…",
+  "descriptionEditorFailed": "The editor could not be opened.",
+  "descriptionEditorSaved": "Description saved",
+  "descriptionEditorSaveFailed": "The description could not be saved. Try again.",
+  "descriptionEditorLeaveTitle": "Save the description?",
+  "descriptionEditorLeaveBody": "Your changes to the description are not saved yet.",
+  "descriptionEditorChangedTitle": "The description changed meanwhile",
+  "descriptionEditorChangedBody": "It was changed on the web since you started editing. Overwrite that change with yours, or reload it and lose your edits?",
+  "descriptionEditorOverwrite": "Overwrite",
+  "descriptionEditorReload": "Reload",
+  "descriptionEditorStoppedKept": "The editor stopped. Reload it to go on with your changes.",
+  "@descriptionEditorStoppedKept": {
+    "description": "The system ended the editor's web view, for example while the app was in the background; a copy of the edit is kept."
+  },
+  "descriptionEditorStoppedLost": "The editor stopped, and your latest changes are lost. Reload it to go on.",
+  "descriptionEditorImage": "Image (not shown while editing)",
+  "@descriptionEditorImage": {
+    "description": "Stands in for an image in the editor, which does not load images."
+  },
+  "descriptionEditorRestoreTitle": "Restore unsaved changes?",
+  "descriptionEditorRestoreBody": "You left this description with changes that were not saved.",
+  "descriptionEditorRestore": "Restore",
+  "editorToolbar": "Text formatting",
+  "editorBold": "Bold",
+  "editorItalic": "Italic",
+  "editorUnderline": "Underline",
+  "editorStrike": "Strikethrough",
+  "editorCode": "Inline code",
+  "editorTextStyle": "Text style",
+  "editorParagraph": "Paragraph",
+  "editorHeading": "Heading {level}",
+  "@editorHeading": {
+    "placeholders": {
+      "level": {
+        "type": "int",
+        "example": "1"
+      }
+    }
+  },
+  "editorBulletList": "Bulleted list",
+  "editorOrderedList": "Numbered list",
+  "editorTaskList": "Checklist",
+  "editorQuote": "Quote",
+  "editorCodeBlock": "Code block",
+  "editorLink": "Link",
+  "editorTable": "Table",
+  "editorInsertTable": "Insert table",
+  "editorAddRow": "Add row",
+  "editorAddColumn": "Add column",
+  "editorDeleteRow": "Delete row",
+  "editorDeleteColumn": "Delete column",
+  "editorDeleteTable": "Delete table",
+  "editorDivider": "Divider",
+  "editorUndo": "Undo",
+  "editorRedo": "Redo",
+  "editorClearFormatting": "Clear formatting",
+  "editorLinkAddTitle": "Add link",
+  "editorLinkEditTitle": "Edit link",
+  "editorLinkAddress": "Web address",
+  "editorLinkApply": "Apply",
+  "editorLinkRemove": "Remove link",
+  "editorMentions": "People to mention",
+  "editorMentionsSearching": "Searching…",
+  "editorMentionsNone": "No one found",
+  "editorMentionsFromDevice": "No connection: people this device knows",
+  "@editorMentionsFromDevice": {
+    "description": "Above the suggestions when the server could not be searched."
+  },
+  "taskDetailEditDescription": "Edit description",
+  "taskDetailAddDescription": "Add description",
+  "checklistItemChecked": "Checked",
+  "@checklistItemChecked": {
+    "description": "Announced after a checkbox in a description was ticked."
+  },
+  "checklistItemUnchecked": "Unchecked",
+  "@checklistItemUnchecked": {
+    "description": "Announced after a checkbox in a description was unticked."
+  },
+  "projectEditDescription": "Description",
+  "projectEditNoDescription": "No description",
+  "syncProblemDescriptionConflict": "The description was changed on the web too.",
+  "syncProblemKeepMine": "Keep my version",
+  "@syncProblemKeepMine": {
+    "description": "Sends the phone's description, overwriting the web's."
+  },
+  "syncProblemUseWebs": "Use the web version",
+  "@syncProblemUseWebs": {
+    "description": "Drops the phone's description and takes the one on the server."
+  },
+  "editorMentionsFound": "{count, plural, =1{1 person found} other{{count} people found}}",
+  "@editorMentionsFound": {
+    "description": "Announced to screen readers when mention suggestions arrive.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "syncProblemCompare": "Compare versions",
+  "@syncProblemCompare": {
+    "description": "Opens both descriptions of a conflict, to keep one of them."
+  },
+  "syncProblemCompareTitle": "Which description should stay?",
+  "syncProblemYourVersion": "Your version",
+  "syncProblemWebVersion": "Web version",
+  "syncProblemWebTaskGone": "This task is no longer on the server.",
+  "syncProblemNoDescription": "No description"
 }

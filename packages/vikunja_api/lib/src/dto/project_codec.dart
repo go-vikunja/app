@@ -70,6 +70,7 @@ Map<String, Object?> encodeNewProject(NewProject project) => {
 /// Only the set fields; an empty colour or identifier clears it.
 Map<String, Object?> encodeProjectChanges(ProjectChanges changes) => {
   'title': ?changes.title,
+  'description': ?changes.description,
   'identifier': ?changes.identifier,
   if (changes.hexColor case final hexColor?)
     'hex_color': hexColorWire(hexColor),

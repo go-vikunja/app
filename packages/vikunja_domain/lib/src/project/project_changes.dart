@@ -7,6 +7,7 @@ import 'package:meta/meta.dart';
 final class ProjectChanges {
   const new({
     this.title,
+    this.description,
     this.identifier,
     this.hexColor,
     this.parentProjectId,
@@ -16,6 +17,9 @@ final class ProjectChanges {
   });
 
   final String? title;
+
+  /// HTML as the web's editor writes it.
+  final String? description;
 
   /// Up to 10 characters, stored upper-case and unique on the whole
   /// instance; empty removes it. Task identifiers follow at once.
@@ -39,6 +43,7 @@ final class ProjectChanges {
 
   bool get isEmpty =>
       title == null &&
+      description == null &&
       identifier == null &&
       hexColor == null &&
       parentProjectId == null &&
@@ -50,6 +55,7 @@ final class ProjectChanges {
   bool operator ==(Object other) =>
       other is ProjectChanges &&
       other.title == title &&
+      other.description == description &&
       other.identifier == identifier &&
       other.hexColor == hexColor &&
       other.parentProjectId == parentProjectId &&
@@ -60,6 +66,7 @@ final class ProjectChanges {
   @override
   int get hashCode => Object.hash(
     title,
+    description,
     identifier,
     hexColor,
     parentProjectId,
@@ -73,6 +80,7 @@ final class ProjectChanges {
   String toString() {
     final fields = [
       if (title != null) 'title',
+      if (description != null) 'description',
       if (identifier != null) 'identifier',
       if (hexColor != null) 'hexColor',
       if (parentProjectId != null) 'parentProjectId: $parentProjectId',

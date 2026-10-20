@@ -6095,6 +6095,420 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Clear search'**
   String get clearSearch;
+
+  /// No description provided for @descriptionEditorTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get descriptionEditorTitle;
+
+  /// Shown in the empty editor.
+  ///
+  /// In en, this message translates to:
+  /// **'Write a description…'**
+  String get descriptionEditorPlaceholder;
+
+  /// No description provided for @descriptionEditorLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Opening the editor…'**
+  String get descriptionEditorLoading;
+
+  /// No description provided for @descriptionEditorFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The editor could not be opened.'**
+  String get descriptionEditorFailed;
+
+  /// No description provided for @descriptionEditorSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Description saved'**
+  String get descriptionEditorSaved;
+
+  /// No description provided for @descriptionEditorSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The description could not be saved. Try again.'**
+  String get descriptionEditorSaveFailed;
+
+  /// No description provided for @descriptionEditorLeaveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Save the description?'**
+  String get descriptionEditorLeaveTitle;
+
+  /// No description provided for @descriptionEditorLeaveBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your changes to the description are not saved yet.'**
+  String get descriptionEditorLeaveBody;
+
+  /// No description provided for @descriptionEditorChangedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The description changed meanwhile'**
+  String get descriptionEditorChangedTitle;
+
+  /// No description provided for @descriptionEditorChangedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'It was changed on the web since you started editing. Overwrite that change with yours, or reload it and lose your edits?'**
+  String get descriptionEditorChangedBody;
+
+  /// No description provided for @descriptionEditorOverwrite.
+  ///
+  /// In en, this message translates to:
+  /// **'Overwrite'**
+  String get descriptionEditorOverwrite;
+
+  /// No description provided for @descriptionEditorReload.
+  ///
+  /// In en, this message translates to:
+  /// **'Reload'**
+  String get descriptionEditorReload;
+
+  /// The system ended the editor's web view, for example while the app was in the background; a copy of the edit is kept.
+  ///
+  /// In en, this message translates to:
+  /// **'The editor stopped. Reload it to go on with your changes.'**
+  String get descriptionEditorStoppedKept;
+
+  /// No description provided for @descriptionEditorStoppedLost.
+  ///
+  /// In en, this message translates to:
+  /// **'The editor stopped, and your latest changes are lost. Reload it to go on.'**
+  String get descriptionEditorStoppedLost;
+
+  /// Stands in for an image in the editor, which does not load images.
+  ///
+  /// In en, this message translates to:
+  /// **'Image (not shown while editing)'**
+  String get descriptionEditorImage;
+
+  /// No description provided for @descriptionEditorRestoreTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore unsaved changes?'**
+  String get descriptionEditorRestoreTitle;
+
+  /// No description provided for @descriptionEditorRestoreBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You left this description with changes that were not saved.'**
+  String get descriptionEditorRestoreBody;
+
+  /// No description provided for @descriptionEditorRestore.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore'**
+  String get descriptionEditorRestore;
+
+  /// No description provided for @editorToolbar.
+  ///
+  /// In en, this message translates to:
+  /// **'Text formatting'**
+  String get editorToolbar;
+
+  /// No description provided for @editorBold.
+  ///
+  /// In en, this message translates to:
+  /// **'Bold'**
+  String get editorBold;
+
+  /// No description provided for @editorItalic.
+  ///
+  /// In en, this message translates to:
+  /// **'Italic'**
+  String get editorItalic;
+
+  /// No description provided for @editorUnderline.
+  ///
+  /// In en, this message translates to:
+  /// **'Underline'**
+  String get editorUnderline;
+
+  /// No description provided for @editorStrike.
+  ///
+  /// In en, this message translates to:
+  /// **'Strikethrough'**
+  String get editorStrike;
+
+  /// No description provided for @editorCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Inline code'**
+  String get editorCode;
+
+  /// No description provided for @editorTextStyle.
+  ///
+  /// In en, this message translates to:
+  /// **'Text style'**
+  String get editorTextStyle;
+
+  /// No description provided for @editorParagraph.
+  ///
+  /// In en, this message translates to:
+  /// **'Paragraph'**
+  String get editorParagraph;
+
+  /// No description provided for @editorHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'Heading {level}'**
+  String editorHeading(int level);
+
+  /// No description provided for @editorBulletList.
+  ///
+  /// In en, this message translates to:
+  /// **'Bulleted list'**
+  String get editorBulletList;
+
+  /// No description provided for @editorOrderedList.
+  ///
+  /// In en, this message translates to:
+  /// **'Numbered list'**
+  String get editorOrderedList;
+
+  /// No description provided for @editorTaskList.
+  ///
+  /// In en, this message translates to:
+  /// **'Checklist'**
+  String get editorTaskList;
+
+  /// No description provided for @editorQuote.
+  ///
+  /// In en, this message translates to:
+  /// **'Quote'**
+  String get editorQuote;
+
+  /// No description provided for @editorCodeBlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Code block'**
+  String get editorCodeBlock;
+
+  /// No description provided for @editorLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Link'**
+  String get editorLink;
+
+  /// No description provided for @editorTable.
+  ///
+  /// In en, this message translates to:
+  /// **'Table'**
+  String get editorTable;
+
+  /// No description provided for @editorInsertTable.
+  ///
+  /// In en, this message translates to:
+  /// **'Insert table'**
+  String get editorInsertTable;
+
+  /// No description provided for @editorAddRow.
+  ///
+  /// In en, this message translates to:
+  /// **'Add row'**
+  String get editorAddRow;
+
+  /// No description provided for @editorAddColumn.
+  ///
+  /// In en, this message translates to:
+  /// **'Add column'**
+  String get editorAddColumn;
+
+  /// No description provided for @editorDeleteRow.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete row'**
+  String get editorDeleteRow;
+
+  /// No description provided for @editorDeleteColumn.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete column'**
+  String get editorDeleteColumn;
+
+  /// No description provided for @editorDeleteTable.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete table'**
+  String get editorDeleteTable;
+
+  /// No description provided for @editorDivider.
+  ///
+  /// In en, this message translates to:
+  /// **'Divider'**
+  String get editorDivider;
+
+  /// No description provided for @editorUndo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get editorUndo;
+
+  /// No description provided for @editorRedo.
+  ///
+  /// In en, this message translates to:
+  /// **'Redo'**
+  String get editorRedo;
+
+  /// No description provided for @editorClearFormatting.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear formatting'**
+  String get editorClearFormatting;
+
+  /// No description provided for @editorLinkAddTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add link'**
+  String get editorLinkAddTitle;
+
+  /// No description provided for @editorLinkEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit link'**
+  String get editorLinkEditTitle;
+
+  /// No description provided for @editorLinkAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Web address'**
+  String get editorLinkAddress;
+
+  /// No description provided for @editorLinkApply.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply'**
+  String get editorLinkApply;
+
+  /// No description provided for @editorLinkRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove link'**
+  String get editorLinkRemove;
+
+  /// No description provided for @editorMentions.
+  ///
+  /// In en, this message translates to:
+  /// **'People to mention'**
+  String get editorMentions;
+
+  /// No description provided for @editorMentionsSearching.
+  ///
+  /// In en, this message translates to:
+  /// **'Searching…'**
+  String get editorMentionsSearching;
+
+  /// No description provided for @editorMentionsNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No one found'**
+  String get editorMentionsNone;
+
+  /// Above the suggestions when the server could not be searched.
+  ///
+  /// In en, this message translates to:
+  /// **'No connection: people this device knows'**
+  String get editorMentionsFromDevice;
+
+  /// No description provided for @taskDetailEditDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit description'**
+  String get taskDetailEditDescription;
+
+  /// No description provided for @taskDetailAddDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Add description'**
+  String get taskDetailAddDescription;
+
+  /// Announced after a checkbox in a description was ticked.
+  ///
+  /// In en, this message translates to:
+  /// **'Checked'**
+  String get checklistItemChecked;
+
+  /// Announced after a checkbox in a description was unticked.
+  ///
+  /// In en, this message translates to:
+  /// **'Unchecked'**
+  String get checklistItemUnchecked;
+
+  /// No description provided for @projectEditDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get projectEditDescription;
+
+  /// No description provided for @projectEditNoDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'No description'**
+  String get projectEditNoDescription;
+
+  /// No description provided for @syncProblemDescriptionConflict.
+  ///
+  /// In en, this message translates to:
+  /// **'The description was changed on the web too.'**
+  String get syncProblemDescriptionConflict;
+
+  /// Sends the phone's description, overwriting the web's.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep my version'**
+  String get syncProblemKeepMine;
+
+  /// Drops the phone's description and takes the one on the server.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the web version'**
+  String get syncProblemUseWebs;
+
+  /// Announced to screen readers when mention suggestions arrive.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 person found} other{{count} people found}}'**
+  String editorMentionsFound(int count);
+
+  /// Opens both descriptions of a conflict, to keep one of them.
+  ///
+  /// In en, this message translates to:
+  /// **'Compare versions'**
+  String get syncProblemCompare;
+
+  /// No description provided for @syncProblemCompareTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Which description should stay?'**
+  String get syncProblemCompareTitle;
+
+  /// No description provided for @syncProblemYourVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Your version'**
+  String get syncProblemYourVersion;
+
+  /// No description provided for @syncProblemWebVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Web version'**
+  String get syncProblemWebVersion;
+
+  /// No description provided for @syncProblemWebTaskGone.
+  ///
+  /// In en, this message translates to:
+  /// **'This task is no longer on the server.'**
+  String get syncProblemWebTaskGone;
+
+  /// No description provided for @syncProblemNoDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'No description'**
+  String get syncProblemNoDescription;
 }
 
 class _AppLocalizationsDelegate

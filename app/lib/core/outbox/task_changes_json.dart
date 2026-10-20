@@ -7,8 +7,11 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 /// label and assignee deltas as `{"added": [...], "removed": [...]}`,
 /// relation deltas as `{"added": [{"kind", "other"}], "removed": [...]}`,
 /// kanban placements as `{"<view id>": {"bucket_id", "position"}}`
-/// (`position` absent to keep the server's) and list positions as
-/// `{"<view id>": <position>}`.
+/// (`position` absent to keep the server's), list positions as
+/// `{"<view id>": <position>}`, and the description's base and checkbox
+/// taps as `description_base` and `checklist_toggles`
+/// (`[{"item_id", "checked"}]` or `[{"ordinal", "text", "checked"}]`),
+/// which are never sent.
 String encodeTaskChanges(TaskChanges changes) =>
     jsonEncode(taskChangesToJson(changes));
 
@@ -20,6 +23,9 @@ TaskChanges decodeTaskChanges(String json) => switch (jsonDecode(json)) {
 Map<String, Object?> taskChangesToJson(TaskChanges changes) => {
   'title': ?changes.title,
   'description': ?changes.description,
+  'description_base': ?changes.descriptionBase,
+  if (changes.checklistToggles case final toggles?)
+    'checklist_toggles': _togglesJson(toggles),
   'done': ?changes.done,
   'is_favorite': ?changes.isFavorite,
   'priority': ?changes.priority,
@@ -46,6 +52,8 @@ Map<String, Object?> taskChangesToJson(TaskChanges changes) => {
 TaskChanges taskChangesFromJson(Map<String, Object?> json) => TaskChanges(
   title: json['title'] as String?,
   description: json['description'] as String?,
+  descriptionBase: json['description_base'] as String?,
+  checklistToggles: _toggles(json['checklist_toggles']),
   done: json['done'] as bool?,
   isFavorite: json['is_favorite'] as bool?,
   priority: json['priority'] as int?,
@@ -96,6 +104,45 @@ List<TaskReminder> remindersFromJson(List<Object?> json) => [
         relativeTo: ReminderRelativeTo.fromWire(item['relative_to'] as String?),
       ),
 ];
+
+List<Map<String, Object?>> _togglesJson(List<ChecklistToggle> toggles) => [
+  for (final toggle in toggles)
+    {
+      'item_id': ?toggle.itemId,
+      'ordinal': ?toggle.ordinal,
+      'text': ?toggle.text,
+      'checked': toggle.checked,
+    },
+];
+
+/// Null, as for an edit in the editor, when a tap cannot be read back: it
+/// could not be applied again, so a changed description becomes a
+/// conflict for the user to resolve.
+List<ChecklistToggle>? _toggles(Object? value) {
+  if (value is! List<Object?>) return null;
+  final toggles = <ChecklistToggle>[];
+  for (final item in value) {
+    switch (item) {
+      case {'item_id': final String itemId, 'checked': final bool checked}:
+        toggles.add(ChecklistToggle.byId(itemId, checked: checked));
+      case {
+        'ordinal': final int ordinal,
+        'text': final String text,
+        'checked': final bool checked,
+      }:
+        toggles.add(
+          ChecklistToggle.byPosition(
+            ordinal: ordinal,
+            text: text,
+            checked: checked,
+          ),
+        );
+      default:
+        return null;
+    }
+  }
+  return toggles;
+}
 
 Map<String, Object?> _idSetJson(IdSetChange change) => {
   'added': [...change.added]..sort(),

@@ -37,6 +37,19 @@ void main() {
     );
   });
 
+  test('a description also changed on the web says so', () {
+    expect(
+      describeSyncProblem(
+        en,
+        problem(
+          const DescriptionConflict(),
+          changes: const TaskChanges(description: '<p>Mine</p>'),
+        ),
+      ),
+      '${en.syncProblemUpdateFailed} ${en.syncProblemDescriptionConflict}',
+    );
+  });
+
   test('explains each permanent failure the server can answer with', () {
     String describe(VikunjaFailure failure) =>
         describeSyncProblem(en, problem(failure));

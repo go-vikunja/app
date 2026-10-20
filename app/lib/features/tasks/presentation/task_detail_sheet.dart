@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:flutter/semantics.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
@@ -22,6 +23,7 @@ import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 import 'package:vikunja_mobile/core/settings/user_settings_providers.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/features/common/presentation/user_avatar.dart';
+import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
 import 'package:vikunja_mobile/features/tasks/application/relation_search.dart';
@@ -303,6 +305,49 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
     unawaited(router.push(AppRoutes.taskEdit(task.id)));
   }
 
+  /// The editor opens over the sheet, which comes back with the new
+  /// description.
+  Future<void> _editDescription(Task task) async {
+    final l10n = context.l10n;
+    final saved = await GoRouter.of(context)
+        .push<bool>(AppRoutes.taskDescription(task.id));
+    if (saved ?? false) _showMessage(l10n.descriptionEditorSaved);
+  }
+
+  /// Applied at once and queued; a tap on a view older than the row (a
+  /// second tap before it caught up) is refused and the view follows the
+  /// row.
+  Future<void> _toggleChecklistItem(
+    TaskRepository repository,
+    Task task,
+    String html,
+    RichTaskItem item,
+  ) async {
+    final l10n = context.l10n;
+    final checked = !item.checked;
+    final bool toggled;
+    try {
+      toggled = await repository.toggleChecklistItem(
+        task.id,
+        html: html,
+        item: item,
+        checked: checked,
+      );
+    } on Object catch (error) {
+      _log.warning('Ticking a checklist item failed: ${error.runtimeType}');
+      return;
+    }
+    if (!toggled || !mounted) return;
+    unawaited(HapticFeedback.selectionClick());
+    unawaited(
+      SemanticsService.sendAnnouncement(
+        View.of(context),
+        checked ? l10n.checklistItemChecked : l10n.checklistItemUnchecked,
+        Directionality.of(context),
+      ),
+    );
+  }
+
   /// Another sheet over this one, which closing brings back.
   void _open(Task other) {
     if (!mounted) return;
@@ -427,8 +472,8 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final repository = ref.watch(taskRepositoryProvider);
-    final task =
-        ref.watch(taskByIdProvider(widget.task.id)).value ?? widget.task;
+    final stored = ref.watch(taskByIdProvider(widget.task.id)).value;
+    final task = stored ?? widget.task;
     // A queued create named by the server while the sheet is open.
     ref.listen(taskByIdProvider(widget.task.id), (_, next) {
       final id = next.value?.id;
@@ -439,6 +484,17 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
     final projectTitles = {
       for (final project in projects) project.id: project.displayTitle(l10n),
     };
+    // The server refuses every task write in an archived project, also
+    // below an archived parent; a task shown only from the server (a link
+    // to one this device has not synced yet) has no row to queue on.
+    final descriptionWriter =
+        repository != null &&
+            stored != null &&
+            !isArchivedInTree(task.projectId, {
+              for (final project in projects) project.id: project,
+            })
+        ? repository
+        : null;
     String? otherProjectTitle(Task other) => other.projectId == task.projectId
         ? null
         : projectTitles[other.projectId];
@@ -793,12 +849,29 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                           : (title) => _addSubtask(repository, task, title),
                     ),
                   const SizedBox(height: 12),
-                  _SectionHeading(text: l10n.taskDetailDescription),
+                  _DescriptionHeading(
+                    onEdit: descriptionWriter != null && hasDescription(task)
+                        ? () => unawaited(_editDescription(task))
+                        : null,
+                  ),
                   const SizedBox(height: 4),
                   _Description(
                     task: task,
                     onLink: _openLink,
                     onTaskLink: (taskId) => unawaited(_openLinkedTask(taskId)),
+                    onAdd: descriptionWriter == null
+                        ? null
+                        : () => unawaited(_editDescription(task)),
+                    onToggleTaskItem: descriptionWriter == null
+                        ? null
+                        : (html, item) => unawaited(
+                            _toggleChecklistItem(
+                              descriptionWriter,
+                              task,
+                              html,
+                              item,
+                            ),
+                          ),
                   ),
                   if (details != null && details.reactions.isNotEmpty)
                     Padding(
@@ -882,34 +955,77 @@ class _SectionHeading extends StatelessWidget {
   }
 }
 
-/// Selectable rich text, or "No description" for one without visible
-/// content.
+/// The section's heading with the editor's button beside it while there is
+/// a description to edit.
+class _DescriptionHeading extends StatelessWidget {
+  const new({required this.onEdit});
+
+  final VoidCallback? onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final heading = _SectionHeading(text: l10n.taskDetailDescription);
+    final onEdit = this.onEdit;
+    if (onEdit == null) return heading;
+    return Row(
+      children: [
+        Expanded(child: heading),
+        IconButton(
+          onPressed: onEdit,
+          tooltip: l10n.taskDetailEditDescription,
+          icon: const Icon(Icons.edit_note),
+        ),
+      ],
+    );
+  }
+}
+
+/// Selectable rich text whose checkboxes take taps when [onToggleTaskItem]
+/// is set; without visible content "Add description" when [onAdd] is set,
+/// else "No description".
 class _Description extends StatelessWidget {
   const new({
     required this.task,
     required this.onLink,
     required this.onTaskLink,
+    required this.onAdd,
+    required this.onToggleTaskItem,
   });
 
   final Task task;
   final ValueChanged<String> onLink;
   final ValueChanged<int> onTaskLink;
+  final VoidCallback? onAdd;
+  final void Function(String html, RichTaskItem item)? onToggleTaskItem;
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final theme = Theme.of(context);
-    final empty = Text(
-      context.l10n.taskDetailNoDescription,
-      style: theme.textTheme.bodyMedium?.copyWith(
-        color: theme.colorScheme.onSurfaceVariant,
-      ),
-    );
+    final onAdd = this.onAdd;
+    final empty = onAdd == null
+        ? Text(
+            l10n.taskDetailNoDescription,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          )
+        : Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: TextButton.icon(
+              onPressed: onAdd,
+              icon: const Icon(Icons.add),
+              label: Text(l10n.taskDetailAddDescription),
+            ),
+          );
     if (!hasDescription(task)) return empty;
     return SelectionArea(
       child: RichHtml(
         html: task.description,
         onLink: onLink,
         onTaskLink: onTaskLink,
+        onToggleTaskItem: onToggleTaskItem,
         style: theme.textTheme.bodyLarge,
         projectId: task.projectId,
         empty: empty,

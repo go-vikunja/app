@@ -152,6 +152,7 @@ final class _Attrs {
     this.language,
     this.checked = false,
     this.sourceOffset,
+    this.taskItemId,
     this.colspan = 1,
     this.rowspan = 1,
     this.align,
@@ -172,6 +173,7 @@ final class _Attrs {
   final String? language;
   final bool checked;
   final int? sourceOffset;
+  final String? taskItemId;
   final int colspan;
   final int rowspan;
   final RichAlign? align;
@@ -661,6 +663,7 @@ final class _Rules {
 
   final List<Uri> taskLinkBases;
   final _SourceOffsets offsets;
+  final _TaskItemIds taskItemIds = _TaskItemIds();
 
   /// The first tag rule of the schema, by priority, that matches.
   _Rule? match(dom.Element element, Map<String, String> style) {
@@ -689,6 +692,7 @@ final class _Rules {
           _Attrs(
             checked: checked == '' || checked == 'true',
             sourceOffset: offsets.of(element),
+            taskItemId: taskItemIds.of(element),
           ),
           (element) => element.querySelector('div') ?? element,
         );
@@ -968,6 +972,18 @@ final class _SourceOffsets {
   }
 }
 
+/// `data-task-id` as the web keeps it: a missing, empty or repeated id is
+/// one the web replaces with a new random id when it loads the HTML.
+final class _TaskItemIds {
+  final Map<dom.Element, String?> _ids = Map.identity();
+  final Set<String> _seen = {};
+
+  String? of(dom.Element item) => _ids.putIfAbsent(item, () {
+    final id = item.attributes['data-task-id'];
+    return id == null || id.isEmpty || !_seen.add(id) ? null : id;
+  });
+}
+
 final _startTag = RegExp(r'^<li(?=[\t\n\f\r />])', caseSensitive: false);
 
 /// The position of the first attribute called [name] in a raw `<li …>`
@@ -1051,6 +1067,7 @@ final class _Converter {
                 checked: item.attrs.checked,
                 blocks: _blocks(item.content),
                 sourceOffset: item.attrs.sourceOffset,
+                taskId: item.attrs.taskItemId,
               ),
         ]),
       ),

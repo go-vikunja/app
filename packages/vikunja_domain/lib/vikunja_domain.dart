@@ -23,6 +23,7 @@ export 'src/server/server_connection.dart';
 export 'src/server/server_connection_failure.dart';
 export 'src/server/server_info.dart';
 export 'src/server/server_version.dart';
+export 'src/task/checklist_toggle.dart';
 export 'src/task/id_set_change.dart';
 export 'src/task/new_task.dart';
 export 'src/task/reactions.dart';

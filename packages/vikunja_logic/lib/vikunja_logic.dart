@@ -19,6 +19,7 @@ export 'src/quick_add/indented_lines.dart';
 export 'src/quick_add/parsed_task_text.dart';
 export 'src/quick_add/quick_add_parser.dart';
 export 'src/text/checklist.dart';
+export 'src/text/checklist_toggle.dart';
 export 'src/text/rich_text.dart';
 export 'src/time/date_range_preset.dart';
 export 'src/time/datemath.dart';

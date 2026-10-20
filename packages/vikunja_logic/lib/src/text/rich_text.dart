@@ -20,6 +20,10 @@ final class RichDocument {
   /// their label, task links as their href, images as their alt text:
   /// for semantics and tests.
   String get plainText => _lines(blocks).join('\n');
+
+  /// Every task item in document order, nested ones right after their
+  /// parent, including those in quotes, lists and tables.
+  List<RichTaskItem> get taskItems => List.unmodifiable(_taskItems(blocks));
 }
 
 @immutable
@@ -70,16 +74,26 @@ final class RichTaskList extends RichBlock {
 
 @immutable
 final class RichTaskItem {
-  const new({required this.checked, required this.blocks, this.sourceOffset});
+  const new({
+    required this.checked,
+    required this.blocks,
+    this.sourceOffset,
+    this.taskId,
+  });
 
   /// `data-checked` is exactly `true` (or empty), as in the web.
   final bool checked;
   final List<RichBlock> blocks;
 
   /// The offset of this item's `data-checked` attribute in the raw HTML,
-  /// as `findCheckboxesInText` reports it, so step 25 can toggle it; null
-  /// when it cannot be told.
+  /// as `findCheckboxesInText` reports it, for `toggleTaskItem`; null when
+  /// it cannot be told.
   final int? sourceOffset;
+
+  /// `data-task-id`, which the web writes on every item it saves; null when
+  /// missing, empty or already used by an earlier item (the web replaces
+  /// such ids when it loads the HTML).
+  final String? taskId;
 }
 
 final class RichBlockquote extends RichBlock {
@@ -309,3 +323,33 @@ String _inlineText(List<RichInline> inlines) => inlines
       },
     )
     .join();
+
+Iterable<RichTaskItem> _taskItems(List<RichBlock> blocks) sync* {
+  for (final block in blocks) {
+    switch (block) {
+      case RichTaskList(:final items):
+        for (final item in items) {
+          yield item;
+          yield* _taskItems(item.blocks);
+        }
+      case RichBulletList(:final items) || RichOrderedList(:final items):
+        for (final item in items) {
+          yield* _taskItems(item.blocks);
+        }
+      case RichBlockquote(:final blocks):
+        yield* _taskItems(blocks);
+      case RichTable(:final rows):
+        for (final row in rows) {
+          for (final cell in row.cells) {
+            yield* _taskItems(cell.blocks);
+          }
+        }
+      case RichParagraph() ||
+          RichHeading() ||
+          RichCodeBlock() ||
+          RichHorizontalRule() ||
+          RichImage():
+        break;
+    }
+  }
+}

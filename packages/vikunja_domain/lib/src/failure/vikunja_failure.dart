@@ -159,6 +159,16 @@ final class DomainError extends VikunjaFailure {
   String toString() => 'DomainError($statusCode, code: $code)';
 }
 
+/// The description was changed on the server since a queued edit started
+/// from it, so sending the edit would overwrite that change. Raised by the
+/// client before the write; the server has no preconditions.
+final class DescriptionConflict extends VikunjaFailure {
+  const new() : super();
+
+  @override
+  String toString() => 'DescriptionConflict';
+}
+
 /// A response that matches none of the known shapes.
 final class UnexpectedResponse extends VikunjaFailure {
   const new(this.statusCode, {super.message}) : super();

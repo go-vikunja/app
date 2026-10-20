@@ -50,6 +50,17 @@ abstract interface class ProjectRepository {
   /// siblings, and the answered position is stored.
   Future<void> updateProject(int projectId, ProjectChanges changes);
 
+  /// Saves [html], an edit that started from the description [base], as
+  /// the project's description, online like [updateProject]. Written only
+  /// while the server still has [base] (or [html] already, or an empty one
+  /// like [base]); a description changed on the web meanwhile is stored
+  /// here instead and returned, and nothing is written. Null once saved.
+  Future<String?> updateDescription(
+    int projectId,
+    String html, {
+    required String base,
+  });
+
   /// The server deletes the project's whole subtree with its tasks; here
   /// the subtree goes with its tasks (also those with unsent changes, whose
   /// queued ops go too: they would fail), views, boards, list snapshots and

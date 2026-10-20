@@ -1,0 +1,58 @@
+{
+  "name": "rurana-editor",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The description editor page the app loads in a WebView: TipTap with the Vikunja web editor's schema.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "check": "node build.mjs --check",
+    "test": "node --test --test-reporter=spec \"test/*.test.mjs\""
+  },
+  "dependencies": {
+    "@tiptap/core": "3.31.3",
+    "@tiptap/extension-blockquote": "3.31.3",
+    "@tiptap/extension-code-block": "3.31.3",
+    "@tiptap/extension-hard-break": "3.31.3",
+    "@tiptap/extension-image": "3.31.3",
+    "@tiptap/extension-link": "3.31.3",
+    "@tiptap/extension-list": "3.31.3",
+    "@tiptap/extension-mention": "3.31.3",
+    "@tiptap/extension-subscript": "3.31.3",
+    "@tiptap/extension-superscript": "3.31.3",
+    "@tiptap/extension-table": "3.31.3",
+    "@tiptap/extension-typography": "3.31.3",
+    "@tiptap/extension-underline": "3.31.3",
+    "@tiptap/extensions": "3.31.3",
+    "@tiptap/pm": "3.31.3",
+    "@tiptap/starter-kit": "3.31.3",
+    "@tiptap/suggestion": "3.31.3"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "jsdom": "26.1.0"
+  },
+  "overrides": {
+    "linkifyjs": "4.3.3",
+    "orderedmap": "2.1.1",
+    "prosemirror-changeset": "2.4.1",
+    "prosemirror-commands": "1.7.1",
+    "prosemirror-dropcursor": "1.8.3",
+    "prosemirror-gapcursor": "1.4.1",
+    "prosemirror-history": "1.5.0",
+    "prosemirror-inputrules": "1.5.1",
+    "prosemirror-keymap": "1.2.3",
+    "prosemirror-model": "1.25.11",
+    "prosemirror-schema-list": "1.5.1",
+    "prosemirror-state": "1.4.4",
+    "prosemirror-tables": "1.8.5",
+    "prosemirror-transform": "1.12.0",
+    "prosemirror-view": "1.42.3",
+    "rope-sequence": "1.3.4",
+    "w3c-keyname": "2.2.8"
+  }
+}

@@ -73,6 +73,28 @@ jobs:
         working-directory: packages/vikunja_api
         run: flutter test --exclude-tags contract
 
+  # The page is committed so that the Flutter jobs need no Node; this job
+  # runs its tests and checks that it is what the sources build.
+  editor:
+    name: Editor page
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: app/editor/.nvmrc
+          cache: npm
+          cache-dependency-path: app/editor/package-lock.json
+
+      - name: Test the editor and check the committed page
+        run: tool/build_editor.sh --check
+
   contract:
     name: Contract tests (Vikunja 2.7.0)
     runs-on: ubuntu-24.04

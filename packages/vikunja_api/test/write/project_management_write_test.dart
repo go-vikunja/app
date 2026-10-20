@@ -177,6 +177,22 @@ void main() {
       expect(project.title, 'Drafts');
     });
 
+    test('a description is sent as given, HTML byte for byte', () async {
+      final dio = fakeDio({
+        '$_v2/projects/$_sketches': _write('v2_project_update'),
+      });
+      const html = '<p>Plans\r\n<strong>now</strong> \u{1F600}</p>';
+
+      await _client(
+        dio,
+        hasV2: true,
+      ).projects.update(_sketches, const ProjectChanges(description: html));
+
+      expect(adapterOf(dio).decodedBodies, [
+        {'description': html},
+      ]);
+    });
+
     test('an empty colour and identifier are sent to clear them', () async {
       final dio = fakeDio({
         '$_v2/projects/$_sketches': _write('v2_project_update'),
@@ -318,6 +334,7 @@ void main() {
         _sketches,
         const ProjectChanges(
           title: 'Doodles',
+          description: '<p>Doodles</p>',
           identifier: '',
           hexColor: '#ABCDEF',
           parentProjectId: 0,
@@ -330,6 +347,7 @@ void main() {
         ..._sent('v1_project_update')! as Map<String, Object?>,
         'is_favorite': false,
         'title': 'Doodles',
+        'description': '<p>Doodles</p>',
         'identifier': '',
         'hex_color': 'ABCDEF',
         'parent_project_id': 0,

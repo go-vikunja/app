@@ -46,7 +46,7 @@ Map<String, Object?> _block(RichBlock block) => switch (block) {
       for (final item in items)
         _node(
           'taskItem',
-          attrs: {'checked': item.checked},
+          attrs: {'checked': item.checked, 'taskId': item.taskId},
           content: item.blocks.map(_block).toList(),
         ),
     ],

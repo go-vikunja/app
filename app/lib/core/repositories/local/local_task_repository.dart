@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/db/watch_tables.dart';
 import 'package:vikunja_mobile/core/filters/local_filters.dart';
@@ -340,6 +341,65 @@ final class LocalTaskRepository
       changes.isEmpty ? Future.value() : _queue(taskId, changes);
 
   @override
+  Future<bool> updateDescription(
+    int taskId,
+    String html, {
+    required String base,
+  }) async {
+    if (html == base || (isRichTextEmpty(html) && isRichTextEmpty(base))) {
+      return true;
+    }
+    final queued = await _db.outboxDao.queueUpdate(
+      taskId,
+      TaskChanges(description: html, descriptionBase: base),
+      now: _now(),
+    );
+    if (queued) _drainQuietly();
+    return queued;
+  }
+
+  /// The tap is queued only while the row still has [html], checked in the
+  /// same transaction, so a second tap before the view caught up cannot
+  /// land on a neighbour: every later item's offset moved.
+  @override
+  Future<bool> toggleChecklistItem(
+    int taskId, {
+    required String html,
+    required RichTaskItem item,
+    required bool checked,
+  }) async {
+    final toggled = toggleTaskItem(html, item, checked: checked);
+    if (toggled == null) return false;
+    if (toggled == html) return true;
+    final document = parseRichText(
+      html,
+      apiRoot: _anyApiRoot,
+      taskLinkBases: const [],
+    );
+    final parsed = document.taskItems
+        .where((candidate) => candidate.sourceOffset == item.sourceOffset)
+        .firstOrNull;
+    if (parsed == null) return false;
+    final queued = await _db.outboxDao.queueUpdate(
+      taskId,
+      TaskChanges(
+        description: toggled,
+        descriptionBase: html,
+        checklistToggles: [
+          checklistToggleFor(document, parsed, checked: checked),
+        ],
+      ),
+      now: _now(),
+      ifDescription: html,
+    );
+    if (queued) _drainQuietly();
+    return queued;
+  }
+
+  // Which task items there are does not depend on the server's links.
+  static final Uri _anyApiRoot = Uri.parse('https://task-items.invalid');
+
+  @override
   Future<void> setDone(int taskId, {required bool done}) =>
       _queue(taskId, TaskChanges(done: done));
 
@@ -409,6 +469,20 @@ final class LocalTaskRepository
   @override
   Future<void> discardSyncProblem(String operationId) =>
       _outbox.discard(operationId);
+
+  @override
+  Future<String?> webDescription(String operationId) =>
+      _outbox.webDescription(operationId);
+
+  @override
+  Future<void> keepMyDescription(
+    String operationId, {
+    required String webDescription,
+  }) => _outbox.keepMyDescription(operationId, webDescription: webDescription);
+
+  @override
+  Future<void> useWebDescription(String operationId) =>
+      _outbox.useWebDescription(operationId);
 
   @override
   Future<VikunjaFailure?> sendPendingChanges() => _outbox.sendNow();

@@ -50,6 +50,7 @@ Project copyProject(
   Project project, {
   int? id,
   String? title,
+  String? description,
   String? identifier,
   String? hexColor,
   int? parentProjectId,
@@ -62,7 +63,7 @@ Project copyProject(
 }) => Project(
   id: id ?? project.id,
   title: title ?? project.title,
-  description: project.description,
+  description: description ?? project.description,
   identifier: identifier ?? project.identifier,
   hexColor: hexColor ?? project.hexColor,
   parentProjectId: parentProjectId ?? project.parentProjectId,

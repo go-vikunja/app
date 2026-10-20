@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/misc.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/core/activity/activity_providers.dart';
 import 'package:vikunja_mobile/core/activity/foreground_activity.dart';
 import 'package:vikunja_mobile/core/attachments/attachment_image_providers.dart';
@@ -363,6 +364,7 @@ final class FakeProjectRepository implements ProjectRepository {
           copyProject(
             candidate,
             title: title,
+            description: changes.description,
             identifier: identifier,
             hexColor: changes.hexColor,
             parentProjectId: changes.parentProjectId,
@@ -374,6 +376,37 @@ final class FakeProjectRepository implements ProjectRepository {
         else
           candidate,
     ];
+  }
+
+  /// The description the server has, by project id, when it differs from
+  /// the stored one: `updateDescription` with another base stores it and
+  /// returns it, as the real repository does for a change on the web.
+  final Map<int, String> webDescriptions = {};
+
+  /// What `updateDescription` was given as base, in order; a save also
+  /// lands in [updates] like any other project change.
+  final List<String> descriptionBases = [];
+
+  @override
+  Future<String?> updateDescription(
+    int projectId,
+    String html, {
+    required String base,
+  }) async {
+    descriptionBases.add(base);
+    if (webDescriptions[projectId] case final web? when web != base) {
+      all = [
+        for (final candidate in _all)
+          if (candidate.id == projectId)
+            copyProject(candidate, description: web)
+          else
+            candidate,
+      ];
+      return web;
+    }
+    await updateProject(projectId, ProjectChanges(description: html));
+    webDescriptions.remove(projectId);
+    return null;
   }
 
   /// Takes the project and its subtree out of [all].
@@ -1030,12 +1063,13 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
   Future<void> refreshOpenTasks() => _engine.refresh();
 
   /// Every write, in order, as `create -1 Title`, `update 1`,
-  /// `setDone 1 true`, `undoDone 1`, `setFavorite 2 false`, `delete 3`,
-  /// `place …` (see [placements]), `position …` (see [positions]),
-  /// `retry <op>`, `discard <op>` or
-  /// `sendPending`. A write applies to the
-  /// task at once, like the local database; what counts as pending is the
-  /// test's to say with [pendingChanges] and [pendingTaskIds].
+  /// `updateDescription 1`, `toggle 1 at 42 true`, `setDone 1 true`,
+  /// `undoDone 1`, `setFavorite 2 false`, `delete 3`, `place …` (see
+  /// [placements]), `position …` (see [positions]), `retry <op>`,
+  /// `discard <op>`, `keepMine <op> over <html>`, `useWebs <op>` or
+  /// `sendPending`. A write applies to the task at once, like the local
+  /// database; what counts as pending is the test's to say with
+  /// [pendingChanges] and [pendingTaskIds].
   final List<String> writes = [];
   Future<void> Function()? beforeWrite;
 
@@ -1203,6 +1237,58 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
     }
   }
 
+  /// What `updateDescription` was given, in order, as `(taskId, html,
+  /// base)`; [writes] has each as `updateDescription 1`. The description
+  /// applies at once; false, like the real repository, when the task is not
+  /// in [all].
+  final List<(int, String, String)> descriptionUpdates = [];
+
+  @override
+  Future<bool> updateDescription(
+    int taskId,
+    String html, {
+    required String base,
+  }) async {
+    descriptionUpdates.add((taskId, html, base));
+    final id = remaps[taskId] ?? taskId;
+    if (find(id) == null) return false;
+    await _write(
+      'updateDescription $taskId',
+      (task) => task.id == id ? task.copyWith(description: html) : task,
+    );
+    return true;
+  }
+
+  /// What `toggleChecklistItem` was given, in order, as `(taskId, item,
+  /// checked)`. Like the real repository it refuses (false) when the task's
+  /// description is not the given HTML or the item cannot be toggled in
+  /// it, and while [refuseToggles] is set; else [writes] has
+  /// `toggle 1 at <offset> true` and the toggled description applies.
+  final List<(int, RichTaskItem, bool)> checklistToggles = [];
+  bool refuseToggles = false;
+
+  @override
+  Future<bool> toggleChecklistItem(
+    int taskId, {
+    required String html,
+    required RichTaskItem item,
+    required bool checked,
+  }) async {
+    checklistToggles.add((taskId, item, checked));
+    final task = find(taskId);
+    if (refuseToggles || task == null || task.description != html) {
+      return false;
+    }
+    final toggled = toggleTaskItem(html, item, checked: checked);
+    if (toggled == null) return false;
+    await _write(
+      'toggle $taskId at ${item.sourceOffset} $checked',
+      (other) =>
+          other.id == task.id ? other.copyWith(description: toggled) : other,
+    );
+    return true;
+  }
+
   @override
   Future<void> setDone(int taskId, {required bool done}) => _write(
     'setDone $taskId $done',
@@ -1292,6 +1378,65 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
         if (problem.operationId != operationId) problem,
     ];
   }
+
+  /// The description the server has, by task id: `useWebDescription`
+  /// puts it back on the problem's task.
+  final Map<int, String> webDescriptions = {};
+
+  /// Thrown by `useWebDescription`, like a server read that failed.
+  VikunjaFailure? useWebDescriptionFailure;
+
+  /// Thrown by `webDescription`, like a server read that failed.
+  VikunjaFailure? webDescriptionFailure;
+
+  /// The problem's task's entry of [webDescriptions].
+  @override
+  Future<String?> webDescription(String operationId) async {
+    if (webDescriptionFailure case final failure?) throw failure;
+    final problem = _problemList
+        .where((problem) => problem.operationId == operationId)
+        .firstOrNull;
+    if (problem == null) return null;
+    return webDescriptions[remaps[problem.taskId] ?? problem.taskId];
+  }
+
+  /// [writes] has `keepMine <op> over <webDescription>`; the problem leaves
+  /// [syncProblems].
+  @override
+  Future<void> keepMyDescription(
+    String operationId, {
+    required String webDescription,
+  }) async {
+    writes.add('keepMine $operationId over $webDescription');
+    await beforeWrite?.call();
+    _resolve(operationId);
+  }
+
+  /// [writes] has `useWebs <op>`; the problem leaves [syncProblems] and
+  /// its task takes its entry of [webDescriptions].
+  @override
+  Future<void> useWebDescription(String operationId) async {
+    writes.add('useWebs $operationId');
+    await beforeWrite?.call();
+    if (useWebDescriptionFailure case final failure?) throw failure;
+    final problem = _problemList
+        .where((problem) => problem.operationId == operationId)
+        .firstOrNull;
+    _resolve(operationId);
+    if (problem == null) return;
+    final id = remaps[problem.taskId] ?? problem.taskId;
+    if (webDescriptions[id] case final description?) {
+      all = [
+        for (final task in _all)
+          if (task.id == id) task.copyWith(description: description) else task,
+      ];
+    }
+  }
+
+  void _resolve(String operationId) => syncProblems = [
+    for (final problem in _problemList)
+      if (problem.operationId != operationId) problem,
+  ];
 
   @override
   Future<VikunjaFailure?> sendPendingChanges() async {

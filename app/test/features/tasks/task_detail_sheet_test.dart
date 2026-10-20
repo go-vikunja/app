@@ -97,7 +97,7 @@ void main() {
     );
   });
 
-  testWidgets('a bare task shows only its status and no description', (
+  testWidgets('a bare task shows only its status and offers a description', (
     tester,
   ) async {
     await openDetail(tester, 'Bare task');
@@ -110,7 +110,7 @@ void main() {
     expect(
       find.descendant(
         of: sheet,
-        matching: find.text(en.taskDetailNoDescription),
+        matching: find.text(en.taskDetailAddDescription),
       ),
       findsOneWidget,
     );

@@ -124,8 +124,13 @@ final class RetryingTasksWrites implements TasksWritePort {
       despiteWriteRaces(() => _writes.create(task));
 
   @override
-  Future<Task> update(int id, TaskChanges changes) =>
-      despiteWriteRaces(() => _writes.update(id, changes));
+  Future<Task> update(
+    int id,
+    TaskChanges changes, {
+    String Function(String current)? rebaseDescription,
+  }) => despiteWriteRaces(
+    () => _writes.update(id, changes, rebaseDescription: rebaseDescription),
+  );
 
   @override
   Future<void> delete(int id) => despiteWriteRaces(() => _writes.delete(id));
@@ -258,8 +263,17 @@ final class RetryingProjectsWrites implements ProjectsWritePort {
       despiteWriteRaces(() => _projects.create(project));
 
   @override
-  Future<Project> update(int projectId, ProjectChanges changes) =>
-      despiteWriteRaces(() => _projects.update(projectId, changes));
+  Future<Project> update(
+    int projectId,
+    ProjectChanges changes, {
+    String Function(String current)? rebaseDescription,
+  }) => despiteWriteRaces(
+    () => _projects.update(
+      projectId,
+      changes,
+      rebaseDescription: rebaseDescription,
+    ),
+  );
 
   @override
   Future<void> delete(int projectId) =>

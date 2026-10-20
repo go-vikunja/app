@@ -138,7 +138,11 @@ final class _ProjectsWriteApi implements ProjectsWritePort {
   );
 
   @override
-  Future<Project> update(int projectId, ProjectChanges changes) async {
+  Future<Project> update(
+    int projectId,
+    ProjectChanges changes, {
+    String Function(String current)? rebaseDescription,
+  }) async {
     if (changes.position case final position?
         when !position.isFinite || position < _minProjectPosition) {
       throw ArgumentError.value(
@@ -150,7 +154,30 @@ final class _ProjectsWriteApi implements ProjectsWritePort {
     final path = '/projects/$projectId';
     final body = encodeProjectChanges(changes);
     if (body.isEmpty) return _parse(await _transport.send('GET', path));
-    return _parse(await _transport.patchOrReplace(path, 'project', body));
+    final rebase = changes.description == null ? null : rebaseDescription;
+    if (rebase == null) {
+      return _parse(await _transport.patchOrReplace(path, 'project', body));
+    }
+    final current = _transport.decode<Map<String, Object?>>(
+      await _transport.send('GET', path),
+      (json) => objectOf(json, 'project'),
+    );
+    final rebased = {
+      ...body,
+      'description': rebase(current['description'] as String? ?? ''),
+    };
+    return _parse(switch (_transport.version) {
+      ApiVersion.v2 => await _transport.patchOrReplace(
+        path,
+        'project',
+        rebased,
+      ),
+      ApiVersion.v1 => await _transport.send(
+        'POST',
+        path,
+        body: {...current, ...rebased},
+      ),
+    });
   }
 
   @override
@@ -452,15 +479,28 @@ final class _TasksWriteApi implements TasksWritePort {
   }
 
   @override
-  Future<Task> update(int id, TaskChanges changes) async {
+  Future<Task> update(
+    int id,
+    TaskChanges changes, {
+    String Function(String current)? rebaseDescription,
+  }) async {
     final relations = changes.relations;
     if (relations != null) _checkServerIds(relations);
     final body = encodeTaskChanges(changes);
+    final rebase = changes.description == null ? null : rebaseDescription;
     final answer = body.isEmpty
         ? await _read(id)
         : switch (_transport.version) {
-            ApiVersion.v2 => await _patch(id, body),
-            ApiVersion.v1 => await _replace(id, body),
+            ApiVersion.v2 => await _patch(
+              id,
+              rebase == null
+                  ? body
+                  : {
+                      ...body,
+                      'description': rebase((await _read(id)).description),
+                    },
+            ),
+            ApiVersion.v1 => await _replace(id, body, rebase),
           };
     final sentLabelsOrAssignees = await _sendLabelsAndAssignees(
       id,
@@ -529,7 +569,11 @@ final class _TasksWriteApi implements TasksWritePort {
     return _transport.decode<Task>(response, parseTask);
   }
 
-  Future<Task> _replace(int id, Map<String, Object?> overlay) async {
+  Future<Task> _replace(
+    int id,
+    Map<String, Object?> overlay,
+    String Function(String current)? rebaseDescription,
+  ) async {
     final current = _transport.decode<Map<String, Object?>>(
       await _transport.send('GET', '/tasks/$id'),
       (json) => objectOf(json, 'task'),
@@ -541,6 +585,10 @@ final class _TasksWriteApi implements TasksWritePort {
         for (final MapEntry(:key, :value) in current.entries)
           if (!_notSentBack.contains(key)) key: value,
         ...overlay,
+        if (rebaseDescription != null)
+          'description': rebaseDescription(
+            current['description'] as String? ?? '',
+          ),
       },
     );
     // The v1 update cannot change labels or relations and answers without

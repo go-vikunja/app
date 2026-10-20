@@ -70,9 +70,17 @@ final class _SwitchableTasks implements TasksWritePort {
   }
 
   @override
-  Future<Task> update(int id, TaskChanges changes) {
+  Future<Task> update(
+    int id,
+    TaskChanges changes, {
+    String Function(String current)? rebaseDescription,
+  }) {
     _client._check();
-    return _client._real.tasks.update(id, changes);
+    return _client._real.tasks.update(
+      id,
+      changes,
+      rebaseDescription: rebaseDescription,
+    );
   }
 
   @override

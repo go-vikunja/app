@@ -5,13 +5,16 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/core/text/html_to_text.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
+import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/tasks/application/date_shortcuts.dart';
 import 'package:vikunja_mobile/features/tasks/application/reminder_editing.dart';
@@ -33,7 +36,8 @@ import 'package:vikunja_mobile/features/tasks/presentation/pickers/reminder_pick
 /// Edits the core properties of one task. The draft starts from the row as
 /// it was when the page opened and Save sends only the fields that differ
 /// from it, under the id the row has by then (a queued create may have
-/// been answered meanwhile).
+/// been answered meanwhile). The description opens the editor, which saves
+/// it on its own.
 class TaskEditPage extends ConsumerStatefulWidget {
   const new({required this.taskId, super.key});
 
@@ -132,6 +136,20 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
     _update((draft) => draft.copyWith(reminders: reminders));
   }
 
+  Future<void> _editDescription() async {
+    final current = _current;
+    if (current == null) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final l10n = context.l10n;
+    final saved = await GoRouter.of(context)
+        .push<bool>(AppRoutes.taskDescription(current.id));
+    if (saved ?? false) {
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(l10n.descriptionEditorSaved)));
+    }
+  }
+
   Future<void> _save() async {
     final repository = ref.read(taskRepositoryProvider);
     final draft = _draft;
@@ -160,6 +178,13 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
     final task = ref.watch(taskByIdProvider(widget.taskId));
     if (task case AsyncValue(hasValue: true, :final value)) _adopt(value);
     final draft = _draft;
+    final current = _current;
+    final projects = ref.watch(projectsProvider).value ?? const <Project>[];
+    final archived =
+        current != null &&
+        isArchivedInTree(current.projectId, {
+          for (final project in projects) project.id: project,
+        });
 
     return PopScope(
       canPop: !_dirty || _saving,
@@ -180,6 +205,10 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
         body: switch ((draft, task)) {
           (final draft?, _) => _Form(
             draft: draft,
+            description: current?.description ?? '',
+            onEditDescription: current == null || archived
+                ? null
+                : () => unawaited(_editDescription()),
             titleController: _title,
             projectTitle: ref
                 .watch(projectByIdProvider(draft.projectId))
@@ -209,6 +238,8 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
 class _Form extends ConsumerWidget {
   const new({
     required this.draft,
+    required this.description,
+    required this.onEditDescription,
     required this.titleController,
     required this.projectTitle,
     required this.onChanged,
@@ -219,6 +250,10 @@ class _Form extends ConsumerWidget {
   });
 
   final TaskDraft draft;
+
+  /// As stored now: the editor saves it on its own.
+  final String description;
+  final VoidCallback? onEditDescription;
   final TextEditingController titleController;
   final String? projectTitle;
   final void Function(TaskDraft Function(TaskDraft draft) change) onChanged;
@@ -235,6 +270,7 @@ class _Form extends ConsumerWidget {
     final now = ref.watch(clockTickProvider);
     final shortcuts = buildDateShortcuts(now);
     final percent = (draft.percentDone * 100).round();
+    final descriptionText = htmlToPlainText(description);
 
     return ListView(
       padding: const EdgeInsets.only(top: 8, bottom: 32),
@@ -264,6 +300,20 @@ class _Form extends ConsumerWidget {
           subtitle: Text(projectTitle ?? l10n.projectUnknownTitle),
           trailing: const Icon(Icons.arrow_drop_down),
           onTap: onPickProject,
+        ),
+        ListTile(
+          leading: Icon(Icons.notes, color: colors.onSurfaceVariant),
+          title: Text(l10n.taskDetailDescription),
+          subtitle: Text(
+            descriptionText.isEmpty
+                ? l10n.taskDetailNoDescription
+                : descriptionText,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          enabled: onEditDescription != null,
+          onTap: onEditDescription,
         ),
         _SectionTitle(l10n.taskDetailLabels),
         Padding(

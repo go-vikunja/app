@@ -8,10 +8,13 @@ import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/core/text/html_to_text.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
+import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/projects/presentation/manage/form_parts.dart';
 import 'package:vikunja_mobile/features/projects/presentation/manage/parent_picker.dart';
@@ -24,7 +27,7 @@ final _log = Logger('ProjectEdit');
 /// Title, identifier, colour and parent of a project. Save sends only what
 /// differs from the project as it was when the page opened, waits for the
 /// server and stays open with the reason when it refuses. The description
-/// is rich text, left to the web until the app has an editor for it.
+/// opens the editor, which saves it on its own.
 class ProjectEditPage extends ConsumerStatefulWidget {
   const new({required this.projectId, super.key});
 
@@ -158,6 +161,18 @@ class _ProjectEditPageState extends ConsumerState<ProjectEditPage> {
     if (await confirmDiscardProjectChanges(context) && mounted) router.pop();
   }
 
+  Future<void> _editDescription() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final l10n = context.l10n;
+    final saved = await GoRouter.of(context)
+        .push<bool>(AppRoutes.projectDescription(widget.projectId));
+    if (saved ?? false) {
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(l10n.descriptionEditorSaved)));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -166,6 +181,9 @@ class _ProjectEditPageState extends ConsumerState<ProjectEditPage> {
     final project = all.where((p) => p.id == widget.projectId).firstOrNull;
     if (projects.hasValue) _adopt(project);
     final original = _original;
+    final archived = isArchivedInTree(widget.projectId, {
+      for (final project in all) project.id: project,
+    });
 
     return PopScope(
       canPop: _saved || (!_dirty && !_saving),
@@ -190,19 +208,25 @@ class _ProjectEditPageState extends ConsumerState<ProjectEditPage> {
               : null,
         ),
         body: switch ((original, projects.hasValue)) {
-          (_?, _) when project != null || _saving || _saved => _Form(
-            titleController: _title,
-            titleTooLong: _titleTooLong,
-            identifierController: _identifier,
-            identifierError: _identifierError,
-            hexColor: _hexColor,
-            parentLabel: parentProjectLabel(l10n, _parentId, all),
-            enabled: !_saving,
-            onChanged: () => setState(() {}),
-            onIdentifierChanged: () => setState(() => _identifierError = null),
-            onColorChanged: (hex) => setState(() => _hexColor = hex),
-            onPickParent: () => unawaited(_pickParent()),
-          ),
+          (final original?, _) when project != null || _saving || _saved =>
+            _Form(
+              titleController: _title,
+              titleTooLong: _titleTooLong,
+              identifierController: _identifier,
+              identifierError: _identifierError,
+              hexColor: _hexColor,
+              parentLabel: parentProjectLabel(l10n, _parentId, all),
+              description: project?.description ?? original.description,
+              onEditDescription: _saving || archived || project == null
+                  ? null
+                  : () => unawaited(_editDescription()),
+              enabled: !_saving,
+              onChanged: () => setState(() {}),
+              onIdentifierChanged: () =>
+                  setState(() => _identifierError = null),
+              onColorChanged: (hex) => setState(() => _hexColor = hex),
+              onPickParent: () => unawaited(_pickParent()),
+            ),
           (_, true) => CenteredScrollView(
             child: EmptyState(
               icon: Icons.search_off,
@@ -227,6 +251,8 @@ class _Form extends StatelessWidget {
     required this.identifierError,
     required this.hexColor,
     required this.parentLabel,
+    required this.description,
+    required this.onEditDescription,
     required this.enabled,
     required this.onChanged,
     required this.onIdentifierChanged,
@@ -240,6 +266,10 @@ class _Form extends StatelessWidget {
   final String? identifierError;
   final String hexColor;
   final String parentLabel;
+
+  /// As stored now: the editor saves it on its own.
+  final String description;
+  final VoidCallback? onEditDescription;
   final bool enabled;
   final VoidCallback onChanged;
   final VoidCallback onIdentifierChanged;
@@ -249,7 +279,9 @@ class _Form extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final colors = Theme.of(context).colorScheme;
     final hasTitle = titleController.text.trim().isNotEmpty;
+    final descriptionText = htmlToPlainText(description);
     return ListView(
       padding: const EdgeInsets.only(top: 8, bottom: 32),
       children: [
@@ -316,6 +348,21 @@ class _Form extends StatelessWidget {
             ignoring: !enabled,
             child: ColorRow(value: hexColor, onChanged: onColorChanged),
           ),
+        ),
+        const SizedBox(height: 16),
+        ListTile(
+          leading: Icon(Icons.notes, color: colors.onSurfaceVariant),
+          title: Text(l10n.projectEditDescription),
+          subtitle: Text(
+            descriptionText.isEmpty
+                ? l10n.projectEditNoDescription
+                : descriptionText,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          enabled: onEditDescription != null,
+          onTap: onEditDescription,
         ),
       ],
     );

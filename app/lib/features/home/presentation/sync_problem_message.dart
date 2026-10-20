@@ -28,6 +28,7 @@ String describeSyncProblem(AppLocalizations l10n, SyncProblem problem) {
     DomainError(code: 4010) => l10n.syncProblemRelationToItself,
     DomainError(code: 4007) => l10n.syncProblemRejected,
     ValidationFailed() => l10n.syncProblemRejected,
+    DescriptionConflict() => l10n.syncProblemDescriptionConflict,
     _ => l10n.syncProblemUnexpected,
   };
   return '$what $why';

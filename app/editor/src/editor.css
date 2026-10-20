@@ -1,0 +1,301 @@
+:root {
+  --text: #1d1b20;
+  --background: #fef7ff;
+  --primary: #65558f;
+  --outline: #79747e;
+  --surface: #ece6f0;
+  --error: #b3261e;
+  --selection: rgba(101, 85, 143, 0.3);
+  --link: #65558f;
+  --code-background: #e6e0e9;
+  --font-scale: 1;
+  color-scheme: light;
+}
+
+html {
+  font-size: calc(16px * var(--font-scale));
+  -webkit-text-size-adjust: none;
+  text-size-adjust: none;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--background);
+  color: var(--text);
+}
+
+body {
+  font-family: system-ui, -apple-system, Roboto, 'Segoe UI', sans-serif;
+  line-height: 1.5;
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: var(--selection);
+}
+
+.ProseMirror {
+  box-sizing: border-box;
+  min-height: 100vh;
+  padding: 12px 16px 64px;
+  outline: none;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+  font-variant-ligatures: none;
+  -webkit-font-variant-ligatures: none;
+  caret-color: var(--primary);
+}
+
+.ProseMirror [contenteditable='false'] {
+  white-space: normal;
+}
+
+.ProseMirror [contenteditable='false'] [contenteditable='true'] {
+  white-space: pre-wrap;
+}
+
+.ProseMirror-hideselection *::selection {
+  background: transparent;
+}
+
+.ProseMirror-hideselection {
+  caret-color: transparent;
+}
+
+.ProseMirror-selectednode {
+  outline: 2px solid var(--primary);
+}
+
+img.ProseMirror-separator {
+  display: inline !important;
+  border: none !important;
+  margin: 0 !important;
+}
+
+.ProseMirror-gapcursor {
+  display: none;
+  pointer-events: none;
+  position: absolute;
+}
+
+.ProseMirror-gapcursor::after {
+  content: '';
+  display: block;
+  position: absolute;
+  top: -2px;
+  width: 20px;
+  border-top: 1px solid var(--text);
+  animation: gapcursor-blink 1.1s steps(2, start) infinite;
+}
+
+@keyframes gapcursor-blink {
+  to {
+    visibility: hidden;
+  }
+}
+
+.ProseMirror-focused .ProseMirror-gapcursor {
+  display: block;
+}
+
+.ProseMirror > :first-child {
+  margin-top: 0;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  color: var(--outline);
+  pointer-events: none;
+}
+
+p {
+  margin: 0 0 0.5em;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin: 0.75em 0 0.4em;
+  line-height: 1.25;
+}
+
+h1 {
+  font-size: 1.75rem;
+}
+
+h2 {
+  font-size: 1.5rem;
+}
+
+h3 {
+  font-size: 1.25rem;
+}
+
+h4,
+h5,
+h6 {
+  font-size: 1.1rem;
+}
+
+a {
+  color: var(--link);
+  text-decoration: underline;
+}
+
+code {
+  padding: 0.1em 0.3em;
+  border-radius: 4px;
+  background: var(--code-background);
+  font-family: ui-monospace, Menlo, 'Roboto Mono', monospace;
+  font-size: 0.9em;
+}
+
+pre {
+  margin: 0.5em 0;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--code-background);
+  white-space: pre-wrap;
+}
+
+pre code {
+  padding: 0;
+  background: none;
+}
+
+blockquote {
+  margin: 0.5em 0;
+  padding-left: 12px;
+  border-left: 3px solid var(--outline);
+}
+
+hr {
+  margin: 16px 0;
+  border: none;
+  border-top: 1px solid var(--outline);
+}
+
+ul,
+ol {
+  margin: 0 0 0.5em;
+  padding-left: 1.5em;
+}
+
+ul[data-type='taskList'] {
+  padding-left: 0;
+  list-style: none;
+}
+
+ul[data-type='taskList'] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5em;
+}
+
+ul[data-type='taskList'] li > label {
+  position: relative;
+  flex: 0 0 auto;
+  margin-top: 0.2em;
+  user-select: none;
+}
+
+/* A larger target than the box itself; it stays short of the item's text,
+   so that a tap there still places the cursor. */
+ul[data-type='taskList'] li > label::before {
+  content: '';
+  position: absolute;
+  inset: -0.7rem -0.4rem -0.7rem -0.8rem;
+}
+
+ul[data-type='taskList'] li > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+ul[data-type='taskList'] input[type='checkbox'] {
+  width: 1.15rem;
+  height: 1.15rem;
+  margin: 0;
+  accent-color: var(--primary);
+}
+
+ul[data-type='taskList'] li[data-checked='true'] > div > p {
+  text-decoration: line-through;
+}
+
+.tableWrapper {
+  overflow-x: auto;
+  margin: 0.5em 0;
+}
+
+/* Columns keep a readable width and the wrapper scrolls sideways instead of
+   breaking words letter by letter. */
+table {
+  border-collapse: collapse;
+  table-layout: auto;
+  width: 100%;
+}
+
+td,
+th {
+  position: relative;
+  box-sizing: border-box;
+  min-width: 6rem;
+  padding: 4px 8px;
+  border: 1px solid var(--outline);
+  vertical-align: top;
+  overflow-wrap: break-word;
+}
+
+td > p:last-child,
+th > p:last-child {
+  margin-bottom: 0;
+}
+
+th {
+  background: var(--surface);
+  font-weight: 600;
+  text-align: start;
+}
+
+.selectedCell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--selection);
+  pointer-events: none;
+}
+
+.mention,
+.task-link {
+  padding: 0 0.4em;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--primary);
+  white-space: nowrap;
+}
+
+.suggestion {
+  border-radius: 4px;
+  background: var(--selection);
+}
+
+.image-placeholder {
+  box-sizing: border-box;
+  min-height: 4rem;
+  margin: 0.5em 0;
+  padding: 12px;
+  border: 1px dashed var(--outline);
+  border-radius: 8px;
+  color: var(--outline);
+  text-align: center;
+  white-space: normal;
+}

@@ -10,12 +10,18 @@ import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/widgets/adaptive_navigation_bar.dart';
 import 'package:vikunja_mobile/core/auth/web_authenticator.dart';
+import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
+import 'package:vikunja_mobile/features/description_editor/application/editor_protocol.dart';
+import 'package:vikunja_mobile/features/description_editor/presentation/description_editor_page.dart';
+import 'package:vikunja_mobile/features/description_editor/presentation/editor_toolbar.dart';
+import 'package:vikunja_mobile/features/description_editor/presentation/mention_bar.dart';
 import 'package:vikunja_mobile/features/filters/presentation/filter_field.dart';
+import 'package:vikunja_mobile/features/home/presentation/description_conflict_sheet.dart';
 import 'package:vikunja_mobile/features/home/presentation/reauth_banner.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connection_error_card.dart';
 import 'package:vikunja_mobile/features/projects/presentation/board/board_column.dart';
@@ -45,6 +51,7 @@ import 'package:vikunja_mobile/features/upcoming/presentation/upcoming_screen.da
 import '../features/accounts/accounts_harness.dart';
 import '../features/tasks/edit_page_harness.dart';
 import '../helpers/auth_fakes.dart';
+import '../helpers/editor_bridge_fakes.dart';
 import '../helpers/fake_quick_add_service.dart';
 import '../helpers/fakes.dart';
 import '../helpers/label_user_fakes.dart';
@@ -510,6 +517,169 @@ void main() {
 
       expect(find.byType(ProjectEditPage), findsOneWidget);
       await scrollToEnd(tester, find.byType(ListView));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('description editor with its toolbar, menus, mention '
+        'suggestions, link sheet and dialogs at 200 % in dark mode '
+        '(${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      final l10n = lookupAppLocalizations(locale);
+      final bridges = FakeEditorBridges();
+      final data = richData();
+      await pumpSignedInApp(
+        tester,
+        sync: data,
+        overrides: [
+          bridges.override,
+          userRepositoryProvider.overrideWithValue(
+            FakeUserRepository(
+              projectUsers: const {
+                1: [
+                  User(
+                    id: 1,
+                    username: 'maximiliane',
+                    name: 'Maximiliane Musterfrau-Beispielhausen',
+                  ),
+                ],
+              },
+            ),
+          ),
+        ],
+      );
+      final router = containerOf(tester).read(appRouterProvider);
+      unawaited(router.push(AppRoutes.taskDescription(1)));
+      await tester.pumpAndSettle();
+      expect(find.byType(DescriptionEditorPage), findsOneWidget);
+
+      final bridge = bridges.last
+        ..edit(
+          '<p>Edited</p>',
+          active: const EditorActive(bold: true, heading: 2, table: true),
+        );
+      await tester.pumpAndSettle();
+      final toolbar = find.byType(EditorToolbar);
+      for (var i = 0; i < 10; i++) {
+        await tester.drag(toolbar, const Offset(-300, 0));
+        await tester.pumpAndSettle();
+      }
+      for (final tooltip in [l10n.editorTable, l10n.editorTextStyle]) {
+        await tester.ensureVisible(find.byTooltip(tooltip));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byTooltip(tooltip));
+        await tester.pumpAndSettle();
+        await tester.tapAt(const Offset(4, 4));
+        await tester.pumpAndSettle();
+      }
+
+      bridge.emit(const MentionQuery('max'));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pumpAndSettle();
+      expect(find.byType(MentionBar), findsOneWidget);
+      bridge.emit(const MentionEnd());
+      await tester.pumpAndSettle();
+
+      bridge.emit(
+        const EditorStateChanged(
+          EditorState(
+            dirty: true,
+            active: EditorActive(
+              link: true,
+              linkHref: 'https://example.org/a/rather/long/link',
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byTooltip(l10n.editorLink));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip(l10n.editorLink));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.editorLinkRemove), findsOneWidget);
+      await tester.tapAt(const Offset(4, 4));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.descriptionEditorLeaveTitle), findsOneWidget);
+      await tester.tap(find.text(l10n.taskEditKeepEditing));
+      await tester.pumpAndSettle();
+
+      data.tasks.all = [
+        for (final task in data.tasks.all)
+          if (task.id == 1)
+            task.copyWith(description: '<p>Changed on the web</p>')
+          else
+            task,
+      ];
+      await tester.pump();
+      await tester.tap(find.widgetWithText(TextButton, l10n.taskEditSave));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.descriptionEditorChangedTitle), findsOneWidget);
+      await tester.tap(find.text(l10n.taskEditKeepEditing));
+      await tester.pumpAndSettle();
+
+      bridge.emit(const EditorStopped());
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.descriptionEditorStoppedKept), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a description conflict compared at 200 % in dark mode '
+        '(${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      final now = DateTime.now().toUtc();
+      final l10n = lookupAppLocalizations(locale);
+      final data = SyncFakes(now: now);
+      data.tasks
+        ..all = [
+          sampleTask(
+            id: 1,
+            title: 'A task with a rather long title to wrap',
+            description: '<p>Mine, written offline</p>',
+          ),
+        ]
+        ..webDescriptions[1] = [
+          '<h2>From the web</h2><ul data-type="taskList">',
+          '<li data-checked="true" data-type="taskItem"><label>',
+          '<input type="checkbox" checked="checked"><span></span></label>',
+          '<div><p>A checked item with some text</p></div></li></ul>',
+        ].join()
+        ..syncProblems = [
+          SyncProblem(
+            operationId: 'op-1',
+            kind: OutboxOperationKind.updateTask,
+            taskId: 1,
+            taskTitle: 'A task with a rather long title to wrap',
+            failure: const DescriptionConflict(),
+            failedAt: now.subtract(const Duration(minutes: 5)),
+            changes: const TaskChanges(
+              description: '<p>Mine, written offline</p>',
+              descriptionBase: '<p>Before</p>',
+            ),
+          ),
+        ]
+        ..pendingChanges = 1;
+      await pumpSignedInApp(tester, sync: data);
+      await openTab(tester, l10n.tabAccount);
+
+      await tester.scrollUntilVisible(
+        find.text(l10n.syncProblemCompare),
+        100,
+        scrollable: find
+            .descendant(
+              of: find.byType(ListView),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      await tester.ensureVisible(find.text(l10n.syncProblemCompare));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(l10n.syncProblemCompare));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.syncProblemCompareTitle), findsOneWidget);
+      await scrollToEnd(tester, find.byType(DescriptionConflictSheet));
+      expect(find.text(l10n.syncProblemKeepMine), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 

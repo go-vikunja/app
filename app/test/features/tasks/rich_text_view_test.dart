@@ -26,6 +26,7 @@ const photo = RichImage(
 final class _Taps {
   final links = <String>[];
   final tasks = <int>[];
+  final taskItems = <RichTaskItem>[];
 }
 
 void main() {
@@ -50,6 +51,7 @@ void main() {
     List<RichBlock> blocks, {
     int? projectId = 1,
     User? Function(int commentId)? replyAuthorOf,
+    bool toggleable = false,
   }) async {
     usePhoneSurface(tester, logicalSize: const Size(360, 1600));
     await pumpSignedInApp(tester, sync: data);
@@ -69,6 +71,7 @@ void main() {
                     document: RichDocument(blocks),
                     onLink: taps.links.add,
                     onTaskLink: taps.tasks.add,
+                    onToggleTaskItem: toggleable ? taps.taskItems.add : null,
                     projectId: projectId,
                     replyAuthorOf: replyAuthorOf,
                   ),
@@ -157,6 +160,83 @@ void main() {
       expect(find.text('3.'), findsOneWidget);
       expect(find.text('4.'), findsOneWidget);
       expect(find.text('Fourth'), findsOneWidget);
+    });
+
+    testWidgets('task lists with a toggle: items with a source offset take '
+        'taps on their checkbox, one with a link keeps it apart', (
+      tester,
+    ) async {
+      final semantics = tester.ensureSemantics();
+      const nested = RichTaskItem(
+        checked: false,
+        sourceOffset: 120,
+        blocks: [
+          RichParagraph([RichTextRun('Second coat')]),
+        ],
+      );
+      const withLink = RichTaskItem(
+        checked: true,
+        sourceOffset: 200,
+        blocks: [
+          RichParagraph([
+            RichTextRun('Ask '),
+            RichTextRun('Anna', href: 'https://example.org/anna'),
+          ]),
+        ],
+      );
+      final taps = await pumpRichText(tester, toggleable: true, const [
+        RichTaskList([
+          RichTaskItem(
+            checked: false,
+            sourceOffset: 10,
+            blocks: [
+              RichParagraph([RichTextRun('Paint')]),
+              RichTaskList([nested]),
+            ],
+          ),
+          withLink,
+          RichTaskItem(
+            checked: true,
+            blocks: [
+              RichParagraph([RichTextRun('Legacy')]),
+            ],
+          ),
+        ]),
+      ]);
+
+      expect(
+        tester.getSemantics(find.text('Paint')),
+        isSemantics(
+          label: 'Paint',
+          hasCheckedState: true,
+          isChecked: false,
+          hasTapAction: true,
+        ),
+      );
+      expect(
+        tester.getSemantics(find.bySemanticsLabel('Ask Anna')),
+        isSemantics(hasCheckedState: true, isChecked: true, hasTapAction: true),
+      );
+      expect(
+        tester.getSemantics(find.text('Legacy')),
+        isSemantics(hasCheckedState: true, hasTapAction: false),
+      );
+      for (final size in [
+        for (final element in find.byType(InkResponse).evaluate())
+          element.size!,
+      ]) {
+        expect(size, const Size.square(48));
+      }
+
+      await tester.tap(find.byIcon(Icons.check_box_outline_blank).last);
+      await tester.tap(find.byIcon(Icons.check_box).first);
+      await tester.tap(find.byIcon(Icons.check_box).last);
+      await tester.tapOnText(find.textRange.ofSubstring('Anna'));
+      await tester.pump();
+
+      expect(taps.taskItems, [nested, withLink]);
+      expect(taps.links, ['https://example.org/anna']);
+      semantics.dispose();
     });
 
     testWidgets('task lists: read-only checkboxes with their state, the '

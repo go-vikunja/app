@@ -27,6 +27,7 @@ Map<String, Object?> failureToJson(VikunjaFailure failure) => {
     RateLimited() => 'rate_limited',
     ServerFailure() => 'server_failure',
     DomainError() => 'domain_error',
+    DescriptionConflict() => 'description_conflict',
     UnexpectedResponse() => 'unexpected_response',
   },
   'code': ?failure.code,
@@ -98,6 +99,7 @@ VikunjaFailure failureFromJson(Map<String, Object?> json) {
       code: code ?? 0,
       message: message,
     ),
+    'description_conflict' => const DescriptionConflict(),
     _ => UnexpectedResponse(statusCode, message: message),
   };
 }

@@ -58,6 +58,7 @@ void main() {
       const RateLimited(message: message),
       const ServerFailure(500, message: message),
       const DomainError(400, code: 4029, message: message),
+      const DescriptionConflict(),
       const UnexpectedResponse(418, message: message),
     ];
 
@@ -79,6 +80,7 @@ void main() {
       RateLimited() => 'rate',
       ServerFailure() => 'server',
       DomainError() => 'domain',
+      DescriptionConflict() => 'description conflict',
       UnexpectedResponse() => 'unexpected',
     };
 

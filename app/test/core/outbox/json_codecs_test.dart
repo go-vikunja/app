@@ -248,6 +248,45 @@ void main() {
         {7: 3.5},
       );
     });
+
+    test('the description base and checkbox taps are kept in order, by id '
+        'or by position and text', () {
+      const changes = TaskChanges(
+        description: '<p>new</p>\r\n',
+        descriptionBase: '<p>old \u{1F600}</p>',
+        checklistToggles: [
+          ChecklistToggle.byId('a1', checked: true),
+          ChecklistToggle.byPosition(ordinal: 3, text: 'Eggs', checked: false),
+        ],
+      );
+
+      final json = encodeTaskChanges(changes);
+
+      expect(jsonDecode(json), {
+        'description': '<p>new</p>\r\n',
+        'description_base': '<p>old \u{1F600}</p>',
+        'checklist_toggles': [
+          {'item_id': 'a1', 'checked': true},
+          {'ordinal': 3, 'text': 'Eggs', 'checked': false},
+        ],
+      });
+      expect(decodeTaskChanges(json), changes);
+    });
+
+    test('a payload from before step 25 is an unchecked description; taps '
+        'that cannot be read back make the change an edit', () {
+      expect(
+        decodeTaskChanges('{"description":"<p>x</p>"}'),
+        const TaskChanges(description: '<p>x</p>'),
+      );
+      expect(
+        decodeTaskChanges(
+          '{"description":"x","description_base":"y","checklist_toggles":'
+          '[{"item_id":"a","checked":true},{"ordinal":"1","checked":true}]}',
+        ),
+        const TaskChanges(description: 'x', descriptionBase: 'y'),
+      );
+    });
   });
 
   group('NewTask', () {
@@ -349,6 +388,7 @@ void main() {
       const RateLimited(),
       const ServerFailure(502, code: 500, message: 'bad gateway'),
       const DomainError(412, code: 3008, message: 'archived'),
+      const DescriptionConflict(),
       const UnexpectedResponse(418, message: 'teapot'),
       const UnexpectedResponse(null),
     ];

@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:logging/logging.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/db/daos/outbox_dao.dart';
 import 'package:vikunja_mobile/core/outbox/apply_task_changes.dart';
@@ -50,6 +51,13 @@ enum OutboxSenderState {
 /// something the sync engine refreshes, so server-computed fields arrive;
 /// and a sync that reaches the server while an op waits out a network
 /// failure sends at once, because the network is evidently back.
+///
+/// A description change that knows the description it started from is
+/// checked against the server's right before it is written, so a change
+/// made on the web meanwhile is not overwritten silently: checkbox taps
+/// are applied again to the server's description, an edit in the editor
+/// fails with `DescriptionConflict` until the user keeps theirs or takes
+/// the server's.
 ///
 /// A create has no idempotency key, so a request that may have reached the
 /// server without an answer (a network failure, a 5xx a proxy answers for
@@ -221,6 +229,54 @@ final class OutboxSender {
     _log.info('Discarded ${op.kind} for task ${op.taskId}');
   }
 
+  /// The description the server has now for the task of [operationId],
+  /// null when the server no longer has the task or the op is gone. Throws
+  /// the `VikunjaFailure` of the read.
+  Future<String?> webDescription(String operationId) async {
+    final op = await _db.outboxDao.find(operationId);
+    if (op == null) return null;
+    return (await _readOrGone(op.taskId))?.description;
+  }
+
+  /// "Keep mine" for a `DescriptionConflict`: the op goes back to the
+  /// queue and its description overwrites [webDescription], the server's
+  /// the user saw, but not a change made on the web after that.
+  Future<void> keepMyDescription(
+    String operationId, {
+    required String webDescription,
+  }) async {
+    await _db.outboxDao.retryOverwritingDescription(
+      operationId,
+      base: webDescription,
+    );
+    await drain();
+  }
+
+  /// "Use the web's" for a `DescriptionConflict`: the op's description goes
+  /// and the server's task replaces the row, except for what else the op
+  /// still changes, which is sent. Throws the `VikunjaFailure` of the read
+  /// and changes nothing then; a task the server no longer has goes, as on
+  /// [discard].
+  Future<void> useWebDescription(String operationId) async {
+    final op = await _db.outboxDao.find(operationId);
+    if (op == null) return;
+    final fresh = await _readOrGone(op.taskId);
+    final taken = await _db.transaction(() async {
+      if (fresh == null) {
+        if (await _db.outboxDao.find(operationId) == null) return false;
+        await _db.outboxDao.remove(operationId);
+        await _db.tasksDao.deleteRow(op.taskId);
+        return true;
+      }
+      if (!await _db.outboxDao.dropDescription(operationId)) return false;
+      await _db.tasksDao.upsertAll([fresh]);
+      return true;
+    });
+    if (!taken) return;
+    _log.info('Took the server description of task ${op.taskId}');
+    await drain();
+  }
+
   Future<void> dispose() async {
     _disposed = true;
     _cancelTimer();
@@ -343,7 +399,13 @@ final class OutboxSender {
               await _recoverCreate(op, newTask) ??
               await _write.tasks.create(newTask);
         case OutboxOperationKind.updateTask:
-          task = await _write.tasks.update(op.taskId, changes!);
+          task = await _write.tasks.update(
+            op.taskId,
+            changes!,
+            rebaseDescription: changes.descriptionBase == null
+                ? null
+                : (current) => _descriptionToSend(op, changes!, current),
+          );
         case OutboxOperationKind.deleteTask:
           await _write.tasks.delete(op.taskId);
           task = null;
@@ -401,6 +463,35 @@ final class OutboxSender {
       changes,
       relations.mapTaskIds((id) => resolved[id] ?? id),
     );
+  }
+
+  /// The description to write over the server's [current]: the queued one
+  /// while the server still has the one it started from (an empty one
+  /// counts as unchanged however it is written) or has the queued one
+  /// already (a re-send after a lost answer, or the same change made on
+  /// the web), the taps applied again to [current] when they are all the
+  /// change was, else a `DescriptionConflict`.
+  static String _descriptionToSend(
+    OutboxRow op,
+    TaskChanges changes,
+    String current,
+  ) {
+    final base = changes.descriptionBase!;
+    final queued = changes.description!;
+    if (current == base ||
+        current == queued ||
+        (isRichTextEmpty(current) && isRichTextEmpty(base))) {
+      return queued;
+    }
+    if (changes.checklistToggles case final toggles?) {
+      _log.info(
+        'The description of task ${op.taskId} changed on the server; '
+        '${toggles.length} checkbox taps applied to it again',
+      );
+      return rebaseChecklistToggles(current, toggles);
+    }
+    _log.info('The description of task ${op.taskId} changed on the server');
+    throw const DescriptionConflict();
   }
 
   /// The task an earlier, unanswered attempt of this create left on the
