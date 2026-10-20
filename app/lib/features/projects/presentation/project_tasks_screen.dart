@@ -27,6 +27,7 @@ import 'package:vikunja_mobile/features/projects/application/project_list_model.
 import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/projects/presentation/board/project_board.dart';
+import 'package:vikunja_mobile/features/projects/presentation/manage/project_actions.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_list_body.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_view_labels.dart';
 import 'package:vikunja_mobile/features/sync/application/offline_state.dart';
@@ -38,7 +39,18 @@ import 'package:vikunja_mobile/features/tasks/presentation/follow/follow_control
 import 'package:vikunja_mobile/features/tasks/presentation/relative_time.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_list_actions.dart';
 
-enum _Action { toggleShowDone, follow }
+enum _Action {
+  toggleShowDone,
+  edit,
+  views,
+  duplicate,
+  archive,
+  unarchive,
+  follow,
+  newSubproject,
+  favourite,
+  delete,
+}
 
 /// What the view was last built from (a [ProjectListSource] or a
 /// [BoardSource]), kept on screen while another view or its preferences
@@ -56,7 +68,8 @@ typedef _Shown = ({
 /// device can evaluate it and the server's last answer where it cannot; a
 /// kanban view is a board as of its last download with this device's
 /// changes on top. An archived project says so and offers no new task, as
-/// the server refuses changes to it.
+/// the server refuses changes to it. The menu manages the project as the
+/// web's does; a project that disappears once seen says it is gone.
 class ProjectTasksScreen extends ConsumerStatefulWidget {
   const new({required this.projectId, super.key});
 
@@ -69,7 +82,8 @@ class ProjectTasksScreen extends ConsumerStatefulWidget {
 class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
     with
         RefreshableList<ProjectTasksScreen>,
-        TaskListActions<ProjectTasksScreen> {
+        TaskListActions<ProjectTasksScreen>,
+        ProjectManagementActions<ProjectTasksScreen> {
   /// A view's tasks and positions older than this download again when the
   /// view opens.
   static const _staleAfter = Duration(minutes: 5);
@@ -91,6 +105,7 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
   );
 
   var _rememberedLoaded = false;
+  var _seen = false;
   int? _rememberedViewId;
   int? _chosenViewId;
   var _viewId = 0;
@@ -333,6 +348,19 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
         project.id: project,
     };
     final project = projectsById[widget.projectId];
+    if (project != null) _seen = true;
+    if (_seen && project == null && projects.hasValue) {
+      return Scaffold(
+        appBar: AppBar(title: Text(l10n.projectUnknownTitle)),
+        body: CenteredScrollView(
+          child: EmptyState(
+            icon: Icons.search_off,
+            title: l10n.projectGoneTitle,
+            body: l10n.projectGoneBody,
+          ),
+        ),
+      );
+    }
     final views = shownViewsOf(project);
     final viewId = _viewId = resolveViewId(
       views,
@@ -385,6 +413,11 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
         ref.watch(pendingTaskIdsProvider).unwrapPrevious().value ?? const {};
     final offline = ref.watch(offlineProvider) != null;
     final archived = isArchivedInTree(widget.projectId, projectsById);
+    final defaultProjectId = ref.watch(
+      userSettingsProvider.select(
+        (settings) => settings.value?.defaultProjectId,
+      ),
+    );
     // Until then the view shown may still change.
     final ready =
         _rememberedLoaded &&
@@ -441,22 +474,47 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
               ),
               icon: const Icon(Icons.sort),
             ),
-          PopupMenuButton<_Action>(
-            tooltip: l10n.moreActions,
-            onSelected: (action) => switch (action) {
-              _Action.toggleShowDone => _toggleShowDone(listKey, preferences),
-              _Action.follow => unawaited(_toggleFollow()),
-            },
-            itemBuilder: (context) => [
-              if (!board && kind == ViewFilterKind.openOnly)
-                CheckedPopupMenuItem(
-                  value: _Action.toggleShowDone,
-                  checked: preferences.showDone,
-                  child: Text(l10n.projectTasksShowDone),
+          if (managingProject)
+            SizedBox.square(
+              dimension: kMinInteractiveDimension,
+              child: Center(
+                child: SizedBox.square(
+                  dimension: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    semanticsLabel: l10n.projectSaving,
+                  ),
                 ),
-              if (_followable) _followItem(l10n),
-            ],
-          ),
+              ),
+            )
+          else
+            PopupMenuButton<_Action>(
+              tooltip: l10n.moreActions,
+              onSelected: (action) => _onAction(
+                action,
+                project: project,
+                listKey: listKey,
+                preferences: preferences,
+              ),
+              itemBuilder: (context) => [
+                if (!board && kind == ViewFilterKind.openOnly)
+                  CheckedPopupMenuItem(
+                    value: _Action.toggleShowDone,
+                    checked: preferences.showDone,
+                    child: Text(l10n.projectTasksShowDone),
+                  ),
+                ..._projectItems(
+                  context,
+                  project: project,
+                  archived: archived,
+                  parentArchived:
+                      project != null &&
+                      project.parentProjectId != 0 &&
+                      isArchivedInTree(project.parentProjectId, projectsById),
+                  isDefault: project?.id == defaultProjectId,
+                ),
+              ],
+            ),
         ],
         bottom: const SyncProgressBar(),
       ),
@@ -571,6 +629,115 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
         },
       ),
     );
+  }
+
+  void _onAction(
+    _Action action, {
+    required Project? project,
+    required String listKey,
+    required ViewPreferences preferences,
+  }) {
+    if (action == _Action.toggleShowDone) {
+      _toggleShowDone(listKey, preferences);
+      return;
+    }
+    if (action == _Action.follow) {
+      unawaited(_toggleFollow());
+      return;
+    }
+    if (project == null) return;
+    switch (action) {
+      case _Action.edit:
+        editProject(project);
+      case _Action.views:
+        openProjectViews(project);
+      case _Action.duplicate:
+        unawaited(duplicateProject(project));
+      case _Action.archive:
+        unawaited(setProjectArchived(project, archived: true));
+      case _Action.unarchive:
+        unawaited(setProjectArchived(project, archived: false));
+      case _Action.newSubproject:
+        unawaited(createSubproject(project));
+      case _Action.favourite:
+        unawaited(toggleProjectFavourite(project));
+      case _Action.delete:
+        unawaited(deleteProject(project));
+      case _Action.toggleShowDone || _Action.follow:
+        break;
+    }
+  }
+
+  /// The web's project menu, for what the app offers, Follow among them;
+  /// an archived project only offers to unarchive it, which waits for its
+  /// archived parent. Like the web, the user's default project cannot be
+  /// archived and offers no Delete.
+  List<PopupMenuEntry<_Action>> _projectItems(
+    BuildContext context, {
+    required Project? project,
+    required bool archived,
+    required bool parentArchived,
+    required bool isDefault,
+  }) {
+    if (!_followable) return const [];
+    final l10n = context.l10n;
+    if (project == null) return [_followItem(l10n)];
+    if (archived) {
+      return [
+        projectMenuItem(
+          _Action.unarchive,
+          icon: Icons.unarchive_outlined,
+          label: l10n.projectUnarchive,
+          enabled: !parentArchived,
+          hint: parentArchived ? l10n.projectUnarchiveParentFirst : null,
+        ),
+        _followItem(l10n),
+      ];
+    }
+    return [
+      projectMenuItem(
+        _Action.edit,
+        icon: Icons.edit_outlined,
+        label: l10n.projectEdit,
+      ),
+      projectMenuItem(
+        _Action.views,
+        icon: Icons.view_agenda_outlined,
+        label: l10n.projectViews,
+      ),
+      projectMenuItem(
+        _Action.duplicate,
+        icon: Icons.content_copy,
+        label: l10n.projectDuplicate,
+      ),
+      projectMenuItem(
+        _Action.archive,
+        icon: Icons.archive_outlined,
+        label: l10n.projectArchive,
+        enabled: !isDefault,
+        hint: isDefault ? l10n.projectArchiveDefaultHint : null,
+      ),
+      _followItem(l10n),
+      projectMenuItem(
+        _Action.newSubproject,
+        icon: Icons.create_new_folder_outlined,
+        label: l10n.projectNewSubproject,
+      ),
+      projectMenuItem(
+        _Action.favourite,
+        icon: project.isFavorite ? Icons.star : Icons.star_outline,
+        label: project.isFavorite
+            ? l10n.projectRemoveFromFavourites
+            : l10n.projectAddToFavourites,
+      ),
+      if (!isDefault)
+        projectMenuItem(
+          _Action.delete,
+          icon: Icons.delete_outline,
+          label: l10n.projectDelete,
+          color: Theme.of(context).colorScheme.error,
+        ),
+    ];
   }
 
   /// Labelled by the state the menu opens with: disabled while it is read

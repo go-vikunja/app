@@ -1,0 +1,12 @@
+{
+  "server": "2.7.0",
+  "request": "PATCH /api/v2/projects/1359",
+  "sent": {
+    "is_archived": false
+  },
+  "status": 412,
+  "headers": {
+    "content-type": "application/problem+json"
+  },
+  "body": "{\"$schema\":\"http://localhost/api/v2/schemas/VikunjaErrorModel.json\",\"title\":\"Precondition Failed\",\"status\":412,\"detail\":\"The parent project is archived. Un-archive the parent project first.\",\"code\":3016}\n"
+}

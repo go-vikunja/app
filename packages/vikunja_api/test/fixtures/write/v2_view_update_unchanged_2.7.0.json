@@ -1,0 +1,19 @@
+{
+  "server": "2.7.0",
+  "request": "PATCH /api/v2/projects/1358/views/7450",
+  "sent": {
+    "title": "Urgent",
+    "view_kind": "list",
+    "filter": {
+      "filter": "priority >= 3",
+      "s": "",
+      "sort_by": [],
+      "order_by": [],
+      "filter_include_nulls": false
+    },
+    "position": 50
+  },
+  "status": 304,
+  "headers": {},
+  "body": ""
+}

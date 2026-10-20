@@ -670,7 +670,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get projectsEmptyBody =>
-      'Leg dein erstes Projekt im Browser an, dann erscheint es hier.';
+      'Leg dein erstes Projekt an, um Aufgaben hinzuzufügen.';
 
   @override
   String get projectsFavouritesHeading => 'Favoriten';
@@ -3427,4 +3427,355 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get deepLinkSwitchAccountBody =>
       'Diese Aufgabe ist in einem anderen deiner Konten. Wähl es aus, um zu wechseln und die Aufgabe zu öffnen.';
+
+  @override
+  String get projectNew => 'Neues Projekt';
+
+  @override
+  String get projectCreate => 'Erstellen';
+
+  @override
+  String get projectCreating => 'Wird erstellt …';
+
+  @override
+  String get projectCreated => 'Projekt erstellt';
+
+  @override
+  String get projectTitleLabel => 'Titel';
+
+  @override
+  String get projectTitleHint => 'Der Titel des Projekts kommt hier hin …';
+
+  @override
+  String get projectTitleRequired => 'Bitte gib einen Titel an.';
+
+  @override
+  String get projectParentLabel => 'Übergeordnetes Projekt';
+
+  @override
+  String get projectParentTopLevel => 'Keins (oberste Ebene)';
+
+  @override
+  String get projectEdit => 'Bearbeiten';
+
+  @override
+  String get projectEditTitle => 'Projekt bearbeiten';
+
+  @override
+  String get projectSave => 'Speichern';
+
+  @override
+  String get projectSaving => 'Wird gespeichert …';
+
+  @override
+  String get projectEditSaved => 'Projekt gespeichert';
+
+  @override
+  String get projectEditDiscardBody =>
+      'Deine Änderungen an diesem Projekt gehen verloren.';
+
+  @override
+  String get projectIdentifierLabel => 'Projektbezeichner';
+
+  @override
+  String get projectIdentifierHelp =>
+      'Bis zu 10 Zeichen, eindeutig auf dem Server. Die Bezeichner der Aufgaben dieses Projekts beginnen damit und ändern sich mit ihm. Lass das Feld leer für keinen.';
+
+  @override
+  String get projectIdentifierTaken =>
+      'Dieser Bezeichner wird schon verwendet. Bezeichner sind auf dem ganzen Server eindeutig.';
+
+  @override
+  String get projectGoneTitle => 'Dieses Projekt gibt es nicht mehr';
+
+  @override
+  String get projectGoneBody =>
+      'Vielleicht wurde es gelöscht, hier oder im Web.';
+
+  @override
+  String get projectViews => 'Ansichten';
+
+  @override
+  String get projectDuplicate => 'Duplizieren';
+
+  @override
+  String get projectDuplicateTitle => 'Projekt duplizieren';
+
+  @override
+  String get projectDuplicateBody =>
+      'Die Kopie bekommt die Aufgaben, Ansichten und Spalten dieses Projekts, aber nicht seine Unterprojekte. Wähl das Projekt, in das sie kommt:';
+
+  @override
+  String get projectDuplicateShares => 'Auch die Freigaben kopieren';
+
+  @override
+  String get projectDuplicateSharesHint =>
+      'Personen, Teams und Linkfreigaben. Jede Linkfreigabe wird zu einem neuen öffentlichen Link auf die Kopie.';
+
+  @override
+  String get projectDuplicating => 'Wird dupliziert …';
+
+  @override
+  String get projectDuplicated => 'Projekt dupliziert';
+
+  @override
+  String get projectArchive => 'Archivieren';
+
+  @override
+  String get projectUnarchive => 'Archivierung aufheben';
+
+  @override
+  String get projectArchiveTitle => 'Dieses Projekt archivieren?';
+
+  @override
+  String get projectUnarchiveTitle => 'Archivierung dieses Projekts aufheben?';
+
+  @override
+  String get projectArchiveBody =>
+      'Du kannst dieses Projekt nicht bearbeiten oder Aufgaben erstellen, bis du die Archivierung aufhebst. Seine Unterprojekte werden ebenfalls archiviert.';
+
+  @override
+  String get projectUnarchiveBody =>
+      'Du kannst Aufgaben erstellen oder es bearbeiten. Auch bei seinen Unterprojekten wird die Archivierung aufgehoben.';
+
+  @override
+  String get projectArchivedDone => 'Projekt archiviert';
+
+  @override
+  String get projectUnarchivedDone => 'Archivierung aufgehoben';
+
+  @override
+  String get projectArchiveDefaultHint =>
+      'Du kannst dieses Projekt nicht archivieren, da es dein Standardprojekt ist.';
+
+  @override
+  String get projectNewSubproject => 'Neues Unterprojekt';
+
+  @override
+  String get projectAddToFavourites => 'Zu Favoriten hinzufügen';
+
+  @override
+  String get projectRemoveFromFavourites => 'Aus Favoriten entfernen';
+
+  @override
+  String get projectFavourited => 'Zu Favoriten hinzugefügt';
+
+  @override
+  String get projectUnfavourited => 'Aus Favoriten entfernt';
+
+  @override
+  String get projectDelete => 'Löschen';
+
+  @override
+  String projectDeleteTitle(String project) {
+    return '„$project“ löschen?';
+  }
+
+  @override
+  String projectDeleteTasks(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Dadurch werden $count Aufgaben gelöscht, für alle.',
+      one: 'Dadurch wird 1 Aufgabe gelöscht, für alle.',
+      zero: 'Es enthält keine Aufgaben. Es wird für alle gelöscht.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String projectDeleteTasksAndSubprojects(int tasks, int subprojects) {
+    String _temp0 = intl.Intl.pluralLogic(
+      tasks,
+      locale: localeName,
+      other: '$tasks Aufgaben',
+      one: '1 Aufgabe',
+      zero: 'keine Aufgaben',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      subprojects,
+      locale: localeName,
+      other: '$subprojects Unterprojekte',
+      one: '1 Unterprojekt',
+    );
+    return 'Dadurch werden $_temp0 und $_temp1 gelöscht, für alle.';
+  }
+
+  @override
+  String get projectDeleteCannotBeUndone =>
+      'Das kann nicht rückgängig gemacht werden.';
+
+  @override
+  String projectIncludesDefault(String project) {
+    return 'Darunter ist dein Standardprojekt „$project“.';
+  }
+
+  @override
+  String get projectDeleted => 'Projekt gelöscht';
+
+  @override
+  String get projectChangeNeedsConnection =>
+      'Zum Verwalten von Projekten brauchst du eine Verbindung zum Server.';
+
+  @override
+  String get projectChangeUnconfirmed =>
+      'Die Änderung ließ sich nicht bestätigen. Prüf deine Verbindung und zieh nach unten, um neu zu laden.';
+
+  @override
+  String get projectFormUnconfirmed =>
+      'Die Änderung ließ sich nicht bestätigen. Vielleicht ist sie trotzdem angekommen, also prüf das, bevor du es noch mal versuchst.';
+
+  @override
+  String get projectChangeForbidden => 'Du darfst dieses Projekt nicht ändern.';
+
+  @override
+  String get projectCreateForbidden =>
+      'Du darfst dort kein Projekt hinzufügen.';
+
+  @override
+  String get projectDeleteAdminOnly =>
+      'Nur Projekt-Admins können ein Projekt löschen.';
+
+  @override
+  String get projectViewsAdminOnly =>
+      'Nur Projekt-Admins können Ansichten ändern.';
+
+  @override
+  String get projectDeleteDefault =>
+      'Das ist das Standardprojekt einer Person. Nur sie selbst kann es löschen.';
+
+  @override
+  String get projectArchiveDefault =>
+      'Das ist das Standardprojekt einer Person, deshalb lässt es sich nicht archivieren.';
+
+  @override
+  String get projectUnarchiveParentFirst =>
+      'Das übergeordnete Projekt ist archiviert. Heb zuerst dessen Archivierung auf.';
+
+  @override
+  String get projectChangeArchived =>
+      'Dieses Projekt ist archiviert. Heb die Archivierung auf, um es zu ändern.';
+
+  @override
+  String get projectParentArchived =>
+      'Das übergeordnete Projekt ist archiviert, deshalb lässt sich darin nichts hinzufügen.';
+
+  @override
+  String get projectGone => 'Das Projekt gibt es nicht mehr.';
+
+  @override
+  String get projectChangeInvalid =>
+      'Der Server hat diesen Titel oder Bezeichner nicht angenommen.';
+
+  @override
+  String get projectTitleTooLong =>
+      'Ein Titel darf höchstens 250 Zeichen lang sein, und ein Emoji kann mehrere zählen. Kürz diesen, um zu speichern.';
+
+  @override
+  String get projectTitleTooLongToChange =>
+      'Der Titel dieses Projekts ist länger, als der Server annimmt. Kürz ihn zuerst unter Bearbeiten.';
+
+  @override
+  String projectChangeRefused(String message) {
+    return 'Der Server hat die Änderung abgelehnt: $message';
+  }
+
+  @override
+  String get projectChangeFailed =>
+      'Die Änderung konnte nicht gespeichert werden.';
+
+  @override
+  String projectViewsIntro(String project) {
+    return 'Die Ansichten von $project in der Reihenfolge, in der App und Web sie zeigen. Tabellen- und Gantt-Ansichten erscheinen vorerst nur im Web.';
+  }
+
+  @override
+  String get projectViewNew => 'Neue Ansicht';
+
+  @override
+  String get projectViewEditTitle => 'Ansicht bearbeiten';
+
+  @override
+  String projectViewOptionsFor(String view) {
+    return 'Optionen für $view';
+  }
+
+  @override
+  String get projectViewDelete => 'Löschen';
+
+  @override
+  String projectViewDeleteTitle(String view) {
+    return '„$view“ löschen?';
+  }
+
+  @override
+  String get projectViewDeleteBody =>
+      'Niemand kann sie dann noch verwenden, um die Aufgaben dieses Projekts anzusehen. Es werden keine Aufgaben gelöscht. Das kann nicht rückgängig gemacht werden.';
+
+  @override
+  String get projectViewLastOne =>
+      'Ein Projekt braucht mindestens eine Ansicht.';
+
+  @override
+  String get projectViewCreated => 'Ansicht erstellt';
+
+  @override
+  String get projectViewSaved => 'Ansicht gespeichert';
+
+  @override
+  String get projectViewDeleted => 'Ansicht gelöscht';
+
+  @override
+  String get projectViewKindLabel => 'Art';
+
+  @override
+  String projectViewKindWebOnly(String kind) {
+    return '$kind – vorerst nur im Web';
+  }
+
+  @override
+  String get projectViewShowDone => 'Erledigte Aufgaben anzeigen';
+
+  @override
+  String get projectViewShowDoneHint =>
+      'Aus fügt dem Filter „done = false“ hinzu, wie bei der Listenansicht im Web.';
+
+  @override
+  String get projectViewFilterLabel => 'Filter';
+
+  @override
+  String get projectViewFilterHint => 'priority >= 3 && due_date < now/w';
+
+  @override
+  String get projectViewFilterHelp =>
+      'In der Filtersyntax des Webs; der Server prüft ihn beim Speichern.';
+
+  @override
+  String projectViewFilterInvalid(String message) {
+    return 'Dieser Filter ist ungültig: $message';
+  }
+
+  @override
+  String get projectViewColumnsLabel => 'Spalten';
+
+  @override
+  String get projectViewColumnsManual => 'Manuell';
+
+  @override
+  String get projectViewColumnsFilter => 'Aus Filtern';
+
+  @override
+  String get projectViewFilterColumnsOnWeb =>
+      'Die Filter dieser Spalten werden im Web eingerichtet.';
+
+  @override
+  String get projectViewGone => 'Die Ansicht gibt es nicht mehr.';
+
+  @override
+  String get projectViewInvalid =>
+      'Der Server hat diese Ansicht nicht angenommen.';
+
+  @override
+  String get projectDeleteEverything =>
+      'Dadurch werden seine Aufgaben und Unterprojekte gelöscht, für alle.';
 }

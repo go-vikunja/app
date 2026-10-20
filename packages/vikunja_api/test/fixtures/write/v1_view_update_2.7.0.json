@@ -1,0 +1,29 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v1/projects/1358/views/7451",
+  "sent": {
+    "id": 7451,
+    "title": "Columns",
+    "project_id": 1358,
+    "view_kind": "kanban",
+    "filter": {
+      "filter": "done = false",
+      "s": "",
+      "sort_by": [],
+      "order_by": [],
+      "filter_include_nulls": false
+    },
+    "position": 175,
+    "bucket_configuration_mode": "manual",
+    "bucket_configuration": null,
+    "default_bucket_id": 5676,
+    "done_bucket_id": 5678,
+    "updated": "2026-10-20T06:08:48Z",
+    "created": "2026-10-20T06:08:48Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"id\":7451,\"title\":\"Columns\",\"project_id\":1358,\"view_kind\":\"kanban\",\"filter\":{\"s\":\"\",\"sort_by\":[],\"order_by\":[],\"filter\":\"done = false\",\"filter_include_nulls\":false},\"position\":175,\"bucket_configuration_mode\":\"manual\",\"bucket_configuration\":null,\"default_bucket_id\":5676,\"done_bucket_id\":5678,\"updated\":\"2026-10-20T06:08:51.438887619Z\",\"created\":\"2026-10-20T06:08:48Z\"}\n"
+}

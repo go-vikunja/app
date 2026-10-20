@@ -75,6 +75,127 @@ final class ProjectsDao extends DatabaseAccessor<AppDatabase>
     });
   }
 
+  Future<Project?> loadProject(int projectId) async {
+    final row = await (select(
+      projects,
+    )..where((p) => p.id.equals(projectId))).getSingleOrNull();
+    if (row == null) return null;
+    final views =
+        await (select(projectViews)
+              ..where((v) => v.projectId.equals(projectId))
+              ..orderBy([
+                (v) => OrderingTerm.asc(v.position),
+                (v) => OrderingTerm.asc(v.id),
+              ]))
+            .get();
+    final owner = switch (row.ownerId) {
+      final ownerId? => await (select(
+        users,
+      )..where((u) => u.id.equals(ownerId))).getSingleOrNull(),
+      null => null,
+    };
+    return projectFromRow(
+      row,
+      views: views,
+      owner: owner == null ? null : userFromRow(owner),
+    );
+  }
+
+  /// [projectId] and every stored project below it.
+  Future<Set<int>> subtreeOf(int projectId) async {
+    final query = selectOnly(projects)
+      ..addColumns([projects.id, projects.parentProjectId]);
+    final rows = [
+      for (final row in await query.get())
+        (
+          id: row.read(projects.id)!,
+          parent: row.read(projects.parentProjectId)!,
+        ),
+    ];
+    final ids = {projectId};
+    for (var grew = true; grew;) {
+      grew = false;
+      for (final row in rows) {
+        if (ids.contains(row.parent) && ids.add(row.id)) grew = true;
+      }
+    }
+    return ids;
+  }
+
+  /// Changes only the given fields of the stored project, as an edit
+  /// answered by the server; an [identifier] renames the stored tasks of
+  /// the project too (`TasksDao.renameIdentifiers`), as the server does
+  /// without a trace a sync could see. The stored `updated` stays, so the
+  /// next sync stores the whole project again.
+  Future<void> updateProject(
+    int projectId, {
+    String? title,
+    String? identifier,
+    String? hexColor,
+    int? parentProjectId,
+    bool? isFavorite,
+    double? position,
+  }) => transaction(() async {
+    await (update(projects)..where((p) => p.id.equals(projectId))).write(
+      ProjectsCompanion(
+        title: Value.absentIfNull(title),
+        identifier: Value.absentIfNull(identifier),
+        hexColor: Value.absentIfNull(hexColor),
+        parentProjectId: Value.absentIfNull(parentProjectId),
+        isFavorite: Value.absentIfNull(isFavorite),
+        position: Value.absentIfNull(position),
+      ),
+    );
+    if (identifier != null) {
+      await attachedDatabase.tasksDao.renameIdentifiers(projectId, identifier);
+    }
+  });
+
+  /// Archives or unarchives the stored project and every stored project
+  /// below it, as the server does; returns their ids. The stored `updated`
+  /// stays: the next sync then sees the change and, for an archive, pulls
+  /// the tasks' changes through the projects, which `GET /tasks` no longer
+  /// lists.
+  Future<Set<int>> setArchived(int projectId, {required bool archived}) =>
+      transaction(() async {
+        final ids = await subtreeOf(projectId);
+        await (update(projects)..where((p) => p.id.isIn(ids))).write(
+          ProjectsCompanion(isArchived: Value(archived)),
+        );
+        return ids;
+      });
+
+  /// Removes the project and its stored subtree, as the server deletes it:
+  /// their views, boards and list snapshots, and their tasks
+  /// (`TasksDao.purgeInDeletedProjects`, unsent changes and their ops
+  /// included). Returns the ids of the projects and of their views.
+  Future<({Set<int> projectIds, Set<int> viewIds})> purgeSubtree(
+    int projectId,
+  ) => transaction(() async {
+    final ids = await subtreeOf(projectId);
+    final viewQuery = selectOnly(projectViews)
+      ..addColumns([projectViews.id])
+      ..where(projectViews.projectId.isIn(ids));
+    final viewIds = {
+      for (final row in await viewQuery.get()) row.read(projectViews.id)!,
+    };
+    await attachedDatabase.tasksDao.purgeInDeletedProjects(ids);
+    await purge(ids);
+    await attachedDatabase.kanbanDao.removeGoneViews();
+    return (projectIds: ids, viewIds: viewIds);
+  });
+
+  /// Adds or replaces the view as the server answered it.
+  Future<void> putView(ProjectView view) =>
+      into(projectViews)
+          .insertOnConflictUpdate(projectViewRow(view).toCompanion(false));
+
+  /// Removes the view with its board and list snapshot.
+  Future<void> removeView(int viewId) => transaction(() async {
+    await (delete(projectViews)..where((v) => v.id.equals(viewId))).go();
+    await attachedDatabase.kanbanDao.removeGoneViews();
+  });
+
   Future<ProjectView?> loadView(int viewId) async {
     final row = await (select(
       projectViews,

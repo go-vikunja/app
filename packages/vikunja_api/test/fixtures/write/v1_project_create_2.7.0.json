@@ -1,0 +1,13 @@
+{
+  "server": "2.7.0",
+  "request": "PUT /api/v1/projects",
+  "sent": {
+    "title": "Studio",
+    "hex_color": "e8b04a"
+  },
+  "status": 201,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"id\":1358,\"title\":\"Studio\",\"description\":\"\",\"identifier\":\"\",\"hex_color\":\"e8b04a\",\"parent_project_id\":0,\"owner\":{\"id\":465,\"name\":\"\",\"username\":\"fixtureuser\",\"created\":\"0001-01-01T00:00:00Z\",\"updated\":\"0001-01-01T00:00:00Z\"},\"is_archived\":false,\"background_information\":null,\"background_blur_hash\":\"\",\"is_favorite\":false,\"position\":88997888,\"views\":[{\"id\":7434,\"title\":\"List\",\"project_id\":1358,\"view_kind\":\"list\",\"filter\":{\"s\":\"\",\"sort_by\":null,\"order_by\":null,\"filter\":\"done = false\",\"filter_include_nulls\":false},\"position\":100,\"bucket_configuration_mode\":\"none\",\"bucket_configuration\":null,\"default_bucket_id\":0,\"done_bucket_id\":0,\"updated\":\"2026-10-20T06:08:38.124233715Z\",\"created\":\"2026-10-20T06:08:38.12420334Z\"},{\"id\":7435,\"title\":\"Gantt\",\"project_id\":1358,\"view_kind\":\"gantt\",\"filter\":null,\"position\":200,\"bucket_configuration_mode\":\"none\",\"bucket_configuration\":null,\"default_bucket_id\":0,\"done_bucket_id\":0,\"updated\":\"2026-10-20T06:08:38.124685131Z\",\"created\":\"2026-10-20T06:08:38.124663131Z\"},{\"id\":7436,\"title\":\"Table\",\"project_id\":1358,\"view_kind\":\"table\",\"filter\":null,\"position\":300,\"bucket_configuration_mode\":\"none\",\"bucket_configuration\":null,\"default_bucket_id\":0,\"done_bucket_id\":0,\"updated\":\"2026-10-20T06:08:38.12489309Z\",\"created\":\"2026-10-20T06:08:38.124878006Z\"},{\"id\":7437,\"title\":\"Kanban\",\"project_id\":1358,\"view_kind\":\"kanban\",\"filter\":null,\"position\":400,\"bucket_configuration_mode\":\"manual\",\"bucket_configuration\":null,\"default_bucket_id\":5664,\"done_bucket_id\":5666,\"updated\":\"2026-10-20T06:08:38.125487048Z\",\"created\":\"2026-10-20T06:08:38.12511459Z\"}],\"max_permission\":null,\"created\":\"2026-10-20T06:08:38.12402659Z\",\"updated\":\"2026-10-20T06:08:38.12412309Z\"}\n"
+}

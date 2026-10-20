@@ -69,23 +69,44 @@ final class FakeWriteClient implements VikunjaWriteClient {
   /// (`Forbidden`) or a view that is gone (`NotFound` code 3014).
   final Map<int, VikunjaFailure> refusedListViews = {};
 
-  /// The projects [projects] moves, by id.
+  /// The projects [projects] writes, by id, with their views, which
+  /// [views] creates, edits and deletes.
   final Map<int, Project> serverProjects = {};
 
-  /// What moving a project fails with, by project id, like a write share
-  /// moving it under another project (`Forbidden(code: 1)`).
+  /// What moving, editing or deleting a project fails with, by project id,
+  /// like a write share moving it under another project
+  /// (`Forbidden(code: 1)`).
   final Map<int, VikunjaFailure> refusedProjects = {};
+
+  /// What creating, editing or deleting a view fails with, by project id,
+  /// like a write share (`Forbidden()`): views need admin permission.
+  final Map<int, VikunjaFailure> refusedViewProjects = {};
+
+  /// What a view write with this filter text fails with, like one the
+  /// server cannot parse (`DomainError(400, code: 4024)`).
+  final Map<String, VikunjaFailure> refusedFilters = {};
+
+  /// The user's default project: archiving it fails with code 3013, and
+  /// deleting it makes it 0.
+  int defaultProjectId = 0;
 
   /// `create <title>`, `update <id>`, `delete <id>`,
   /// `move <id> view <view> bucket <bucket>`,
   /// `position <id> view <view> <position>` (kanban and list views alike),
   /// `move project <id> to <position> under <parent>`,
+  /// `create project <title> under <parent>`,
+  /// `update project <id> <ProjectChanges>`, `delete project <id>`,
+  /// `duplicate project <id> under <parent> shares <bool>`,
   /// `create label <title>`,
   /// `create bucket view <view> <title> limit <limit> at <position>`,
   /// `update bucket <id> view <view> <title> limit <limit> at <position>`,
   /// `delete bucket <id> view <view>`,
-  /// `view <view> buckets done <id> default <id>` (null: unchanged) and
-  /// `read view <view>` (both null), in
+  /// `view <view> buckets done <id> default <id>` (null: unchanged),
+  /// `read view <view>` (both null),
+  /// `create view project <project> <title> <kind>`,
+  /// `update view <view> project <project> <title> <kind>`,
+  /// `move view <view> project <project> to <position>` and
+  /// `delete view <view> project <project>`, in
   /// order; an update's moves and positions follow it.
   final List<String> requests = [];
   final List<NewTask> creates = [];
@@ -126,6 +147,77 @@ final class FakeWriteClient implements VikunjaWriteClient {
   Future<void> _request(String description) async {
     requests.add(description);
     await beforeRequest?.call(description);
+  }
+
+  /// To-Do, Doing and Done for a new manual board, the first as its
+  /// default, the last as its done bucket, as the server makes them.
+  ({int defaultBucketId, int doneBucketId}) _defaultBuckets(int viewId) {
+    final ids = [
+      for (final (index, title) in const ['To-Do', 'Doing', 'Done'].indexed)
+        _storeBucket(
+          Bucket(
+            id: buckets.nextBucketId++,
+            viewId: viewId,
+            title: title,
+            position: (index + 1) * 100.0,
+          ),
+        ),
+    ];
+    kanbanViews[viewId] = (defaultBucketId: ids.first, doneBucketId: ids.last);
+    return (defaultBucketId: ids.first, doneBucketId: ids.last);
+  }
+
+  int _storeBucket(Bucket bucket) {
+    (serverBuckets[bucket.viewId] ??= {})[bucket.id] = bucket;
+    return bucket.id;
+  }
+
+  /// [view] under a new id in [projectId] with copies of its buckets, the
+  /// done and default bucket remapped, as a duplicate makes it.
+  ProjectView _copyView(ProjectView view, {required int projectId}) {
+    final id = views.nextViewId++;
+    var defaultBucketId = 0;
+    var doneBucketId = 0;
+    for (final bucket in [...?serverBuckets[view.id]?.values]) {
+      final copyId = _storeBucket(
+        Bucket(
+          id: buckets.nextBucketId++,
+          viewId: id,
+          title: bucket.title,
+          limit: bucket.limit,
+          position: bucket.position,
+        ),
+      );
+      if (bucket.id == view.defaultBucketId) defaultBucketId = copyId;
+      if (bucket.id == view.doneBucketId) doneBucketId = copyId;
+    }
+    if (view.kind == ProjectViewKind.kanban) {
+      kanbanViews[id] = (
+        defaultBucketId: defaultBucketId,
+        doneBucketId: doneBucketId,
+      );
+    }
+    return ProjectView(
+      id: id,
+      projectId: projectId,
+      title: view.title,
+      kind: view.kind,
+      position: view.position,
+      filter: view.filter,
+      bucketConfigurationMode: view.bucketConfigurationMode,
+      defaultBucketId: defaultBucketId,
+      doneBucketId: doneBucketId,
+    );
+  }
+
+  void _forgetViews(Set<int> viewIds) {
+    for (final id in viewIds) {
+      serverViews.remove(id);
+      kanbanViews.remove(id);
+      serverBuckets.remove(id);
+      bucketSlots.remove(id);
+      listPositions.remove(id);
+    }
   }
 }
 
@@ -517,13 +609,179 @@ final class FakeBucketsWritePort implements BucketsWritePort {
   }
 }
 
-/// Stores the done and default bucket in [FakeWriteClient.kanbanViews] and
-/// [FakeWriteClient.serverViews]: 0 clears one, a bucket of another view
-/// fails with 400 code 10002, an unknown id is stored as 0.
+/// [setBuckets] stores the done and default bucket in
+/// [FakeWriteClient.kanbanViews] and [FakeWriteClient.serverViews]: 0
+/// clears one, a bucket of another view fails with 400 code 10002, an
+/// unknown id is stored as 0.
+///
+/// The view writes change the views of [FakeWriteClient.serverProjects] like
+/// the server, without touching the project's `updated`: a new view without
+/// a position lands at `id × 65536`; a board without a manual or filter mode
+/// becomes manual, with To-Do, Doing and Done when it has no buckets yet
+/// (in [FakeWriteClient.serverBuckets] and [FakeWriteClient.kanbanViews]);
+/// the other kinds store `none`; an update writes title, kind and filter
+/// and keeps a mode or position left null; a move changes the position
+/// alone; a delete of a view that is gone
+/// counts as done. They refuse what [FakeWriteClient.refusedViewProjects]
+/// and [FakeWriteClient.refusedFilters] hold, an empty title
+/// (`ValidationFailed` code 2002), a project that does not exist on create
+/// (`NotFound` code 3001) and a view that is not the project's on update
+/// (`NotFound` code 3014). Placements and positions are not made.
 final class FakeProjectViewsWritePort implements ProjectViewsWritePort {
   new(this._client);
 
   final FakeWriteClient _client;
+
+  /// The id the next view gets, also those of a new or duplicated project.
+  int nextViewId = 800;
+
+  @override
+  Future<ProjectView> create(int projectId, ViewDraft view) async {
+    final description =
+        'create view project $projectId ${view.title} ${view.kind.wireName}';
+    await _client._request(description);
+    final project = _client.serverProjects[projectId];
+    if (project == null) throw const NotFound(code: 3001);
+    _check(projectId, view);
+    final id = nextViewId++;
+    final mode = storedBucketMode(view.kind, view.bucketConfigurationMode);
+    final buckets = mode == BucketConfigurationMode.manual
+        ? _client._defaultBuckets(id)
+        : null;
+    final created = ProjectView(
+      id: id,
+      projectId: projectId,
+      title: view.title,
+      kind: view.kind,
+      position: view.position ?? id * 65536.0,
+      filter: view.filter,
+      bucketConfigurationMode: mode,
+      defaultBucketId: buckets?.defaultBucketId ?? 0,
+      doneBucketId: buckets?.doneBucketId ?? 0,
+    );
+    _client.serverProjects[projectId] = copyProject(
+      project,
+      views: [...project.views, created],
+    );
+    await _client.afterRequest?.call(description);
+    return created;
+  }
+
+  @override
+  Future<ProjectView> update(int projectId, int viewId, ViewDraft view) async {
+    final description =
+        'update view $viewId project $projectId ${view.title} '
+        '${view.kind.wireName}';
+    await _client._request(description);
+    final project = _client.serverProjects[projectId];
+    final current = project?.views.where((v) => v.id == viewId).firstOrNull;
+    if (project == null || current == null) throw const NotFound(code: 3014);
+    _check(projectId, view);
+    final mode = storedBucketMode(
+      view.kind,
+      view.bucketConfigurationMode ?? current.bucketConfigurationMode,
+    );
+    var buckets = (
+      defaultBucketId: current.defaultBucketId,
+      doneBucketId: current.doneBucketId,
+    );
+    if (mode == BucketConfigurationMode.manual &&
+        (_client.serverBuckets[viewId]?.isEmpty ?? true)) {
+      buckets = _client._defaultBuckets(viewId);
+    }
+    final updated = ProjectView(
+      id: viewId,
+      projectId: projectId,
+      title: view.title,
+      kind: view.kind,
+      position: view.position ?? current.position,
+      filter: view.filter,
+      bucketConfigurationMode: mode,
+      defaultBucketId: buckets.defaultBucketId,
+      doneBucketId: buckets.doneBucketId,
+    );
+    _client.serverProjects[projectId] = copyProject(
+      project,
+      views: [
+        for (final existing in project.views)
+          if (existing.id == viewId) updated else existing,
+      ],
+    );
+    if (_client.serverViews.containsKey(viewId)) {
+      _client.serverViews[viewId] = updated;
+    }
+    await _client.afterRequest?.call(description);
+    return updated;
+  }
+
+  @override
+  Future<ProjectView> move(
+    int projectId,
+    int viewId, {
+    required double position,
+  }) async {
+    final description = 'move view $viewId project $projectId to $position';
+    await _client._request(description);
+    final project = _client.serverProjects[projectId];
+    final current = project?.views.where((v) => v.id == viewId).firstOrNull;
+    if (project == null || current == null) throw const NotFound(code: 3014);
+    if (_client.refusedViewProjects[projectId] case final failure?) {
+      throw failure;
+    }
+    final moved = ProjectView(
+      id: viewId,
+      projectId: projectId,
+      title: current.title,
+      kind: current.kind,
+      position: position,
+      filter: current.filter,
+      bucketConfigurationMode: current.bucketConfigurationMode,
+      defaultBucketId: current.defaultBucketId,
+      doneBucketId: current.doneBucketId,
+    );
+    _client.serverProjects[projectId] = copyProject(
+      project,
+      views: [
+        for (final existing in project.views)
+          if (existing.id == viewId) moved else existing,
+      ],
+    );
+    if (_client.serverViews.containsKey(viewId)) {
+      _client.serverViews[viewId] = moved;
+    }
+    await _client.afterRequest?.call(description);
+    return moved;
+  }
+
+  @override
+  Future<void> delete(int projectId, int viewId) async {
+    final description = 'delete view $viewId project $projectId';
+    await _client._request(description);
+    final project = _client.serverProjects[projectId];
+    if (project == null || !project.views.any((v) => v.id == viewId)) return;
+    if (_client.refusedViewProjects[projectId] case final failure?) {
+      throw failure;
+    }
+    _client.serverProjects[projectId] = copyProject(
+      project,
+      views: [
+        for (final view in project.views)
+          if (view.id != viewId) view,
+      ],
+    );
+    _client._forgetViews({viewId});
+    await _client.afterRequest?.call(description);
+  }
+
+  void _check(int projectId, ViewDraft view) {
+    if (_client.refusedViewProjects[projectId] case final failure?) {
+      throw failure;
+    }
+    if (view.title.isEmpty) throw const ValidationFailed(code: 2002);
+    if (_client.refusedFilters[view.filter?.filter] case final failure?) {
+      throw failure;
+    }
+  }
 
   @override
   Future<ProjectView> setBuckets(
@@ -571,18 +829,37 @@ final class FakeProjectViewsWritePort implements ProjectViewsWritePort {
   }
 }
 
-/// Like the server: moves a project of [FakeWriteClient.serverProjects]
-/// and answers with it as stored, `updated` bumped and every other field
-/// kept, or refuses as the server does: a project or parent that does not
-/// exist (`NotFound` code 3001), an archived project or parent
+/// Like the server, on [FakeWriteClient.serverProjects]: every write
+/// answers with the project as stored, `updated` bumped and every other
+/// field kept, or refuses as the server does: a project or parent that does
+/// not exist (`NotFound` code 3001), an archived project or parent
 /// (`DomainError` code 3008), the project itself as the parent (3010), one
 /// of its descendants (3011), a pseudo project (3009), and what
 /// [FakeWriteClient.refusedProjects] holds for the project. A position
 /// below 0.1 is an `ArgumentError` before any request, as in the real port.
+///
+/// A create lands at `id × 65536` with the four default views (see
+/// [defaultViews]) and the kanban's buckets. An update that leaves the
+/// project below 0.1 renumbers its siblings to `2^32 / n × (i + 1)`, their
+/// `updated` bumped, as the server does. An update stores the
+/// identifier upper-case (another project's is code 3007) and renames the
+/// project's tasks in [FakeWriteClient.serverTasks]; archiving the default
+/// project is code 3013, unarchiving under an archived parent code 3016;
+/// archiving and unarchiving cascade to every descendant. A delete takes
+/// the subtree with its tasks, views and boards, and counts a project that
+/// is gone as deleted. A duplicate copies the project as "<title> -
+/// duplicate" without identifier and favourite, its views with their
+/// buckets, and its tasks with their index (placements and relations are
+/// not copied).
 final class FakeProjectsWritePort implements ProjectsWritePort {
   new(this._client);
 
   final FakeWriteClient _client;
+
+  /// The id the next created or duplicated project gets.
+  int nextProjectId = 500;
+
+  Map<int, Project> get _projects => _client.serverProjects;
 
   @override
   Future<Project> move(
@@ -594,27 +871,12 @@ final class FakeProjectsWritePort implements ProjectsWritePort {
     final description =
         'move project $projectId to $position under $parentProjectId';
     await _client._request(description);
-    final projects = _client.serverProjects;
-    final project = projects[projectId];
+    final project = _projects[projectId];
     if (project == null) throw const NotFound(code: 3001);
     if (project.isArchived) throw const DomainError(412, code: 3008);
     if (_client.refusedProjects[projectId] case final failure?) throw failure;
-    if (parentProjectId != 0) {
-      if (parentProjectId == projectId) {
-        throw const DomainError(412, code: 3010);
-      }
-      if (parentProjectId < 0) throw const DomainError(412, code: 3009);
-      final parent = projects[parentProjectId];
-      if (parent == null) throw const NotFound(code: 3001);
-      if (parent.isArchived) throw const DomainError(412, code: 3008);
-      for (Project? above = parent; above != null && !above.isTopLevel;) {
-        if (above.parentProjectId == projectId) {
-          throw const DomainError(412, code: 3011);
-        }
-        above = projects[above.parentProjectId];
-      }
-    }
-    final moved = projects[projectId] = movedProject(
+    _checkParent(projectId, parentProjectId);
+    final moved = _projects[projectId] = movedProject(
       project,
       position: position,
       parentProjectId: parentProjectId,
@@ -622,6 +884,226 @@ final class FakeProjectsWritePort implements ProjectsWritePort {
     );
     await _client.afterRequest?.call(description);
     return moved;
+  }
+
+  @override
+  Future<Project> create(NewProject project) async {
+    final description =
+        'create project ${project.title} under ${project.parentProjectId}';
+    await _client._request(description);
+    if (project.title.isEmpty) throw const ValidationFailed(code: 2002);
+    _checkParent(0, project.parentProjectId);
+    final id = nextProjectId++;
+    final firstViewId = _client.views.nextViewId;
+    _client.views.nextViewId += 4;
+    final buckets = _client._defaultBuckets(firstViewId + 3);
+    final now = _client._clock().toUtc();
+    final created = _projects[id] = Project(
+      id: id,
+      title: project.title,
+      hexColor: _normalizedHex(project.hexColor),
+      parentProjectId: project.parentProjectId,
+      position: id * 65536.0,
+      views: defaultViews(
+        id,
+        firstViewId: firstViewId,
+        defaultBucketId: buckets.defaultBucketId,
+        doneBucketId: buckets.doneBucketId,
+      ),
+      created: now,
+      updated: now,
+    );
+    await _client.afterRequest?.call(description);
+    return created;
+  }
+
+  @override
+  Future<Project> update(int projectId, ProjectChanges changes) async {
+    if (changes.position case final position? when !(position >= 0.1)) {
+      throw ArgumentError.value(position, 'changes.position');
+    }
+    final description = 'update project $projectId $changes';
+    await _client._request(description);
+    final project = _projects[projectId];
+    if (project == null) throw const NotFound(code: 3001);
+    if (changes.isEmpty) return project;
+    if (_client.refusedProjects[projectId] case final failure?) throw failure;
+    final unarchiving = changes.isArchived == false && project.isArchived;
+    if (project.isArchived && !unarchiving) {
+      if (changes == const ProjectChanges(isArchived: true)) return project;
+      throw const DomainError(412, code: 3008);
+    }
+    if (unarchiving &&
+        (_projects[project.parentProjectId]?.isArchived ?? false)) {
+      throw const DomainError(412, code: 3016);
+    }
+    if (changes.isArchived == true && projectId == _client.defaultProjectId) {
+      throw const DomainError(412, code: 3013);
+    }
+    if (changes.title case final title? when title.isEmpty) {
+      throw const ValidationFailed(code: 2002);
+    }
+    final identifier = changes.identifier?.toUpperCase();
+    if (identifier != null &&
+        identifier.isNotEmpty &&
+        _projects.values.any(
+          (other) =>
+              other.id != projectId &&
+              other.identifier.toUpperCase() == identifier,
+        )) {
+      throw const DomainError(400, code: 3007);
+    }
+    if (changes.parentProjectId case final parentId?
+        when parentId != project.parentProjectId) {
+      _checkParent(projectId, parentId);
+    }
+    final now = _client._clock().toUtc();
+    final updated = _projects[projectId] = copyProject(
+      project,
+      title: changes.title,
+      identifier: identifier,
+      hexColor: switch (changes.hexColor) {
+        final hex? => _normalizedHex(hex),
+        null => null,
+      },
+      parentProjectId: changes.parentProjectId,
+      isFavorite: changes.isFavorite,
+      isArchived: changes.isArchived,
+      position: changes.position,
+      updated: now,
+    );
+    if (updated.position < 0.1) {
+      _renumberChildren(updated.parentProjectId, now);
+    }
+    if (changes.isArchived case final archived?
+        when archived != project.isArchived) {
+      for (final id in subtreeIds(
+        _projects.values,
+        projectId,
+      )..remove(projectId)) {
+        _projects[id] = copyProject(
+          _projects[id]!,
+          isArchived: archived,
+          updated: now,
+        );
+      }
+    }
+    if (identifier != null && identifier != project.identifier) {
+      for (final task in [..._client.serverTasks.values]) {
+        if (task.projectId != projectId) continue;
+        _client.serverTasks[task.id] = task.copyWith(
+          identifier: identifier.isEmpty
+              ? '#${task.index}'
+              : '$identifier-${task.index}',
+        );
+      }
+    }
+    await _client.afterRequest?.call(description);
+    return _projects[projectId]!;
+  }
+
+  void _renumberChildren(int parentId, DateTime now) {
+    final children =
+        [
+          for (final project in _projects.values)
+            if (project.parentProjectId == parentId) project,
+        ]..sort((a, b) {
+          final byPosition = a.position.compareTo(b.position);
+          return byPosition != 0 ? byPosition : a.id.compareTo(b.id);
+        });
+    for (final (index, child) in children.indexed) {
+      _projects[child.id] = copyProject(
+        child,
+        position: 4294967296 / children.length * (index + 1),
+        updated: now,
+      );
+    }
+  }
+
+  @override
+  Future<void> delete(int projectId) async {
+    final description = 'delete project $projectId';
+    await _client._request(description);
+    if (!_projects.containsKey(projectId)) return;
+    if (_client.refusedProjects[projectId] case final failure?) throw failure;
+    final doomed = subtreeIds(_projects.values, projectId);
+    _client._forgetViews({
+      for (final id in doomed)
+        for (final view in _projects[id]!.views) view.id,
+    });
+    _projects.removeWhere((id, _) => doomed.contains(id));
+    _client.serverTasks.removeWhere(
+      (_, task) => doomed.contains(task.projectId),
+    );
+    if (doomed.contains(_client.defaultProjectId)) _client.defaultProjectId = 0;
+    await _client.afterRequest?.call(description);
+  }
+
+  @override
+  Future<Project> duplicate(
+    int projectId, {
+    required int parentProjectId,
+    required bool copyShares,
+  }) async {
+    if (projectId < 1) throw ArgumentError.value(projectId, 'projectId');
+    final description =
+        'duplicate project $projectId under $parentProjectId '
+        'shares $copyShares';
+    await _client._request(description);
+    final source = _projects[projectId];
+    if (source == null) throw const NotFound(code: 3001);
+    _checkParent(0, parentProjectId);
+    final id = nextProjectId++;
+    final now = _client._clock().toUtc();
+    final copy = _projects[id] = copyProject(
+      source,
+      id: id,
+      title: '${source.title} - duplicate',
+      identifier: '',
+      parentProjectId: parentProjectId,
+      isFavorite: false,
+      views: [
+        for (final view in source.views) _client._copyView(view, projectId: id),
+      ],
+      created: now,
+      updated: now,
+    );
+    for (final task in [..._client.serverTasks.values]) {
+      if (task.projectId != projectId) continue;
+      final copyId = _client.nextId++;
+      _client.serverTasks[copyId] = taskWithId(task, copyId).copyWith(
+        projectId: id,
+        identifier: '#${task.index}',
+        relatedTasks: const {},
+        created: now,
+        updated: now,
+      );
+    }
+    await _client.afterRequest?.call(description);
+    return copy;
+  }
+
+  /// [parentProjectId] as the parent of [projectId] (0 for a new project).
+  void _checkParent(int projectId, int parentProjectId) {
+    if (parentProjectId == 0) return;
+    if (parentProjectId == projectId) throw const DomainError(412, code: 3010);
+    if (parentProjectId < 0) throw const DomainError(412, code: 3009);
+    final parent = _projects[parentProjectId];
+    if (parent == null) throw const NotFound(code: 3001);
+    if (parent.isArchived) throw const DomainError(412, code: 3008);
+    for (Project? above = parent; above != null && !above.isTopLevel;) {
+      if (above.parentProjectId == projectId) {
+        throw const DomainError(412, code: 3011);
+      }
+      above = _projects[above.parentProjectId];
+    }
+  }
+
+  /// One leading `#` dropped, cut to six characters, as the server stores
+  /// it.
+  static String _normalizedHex(String hex) {
+    final bare = hex.startsWith('#') ? hex.substring(1) : hex;
+    return bare.length > 6 ? bare.substring(0, 6) : bare;
   }
 }
 

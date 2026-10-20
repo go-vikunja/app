@@ -61,6 +61,29 @@ final class LocalListPreferences implements ListPreferences {
   Future<void> saveProjectTree(ProjectTreePreferences preferences) => _db
       .listPreferencesDao
       .write(projectTreeKey, encodeProjectTreePreferences(preferences));
+
+  /// Drops what is kept for deleted projects and views: their lists' sort
+  /// and done preferences, the view last shown and the collapsed state.
+  Future<void> forget({
+    Set<int> projectIds = const {},
+    Set<int> viewIds = const {},
+  }) => _db.transaction(() async {
+    final dao = _db.listPreferencesDao;
+    await dao.removeAll([
+      for (final viewId in viewIds)
+        viewKey(listKeyFor(projectId: 0, viewId: viewId)),
+      for (final projectId in projectIds) ...[
+        viewKey(listKeyFor(projectId: projectId, viewId: 0)),
+        lastViewKey(projectId),
+      ],
+    ]);
+    if (projectIds.isEmpty) return;
+    final tree = decodeProjectTreePreferences(await dao.read(projectTreeKey));
+    if (!tree.collapsed.any(projectIds.contains)) return;
+    await saveProjectTree(
+      tree.copyWith(collapsed: tree.collapsed.difference(projectIds)),
+    );
+  });
 }
 
 String encodeViewPreferences(ViewPreferences preferences) => jsonEncode({

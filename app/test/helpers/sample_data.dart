@@ -45,6 +45,95 @@ Project movedProject(
   updated: updated ?? project.updated,
 );
 
+/// [project] with the given fields replaced, everything else kept.
+Project copyProject(
+  Project project, {
+  int? id,
+  String? title,
+  String? identifier,
+  String? hexColor,
+  int? parentProjectId,
+  bool? isArchived,
+  bool? isFavorite,
+  double? position,
+  List<ProjectView>? views,
+  DateTime? created,
+  DateTime? updated,
+}) => Project(
+  id: id ?? project.id,
+  title: title ?? project.title,
+  description: project.description,
+  identifier: identifier ?? project.identifier,
+  hexColor: hexColor ?? project.hexColor,
+  parentProjectId: parentProjectId ?? project.parentProjectId,
+  isArchived: isArchived ?? project.isArchived,
+  isFavorite: isFavorite ?? project.isFavorite,
+  position: position ?? project.position,
+  owner: project.owner,
+  views: views ?? project.views,
+  created: created ?? project.created,
+  updated: updated ?? project.updated,
+);
+
+/// The ids of [projectId] and every project below it in [projects].
+Set<int> subtreeIds(Iterable<Project> projects, int projectId) {
+  final ids = {projectId};
+  for (var grew = true; grew;) {
+    grew = false;
+    for (final project in projects) {
+      if (ids.contains(project.parentProjectId) && ids.add(project.id)) {
+        grew = true;
+      }
+    }
+  }
+  return ids;
+}
+
+/// The four views the server makes for a new project, with ids from
+/// [firstViewId] on: List (`done = false`), Gantt, Table and a manual
+/// Kanban with [defaultBucketId] and [doneBucketId].
+List<ProjectView> defaultViews(
+  int projectId, {
+  required int firstViewId,
+  int defaultBucketId = 0,
+  int doneBucketId = 0,
+}) => [
+  sampleListView(id: firstViewId, projectId: projectId),
+  ProjectView(
+    id: firstViewId + 1,
+    projectId: projectId,
+    title: 'Gantt',
+    kind: ProjectViewKind.gantt,
+    position: 200,
+  ),
+  ProjectView(
+    id: firstViewId + 2,
+    projectId: projectId,
+    title: 'Table',
+    kind: ProjectViewKind.table,
+    position: 300,
+  ),
+  sampleKanbanView(
+    id: firstViewId + 3,
+    projectId: projectId,
+    defaultBucketId: defaultBucketId,
+    doneBucketId: doneBucketId,
+  ),
+];
+
+/// The mode the server stores for a view of [kind] sent with [mode]: a
+/// board without a manual or filter mode becomes manual, the other kinds
+/// have none.
+BucketConfigurationMode storedBucketMode(
+  ProjectViewKind kind,
+  BucketConfigurationMode? mode,
+) => switch ((kind, mode)) {
+  (ProjectViewKind.kanban, null || BucketConfigurationMode.none) =>
+    BucketConfigurationMode.manual,
+  (ProjectViewKind.kanban, final mode?) => mode,
+  _ => BucketConfigurationMode.none,
+};
+
 /// A list view shaped like the one the server makes for a new project:
 /// `done = false` unless [filter] says otherwise ('' for none).
 ProjectView sampleListView({

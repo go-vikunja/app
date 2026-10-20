@@ -495,6 +495,55 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
         await _purge(await _ids(tasks.projectId.isIn(projectIds) & _purgeable)),
   );
 
+  /// The tasks of projects deleted on the server, unlike [purgeInProjects]
+  /// also those with queued ops, which go with them: they would fail, a
+  /// create cancelled here (`OutboxDao.cancelCreate`). Kept is a server task
+  /// whose queued changes move it into one of the projects: the server
+  /// still has it where it was, and its op fails as a sync problem whose
+  /// discard brings it back.
+  Future<int> purgeInDeletedProjects(Set<int> projectIds) =>
+      transaction(() async {
+        final query = selectOnly(tasks)
+          ..addColumns([tasks.id, tasks.pendingChanges])
+          ..where(tasks.projectId.isIn(projectIds));
+        final created = <int>[];
+        final gone = <int>[];
+        for (final row in await query.get()) {
+          final id = row.read(tasks.id)!;
+          final pending = row.read(tasks.pendingChanges);
+          if (id < 0) {
+            created.add(id);
+          } else if (pending == null ||
+              decodeTaskChanges(pending).projectId == null) {
+            gone.add(id);
+          }
+        }
+        final outbox = attachedDatabase.outboxDao;
+        for (final id in created) {
+          await outbox.cancelCreate(id);
+        }
+        for (final id in gone) {
+          await outbox.removeAllOf(id);
+        }
+        return created.length + await _purge(gone);
+      });
+
+  /// The identifiers the server shows for the project's tasks once the
+  /// project's identifier is [identifier]: `IDENT-<index>`, or `#<index>`
+  /// without one. Tasks created here keep theirs until the server names
+  /// them.
+  Future<void> renameIdentifiers(int projectId, String identifier) =>
+      (update(tasks)..where(
+            (t) => t.projectId.equals(projectId) & t.id.isBiggerThanValue(0),
+          ))
+          .write(
+            TasksCompanion.custom(
+              identifier:
+                  Constant(identifier.isEmpty ? '#' : '$identifier-') +
+                  tasks.taskIndex.cast<String>(),
+            ),
+          );
+
   /// Removes the tasks of [projectId] whose id is not in [keep]. The ids to
   /// delete are picked locally, so the statements stay small whatever the
   /// size of [keep].

@@ -23,6 +23,7 @@ import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dar
 import 'package:vikunja_mobile/features/projects/application/project_moves.dart';
 import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
+import 'package:vikunja_mobile/features/projects/presentation/manage/new_project_sheet.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_move_failure.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_row.dart';
 import 'package:vikunja_mobile/features/projects/presentation/reorder_slot.dart';
@@ -39,7 +40,7 @@ enum _Action { toggleArchived }
 /// on request. In the tree a long press lifts a project with its
 /// subprojects, to drop it between other projects or onto one, and screen
 /// readers move it with the row's actions; each move goes to the server
-/// at once.
+/// at once. New projects start from the app bar or the empty state.
 class ProjectsScreen extends ConsumerStatefulWidget {
   const new({super.key});
 
@@ -81,6 +82,8 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
 
   void _open(int projectId) => context.go(AppRoutes.project(projectId));
 
+  void _createProject() => unawaited(createProjectAndOpen(context));
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -104,6 +107,11 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
       appBar: AppBar(
         title: Text(l10n.tabProjects),
         actions: [
+          IconButton(
+            onPressed: _createProject,
+            tooltip: l10n.projectNew,
+            icon: const Icon(Icons.add),
+          ),
           RefreshButton(onPressed: refreshing ? null : refresh),
           PopupMenuButton<_Action>(
             tooltip: l10n.moreActions,
@@ -134,6 +142,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
           favoriteTaskCount: favoriteTaskCount,
           notice: notice,
           onOpen: _open,
+          onCreate: _createProject,
           onToggle: (projectId) => _toggle(preferences, projectId),
           onExpand: _expand,
         ),
@@ -207,6 +216,7 @@ class _Sections extends ConsumerStatefulWidget {
     required this.favoriteTaskCount,
     required this.notice,
     required this.onOpen,
+    required this.onCreate,
     required this.onToggle,
     required this.onExpand,
   });
@@ -219,6 +229,7 @@ class _Sections extends ConsumerStatefulWidget {
   final int favoriteTaskCount;
   final Widget? notice;
   final ValueChanged<int> onOpen;
+  final VoidCallback onCreate;
   final ValueChanged<int> onToggle;
   final ValueChanged<int> onExpand;
 
@@ -669,10 +680,23 @@ class _SectionsState extends ConsumerState<_Sections> {
     if (rows.isEmpty && !hasFavourites && savedFilters.isEmpty) {
       return CenteredScrollView(
         header: widget.notice,
-        child: EmptyState(
-          icon: Icons.folder_open,
-          title: l10n.projectsEmptyTitle,
-          body: l10n.projectsEmptyBody,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            EmptyState(
+              icon: Icons.folder_open,
+              title: l10n.projectsEmptyTitle,
+              body: l10n.projectsEmptyBody,
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(32, 0, 32, 32),
+              child: FilledButton.icon(
+                onPressed: widget.onCreate,
+                icon: const Icon(Icons.add),
+                label: Text(l10n.projectNew),
+              ),
+            ),
+          ],
         ),
       );
     }

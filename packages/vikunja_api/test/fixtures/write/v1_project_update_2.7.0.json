@@ -1,0 +1,96 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v1/projects/1359",
+  "sent": {
+    "id": 1359,
+    "title": "Drafts",
+    "description": "",
+    "identifier": "DRF",
+    "hex_color": "00db60",
+    "parent_project_id": 1358,
+    "owner": {
+      "id": 465,
+      "name": "",
+      "username": "fixtureuser",
+      "created": "2026-10-20T06:08:38Z",
+      "updated": "2026-10-20T06:08:38Z"
+    },
+    "is_archived": false,
+    "background_information": null,
+    "background_blur_hash": "",
+    "is_favorite": true,
+    "position": 89063424,
+    "views": [
+      {
+        "id": 7438,
+        "title": "List",
+        "project_id": 1359,
+        "view_kind": "list",
+        "filter": {
+          "s": "",
+          "sort_by": null,
+          "order_by": null,
+          "filter": "done = false",
+          "filter_include_nulls": false
+        },
+        "position": 100,
+        "bucket_configuration_mode": "none",
+        "bucket_configuration": null,
+        "default_bucket_id": 0,
+        "done_bucket_id": 0,
+        "updated": "2026-10-20T06:08:38Z",
+        "created": "2026-10-20T06:08:38Z"
+      },
+      {
+        "id": 7439,
+        "title": "Gantt",
+        "project_id": 1359,
+        "view_kind": "gantt",
+        "filter": null,
+        "position": 200,
+        "bucket_configuration_mode": "none",
+        "bucket_configuration": null,
+        "default_bucket_id": 0,
+        "done_bucket_id": 0,
+        "updated": "2026-10-20T06:08:38Z",
+        "created": "2026-10-20T06:08:38Z"
+      },
+      {
+        "id": 7440,
+        "title": "Table",
+        "project_id": 1359,
+        "view_kind": "table",
+        "filter": null,
+        "position": 300,
+        "bucket_configuration_mode": "none",
+        "bucket_configuration": null,
+        "default_bucket_id": 0,
+        "done_bucket_id": 0,
+        "updated": "2026-10-20T06:08:38Z",
+        "created": "2026-10-20T06:08:38Z"
+      },
+      {
+        "id": 7441,
+        "title": "Kanban",
+        "project_id": 1359,
+        "view_kind": "kanban",
+        "filter": null,
+        "position": 400,
+        "bucket_configuration_mode": "manual",
+        "bucket_configuration": null,
+        "default_bucket_id": 5667,
+        "done_bucket_id": 5669,
+        "updated": "2026-10-20T06:08:38Z",
+        "created": "2026-10-20T06:08:38Z"
+      }
+    ],
+    "max_permission": null,
+    "created": "2026-10-20T06:08:38Z",
+    "updated": "2026-10-20T06:08:40Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"id\":1359,\"title\":\"Drafts\",\"description\":\"\",\"identifier\":\"DRF\",\"hex_color\":\"00db60\",\"parent_project_id\":1358,\"owner\":{\"id\":465,\"name\":\"\",\"username\":\"fixtureuser\",\"created\":\"2026-10-20T06:08:38Z\",\"updated\":\"2026-10-20T06:08:38Z\"},\"is_archived\":false,\"background_information\":null,\"background_blur_hash\":\"\",\"is_favorite\":true,\"position\":89063424,\"views\":[{\"id\":7438,\"title\":\"List\",\"project_id\":1359,\"view_kind\":\"list\",\"filter\":{\"s\":\"\",\"sort_by\":null,\"order_by\":null,\"filter\":\"done = false\",\"filter_include_nulls\":false},\"position\":100,\"bucket_configuration_mode\":\"none\",\"bucket_configuration\":null,\"default_bucket_id\":0,\"done_bucket_id\":0,\"updated\":\"2026-10-20T06:08:38Z\",\"created\":\"2026-10-20T06:08:38Z\"},{\"id\":7439,\"title\":\"Gantt\",\"project_id\":1359,\"view_kind\":\"gantt\",\"filter\":null,\"position\":200,\"bucket_configuration_mode\":\"none\",\"bucket_configuration\":null,\"default_bucket_id\":0,\"done_bucket_id\":0,\"updated\":\"2026-10-20T06:08:38Z\",\"created\":\"2026-10-20T06:08:38Z\"},{\"id\":7440,\"title\":\"Table\",\"project_id\":1359,\"view_kind\":\"table\",\"filter\":null,\"position\":300,\"bucket_configuration_mode\":\"none\",\"bucket_configuration\":null,\"default_bucket_id\":0,\"done_bucket_id\":0,\"updated\":\"2026-10-20T06:08:38Z\",\"created\":\"2026-10-20T06:08:38Z\"},{\"id\":7441,\"title\":\"Kanban\",\"project_id\":1359,\"view_kind\":\"kanban\",\"filter\":null,\"position\":400,\"bucket_configuration_mode\":\"manual\",\"bucket_configuration\":null,\"default_bucket_id\":5667,\"done_bucket_id\":5669,\"updated\":\"2026-10-20T06:08:38Z\",\"created\":\"2026-10-20T06:08:38Z\"}],\"max_permission\":null,\"created\":\"2026-10-20T06:08:38Z\",\"updated\":\"2026-10-20T06:08:41Z\"}\n"
+}

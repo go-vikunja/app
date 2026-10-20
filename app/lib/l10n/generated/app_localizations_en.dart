@@ -665,7 +665,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get projectsEmptyBody =>
-      'Create your first project on the web and it will show up here.';
+      'Create your first project to start adding tasks.';
 
   @override
   String get projectsFavouritesHeading => 'Favourites';
@@ -3392,4 +3392,350 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get deepLinkSwitchAccountBody =>
       'This task is in another of your accounts. Choose it to switch and open the task.';
+
+  @override
+  String get projectNew => 'New project';
+
+  @override
+  String get projectCreate => 'Create';
+
+  @override
+  String get projectCreating => 'Creating…';
+
+  @override
+  String get projectCreated => 'Project created';
+
+  @override
+  String get projectTitleLabel => 'Title';
+
+  @override
+  String get projectTitleHint => 'The project\'s title goes here…';
+
+  @override
+  String get projectTitleRequired => 'Please specify a title.';
+
+  @override
+  String get projectParentLabel => 'Parent project';
+
+  @override
+  String get projectParentTopLevel => 'None (top level)';
+
+  @override
+  String get projectEdit => 'Edit';
+
+  @override
+  String get projectEditTitle => 'Edit project';
+
+  @override
+  String get projectSave => 'Save';
+
+  @override
+  String get projectSaving => 'Saving…';
+
+  @override
+  String get projectEditSaved => 'Project saved';
+
+  @override
+  String get projectEditDiscardBody =>
+      'Your edits to this project will be lost.';
+
+  @override
+  String get projectIdentifierLabel => 'Project identifier';
+
+  @override
+  String get projectIdentifierHelp =>
+      'Up to 10 characters, unique on the server. The identifiers of this project\'s tasks start with it and change with it. Leave it empty for none.';
+
+  @override
+  String get projectIdentifierTaken =>
+      'This identifier is already in use. Identifiers are unique on the whole server.';
+
+  @override
+  String get projectGoneTitle => 'This project no longer exists';
+
+  @override
+  String get projectGoneBody => 'It may have been deleted, here or on the web.';
+
+  @override
+  String get projectViews => 'Views';
+
+  @override
+  String get projectDuplicate => 'Duplicate';
+
+  @override
+  String get projectDuplicateTitle => 'Duplicate project';
+
+  @override
+  String get projectDuplicateBody =>
+      'The copy gets this project\'s tasks, views and columns, but not its subprojects. Choose the project it goes into:';
+
+  @override
+  String get projectDuplicateShares => 'Also copy its shares';
+
+  @override
+  String get projectDuplicateSharesHint =>
+      'People, teams and link shares. Each link share becomes a new public link to the copy.';
+
+  @override
+  String get projectDuplicating => 'Duplicating…';
+
+  @override
+  String get projectDuplicated => 'Project duplicated';
+
+  @override
+  String get projectArchive => 'Archive';
+
+  @override
+  String get projectUnarchive => 'Unarchive';
+
+  @override
+  String get projectArchiveTitle => 'Archive this project?';
+
+  @override
+  String get projectUnarchiveTitle => 'Unarchive this project?';
+
+  @override
+  String get projectArchiveBody =>
+      'You won\'t be able to edit this project or create tasks until you unarchive it. Its subprojects are archived too.';
+
+  @override
+  String get projectUnarchiveBody =>
+      'You will be able to create tasks or edit it. Its subprojects are unarchived too.';
+
+  @override
+  String get projectArchivedDone => 'Project archived';
+
+  @override
+  String get projectUnarchivedDone => 'Project unarchived';
+
+  @override
+  String get projectArchiveDefaultHint =>
+      'You can\'t archive this because it\'s your default project.';
+
+  @override
+  String get projectNewSubproject => 'New subproject';
+
+  @override
+  String get projectAddToFavourites => 'Add to favourites';
+
+  @override
+  String get projectRemoveFromFavourites => 'Remove from favourites';
+
+  @override
+  String get projectFavourited => 'Added to favourites';
+
+  @override
+  String get projectUnfavourited => 'Removed from favourites';
+
+  @override
+  String get projectDelete => 'Delete';
+
+  @override
+  String projectDeleteTitle(String project) {
+    return 'Delete “$project”?';
+  }
+
+  @override
+  String projectDeleteTasks(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'This deletes $count tasks, for everyone.',
+      one: 'This deletes 1 task, for everyone.',
+      zero: 'It has no tasks. It is deleted for everyone.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String projectDeleteTasksAndSubprojects(int tasks, int subprojects) {
+    String _temp0 = intl.Intl.pluralLogic(
+      tasks,
+      locale: localeName,
+      other: '$tasks tasks',
+      one: '1 task',
+      zero: 'no tasks',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      subprojects,
+      locale: localeName,
+      other: '$subprojects subprojects',
+      one: '1 subproject',
+    );
+    return 'This deletes $_temp0 and $_temp1, for everyone.';
+  }
+
+  @override
+  String get projectDeleteCannotBeUndone => 'This can\'t be undone.';
+
+  @override
+  String projectIncludesDefault(String project) {
+    return 'This includes your default project “$project”.';
+  }
+
+  @override
+  String get projectDeleted => 'Project deleted';
+
+  @override
+  String get projectChangeNeedsConnection =>
+      'Managing projects needs a connection to the server.';
+
+  @override
+  String get projectChangeUnconfirmed =>
+      'Couldn\'t confirm the change. Check your connection and pull down to refresh.';
+
+  @override
+  String get projectFormUnconfirmed =>
+      'Couldn\'t confirm the change. It may have gone through, so check before trying again.';
+
+  @override
+  String get projectChangeForbidden =>
+      'You don\'t have permission to change this project.';
+
+  @override
+  String get projectCreateForbidden =>
+      'You don\'t have permission to add a project there.';
+
+  @override
+  String get projectDeleteAdminOnly =>
+      'Only project admins can delete a project.';
+
+  @override
+  String get projectViewsAdminOnly => 'Only project admins can change views.';
+
+  @override
+  String get projectDeleteDefault =>
+      'This is a user\'s default project. Only its owner can delete it.';
+
+  @override
+  String get projectArchiveDefault =>
+      'This is a user\'s default project, so it can\'t be archived.';
+
+  @override
+  String get projectUnarchiveParentFirst =>
+      'The parent project is archived. Unarchive the parent project first.';
+
+  @override
+  String get projectChangeArchived =>
+      'This project is archived. Unarchive it to change it.';
+
+  @override
+  String get projectParentArchived =>
+      'The parent project is archived, so nothing can be added to it.';
+
+  @override
+  String get projectGone => 'The project no longer exists.';
+
+  @override
+  String get projectChangeInvalid =>
+      'The server didn\'t accept this title or identifier.';
+
+  @override
+  String get projectTitleTooLong =>
+      'A title can be up to 250 characters long, and an emoji can count as several. Shorten this one to save.';
+
+  @override
+  String get projectTitleTooLongToChange =>
+      'This project\'s title is longer than the server accepts. Shorten it under Edit first.';
+
+  @override
+  String projectChangeRefused(String message) {
+    return 'The server refused the change: $message';
+  }
+
+  @override
+  String get projectChangeFailed => 'The change couldn\'t be saved.';
+
+  @override
+  String projectViewsIntro(String project) {
+    return 'The views of $project, in the order the app and the web show them. Table and Gantt views show on the web only for now.';
+  }
+
+  @override
+  String get projectViewNew => 'New view';
+
+  @override
+  String get projectViewEditTitle => 'Edit view';
+
+  @override
+  String projectViewOptionsFor(String view) {
+    return 'Options for $view';
+  }
+
+  @override
+  String get projectViewDelete => 'Delete';
+
+  @override
+  String projectViewDeleteTitle(String view) {
+    return 'Delete “$view”?';
+  }
+
+  @override
+  String get projectViewDeleteBody =>
+      'Nobody can use it to look at this project\'s tasks any more. No task is deleted. This can\'t be undone.';
+
+  @override
+  String get projectViewLastOne => 'A project needs at least one view.';
+
+  @override
+  String get projectViewCreated => 'View created';
+
+  @override
+  String get projectViewSaved => 'View saved';
+
+  @override
+  String get projectViewDeleted => 'View deleted';
+
+  @override
+  String get projectViewKindLabel => 'Kind';
+
+  @override
+  String projectViewKindWebOnly(String kind) {
+    return '$kind – shown on the web only for now';
+  }
+
+  @override
+  String get projectViewShowDone => 'Show done tasks';
+
+  @override
+  String get projectViewShowDoneHint =>
+      'Off adds “done = false” to the filter, like the web\'s List view.';
+
+  @override
+  String get projectViewFilterLabel => 'Filter';
+
+  @override
+  String get projectViewFilterHint => 'priority >= 3 && due_date < now/w';
+
+  @override
+  String get projectViewFilterHelp =>
+      'In the web\'s filter syntax; the server checks it when you save.';
+
+  @override
+  String projectViewFilterInvalid(String message) {
+    return 'This filter isn\'t valid: $message';
+  }
+
+  @override
+  String get projectViewColumnsLabel => 'Columns';
+
+  @override
+  String get projectViewColumnsManual => 'Manual';
+
+  @override
+  String get projectViewColumnsFilter => 'From filters';
+
+  @override
+  String get projectViewFilterColumnsOnWeb =>
+      'The filters of these columns are set up on the web.';
+
+  @override
+  String get projectViewGone => 'The view no longer exists.';
+
+  @override
+  String get projectViewInvalid => 'The server didn\'t accept this view.';
+
+  @override
+  String get projectDeleteEverything =>
+      'This deletes its tasks and subprojects, for everyone.';
 }

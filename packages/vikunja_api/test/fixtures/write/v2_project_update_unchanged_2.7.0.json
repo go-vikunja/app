@@ -1,0 +1,10 @@
+{
+  "server": "2.7.0",
+  "request": "PATCH /api/v2/projects/1359",
+  "sent": {
+    "title": "Drafts"
+  },
+  "status": 304,
+  "headers": {},
+  "body": ""
+}

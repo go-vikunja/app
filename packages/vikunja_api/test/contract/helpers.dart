@@ -212,6 +212,27 @@ final class RetryingProjectViewsWrites implements ProjectViewsWritePort {
       defaultBucketId: defaultBucketId,
     ),
   );
+
+  @override
+  Future<ProjectView> create(int projectId, ViewDraft view) =>
+      despiteWriteRaces(() => _views.create(projectId, view));
+
+  @override
+  Future<ProjectView> update(int projectId, int viewId, ViewDraft view) =>
+      despiteWriteRaces(() => _views.update(projectId, viewId, view));
+
+  @override
+  Future<ProjectView> move(
+    int projectId,
+    int viewId, {
+    required double position,
+  }) => despiteWriteRaces(
+    () => _views.move(projectId, viewId, position: position),
+  );
+
+  @override
+  Future<void> delete(int projectId, int viewId) =>
+      despiteWriteRaces(() => _views.delete(projectId, viewId));
 }
 
 final class RetryingProjectsWrites implements ProjectsWritePort {
@@ -230,6 +251,29 @@ final class RetryingProjectsWrites implements ProjectsWritePort {
       position: position,
       parentProjectId: parentProjectId,
     ),
+  );
+
+  @override
+  Future<Project> create(NewProject project) =>
+      despiteWriteRaces(() => _projects.create(project));
+
+  @override
+  Future<Project> update(int projectId, ProjectChanges changes) =>
+      despiteWriteRaces(() => _projects.update(projectId, changes));
+
+  @override
+  Future<void> delete(int projectId) =>
+      despiteWriteRaces(() => _projects.delete(projectId));
+
+  @override
+  Future<Project> duplicate(
+    int projectId, {
+    required int parentProjectId,
+    required bool copyShares,
+  }) => _projects.duplicate(
+    projectId,
+    parentProjectId: parentProjectId,
+    copyShares: copyShares,
   );
 }
 

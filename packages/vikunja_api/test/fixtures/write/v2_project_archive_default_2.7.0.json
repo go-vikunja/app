@@ -1,0 +1,12 @@
+{
+  "server": "2.7.0",
+  "request": "PATCH /api/v2/projects/1357",
+  "sent": {
+    "is_archived": true
+  },
+  "status": 412,
+  "headers": {
+    "content-type": "application/problem+json"
+  },
+  "body": "{\"$schema\":\"http://localhost/api/v2/schemas/VikunjaErrorModel.json\",\"title\":\"Precondition Failed\",\"status\":412,\"detail\":\"This project cannot be archived because it is the default project of a user.\",\"code\":3013}\n"
+}

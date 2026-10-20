@@ -67,33 +67,73 @@ final class _ProjectsWriteApi implements ProjectsWritePort {
         'Below $_minProjectPosition the server renumbers every sibling',
       );
     }
-    final path = '/projects/$projectId';
-    final changes = {
-      'position': position,
-      'parent_project_id': parentProjectId,
-    };
-    switch (_transport.version) {
-      case ApiVersion.v2:
-        final response = await _transport.send(
-          'PATCH',
-          path,
-          body: changes,
-          contentType: mergePatchContentType,
-          acceptNotModified: true,
-        );
-        if (response.statusCode != _notModified) return _parse(response);
-        return _parse(await _transport.send('GET', path));
-      case ApiVersion.v1:
-        // A full replace: hex_color and identifier left out are cleared,
-        // is_favorite and is_archived reset, a missing position renumbers.
-        final current = _transport.decode<Map<String, Object?>>(
-          await _transport.send('GET', path),
-          (json) => objectOf(json, 'project'),
-        );
-        return _parse(
-          await _transport.send('POST', path, body: {...current, ...changes}),
-        );
+    return _parse(
+      await _transport.patchOrReplace('/projects/$projectId', 'project', {
+        'position': position,
+        'parent_project_id': parentProjectId,
+      }),
+    );
+  }
+
+  @override
+  Future<Project> create(NewProject project) async => _parse(
+    await _transport.send(
+      _transport.createMethod,
+      '/projects',
+      body: encodeNewProject(project),
+    ),
+  );
+
+  @override
+  Future<Project> update(int projectId, ProjectChanges changes) async {
+    if (changes.position case final position?
+        when !position.isFinite || position < _minProjectPosition) {
+      throw ArgumentError.value(
+        position,
+        'changes.position',
+        'Below $_minProjectPosition the server renumbers every sibling',
+      );
     }
+    final path = '/projects/$projectId';
+    final body = encodeProjectChanges(changes);
+    if (body.isEmpty) return _parse(await _transport.send('GET', path));
+    return _parse(await _transport.patchOrReplace(path, 'project', body));
+  }
+
+  @override
+  Future<void> delete(int projectId) async {
+    try {
+      await _transport.send('DELETE', '/projects/$projectId');
+    } on NotFound catch (failure) {
+      if (failure.code != _projectDoesNotExist) rethrow;
+    }
+  }
+
+  @override
+  Future<Project> duplicate(
+    int projectId, {
+    required int parentProjectId,
+    required bool copyShares,
+  }) async {
+    if (projectId < 1) {
+      throw ArgumentError.value(
+        projectId,
+        'projectId',
+        'A pseudo project cannot be duplicated',
+      );
+    }
+    final response = await _transport.send(
+      _transport.createMethod,
+      '/projects/$projectId/duplicate',
+      body: {
+        'parent_project_id': parentProjectId,
+        'duplicate_shares': copyShares,
+      },
+    );
+    return _transport.decode<Project>(
+      response,
+      (json) => parseProject(objectOf(json, 'duplicate')['duplicated_project']),
+    );
   }
 
   Project _parse(Response<Object?> response) =>
@@ -175,27 +215,49 @@ final class _ProjectViewsWriteApi implements ProjectViewsWritePort {
       'default_bucket_id': ?defaultBucketId,
     };
     if (changes.isEmpty) return _parse(await _transport.send('GET', path));
-    switch (_transport.version) {
-      case ApiVersion.v2:
-        final response = await _transport.send(
-          'PATCH',
-          path,
-          body: changes,
-          contentType: mergePatchContentType,
-          acceptNotModified: true,
-        );
-        if (response.statusCode != _notModified) return _parse(response);
-        return _parse(await _transport.send('GET', path));
-      case ApiVersion.v1:
-        // A full replace: a field left out is cleared, a missing view_kind
-        // turns the board into a list view.
-        final current = _transport.decode<Map<String, Object?>>(
-          await _transport.send('GET', path),
-          (json) => objectOf(json, 'project view'),
-        );
-        return _parse(
-          await _transport.send('POST', path, body: {...current, ...changes}),
-        );
+    return _parse(
+      await _transport.patchOrReplace(path, 'project view', changes),
+    );
+  }
+
+  @override
+  Future<ProjectView> create(int projectId, ViewDraft view) async => _parse(
+    await _transport.send(
+      _transport.createMethod,
+      '/projects/$projectId/views',
+      body: encodeNewView(view),
+    ),
+  );
+
+  @override
+  Future<ProjectView> update(int projectId, int viewId, ViewDraft view) async =>
+      _parse(
+        await _transport.patchOrReplace(
+          '/projects/$projectId/views/$viewId',
+          'project view',
+          encodeViewChanges(view),
+        ),
+      );
+
+  @override
+  Future<ProjectView> move(
+    int projectId,
+    int viewId, {
+    required double position,
+  }) async => _parse(
+    await _transport.patchOrReplace(
+      '/projects/$projectId/views/$viewId',
+      'project view',
+      {'position': position},
+    ),
+  );
+
+  @override
+  Future<void> delete(int projectId, int viewId) async {
+    try {
+      await _transport.send('DELETE', '/projects/$projectId/views/$viewId');
+    } on NotFound catch (failure) {
+      if (failure.code != _viewDoesNotExist) rethrow;
     }
   }
 
@@ -302,6 +364,8 @@ const _relationAlreadyExists = 4008;
 const _relationDoesNotExist = 4009;
 const _alreadySubscribed = 12002;
 const _bucketDoesNotExist = 10001;
+const _projectDoesNotExist = 3001;
+const _viewDoesNotExist = 3014;
 const _minProjectPosition = 0.1;
 
 // A v1 update replaces the task with the body: every field the server sent
@@ -724,6 +788,38 @@ final class _WriteTransport {
     } on DioException catch (error) {
       if (error.type == DioExceptionType.cancel) rethrow;
       throw normalizeError(error);
+    }
+  }
+
+  /// Writes [changes] to the object at [path]: a v2 merge-patch, read when
+  /// the server answers 304 for no change, or on v1 a read of the object
+  /// posted back whole with [changes] overlaid. The v1 update is a full
+  /// replace that clears or resets what it is not sent (a project's colour,
+  /// identifier, favourite and archive state, and its position, which
+  /// renumbers the siblings; a view's kind, which turns a board into a
+  /// list).
+  Future<Response<Object?>> patchOrReplace(
+    String path,
+    String what,
+    Map<String, Object?> changes,
+  ) async {
+    switch (version) {
+      case ApiVersion.v2:
+        final response = await send(
+          'PATCH',
+          path,
+          body: changes,
+          contentType: mergePatchContentType,
+          acceptNotModified: true,
+        );
+        if (response.statusCode != _notModified) return response;
+        return await send('GET', path);
+      case ApiVersion.v1:
+        final current = decode<Map<String, Object?>>(
+          await send('GET', path),
+          (json) => objectOf(json, what),
+        );
+        return await send('POST', path, body: {...current, ...changes});
     }
   }
 

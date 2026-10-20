@@ -20,6 +20,11 @@ import 'package:vikunja_mobile/features/onboarding/presentation/connect/connecti
 import 'package:vikunja_mobile/features/projects/presentation/board/board_column.dart';
 import 'package:vikunja_mobile/features/projects/presentation/board/new_column_tile.dart';
 import 'package:vikunja_mobile/features/projects/presentation/board/project_board.dart';
+import 'package:vikunja_mobile/features/projects/presentation/manage/duplicate_project_sheet.dart';
+import 'package:vikunja_mobile/features/projects/presentation/manage/new_project_sheet.dart';
+import 'package:vikunja_mobile/features/projects/presentation/manage/project_edit_page.dart';
+import 'package:vikunja_mobile/features/projects/presentation/manage/project_views_page.dart';
+import 'package:vikunja_mobile/features/projects/presentation/manage/view_form_sheet.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_row.dart';
 import 'package:vikunja_mobile/features/projects/presentation/reorder_slot.dart';
 import 'package:vikunja_mobile/features/quick_add/application/quick_add_plan.dart';
@@ -396,9 +401,192 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text(l10n.followProject), findsOneWidget);
       expect(tester.takeException(), isNull);
+      // Below the project's other actions, which fill the screen.
+      await tester.ensureVisible(find.text(l10n.followProject));
+      await tester.pumpAndSettle();
       await tester.tap(find.text(l10n.followProject));
       await tester.pumpAndSettle();
       expect(find.text(l10n.projectFollowed), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('new project sheet with its parent picker at 200 % in dark '
+        'mode (${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      final l10n = lookupAppLocalizations(locale);
+      await pumpSignedInApp(tester, sync: richData());
+      await openTab(tester, l10n.tabProjects);
+
+      await tester.tap(find.byTooltip(l10n.projectNew));
+      await tester.pumpAndSettle();
+      expect(find.byType(NewProjectSheet), findsOneWidget);
+      await tester.enterText(
+        find.descendant(
+          of: find.byType(NewProjectSheet),
+          matching: find.byType(TextField),
+        ),
+        'A new project with a title long enough to wrap',
+      );
+      await tester.pumpAndSettle();
+      await scrollToEnd(tester, find.byType(NewProjectSheet));
+      expect(tester.takeException(), isNull);
+      await tester.ensureVisible(find.text(l10n.projectParentLabel).first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(l10n.projectParentLabel).first);
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.projectParentTopLevel), findsWidgets);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('project menu with its confirmations and the duplicate sheet '
+        'at 200 % in dark mode (${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      final l10n = lookupAppLocalizations(locale);
+      final data = richData();
+      await pumpSignedInApp(tester, sync: data);
+      containerOf(tester).read(appRouterProvider).go(AppRoutes.project(1));
+      await tester.pumpAndSettle();
+
+      Future<void> choose(String item) async {
+        await tester.tap(find.byTooltip(l10n.moreActions));
+        await tester.pumpAndSettle();
+        // The menu's own scroll view, on top of the page's.
+        await tester.scrollUntilVisible(
+          find.text(item),
+          100,
+          scrollable: find.byType(Scrollable).last,
+        );
+        await tester.tap(find.text(item));
+        await tester.pumpAndSettle();
+      }
+
+      await tester.tap(find.byTooltip(l10n.moreActions));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.projectEdit), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      await choose(l10n.projectDelete);
+      expect(
+        find.textContaining(l10n.projectDeleteCannotBeUndone),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.text(l10n.cancel));
+      await tester.pumpAndSettle();
+
+      await choose(l10n.projectArchive);
+      expect(find.text(l10n.projectArchiveBody), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.text(l10n.cancel));
+      await tester.pumpAndSettle();
+
+      await choose(l10n.projectDuplicate);
+      expect(find.byType(DuplicateProjectSheet), findsOneWidget);
+      await scrollToEnd(tester, find.byType(DuplicateProjectSheet));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('project edit page at 200 % in dark mode '
+        '(${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      final data = richData();
+      data.projects.all = [
+        for (final project in data.projects.all)
+          if (project.id == 1)
+            copyProject(project, identifier: 'LONGIDENT')
+          else
+            project,
+      ];
+      await pumpSignedInApp(tester, sync: data);
+      final router = containerOf(tester).read(appRouterProvider)
+        ..go(AppRoutes.project(1));
+      await tester.pumpAndSettle();
+      unawaited(router.push(AppRoutes.projectEdit(1)));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ProjectEditPage), findsOneWidget);
+      await scrollToEnd(tester, find.byType(ListView));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('views page and the view form at 200 % in dark mode '
+        '(${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      final l10n = lookupAppLocalizations(locale);
+      final data = richData();
+      data.projects.all = [
+        for (final project in data.projects.all)
+          if (project.id == 1)
+            copyProject(
+              project,
+              views: [
+                ...defaultViews(1, firstViewId: 10),
+                sampleListView(
+                  id: 14,
+                  projectId: 1,
+                  title: 'A view with a rather long title of its own',
+                  position: 500,
+                  filter: 'done = false && priority >= 3',
+                ),
+              ],
+            )
+          else
+            project,
+      ];
+      await pumpSignedInApp(tester, sync: data);
+      final router = containerOf(tester).read(appRouterProvider)
+        ..go(AppRoutes.project(1));
+      await tester.pumpAndSettle();
+      unawaited(router.push(AppRoutes.projectViews(1)));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ProjectViewsPage), findsOneWidget);
+      await scrollToEnd(tester, find.byType(ListView));
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(
+        find.byTooltip(
+          l10n.projectViewOptionsFor(
+            'A view with a rather long title of its own',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.moveUp), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.widgetWithText(
+          ListTile,
+          'A view with a rather long title of its own',
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(ViewFormSheet), findsOneWidget);
+      await scrollToEnd(tester, find.byType(ViewFormSheet));
+      expect(tester.takeException(), isNull);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ViewFormSheet), findsNothing);
+      final kanban = find
+          .widgetWithText(ListTile, l10n.projectViewKanban)
+          .first;
+      await tester.ensureVisible(kanban);
+      await tester.pumpAndSettle();
+      await tester.tap(kanban);
+      await tester.pumpAndSettle();
+      await scrollToEnd(tester, find.byType(ViewFormSheet));
+      await tester.tap(find.text(l10n.projectViewColumnsLabel));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(l10n.projectViewColumnsFilter).last);
+      await tester.pumpAndSettle();
+      await scrollToEnd(tester, find.byType(ViewFormSheet));
+      expect(find.text(l10n.projectViewFilterColumnsOnWeb), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 

@@ -1109,7 +1109,7 @@ abstract class AppLocalizations {
   /// No description provided for @projectsEmptyBody.
   ///
   /// In en, this message translates to:
-  /// **'Create your first project on the web and it will show up here.'**
+  /// **'Create your first project to start adding tasks.'**
   String get projectsEmptyBody;
 
   /// No description provided for @projectsFavouritesHeading.
@@ -5171,6 +5171,564 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This task is in another of your accounts. Choose it to switch and open the task.'**
   String get deepLinkSwitchAccountBody;
+
+  /// Add button in the Projects tab's app bar and empty state, and the title of the sheet that creates a project.
+  ///
+  /// In en, this message translates to:
+  /// **'New project'**
+  String get projectNew;
+
+  /// Confirms the new project or view form.
+  ///
+  /// In en, this message translates to:
+  /// **'Create'**
+  String get projectCreate;
+
+  /// The disabled confirm button while the server creates the project.
+  ///
+  /// In en, this message translates to:
+  /// **'Creating…'**
+  String get projectCreating;
+
+  /// No description provided for @projectCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Project created'**
+  String get projectCreated;
+
+  /// Title field of the project and view forms.
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get projectTitleLabel;
+
+  /// No description provided for @projectTitleHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The project\'s title goes here…'**
+  String get projectTitleHint;
+
+  /// No description provided for @projectTitleRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please specify a title.'**
+  String get projectTitleRequired;
+
+  /// Row of the project forms that picks the parent, and the title of the picker.
+  ///
+  /// In en, this message translates to:
+  /// **'Parent project'**
+  String get projectParentLabel;
+
+  /// Parent choice that puts the project at the top level.
+  ///
+  /// In en, this message translates to:
+  /// **'None (top level)'**
+  String get projectParentTopLevel;
+
+  /// Project menu item that opens the edit page; also a view's option.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get projectEdit;
+
+  /// No description provided for @projectEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit project'**
+  String get projectEditTitle;
+
+  /// No description provided for @projectSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get projectSave;
+
+  /// While a project or view change is on its way to the server.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving…'**
+  String get projectSaving;
+
+  /// No description provided for @projectEditSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Project saved'**
+  String get projectEditSaved;
+
+  /// No description provided for @projectEditDiscardBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your edits to this project will be lost.'**
+  String get projectEditDiscardBody;
+
+  /// No description provided for @projectIdentifierLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Project identifier'**
+  String get projectIdentifierLabel;
+
+  /// No description provided for @projectIdentifierHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Up to 10 characters, unique on the server. The identifiers of this project\'s tasks start with it and change with it. Leave it empty for none.'**
+  String get projectIdentifierHelp;
+
+  /// No description provided for @projectIdentifierTaken.
+  ///
+  /// In en, this message translates to:
+  /// **'This identifier is already in use. Identifiers are unique on the whole server.'**
+  String get projectIdentifierTaken;
+
+  /// No description provided for @projectGoneTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'This project no longer exists'**
+  String get projectGoneTitle;
+
+  /// No description provided for @projectGoneBody.
+  ///
+  /// In en, this message translates to:
+  /// **'It may have been deleted, here or on the web.'**
+  String get projectGoneBody;
+
+  /// Project menu item and title of the page that manages the project's views.
+  ///
+  /// In en, this message translates to:
+  /// **'Views'**
+  String get projectViews;
+
+  /// No description provided for @projectDuplicate.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate'**
+  String get projectDuplicate;
+
+  /// No description provided for @projectDuplicateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate project'**
+  String get projectDuplicateTitle;
+
+  /// No description provided for @projectDuplicateBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The copy gets this project\'s tasks, views and columns, but not its subprojects. Choose the project it goes into:'**
+  String get projectDuplicateBody;
+
+  /// No description provided for @projectDuplicateShares.
+  ///
+  /// In en, this message translates to:
+  /// **'Also copy its shares'**
+  String get projectDuplicateShares;
+
+  /// No description provided for @projectDuplicateSharesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'People, teams and link shares. Each link share becomes a new public link to the copy.'**
+  String get projectDuplicateSharesHint;
+
+  /// The disabled confirm button while the server copies the project and the app syncs the copy.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicating…'**
+  String get projectDuplicating;
+
+  /// No description provided for @projectDuplicated.
+  ///
+  /// In en, this message translates to:
+  /// **'Project duplicated'**
+  String get projectDuplicated;
+
+  /// No description provided for @projectArchive.
+  ///
+  /// In en, this message translates to:
+  /// **'Archive'**
+  String get projectArchive;
+
+  /// No description provided for @projectUnarchive.
+  ///
+  /// In en, this message translates to:
+  /// **'Unarchive'**
+  String get projectUnarchive;
+
+  /// No description provided for @projectArchiveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Archive this project?'**
+  String get projectArchiveTitle;
+
+  /// No description provided for @projectUnarchiveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Unarchive this project?'**
+  String get projectUnarchiveTitle;
+
+  /// No description provided for @projectArchiveBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You won\'t be able to edit this project or create tasks until you unarchive it. Its subprojects are archived too.'**
+  String get projectArchiveBody;
+
+  /// No description provided for @projectUnarchiveBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You will be able to create tasks or edit it. Its subprojects are unarchived too.'**
+  String get projectUnarchiveBody;
+
+  /// No description provided for @projectArchivedDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Project archived'**
+  String get projectArchivedDone;
+
+  /// No description provided for @projectUnarchivedDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Project unarchived'**
+  String get projectUnarchivedDone;
+
+  /// No description provided for @projectArchiveDefaultHint.
+  ///
+  /// In en, this message translates to:
+  /// **'You can\'t archive this because it\'s your default project.'**
+  String get projectArchiveDefaultHint;
+
+  /// No description provided for @projectNewSubproject.
+  ///
+  /// In en, this message translates to:
+  /// **'New subproject'**
+  String get projectNewSubproject;
+
+  /// No description provided for @projectAddToFavourites.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to favourites'**
+  String get projectAddToFavourites;
+
+  /// No description provided for @projectRemoveFromFavourites.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from favourites'**
+  String get projectRemoveFromFavourites;
+
+  /// No description provided for @projectFavourited.
+  ///
+  /// In en, this message translates to:
+  /// **'Added to favourites'**
+  String get projectFavourited;
+
+  /// No description provided for @projectUnfavourited.
+  ///
+  /// In en, this message translates to:
+  /// **'Removed from favourites'**
+  String get projectUnfavourited;
+
+  /// No description provided for @projectDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get projectDelete;
+
+  /// No description provided for @projectDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete “{project}”?'**
+  String projectDeleteTitle(String project);
+
+  /// What deleting a project without subprojects removes; counts done tasks too.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{It has no tasks. It is deleted for everyone.} =1{This deletes 1 task, for everyone.} other{This deletes {count} tasks, for everyone.}}'**
+  String projectDeleteTasks(int count);
+
+  /// What deleting a project removes: the tasks of the project and of all its subprojects, and the subprojects at every level.
+  ///
+  /// In en, this message translates to:
+  /// **'This deletes {tasks, plural, =0{no tasks} =1{1 task} other{{tasks} tasks}} and {subprojects, plural, =1{1 subproject} other{{subprojects} subprojects}}, for everyone.'**
+  String projectDeleteTasksAndSubprojects(int tasks, int subprojects);
+
+  /// No description provided for @projectDeleteCannotBeUndone.
+  ///
+  /// In en, this message translates to:
+  /// **'This can\'t be undone.'**
+  String get projectDeleteCannotBeUndone;
+
+  /// Added to the delete and archive confirmations when the user's default project is in the project's subtree.
+  ///
+  /// In en, this message translates to:
+  /// **'This includes your default project “{project}”.'**
+  String projectIncludesDefault(String project);
+
+  /// No description provided for @projectDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Project deleted'**
+  String get projectDeleted;
+
+  /// No description provided for @projectChangeNeedsConnection.
+  ///
+  /// In en, this message translates to:
+  /// **'Managing projects needs a connection to the server.'**
+  String get projectChangeNeedsConnection;
+
+  /// The request timed out; the server may have made the change.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t confirm the change. Check your connection and pull down to refresh.'**
+  String get projectChangeUnconfirmed;
+
+  /// A form's request (new project, duplicate, edit, view) timed out; the server may have made the change, and trying again could make it twice.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t confirm the change. It may have gone through, so check before trying again.'**
+  String get projectFormUnconfirmed;
+
+  /// No description provided for @projectChangeForbidden.
+  ///
+  /// In en, this message translates to:
+  /// **'You don\'t have permission to change this project.'**
+  String get projectChangeForbidden;
+
+  /// No description provided for @projectCreateForbidden.
+  ///
+  /// In en, this message translates to:
+  /// **'You don\'t have permission to add a project there.'**
+  String get projectCreateForbidden;
+
+  /// No description provided for @projectDeleteAdminOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Only project admins can delete a project.'**
+  String get projectDeleteAdminOnly;
+
+  /// No description provided for @projectViewsAdminOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Only project admins can change views.'**
+  String get projectViewsAdminOnly;
+
+  /// No description provided for @projectDeleteDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'This is a user\'s default project. Only its owner can delete it.'**
+  String get projectDeleteDefault;
+
+  /// No description provided for @projectArchiveDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'This is a user\'s default project, so it can\'t be archived.'**
+  String get projectArchiveDefault;
+
+  /// No description provided for @projectUnarchiveParentFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'The parent project is archived. Unarchive the parent project first.'**
+  String get projectUnarchiveParentFirst;
+
+  /// No description provided for @projectChangeArchived.
+  ///
+  /// In en, this message translates to:
+  /// **'This project is archived. Unarchive it to change it.'**
+  String get projectChangeArchived;
+
+  /// No description provided for @projectParentArchived.
+  ///
+  /// In en, this message translates to:
+  /// **'The parent project is archived, so nothing can be added to it.'**
+  String get projectParentArchived;
+
+  /// No description provided for @projectGone.
+  ///
+  /// In en, this message translates to:
+  /// **'The project no longer exists.'**
+  String get projectGone;
+
+  /// No description provided for @projectChangeInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'The server didn\'t accept this title or identifier.'**
+  String get projectChangeInvalid;
+
+  /// Error of the project edit page's title field when the title is longer than the server accepts, as a duplicate's title can be.
+  ///
+  /// In en, this message translates to:
+  /// **'A title can be up to 250 characters long, and an emoji can count as several. Shorten this one to save.'**
+  String get projectTitleTooLong;
+
+  /// A change from the project menu was refused because the stored title is too long: the server checks it on every change.
+  ///
+  /// In en, this message translates to:
+  /// **'This project\'s title is longer than the server accepts. Shorten it under Edit first.'**
+  String get projectTitleTooLongToChange;
+
+  /// No description provided for @projectChangeRefused.
+  ///
+  /// In en, this message translates to:
+  /// **'The server refused the change: {message}'**
+  String projectChangeRefused(String message);
+
+  /// No description provided for @projectChangeFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The change couldn\'t be saved.'**
+  String get projectChangeFailed;
+
+  /// No description provided for @projectViewsIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'The views of {project}, in the order the app and the web show them. Table and Gantt views show on the web only for now.'**
+  String projectViewsIntro(String project);
+
+  /// No description provided for @projectViewNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New view'**
+  String get projectViewNew;
+
+  /// No description provided for @projectViewEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit view'**
+  String get projectViewEditTitle;
+
+  /// No description provided for @projectViewOptionsFor.
+  ///
+  /// In en, this message translates to:
+  /// **'Options for {view}'**
+  String projectViewOptionsFor(String view);
+
+  /// No description provided for @projectViewDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get projectViewDelete;
+
+  /// No description provided for @projectViewDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete “{view}”?'**
+  String projectViewDeleteTitle(String view);
+
+  /// No description provided for @projectViewDeleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody can use it to look at this project\'s tasks any more. No task is deleted. This can\'t be undone.'**
+  String get projectViewDeleteBody;
+
+  /// No description provided for @projectViewLastOne.
+  ///
+  /// In en, this message translates to:
+  /// **'A project needs at least one view.'**
+  String get projectViewLastOne;
+
+  /// No description provided for @projectViewCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'View created'**
+  String get projectViewCreated;
+
+  /// No description provided for @projectViewSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'View saved'**
+  String get projectViewSaved;
+
+  /// No description provided for @projectViewDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'View deleted'**
+  String get projectViewDeleted;
+
+  /// No description provided for @projectViewKindLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Kind'**
+  String get projectViewKindLabel;
+
+  /// A view kind the app does not show yet (Table, Gantt).
+  ///
+  /// In en, this message translates to:
+  /// **'{kind} – shown on the web only for now'**
+  String projectViewKindWebOnly(String kind);
+
+  /// No description provided for @projectViewShowDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Show done tasks'**
+  String get projectViewShowDone;
+
+  /// No description provided for @projectViewShowDoneHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Off adds “done = false” to the filter, like the web\'s List view.'**
+  String get projectViewShowDoneHint;
+
+  /// No description provided for @projectViewFilterLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter'**
+  String get projectViewFilterLabel;
+
+  /// Example in the web's filter syntax; keep the syntax untranslated.
+  ///
+  /// In en, this message translates to:
+  /// **'priority >= 3 && due_date < now/w'**
+  String get projectViewFilterHint;
+
+  /// No description provided for @projectViewFilterHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'In the web\'s filter syntax; the server checks it when you save.'**
+  String get projectViewFilterHelp;
+
+  /// The server's own explanation follows, in English.
+  ///
+  /// In en, this message translates to:
+  /// **'This filter isn\'t valid: {message}'**
+  String projectViewFilterInvalid(String message);
+
+  /// Whether a Kanban view's columns are its own or come from filters.
+  ///
+  /// In en, this message translates to:
+  /// **'Columns'**
+  String get projectViewColumnsLabel;
+
+  /// No description provided for @projectViewColumnsManual.
+  ///
+  /// In en, this message translates to:
+  /// **'Manual'**
+  String get projectViewColumnsManual;
+
+  /// No description provided for @projectViewColumnsFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'From filters'**
+  String get projectViewColumnsFilter;
+
+  /// No description provided for @projectViewFilterColumnsOnWeb.
+  ///
+  /// In en, this message translates to:
+  /// **'The filters of these columns are set up on the web.'**
+  String get projectViewFilterColumnsOnWeb;
+
+  /// No description provided for @projectViewGone.
+  ///
+  /// In en, this message translates to:
+  /// **'The view no longer exists.'**
+  String get projectViewGone;
+
+  /// No description provided for @projectViewInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'The server didn\'t accept this view.'**
+  String get projectViewInvalid;
+
+  /// What deleting a project removes, when its tasks could not be counted.
+  ///
+  /// In en, this message translates to:
+  /// **'This deletes its tasks and subprojects, for everyone.'**
+  String get projectDeleteEverything;
 }
 
 class _AppLocalizationsDelegate

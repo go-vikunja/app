@@ -157,6 +157,41 @@ abstract interface class ProjectViewsWritePort {
     int? doneBucketId,
     int? defaultBucketId,
   });
+
+  /// v2 `POST`, v1 `PUT /projects/{p}/views`; never with a `project_id` in
+  /// the body (v1 would create the view in that project). A new board
+  /// without a manual or filter mode gets To-Do, Doing and Done. Not
+  /// idempotent.
+  ///
+  /// The view writes need project admin permission (`Forbidden` for write
+  /// shares too) and are allowed on archived projects. A filter the server
+  /// cannot parse is a `DomainError` code 4024, a bad value code 4019, an
+  /// unknown field code 4016; references to other projects, labels or users
+  /// are not checked. A view that does not exist, or one of another project,
+  /// is a `NotFound` code 3014.
+  Future<ProjectView> create(int projectId, ViewDraft view);
+
+  /// Writes the draft's fields and returns the view as stored; kind changes
+  /// keep the board's buckets. v2 sends a merge-patch (an unchanged view
+  /// answers 304 and is read), v1 reads the view and posts every field back
+  /// with the draft overlaid.
+  Future<ProjectView> update(int projectId, int viewId, ViewDraft view);
+
+  /// Changes only the view's position (any value, never renumbered) and
+  /// returns the view as stored: v2 a merge-patch of the position, v1 a
+  /// fresh read posted back with it. A draft of the view as the app last
+  /// synced it would bring back a kind, filter or bucket mode changed
+  /// elsewhere, and a board's mode switched back to manual gets new default
+  /// buckets with every task in the first.
+  Future<ProjectView> move(
+    int projectId,
+    int viewId, {
+    required double position,
+  });
+
+  /// `DELETE /projects/{p}/views/{v}`. The server allows deleting the last
+  /// view. A view that is gone already (404 code 3014) counts as deleted.
+  Future<void> delete(int projectId, int viewId);
 }
 
 abstract interface class ProjectsWritePort {
@@ -179,6 +214,59 @@ abstract interface class ProjectsWritePort {
     int projectId, {
     required double position,
     required int parentProjectId,
+  });
+
+  /// v2 `POST`, v1 `PUT /projects` with only the fields set; returns the
+  /// project with its four default views. Not idempotent. An archived parent
+  /// is a `DomainError` code 3008, a pseudo one code 3009, a parent without
+  /// write permission `Forbidden`, one that does not exist `NotFound` code
+  /// 3001.
+  Future<Project> create(NewProject project);
+
+  /// Applies [changes] and returns the project as stored. v2 sends a
+  /// merge-patch with only the set fields (an unchanged project answers 304
+  /// and is read); v1 reads the project and posts it back whole with the
+  /// changes overlaid, keeping position, favourite, archive state,
+  /// identifier, colour and description. Empty changes are a read.
+  ///
+  /// A [ProjectChanges.position] below 0.1 is an `ArgumentError` before any
+  /// request, as for [move]. The server renumbers the siblings after any
+  /// update that leaves the project below 0.1, so a project stored there
+  /// needs a position of 0.1 or more in the same changes.
+  ///
+  /// Needs write permission (`Forbidden` otherwise); a parent change admin
+  /// permission, refused as for [move]. An identifier used by any project on
+  /// the instance is a `DomainError` code 3007. While the project is
+  /// archived everything but unarchiving is code 3008; unarchiving under an
+  /// archived parent is code 3016, archiving the owner's default project
+  /// code 3013.
+  ///
+  /// An identifier change renames every task's identifier without bumping
+  /// the tasks' `updated`; archiving and unarchiving cascade to every
+  /// descendant and bump theirs.
+  Future<Project> update(int projectId, ProjectChanges changes);
+
+  /// `DELETE /projects/{id}`: the server deletes the project's tasks and its
+  /// whole subtree, also projects of other users in it. Admin permission
+  /// (`Forbidden` otherwise); another user's default project is a
+  /// `DomainError` code 3012, the owner may delete their own. A project that
+  /// is gone already (404 code 3001) counts as deleted.
+  Future<void> delete(int projectId);
+
+  /// v2 `POST`, v1 `PUT /projects/{id}/duplicate`; returns the copy, which
+  /// the server fills in the same request: "<title> - duplicate" with no
+  /// identifier, the source's position, tasks (done ones too), views,
+  /// buckets and positions, but no child projects and not the favourite.
+  /// [copyShares] copies the user, team and link shares. Read permission on
+  /// the source and write permission on the parent (0 for the top level)
+  /// are enough. Not idempotent.
+  ///
+  /// A pseudo project (an id below 1) is an [ArgumentError] before any
+  /// request: the server would copy its tasks into a broken real project.
+  Future<Project> duplicate(
+    int projectId, {
+    required int parentProjectId,
+    required bool copyShares,
   });
 }
 

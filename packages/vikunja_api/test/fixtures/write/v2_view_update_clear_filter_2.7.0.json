@@ -1,0 +1,14 @@
+{
+  "server": "2.7.0",
+  "request": "PATCH /api/v2/projects/1358/views/7450",
+  "sent": {
+    "title": "Urgent",
+    "view_kind": "list",
+    "filter": null
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"id\":7450,\"title\":\"Urgent\",\"project_id\":1358,\"view_kind\":\"list\",\"filter\":null,\"position\":50,\"bucket_configuration_mode\":\"none\",\"bucket_configuration\":null,\"default_bucket_id\":0,\"done_bucket_id\":0,\"updated\":\"2026-10-20T06:08:51.950881393Z\",\"created\":\"2026-10-20T06:08:47Z\"}\n"
+}

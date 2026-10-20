@@ -21,4 +21,7 @@ final class ListPreferencesDao extends DatabaseAccessor<AppDatabase>
   Future<void> write(String key, String value) =>
       into(listPreferenceEntries)
           .insertOnConflictUpdate(ListPreferenceRow(key: key, value: value));
+
+  Future<void> removeAll(Iterable<String> keys) =>
+      (delete(listPreferenceEntries)..where((p) => p.key.isIn(keys))).go();
 }

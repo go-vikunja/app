@@ -17,6 +17,12 @@ abstract interface class SyncEngine {
   /// the first request that failed; data from before the run stays readable.
   Future<void> refresh();
 
+  /// [refresh] in a run that starts after this call, for a write the app
+  /// has just made: a run that has already started may have read the
+  /// server before it, and a full one would then put back or purge what the
+  /// write stored. Calls while such a run waits share it.
+  Future<void> refreshAfterWrite();
+
   /// A full re-pull that upserts everything and purges rows the server no
   /// longer returns. Fails like [refresh].
   Future<void> fullResync();

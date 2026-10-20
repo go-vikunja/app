@@ -3,6 +3,7 @@ import 'package:logging/logging.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/settings/user_settings_json.dart';
+import 'package:vikunja_mobile/core/sync/incremental_run.dart';
 import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine_impl.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
@@ -1156,6 +1157,61 @@ void main() {
 
       expect(requestsFor('projects page'), hasLength(1));
       expect(requestsFor('tasks'), hasLength(2));
+    });
+
+    test('a refresh after a write follows a run that has started, and calls '
+        'while it waits share it', () async {
+      final sync = await synced();
+      final gate = RequestGate()..pattern = 'projects page 1';
+      client.beforeRequest = gate.call;
+
+      final running = sync.refresh();
+      while (!gate.isHolding) {
+        await pumpEventQueue();
+      }
+      final afterWrite = sync.refreshAfterWrite();
+      final again = sync.refreshAfterWrite();
+      final joining = sync.refresh();
+      await pumpEventQueue();
+      expect(requestsFor('projects page'), hasLength(1));
+
+      client.beforeRequest = null;
+      gate.release();
+      await Future.wait([running, afterWrite, again, joining]);
+
+      expect(requestsFor('projects page'), hasLength(2));
+    });
+
+    test(
+      'a refresh after a write without a run under way is one run',
+      () async {
+        final sync = await synced();
+
+        await sync.refreshAfterWrite();
+
+        expect(client.requests, quietRun);
+      },
+    );
+
+    test('a project the app stored itself and marked is pulled whole by the '
+        'next run, which clears the mark', () async {
+      final sync = await synced();
+      final copy = project(id: 9, title: 'Work - duplicate');
+      client
+        ..allProjects.add(copy)
+        ..allTasks.add(task(id: 901, title: 'Copied', projectId: 9));
+      await db.projectsDao.upsertAll([copy]);
+      await pullWholeOnNextRun(db, {9});
+      await pullWholeOnNextRun(db, {3});
+      expect((await state())[SyncStateKeys.pendingWholePull], '3,9');
+
+      await sync.refresh();
+
+      expect((await projectTasksIn(db, 9)).map((t) => t.id), [901]);
+      expect(requestsFor('project 9 tasks'), [
+        'project 9 tasks id > 0 per_page=50 page=1',
+      ]);
+      expect((await state())[SyncStateKeys.pendingWholePull], isNull);
     });
 
     test('dispose ends an incremental run quietly', () async {

@@ -1,0 +1,14 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v2/projects",
+  "sent": {
+    "title": "Sketches",
+    "parent_project_id": 1358,
+    "hex_color": "4a90e2"
+  },
+  "status": 201,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"$schema\":\"http://localhost:34527/api/v2/schemas/Project.json\",\"id\":1359,\"title\":\"Sketches\",\"description\":\"\",\"identifier\":\"\",\"hex_color\":\"4a90e2\",\"parent_project_id\":1358,\"owner\":{\"id\":465,\"name\":\"\",\"username\":\"fixtureuser\",\"created\":\"0001-01-01T00:00:00Z\",\"updated\":\"0001-01-01T00:00:00Z\"},\"is_archived\":false,\"background_information\":null,\"background_blur_hash\":\"\",\"is_favorite\":false,\"position\":89063424,\"views\":[{\"id\":7438,\"title\":\"List\",\"project_id\":1359,\"view_kind\":\"list\",\"filter\":{\"s\":\"\",\"sort_by\":null,\"order_by\":null,\"filter\":\"done = false\",\"filter_include_nulls\":false},\"position\":100,\"bucket_configuration_mode\":\"none\",\"bucket_configuration\":null,\"default_bucket_id\":0,\"done_bucket_id\":0,\"updated\":\"2026-10-20T06:08:38.638582452Z\",\"created\":\"2026-10-20T06:08:38.638542411Z\"},{\"id\":7439,\"title\":\"Gantt\",\"project_id\":1359,\"view_kind\":\"gantt\",\"filter\":null,\"position\":200,\"bucket_configuration_mode\":\"none\",\"bucket_configuration\":null,\"default_bucket_id\":0,\"done_bucket_id\":0,\"updated\":\"2026-10-20T06:08:38.638968327Z\",\"created\":\"2026-10-20T06:08:38.638944411Z\"},{\"id\":7440,\"title\":\"Table\",\"project_id\":1359,\"view_kind\":\"table\",\"filter\":null,\"position\":300,\"bucket_configuration_mode\":\"none\",\"bucket_configuration\":null,\"default_bucket_id\":0,\"done_bucket_id\":0,\"updated\":\"2026-10-20T06:08:38.639242077Z\",\"created\":\"2026-10-20T06:08:38.639214286Z\"},{\"id\":7441,\"title\":\"Kanban\",\"project_id\":1359,\"view_kind\":\"kanban\",\"filter\":null,\"position\":400,\"bucket_configuration_mode\":\"manual\",\"bucket_configuration\":null,\"default_bucket_id\":5667,\"done_bucket_id\":5669,\"updated\":\"2026-10-20T06:08:38.639761786Z\",\"created\":\"2026-10-20T06:08:38.639449994Z\"}],\"max_permission\":null,\"created\":\"2026-10-20T06:08:38.638317202Z\",\"updated\":\"2026-10-20T06:08:38.638454411Z\"}\n"
+}

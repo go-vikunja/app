@@ -537,7 +537,7 @@
   "sectionNoDueDate": "No due date",
   "projectsLoading": "Loading your projects…",
   "projectsEmptyTitle": "No projects yet",
-  "projectsEmptyBody": "Create your first project on the web and it will show up here.",
+  "projectsEmptyBody": "Create your first project to start adding tasks.",
   "projectsFavouritesHeading": "Favourites",
   "projectsFavouriteTasks": "Favourite tasks",
   "@projectsFavouriteTasks": {
@@ -3193,5 +3193,238 @@
     "description": "While a task that is not on this device is read from the server, e.g. after tapping a link to it."
   },
   "deepLinkSwitchAccountTitle": "Switch accounts?",
-  "deepLinkSwitchAccountBody": "This task is in another of your accounts. Choose it to switch and open the task."
+  "deepLinkSwitchAccountBody": "This task is in another of your accounts. Choose it to switch and open the task.",
+  "projectNew": "New project",
+  "@projectNew": {
+    "description": "Add button in the Projects tab's app bar and empty state, and the title of the sheet that creates a project."
+  },
+  "projectCreate": "Create",
+  "@projectCreate": {
+    "description": "Confirms the new project or view form."
+  },
+  "projectCreating": "Creating…",
+  "@projectCreating": {
+    "description": "The disabled confirm button while the server creates the project."
+  },
+  "projectCreated": "Project created",
+  "projectTitleLabel": "Title",
+  "@projectTitleLabel": {
+    "description": "Title field of the project and view forms."
+  },
+  "projectTitleHint": "The project's title goes here…",
+  "projectTitleRequired": "Please specify a title.",
+  "projectParentLabel": "Parent project",
+  "@projectParentLabel": {
+    "description": "Row of the project forms that picks the parent, and the title of the picker."
+  },
+  "projectParentTopLevel": "None (top level)",
+  "@projectParentTopLevel": {
+    "description": "Parent choice that puts the project at the top level."
+  },
+  "projectEdit": "Edit",
+  "@projectEdit": {
+    "description": "Project menu item that opens the edit page; also a view's option."
+  },
+  "projectEditTitle": "Edit project",
+  "projectSave": "Save",
+  "projectSaving": "Saving…",
+  "@projectSaving": {
+    "description": "While a project or view change is on its way to the server."
+  },
+  "projectEditSaved": "Project saved",
+  "projectEditDiscardBody": "Your edits to this project will be lost.",
+  "projectIdentifierLabel": "Project identifier",
+  "projectIdentifierHelp": "Up to 10 characters, unique on the server. The identifiers of this project's tasks start with it and change with it. Leave it empty for none.",
+  "projectIdentifierTaken": "This identifier is already in use. Identifiers are unique on the whole server.",
+  "projectGoneTitle": "This project no longer exists",
+  "projectGoneBody": "It may have been deleted, here or on the web.",
+  "projectViews": "Views",
+  "@projectViews": {
+    "description": "Project menu item and title of the page that manages the project's views."
+  },
+  "projectDuplicate": "Duplicate",
+  "projectDuplicateTitle": "Duplicate project",
+  "projectDuplicateBody": "The copy gets this project's tasks, views and columns, but not its subprojects. Choose the project it goes into:",
+  "projectDuplicateShares": "Also copy its shares",
+  "projectDuplicateSharesHint": "People, teams and link shares. Each link share becomes a new public link to the copy.",
+  "projectDuplicating": "Duplicating…",
+  "@projectDuplicating": {
+    "description": "The disabled confirm button while the server copies the project and the app syncs the copy."
+  },
+  "projectDuplicated": "Project duplicated",
+  "projectArchive": "Archive",
+  "projectUnarchive": "Unarchive",
+  "projectArchiveTitle": "Archive this project?",
+  "projectUnarchiveTitle": "Unarchive this project?",
+  "projectArchiveBody": "You won't be able to edit this project or create tasks until you unarchive it. Its subprojects are archived too.",
+  "projectUnarchiveBody": "You will be able to create tasks or edit it. Its subprojects are unarchived too.",
+  "projectArchivedDone": "Project archived",
+  "projectUnarchivedDone": "Project unarchived",
+  "projectArchiveDefaultHint": "You can't archive this because it's your default project.",
+  "projectNewSubproject": "New subproject",
+  "projectAddToFavourites": "Add to favourites",
+  "projectRemoveFromFavourites": "Remove from favourites",
+  "projectFavourited": "Added to favourites",
+  "projectUnfavourited": "Removed from favourites",
+  "projectDelete": "Delete",
+  "projectDeleteTitle": "Delete “{project}”?",
+  "@projectDeleteTitle": {
+    "placeholders": {
+      "project": {
+        "type": "String",
+        "example": "Work"
+      }
+    }
+  },
+  "projectDeleteTasks": "{count, plural, =0{It has no tasks. It is deleted for everyone.} =1{This deletes 1 task, for everyone.} other{This deletes {count} tasks, for everyone.}}",
+  "@projectDeleteTasks": {
+    "description": "What deleting a project without subprojects removes; counts done tasks too.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "12"
+      }
+    }
+  },
+  "projectDeleteTasksAndSubprojects": "This deletes {tasks, plural, =0{no tasks} =1{1 task} other{{tasks} tasks}} and {subprojects, plural, =1{1 subproject} other{{subprojects} subprojects}}, for everyone.",
+  "@projectDeleteTasksAndSubprojects": {
+    "description": "What deleting a project removes: the tasks of the project and of all its subprojects, and the subprojects at every level.",
+    "placeholders": {
+      "tasks": {
+        "type": "int",
+        "example": "12"
+      },
+      "subprojects": {
+        "type": "int",
+        "example": "2"
+      }
+    }
+  },
+  "projectDeleteCannotBeUndone": "This can't be undone.",
+  "projectIncludesDefault": "This includes your default project “{project}”.",
+  "@projectIncludesDefault": {
+    "description": "Added to the delete and archive confirmations when the user's default project is in the project's subtree.",
+    "placeholders": {
+      "project": {
+        "type": "String",
+        "example": "Inbox"
+      }
+    }
+  },
+  "projectDeleted": "Project deleted",
+  "projectChangeNeedsConnection": "Managing projects needs a connection to the server.",
+  "projectChangeUnconfirmed": "Couldn't confirm the change. Check your connection and pull down to refresh.",
+  "@projectChangeUnconfirmed": {
+    "description": "The request timed out; the server may have made the change."
+  },
+  "projectFormUnconfirmed": "Couldn't confirm the change. It may have gone through, so check before trying again.",
+  "@projectFormUnconfirmed": {
+    "description": "A form's request (new project, duplicate, edit, view) timed out; the server may have made the change, and trying again could make it twice."
+  },
+  "projectChangeForbidden": "You don't have permission to change this project.",
+  "projectCreateForbidden": "You don't have permission to add a project there.",
+  "projectDeleteAdminOnly": "Only project admins can delete a project.",
+  "projectViewsAdminOnly": "Only project admins can change views.",
+  "projectDeleteDefault": "This is a user's default project. Only its owner can delete it.",
+  "projectArchiveDefault": "This is a user's default project, so it can't be archived.",
+  "projectUnarchiveParentFirst": "The parent project is archived. Unarchive the parent project first.",
+  "projectChangeArchived": "This project is archived. Unarchive it to change it.",
+  "projectParentArchived": "The parent project is archived, so nothing can be added to it.",
+  "projectGone": "The project no longer exists.",
+  "projectChangeInvalid": "The server didn't accept this title or identifier.",
+  "projectTitleTooLong": "A title can be up to 250 characters long, and an emoji can count as several. Shorten this one to save.",
+  "@projectTitleTooLong": {
+    "description": "Error of the project edit page's title field when the title is longer than the server accepts, as a duplicate's title can be."
+  },
+  "projectTitleTooLongToChange": "This project's title is longer than the server accepts. Shorten it under Edit first.",
+  "@projectTitleTooLongToChange": {
+    "description": "A change from the project menu was refused because the stored title is too long: the server checks it on every change."
+  },
+  "projectChangeRefused": "The server refused the change: {message}",
+  "@projectChangeRefused": {
+    "placeholders": {
+      "message": {
+        "type": "String",
+        "example": "Invalid Data"
+      }
+    }
+  },
+  "projectChangeFailed": "The change couldn't be saved.",
+  "projectViewsIntro": "The views of {project}, in the order the app and the web show them. Table and Gantt views show on the web only for now.",
+  "@projectViewsIntro": {
+    "placeholders": {
+      "project": {
+        "type": "String",
+        "example": "Work"
+      }
+    }
+  },
+  "projectViewNew": "New view",
+  "projectViewEditTitle": "Edit view",
+  "projectViewOptionsFor": "Options for {view}",
+  "@projectViewOptionsFor": {
+    "placeholders": {
+      "view": {
+        "type": "String",
+        "example": "Kanban"
+      }
+    }
+  },
+  "projectViewDelete": "Delete",
+  "projectViewDeleteTitle": "Delete “{view}”?",
+  "@projectViewDeleteTitle": {
+    "placeholders": {
+      "view": {
+        "type": "String",
+        "example": "Kanban"
+      }
+    }
+  },
+  "projectViewDeleteBody": "Nobody can use it to look at this project's tasks any more. No task is deleted. This can't be undone.",
+  "projectViewLastOne": "A project needs at least one view.",
+  "projectViewCreated": "View created",
+  "projectViewSaved": "View saved",
+  "projectViewDeleted": "View deleted",
+  "projectViewKindLabel": "Kind",
+  "projectViewKindWebOnly": "{kind} – shown on the web only for now",
+  "@projectViewKindWebOnly": {
+    "description": "A view kind the app does not show yet (Table, Gantt).",
+    "placeholders": {
+      "kind": {
+        "type": "String",
+        "example": "Table"
+      }
+    }
+  },
+  "projectViewShowDone": "Show done tasks",
+  "projectViewShowDoneHint": "Off adds “done = false” to the filter, like the web's List view.",
+  "projectViewFilterLabel": "Filter",
+  "projectViewFilterHint": "priority >= 3 && due_date < now/w",
+  "@projectViewFilterHint": {
+    "description": "Example in the web's filter syntax; keep the syntax untranslated."
+  },
+  "projectViewFilterHelp": "In the web's filter syntax; the server checks it when you save.",
+  "projectViewFilterInvalid": "This filter isn't valid: {message}",
+  "@projectViewFilterInvalid": {
+    "description": "The server's own explanation follows, in English.",
+    "placeholders": {
+      "message": {
+        "type": "String",
+        "example": "The task field 'foo' is invalid."
+      }
+    }
+  },
+  "projectViewColumnsLabel": "Columns",
+  "@projectViewColumnsLabel": {
+    "description": "Whether a Kanban view's columns are its own or come from filters."
+  },
+  "projectViewColumnsManual": "Manual",
+  "projectViewColumnsFilter": "From filters",
+  "projectViewFilterColumnsOnWeb": "The filters of these columns are set up on the web.",
+  "projectViewGone": "The view no longer exists.",
+  "projectViewInvalid": "The server didn't accept this view.",
+  "projectDeleteEverything": "This deletes its tasks and subprojects, for everyone.",
+  "@projectDeleteEverything": {
+    "description": "What deleting a project removes, when its tasks could not be counted."
+  }
 }

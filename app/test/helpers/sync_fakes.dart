@@ -14,6 +14,7 @@ import 'package:vikunja_mobile/core/repositories/bucket_repository_providers.dar
 import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences_providers.dart';
 import 'package:vikunja_mobile/core/repositories/project_repository.dart';
+import 'package:vikunja_mobile/core/repositories/project_view_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/subscription_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_details_repository_providers.dart';
@@ -30,6 +31,7 @@ import 'package:vikunja_mobile/features/sync/application/inactive_outboxes.dart'
 import 'activity_fakes.dart';
 import 'bucket_fakes.dart';
 import 'list_preferences_fakes.dart';
+import 'project_view_fakes.dart';
 import 'realtime_fakes.dart';
 import 'sample_data.dart';
 import 'subscription_fakes.dart';
@@ -112,6 +114,16 @@ final class FakeSyncEngine implements SyncEngine {
     refreshCalls++;
     return _run(initial: _initial, handler: onRefresh);
   }
+
+  /// A run of [onRefresh] after the one under way, if any.
+  @override
+  Future<void> refreshAfterWrite() async {
+    refreshAfterWriteCalls++;
+    await _running?.then<void>((_) {}, onError: (Object _) {});
+    await _run(initial: _initial, handler: onRefresh);
+  }
+
+  int refreshAfterWriteCalls = 0;
 
   @override
   Future<void> fullResync() {
@@ -252,6 +264,202 @@ final class FakeProjectRepository implements ProjectRepository {
         else
           project,
     ];
+  }
+
+  /// Project management as the real repository does it, on [all]. Every
+  /// call is recorded in its own list ([creates], [updates], [deletes],
+  /// [duplicates]) and in [calls] first: `createProject Title`,
+  /// `updateProject 5 ProjectChanges(title)`, `deleteProject 5`,
+  /// `duplicateProject 5 under 0 shares true`. [beforeCall] can hold one;
+  /// [failure], or the entry of [failures] for the method name
+  /// (`createProject`, …), is thrown instead while set, and nothing changes.
+  /// Then the real repository's checks: a blank title or an identifier of
+  /// more than 10 characters is an `ArgumentError`, archiving
+  /// [defaultProjectId] a `DomainError` code 3013, unarchiving under an
+  /// archived parent code 3016, a project [all] does not have a `NotFound`
+  /// code 3001, a pseudo project to duplicate an `ArgumentError`.
+  final List<String> calls = [];
+  final List<NewProject> creates = [];
+  final List<(int, ProjectChanges)> updates = [];
+  final List<int> deletes = [];
+  final List<({int projectId, int parentProjectId, bool copyShares})>
+  duplicates = [];
+  Future<void> Function(String call)? beforeCall;
+  Exception? failure;
+  final Map<String, Exception> failures = {};
+  int defaultProjectId = 0;
+
+  /// The id the next created or duplicated project gets.
+  int nextProjectId = 500;
+
+  /// The id the next view gets, here and in the views fake.
+  int nextViewId = 800;
+
+  /// The id the next task copied by [duplicateProject] gets.
+  int nextTaskId = 5000;
+
+  /// When set, [deleteProject] takes the subtree's tasks out of it and
+  /// [duplicateProject] copies the project's tasks into it, like the sync
+  /// after them would.
+  FakeTaskRepository? tasks;
+
+  /// Lands at `id × 65536` with the four default views ([defaultViews]),
+  /// the title trimmed.
+  @override
+  Future<int> createProject(NewProject project) async {
+    creates.add(project);
+    await _call('createProject', project.title);
+    final title = _checkedTitle(project.title);
+    final id = nextProjectId++;
+    final firstViewId = nextViewId;
+    nextViewId += 4;
+    all = [
+      ..._all,
+      Project(
+        id: id,
+        title: title,
+        hexColor: project.hexColor,
+        parentProjectId: project.parentProjectId,
+        position: id * 65536.0,
+        views: defaultViews(id, firstViewId: firstViewId),
+      ),
+    ];
+    return id;
+  }
+
+  /// The identifier is stored trimmed and upper-case, as the server
+  /// answers; archiving and unarchiving cascade to the descendants.
+  @override
+  Future<void> updateProject(int projectId, ProjectChanges changes) async {
+    updates.add((projectId, changes));
+    await _call('updateProject', '$projectId $changes');
+    final project = find(projectId);
+    if (project == null) throw const NotFound(code: 3001);
+    final title = switch (changes.title) {
+      final title? => _checkedTitle(title),
+      null => null,
+    };
+    final identifier = changes.identifier?.trim().toUpperCase();
+    if (identifier != null && identifier.runes.length > 10) {
+      throw ArgumentError.value(changes.identifier, 'identifier');
+    }
+    final archived = changes.isArchived;
+    if (archived == true && projectId == defaultProjectId) {
+      throw const DomainError(412, code: 3013);
+    }
+    if (archived == false &&
+        (find(project.parentProjectId)?.isArchived ?? false)) {
+      throw const DomainError(412, code: 3016);
+    }
+    final cascade = archived == null || archived == project.isArchived
+        ? const <int>{}
+        : subtreeIds(_all, projectId);
+    all = [
+      for (final candidate in _all)
+        if (candidate.id == projectId)
+          copyProject(
+            candidate,
+            title: title,
+            identifier: identifier,
+            hexColor: changes.hexColor,
+            parentProjectId: changes.parentProjectId,
+            isFavorite: changes.isFavorite,
+            isArchived: archived,
+          )
+        else if (cascade.contains(candidate.id))
+          copyProject(candidate, isArchived: archived)
+        else
+          candidate,
+    ];
+  }
+
+  /// Takes the project and its subtree out of [all].
+  @override
+  Future<void> deleteProject(int projectId) async {
+    deletes.add(projectId);
+    await _call('deleteProject', '$projectId');
+    final doomed = subtreeIds(_all, projectId);
+    all = [
+      for (final project in _all)
+        if (!doomed.contains(project.id)) project,
+    ];
+    if (tasks case final tasks?) {
+      tasks.all = [
+        for (final task in tasks.all)
+          if (!doomed.contains(task.projectId)) task,
+      ];
+    }
+  }
+
+  /// Adds "<title> - duplicate" at the source's position, without
+  /// identifier and favourite, its views under new ids.
+  @override
+  Future<int> duplicateProject(
+    int projectId, {
+    required int parentProjectId,
+    required bool copyShares,
+  }) async {
+    duplicates.add((
+      projectId: projectId,
+      parentProjectId: parentProjectId,
+      copyShares: copyShares,
+    ));
+    await _call(
+      'duplicateProject',
+      '$projectId under $parentProjectId shares $copyShares',
+    );
+    if (projectId < 1) throw ArgumentError.value(projectId, 'projectId');
+    final source = find(projectId);
+    if (source == null) throw const NotFound(code: 3001);
+    final id = nextProjectId++;
+    all = [
+      ..._all,
+      copyProject(
+        source,
+        id: id,
+        title: '${source.title} - duplicate',
+        identifier: '',
+        parentProjectId: parentProjectId,
+        isFavorite: false,
+        views: [
+          for (final view in source.views)
+            ProjectView(
+              id: nextViewId++,
+              projectId: id,
+              title: view.title,
+              kind: view.kind,
+              position: view.position,
+              filter: view.filter,
+              bucketConfigurationMode: view.bucketConfigurationMode,
+            ),
+        ],
+      ),
+    ];
+    if (tasks case final tasks?) {
+      tasks.all = [
+        ...tasks.all,
+        for (final task in tasks.all)
+          if (task.projectId == projectId)
+            taskWithId(
+              task,
+              nextTaskId++,
+            ).copyWith(projectId: id, identifier: '#${task.index}'),
+      ];
+    }
+    return id;
+  }
+
+  Future<void> _call(String method, String arguments) async {
+    final call = '$method $arguments';
+    calls.add(call);
+    await beforeCall?.call(call);
+    if (failures[method] ?? failure case final failure?) throw failure;
+  }
+
+  static String _checkedTitle(String title) {
+    final trimmed = title.trim();
+    if (trimmed.isEmpty) throw ArgumentError.value(title, 'title');
+    return trimmed;
   }
 
   @override
@@ -1071,6 +1279,7 @@ final class AccountDataFakes {
     );
     projects = FakeProjectRepository(engine);
     tasks = FakeTaskRepository(engine);
+    projects.tasks = tasks;
     resolver = FakeTaskResolver(local: () => tasks.all);
   }
 
@@ -1084,6 +1293,9 @@ final class AccountDataFakes {
 
   /// Changes the boards of [tasks] and the views of [projects].
   late final buckets = FakeBucketRepository(tasks: tasks, projects: projects);
+
+  /// Changes the views of [projects].
+  late final views = FakeProjectViewRepository(projects);
 
   /// Resolves the account's [tasks] locally, the rest from its `online`.
   late final FakeTaskResolver resolver;
@@ -1137,6 +1349,7 @@ final class SyncFakes {
   FakeSubscriptionRepository get subscriptions => shared.subscriptions;
   FakeTaskDetailsRepository get details => shared.details;
   FakeBucketRepository get buckets => shared.buckets;
+  FakeProjectViewRepository get views => shared.views;
   FakeTaskResolver get resolver => shared.resolver;
   FakeAttachmentImages get attachmentImages => shared.attachmentImages;
 
@@ -1169,6 +1382,9 @@ final class SyncFakes {
     ),
     accountBucketRepositoryProvider.overrideWith(
       (ref, accountId) => forAccount(accountId).buckets,
+    ),
+    accountProjectViewRepositoryProvider.overrideWith(
+      (ref, accountId) => forAccount(accountId).views,
     ),
     accountTaskResolverProvider.overrideWith(
       (ref, accountId) => forAccount(accountId).resolver,

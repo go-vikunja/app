@@ -1,0 +1,20 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v2/projects/1358/views",
+  "sent": {
+    "title": "Broken",
+    "view_kind": "list",
+    "filter": {
+      "filter": "priority >>= 1",
+      "s": "",
+      "sort_by": [],
+      "order_by": [],
+      "filter_include_nulls": false
+    }
+  },
+  "status": 400,
+  "headers": {
+    "content-type": "application/problem+json"
+  },
+  "body": "{\"$schema\":\"http://localhost:34527/api/v2/schemas/VikunjaErrorModel.json\",\"title\":\"Bad Request\",\"status\":400,\"detail\":\"The task filter value '>= 1' for field 'priority' is invalid.\",\"code\":4019}\n"
+}

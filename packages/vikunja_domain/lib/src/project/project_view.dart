@@ -43,6 +43,32 @@ final class ViewFilter {
   final List<String> sortBy;
   final List<String> orderBy;
   final bool includeNulls;
+
+  @override
+  bool operator ==(Object other) =>
+      other is ViewFilter &&
+      other.filter == filter &&
+      other.search == search &&
+      _sameStrings(other.sortBy, sortBy) &&
+      _sameStrings(other.orderBy, orderBy) &&
+      other.includeNulls == includeNulls;
+
+  @override
+  int get hashCode => Object.hash(
+    filter,
+    search,
+    Object.hashAll(sortBy),
+    Object.hashAll(orderBy),
+    includeNulls,
+  );
+
+  static bool _sameStrings(List<String> a, List<String> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
 }
 
 @immutable

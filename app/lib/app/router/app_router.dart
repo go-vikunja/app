@@ -19,6 +19,8 @@ import 'package:vikunja_mobile/features/onboarding/application/current_server.da
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_server_screen.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/overview/server_overview_screen.dart';
 import 'package:vikunja_mobile/features/overview/presentation/overview_screen.dart';
+import 'package:vikunja_mobile/features/projects/presentation/manage/project_edit_page.dart';
+import 'package:vikunja_mobile/features/projects/presentation/manage/project_views_page.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_tasks_screen.dart';
 import 'package:vikunja_mobile/features/projects/presentation/projects_screen.dart';
 import 'package:vikunja_mobile/features/smart_lists/presentation/smart_list_screen.dart';
@@ -51,6 +53,11 @@ abstract final class AppRoutes {
 
   /// Full screen over the shell, from the detail sheet or a new task.
   static String taskEdit(int id) => '$home/tasks/$id/edit';
+
+  /// Full screen over the shell, from the project's menu; outside
+  /// [projects], which would count them as the tab.
+  static String projectEdit(int id) => '$home/project/$id/edit';
+  static String projectViews(int id) => '$home/project/$id/views';
 
   /// The server's notifications, over the shell from the Overview's bell.
   static const inbox = '$home/inbox';
@@ -174,6 +181,24 @@ GoRouter appRouter(Ref ref) {
             _idParam(state) == null ? AppRoutes.overview : null,
         builder: (context, state) =>
             AccountBoundScreen(child: TaskEditPage(taskId: _idParam(state)!)),
+      ),
+      GoRoute(
+        path: '${AppRoutes.home}/project/:id/edit',
+        parentNavigatorKey: rootNavigatorKey,
+        redirect: (context, state) =>
+            _idParam(state) == null ? AppRoutes.projects : null,
+        builder: (context, state) => AccountBoundScreen(
+          child: ProjectEditPage(projectId: _idParam(state)!),
+        ),
+      ),
+      GoRoute(
+        path: '${AppRoutes.home}/project/:id/views',
+        parentNavigatorKey: rootNavigatorKey,
+        redirect: (context, state) =>
+            _idParam(state) == null ? AppRoutes.projects : null,
+        builder: (context, state) => AccountBoundScreen(
+          child: ProjectViewsPage(projectId: _idParam(state)!),
+        ),
       ),
       GoRoute(
         path: AppRoutes.inbox,

@@ -1,0 +1,20 @@
+{
+  "server": "2.7.0",
+  "request": "PUT /api/v1/projects/1358/views",
+  "sent": {
+    "title": "Open",
+    "view_kind": "list",
+    "filter": {
+      "filter": "done = false",
+      "s": "",
+      "sort_by": [],
+      "order_by": [],
+      "filter_include_nulls": false
+    }
+  },
+  "status": 201,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"id\":7450,\"title\":\"Open\",\"project_id\":1358,\"view_kind\":\"list\",\"filter\":{\"s\":\"\",\"sort_by\":[],\"order_by\":[],\"filter\":\"done = false\",\"filter_include_nulls\":false},\"position\":488243200,\"bucket_configuration_mode\":\"none\",\"bucket_configuration\":null,\"default_bucket_id\":0,\"done_bucket_id\":0,\"updated\":\"2026-10-20T06:08:47.864264361Z\",\"created\":\"2026-10-20T06:08:47.86411682Z\"}\n"
+}

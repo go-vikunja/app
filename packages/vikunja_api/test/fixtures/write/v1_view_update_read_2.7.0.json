@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "GET /api/v1/projects/1358/views/7451",
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"id\":7451,\"title\":\"Board\",\"project_id\":1358,\"view_kind\":\"kanban\",\"filter\":null,\"position\":150,\"bucket_configuration_mode\":\"manual\",\"bucket_configuration\":null,\"default_bucket_id\":5676,\"done_bucket_id\":5678,\"updated\":\"2026-10-20T06:08:48Z\",\"created\":\"2026-10-20T06:08:48Z\"}\n"
+}

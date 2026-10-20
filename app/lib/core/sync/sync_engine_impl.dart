@@ -33,7 +33,7 @@ typedef CurrentUserSource = Future<UserWithSettings> Function();
 /// stored watermark, unless no full run completed within
 /// [fullResyncInterval]. Runs are serialized: a call joins the run in
 /// progress, except that a full run asked for during an incremental one
-/// follows it.
+/// follows it, and so does a refresh after a write.
 ///
 /// Engines of the same account in other isolates (a background run, a
 /// notification action) share the database, so a run first takes the
@@ -116,6 +116,7 @@ final class DefaultSyncEngine implements SyncEngine {
   SyncCheckpoint? _checkpoint;
   Future<void>? _current;
   var _currentIsFull = false;
+  var _currentStarted = false;
   var _disposed = false;
 
   @override
@@ -147,7 +148,12 @@ final class DefaultSyncEngine implements SyncEngine {
   /// What a run stored in another isolate meanwhile is adopted with the
   /// lease; a full pull that became due while waiting for it runs instead.
   @override
-  Future<void> refresh() async {
+  Future<void> refresh() => _refresh(afterWrite: false);
+
+  @override
+  Future<void> refreshAfterWrite() => _refresh(afterWrite: true);
+
+  Future<void> _refresh({required bool afterWrite}) async {
     await _ensureRestored();
     final full = !_canRunIncrementally;
     return await _join(
@@ -157,6 +163,7 @@ final class DefaultSyncEngine implements SyncEngine {
             : _runIncremental(),
       ),
       full: full,
+      afterWrite: afterWrite,
     );
   }
 
@@ -272,21 +279,31 @@ final class DefaultSyncEngine implements SyncEngine {
 
   /// A full run joins only a full run: joining an incremental one would
   /// resolve without the full pull, so it waits for that run instead,
-  /// whatever its outcome.
-  Future<void> _join(Future<void> Function() start, {required bool full}) {
-    if (_current case final running? when !full || _currentIsFull) {
+  /// whatever its outcome. [afterWrite] joins only a run that has not
+  /// started yet.
+  Future<void> _join(
+    Future<void> Function() start, {
+    required bool full,
+    bool afterWrite = false,
+  }) {
+    if (_current case final running?
+        when (!full || _currentIsFull) && !(afterWrite && _currentStarted)) {
       return running;
     }
     final previous = _current;
     late final Future<void> run;
     run = (previous ?? Future<void>.value())
         .then<void>((_) {}, onError: (Object _) {})
-        .then((_) => start())
+        .then((_) {
+          if (identical(_current, run)) _currentStarted = true;
+          return start();
+        })
         .whenComplete(() {
           if (identical(_current, run)) _current = null;
         });
     _current = run;
     _currentIsFull = full;
+    _currentStarted = false;
     return run;
   }
 

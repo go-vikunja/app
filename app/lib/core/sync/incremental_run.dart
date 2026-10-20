@@ -15,6 +15,21 @@ final _log = Logger('SyncEngine');
 
 typedef SyncProgress = void Function(SyncPhase phase, {int done, int? total});
 
+/// Has the next incremental run pull the projects' tasks whole, as it does
+/// for projects new to this device or un-archived since its last run: for
+/// projects the app stored itself from a write's answer, which the run then
+/// finds unchanged. A completed run clears the mark, a full one pulls
+/// everything anyway.
+Future<void> pullWholeOnNextRun(AppDatabase db, Set<int> projectIds) =>
+    db.transaction(() async {
+      final stored = (await db.syncStateDao
+          .readAll())[SyncStateKeys.pendingWholePull];
+      final ids = {...IncrementalRun._parseIds(stored), ...projectIds};
+      await db.syncStateDao.write({
+        SyncStateKeys.pendingWholePull: (ids.toList()..sort()).join(','),
+      });
+    });
+
 typedef _ProjectDiff = ({
   List<int> all,
   Set<int> archived,
