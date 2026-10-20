@@ -1,0 +1,13 @@
+{
+  "server": "2.7.0",
+  "request": "PUT /api/v1/tasks/12827/attachments",
+  "sent": {
+    "file_name": "empty.txt",
+    "length": 0
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"errors\":null,\"success\":[{\"id\":216,\"task_id\":12827,\"created_by\":{\"id\":783,\"name\":\"\",\"username\":\"fixtureuser\",\"created\":\"2026-10-20T17:23:55Z\",\"updated\":\"2026-10-20T17:23:55Z\"},\"file\":{\"id\":218,\"name\":\"empty.txt\",\"mime\":\"text/plain\",\"size\":0,\"created\":\"2026-10-20T17:23:59.305874012Z\"},\"created\":\"2026-10-20T17:23:59.306817304Z\"}]}\n"
+}

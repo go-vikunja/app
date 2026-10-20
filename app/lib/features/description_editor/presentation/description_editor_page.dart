@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/semantics.dart';
@@ -8,9 +9,14 @@ import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/widgets/adaptive_dialog_action.dart';
+import 'package:vikunja_mobile/core/repositories/attachment_repository.dart';
+import 'package:vikunja_mobile/core/repositories/attachment_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/features/attachments/application/attachment_picker.dart';
+import 'package:vikunja_mobile/features/attachments/presentation/attachment_messages.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
@@ -24,8 +30,10 @@ import 'package:vikunja_mobile/features/description_editor/presentation/editor_t
 import 'package:vikunja_mobile/features/description_editor/presentation/link_sheet.dart';
 import 'package:vikunja_mobile/features/description_editor/presentation/mention_bar.dart';
 import 'package:vikunja_mobile/features/description_editor/presentation/webview_editor_bridge.dart';
+import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/projects/presentation/manage/project_change_failure.dart';
+import 'package:vikunja_mobile/features/sync/application/offline_state.dart';
 import 'package:vikunja_mobile/features/tasks/application/account_context_providers.dart';
 import 'package:vikunja_mobile/features/tasks/application/task_providers.dart'
     show taskByIdProvider;
@@ -71,6 +79,10 @@ typedef _Subject = ({String description, int projectId});
 /// moment after each change: when the WebView's process ends, Reload goes
 /// on from that copy, and when the app goes to the background it is kept
 /// as a draft that a later editor for the same description offers back.
+///
+/// A task's description can take images while online: each is uploaded as
+/// an attachment of the task first and then inserted the way the web
+/// writes it; the page shows it as a placeholder, like every image.
 class DescriptionEditorPage extends ConsumerStatefulWidget {
   const new({required this.target, super.key});
 
@@ -136,6 +148,11 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
   var _gone = false;
   var _editingLink = false;
   var _searching = false;
+  var _pickingImage = false;
+  CancelToken? _imageUpload;
+
+  /// What the current page load recognises attachment images by.
+  EditorLinks? _links;
   var _state = const EditorState();
 
   bool get _unsaved =>
@@ -155,6 +172,7 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
 
   @override
   void dispose() {
+    _imageUpload?.cancel();
     _lifecycle.dispose();
     _copyTimer?.cancel();
     _stop();
@@ -242,6 +260,7 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
     _mentions.end();
     final bridge = ref.read(editorBridgeFactoryProvider)();
     final theme = editorThemeOf(context);
+    final links = _links = editorLinksOf(ref.read(activeLinkBasesProvider));
     final l10n = context.l10n;
     setState(() {
       _bridge = bridge;
@@ -266,7 +285,7 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
               label: l10n.descriptionEditorTitle,
               imageLabel: l10n.descriptionEditorImage,
               locale: Localizations.localeOf(context).toLanguageTag(),
-              links: editorLinksOf(ref.read(activeLinkBasesProvider)),
+              links: links,
             ),
             background: Theme.of(context).colorScheme.surface,
           )
@@ -416,6 +435,130 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
         break;
     }
     await bridge.focus();
+  }
+
+  /// The task an image would be attached to: online, on the server
+  /// already, outside archived projects, on a server that takes
+  /// attachments; null otherwise and for a project's description.
+  int? _imageTaskId() {
+    if (widget.target case TaskDescriptionTarget(:final taskId)) {
+      final task = ref.watch(taskByIdProvider(taskId)).value;
+      final attachments = ref.watch(attachmentRepositoryProvider);
+      if (task == null ||
+          task.id <= 0 ||
+          !(attachments?.uploadsEnabled ?? false) ||
+          ref.watch(offlineProvider) != null) {
+        return null;
+      }
+      final projects = ref.watch(projectsProvider).value ?? const <Project>[];
+      final byId = {for (final project in projects) project.id: project};
+      return isArchivedInTree(task.projectId, byId) ? null : task.id;
+    }
+    return null;
+  }
+
+  /// Picks one image, uploads it to the task and inserts it at the cursor;
+  /// leaving the page cancels the upload. The picker's copy goes either
+  /// way.
+  Future<void> _insertImage(AttachmentSource source, int taskId) async {
+    final attachments = ref.read(attachmentRepositoryProvider);
+    final bridge = _bridge;
+    if (attachments == null ||
+        bridge == null ||
+        _pickingImage ||
+        _imageUpload != null) {
+      return;
+    }
+    final l10n = context.l10n;
+    _pickingImage = true;
+    final PickedFiles pick;
+    try {
+      pick = await ref
+          .read(attachmentPickerProvider)
+          .pick(
+            source,
+            maxBytes: attachments.maxUploadBytes,
+            imagesOnly: true,
+            multiple: false,
+          );
+    } on Object catch (error) {
+      _log.warning('Picking an image failed: ${error.runtimeType}');
+      if (mounted) _showMessage(l10n.attachmentPickFailed);
+      return;
+    } finally {
+      _pickingImage = false;
+    }
+    final picked = pick.files.firstOrNull;
+    if (picked == null) {
+      if (!mounted) return;
+      if (pick.tooLarge.isNotEmpty) {
+        _showMessage(
+          l10n.attachmentFileTooLargeLimit(
+            formatFileSize(l10n, attachments.maxUploadBytes),
+          ),
+        );
+      } else if (pick.failed.isNotEmpty) {
+        _showMessage(l10n.attachmentPickFailed);
+      }
+      return;
+    }
+    if (!mounted) {
+      unawaited(_deletePicked(picked));
+      return;
+    }
+    final cancel = CancelToken();
+    setState(() => _imageUpload = cancel);
+    try {
+      final attachment = await attachments.uploadNow(
+        taskId,
+        File(picked.path),
+        fileName: safeFileName(picked.name),
+        mimeType: picked.mimeType,
+        cancel: cancel,
+      );
+      final links = _links;
+      if (!mounted || !identical(bridge, _bridge) || !_ready || links == null) {
+        return;
+      }
+      await bridge.command(
+        EditorCommand.insertImage(
+          src: attachmentImageSrc(
+            links,
+            taskId: attachment.taskId,
+            attachmentId: attachment.id,
+          ),
+          id: attachmentImageId(
+            taskId: attachment.taskId,
+            attachmentId: attachment.id,
+          ),
+        ),
+      );
+      if (!mounted) return;
+      unawaited(
+        SemanticsService.sendAnnouncement(
+          View.of(context),
+          l10n.editorImageInserted,
+          Directionality.of(context),
+        ),
+      );
+    } on Object catch (error) {
+      if (cancel.isCancelled) return;
+      _log.warning('Uploading an image failed: ${error.runtimeType}');
+      unawaited(HapticFeedback.heavyImpact());
+      if (mounted) _showMessage(attachmentFailureText(l10n, error));
+    } finally {
+      unawaited(_deletePicked(picked));
+      if (mounted) setState(() => _imageUpload = null);
+    }
+  }
+
+  static Future<void> _deletePicked(PickedFile picked) async {
+    try {
+      final file = File(picked.path);
+      if (file.existsSync()) await file.delete();
+    } on FileSystemException catch (error) {
+      _log.info('Could not delete a picked image: ${error.osError?.errorCode}');
+    }
   }
 
   Future<List<User>> _searchPeople(String query) {
@@ -686,6 +829,8 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
     final bridge = _bridge;
     final gone = _gone = subject.hasValue && subject.value == null && !_closing;
     final unsaved = _unsaved;
+    final imageTaskId = _imageTaskId();
+    final uploadingImage = _imageUpload != null;
 
     return PopScope(
       canPop: _closing || !unsaved,
@@ -697,17 +842,22 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
           title: Text(l10n.descriptionEditorTitle),
           actions: [
             TextButton(
-              onPressed: unsaved && !_saving && !gone
+              // The image goes in first.
+              onPressed: unsaved && !_saving && !gone && !uploadingImage
                   ? () => unawaited(_save())
                   : null,
               child: Text(l10n.taskEditSave),
             ),
             const SizedBox(width: 8),
           ],
-          bottom: _saving
-              ? const PreferredSize(
-                  preferredSize: Size.fromHeight(4),
-                  child: LinearProgressIndicator(),
+          bottom: _saving || uploadingImage
+              ? PreferredSize(
+                  preferredSize: const Size.fromHeight(4),
+                  child: Semantics(
+                    liveRegion: uploadingImage,
+                    label: uploadingImage ? l10n.editorImageUploading : null,
+                    child: const LinearProgressIndicator(),
+                  ),
                 )
               : null,
         ),
@@ -792,6 +942,11 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
                       enabled: _ready && !_saving,
                       onCommand: _command,
                       onLink: () => unawaited(_editLink()),
+                      onImage: imageTaskId == null
+                          ? null
+                          : (source) =>
+                                unawaited(_insertImage(source, imageTaskId)),
+                      imageEnabled: !uploadingImage,
                     ),
                   ],
                 ),

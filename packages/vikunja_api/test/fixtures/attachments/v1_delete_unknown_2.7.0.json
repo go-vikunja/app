@@ -1,0 +1,10 @@
+{
+  "server": "2.7.0",
+  "request": "DELETE /api/v1/tasks/12827/attachments/215",
+  "status": 404,
+  "headers": {
+    "content-type": "application/json",
+    "content-length": "63"
+  },
+  "body": "{\"code\":4011,\"message\":\"This task attachment does not exist.\"}\n"
+}

@@ -212,6 +212,25 @@ void main() {
     expect(_sent(base), hasLength(1));
   });
 
+  test('a body read once refreshes the token but is not repeated', () async {
+    final (:dio, :base, :tokens) = _client({'$_api/upload': _protected()});
+
+    final failure = await _failure(
+      dio.put<Object?>(
+        'upload',
+        data: FormData.fromMap({
+          'file': MultipartFile.fromBytes([1, 2, 3], filename: 'a.bin'),
+        }),
+        options: Options(extra: {AuthInterceptor.bodyReadOnceKey: true}),
+      ),
+    );
+
+    expect(failure, isA<TokenRejected>());
+    expect(tokens.rejectedTokens, ['stale']);
+    expect(tokens.current, 'fresh');
+    expect(_sent(base), hasLength(1));
+  });
+
   test('a stream response is refreshed and repeated as well', () async {
     final (:dio, :base, :tokens) = _client({_userUrl: _protected()});
 

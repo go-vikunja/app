@@ -47,6 +47,7 @@ Map<String, Object?> taskChangesToJson(TaskChanges changes) => {
   if (changes.kanban case final kanban?) 'kanban': _kanbanJson(kanban),
   if (changes.positions case final positions?)
     'positions': _positionsJson(positions),
+  'cover_image_attachment_id': ?changes.coverImageAttachmentId,
 };
 
 TaskChanges taskChangesFromJson(Map<String, Object?> json) => TaskChanges(
@@ -80,6 +81,7 @@ TaskChanges taskChangesFromJson(Map<String, Object?> json) => TaskChanges(
   relations: _relationChange(json['relations']),
   kanban: _kanban(json['kanban']),
   positions: _positions(json['positions']),
+  coverImageAttachmentId: json['cover_image_attachment_id'] as int?,
 );
 
 /// Instants in UTC; `reminder` is absent while a relative one has none.

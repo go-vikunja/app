@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
@@ -22,9 +23,12 @@ import 'task_edits.dart';
 /// real port tries every other request first, and a temporary id with an
 /// `ArgumentError`, as the real port refuses one. Kanban placements follow
 /// as a move, then a position, per view (see [bucketSlots]), and list
-/// positions after them (see [listPositions]). Every request is logged;
-/// [beforeRequest] can fail or hold a request, [afterRequest] can lose its
-/// answer.
+/// positions after them (see [listPositions]). Attachments live in
+/// [serverAttachments] and the cover in [covers]: an update of a task
+/// whose cover is not one of its attachments fails with code 4020 unless
+/// it clears the cover, like the server after the cover was deleted.
+/// Every request is logged; [beforeRequest] can fail or hold a request,
+/// [afterRequest] can lose its answer.
 final class FakeWriteClient implements VikunjaWriteClient {
   new({DateTime Function()? clock}) : _clock = clock ?? DateTime.now;
 
@@ -35,6 +39,22 @@ final class FakeWriteClient implements VikunjaWriteClient {
 
   /// The id the next create gets.
   int nextId = 100;
+
+  /// Each task's attachments as the server holds them, by task id.
+  final Map<int, List<TaskAttachment>> serverAttachments = {};
+
+  /// The cover attachment id per task id (0 or absent: none).
+  final Map<int, int> covers = {};
+
+  /// The id the next upload gets, and who the server names as uploader.
+  int nextAttachmentId = 300;
+  User? uploader;
+
+  /// The bytes of each upload by attachment id, and every upload's timeout
+  /// and cancel token in order.
+  final Map<int, List<int>> uploadedBytes = {};
+  final List<Duration?> uploadTimeouts = [];
+  final List<CancelToken?> uploadCancelTokens = [];
 
   /// The bucket and position of each task per kanban view, by view id,
   /// then task id, as the server holds them.
@@ -91,6 +111,7 @@ final class FakeWriteClient implements VikunjaWriteClient {
   int defaultProjectId = 0;
 
   /// `create <title>`, `update <id>`, `delete <id>`,
+  /// `upload <task> <name>`, `delete attachment <task> <id>`,
   /// `move <id> view <view> bucket <bucket>`,
   /// `position <id> view <view> <position>` (kanban and list views alike),
   /// `move project <id> to <position> under <parent>`,
@@ -125,6 +146,11 @@ final class FakeWriteClient implements VikunjaWriteClient {
 
   @override
   late final FakeTasksWritePort tasks = FakeTasksWritePort(this);
+
+  @override
+  late final FakeAttachmentsWritePort attachments = FakeAttachmentsWritePort(
+    this,
+  );
 
   @override
   late final FakeLabelsWritePort labels = FakeLabelsWritePort(this);
@@ -263,6 +289,16 @@ final class FakeTasksWritePort implements TasksWritePort {
     await _client._request('update $id');
     final current = _client.serverTasks[id];
     if (current == null) throw const NotFound(code: 4002);
+    final cover = requested.coverImageAttachmentId ?? _client.covers[id] ?? 0;
+    if (cover != 0 &&
+        !(_client.serverAttachments[id] ?? const []).any(
+          (attachment) => attachment.id == cover,
+        )) {
+      throw const DomainError(400, code: 4020);
+    }
+    if (requested.coverImageAttachmentId case final chosen?) {
+      _client.covers[id] = chosen;
+    }
     final changes = rebaseDescription == null || requested.description == null
         ? requested
         : requested.merge(
@@ -453,6 +489,67 @@ final class FakeTasksWritePort implements TasksWritePort {
     await _client._request('delete $id');
     _client.deletes.add(id);
     _client.serverTasks.remove(id);
+  }
+}
+
+/// Reads the whole body like the server; an upload to a task the server
+/// does not hold fails with `NotFound` 4002 after the body, and the bytes
+/// must be exactly the given length. A delete leaves the cover as it is,
+/// like the server.
+final class FakeAttachmentsWritePort implements AttachmentsWritePort {
+  new(this._client);
+
+  final FakeWriteClient _client;
+
+  @override
+  Future<TaskAttachment> upload(
+    int taskId, {
+    required String fileName,
+    required Stream<List<int>> bytes,
+    required int length,
+    String? mimeType,
+    Duration? timeout,
+    CancelToken? cancel,
+  }) async {
+    final description = 'upload $taskId $fileName';
+    _client
+      ..uploadTimeouts.add(timeout)
+      ..uploadCancelTokens.add(cancel);
+    await _client._request(description);
+    if (cancel?.isCancelled ?? false) {
+      throw DioException.requestCancelled(
+        requestOptions: RequestOptions(),
+        reason: cancel!.cancelError,
+      );
+    }
+    final body = [await for (final chunk in bytes) ...chunk];
+    if (body.length != length) {
+      throw StateError('${body.length} bytes sent, $length announced');
+    }
+    if (!_client.serverTasks.containsKey(taskId)) {
+      throw const NotFound(code: 4002);
+    }
+    final attachment = TaskAttachment(
+      id: _client.nextAttachmentId++,
+      taskId: taskId,
+      name: fileName,
+      mime: mimeType ?? '',
+      size: body.length,
+      created: _client._clock().toUtc(),
+      createdBy: _client.uploader,
+    );
+    (_client.serverAttachments[taskId] ??= []).add(attachment);
+    _client.uploadedBytes[attachment.id] = body;
+    await _client.afterRequest?.call(description);
+    return attachment;
+  }
+
+  @override
+  Future<void> delete(int taskId, int attachmentId) async {
+    await _client._request('delete attachment $taskId $attachmentId');
+    _client.serverAttachments[taskId]?.removeWhere(
+      (attachment) => attachment.id == attachmentId,
+    );
   }
 }
 

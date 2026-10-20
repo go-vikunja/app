@@ -5,6 +5,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/outbox/failure_json.dart';
 import 'package:vikunja_mobile/core/outbox/new_task_json.dart';
 import 'package:vikunja_mobile/core/outbox/task_changes_json.dart';
+import 'package:vikunja_mobile/core/outbox/upload_json.dart';
 
 void main() {
   group('TaskChanges', () {
@@ -289,6 +290,47 @@ void main() {
     });
   });
 
+  group('cover image', () {
+    test('a cover change round-trips; 0 clears', () {
+      for (final id in [0, 12]) {
+        final changes = TaskChanges(coverImageAttachmentId: id);
+        expect(decodeTaskChanges(encodeTaskChanges(changes)), changes);
+        expect(jsonDecode(encodeTaskChanges(changes)), {
+          'cover_image_attachment_id': id,
+        });
+      }
+    });
+  });
+
+  group('QueuedUpload', () {
+    test('round-trips under short keys, the type only when known', () {
+      const upload = QueuedUpload(
+        file: 'abc',
+        fileName: 'Ünïcødé 日本.txt',
+        size: 20971520,
+        mimeType: 'text/plain',
+      );
+      final back = decodeQueuedUpload(encodeQueuedUpload(upload));
+      expect(back.file, upload.file);
+      expect(back.fileName, upload.fileName);
+      expect(back.size, upload.size);
+      expect(back.mimeType, upload.mimeType);
+      expect(
+        jsonDecode(
+          encodeQueuedUpload(
+            const QueuedUpload(file: 'a', fileName: 'b', size: 0),
+          ),
+        ),
+        {'file': 'a', 'name': 'b', 'size': 0},
+      );
+    });
+
+    test('an unreadable payload names no stored copy', () {
+      expect(decodeQueuedUpload('{}').file, isEmpty);
+      expect(decodeQueuedUpload('[]').fileName, isEmpty);
+    });
+  });
+
   group('NewTask', () {
     test('round-trips every field under the wire names', () {
       final task = NewTask(
@@ -388,6 +430,8 @@ void main() {
       const RateLimited(),
       const ServerFailure(502, code: 500, message: 'bad gateway'),
       const DomainError(412, code: 3008, message: 'archived'),
+      const FileTooLarge(code: 4012),
+      const FileTooLarge(code: 4035, message: 'too large'),
       const DescriptionConflict(),
       const UnexpectedResponse(418, message: 'teapot'),
       const UnexpectedResponse(null),

@@ -41,3 +41,16 @@ EditorLinks editorLinksOf(AccountLinkBases? bases) {
     apiRoot: root.replaceFirst(RegExp(r'/+$'), ''),
   );
 }
+
+/// Where the web points an image it inserted after uploading it: the
+/// attachment's v2 address under [EditorLinks.apiRoot], the form the editor
+/// page accepts for `insertImage`.
+String attachmentImageSrc(
+  EditorLinks links, {
+  required int taskId,
+  required int attachmentId,
+}) => '${links.apiRoot}/api/v2/tasks/$taskId/attachments/$attachmentId';
+
+/// The id the web gives such an image.
+String attachmentImageId({required int taskId, required int attachmentId}) =>
+    'tiptap-image-$taskId-$attachmentId';

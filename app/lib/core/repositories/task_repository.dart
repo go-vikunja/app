@@ -1,5 +1,6 @@
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
+import 'package:vikunja_mobile/core/attachments/pending_upload.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 
@@ -158,6 +159,34 @@ abstract interface class TaskRepository {
   /// changes cannot be sent, the one the queue waits out (offline a
   /// `NetworkFailure`), else [TaskNotSyncedYet].
   Future<int> duplicateTask(int taskId);
+
+  /// Stores a copy of the file at [sourcePath] in the account's uploads
+  /// folder (moves it there with [moveSource], for a file the app owns,
+  /// such as a picker's or a share inbox copy) and queues its upload to
+  /// the task, behind the task's create while that is queued; works
+  /// offline. Returns the op's id, null when the task is not on this
+  /// device or queued for deletion (nothing is kept then). Throws
+  /// [UploadTooLarge] above the upload limit, before anything is stored.
+  /// A file given with [moveSource] is gone whenever it is not queued.
+  Future<String?> queueUpload(
+    int taskId, {
+    required String sourcePath,
+    required String fileName,
+    String? mimeType,
+    bool moveSource = false,
+  });
+
+  /// The task's queued uploads, oldest first, failed ones included;
+  /// follows the task across the id change of its create.
+  Stream<List<PendingUpload>> watchPendingUploads(int taskId);
+
+  /// Every attachment a queued upload created, as the server answered,
+  /// once it is through; the detail sheet adds it without a read.
+  Stream<TaskAttachment> get uploadedAttachments;
+
+  /// Drops the queued upload and its stored copy; an upload on its way is
+  /// aborted (what the server already stored stays there).
+  Future<void> cancelUpload(String operationId);
 
   /// Queued changes not yet accepted by the server, failed ones included.
   Stream<int> watchPendingChanges();

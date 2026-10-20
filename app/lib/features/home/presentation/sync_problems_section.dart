@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/widgets/status_card.dart';
+import 'package:vikunja_mobile/core/attachments/upload_policy.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
@@ -215,15 +216,21 @@ class _ProblemCardState extends ConsumerState<_ProblemCard> {
               style: buttonStyle,
               child: Text(l10n.syncProblemDiscard),
             ),
-            TextButton.icon(
-              onPressed: enabled ? () => unawaited(_retry()) : null,
-              style: buttonStyle,
-              icon: const Icon(Icons.refresh),
-              label: Text(l10n.retry),
-            ),
+            if (_retryable(problem))
+              TextButton.icon(
+                onPressed: enabled ? () => unawaited(_retry()) : null,
+                style: buttonStyle,
+                icon: const Icon(Icons.refresh),
+                label: Text(l10n.retry),
+              ),
           ],
         },
       ),
     );
   }
 }
+
+/// An upload whose stored copy is gone fails again at once.
+bool _retryable(SyncProblem problem) =>
+    problem.kind != OutboxOperationKind.uploadAttachment ||
+    uploadProblemReason(problem.failure) != UploadProblemReason.fileMissing;

@@ -9,11 +9,13 @@ import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/widgets/adaptive_navigation_bar.dart';
+import 'package:vikunja_mobile/core/attachments/pending_upload.dart';
 import 'package:vikunja_mobile/core/auth/web_authenticator.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
+import 'package:vikunja_mobile/core/share/share_intent_source.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
 import 'package:vikunja_mobile/features/description_editor/application/editor_protocol.dart';
@@ -38,6 +40,7 @@ import 'package:vikunja_mobile/features/quick_add/application/quick_add_plan.dar
 import 'package:vikunja_mobile/features/quick_add/application/quick_add_service_provider.dart';
 import 'package:vikunja_mobile/features/quick_add/presentation/magic_suggestions.dart';
 import 'package:vikunja_mobile/features/quick_add/presentation/quick_add_help_sheet.dart';
+import 'package:vikunja_mobile/features/share/presentation/share_sheet.dart';
 import 'package:vikunja_mobile/features/smart_lists/presentation/saved_filter_form_page.dart';
 import 'package:vikunja_mobile/features/sync/presentation/first_sync_screen.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
@@ -350,6 +353,216 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets('attachments with queued uploads, the add and row menus and '
+        'the delete question at 200 % in dark mode '
+        '(${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      final l10n = lookupAppLocalizations(locale);
+      final data = richData();
+      const report = 'quarterly-report-final-version-with-a-long-name.pdf';
+      data.details.detailsByTask[1] = TaskDetails(
+        attachments: [
+          sampleAttachment(
+            id: 3,
+            name: 'a-photo-with-a-rather-long-file-name.png',
+            size: 3456789,
+          ),
+          sampleAttachment(id: 4, name: report, mime: 'application/pdf'),
+        ],
+        coverImageAttachmentId: 3,
+      );
+      data.attachmentImages.fallback = samplePngImage;
+      await pumpSignedInApp(tester, sync: data);
+      final waiting = await data.tasks.queueUpload(
+        1,
+        sourcePath: '/cache/a',
+        fileName: 'a-scan-waiting-for-a-connection-with-a-long-name.pdf',
+      );
+      final sending = await data.tasks.queueUpload(
+        1,
+        sourcePath: '/cache/b',
+        fileName: 'holiday-video-being-uploaded-right-now.mp4',
+      );
+      final failed = await data.tasks.queueUpload(
+        1,
+        sourcePath: '/cache/c',
+        fileName: 'refused.zip',
+      );
+      data.tasks.setUploadState(
+        failed!,
+        PendingUploadState.failed,
+        failure: const FileTooLarge(code: 4012),
+      );
+      expect(waiting, isNotNull);
+
+      await tapRow(tester, 'Task 1 ');
+      final scrollable = find
+          .descendant(
+            of: find.byType(TaskDetailSheet),
+            matching: find.byType(Scrollable),
+          )
+          .first;
+      await tester.scrollUntilVisible(
+        find.byTooltip(l10n.attachmentAdd),
+        200,
+        scrollable: scrollable,
+      );
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.byTooltip(l10n.attachmentAdd));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.attachmentSourceCamera), findsOneWidget);
+      await tester.tapAt(const Offset(4, 4));
+      await tester.pumpAndSettle();
+
+      final options = find.byTooltip(l10n.attachmentOptions(report));
+      await tester.scrollUntilVisible(options, 200, scrollable: scrollable);
+      await tester.pump();
+      await tester.tap(options);
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.attachmentSaveToDevice), findsOneWidget);
+      await tester.tap(find.text(l10n.attachmentDelete));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.attachmentDeleteBody(report)), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.text(l10n.cancel));
+      await tester.pumpAndSettle();
+
+      await scrollToEnd(tester, find.byType(TaskDetailSheet));
+      expect(tester.takeException(), isNull);
+
+      // Its progress never settles.
+      data.tasks.setUploadState(sending!, PendingUploadState.sending);
+      await tester.scrollUntilVisible(
+        find.text('holiday-video-being-uploaded-right-now.mp4'),
+        -200,
+        scrollable: scrollable,
+      );
+      await pumpFrames(tester, 3);
+      expect(find.textContaining(l10n.attachmentUploading), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('share sheet in both modes with files in every state and the '
+        'account question at 200 % in dark mode (${locale.languageCode})', (
+      tester,
+    ) async {
+      useWorstCase(tester, locale);
+      final l10n = lookupAppLocalizations(locale);
+      final accounts = ThreeAccounts();
+      await accounts.seed(aliceName: 'Alice Example With A Long Name');
+      final rich = richData();
+      accounts.aliceData.projects.all = rich.projects.all;
+      accounts.aliceData.tasks.all = rich.tasks.all;
+      final source = accounts.data.shareSource;
+      final held = Completer<void>();
+      source
+        ..copyFailures['content://f/unreadable'] = const SharedFileUnreadable()
+        ..beforeCall = (call) =>
+            call.contains('content://f/held') ? held.future : Future.value();
+      await accounts.pump(tester);
+
+      source.push(
+        const IncomingShare(
+          subject: 'A shared page with a title long enough to wrap',
+          text: 'https://example.org/a/rather/long/address/to/a/page',
+          files: [
+            SharedFile(
+              uri: 'content://f/ready',
+              displayName: 'a-document-with-a-long-file-name.pdf',
+              size: 123456,
+            ),
+            SharedFile(
+              uri: 'content://f/large',
+              displayName: 'a-very-large-video.mp4',
+              size: 300 * 1024 * 1024,
+            ),
+            SharedFile(uri: 'content://f/unreadable', displayName: 'gone.txt'),
+            SharedFile(uri: 'content://f/held', displayName: 'later.jpg'),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.sharePickAccountTitle), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      final alice = find.text('Alice Example With A Long Name');
+      await tester.ensureVisible(alice);
+      await tester.pumpAndSettle();
+      await tester.tap(alice);
+      await pumpFrames(tester, 5);
+
+      expect(find.byType(ShareSheet), findsOneWidget);
+      // Dragging would move the carets of its text fields instead.
+      Future<void> stepThrough({required bool settle}) async {
+        final position =
+            tester
+                .state<ScrollableState>(
+                  find
+                      .descendant(
+                        of: find.byType(ShareSheet),
+                        matching: find.byType(Scrollable),
+                      )
+                      .first,
+                )
+                .position
+              ..jumpTo(0);
+        while (true) {
+          await (settle ? tester.pumpAndSettle() : pumpFrames(tester, 2));
+          expect(tester.takeException(), isNull);
+          if (position.extentAfter == 0) break;
+          position.jumpTo(position.pixels + 200);
+        }
+      }
+
+      // The copy's progress never settles while it is held.
+      await stepThrough(settle: false);
+      expect(find.text(l10n.shareFilePreparing), findsOneWidget);
+      held.complete();
+      await tester.pumpAndSettle();
+      await stepThrough(settle: true);
+      expect(find.text(l10n.shareFileUnreadable), findsOneWidget);
+
+      final segment = find.text(l10n.shareAddToTask);
+      tester
+          .state<ScrollableState>(
+            find
+                .descendant(
+                  of: find.byType(ShareSheet),
+                  matching: find.byType(Scrollable),
+                )
+                .first,
+          )
+          .position
+          .jumpTo(0);
+      await tester.pumpAndSettle();
+      await tester.tap(segment);
+      await tester.pumpAndSettle();
+      await stepThrough(settle: true);
+      final task = find.textContaining('Task 2 ');
+      final list =
+          tester
+              .state<ScrollableState>(
+                find
+                    .descendant(
+                      of: find.byType(ShareSheet),
+                      matching: find.byType(Scrollable),
+                    )
+                    .first,
+              )
+              .position
+            ..jumpTo(0);
+      await tester.pumpAndSettle();
+      while (task.evaluate().isEmpty && list.extentAfter > 0) {
+        list.jumpTo(list.pixels + 100);
+        await tester.pumpAndSettle();
+      }
+      await tester.ensureVisible(task.first);
+      await tester.pumpAndSettle();
+      await tester.tap(task.first);
+      await tester.pumpAndSettle();
+      await stepThrough(settle: true);
+    });
+
     testWidgets('task relations, adding one and following at 200 % in '
         'dark mode (${locale.languageCode})', (tester) async {
       useWorstCase(tester, locale);
@@ -563,7 +776,11 @@ void main() {
         await tester.drag(toolbar, const Offset(-300, 0));
         await tester.pumpAndSettle();
       }
-      for (final tooltip in [l10n.editorTable, l10n.editorTextStyle]) {
+      for (final tooltip in [
+        l10n.editorTable,
+        l10n.editorImage,
+        l10n.editorTextStyle,
+      ]) {
         await tester.ensureVisible(find.byTooltip(tooltip));
         await tester.pumpAndSettle();
         await tester.tap(find.byTooltip(tooltip));

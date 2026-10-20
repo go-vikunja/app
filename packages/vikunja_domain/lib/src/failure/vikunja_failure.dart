@@ -159,6 +159,18 @@ final class DomainError extends VikunjaFailure {
   String toString() => 'DomainError($statusCode, code: $code)';
 }
 
+/// An upload above the server's size limit: the per-file code 4012 inside
+/// an otherwise successful answer, a 413 (code 4035 from Vikunja, none from
+/// a proxy, which is taken for 4035), or a connection the server closed
+/// while a body above its request limit was still being sent (4035 too).
+/// [statusCode] is always 413.
+final class FileTooLarge extends DomainError {
+  const new({required super.code, super.message}) : super(413);
+
+  @override
+  String toString() => 'FileTooLarge(code: $code)';
+}
+
 /// The description was changed on the server since a queued edit started
 /// from it, so sending the edit would overwrite that change. Raised by the
 /// client before the write; the server has no preconditions.

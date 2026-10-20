@@ -1,4 +1,6 @@
 import 'package:dio/dio.dart';
+import 'package:vikunja_api/src/auth/auth_interceptor.dart';
+import 'package:vikunja_api/src/dto/attachment_codec.dart';
 import 'package:vikunja_api/src/dto/bucket_codec.dart';
 import 'package:vikunja_api/src/dto/json_values.dart';
 import 'package:vikunja_api/src/dto/label_codec.dart';
@@ -6,6 +8,7 @@ import 'package:vikunja_api/src/dto/project_codec.dart';
 import 'package:vikunja_api/src/dto/saved_filter_codec.dart';
 import 'package:vikunja_api/src/dto/subscription_codec.dart';
 import 'package:vikunja_api/src/dto/task_codec.dart';
+import 'package:vikunja_api/src/errors/error_body.dart';
 import 'package:vikunja_api/src/errors/normalize_error.dart';
 import 'package:vikunja_api/src/write/write_ports.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
@@ -21,6 +24,7 @@ final class WriteClient implements VikunjaWriteClient {
 
   new _(_WriteTransport transport)
     : tasks = _TasksWriteApi(transport),
+      attachments = _AttachmentsWriteApi(transport),
       labels = _LabelsWriteApi(transport),
       notifications = _NotificationsWriteApi(transport),
       subscriptions = _SubscriptionsWriteApi(transport),
@@ -31,6 +35,9 @@ final class WriteClient implements VikunjaWriteClient {
 
   @override
   final TasksWritePort tasks;
+
+  @override
+  final AttachmentsWritePort attachments;
 
   @override
   final LabelsWritePort labels;
@@ -52,6 +59,140 @@ final class WriteClient implements VikunjaWriteClient {
 
   @override
   final SavedFiltersPort savedFilters;
+}
+
+final class _AttachmentsWriteApi implements AttachmentsWritePort {
+  new(this._transport);
+
+  final _WriteTransport _transport;
+
+  @override
+  Future<TaskAttachment> upload(
+    int taskId, {
+    required String fileName,
+    required Stream<List<int>> bytes,
+    required int length,
+    String? mimeType,
+    Duration? timeout,
+    CancelToken? cancel,
+  }) async {
+    Object? sourceError;
+    StackTrace? sourceStack;
+    final source = bytes.handleError((Object error, StackTrace stack) {
+      sourceError = error;
+      sourceStack = stack;
+      Error.throwWithStackTrace(error, stack);
+    });
+    final form = FormData()
+      ..files.add(
+        MapEntry(
+          'files',
+          MultipartFile.fromStream(
+            () => source,
+            length,
+            filename: fileName.trim().isEmpty ? _blankFileName : fileName,
+            contentType: _mediaType(mimeType),
+          ),
+        ),
+      );
+    final bodyLength = form.length;
+    final Response<Object?> response;
+    try {
+      response = await _transport.sendForm(
+        _transport.createMethod,
+        '/tasks/$taskId/attachments',
+        form,
+        timeout: timeout,
+        cancel: cancel,
+      );
+    } on VikunjaFailure catch (failure) {
+      // A body that could not be read to its end failed the request,
+      // whatever the transport made of it.
+      if (sourceError case final error?) {
+        Error.throwWithStackTrace(error, sourceStack!);
+      }
+      final tooLarge = _tooLarge(failure, bodyLength);
+      if (tooLarge == null) rethrow;
+      throw tooLarge;
+    }
+    return _transport.decode<TaskAttachment>(
+      response,
+      (json) => _uploaded(json, taskId),
+    );
+  }
+
+  @override
+  Future<void> delete(int taskId, int attachmentId) async {
+    try {
+      await _transport.send(
+        'DELETE',
+        '/tasks/$taskId/attachments/$attachmentId',
+      );
+    } on NotFound catch (failure) {
+      if (failure.code != _attachmentDoesNotExist) rethrow;
+    }
+  }
+
+  FileTooLarge? _tooLarge(VikunjaFailure failure, int bodyLength) =>
+      switch (failure) {
+        DomainError(statusCode: _contentTooLarge, :final code?) => FileTooLarge(
+          code: code,
+          message: failure.message,
+        ),
+        UnexpectedResponse(statusCode: _contentTooLarge) => FileTooLarge(
+          code: _uploadTooLarge,
+          message: failure.message,
+        ),
+        NetworkFailure(:final cause)
+            when _outOfMemory.hasMatch('$cause'.toLowerCase()) =>
+          const FileTooLarge(code: _uploadTooLarge),
+        UnexpectedResponse(statusCode: null, :final message)
+            when message == '$OutOfMemoryError' =>
+          const FileTooLarge(code: _uploadTooLarge),
+        NetworkFailure(problem: NetworkProblem.unreachable, :final cause)
+            when _closedForSize(bodyLength) &&
+                _closedWhileSending.hasMatch('$cause'.toLowerCase()) =>
+          const FileTooLarge(code: _uploadTooLarge),
+        _ => null,
+      };
+
+  /// Whether the server would close the connection for a body this long;
+  /// with its limit unknown, a closed connection is just one.
+  bool _closedForSize(int bodyLength) => switch (_transport.maxFileSizeBytes) {
+    final limit? => bodyLength - _uploadRequestSlack > limit,
+    null => false,
+  };
+
+  /// `{success, errors}`, either may be null; an error names no file, which
+  /// is why only one file is sent per request.
+  static TaskAttachment _uploaded(Object? json, int taskId) {
+    final result = objectOf(json, 'upload result');
+    for (final item in objectListOf(result['success'])) {
+      if (parseTaskAttachment(item, taskId: taskId) case final attachment?) {
+        return attachment;
+      }
+    }
+    if (objectListOf(result['errors']).firstOrNull case final error?) {
+      final body = ErrorBody.tryParse(error);
+      final message = body?.message ?? '';
+      // An error without a code is the server's own, e.g. its storage.
+      throw switch (body?.code) {
+        _fileTooLarge => FileTooLarge(code: _fileTooLarge, message: message),
+        final code? => DomainError(400, code: code, message: message),
+        null => ServerFailure(500, message: message),
+      };
+    }
+    throw const MalformedJson('an upload result without an attachment');
+  }
+
+  static DioMediaType? _mediaType(String? mimeType) {
+    if (mimeType == null) return null;
+    try {
+      return DioMediaType.parse(mimeType);
+    } on FormatException {
+      return null;
+    }
+  }
 }
 
 final class _SavedFiltersApi implements SavedFiltersPort {
@@ -437,7 +578,11 @@ final class _LabelsWriteApi implements LabelsWritePort {
 }
 
 const _notModified = 304;
+const _contentTooLarge = 413;
 const _taskDoesNotExist = 4002;
+const _attachmentDoesNotExist = 4011;
+const _fileTooLarge = 4012;
+const _uploadTooLarge = 4035;
 const _labelAlreadyOnTask = 8001;
 const _userAlreadyAssigned = 4021;
 const _relationAlreadyExists = 4008;
@@ -448,6 +593,24 @@ const _projectDoesNotExist = 3001;
 const _viewDoesNotExist = 3014;
 const _savedFilterDoesNotExist = 11001;
 const _minProjectPosition = 0.1;
+const _blankFileName = 'file';
+
+// The server takes a body of up to its file limit plus this and closes the
+// connection on a longer one, possibly before the client has sent it all.
+const int _uploadRequestSlack = 2 << 20;
+
+// A body the transport could not hold: Cronet copies it into one buffer.
+final _outOfMemory = RegExp(
+  'not enough memory for request body|outofmemoryerror',
+);
+
+// How dart:io, Cronet and URLSession report a connection the server closed
+// while the body was still being sent.
+final _closedWhileSending = RegExp(
+  'broken pipe|connection reset|reset by peer|connection closed|'
+  r'errno = (32|54|104)\b|err_connection_(reset|closed|aborted)|'
+  r'err_empty_response|nsurlerrordomain.*code=-1005\b',
+);
 
 // A v1 update replaces the task with the body: every field the server sent
 // goes back so that assignees, reminders and the fields this client does not
@@ -850,10 +1013,14 @@ Set<TaskRelationRef> _edgesOf(Task task) => {
 final class _WriteTransport {
   new(this._dio, ServerConnection connection)
     : version = connection.preferredApiVersion,
+      maxFileSizeBytes = connection.info.maxFileSizeBytes,
       _base = connection.apiBaseUri(connection.preferredApiVersion);
 
   final Dio _dio;
   final ApiVersion version;
+
+  /// The server's upload limit; null when `/info` names none it parses.
+  final int? maxFileSizeBytes;
   final Uri _base;
 
   String get createMethod => switch (version) {
@@ -885,6 +1052,36 @@ final class _WriteTransport {
           contentType: contentType,
           headers: {'Accept': 'application/json'},
           validateStatus: acceptNotModified ? _okOrNotModified : null,
+        ),
+      );
+    } on DioException catch (error) {
+      if (error.type == DioExceptionType.cancel) rethrow;
+      throw normalizeError(error);
+    }
+  }
+
+  /// A multipart request whose files are read once, see
+  /// [AuthInterceptor.bodyReadOnceKey]. [timeout] bounds sending and,
+  /// again, the wait for the answer.
+  Future<Response<Object?>> sendForm(
+    String method,
+    String path,
+    FormData form, {
+    Duration? timeout,
+    CancelToken? cancel,
+  }) async {
+    try {
+      return await _dio.requestUri<Object?>(
+        _base.replace(path: '${_base.path}$path'),
+        data: form,
+        cancelToken: cancel,
+        options: Options(
+          method: method,
+          responseType: ResponseType.json,
+          headers: {'Accept': 'application/json'},
+          sendTimeout: timeout,
+          receiveTimeout: timeout,
+          extra: {AuthInterceptor.bodyReadOnceKey: true},
         ),
       );
     } on DioException catch (error) {

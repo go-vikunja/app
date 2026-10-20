@@ -1,0 +1,10 @@
+{
+  "server": "2.7.0",
+  "request": "DELETE /api/v1/tasks/12827/attachments/215",
+  "status": 200,
+  "headers": {
+    "content-type": "application/json",
+    "content-length": "36"
+  },
+  "body": "{\"message\":\"Successfully deleted.\"}\n"
+}

@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:dio/dio.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 
@@ -676,6 +678,29 @@ final class FakeAttachmentsPort implements AttachmentsPort {
     );
     return _client.attachmentBlobs[(taskId, attachmentId, preview)] ??
         (throw const NotFound(code: 4002));
+  }
+
+  /// Writes the original of `attachmentBlobs` to [target], creating its
+  /// folder; a cancelled token fails like dio.
+  @override
+  Future<void> download(
+    int taskId,
+    int attachmentId, {
+    required File target,
+    CancelToken? cancel,
+  }) async {
+    await _client._request('download $taskId $attachmentId');
+    if (cancel?.isCancelled ?? false) {
+      throw DioException.requestCancelled(
+        requestOptions: RequestOptions(),
+        reason: cancel!.cancelError,
+      );
+    }
+    final blob =
+        _client.attachmentBlobs[(taskId, attachmentId, null)] ??
+        (throw const NotFound(code: 4011));
+    await target.parent.create(recursive: true);
+    await target.writeAsBytes(blob.bytes);
   }
 }
 

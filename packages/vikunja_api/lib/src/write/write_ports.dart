@@ -59,6 +59,12 @@ abstract interface class TasksWritePort {
   /// project's view, a saved filter's view the task does not match) is a
   /// `Forbidden`, a view that is gone a `NotFound` code 3014.
   ///
+  /// [TaskChanges.coverImageAttachmentId] goes into the body like the other
+  /// fields. The server keeps the cover id when that attachment is deleted
+  /// and then refuses every update that does not clear it (v2 patches and
+  /// v1 full replaces alike) with a `DomainError` code 4020, which is also
+  /// the answer for an id that is not one of the task's attachments.
+  ///
   /// [TaskChanges.descriptionBase] and [TaskChanges.checklistToggles] are
   /// never sent. With [rebaseDescription] and a [TaskChanges.description],
   /// the description sent is what [rebaseDescription] returns for the one
@@ -320,8 +326,49 @@ abstract interface class SavedFiltersPort implements SavedFiltersReadPort {
   Future<void> delete(int id);
 }
 
+/// A task's attachments; the cover is set through [TasksWritePort.update]
+/// with [TaskChanges.coverImageAttachmentId]. Both writes need project
+/// write permission (`Forbidden` for a read share) and are a `DomainError`
+/// code 3008 while the project is archived. A task that does not exist is a
+/// `NotFound` code 4002; a server with attachments switched off answers
+/// every attachment route with a `NotFound` without a code.
+abstract interface class AttachmentsWritePort {
+  /// v2 `POST`, v1 `PUT /tasks/{id}/attachments`: one multipart part
+  /// `files` with [bytes], which must be exactly [length] bytes long and is
+  /// read once; a request the server refuses with 401 code 11 is not
+  /// repeated, the token is refreshed for the next one. Not idempotent:
+  /// every call adds an attachment, also under a name the task already has.
+  ///
+  /// The server keeps [fileName] as sent apart from what precedes a `/`; a
+  /// blank one would mean no file, so it is sent as `file`. It sniffs the
+  /// type from the bytes, so [mimeType] only labels the part.
+  ///
+  /// A file above the limit is [FileTooLarge]: the server's per-file code
+  /// 4012, a 413 from the server or a proxy, or a connection closed while a
+  /// body longer than the server takes (its file limit plus 2 MiB) was being
+  /// sent; a closed connection with a shorter body is a `NetworkFailure`.
+  /// [timeout] bounds sending the body and, again, waiting for the answer;
+  /// null keeps the client's defaults, which suit only small files. An
+  /// error of [bytes] is rethrown as it is.
+  Future<TaskAttachment> upload(
+    int taskId, {
+    required String fileName,
+    required Stream<List<int>> bytes,
+    required int length,
+    String? mimeType,
+    Duration? timeout,
+    CancelToken? cancel,
+  });
+
+  /// `DELETE /tasks/{task}/attachments/{id}`. One that is gone already
+  /// (404 code 4011) counts as deleted. The server bumps the task's
+  /// `updated` but leaves a cover pointing at a deleted attachment set.
+  Future<void> delete(int taskId, int attachmentId);
+}
+
 abstract interface class VikunjaWriteClient {
   TasksWritePort get tasks;
+  AttachmentsWritePort get attachments;
   LabelsWritePort get labels;
   NotificationsWritePort get notifications;
   SubscriptionsWritePort get subscriptions;

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/features/home/presentation/sync_problem_message.dart';
 
@@ -10,6 +11,7 @@ void main() {
     VikunjaFailure failure, {
     OutboxOperationKind kind = OutboxOperationKind.updateTask,
     TaskChanges? changes,
+    String? fileName,
   }) => SyncProblem(
     operationId: 'op',
     kind: kind,
@@ -18,6 +20,7 @@ void main() {
     failure: failure,
     failedAt: DateTime.utc(2026, 10, 10, 12),
     changes: changes,
+    fileName: fileName,
   );
 
   test('names what failed by the kind of change', () {
@@ -181,6 +184,52 @@ void main() {
     expect(
       describeSyncProblem(de, problem(const DomainError(412, code: 3008))),
       '${de.syncProblemUpdateFailed} ${de.syncProblemProjectArchived}',
+    );
+  });
+
+  test('a refused upload names the file and why', () {
+    String describe(VikunjaFailure failure, [AppLocalizations? l10n]) =>
+        describeSyncProblem(
+          l10n ?? en,
+          problem(
+            failure,
+            kind: OutboxOperationKind.uploadAttachment,
+            fileName: 'scan.pdf',
+          ),
+        );
+    final what = en.syncProblemUploadFailed('scan.pdf');
+    expect(
+      describe(const FileTooLarge(code: 4012)),
+      '$what ${en.syncProblemUploadTooLarge}',
+    );
+    expect(
+      describe(const DomainError(412, code: 3008)),
+      '$what ${en.syncProblemProjectArchived}',
+    );
+    expect(
+      describe(const NotFound(code: 4002)),
+      '$what ${en.syncProblemTaskMissing}',
+    );
+    expect(
+      describe(const NotFound()),
+      '$what ${en.syncProblemAttachmentsDisabled}',
+    );
+    expect(
+      describe(const Forbidden(code: 1)),
+      '$what ${en.syncProblemUploadForbidden}',
+    );
+    expect(
+      describe(const ServerFailure(500)),
+      '$what ${en.syncProblemUnexpected}',
+    );
+    expect(
+      describe(const NetworkFailure(NetworkProblem.timeout)),
+      '$what ${en.syncProblemUploadTimedOut}',
+    );
+    expect(
+      describe(const FileTooLarge(code: 4035), de),
+      '${de.syncProblemUploadFailed('scan.pdf')} '
+      '${de.syncProblemUploadTooLarge}',
     );
   });
 }

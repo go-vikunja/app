@@ -1,0 +1,17 @@
+{
+  "server": "2.7.0",
+  "request": "GET /api/v1/tasks/12827/attachments/215",
+  "request_headers": {
+    "Range": "bytes=11-"
+  },
+  "status": 206,
+  "headers": {
+    "content-type": "text/plain; charset=utf-8",
+    "content-length": "14",
+    "content-disposition": "attachment; filename*=utf-8''%C3%9Cn%C3%AFc%C3%B8d%C3%A9%20%E6%97%A5%E6%9C%AC%20%C3%BC.txt",
+    "content-range": "bytes 11-24/25",
+    "accept-ranges": "bytes",
+    "last-modified": "Tue, 20 Oct 2026 17:23:58 GMT"
+  },
+  "body": "fixture text.\n"
+}

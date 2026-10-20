@@ -1,0 +1,14 @@
+{
+  "server": "2.7.0",
+  "request": "PUT /api/v1/tasks/12827/attachments",
+  "sent": {
+    "file_name": "large.bin",
+    "length": 20971521
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json",
+    "content-length": "141"
+  },
+  "body": "{\"errors\":[{\"code\":4012,\"message\":\"The task attachment exceeds the configured file size of 0 bytes, filesize was 20971521\"}],\"success\":null}\n"
+}

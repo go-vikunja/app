@@ -53,6 +53,7 @@ void main() {
         ),
         const TaskChanges(kanban: {7: BucketPlacement(bucketId: 2)}),
         const TaskChanges(positions: {7: 1}),
+        const TaskChanges(coverImageAttachmentId: 0),
       ];
 
       expect(singles.map((c) => c.isEmpty), everyElement(isFalse));
@@ -537,6 +538,37 @@ void main() {
       expect(text, contains('checklistToggles: 2'));
       expect(text, isNot(contains('<p>')));
       expect(text, isNot(contains('Milk')));
+    });
+  });
+
+  group('TaskChanges.merge of the cover', () {
+    test('the later cover wins, a clear included', () {
+      const earlier = TaskChanges(coverImageAttachmentId: 5);
+
+      expect(
+        earlier.merge(const TaskChanges(coverImageAttachmentId: 0)),
+        const TaskChanges(coverImageAttachmentId: 0),
+      );
+      expect(
+        earlier.merge(const TaskChanges(title: 't')),
+        const TaskChanges(title: 't', coverImageAttachmentId: 5),
+      );
+      expect(
+        const TaskChanges(title: 't').merge(earlier),
+        const TaskChanges(title: 't', coverImageAttachmentId: 5),
+      );
+    });
+
+    test('takes part in equality, the hash and toString', () {
+      const cover = TaskChanges(coverImageAttachmentId: 5);
+
+      expect(cover, isNot(const TaskChanges(coverImageAttachmentId: 0)));
+      expect(cover, isNot(const TaskChanges()));
+      expect(
+        cover.hashCode,
+        const TaskChanges(coverImageAttachmentId: 5).hashCode,
+      );
+      expect('$cover', 'TaskChanges(coverImageAttachmentId: 5)');
     });
   });
 

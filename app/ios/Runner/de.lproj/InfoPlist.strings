@@ -1,1 +1,3 @@
+"NSCameraUsageDescription" = "Rurana nutzt die Kamera für Fotos, die du an Aufgaben anhängst.";
 "NSLocalNetworkUsageDescription" = "Rurana verbindet sich mit dem Vikunja-Server, den du eingibst. Er kann in deinem lokalen Netzwerk laufen.";
+"NSPhotoLibraryUsageDescription" = "Rurana lässt dich Fotos auswählen, die du an Aufgaben anhängst.";

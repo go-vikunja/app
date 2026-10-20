@@ -3312,6 +3312,287 @@ class AppLocalizationsDe extends AppLocalizations {
   String get taskDetailCoverImage => 'Titelbild';
 
   @override
+  String get attachmentAdd => 'Anhang hinzufügen';
+
+  @override
+  String get attachmentSourceFiles => 'Dateien';
+
+  @override
+  String get attachmentSourcePhotos => 'Fotos';
+
+  @override
+  String get attachmentSourceCamera => 'Foto aufnehmen';
+
+  @override
+  String attachmentTooLarge(String name, String limit) {
+    return '„$name“ ist zu groß: Anhänge dürfen höchstens $limit groß sein.';
+  }
+
+  @override
+  String attachmentsQueued(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Dateien werden hochgeladen',
+      one: '1 Datei wird hochgeladen',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String attachmentAddFailed(String name) {
+    return '„$name“ konnte nicht hinzugefügt werden.';
+  }
+
+  @override
+  String get attachmentPickFailed =>
+      'Die Dateien konnten nicht geöffnet werden.';
+
+  @override
+  String get attachmentUploading => 'Wird hochgeladen …';
+
+  @override
+  String get attachmentWaiting => 'Wartet auf das Hochladen';
+
+  @override
+  String get attachmentUploadFailed =>
+      'Nicht hochgeladen: siehe Synchronisierungsprobleme im Tab Konto';
+
+  @override
+  String get attachmentUploadTooLarge => 'Nicht hochgeladen: zu groß';
+
+  @override
+  String attachmentCancelUpload(String name) {
+    return 'Hochladen von $name abbrechen';
+  }
+
+  @override
+  String attachmentOptions(String name) {
+    return 'Optionen für $name';
+  }
+
+  @override
+  String get attachmentOpen => 'Öffnen';
+
+  @override
+  String get attachmentShare => 'Teilen';
+
+  @override
+  String get attachmentSaveToDevice => 'Auf dem Gerät speichern';
+
+  @override
+  String get attachmentMakeCover => 'Als Titelbild setzen';
+
+  @override
+  String get attachmentRemoveCover => 'Titelbild entfernen';
+
+  @override
+  String get attachmentDelete => 'Anhang löschen';
+
+  @override
+  String get attachmentDeleteTitle => 'Anhang löschen';
+
+  @override
+  String attachmentDeleteBody(String name) {
+    return 'Soll der Anhang $name gelöscht werden? Dies kann nicht rückgängig gemacht werden!';
+  }
+
+  @override
+  String get attachmentDeleteConfirm => 'Löschen';
+
+  @override
+  String get attachmentDeleted => 'Der Anhang wurde gelöscht.';
+
+  @override
+  String get attachmentCoverSet => 'Das Titelbild wurde geändert.';
+
+  @override
+  String get attachmentCoverRemoved => 'Das Titelbild wurde entfernt.';
+
+  @override
+  String get attachmentSaved => 'Gespeichert.';
+
+  @override
+  String get attachmentDownloading => 'Wird heruntergeladen …';
+
+  @override
+  String get attachmentDeleting => 'Wird gelöscht …';
+
+  @override
+  String get attachmentSaving => 'Wird gespeichert …';
+
+  @override
+  String attachmentCancelDownload(String name) {
+    return 'Herunterladen von $name abbrechen';
+  }
+
+  @override
+  String get attachmentNoApp =>
+      'Keine App auf diesem Gerät kann diese Datei öffnen.';
+
+  @override
+  String get attachmentNeedsConnection =>
+      'Dafür ist eine Verbindung zum Server nötig.';
+
+  @override
+  String get attachmentUnconfirmed =>
+      'Die Änderung konnte nicht bestätigt werden. Prüfe die Verbindung und versuche es erneut.';
+
+  @override
+  String get attachmentForbidden =>
+      'Du darfst die Anhänge dieser Aufgabe nicht ändern.';
+
+  @override
+  String get attachmentArchived =>
+      'Dieses Projekt ist archiviert, deshalb können seine Anhänge nicht geändert werden.';
+
+  @override
+  String get attachmentGone => 'Den Anhang gibt es nicht mehr.';
+
+  @override
+  String get attachmentsDisabled =>
+      'Anhänge sind auf diesem Server abgeschaltet.';
+
+  @override
+  String get attachmentFileTooLarge => 'Die Datei ist zu groß für den Server.';
+
+  @override
+  String attachmentFileTooLargeLimit(String limit) {
+    return 'Die Datei ist zu groß: Anhänge dürfen höchstens $limit groß sein.';
+  }
+
+  @override
+  String get attachmentNotSynced =>
+      'Das geht, sobald die Aufgabe synchronisiert ist.';
+
+  @override
+  String attachmentRefused(String message) {
+    return 'Der Server hat abgelehnt: $message';
+  }
+
+  @override
+  String get attachmentFailed =>
+      'Das hat nicht geklappt. Versuche es später erneut.';
+
+  @override
+  String get editorImage => 'Bild einfügen';
+
+  @override
+  String get editorImageUploading => 'Das Bild wird hochgeladen …';
+
+  @override
+  String get editorImageInserted => 'Bild eingefügt';
+
+  @override
+  String get shareSignedOut =>
+      'Melde dich zuerst bei Rurana an und teile dann erneut.';
+
+  @override
+  String get sharePickAccountTitle => 'In welches Konto teilen?';
+
+  @override
+  String get sharePickAccountBody =>
+      'Was du teilst, landet auf dem Server dieses Kontos.';
+
+  @override
+  String get shareSheetTitle => 'Mit Rurana teilen';
+
+  @override
+  String get shareAddToTask => 'Zu Aufgabe hinzufügen';
+
+  @override
+  String get shareFiles => 'Dateien';
+
+  @override
+  String shareRemoveFile(String name) {
+    return '$name entfernen';
+  }
+
+  @override
+  String get shareFilePreparing => 'Wird vorbereitet …';
+
+  @override
+  String shareFileTooLarge(String limit) {
+    return 'Zu groß: Anhänge dürfen höchstens $limit groß sein';
+  }
+
+  @override
+  String get shareFileUnreadable => 'Konnte nicht gelesen werden';
+
+  @override
+  String get shareFilesLeftOut =>
+      'Dieser Server nimmt keine Anhänge an, deshalb werden die Dateien weggelassen.';
+
+  @override
+  String shareTooManyFiles(int count) {
+    return 'Nur die ersten $count Dateien werden hinzugefügt.';
+  }
+
+  @override
+  String get shareAppendHint =>
+      'Der Text kommt ans Ende der Beschreibung der Aufgabe.';
+
+  @override
+  String get sharePickTask => 'Wähle eine Aufgabe.';
+
+  @override
+  String get shareCreate => 'Aufgabe erstellen';
+
+  @override
+  String get shareAdd => 'Hinzufügen';
+
+  @override
+  String shareTaskCreated(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Aufgabe erstellt, $count Dateien werden hochgeladen',
+      one: 'Aufgabe erstellt, 1 Datei wird hochgeladen',
+      zero: 'Aufgabe erstellt',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String shareAddedToTask(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Zur Aufgabe hinzugefügt, $count Dateien werden hochgeladen',
+      one: 'Zur Aufgabe hinzugefügt, 1 Datei wird hochgeladen',
+      zero: 'Zur Aufgabe hinzugefügt',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get shareFailed => 'Das Geteilte konnte nicht hinzugefügt werden.';
+
+  @override
+  String syncProblemUploadFailed(String name) {
+    return '„$name“ konnte nicht hochgeladen werden.';
+  }
+
+  @override
+  String get syncProblemUploadTooLarge => 'Die Datei ist zu groß.';
+
+  @override
+  String get syncProblemUploadTimedOut =>
+      'Das Hochladen hat mehrmals zu lange gedauert; versuche es mit einer schnelleren Verbindung erneut.';
+
+  @override
+  String get syncProblemUploadForbidden =>
+      'Du darfst dieser Aufgabe keine Anhänge hinzufügen.';
+
+  @override
+  String get syncProblemAttachmentsDisabled =>
+      'Anhänge sind auf dem Server abgeschaltet.';
+
+  @override
+  String get syncProblemUploadFileMissing =>
+      'Die auf diesem Gerät gespeicherte Kopie fehlt; verwirf sie.';
+
+  @override
   String taskDetailComments(int count) {
     return 'Kommentare ($count)';
   }

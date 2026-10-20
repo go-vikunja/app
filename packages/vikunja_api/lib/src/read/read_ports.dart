@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
@@ -139,6 +140,22 @@ abstract interface class AttachmentsPort {
     int taskId,
     int attachmentId, {
     AttachmentPreviewSize? preview,
+  });
+
+  /// The original into [target], streamed: the body goes to `<target>.part`
+  /// first and is renamed when complete, so [target] only ever holds a whole
+  /// file. A part left by a cancelled or broken-off download is resumed with
+  /// a range request, or replaced when the server answers in full. The
+  /// parent directory is created. One download per target at a time.
+  ///
+  /// The name of the answer's `Content-Disposition` is not used. A missing
+  /// attachment is `NotFound` code 4011, a foreign one `Forbidden`; a
+  /// failed write to disk is rethrown as it is.
+  Future<void> download(
+    int taskId,
+    int attachmentId, {
+    required File target,
+    CancelToken? cancel,
   });
 }
 

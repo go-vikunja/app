@@ -1,0 +1,13 @@
+{
+  "server": "2.7.0",
+  "request": "PUT /api/v1/tasks/12827/attachments",
+  "sent": {
+    "file_name": "pixel.png",
+    "length": 70
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"errors\":null,\"success\":[{\"id\":214,\"task_id\":12827,\"created_by\":{\"id\":783,\"name\":\"\",\"username\":\"fixtureuser\",\"created\":\"2026-10-20T17:23:55Z\",\"updated\":\"2026-10-20T17:23:55Z\"},\"file\":{\"id\":216,\"name\":\"pixel.png\",\"mime\":\"image/png\",\"size\":70,\"created\":\"2026-10-20T17:23:58.266372204Z\"},\"created\":\"2026-10-20T17:23:58.267302121Z\"}]}\n"
+}

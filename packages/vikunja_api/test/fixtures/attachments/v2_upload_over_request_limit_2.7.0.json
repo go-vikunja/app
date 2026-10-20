@@ -1,0 +1,14 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v2/tasks/12828/attachments",
+  "sent": {
+    "file_name": "huge.bin",
+    "length": 24117248
+  },
+  "status": 413,
+  "headers": {
+    "content-type": "application/json",
+    "content-length": "85"
+  },
+  "body": "{\"code\":4035,\"message\":\"The uploaded file exceeds the maximum configured file size\"}\n"
+}

@@ -381,6 +381,54 @@ describe('links', () => {
   })
 })
 
+describe('images', () => {
+  const src = 'https://vikunja.example.com/api/v2/tasks/3/attachments/9'
+
+  test('insertImage puts an attachment at the cursor, written the web way', async () => {
+    const editor = await open('<p>ab</p>')
+    editor.commands.setTextSelection(2)
+    command('insertImage', {src, id: 'tiptap-image-3-9'})
+    assert.equal(editor.getHTML(), `<p>a</p><img data-src="${src}" src="#" id="tiptap-image-3-9"><p>b</p>`)
+    assert.equal((await latestState()).dirty, true)
+    assert.equal(posted.some(message => message.type === 'error'), false)
+  })
+
+  test('insertImage keeps an alt text and needs no id', async () => {
+    const editor = await open('<p></p>')
+    command('insertImage', {src, alt: ' plan '})
+    assert.equal(editor.getHTML(), `<img data-src="${src}" src="#" alt="plan" id="tiptap-image-3-9"><p></p>`)
+  })
+
+  test('the inserted image is a placeholder, never loaded', async () => {
+    const editor = await open('<p></p>')
+    command('insertImage', {src, alt: 'plan'})
+    assert.equal(editor.view.dom.querySelectorAll('img').length, 0)
+    assert.equal(editor.view.dom.querySelectorAll('.image-placeholder').length, 1)
+  })
+
+  test('only an attachment of this server with its own id goes in', async () => {
+    const editor = await open('<p>a</p>')
+    for (const args of [
+      {src: 'https://images.example.com/cat.png'},
+      {src: 'https://other.example.com/api/v2/tasks/3/attachments/9'},
+      {src: 'javascript:alert(1)'},
+      {src, id: 'tiptap-image-3-10'},
+      {src: ''},
+      {},
+    ]) {
+      command('insertImage', args)
+    }
+    assert.equal(editor.getHTML(), '<p>a</p>')
+  })
+
+  test('nothing is inserted while read-only', async () => {
+    const editor = await open('<p>a</p>')
+    send({type: 'setReadOnly', readOnly: true})
+    command('insertImage', {src})
+    assert.equal(editor.getHTML(), '<p>a</p>')
+  })
+})
+
 describe('mentions', () => {
   test('typing @ asks the app, a pick inserts the web mention and a space', async () => {
     const editor = await open('<p>Hi </p>')

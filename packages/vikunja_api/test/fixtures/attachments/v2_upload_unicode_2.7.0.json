@@ -1,0 +1,13 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v2/tasks/12828/attachments",
+  "sent": {
+    "file_name": "Ünïcødé 日本 ü.txt",
+    "length": 25
+  },
+  "status": 201,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"$schema\":\"http://localhost:34527/api/v2/schemas/AttachmentUploadResult.json\",\"errors\":null,\"success\":[{\"id\":218,\"task_id\":12828,\"created_by\":{\"id\":783,\"name\":\"\",\"username\":\"fixtureuser\",\"created\":\"2026-10-20T17:23:55Z\",\"updated\":\"2026-10-20T17:23:55Z\"},\"file\":{\"id\":220,\"name\":\"Ünïcødé 日本 ü.txt\",\"mime\":\"text/plain; charset=utf-8\",\"size\":25,\"created\":\"2026-10-20T17:24:06.791603409Z\"},\"created\":\"2026-10-20T17:24:06.792542118Z\"}]}\n"
+}

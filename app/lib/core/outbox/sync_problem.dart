@@ -1,7 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 
-enum OutboxOperationKind { createTask, updateTask, deleteTask }
+enum OutboxOperationKind {
+  createTask,
+  updateTask,
+  deleteTask,
+  uploadAttachment,
+}
 
 /// A queued change the server rejected for good. The local edit stays
 /// visible until the user retries or discards it.
@@ -15,6 +20,7 @@ final class SyncProblem {
     required this.failure,
     required this.failedAt,
     this.changes,
+    this.fileName,
   });
 
   final String operationId;
@@ -25,6 +31,10 @@ final class SyncProblem {
   final DateTime failedAt;
 
   /// What the failed update would have changed, which tells which of its
-  /// requests the server refused; null for a create or a delete.
+  /// requests the server refused; null for every other kind.
   final TaskChanges? changes;
+
+  /// The name of the file a failed upload would have attached; null for
+  /// every other kind.
+  final String? fileName;
 }

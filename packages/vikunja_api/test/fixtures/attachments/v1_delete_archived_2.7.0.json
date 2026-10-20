@@ -1,0 +1,10 @@
+{
+  "server": "2.7.0",
+  "request": "DELETE /api/v1/tasks/12826/attachments/213",
+  "status": 412,
+  "headers": {
+    "content-type": "application/json",
+    "content-length": "99"
+  },
+  "body": "{\"code\":3008,\"message\":\"This project is archived. Editing or creating new tasks is not possible.\"}\n"
+}

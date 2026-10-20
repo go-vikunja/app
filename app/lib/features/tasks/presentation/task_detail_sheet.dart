@@ -33,7 +33,7 @@ import 'package:vikunja_mobile/features/tasks/application/task_providers.dart'
 import 'package:vikunja_mobile/features/tasks/application/task_row_content.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/confirm_dialog.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/delete_task_dialog.dart';
-import 'package:vikunja_mobile/features/tasks/presentation/details/attachment_row.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/details/attachments_section.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/comments_controller.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/comments_section.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/details_notice.dart';
@@ -148,11 +148,20 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
   bool _duplicating = false;
   bool _openingLinkedTask = false;
   CommentsState _commentsBefore = const CommentsState();
+  StreamSubscription<TaskAttachment>? _uploaded;
 
   @override
   void initState() {
     super.initState();
     _comments.addListener(_announceComments);
+    // A queued upload that went through while the sheet is open shows
+    // without a read; the server does not mark the task changed for it.
+    ref.listenManual(taskRepositoryProvider, (_, repository) {
+      unawaited(_uploaded?.cancel());
+      _uploaded = repository?.uploadedAttachments.listen(
+        _details.addAttachment,
+      );
+    }, fireImmediately: true);
     ref.listenManual(
       userSettingsProvider.select((settings) => settings.value),
       (_, settings) {
@@ -169,6 +178,7 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
 
   @override
   void dispose() {
+    unawaited(_uploaded?.cancel());
     _follow.dispose();
     _details.dispose();
     _comments.dispose();
@@ -307,10 +317,14 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
 
   /// The editor opens over the sheet, which comes back with the new
   /// description.
+  /// An image inserted in the editor is an attachment by now, whether the
+  /// edit was saved or not; the server's task does not say so.
   Future<void> _editDescription(Task task) async {
     final l10n = context.l10n;
     final saved = await GoRouter.of(context)
         .push<bool>(AppRoutes.taskDescription(task.id));
+    if (!mounted) return;
+    unawaited(_details.refresh());
     if (saved ?? false) _showMessage(l10n.descriptionEditorSaved);
   }
 
@@ -486,7 +500,8 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
     };
     // The server refuses every task write in an archived project, also
     // below an archived parent; a task shown only from the server (a link
-    // to one this device has not synced yet) has no row to queue on.
+    // to one this device has not synced yet) has no row to queue on. The
+    // same holds for its attachments.
     final descriptionWriter =
         repository != null &&
             stored != null &&
@@ -889,17 +904,13 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                         onRetry: () => _retryDetails(task.id),
                       ),
                     ),
-                  if (details != null && details.attachments.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    _SectionHeading(text: l10n.taskDetailAttachments),
-                    for (final attachment in details.attachments)
-                      AttachmentRow(
-                        key: ValueKey(('attachment', attachment.id)),
-                        attachment: attachment,
-                        isCover:
-                            attachment.id == details.coverImageAttachmentId,
-                      ),
-                  ],
+                  TaskAttachmentsSection(
+                    task: task,
+                    details: details,
+                    controller: _details,
+                    writable: descriptionWriter != null,
+                    onMessage: _showMessage,
+                  ),
                   RelatedTasksSection(
                     task: task,
                     projectTitleOf: otherProjectTitle,

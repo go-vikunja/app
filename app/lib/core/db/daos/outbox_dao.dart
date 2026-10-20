@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:drift/drift.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/attachments/pending_upload.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/db/epoch_millis.dart';
 import 'package:vikunja_mobile/core/db/tables/outbox.dart';
@@ -14,6 +15,7 @@ import 'package:vikunja_mobile/core/outbox/failure_json.dart';
 import 'package:vikunja_mobile/core/outbox/new_task_json.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/outbox/task_changes_json.dart';
+import 'package:vikunja_mobile/core/outbox/upload_json.dart';
 
 part 'outbox_dao.g.dart';
 
@@ -31,6 +33,12 @@ enum OutboxState { pending, sending, failed }
 /// temporary id, which [completeCreate] rewrites to the server id. A
 /// relation may name such a task as the other task too: the remap rewrites
 /// those references, and an op that still names a temporary id waits.
+///
+/// An upload is an op of its own per file, never merged or folded: it
+/// follows its task's id like any other op, but it never holds up the
+/// queue ([nextInLine] leaves uploads out; the sender takes them from
+/// [queuedUploads] when nothing else is ready) and a delete of the task drops
+/// the unsent ones. Its stored copy is the caller's to delete.
 @DriftAccessor(tables: [Outbox, Tasks, TaskIdRemaps, SyncState])
 final class OutboxDao extends DatabaseAccessor<AppDatabase>
     with _$OutboxDaoMixin {
@@ -85,6 +93,34 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
         );
         return id;
       });
+
+  /// Queues the upload of the stored copy [upload] to the task, following
+  /// a temporary id whose create was answered meanwhile; returns the op's
+  /// id. Null when the task is unknown here or queued for deletion.
+  Future<String?> queueUpload(
+    int localOrServerId,
+    QueuedUpload upload, {
+    required DateTime now,
+  }) => transaction(() async {
+    final taskId = await attachedDatabase.tasksDao.resolveId(localOrServerId);
+    final row = await _row(taskId);
+    if (row == null || row.pendingDelete) return null;
+    return await _insert(
+      kind: OutboxOperationKind.uploadAttachment,
+      taskId: taskId,
+      payload: encodeQueuedUpload(upload),
+      now: now,
+    );
+  });
+
+  /// Whether an upload to the task can be queued: its row is here and not
+  /// queued for deletion.
+  Future<bool> takesUploads(int localOrServerId) async {
+    final row = await _row(
+      await attachedDatabase.tasksDao.resolveId(localOrServerId),
+    );
+    return row != null && !row.pendingDelete;
+  }
 
   /// Applies [requested] to the row and its labels, assignees, reminders
   /// and relations and queues it, merged into the task's unsent update op
@@ -155,11 +191,11 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
     return true;
   });
 
-  /// Hides the row and queues the delete; an unsent update op of the task
-  /// is dropped, because the delete makes it moot, and a create that has
-  /// not left the device is cancelled with the row. A temporary id whose
-  /// create was answered meanwhile is followed to the server id. False
-  /// when the task is unknown here or already queued for deletion.
+  /// Hides the row and queues the delete; an unsent update or upload op of
+  /// the task is dropped, because the delete makes it moot, and a create
+  /// that has not left the device is cancelled with the row. A temporary
+  /// id whose create was answered meanwhile is followed to the server id.
+  /// False when the task is unknown here or already queued for deletion.
   Future<bool> queueDelete(int localOrServerId, {required DateTime now}) =>
       transaction(() async {
         final taskId = await attachedDatabase.tasksDao.resolveId(
@@ -177,7 +213,10 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
         await (delete(outbox)..where(
               (o) =>
                   o.taskId.equals(taskId) &
-                  o.kind.equals(OutboxOperationKind.updateTask.name) &
+                  o.kind.isIn([
+                    OutboxOperationKind.updateTask.name,
+                    OutboxOperationKind.uploadAttachment.name,
+                  ]) &
                   o.state.equals(OutboxState.sending.name).not(),
             ))
             .go();
@@ -197,9 +236,10 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
       });
 
   /// The head of the queue: the oldest op that has not failed, whatever
-  /// its `next_attempt_at`; the sender waits for that itself. It may be
-  /// `sending`, in another isolate or left by a run that died, and then
-  /// nothing may overtake it. An update or delete under a temporary id
+  /// its `next_attempt_at`; the sender waits for that itself. Uploads are
+  /// not part of it (see [queuedUploads]). It may be `sending`, in another
+  /// isolate or left by a run that died, and then nothing may overtake
+  /// it. An update or delete under a temporary id
   /// waits for its create, which is ahead of it or failed; so does an
   /// update whose relations name a task whose create has not been
   /// answered, wherever that create is.
@@ -212,6 +252,9 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
                   (o) =>
                       o.sequence.isBiggerThanValue(after) &
                       o.state.equals(OutboxState.failed.name).not() &
+                      o.kind
+                          .equals(OutboxOperationKind.uploadAttachment.name)
+                          .not() &
                       (o.taskId.isBiggerThanValue(0) |
                           o.kind.equals(OutboxOperationKind.createTask.name)),
                 )
@@ -225,6 +268,81 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
       }
       after = op.sequence;
     }
+  }
+
+  /// The uploads that may go once their backoff is over, oldest first:
+  /// not failed, and the task has a server id. Some may be `sending`, in a
+  /// run that died or another isolate.
+  Future<List<OutboxRow>> queuedUploads() =>
+      (select(outbox)
+            ..where(
+              (o) =>
+                  o.kind.equals(OutboxOperationKind.uploadAttachment.name) &
+                  o.state.equals(OutboxState.failed.name).not() &
+                  o.taskId.isBiggerThanValue(0),
+            )
+            ..orderBy([(o) => OrderingTerm.asc(o.sequence)]))
+          .get();
+
+  /// Every stored copy a queued upload names, whatever its state.
+  Future<Set<String>> uploadFiles() async {
+    final ops =
+        await (select(outbox)..where(
+              (o) => o.kind.equals(OutboxOperationKind.uploadAttachment.name),
+            ))
+            .get();
+    return {for (final op in ops) decodeQueuedUpload(op.payload).file};
+  }
+
+  /// Removes the upload op, whatever its state; returns its stored copy's
+  /// name for the caller to delete, null when the op is gone or not an
+  /// upload.
+  Future<String?> removeUpload(String id) => transaction(() async {
+    final op = await find(id);
+    if (op == null || op.kind != OutboxOperationKind.uploadAttachment.name) {
+      return null;
+    }
+    await (delete(outbox)..where((o) => o.id.equals(id))).go();
+    return decodeQueuedUpload(op.payload).file;
+  });
+
+  /// The task's queued uploads, oldest first, following the task across
+  /// the id change of its create.
+  Stream<List<PendingUpload>> watchPendingUploads(
+    int localOrServerId,
+  ) => watchTables({outbox, taskIdRemaps}, () async {
+    final taskId = await attachedDatabase.tasksDao.resolveId(localOrServerId);
+    final ops =
+        await (select(outbox)
+              ..where(
+                (o) =>
+                    o.taskId.equals(taskId) &
+                    o.kind.equals(OutboxOperationKind.uploadAttachment.name),
+              )
+              ..orderBy([(o) => OrderingTerm.asc(o.sequence)]))
+            .get();
+    return [for (final op in ops) _pendingUploadOf(op)];
+  });
+
+  static PendingUpload _pendingUploadOf(OutboxRow op) {
+    final upload = decodeQueuedUpload(op.payload);
+    return PendingUpload(
+      operationId: op.id,
+      taskId: op.taskId,
+      fileName: upload.fileName,
+      size: upload.size,
+      mimeType: upload.mimeType,
+      state: switch (OutboxState.values.asNameMap()[op.state]) {
+        OutboxState.sending => PendingUploadState.sending,
+        OutboxState.failed => PendingUploadState.failed,
+        OutboxState.pending || null => PendingUploadState.waiting,
+      },
+      queuedAt: op.createdAt,
+      lastFailure: switch (op.lastError) {
+        final json? => decodeFailure(json),
+        null => null,
+      },
+    );
   }
 
   /// Whether [op] names in its relations a task created here whose create
@@ -311,8 +429,9 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
     ),
   );
 
-  /// A create whose request may have reached the server: the first such
-  /// attempt's time stays, so the lookup window covers every attempt.
+  /// A create or upload whose request may have reached the server: the
+  /// first such attempt's time stays, so the lookup window covers every
+  /// attempt.
   Future<void> markUncertain(String id, {required DateTime sentAt}) =>
       transaction(() async {
         final op = await find(id);
@@ -337,6 +456,22 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
       transaction(() async {
         final op = await find(id);
         if (op == null) return;
+        if (op.kind == OutboxOperationKind.uploadAttachment.name) {
+          // A refusal means the server stored nothing; after a timeout a
+          // retry must look for the file first.
+          final mayBeStored =
+              failure is NetworkFailure || failure is ServerFailure;
+          await _write(
+            id,
+            OutboxCompanion(
+              state: Value(OutboxState.failed.name),
+              nextAttemptAt: const Value(null),
+              lastError: Value(encodeFailure(failure)),
+              sentAt: mayBeStored ? const Value.absent() : const Value(null),
+            ),
+          );
+          return;
+        }
         var payload = op.payload;
         if (failure case RelatedTaskMissing(:final otherTaskId)
             when op.kind == OutboxOperationKind.updateTask.name) {
@@ -531,13 +666,15 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
   /// Ops left in `sending` for at least [olderThan] go back to pending: a
   /// killed run, a disposed sender or a failed local apply left them, as
   /// no live sender takes that long over one op. A younger one may still
-  /// be on its way in another isolate and stays. A create among them may
-  /// have reached the server, so it is marked uncertain as of its attempt
-  /// (an earlier `sent_at` stays), and the next attempt looks for the task
-  /// before sending it again.
+  /// be on its way in another isolate and stays, and so do the uploads in
+  /// [keep], which the caller is still streaming. A create or upload among
+  /// them may have reached the server, so it is marked uncertain as of its
+  /// attempt (an earlier `sent_at` stays), and the next attempt looks for
+  /// the task or attachment before sending it again.
   Future<int> resetSending({
     required DateTime now,
     Duration olderThan = Duration.zero,
+    Set<String> keep = const {},
   }) => transaction(() async {
     const millis = EpochMillis();
     // A clock set back since the attempt must not hold the op for good.
@@ -549,9 +686,15 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
             ) |
             outbox.lastAttemptAt.isBiggerOrEqualValue(
               millis.toSql(now.add(olderThan)),
-            ));
+            )) &
+        outbox.id.isNotIn(keep);
     await (update(outbox)..where(
-          (o) => sending & o.kind.equals(OutboxOperationKind.createTask.name),
+          (o) =>
+              sending &
+              o.kind.isIn([
+                OutboxOperationKind.createTask.name,
+                OutboxOperationKind.uploadAttachment.name,
+              ]),
         ))
         .write(
           OutboxCompanion.custom(
@@ -737,6 +880,9 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
       changes: kind == OutboxOperationKind.updateTask
           ? decodeTaskChanges(op.payload)
           : null,
+      fileName: kind == OutboxOperationKind.uploadAttachment
+          ? decodeQueuedUpload(op.payload).fileName
+          : null,
     );
   }
 
@@ -887,19 +1033,25 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
     }
   }
 
+  /// Uploads are not among them: they never fold, and an upload after a
+  /// failed update must not make the update look superseded.
   Future<OutboxRow?> _newerUnsent(OutboxRow op) =>
       (select(outbox)
             ..where(
               (o) =>
                   o.taskId.equals(op.taskId) &
                   o.sequence.isBiggerThanValue(op.sequence) &
+                  o.kind.isIn([
+                    OutboxOperationKind.updateTask.name,
+                    OutboxOperationKind.deleteTask.name,
+                  ]) &
                   o.state.equals(OutboxState.sending.name).not(),
             )
             ..orderBy([(o) => OrderingTerm.asc(o.sequence)])
             ..limit(1))
           .getSingleOrNull();
 
-  Future<void> _insert({
+  Future<String> _insert({
     required OutboxOperationKind kind,
     required int taskId,
     required String payload,
@@ -908,9 +1060,10 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
     final highest = outbox.sequence.max();
     final query = selectOnly(outbox)..addColumns([highest]);
     final last = await query.map((row) => row.read(highest)).getSingle();
+    final id = _newId();
     await into(outbox).insert(
       OutboxRow(
-        id: _newId(),
+        id: id,
         sequence: (last ?? 0) + 1,
         kind: kind.name,
         taskId: taskId,
@@ -920,6 +1073,7 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
         state: OutboxState.pending.name,
       ),
     );
+    return id;
   }
 
   Future<void> _write(String id, Insertable<OutboxRow> values) =>

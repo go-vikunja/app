@@ -1,0 +1,13 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v2/tasks/12828/attachments",
+  "sent": {
+    "file_name": "empty.txt",
+    "length": 0
+  },
+  "status": 201,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"$schema\":\"http://localhost:34527/api/v2/schemas/AttachmentUploadResult.json\",\"errors\":null,\"success\":[{\"id\":219,\"task_id\":12828,\"created_by\":{\"id\":783,\"name\":\"\",\"username\":\"fixtureuser\",\"created\":\"2026-10-20T17:23:55Z\",\"updated\":\"2026-10-20T17:23:55Z\"},\"file\":{\"id\":221,\"name\":\"empty.txt\",\"mime\":\"text/plain\",\"size\":0,\"created\":\"2026-10-20T17:24:07.308059562Z\"},\"created\":\"2026-10-20T17:24:07.308877147Z\"}]}\n"
+}

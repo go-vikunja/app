@@ -1,16 +1,21 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
+import 'package:vikunja_mobile/core/attachments/pending_upload.dart';
+import 'package:vikunja_mobile/core/attachments/upload_files.dart';
+import 'package:vikunja_mobile/core/attachments/upload_policy.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/db/watch_tables.dart';
 import 'package:vikunja_mobile/core/filters/local_filters.dart';
 import 'package:vikunja_mobile/core/outbox/outbox_sender.dart';
 import 'package:vikunja_mobile/core/outbox/pending_task_ids_source.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
+import 'package:vikunja_mobile/core/outbox/upload_json.dart';
 import 'package:vikunja_mobile/core/repositories/local/shared_latest.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
@@ -38,6 +43,10 @@ final _log = Logger('AccountData');
 /// the server's answer from the last download. A filter with a relative
 /// date (`due_date < now/d+1d`) is evaluated again on every event of
 /// `clockTicks`, a broadcast stream, as the time alone changes its tasks.
+///
+/// A file to upload is stored in the account's uploads folder (`uploads`)
+/// under a random name before its op is queued, so the upload survives the
+/// picker's copy going; without `uploads` nothing can be queued.
 final class LocalTaskRepository
     implements TaskRepository, PendingTaskIdsSource {
   new(
@@ -49,6 +58,8 @@ final class LocalTaskRepository
     this._perPage = 50,
     DateTime Function()? now,
     this._clockTicks = const Stream.empty(),
+    this._uploads,
+    this._maxUploadBytes = defaultMaxUploadBytes,
   }) : _now = now ?? DateTime.now;
 
   final AppDatabase _db;
@@ -59,6 +70,8 @@ final class LocalTaskRepository
   final int _perPage;
   final DateTime Function() _now;
   final Stream<void> _clockTicks;
+  final UploadFiles? _uploads;
+  final int _maxUploadBytes;
 
   // Upcoming and the Overview without a saved filter watch the same tasks.
   late final SharedLatest<List<Task>> _activeOpenTasks = SharedLatest(
@@ -429,8 +442,92 @@ final class LocalTaskRepository
   @override
   Future<void> deleteTask(int taskId) async {
     final queued = await _db.outboxDao.queueDelete(taskId, now: _now());
-    if (queued) _drainQuietly();
+    if (queued) {
+      // The delete dropped the task's unsent uploads.
+      unawaited(_outbox.sweepUploads());
+      _drainQuietly();
+    }
   }
+
+  @override
+  Future<String?> queueUpload(
+    int taskId, {
+    required String sourcePath,
+    required String fileName,
+    String? mimeType,
+    bool moveSource = false,
+  }) async {
+    final uploads =
+        _uploads ?? (throw StateError('Queueing an upload needs its folder'));
+    final source = File(sourcePath);
+    final size = await source.length();
+    if (size > _maxUploadBytes) {
+      if (moveSource) await _deleteQuietly(source);
+      throw UploadTooLarge(size: size, maxBytes: _maxUploadBytes);
+    }
+    if (!await _db.outboxDao.takesUploads(taskId)) {
+      if (moveSource) await _deleteQuietly(source);
+      return null;
+    }
+    final stored = await uploads.store(source, move: moveSource);
+    try {
+      final id = await _db.outboxDao.queueUpload(
+        taskId,
+        QueuedUpload(
+          file: stored.name,
+          fileName: safeFileName(fileName),
+          size: stored.size,
+          mimeType: mimeType,
+        ),
+        now: _now(),
+      );
+      if (id == null) {
+        await uploads.delete(stored.name);
+        return null;
+      }
+      _drainQuietly();
+      return id;
+    } on Object {
+      await uploads.delete(stored.name);
+      rethrow;
+    } finally {
+      uploads.release(stored.name);
+    }
+  }
+
+  static Future<void> _deleteQuietly(File file) async {
+    try {
+      if (file.existsSync()) await file.delete();
+    } on FileSystemException catch (error) {
+      _log.info('Could not delete a file: ${error.osError?.errorCode}');
+    }
+  }
+
+  /// A row left `sending` by a run that died shows as waiting until the
+  /// sender takes it up again.
+  @override
+  Stream<List<PendingUpload>> watchPendingUploads(int taskId) => switchLatest(
+    _outbox.uploadingOperations,
+    (uploading) => _db.outboxDao
+        .watchPendingUploads(taskId)
+        .map(
+          (uploads) => [
+            for (final upload in uploads)
+              if (upload.state == PendingUploadState.sending &&
+                  !uploading.contains(upload.operationId))
+                upload.withState(PendingUploadState.waiting)
+              else
+                upload,
+          ],
+        ),
+  );
+
+  @override
+  Stream<TaskAttachment> get uploadedAttachments => _outbox.uploadedAttachments;
+
+  @override
+  Future<void> cancelUpload(String operationId) =>
+      _outbox.cancelUpload(operationId);
 
   /// The server copies the task as it has it, so the task's queued
   /// changes go first; a copy without them would lose them. The request is

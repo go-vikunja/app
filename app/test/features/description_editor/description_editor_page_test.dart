@@ -424,24 +424,14 @@ void main() {
     testWidgets('the menus leave the focus with the editor', (tester) async {
       await openEditor(tester);
 
-      expect(
-        tester
-            .widget<PopupMenuButton<int>>(find.byType(PopupMenuButton<int>))
-            .requestFocus,
-        isFalse,
+      final menus = tester.widgetList<PopupMenuButton<Object?>>(
+        find.byWidgetPredicate((widget) => widget is PopupMenuButton),
       );
-      expect(
-        tester
-            .widget<PopupMenuButton<Object?>>(
-              find.byWidgetPredicate(
-                (widget) =>
-                    widget is PopupMenuButton &&
-                    widget is! PopupMenuButton<int>,
-              ),
-            )
-            .requestFocus,
-        isFalse,
-      );
+      // Text style, image and table.
+      expect(menus, hasLength(3));
+      for (final menu in menus) {
+        expect(menu.requestFocus, isFalse);
+      }
     });
   });
 

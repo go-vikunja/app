@@ -1,5 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/features/attachments/application/attachment_picker.dart';
+import 'package:vikunja_mobile/features/attachments/presentation/attachment_source_items.dart';
 import 'package:vikunja_mobile/features/description_editor/application/editor_protocol.dart';
 
 enum _TableAction {
@@ -13,13 +15,17 @@ enum _TableAction {
 
 /// Every formatting command of the editor as native buttons above the
 /// keyboard, each showing whether it applies at the cursor. The web has no
-/// highlight mark, so there is no button for it.
+/// highlight mark, so there is no button for it. The image button shows
+/// only with [onImage], which gets where to take the image from, and takes
+/// taps while [imageEnabled].
 class EditorToolbar extends StatelessWidget {
   const new({
     required this.state,
     required this.enabled,
     required this.onCommand,
     required this.onLink,
+    this.onImage,
+    this.imageEnabled = true,
     super.key,
   });
 
@@ -27,6 +33,8 @@ class EditorToolbar extends StatelessWidget {
   final bool enabled;
   final ValueChanged<EditorCommand> onCommand;
   final VoidCallback onLink;
+  final ValueChanged<AttachmentSource>? onImage;
+  final bool imageEnabled;
 
   /// The height the toolbar takes in [context]: one row of buttons and the
   /// bottom safe area.
@@ -145,6 +153,8 @@ class EditorToolbar extends StatelessWidget {
           active: active.link,
           onPressed: enabled ? onLink : null,
         ),
+        if (onImage case final onImage?)
+          _ImageMenu(enabled: enabled && imageEnabled, onSelected: onImage),
         _TableMenu(
           inTable: active.table,
           enabled: enabled,
@@ -310,6 +320,30 @@ class _HeadingMenu extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ImageMenu extends StatelessWidget {
+  const new({required this.enabled, required this.onSelected});
+
+  final bool enabled;
+  final ValueChanged<AttachmentSource> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return PopupMenuButton<AttachmentSource>(
+      enabled: enabled,
+      requestFocus: false,
+      tooltip: l10n.editorImage,
+      onSelected: onSelected,
+      icon: const Icon(Icons.add_photo_alternate_outlined),
+      itemBuilder: (context) => attachmentSourceItems(l10n, const [
+        AttachmentSource.photos,
+        AttachmentSource.camera,
+        AttachmentSource.files,
+      ]),
     );
   }
 }

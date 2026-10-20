@@ -4998,6 +4998,432 @@ abstract class AppLocalizations {
   /// **'Cover image'**
   String get taskDetailCoverImage;
 
+  /// No description provided for @attachmentAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add attachment'**
+  String get attachmentAdd;
+
+  /// No description provided for @attachmentSourceFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Files'**
+  String get attachmentSourceFiles;
+
+  /// No description provided for @attachmentSourcePhotos.
+  ///
+  /// In en, this message translates to:
+  /// **'Photos'**
+  String get attachmentSourcePhotos;
+
+  /// No description provided for @attachmentSourceCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Take a photo'**
+  String get attachmentSourceCamera;
+
+  /// No description provided for @attachmentTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'“{name}” is too large: attachments can be up to {limit}.'**
+  String attachmentTooLarge(String name, String limit);
+
+  /// After files were added to a task; they upload when there is a connection.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 file will be uploaded} other{{count} files will be uploaded}}'**
+  String attachmentsQueued(int count);
+
+  /// No description provided for @attachmentAddFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'“{name}” couldn\'t be added.'**
+  String attachmentAddFailed(String name);
+
+  /// No description provided for @attachmentPickFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The files couldn\'t be opened.'**
+  String get attachmentPickFailed;
+
+  /// No description provided for @attachmentUploading.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploading…'**
+  String get attachmentUploading;
+
+  /// A file added to a task that has not been uploaded yet, e.g. while offline.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting to upload'**
+  String get attachmentWaiting;
+
+  /// No description provided for @attachmentUploadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Not uploaded: see Sync problems in the Account tab'**
+  String get attachmentUploadFailed;
+
+  /// No description provided for @attachmentUploadTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'Not uploaded: too large'**
+  String get attachmentUploadTooLarge;
+
+  /// No description provided for @attachmentCancelUpload.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel upload of {name}'**
+  String attachmentCancelUpload(String name);
+
+  /// No description provided for @attachmentOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Options for {name}'**
+  String attachmentOptions(String name);
+
+  /// No description provided for @attachmentOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get attachmentOpen;
+
+  /// No description provided for @attachmentShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get attachmentShare;
+
+  /// No description provided for @attachmentSaveToDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Save to device'**
+  String get attachmentSaveToDevice;
+
+  /// No description provided for @attachmentMakeCover.
+  ///
+  /// In en, this message translates to:
+  /// **'Make cover'**
+  String get attachmentMakeCover;
+
+  /// No description provided for @attachmentRemoveCover.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove cover'**
+  String get attachmentRemoveCover;
+
+  /// No description provided for @attachmentDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete attachment'**
+  String get attachmentDelete;
+
+  /// No description provided for @attachmentDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete attachment'**
+  String get attachmentDeleteTitle;
+
+  /// No description provided for @attachmentDeleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete the attachment {name}? This cannot be undone!'**
+  String attachmentDeleteBody(String name);
+
+  /// No description provided for @attachmentDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get attachmentDeleteConfirm;
+
+  /// No description provided for @attachmentDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'The attachment was deleted.'**
+  String get attachmentDeleted;
+
+  /// No description provided for @attachmentCoverSet.
+  ///
+  /// In en, this message translates to:
+  /// **'The cover image was changed.'**
+  String get attachmentCoverSet;
+
+  /// No description provided for @attachmentCoverRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'The cover image was removed.'**
+  String get attachmentCoverRemoved;
+
+  /// No description provided for @attachmentSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved.'**
+  String get attachmentSaved;
+
+  /// No description provided for @attachmentDownloading.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading…'**
+  String get attachmentDownloading;
+
+  /// No description provided for @attachmentDeleting.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleting…'**
+  String get attachmentDeleting;
+
+  /// No description provided for @attachmentSaving.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving…'**
+  String get attachmentSaving;
+
+  /// No description provided for @attachmentCancelDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel download of {name}'**
+  String attachmentCancelDownload(String name);
+
+  /// No description provided for @attachmentNoApp.
+  ///
+  /// In en, this message translates to:
+  /// **'No app on this device can open this file.'**
+  String get attachmentNoApp;
+
+  /// No description provided for @attachmentNeedsConnection.
+  ///
+  /// In en, this message translates to:
+  /// **'This needs a connection to the server.'**
+  String get attachmentNeedsConnection;
+
+  /// No description provided for @attachmentUnconfirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t confirm the change. Check your connection and try again.'**
+  String get attachmentUnconfirmed;
+
+  /// No description provided for @attachmentForbidden.
+  ///
+  /// In en, this message translates to:
+  /// **'You don\'t have permission to change this task\'s attachments.'**
+  String get attachmentForbidden;
+
+  /// No description provided for @attachmentArchived.
+  ///
+  /// In en, this message translates to:
+  /// **'This project is archived, so its attachments can\'t be changed.'**
+  String get attachmentArchived;
+
+  /// No description provided for @attachmentGone.
+  ///
+  /// In en, this message translates to:
+  /// **'The attachment no longer exists.'**
+  String get attachmentGone;
+
+  /// No description provided for @attachmentsDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Attachments are turned off on this server.'**
+  String get attachmentsDisabled;
+
+  /// No description provided for @attachmentFileTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'The file is too large for the server.'**
+  String get attachmentFileTooLarge;
+
+  /// No description provided for @attachmentFileTooLargeLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'The file is too large: attachments can be up to {limit}.'**
+  String attachmentFileTooLargeLimit(String limit);
+
+  /// No description provided for @attachmentNotSynced.
+  ///
+  /// In en, this message translates to:
+  /// **'This works once the task has been synced.'**
+  String get attachmentNotSynced;
+
+  /// No description provided for @attachmentRefused.
+  ///
+  /// In en, this message translates to:
+  /// **'The server refused it: {message}'**
+  String attachmentRefused(String message);
+
+  /// No description provided for @attachmentFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'That didn\'t work. Try again later.'**
+  String get attachmentFailed;
+
+  /// No description provided for @editorImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Insert image'**
+  String get editorImage;
+
+  /// No description provided for @editorImageUploading.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploading the image…'**
+  String get editorImageUploading;
+
+  /// Announced to screen readers once an uploaded image is in the description.
+  ///
+  /// In en, this message translates to:
+  /// **'Image inserted'**
+  String get editorImageInserted;
+
+  /// No description provided for @shareSignedOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to Rurana first, then share again.'**
+  String get shareSignedOut;
+
+  /// No description provided for @sharePickAccountTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Share to which account?'**
+  String get sharePickAccountTitle;
+
+  /// No description provided for @sharePickAccountBody.
+  ///
+  /// In en, this message translates to:
+  /// **'What you share goes to that account\'s server.'**
+  String get sharePickAccountBody;
+
+  /// No description provided for @shareSheetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Share to Rurana'**
+  String get shareSheetTitle;
+
+  /// No description provided for @shareAddToTask.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to task'**
+  String get shareAddToTask;
+
+  /// No description provided for @shareFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Files'**
+  String get shareFiles;
+
+  /// No description provided for @shareRemoveFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {name}'**
+  String shareRemoveFile(String name);
+
+  /// No description provided for @shareFilePreparing.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing…'**
+  String get shareFilePreparing;
+
+  /// No description provided for @shareFileTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'Too large: attachments can be up to {limit}'**
+  String shareFileTooLarge(String limit);
+
+  /// No description provided for @shareFileUnreadable.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t be read'**
+  String get shareFileUnreadable;
+
+  /// No description provided for @shareFilesLeftOut.
+  ///
+  /// In en, this message translates to:
+  /// **'This server doesn\'t take attachments, so the files are left out.'**
+  String get shareFilesLeftOut;
+
+  /// No description provided for @shareTooManyFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the first {count} files are added.'**
+  String shareTooManyFiles(int count);
+
+  /// No description provided for @shareAppendHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The text goes at the end of the task\'s description.'**
+  String get shareAppendHint;
+
+  /// No description provided for @sharePickTask.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a task.'**
+  String get sharePickTask;
+
+  /// No description provided for @shareCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Create task'**
+  String get shareCreate;
+
+  /// No description provided for @shareAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get shareAdd;
+
+  /// No description provided for @shareTaskCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{Task created} =1{Task created, 1 file will be uploaded} other{Task created, {count} files will be uploaded}}'**
+  String shareTaskCreated(int count);
+
+  /// No description provided for @shareAddedToTask.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{Added to the task} =1{Added to the task, 1 file will be uploaded} other{Added to the task, {count} files will be uploaded}}'**
+  String shareAddedToTask(int count);
+
+  /// No description provided for @shareFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'What was shared couldn\'t be added.'**
+  String get shareFailed;
+
+  /// No description provided for @syncProblemUploadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'“{name}” could not be uploaded.'**
+  String syncProblemUploadFailed(String name);
+
+  /// No description provided for @syncProblemUploadTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'The file is too large.'**
+  String get syncProblemUploadTooLarge;
+
+  /// No description provided for @syncProblemUploadTimedOut.
+  ///
+  /// In en, this message translates to:
+  /// **'It timed out several times; try again on a faster connection.'**
+  String get syncProblemUploadTimedOut;
+
+  /// No description provided for @syncProblemUploadForbidden.
+  ///
+  /// In en, this message translates to:
+  /// **'You may not add attachments to this task.'**
+  String get syncProblemUploadForbidden;
+
+  /// No description provided for @syncProblemAttachmentsDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Attachments are turned off on the server.'**
+  String get syncProblemAttachmentsDisabled;
+
+  /// No description provided for @syncProblemUploadFileMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'The copy kept on this device is gone; discard it.'**
+  String get syncProblemUploadFileMissing;
+
   /// No description provided for @taskDetailComments.
   ///
   /// In en, this message translates to:

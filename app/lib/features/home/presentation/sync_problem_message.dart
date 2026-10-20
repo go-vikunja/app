@@ -1,5 +1,6 @@
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/core/attachments/upload_policy.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 
 /// What failed and why, for the Sync problems section.
@@ -8,7 +9,13 @@ String describeSyncProblem(AppLocalizations l10n, SyncProblem problem) {
     OutboxOperationKind.createTask => l10n.syncProblemCreateFailed,
     OutboxOperationKind.updateTask => l10n.syncProblemUpdateFailed,
     OutboxOperationKind.deleteTask => l10n.syncProblemDeleteFailed,
+    OutboxOperationKind.uploadAttachment => l10n.syncProblemUploadFailed(
+      problem.fileName ?? '',
+    ),
   };
+  if (problem.kind == OutboxOperationKind.uploadAttachment) {
+    return '$what ${_whyUploadFailed(l10n, problem.failure)}';
+  }
   final why = switch (problem.failure) {
     Forbidden() when _onlyReorders(problem.changes) =>
       l10n.syncProblemListNotReorderable,
@@ -46,3 +53,16 @@ bool _namesOnlyListViews(TaskChanges? changes) =>
     changes != null &&
     (changes.positions?.isNotEmpty ?? false) &&
     (changes.kanban?.isEmpty ?? true);
+
+String _whyUploadFailed(AppLocalizations l10n, VikunjaFailure failure) =>
+    switch (uploadProblemReason(failure)) {
+      UploadProblemReason.tooLarge => l10n.syncProblemUploadTooLarge,
+      UploadProblemReason.taskGone => l10n.syncProblemTaskMissing,
+      UploadProblemReason.projectArchived => l10n.syncProblemProjectArchived,
+      UploadProblemReason.noPermission => l10n.syncProblemUploadForbidden,
+      UploadProblemReason.attachmentsDisabled =>
+        l10n.syncProblemAttachmentsDisabled,
+      UploadProblemReason.fileMissing => l10n.syncProblemUploadFileMissing,
+      UploadProblemReason.timedOut => l10n.syncProblemUploadTimedOut,
+      UploadProblemReason.other => l10n.syncProblemUnexpected,
+    };

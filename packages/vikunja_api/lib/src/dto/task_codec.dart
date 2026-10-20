@@ -72,6 +72,7 @@ Map<String, Object?> encodeTaskChanges(TaskChanges changes) => {
   'project_id': ?changes.projectId,
   if (changes.reminders case final reminders?)
     'reminders': [for (final reminder in reminders) _encodeReminder(reminder)],
+  'cover_image_attachment_id': ?changes.coverImageAttachmentId,
 };
 
 /// The create body for both versions. The project is only in the path: a

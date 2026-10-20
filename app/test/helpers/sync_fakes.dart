@@ -1,16 +1,21 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter_riverpod/misc.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/core/activity/activity_providers.dart';
 import 'package:vikunja_mobile/core/activity/foreground_activity.dart';
+import 'package:vikunja_mobile/core/attachments/attachment_downloads.dart';
 import 'package:vikunja_mobile/core/attachments/attachment_image_providers.dart';
+import 'package:vikunja_mobile/core/attachments/pending_upload.dart';
 import 'package:vikunja_mobile/core/db/account_database_files.dart';
+import 'package:vikunja_mobile/core/files/file_actions_providers.dart';
 import 'package:vikunja_mobile/core/outbox/pending_task_ids_source.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/realtime/realtime_providers.dart';
 import 'package:vikunja_mobile/core/repositories/activity_repository_providers.dart';
+import 'package:vikunja_mobile/core/repositories/attachment_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/bucket_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences_providers.dart';
@@ -25,6 +30,7 @@ import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 import 'package:vikunja_mobile/core/repositories/task_resolver_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_search_providers.dart';
 import 'package:vikunja_mobile/core/settings/user_settings_providers.dart';
+import 'package:vikunja_mobile/core/share/share_providers.dart';
 import 'package:vikunja_mobile/core/sync/saved_filters.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
@@ -32,6 +38,7 @@ import 'package:vikunja_mobile/features/accounts/application/account_switcher.da
 import 'package:vikunja_mobile/features/sync/application/inactive_outboxes.dart';
 
 import 'activity_fakes.dart';
+import 'attachment_fakes.dart';
 import 'bucket_fakes.dart';
 import 'list_preferences_fakes.dart';
 import 'project_view_fakes.dart';
@@ -1066,8 +1073,9 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
   /// `updateDescription 1`, `toggle 1 at 42 true`, `setDone 1 true`,
   /// `undoDone 1`, `setFavorite 2 false`, `delete 3`, `place …` (see
   /// [placements]), `position …` (see [positions]), `retry <op>`,
-  /// `discard <op>`, `keepMine <op> over <html>`, `useWebs <op>` or
-  /// `sendPending`. A write applies to the task at once, like the local
+  /// `discard <op>`, `keepMine <op> over <html>`, `useWebs <op>`,
+  /// `queueUpload 3 photo.png` (see [uploadRequests]), `cancelUpload <op>`
+  /// or `sendPending`. A write applies to the task at once, like the local
   /// database; what counts as pending is the test's to say with
   /// [pendingChanges] and [pendingTaskIds].
   final List<String> writes = [];
@@ -1351,6 +1359,130 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
     return copyId;
   }
 
+  /// The largest file `queueUpload` takes; above it `UploadTooLarge`.
+  int maxUploadBytes = 20 * 1024 * 1024;
+
+  /// The size `queueUpload` records per source path (0 when absent): the
+  /// fake never reads files.
+  final Map<String, int> uploadSizes = {};
+
+  /// What `queueUpload` was given, in order; [writes] has each as
+  /// `queueUpload 3 photo.png` (plus ` move` with `moveSource`). It queues
+  /// a waiting [PendingUpload] under the op id `upload-<n>`, or returns
+  /// null for a task not in [all]. [queueUploadFailure] is thrown instead
+  /// while set.
+  final List<
+    ({
+      int taskId,
+      String sourcePath,
+      String fileName,
+      String? mimeType,
+      bool moveSource,
+    })
+  >
+  uploadRequests = [];
+  Exception? queueUploadFailure;
+  var _nextUpload = 1;
+  final Map<String, PendingUpload> _uploads = {};
+  final _uploadChanges = StreamController<void>.broadcast();
+  final _uploaded = StreamController<TaskAttachment>.broadcast();
+
+  /// Every queued upload, oldest first.
+  List<PendingUpload> get pendingUploads => List.unmodifiable(_uploads.values);
+
+  @override
+  Future<String?> queueUpload(
+    int taskId, {
+    required String sourcePath,
+    required String fileName,
+    String? mimeType,
+    bool moveSource = false,
+  }) async {
+    uploadRequests.add((
+      taskId: taskId,
+      sourcePath: sourcePath,
+      fileName: fileName,
+      mimeType: mimeType,
+      moveSource: moveSource,
+    ));
+    writes.add('queueUpload $taskId $fileName${moveSource ? ' move' : ''}');
+    await beforeWrite?.call();
+    if (queueUploadFailure case final failure?) throw failure;
+    final size = uploadSizes[sourcePath] ?? 0;
+    if (size > maxUploadBytes) {
+      throw UploadTooLarge(size: size, maxBytes: maxUploadBytes);
+    }
+    final task = find(taskId);
+    if (task == null) return null;
+    final id = 'upload-${_nextUpload++}';
+    _uploads[id] = PendingUpload(
+      operationId: id,
+      taskId: task.id,
+      fileName: fileName,
+      size: size,
+      mimeType: mimeType,
+      state: PendingUploadState.waiting,
+      queuedAt: createdAt,
+    );
+    _notifyUploads();
+    return id;
+  }
+
+  /// Changes a queued upload's state, as the sender would.
+  void setUploadState(
+    String operationId,
+    PendingUploadState state, {
+    VikunjaFailure? failure,
+  }) {
+    final upload = _uploads[operationId];
+    if (upload == null) return;
+    _uploads[operationId] = PendingUpload(
+      operationId: upload.operationId,
+      taskId: upload.taskId,
+      fileName: upload.fileName,
+      size: upload.size,
+      mimeType: upload.mimeType,
+      state: state,
+      queuedAt: upload.queuedAt,
+      lastFailure: failure,
+    );
+    _notifyUploads();
+  }
+
+  /// The upload went through as [attachment]: it leaves the queue and
+  /// `uploadedAttachments` reports it.
+  void completeUpload(String operationId, TaskAttachment attachment) {
+    _uploads.remove(operationId);
+    _notifyUploads();
+    if (!_uploaded.isClosed) _uploaded.add(attachment);
+  }
+
+  @override
+  Stream<List<PendingUpload>> watchPendingUploads(int taskId) =>
+      _replaying(() => true, _uploadChanges.stream.map((_) => true)).map((_) {
+        final id = remaps[taskId] ?? taskId;
+        return [
+          for (final upload in _uploads.values)
+            if ((remaps[upload.taskId] ?? upload.taskId) == id) upload,
+        ];
+      });
+
+  @override
+  Stream<TaskAttachment> get uploadedAttachments => _uploaded.stream;
+
+  /// [writes] has `cancelUpload <op>`; the upload leaves the queue.
+  @override
+  Future<void> cancelUpload(String operationId) async {
+    writes.add('cancelUpload $operationId');
+    await beforeWrite?.call();
+    _uploads.remove(operationId);
+    _notifyUploads();
+  }
+
+  void _notifyUploads() {
+    if (!_uploadChanges.isClosed) _uploadChanges.add(null);
+  }
+
   @override
   Stream<int> watchPendingChanges() =>
       _outbox(() => _pendingCount, _pendingChanges.stream);
@@ -1469,6 +1601,8 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
     unawaited(_pendingChanges.close());
     unawaited(_problems.close());
     unawaited(_pendingIds.close());
+    unawaited(_uploadChanges.close());
+    unawaited(_uploaded.close());
   }
 }
 
@@ -1478,6 +1612,10 @@ final class FakeAccountDatabaseFiles implements AccountDatabaseFiles {
   @override
   Future<String> pathFor(String accountId) async =>
       '/support/accounts/$accountId/vikunja.db';
+
+  @override
+  Future<Directory> uploadsDirectoryFor(String accountId) async =>
+      Directory('/support/accounts/$accountId/uploads');
 
   @override
   Future<void> deleteFor(String accountId) async => deleted.add(accountId);
@@ -1552,6 +1690,7 @@ final class AccountDataFakes {
   /// Resolves the account's [tasks] locally, the rest from its `online`.
   late final FakeTaskResolver resolver;
   final attachmentImages = FakeAttachmentImages();
+  final attachments = FakeAttachmentRepository();
 
   /// What `userSettingsProvider` reports while the account is active.
   UserSettings get settings => _settings;
@@ -1580,6 +1719,10 @@ final class SyncFakes {
   final accounts = <String, AccountDataFakes>{};
   final files = FakeAccountDatabaseFiles();
 
+  /// No share is waiting unless a test puts one there.
+  final shareSource = FakeShareIntentSource();
+  final fileActions = FakeFileActions();
+
   /// Refuses every upgrade, so no screen test opens a socket or waits on
   /// one; a test of the realtime path lets it accept.
   final realtime = FakeRealtimeConnector(accepts: false);
@@ -1606,12 +1749,18 @@ final class SyncFakes {
   FakeTaskSearch get search => shared.search;
   FakeTaskResolver get resolver => shared.resolver;
   FakeAttachmentImages get attachmentImages => shared.attachmentImages;
+  FakeAttachmentRepository get attachments => shared.attachments;
 
   AccountDataFakes forAccount(String accountId) =>
       accounts[accountId] ?? shared;
 
   List<Override> get overrides => [
     accountDatabaseFilesProvider.overrideWithValue(files),
+    // A cache folder that never exists: a sign-out has nothing to delete,
+    // and no screen test waits on real file system calls.
+    attachmentDownloadsProvider.overrideWithValue(
+      AttachmentDownloads(() async => Directory('/no-cache')),
+    ),
     accountOutboxesProvider.overrideWithValue(outboxes),
     syncEngineProvider.overrideWith(
       (ref, accountId) => forAccount(accountId).engine,
@@ -1652,6 +1801,11 @@ final class SyncFakes {
     accountAttachmentImagesProvider.overrideWith(
       (ref, accountId) => forAccount(accountId).attachmentImages,
     ),
+    accountAttachmentRepositoryProvider.overrideWith(
+      (ref, accountId) => forAccount(accountId).attachments,
+    ),
+    shareIntentSourceProvider.overrideWithValue(shareSource),
+    fileActionsProvider.overrideWithValue(fileActions),
     // The real one syncs the activity on the foreground ticks, which opens
     // the inactive accounts' databases.
     foregroundActivityProvider.overrideWithValue(

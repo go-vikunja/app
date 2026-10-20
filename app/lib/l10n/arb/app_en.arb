@@ -3046,6 +3046,204 @@
   "@taskDetailCoverImage": {
     "description": "Badge on the attachment the task uses as its cover image."
   },
+  "attachmentAdd": "Add attachment",
+  "attachmentSourceFiles": "Files",
+  "attachmentSourcePhotos": "Photos",
+  "attachmentSourceCamera": "Take a photo",
+  "attachmentTooLarge": "“{name}” is too large: attachments can be up to {limit}.",
+  "@attachmentTooLarge": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "holiday.mov"
+      },
+      "limit": {
+        "type": "String",
+        "example": "20 MB"
+      }
+    }
+  },
+  "attachmentsQueued": "{count, plural, =1{1 file will be uploaded} other{{count} files will be uploaded}}",
+  "@attachmentsQueued": {
+    "description": "After files were added to a task; they upload when there is a connection.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "attachmentAddFailed": "“{name}” couldn't be added.",
+  "@attachmentAddFailed": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "scan.pdf"
+      }
+    }
+  },
+  "attachmentPickFailed": "The files couldn't be opened.",
+  "attachmentUploading": "Uploading…",
+  "attachmentWaiting": "Waiting to upload",
+  "@attachmentWaiting": {
+    "description": "A file added to a task that has not been uploaded yet, e.g. while offline."
+  },
+  "attachmentUploadFailed": "Not uploaded: see Sync problems in the Account tab",
+  "attachmentUploadTooLarge": "Not uploaded: too large",
+  "attachmentCancelUpload": "Cancel upload of {name}",
+  "@attachmentCancelUpload": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "scan.pdf"
+      }
+    }
+  },
+  "attachmentOptions": "Options for {name}",
+  "@attachmentOptions": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "scan.pdf"
+      }
+    }
+  },
+  "attachmentOpen": "Open",
+  "attachmentShare": "Share",
+  "attachmentSaveToDevice": "Save to device",
+  "attachmentMakeCover": "Make cover",
+  "attachmentRemoveCover": "Remove cover",
+  "attachmentDelete": "Delete attachment",
+  "attachmentDeleteTitle": "Delete attachment",
+  "attachmentDeleteBody": "Are you sure you want to delete the attachment {name}? This cannot be undone!",
+  "@attachmentDeleteBody": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "scan.pdf"
+      }
+    }
+  },
+  "attachmentDeleteConfirm": "Delete",
+  "attachmentDeleted": "The attachment was deleted.",
+  "attachmentCoverSet": "The cover image was changed.",
+  "attachmentCoverRemoved": "The cover image was removed.",
+  "attachmentSaved": "Saved.",
+  "attachmentDownloading": "Downloading…",
+  "attachmentDeleting": "Deleting…",
+  "attachmentSaving": "Saving…",
+  "attachmentCancelDownload": "Cancel download of {name}",
+  "@attachmentCancelDownload": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "scan.pdf"
+      }
+    }
+  },
+  "attachmentNoApp": "No app on this device can open this file.",
+  "attachmentNeedsConnection": "This needs a connection to the server.",
+  "attachmentUnconfirmed": "Couldn't confirm the change. Check your connection and try again.",
+  "attachmentForbidden": "You don't have permission to change this task's attachments.",
+  "attachmentArchived": "This project is archived, so its attachments can't be changed.",
+  "attachmentGone": "The attachment no longer exists.",
+  "attachmentsDisabled": "Attachments are turned off on this server.",
+  "attachmentFileTooLarge": "The file is too large for the server.",
+  "attachmentFileTooLargeLimit": "The file is too large: attachments can be up to {limit}.",
+  "@attachmentFileTooLargeLimit": {
+    "placeholders": {
+      "limit": {
+        "type": "String",
+        "example": "20 MB"
+      }
+    }
+  },
+  "attachmentNotSynced": "This works once the task has been synced.",
+  "attachmentRefused": "The server refused it: {message}",
+  "@attachmentRefused": {
+    "placeholders": {
+      "message": {
+        "type": "String",
+        "example": "Forbidden"
+      }
+    }
+  },
+  "attachmentFailed": "That didn't work. Try again later.",
+  "editorImage": "Insert image",
+  "editorImageUploading": "Uploading the image…",
+  "editorImageInserted": "Image inserted",
+  "@editorImageInserted": {
+    "description": "Announced to screen readers once an uploaded image is in the description."
+  },
+  "shareSignedOut": "Sign in to Rurana first, then share again.",
+  "sharePickAccountTitle": "Share to which account?",
+  "sharePickAccountBody": "What you share goes to that account's server.",
+  "shareSheetTitle": "Share to Rurana",
+  "shareAddToTask": "Add to task",
+  "shareFiles": "Files",
+  "shareRemoveFile": "Remove {name}",
+  "@shareRemoveFile": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "scan.pdf"
+      }
+    }
+  },
+  "shareFilePreparing": "Preparing…",
+  "shareFileTooLarge": "Too large: attachments can be up to {limit}",
+  "@shareFileTooLarge": {
+    "placeholders": {
+      "limit": {
+        "type": "String",
+        "example": "20 MB"
+      }
+    }
+  },
+  "shareFileUnreadable": "Couldn't be read",
+  "shareFilesLeftOut": "This server doesn't take attachments, so the files are left out.",
+  "shareTooManyFiles": "Only the first {count} files are added.",
+  "@shareTooManyFiles": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "shareAppendHint": "The text goes at the end of the task's description.",
+  "sharePickTask": "Choose a task.",
+  "shareCreate": "Create task",
+  "shareAdd": "Add",
+  "shareTaskCreated": "{count, plural, =0{Task created} =1{Task created, 1 file will be uploaded} other{Task created, {count} files will be uploaded}}",
+  "@shareTaskCreated": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "shareAddedToTask": "{count, plural, =0{Added to the task} =1{Added to the task, 1 file will be uploaded} other{Added to the task, {count} files will be uploaded}}",
+  "@shareAddedToTask": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "shareFailed": "What was shared couldn't be added.",
+  "syncProblemUploadFailed": "“{name}” could not be uploaded.",
+  "@syncProblemUploadFailed": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "scan.pdf"
+      }
+    }
+  },
+  "syncProblemUploadTooLarge": "The file is too large.",
+  "syncProblemUploadTimedOut": "It timed out several times; try again on a faster connection.",
+  "syncProblemUploadForbidden": "You may not add attachments to this task.",
+  "syncProblemAttachmentsDisabled": "Attachments are turned off on the server.",
+  "syncProblemUploadFileMissing": "The copy kept on this device is gone; discard it.",
   "taskDetailComments": "Comments ({count})",
   "@taskDetailComments": {
     "placeholders": {

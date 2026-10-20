@@ -5,12 +5,16 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart' show AppLifecycleListener;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/activity/activity_notifier.dart';
 import 'package:vikunja_mobile/core/activity/activity_tray.dart';
+import 'package:vikunja_mobile/core/attachments/attachment_downloads.dart';
 import 'package:vikunja_mobile/core/attachments/attachment_image_providers.dart';
+import 'package:vikunja_mobile/core/attachments/upload_files.dart';
+import 'package:vikunja_mobile/core/attachments/upload_policy.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/auth/session_manager.dart';
 import 'package:vikunja_mobile/core/auth/sign_out.dart';
@@ -118,6 +122,23 @@ final class AccountTokens implements AccessTokenSource {
 @Riverpod(keepAlive: true)
 AccountDatabaseFiles accountDatabaseFiles(Ref ref) =>
     PathProviderAccountDatabaseFiles();
+
+/// One account's stored copies of queued uploads, shared by its task
+/// repository and outbox sender.
+@Riverpod(keepAlive: true)
+UploadFiles accountUploadFiles(Ref ref, String accountId) {
+  final files = ref.watch(accountDatabaseFilesProvider);
+  return UploadFiles(() => files.uploadsDirectoryFor(accountId));
+}
+
+/// Downloaded attachments of every account; downloads unused for a few
+/// days go when this is first read.
+@Riverpod(keepAlive: true)
+AttachmentDownloads attachmentDownloads(Ref ref) {
+  final downloads = AttachmentDownloads(getApplicationCacheDirectory);
+  unawaited(downloads.purgeStale());
+  return downloads;
+}
 
 @Riverpod(keepAlive: true)
 OpenDatabases openDatabases(Ref ref) =>
@@ -237,6 +258,15 @@ OutboxSender outboxSender(Ref ref, String accountId) {
     readClient: ref.watch(readClientProvider(accountId)),
     sync: ref.watch(syncEngineProvider(accountId)),
     now: ref.watch(clockProvider),
+    uploads: ref.watch(accountUploadFilesProvider(accountId)),
+    headless: ref.watch(runsHeadlessProvider),
+    currentUserId: () =>
+        ref.read(accountsProvider).value?.find(accountId)?.account.userId,
+    maxUploadBytes: () =>
+        switch (ref.read(accountsProvider).value?.find(accountId)) {
+          final entry? => maxUploadBytesOf(entry.connection.info),
+          null => null,
+        },
   );
   final needsReauth = accountsProvider.select(
     (accounts) => accounts.value?.find(accountId)?.account.needsReauth,
@@ -297,6 +327,14 @@ TaskRepository accountTaskRepository(Ref ref, String accountId) {
     ),
   );
   if (perPage == null) throw StateError('Account $accountId is not registered');
+  final maxUploadBytes = ref.watch(
+    accountsProvider.select(
+      (accounts) => switch (accounts.value?.find(accountId)) {
+        final entry? => maxUploadBytesOf(entry.connection.info),
+        null => defaultMaxUploadBytes,
+      },
+    ),
+  );
   // Listened, not watched: a tick re-evaluates the filters with relative
   // dates instead of rebuilding the repository and every list.
   final clockTicks = StreamController<void>.broadcast();
@@ -310,6 +348,8 @@ TaskRepository accountTaskRepository(Ref ref, String accountId) {
     perPage: perPage,
     now: ref.watch(clockProvider),
     clockTicks: clockTicks.stream,
+    uploads: ref.watch(accountUploadFilesProvider(accountId)),
+    maxUploadBytes: maxUploadBytes,
   );
   ref
     ..onDispose(repository.dispose)
@@ -373,7 +413,8 @@ UserRepository? userRepository(Ref ref) {
 /// memory, cancels the account's notifications (scheduled
 /// and in the tray) and forgets their preferences and the background
 /// notes, stops its outbox sender and sync engine, closes its database and
-/// deletes the files.
+/// deletes the files: the database, the stored copies of queued uploads
+/// and the downloaded attachments.
 @Riverpod(keepAlive: true)
 AccountDataWiper accountDataWiper(Ref ref) => (accountId) async {
   BackgroundRunnerChannel.release(accountId);
@@ -419,6 +460,12 @@ AccountDataWiper accountDataWiper(Ref ref) => (accountId) async {
   }
   await ref.read(openDatabasesProvider).closeForDeletion(accountId);
   await ref.read(accountDatabaseFilesProvider).deleteFor(accountId);
+  ref.invalidate(accountUploadFilesProvider(accountId));
+  await _disposeQuietly(
+    'Downloaded attachments',
+    accountId,
+    () => ref.read(attachmentDownloadsProvider).purgeAccount(accountId),
+  );
 };
 
 Future<void> _disposeQuietly(

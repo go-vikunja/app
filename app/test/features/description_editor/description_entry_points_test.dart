@@ -105,6 +105,23 @@ void main() {
       ]);
     });
 
+    testWidgets('back from the editor the details are read again, so an '
+        'image inserted there is listed', (tester) async {
+      await openSheet(tester, 'Quarterly report');
+      await tester.tap(inSheet(find.byTooltip(en.taskDetailEditDescription)));
+      await tester.pumpAndSettle();
+      final reads = data.details.calls.length;
+      data.details.detailsByTask[1] = TaskDetails(
+        attachments: [sampleAttachment(id: 500, name: 'IMG_1.png')],
+      );
+
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+
+      expect(data.details.calls, hasLength(reads + 1));
+      expect(inSheet(find.text('IMG_1.png')), findsOneWidget);
+    });
+
     testWidgets('a task without a description offers "Add description"', (
       tester,
     ) async {

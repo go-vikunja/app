@@ -35,6 +35,9 @@ final class _SwitchableWriteClient implements VikunjaWriteClient {
   late final LabelsWritePort labels = _SwitchableLabels(this);
 
   @override
+  AttachmentsWritePort get attachments => _real.attachments;
+
+  @override
   NotificationsWritePort get notifications => _real.notifications;
 
   @override

@@ -14,6 +14,11 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 final class AuthInterceptor extends Interceptor {
   new(this._dio, this._connection, this._tokens);
 
+  /// Set to true in a request's `extra` when its body can be read only
+  /// once: a 401 code 11 then still refreshes the token for the next
+  /// request, but the request is not repeated.
+  static const bodyReadOnceKey = 'vikunja.auth.bodyReadOnce';
+
   static const _authorization = 'Authorization';
   static const _bearerPrefix = 'Bearer ';
   static const _managedKey = 'vikunja.auth.managed';
@@ -94,7 +99,9 @@ final class AuthInterceptor extends Interceptor {
         true,
       );
     }
-    if (freshToken == null || freshToken == rejectedToken) {
+    if (freshToken == null ||
+        freshToken == rejectedToken ||
+        options.extra[bodyReadOnceKey] == true) {
       return handler.next(err);
     }
 

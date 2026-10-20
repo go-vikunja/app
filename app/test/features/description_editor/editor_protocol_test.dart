@@ -111,6 +111,35 @@ void main() {
       );
     });
 
+    test('insertImage carries the address, the id and an alt text only '
+        'when there is one', () {
+      expect(
+        payloadOf(
+          EditorMessages.command(
+            EditorCommand.insertImage(
+              src: 'https://x.org/api/v2/tasks/3/attachments/9',
+              id: 'tiptap-image-3-9',
+            ),
+            token: token,
+          ),
+        ),
+        {
+          'type': 'command',
+          'token': token,
+          'name': 'insertImage',
+          'args': {
+            'src': 'https://x.org/api/v2/tasks/3/attachments/9',
+            'id': 'tiptap-image-3-9',
+          },
+        },
+      );
+      expect(EditorCommand.insertImage(src: 's', id: 'i', alt: 'Plan').args, {
+        'src': 's',
+        'id': 'i',
+        'alt': 'Plan',
+      });
+    });
+
     test('a mention stores the username as its id', () {
       expect(
         payloadOf(
@@ -319,6 +348,21 @@ void main() {
       );
       expect(withoutFrontend.apiRoot, 'https://api.example.org/v');
       expect(editorLinksOf(null).apiRoot, '');
+    });
+
+    test("an uploaded image points where the web's would, under the API "
+        'root', () {
+      final links = editorLinksOf(
+        AccountLinkBases(
+          serverRoot: Uri.parse('https://api.example.org/vikunja/'),
+          frontendUrl: Uri.parse('https://tasks.example.org/sub/'),
+        ),
+      );
+      expect(
+        attachmentImageSrc(links, taskId: 3, attachmentId: 9),
+        'https://tasks.example.org/sub/api/v2/tasks/3/attachments/9',
+      );
+      expect(attachmentImageId(taskId: 3, attachmentId: 9), 'tiptap-image-3-9');
     });
   });
 }

@@ -359,6 +359,154 @@ final class AccountDatabaseFilesProvider
 String _$accountDatabaseFilesHash() =>
     r'87b4cc01f96127ac6ebe8dd31c4b798b75a986c4';
 
+/// One account's stored copies of queued uploads, shared by its task
+/// repository and outbox sender.
+
+@ProviderFor(accountUploadFiles)
+final accountUploadFilesProvider = AccountUploadFilesFamily._();
+
+/// One account's stored copies of queued uploads, shared by its task
+/// repository and outbox sender.
+
+final class AccountUploadFilesProvider
+    extends $FunctionalProvider<UploadFiles, UploadFiles, UploadFiles>
+    with $Provider<UploadFiles> {
+  /// One account's stored copies of queued uploads, shared by its task
+  /// repository and outbox sender.
+  AccountUploadFilesProvider._({
+    required AccountUploadFilesFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'accountUploadFilesProvider',
+         isAutoDispose: false,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$accountUploadFilesHash();
+
+  @override
+  String toString() {
+    return r'accountUploadFilesProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $ProviderElement<UploadFiles> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  UploadFiles create(Ref ref) {
+    final argument = this.argument as String;
+    return accountUploadFiles(ref, argument);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(UploadFiles value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<UploadFiles>(value),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is AccountUploadFilesProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$accountUploadFilesHash() =>
+    r'1b72ede66d059f865b3c36703011e0a6734d4cef';
+
+/// One account's stored copies of queued uploads, shared by its task
+/// repository and outbox sender.
+
+final class AccountUploadFilesFamily extends $Family
+    with $FunctionalFamilyOverride<UploadFiles, String> {
+  AccountUploadFilesFamily._()
+    : super(
+        retry: null,
+        name: r'accountUploadFilesProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: false,
+      );
+
+  /// One account's stored copies of queued uploads, shared by its task
+  /// repository and outbox sender.
+
+  AccountUploadFilesProvider call(String accountId) =>
+      AccountUploadFilesProvider._(argument: accountId, from: this);
+
+  @override
+  String toString() => r'accountUploadFilesProvider';
+}
+
+/// Downloaded attachments of every account; downloads unused for a few
+/// days go when this is first read.
+
+@ProviderFor(attachmentDownloads)
+final attachmentDownloadsProvider = AttachmentDownloadsProvider._();
+
+/// Downloaded attachments of every account; downloads unused for a few
+/// days go when this is first read.
+
+final class AttachmentDownloadsProvider
+    extends
+        $FunctionalProvider<
+          AttachmentDownloads,
+          AttachmentDownloads,
+          AttachmentDownloads
+        >
+    with $Provider<AttachmentDownloads> {
+  /// Downloaded attachments of every account; downloads unused for a few
+  /// days go when this is first read.
+  AttachmentDownloadsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'attachmentDownloadsProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$attachmentDownloadsHash();
+
+  @$internal
+  @override
+  $ProviderElement<AttachmentDownloads> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  AttachmentDownloads create(Ref ref) {
+    return attachmentDownloads(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AttachmentDownloads value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AttachmentDownloads>(value),
+    );
+  }
+}
+
+String _$attachmentDownloadsHash() =>
+    r'cc72895c5a239b47d540c8ac4ef6585a92631680';
+
 @ProviderFor(openDatabases)
 final openDatabasesProvider = OpenDatabasesProvider._();
 
@@ -694,7 +842,7 @@ final class OutboxSenderProvider
   }
 }
 
-String _$outboxSenderHash() => r'28c572a1014179afa1ff56e0d060bf0957fee895';
+String _$outboxSenderHash() => r'8a5e4de02d6f0c1889c51b0242728328c6c4ed0f';
 
 /// One account's outbox sender; disposed with its database on sign-out.
 /// It drains when built (app start), when the app comes back to the front
@@ -886,7 +1034,7 @@ final class AccountTaskRepositoryProvider
 }
 
 String _$accountTaskRepositoryHash() =>
-    r'5c67ee53bc37e26a1502ec23d6c134a6f13499be';
+    r'9714f3a4aca2ceeb47667e6d52efc970764fccf9';
 
 final class AccountTaskRepositoryFamily extends $Family
     with $FunctionalFamilyOverride<TaskRepository, String> {
@@ -1254,7 +1402,8 @@ String _$userRepositoryHash() => r'28da8498a99ef2100dbc72f90b776490a8e9c948';
 /// memory, cancels the account's notifications (scheduled
 /// and in the tray) and forgets their preferences and the background
 /// notes, stops its outbox sender and sync engine, closes its database and
-/// deletes the files.
+/// deletes the files: the database, the stored copies of queued uploads
+/// and the downloaded attachments.
 
 @ProviderFor(accountDataWiper)
 final accountDataWiperProvider = AccountDataWiperProvider._();
@@ -1264,7 +1413,8 @@ final accountDataWiperProvider = AccountDataWiperProvider._();
 /// memory, cancels the account's notifications (scheduled
 /// and in the tray) and forgets their preferences and the background
 /// notes, stops its outbox sender and sync engine, closes its database and
-/// deletes the files.
+/// deletes the files: the database, the stored copies of queued uploads
+/// and the downloaded attachments.
 
 final class AccountDataWiperProvider
     extends
@@ -1279,7 +1429,8 @@ final class AccountDataWiperProvider
   /// memory, cancels the account's notifications (scheduled
   /// and in the tray) and forgets their preferences and the background
   /// notes, stops its outbox sender and sync engine, closes its database and
-  /// deletes the files.
+  /// deletes the files: the database, the stored copies of queued uploads
+  /// and the downloaded attachments.
   AccountDataWiperProvider._()
     : super(
         from: null,
@@ -1313,4 +1464,4 @@ final class AccountDataWiperProvider
   }
 }
 
-String _$accountDataWiperHash() => r'101be929f741ffe5eccfc25e8b1b72f0850cdf25';
+String _$accountDataWiperHash() => r'e35e7c0de41341df9d1c5f0861cd3f64e421f463';

@@ -64,6 +64,22 @@ void main() {
     },
   );
 
+  test(
+    'the uploads folder sits beside the database and goes with it',
+    () async {
+      final path = await files.pathFor(accountId);
+      final uploads = await files.uploadsDirectoryFor(accountId);
+      expect(uploads.path, p.join(p.dirname(path), 'uploads'));
+      File(p.join(uploads.path, 'a' * 32)).createSync(recursive: true);
+      File(path).writeAsStringSync('');
+
+      await files.deleteFor(accountId);
+
+      expect(uploads.existsSync(), isFalse);
+      expect(Directory(p.dirname(path)).existsSync(), isFalse);
+    },
+  );
+
   test('deleting what does not exist is fine', () async {
     await files.deleteFor(accountId);
 

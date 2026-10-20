@@ -5,12 +5,15 @@ import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/account_tile.dart';
 
 /// Which of [accounts] a link opens in; null when the user closes the
-/// sheet. With one account it asks whether to switch to it. A Cupertino
+/// sheet. With one account it asks whether to switch to it. [title] and
+/// [body] say what the account is for when it is not a link. A Cupertino
 /// sheet on iOS, a modal bottom sheet elsewhere.
 Future<String?> pickAccount(
   BuildContext context,
-  List<RegisteredAccount> accounts,
-) {
+  List<RegisteredAccount> accounts, {
+  String? title,
+  String? body,
+}) {
   switch (Theme.of(context).platform) {
     case TargetPlatform.iOS || TargetPlatform.macOS:
       return showCupertinoSheet<String>(
@@ -20,6 +23,8 @@ Future<String?> pickAccount(
           color: Theme.of(context).colorScheme.surface,
           child: AccountPickerSheet(
             accounts: accounts,
+            title: title,
+            body: body,
             scrollController: scrollController,
           ),
         ),
@@ -31,15 +36,24 @@ Future<String?> pickAccount(
         isScrollControlled: true,
         useSafeArea: true,
         showDragHandle: true,
-        builder: (context) => AccountPickerSheet(accounts: accounts),
+        builder: (context) =>
+            AccountPickerSheet(accounts: accounts, title: title, body: body),
       );
   }
 }
 
 class AccountPickerSheet extends StatelessWidget {
-  const new({required this.accounts, this.scrollController, super.key});
+  const new({
+    required this.accounts,
+    this.title,
+    this.body,
+    this.scrollController,
+    super.key,
+  });
 
   final List<RegisteredAccount> accounts;
+  final String? title;
+  final String? body;
   final ScrollController? scrollController;
 
   @override
@@ -59,9 +73,10 @@ class AccountPickerSheet extends StatelessWidget {
             child: Semantics(
               header: true,
               child: Text(
-                single
-                    ? l10n.deepLinkSwitchAccountTitle
-                    : l10n.deepLinkPickAccountTitle,
+                title ??
+                    (single
+                        ? l10n.deepLinkSwitchAccountTitle
+                        : l10n.deepLinkPickAccountTitle),
                 style: theme.textTheme.titleLarge,
               ),
             ),
@@ -69,9 +84,10 @@ class AccountPickerSheet extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
             child: Text(
-              single
-                  ? l10n.deepLinkSwitchAccountBody
-                  : l10n.deepLinkPickAccountBody,
+              body ??
+                  (single
+                      ? l10n.deepLinkSwitchAccountBody
+                      : l10n.deepLinkPickAccountBody),
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),

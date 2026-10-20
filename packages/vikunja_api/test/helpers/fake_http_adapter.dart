@@ -14,8 +14,12 @@ final class FakeHttpAdapter implements HttpClientAdapter {
   final Map<String, FakeRoute> routes;
   final List<RequestOptions> requests = [];
 
-  /// The encoded body of each request in [requests], null without one.
+  /// The body of each request in [requests] as UTF-8 text (binary parts
+  /// garbled), null without one.
   final List<String?> requestBodies = [];
+
+  /// The body of each request in [requests] as sent, null without one.
+  final List<Uint8List?> requestBodyBytes = [];
 
   List<String> get requestedUrls => [
     for (final request in requests) request.uri.toString(),
@@ -32,10 +36,14 @@ final class FakeHttpAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     requests.add(options);
+    final bytes = requestStream == null
+        ? null
+        : Uint8List.fromList(
+            await requestStream.expand((chunk) => chunk).toList(),
+          );
+    requestBodyBytes.add(bytes);
     requestBodies.add(
-      requestStream == null
-          ? null
-          : utf8.decode(await requestStream.expand((chunk) => chunk).toList()),
+      bytes == null ? null : utf8.decode(bytes, allowMalformed: true),
     );
     final route = routes[options.uri.toString()] ?? refused;
     return await route(options);

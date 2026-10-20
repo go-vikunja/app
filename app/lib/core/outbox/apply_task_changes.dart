@@ -57,7 +57,8 @@ NewTask applyChangesToNewTask(NewTask task, TaskChanges changes) => NewTask(
 /// sent once the server has named the task. The server ignores labels in
 /// a create body, and labels, assignees, relations, kanban placements and
 /// list positions go through their own endpoints, which need the task's
-/// id.
+/// id; a cover names one of the task's attachments, which only exist
+/// after the create.
 TaskChanges changesAfterCreate(TaskChanges changes) => TaskChanges(
   done: changes.done,
   labels: changes.labels,
@@ -65,6 +66,7 @@ TaskChanges changesAfterCreate(TaskChanges changes) => TaskChanges(
   relations: changes.relations,
   kanban: changes.kanban,
   positions: changes.positions,
+  coverImageAttachmentId: changes.coverImageAttachmentId,
 );
 
 /// [changes] without any change to the labels in [labelIds].
@@ -185,6 +187,7 @@ TaskChanges _rebuilt(
   relations: relations,
   kanban: kanban,
   positions: positions,
+  coverImageAttachmentId: changes.coverImageAttachmentId,
 );
 
 bool changesDates(TaskChanges changes) =>

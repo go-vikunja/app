@@ -1,0 +1,7 @@
+{
+  "server": "2.7.0",
+  "request": "DELETE /api/v2/tasks/12828/attachments/218",
+  "status": 204,
+  "headers": {},
+  "body": ""
+}

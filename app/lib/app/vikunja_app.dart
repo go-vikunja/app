@@ -7,6 +7,7 @@ import 'package:vikunja_mobile/app/theme/theme_providers.dart';
 import 'package:vikunja_mobile/features/deep_links/presentation/deep_link_listener.dart';
 import 'package:vikunja_mobile/features/notifications/presentation/notification_tap_listener.dart';
 import 'package:vikunja_mobile/features/quick_add/presentation/new_task_shortcut.dart';
+import 'package:vikunja_mobile/features/share/presentation/share_intent_listener.dart';
 
 class VikunjaApp extends ConsumerWidget {
   const new({super.key});
@@ -25,7 +26,7 @@ class VikunjaApp extends ConsumerWidget {
       builder: (context, child) => NotificationTapListener(
         child: DeepLinkListener(
           child: NewTaskShortcutListener(
-            child: child ?? const SizedBox.shrink(),
+            child: ShareIntentListener(child: child ?? const SizedBox.shrink()),
           ),
         ),
       ),

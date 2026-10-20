@@ -66,6 +66,7 @@ final class TaskChanges {
     this.relations,
     this.kanban,
     this.positions,
+    this.coverImageAttachmentId,
   });
 
   final String? title;
@@ -119,6 +120,11 @@ final class TaskChanges {
   /// endpoint after [kanban]; the server bumps no `updated` for them.
   final Map<int, double>? positions;
 
+  /// Any attachment of the task, or 0 to clear the cover. The server keeps
+  /// the id of a deleted cover and then refuses every update that does not
+  /// clear it (400 code 4020).
+  final int? coverImageAttachmentId;
+
   bool get isEmpty =>
       title == null &&
       description == null &&
@@ -138,7 +144,8 @@ final class TaskChanges {
       reminders == null &&
       (relations?.isEmpty ?? true) &&
       (kanban?.isEmpty ?? true) &&
-      (positions?.isEmpty ?? true);
+      (positions?.isEmpty ?? true) &&
+      coverImageAttachmentId == null;
 
   /// [later] wins where both set a field. A project move in [later] drops
   /// the earlier placements and positions: they name the previous
@@ -197,6 +204,8 @@ final class TaskChanges {
       (final earlier, null) => earlier,
       (null, final later) => later,
     },
+    coverImageAttachmentId:
+        later.coverImageAttachmentId ?? coverImageAttachmentId,
   );
 
   static IdSetChange? _mergeSets(IdSetChange? earlier, IdSetChange? later) =>
@@ -229,7 +238,8 @@ final class TaskChanges {
       _sameLists(other.reminders, reminders) &&
       other.relations == relations &&
       _sameMaps(other.kanban, kanban) &&
-      _sameMaps(other.positions, positions);
+      _sameMaps(other.positions, positions) &&
+      other.coverImageAttachmentId == coverImageAttachmentId;
 
   static bool _sameLists<T>(List<T>? a, List<T>? b) {
     if (a == null || b == null) return a == b;
@@ -280,6 +290,7 @@ final class TaskChanges {
     relations,
     _hashMap(kanban),
     _hashMap(positions),
+    coverImageAttachmentId,
   );
 
   /// Names the fields set, without user text such as the title.
@@ -308,6 +319,8 @@ final class TaskChanges {
       if (relations != null) 'relations',
       if (kanban != null) 'kanban: $kanban',
       if (positions != null) 'positions: $positions',
+      if (coverImageAttachmentId != null)
+        'coverImageAttachmentId: $coverImageAttachmentId',
     ];
     return 'TaskChanges(${fields.join(', ')})';
   }

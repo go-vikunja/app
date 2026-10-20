@@ -4,7 +4,7 @@
 import {Editor} from '@tiptap/core'
 import {isAllowedUri} from '@tiptap/extension-link'
 import {createExtensions, linkProtocols} from './extensions.js'
-import {httpBases, normalizeApiRoot} from './links.js'
+import {httpBases, normalizeApiRoot, parseAttachmentUrl} from './links.js'
 import {applyTheme} from './theme.js'
 
 const parseOptions = {preserveWhitespace: true}
@@ -185,6 +185,18 @@ export function createBridge({mount, post, root}) {
     return chain.extendMarkRange('link').setLink({href})
   }
 
+  // Only an attachment of this server goes in, as the web writes it after
+  // an upload: the image's own renderHTML turns its address into data-src
+  // and the id, so the page never loads it.
+  function insertImage(chain, args) {
+    const src = typeof args?.src === 'string' ? args.src.trim() : ''
+    const attachment = parseAttachmentUrl(src, context.apiRoot)
+    if (attachment === null) return null
+    if (args?.id != null && args.id !== `tiptap-image-${attachment.taskId}-${attachment.attachmentId}`) return null
+    const alt = typeof args?.alt === 'string' && args.alt.trim() !== '' ? args.alt.trim() : null
+    return chain.setImage({src, alt})
+  }
+
   function tableSize(value) {
     const size = Math.trunc(Number(value))
     return Number.isFinite(size) ? Math.min(Math.max(size, 1), maxTableSize) : 3
@@ -221,6 +233,7 @@ export function createBridge({mount, post, root}) {
     undo: chain => chain.undo(),
     redo: chain => chain.redo(),
     clearFormatting: chain => chain.unsetAllMarks().clearNodes(),
+    insertImage,
   }
 
   function command(message) {

@@ -5,8 +5,8 @@ import 'package:flutter/foundation.dart';
 /// The JavaScript channel the editor page posts its messages to.
 const editorChannelName = 'RuranaEditor';
 
-/// The editor page's commands; [heading], [setLink] and [insertTable] take
-/// arguments, see [EditorCommand].
+/// The editor page's commands; [heading], [setLink], [insertTable] and
+/// [insertImage] take arguments, see [EditorCommand].
 enum EditorCommandName {
   bold,
   italic,
@@ -32,6 +32,7 @@ enum EditorCommandName {
   undo,
   redo,
   clearFormatting,
+  insertImage,
 }
 
 @immutable
@@ -49,6 +50,18 @@ final class EditorCommand {
     EditorCommandName.insertTable,
     {'rows': rows, 'cols': cols},
   );
+
+  /// An attachment of this server by its address, which the page accepts
+  /// only with the id the web gives it; [alt] is left out when empty.
+  factory insertImage({
+    required String src,
+    required String id,
+    String alt = '',
+  }) => EditorCommand(EditorCommandName.insertImage, {
+    'src': src,
+    'id': id,
+    if (alt.isNotEmpty) 'alt': alt,
+  });
 
   final EditorCommandName name;
   final Map<String, Object> args;

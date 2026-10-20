@@ -1,0 +1,12 @@
+{
+  "server": "2.7.0",
+  "request": "PATCH /api/v2/tasks/12828",
+  "sent": {
+    "cover_image_attachment_id": 217
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"id\":12828,\"title\":\"Attachments over v2\",\"description\":\"\",\"project_id\":2534,\"done\":false,\"done_at\":\"0001-01-01T00:00:00Z\",\"due_date\":\"0001-01-01T00:00:00Z\",\"reminders\":null,\"repeat_after\":0,\"repeat_mode\":0,\"priority\":0,\"start_date\":\"0001-01-01T00:00:00Z\",\"end_date\":\"0001-01-01T00:00:00Z\",\"assignees\":[],\"labels\":null,\"hex_color\":\"\",\"percent_done\":0,\"identifier\":\"#2\",\"index\":2,\"related_tasks\":{},\"attachments\":[{\"id\":217,\"task_id\":12828,\"created_by\":{\"id\":783,\"name\":\"\",\"username\":\"fixtureuser\",\"created\":\"2026-10-20T17:23:55Z\",\"updated\":\"2026-10-20T17:23:55Z\"},\"file\":{\"id\":219,\"name\":\"pixel.png\",\"mime\":\"image/png\",\"size\":70,\"created\":\"2026-10-20T17:24:06Z\"},\"created\":\"2026-10-20T17:24:06Z\"},{\"id\":219,\"task_id\":12828,\"created_by\":{\"id\":783,\"name\":\"\",\"username\":\"fixtureuser\",\"created\":\"2026-10-20T17:23:55Z\",\"updated\":\"2026-10-20T17:23:55Z\"},\"file\":{\"id\":221,\"name\":\"empty.txt\",\"mime\":\"text/plain\",\"size\":0,\"created\":\"2026-10-20T17:24:07Z\"},\"created\":\"2026-10-20T17:24:07Z\"}],\"cover_image_attachment_id\":217,\"is_favorite\":false,\"subscription\":{\"id\":13328,\"entity\":\"task\",\"entity_id\":12828,\"created\":\"2026-10-20T17:24:05Z\"},\"created\":\"2026-10-20T17:24:05Z\",\"updated\":\"2026-10-20T17:24:12Z\",\"bucket_id\":0,\"position\":0,\"reactions\":null,\"created_by\":{\"id\":783,\"name\":\"\",\"username\":\"fixtureuser\",\"created\":\"2026-10-20T17:23:55Z\",\"updated\":\"2026-10-20T17:23:55Z\"}}\n"
+}

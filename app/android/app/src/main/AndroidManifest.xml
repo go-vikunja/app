@@ -56,6 +56,43 @@
                 <data android:scheme="vikunja-dev.coderoftime.vikunja" android:host="task" />
             </intent-filter>
         </activity>
+        <!-- Shares from other apps: text, links and files. Like task links,
+             they are handed to MainActivity in the app's own task, with
+             read grants for the shared files. -->
+        <activity
+            android:name=".ShareTargetActivity"
+            android:exported="true"
+            android:noHistory="true"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/*" />
+                <data android:mimeType="image/*" />
+                <data android:mimeType="video/*" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="image/*" />
+                <data android:mimeType="video/*" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+        </activity>
+        <!-- Downloaded attachments opened with another app; only
+             cache/attachments, read-only, granted per open. -->
+        <provider
+            android:name=".AttachmentFileProvider"
+            android:authorities="${applicationId}.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/attachment_paths" />
+        </provider>
         <!-- Receives the browser sign-in redirect for flutter_web_auth_2.
              The scheme must match oauthCallbackScheme in
              lib/core/auth/oauth_client.dart; host and path keep task links

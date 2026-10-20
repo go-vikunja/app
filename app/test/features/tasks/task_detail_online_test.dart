@@ -284,13 +284,6 @@ void main() {
       );
       // Only an image the server can preview is asked for, at the list's size.
       expect(data.attachmentImages.loads, ['4 3 md']);
-      final pdfRow = tester.widget<ListTile>(
-        find.ancestor(
-          of: inSheet(find.text('notes.pdf')),
-          matching: find.byType(ListTile),
-        ),
-      );
-      expect(pdfRow.onTap, isNull);
 
       expect(inSheet(find.text('👍 2')), findsOneWidget);
       expect(inSheet(find.text('🎉 1')), findsOneWidget);
@@ -383,7 +376,9 @@ void main() {
 
       expect(inSheet(find.text(en.taskDetailDetailsOffline)), findsOneWidget);
       expect(inSheet(find.text('Ask Anna')), findsOneWidget);
-      expect(inSheet(find.text(en.taskDetailAttachments)), findsNothing);
+      // Files can still be added; the server's list needs the connection.
+      expect(inSheet(find.text(en.taskDetailAttachments)), findsOneWidget);
+      expect(inSheet(find.text('photo.png')), findsNothing);
 
       data.details
         ..detailsFailure = null
@@ -395,7 +390,7 @@ void main() {
 
       expect(data.details.calls, ['details 4', 'details 4']);
       expect(inSheet(find.text(en.taskDetailDetailsOffline)), findsNothing);
-      expect(inSheet(find.text(en.taskDetailAttachments)), findsOneWidget);
+      expect(inSheet(find.text('photo.png')), findsOneWidget);
     });
 
     testWidgets('Retry also asks again for images that needed a connection', (

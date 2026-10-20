@@ -31,6 +31,20 @@ void main() {
     }, 'related 5');
   });
 
+  test('a file above the limit is a 413 domain error with its code', () {
+    const failure = FileTooLarge(code: 4012, message: 'of 0 bytes');
+
+    expect(failure, isA<DomainError>());
+    expect(failure.statusCode, 413);
+    expect(failure.code, 4012);
+    expect('$failure', 'FileTooLarge(code: 4012)');
+    expect(switch (failure as VikunjaFailure) {
+      FileTooLarge(:final code) => 'too large $code',
+      DomainError() => 'domain',
+      _ => 'other',
+    }, 'too large 4012');
+  });
+
   test('toString never includes the server message', () {
     const message = 'secret detail';
     final failures = <VikunjaFailure>[
@@ -58,6 +72,7 @@ void main() {
       const RateLimited(message: message),
       const ServerFailure(500, message: message),
       const DomainError(400, code: 4029, message: message),
+      const FileTooLarge(code: 4035, message: message),
       const DescriptionConflict(),
       const UnexpectedResponse(418, message: message),
     ];

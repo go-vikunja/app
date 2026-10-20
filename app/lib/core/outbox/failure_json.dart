@@ -26,6 +26,7 @@ Map<String, Object?> failureToJson(VikunjaFailure failure) => {
     ValidationFailed() => 'validation_failed',
     RateLimited() => 'rate_limited',
     ServerFailure() => 'server_failure',
+    FileTooLarge() => 'file_too_large',
     DomainError() => 'domain_error',
     DescriptionConflict() => 'description_conflict',
     UnexpectedResponse() => 'unexpected_response',
@@ -94,6 +95,7 @@ VikunjaFailure failureFromJson(Map<String, Object?> json) {
       code: code,
       message: message,
     ),
+    'file_too_large' => FileTooLarge(code: code ?? 4035, message: message),
     'domain_error' => DomainError(
       statusCode ?? 400,
       code: code ?? 0,

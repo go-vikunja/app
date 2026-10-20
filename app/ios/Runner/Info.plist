@@ -53,8 +53,12 @@
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Rurana uses the camera to take photos you attach to tasks.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Rurana connects to the Vikunja server you enter, which may run on your local network.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Rurana lets you choose photos to attach to tasks.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

@@ -1,0 +1,13 @@
+{
+  "server": "2.7.0",
+  "request": "PATCH /api/v2/tasks/12828",
+  "sent": {
+    "title": "Edited after the cover was deleted"
+  },
+  "status": 400,
+  "headers": {
+    "content-type": "application/problem+json",
+    "content-length": "173"
+  },
+  "body": "{\"$schema\":\"http://localhost/api/v2/schemas/VikunjaErrorModel.json\",\"title\":\"Bad Request\",\"status\":400,\"detail\":\"This attachment does not belong to that task.\",\"code\":4020}\n"
+}

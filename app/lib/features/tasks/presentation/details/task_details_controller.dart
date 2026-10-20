@@ -35,8 +35,9 @@ final class TaskDetailsFailed extends TaskDetailsState {
 
 /// What the server has beyond the stored row (attachments, reactions, the
 /// comment count, unread, subscription), read once when the sheet opens
-/// and again on Retry or when a queued create got its server id. A result
-/// that says the task is unread marks it read, fire and forget.
+/// and again on Retry or when a queued create got its server id; changes
+/// made here to the attachments apply at once. A result that says the task
+/// is unread marks it read, fire and forget.
 final class TaskDetailsController extends ValueNotifier<TaskDetailsState> {
   new({required this._read, required this._markRead})
     : super(const TaskDetailsIdle());
@@ -71,6 +72,70 @@ final class TaskDetailsController extends ValueNotifier<TaskDetailsState> {
     );
     return request;
   }
+
+  /// Reads the details again while the current ones stay in [value]; a
+  /// failure keeps them.
+  Future<void> refresh() async {
+    final taskId = _id;
+    if (taskId == null) return;
+    final generation = ++_generation;
+    try {
+      final details = await _read(taskId);
+      if (generation == _generation) _set(TaskDetailsLoaded(details));
+    } on Object catch (error) {
+      _log.fine('Refreshing task details failed: ${error.runtimeType}');
+    }
+  }
+
+  /// An attachment the server has now, shown without a read.
+  void addAttachment(TaskAttachment attachment) => _change((details) {
+    if (attachment.taskId != _id ||
+        details.attachments.any((known) => known.id == attachment.id)) {
+      return null;
+    }
+    return _withAttachments(details, [...details.attachments, attachment]);
+  });
+
+  /// The server deleted the attachment, and with it the cover if it was.
+  void removeAttachment(int attachmentId) => _change(
+    (details) => _withAttachments(
+      details,
+      [
+        for (final attachment in details.attachments)
+          if (attachment.id != attachmentId) attachment,
+      ],
+      cover: details.coverImageAttachmentId == attachmentId
+          ? 0
+          : details.coverImageAttachmentId,
+    ),
+  );
+
+  /// The task's cover is [attachmentId] now; 0 for none.
+  void setCover(int attachmentId) => _change(
+    (details) =>
+        _withAttachments(details, details.attachments, cover: attachmentId),
+  );
+
+  void _change(TaskDetails? Function(TaskDetails details) change) {
+    if (value case TaskDetailsLoaded(:final details)) {
+      if (change(details) case final changed?) {
+        _set(TaskDetailsLoaded(changed));
+      }
+    }
+  }
+
+  static TaskDetails _withAttachments(
+    TaskDetails details,
+    List<TaskAttachment> attachments, {
+    int? cover,
+  }) => TaskDetails(
+    attachments: attachments,
+    coverImageAttachmentId: cover ?? details.coverImageAttachmentId,
+    reactions: details.reactions,
+    commentCount: details.commentCount,
+    isUnread: details.isUnread,
+    subscription: details.subscription,
+  );
 
   Future<void> _markReadQuietly(int taskId) async {
     try {

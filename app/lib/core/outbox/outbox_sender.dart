@@ -1,16 +1,22 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math';
 
+import 'package:dio/dio.dart' show CancelToken, DioException, DioExceptionType;
 import 'package:logging/logging.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
+import 'package:vikunja_mobile/core/attachments/upload_files.dart';
+import 'package:vikunja_mobile/core/attachments/upload_policy.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/db/daos/outbox_dao.dart';
 import 'package:vikunja_mobile/core/outbox/apply_task_changes.dart';
+import 'package:vikunja_mobile/core/outbox/failure_json.dart';
 import 'package:vikunja_mobile/core/outbox/new_task_json.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/outbox/task_changes_json.dart';
+import 'package:vikunja_mobile/core/outbox/upload_json.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/core/sync/task_filters.dart';
@@ -72,6 +78,23 @@ enum OutboxSenderState {
 /// and nothing sends it again until it is [staleSendingAfter] old, which
 /// no live sender takes over one op, so only an op a dead run left behind
 /// goes back to the queue.
+///
+/// Uploads go one file per request in a lane of their own, the oldest
+/// ready one first, beside the rest of the queue: a large file never holds
+/// up an edit, not even one queued while the file is on its way. Each
+/// waits out its own backoff and has timeouts sized by the file; one that
+/// times out [maxUploadTimeoutsInARow] times in a row, or is above the
+/// limit (`maxUploadBytes`) by now, becomes a sync problem. One whose
+/// answer was lost is looked for among the task's attachments (same name,
+/// size and uploader, created since [lostResponseWindow] before the
+/// attempt) before it is sent again. A sender without `uploads`, and a
+/// `headless` one (a background run with a deadline), leaves uploads
+/// alone.
+///
+/// A task update the server refuses with code 4020, because the task still
+/// points at a cover attachment that was deleted, is sent once more with
+/// the cover cleared: the server refuses every update of that task until
+/// then.
 final class OutboxSender {
   new({
     required this._db,
@@ -81,12 +104,21 @@ final class OutboxSender {
     DateTime Function()? now,
     this._createTimer = Timer.new,
     Random? random,
+    this._uploads,
+    this._headless = false,
+    int? Function()? currentUserId,
+    int? Function()? maxUploadBytes,
   }) : _write = writeClient,
        _read = readClient,
        _now = now ?? DateTime.now,
-       _random = random ?? Random() {
+       _random = random ?? Random(),
+       _currentUserId = currentUserId ?? _unknownUser,
+       _maxUploadBytes = maxUploadBytes ?? _unknownLimit {
     _syncStatus = _sync.status.listen(_onSyncStatus);
   }
+
+  static int? _unknownUser() => null;
+  static int? _unknownLimit() => null;
 
   static const initialBackoff = Duration(seconds: 2);
   static const maxBackoff = Duration(minutes: 15);
@@ -109,6 +141,13 @@ final class OutboxSender {
   /// A delete of a task that is already gone.
   static const _taskGoneCode = 4002;
 
+  /// The task names a cover attachment that is not one of its own: one that
+  /// was deleted.
+  static const _foreignCoverCode = 4020;
+
+  /// The server's code for a file above its limit.
+  static const _fileTooLargeCode = 4012;
+
   final AppDatabase _db;
   final VikunjaWriteClient _write;
   final VikunjaReadClient _read;
@@ -116,6 +155,14 @@ final class OutboxSender {
   final DateTime Function() _now;
   final CreateTimer _createTimer;
   final Random _random;
+  final UploadFiles? _uploads;
+  final bool _headless;
+  final int? Function() _currentUserId;
+  final int? Function() _maxUploadBytes;
+  final _uploading = <String, CancelToken>{};
+  final _uploadingChanges = StreamController<Set<String>>.broadcast(sync: true);
+  final _uploaded = StreamController<TaskAttachment>.broadcast();
+  var _swept = false;
   // Synchronous, so a state has reached its subscribers when a drain's
   // future resolves.
   final _changes = StreamController<OutboxSenderState>.broadcast(sync: true);
@@ -123,21 +170,51 @@ final class OutboxSender {
 
   OutboxSenderState _state = OutboxSenderState.idle;
 
-  /// What the oldest op waits out while the state is `waiting`.
+  // Each lane is idle, draining or waiting; [_state] is what they come to.
+  OutboxSenderState _queueState = OutboxSenderState.idle;
+  OutboxSenderState _uploadState = OutboxSenderState.idle;
+
+  /// What the oldest op waits out while the queue is `waiting`.
   VikunjaFailure? _blockedBy;
+
+  /// What the next upload waits out while the uploads are `waiting`.
+  VikunjaFailure? _uploadBlockedBy;
   Future<void>? _running;
   var _exiting = false;
   var _requested = false;
+  Future<void>? _uploadRunning;
+  var _uploadExiting = false;
+  var _uploadRequested = false;
   var _paused = false;
   var _disposed = false;
   Timer? _timer;
+  Timer? _uploadTimer;
 
   OutboxSenderState get state => _state;
 
-  /// What the oldest op waits out while [state] is `waiting`; null
-  /// otherwise.
-  VikunjaFailure? get blockedBy =>
-      _state == OutboxSenderState.waiting ? _blockedBy : null;
+  /// What the oldest op waits out while [state] is `waiting`, else what
+  /// the next upload does; null otherwise.
+  VikunjaFailure? get blockedBy => switch (_state) {
+    OutboxSenderState.waiting =>
+      _queueState == OutboxSenderState.waiting ? _blockedBy : _uploadBlockedBy,
+    _ => null,
+  };
+
+  /// Every attachment an upload created, as the server answered.
+  Stream<TaskAttachment> get uploadedAttachments => _uploaded.stream;
+
+  /// The uploads this sender is sending right now; replays the current set
+  /// on subscription. A `sending` op not among them was left by a run
+  /// that died and waits for [staleSendingAfter].
+  Stream<Set<String>> get uploadingOperations => Stream.multi((subscriber) {
+    final subscription = _uploadingChanges.stream.listen(
+      subscriber.addSync,
+      onError: subscriber.addErrorSync,
+    );
+    subscriber
+      ..onCancel = subscription.cancel
+      ..add({..._uploading.keys});
+  });
 
   /// Replays the current state on subscription.
   Stream<OutboxSenderState> get states => Stream.multi((subscriber) {
@@ -150,31 +227,39 @@ final class OutboxSender {
       ..add(_state);
   });
 
-  /// Sends what is queued, oldest first, and returns once the queue is
-  /// empty, blocked by a backoff, or paused. A call during a drain makes
-  /// that drain look at the queue once more before it returns. Database
-  /// errors propagate; a failed request never does.
+  /// Sends what is queued, oldest first, then the uploads, and returns
+  /// once the queue and the uploads are empty, blocked by a backoff, or
+  /// paused. A call during a drain makes that drain look at the queue once
+  /// more before it returns; one while an upload is on its way sends the
+  /// queue at once. Database errors of the queue propagate; a failed
+  /// request never does.
   Future<void> drain() {
     if (_disposed) return Future.value();
     _requested = true;
+    final Future<void> queue;
     // A run on its way out (paused, or just done) no longer looks at the
     // queue; a new one does.
-    if (_running case final running? when !_exiting) return running;
-    _exiting = false;
-    late final Future<void> run;
-    run = _run().whenComplete(() {
-      if (identical(_running, run)) _running = null;
-    });
-    return _running = run;
+    if (_running case final running? when !_exiting) {
+      queue = running;
+    } else {
+      _exiting = false;
+      late final Future<void> run;
+      run = _run().whenComplete(() {
+        if (identical(_running, run)) _running = null;
+      });
+      queue = _running = run;
+    }
+    return queue.then((_) => _uploadRunning);
   }
 
   /// A drain that skips every backoff: "Send now". Returns the failure
-  /// that still blocks the queue afterwards, null when nothing does.
+  /// that still blocks the queue or the uploads afterwards, null when
+  /// nothing does.
   Future<VikunjaFailure?> sendNow() async {
     if (_disposed) return null;
     await _db.outboxDao.clearBackoff();
     await drain();
-    return _state == OutboxSenderState.waiting ? _blockedBy : null;
+    return blockedBy;
   }
 
   /// Stops sending until [resume]; the op being sent still completes.
@@ -182,13 +267,16 @@ final class OutboxSender {
     if (_paused || _disposed) return;
     _paused = true;
     _cancelTimer();
+    _cancelUploadTimer();
+    _queueState = OutboxSenderState.idle;
+    _uploadState = OutboxSenderState.idle;
     _emit(OutboxSenderState.paused);
   }
 
   Future<void> resume() {
     if (!_paused || _disposed) return Future.value();
     _paused = false;
-    _emit(OutboxSenderState.idle);
+    _publish();
     return drain();
   }
 
@@ -208,8 +296,14 @@ final class OutboxSender {
   Future<void> discard(String operationId) async {
     final op = await _db.outboxDao.find(operationId);
     if (op == null) return;
+    if (op.kind == OutboxOperationKind.uploadAttachment.name) {
+      await cancelUpload(operationId);
+      _log.info('Discarded an upload to task ${op.taskId}');
+      return;
+    }
     if (op.kind == OutboxOperationKind.createTask.name) {
       await _db.outboxDao.cancelCreate(op.taskId);
+      await sweepUploads();
       _log.info('Discarded the create of task ${op.taskId}');
       return;
     }
@@ -277,11 +371,41 @@ final class OutboxSender {
     await drain();
   }
 
+  /// Drops the upload and its stored copy; one on its way is aborted.
+  Future<void> cancelUpload(String operationId) async {
+    if (_uploading.remove(operationId) case final cancel?) {
+      cancel.cancel();
+      _uploadingChanged();
+    }
+    final file = await _db.outboxDao.removeUpload(operationId);
+    if (file != null) await _deleteStoredCopy(file);
+  }
+
+  /// Deletes the stored copies no queued upload names any more: those of
+  /// a cancelled create or a deleted task. Never throws.
+  Future<void> sweepUploads() async {
+    final uploads = _uploads;
+    if (uploads == null || _headless || _disposed) return;
+    try {
+      final deleted = await uploads.sweep(_db.outboxDao.uploadFiles);
+      if (deleted > 0) _log.fine('Deleted $deleted orphaned upload copies');
+    } on Object catch (error) {
+      _log.info('Sweeping the upload copies failed: ${error.runtimeType}');
+    }
+  }
+
   Future<void> dispose() async {
     _disposed = true;
     _cancelTimer();
+    _cancelUploadTimer();
+    for (final cancel in _uploading.values) {
+      cancel.cancel();
+    }
+    _uploading.clear();
     await _syncStatus.cancel();
     await _changes.close();
+    await _uploadingChanges.close();
+    await _uploaded.close();
   }
 
   /// Null for a task the server no longer has or forbids: a 403 on the
@@ -302,11 +426,7 @@ final class OutboxSender {
   /// A sync that reached the server while an op waits out a network
   /// failure: the network is back, so the backoff is dropped.
   void _onSyncStatus(SyncStatus status) {
-    if (status is! SyncIdle ||
-        _state != OutboxSenderState.waiting ||
-        _blockedBy is! NetworkFailure) {
-      return;
-    }
+    if (status is! SyncIdle || blockedBy is! NetworkFailure) return;
     _log.fine('A sync got through; sending the waiting ops now');
     unawaited(
       sendNow().then<void>(
@@ -318,6 +438,10 @@ final class OutboxSender {
   }
 
   Future<void> _run() async {
+    if (!_swept) {
+      _swept = true;
+      await sweepUploads();
+    }
     try {
       while (_requested && !_disposed && !_paused) {
         _requested = false;
@@ -327,42 +451,139 @@ final class OutboxSender {
     } finally {
       _exiting = true;
       // A database error left the drain: the queue has not been looked at.
-      if (_state == OutboxSenderState.draining) _emit(OutboxSenderState.idle);
+      if (_queueState == OutboxSenderState.draining) {
+        _setQueueState(OutboxSenderState.idle);
+      }
     }
   }
 
   /// Sends until the queue is empty, the oldest op waits for its backoff
   /// or is in flight elsewhere, or the sender is paused; returns how many
-  /// ops the server accepted.
+  /// ops the server accepted. The uploads start (or look again) once the
+  /// queue has nothing ready: an upload behind a create goes once it is
+  /// answered.
   Future<int> _sendUntilBlocked() async {
     _cancelTimer();
-    _emit(OutboxSenderState.draining);
-    await _db.outboxDao.resetSending(now: _now(), olderThan: staleSendingAfter);
+    _setQueueState(OutboxSenderState.draining);
+    await _db.outboxDao.resetSending(
+      now: _now(),
+      olderThan: staleSendingAfter,
+      keep: _uploading.keys.toSet(),
+    );
     var sent = 0;
     while (!_disposed && !_paused) {
       final next = await _db.outboxDao.nextInLine();
-      if (next == null) {
+      Duration? wait;
+      if (next != null) {
+        if (next.state == OutboxState.sending.name) {
+          _blockedBy = null;
+          wait = _inFlightWait(next);
+          _log.fine(
+            '${next.kind} for task ${next.taskId} is in flight elsewhere',
+          );
+        } else {
+          final due = next.nextAttemptAt?.difference(_now());
+          if (due == null || due <= Duration.zero) {
+            // Claimed as it is now: an edit merged in since the read goes too.
+            final op = await _db.outboxDao.claim(next.id, at: _now());
+            if (op != null && await _send(op)) sent++;
+            continue;
+          }
+          wait = due;
+        }
+      }
+      // Started before the queue goes idle, so the state does not flicker.
+      _startUploads();
+      if (wait == null) {
         _blockedBy = null;
-        _emit(OutboxSenderState.idle);
+        _setQueueState(OutboxSenderState.idle);
         return sent;
       }
-      if (next.state == OutboxState.sending.name) {
-        _waitForInFlight(next);
-        return sent;
-      }
-      final wait = next.nextAttemptAt?.difference(_now());
-      if (wait != null && wait > Duration.zero) {
-        _arm(wait);
-        _emit(OutboxSenderState.waiting);
-        return sent;
-      }
-      // Claimed as it is now: an edit merged in since the read goes too.
-      final op = await _db.outboxDao.claim(next.id, at: _now());
-      if (op == null) continue;
-      if (await _send(op)) sent++;
+      _arm(wait);
+      _setQueueState(OutboxSenderState.waiting);
+      return sent;
     }
-    if (_paused) _emit(OutboxSenderState.paused);
+    if (_paused) _publish();
     return sent;
+  }
+
+  /// Runs the uploads beside the queue; a call while they run makes them
+  /// look once more after the file on its way.
+  void _startUploads() {
+    if (_uploads == null || _headless || _disposed || _paused) return;
+    _uploadRequested = true;
+    if (_uploadRunning != null && !_uploadExiting) return;
+    _uploadExiting = false;
+    late final Future<void> run;
+    run = _runUploads().whenComplete(() {
+      if (identical(_uploadRunning, run)) _uploadRunning = null;
+    });
+    _uploadRunning = run;
+  }
+
+  /// Never throws: a timer or an unawaited drain may have started it, so a
+  /// database error is only logged.
+  Future<void> _runUploads() async {
+    try {
+      while (_uploadRequested && !_disposed && !_paused) {
+        _uploadRequested = false;
+        await _sendUploadsUntilBlocked();
+      }
+    } on Object catch (error) {
+      _log.warning('Sending the uploads failed: ${error.runtimeType}');
+    } finally {
+      _uploadExiting = true;
+      if (_uploadState == OutboxSenderState.draining) {
+        _setUploadState(OutboxSenderState.idle);
+      }
+    }
+  }
+
+  /// Sends uploads until none is ready; a backoff or an upload in flight
+  /// elsewhere arms the timer, which starts a drain.
+  Future<void> _sendUploadsUntilBlocked() async {
+    _cancelUploadTimer();
+    _setUploadState(OutboxSenderState.draining);
+    while (!_disposed && !_paused) {
+      final (:sent, :wait) = await _sendNextUpload();
+      if (sent) continue;
+      if (wait == null) {
+        _uploadBlockedBy = null;
+        _setUploadState(OutboxSenderState.idle);
+        return;
+      }
+      _armUploads(wait);
+      _setUploadState(OutboxSenderState.waiting);
+      return;
+    }
+    if (_paused) _publish();
+  }
+
+  /// Sends the oldest upload that is ready, so one waiting out its backoff
+  /// or left `sending` by a run that died holds up none of the others;
+  /// else says how long until one is, no wait when there is none to send.
+  Future<({bool sent, Duration? wait})> _sendNextUpload() async {
+    if (_disposed || _paused) return (sent: false, wait: null);
+    final now = _now();
+    Duration? wait;
+    for (final upload in await _db.outboxDao.queuedUploads()) {
+      final Duration until;
+      if (upload.state == OutboxState.sending.name) {
+        // Never this sender's own: it awaits its uploads. A stale one is
+        // reset by the drain the timer starts.
+        until = _inFlightWait(upload);
+      } else {
+        final due = upload.nextAttemptAt?.difference(now);
+        if (due == null || due <= Duration.zero) {
+          final op = await _db.outboxDao.claim(upload.id, at: now);
+          if (op != null) await _sendUpload(op);
+          return (sent: true, wait: null);
+        }
+        until = due;
+      }
+      if (wait == null || until < wait) wait = until;
+    }
+    return (sent: false, wait: wait);
   }
 
   /// True when the server accepted the op. Only the request is guarded:
@@ -378,6 +599,10 @@ final class OutboxSender {
         op.id,
         UnexpectedResponse(null, message: 'unknown op ${op.kind}'),
       );
+      return false;
+    }
+    if (kind == OutboxOperationKind.uploadAttachment) {
+      await _sendUpload(op);
       return false;
     }
     TaskChanges? changes;
@@ -399,15 +624,11 @@ final class OutboxSender {
               await _recoverCreate(op, newTask) ??
               await _write.tasks.create(newTask);
         case OutboxOperationKind.updateTask:
-          task = await _write.tasks.update(
-            op.taskId,
-            changes!,
-            rebaseDescription: changes.descriptionBase == null
-                ? null
-                : (current) => _descriptionToSend(op, changes!, current),
-          );
+          task = await _update(op, changes!);
         case OutboxOperationKind.deleteTask:
           await _write.tasks.delete(op.taskId);
+          task = null;
+        case OutboxOperationKind.uploadAttachment:
           task = null;
       }
     } on VikunjaFailure catch (failure) {
@@ -441,9 +662,197 @@ final class OutboxSender {
         await _applyUpdate(op, task!, changes!);
       case OutboxOperationKind.deleteTask:
         await _applyDelete(op);
+      case OutboxOperationKind.uploadAttachment:
+        break;
     }
     _log.fine('Sent ${op.kind} for task ${op.taskId}');
     return true;
+  }
+
+  /// The update of [op], sent once more with the cover cleared when the
+  /// task still points at a deleted cover attachment (code 4020): every
+  /// update of such a task fails until the cover is cleared. A change that
+  /// sets the cover itself is refused as it is.
+  Future<Task> _update(OutboxRow op, TaskChanges changes) async {
+    Future<Task> send(TaskChanges changes) => _write.tasks.update(
+      op.taskId,
+      changes,
+      rebaseDescription: changes.descriptionBase == null
+          ? null
+          : (current) => _descriptionToSend(op, changes, current),
+    );
+    try {
+      return await send(changes);
+    } on VikunjaFailure catch (failure) {
+      if (failure.code != _foreignCoverCode ||
+          changes.coverImageAttachmentId != null) {
+        rethrow;
+      }
+      _log.info(
+        'Task ${op.taskId} points at a deleted cover; clearing it with the '
+        'update',
+      );
+      return await send(
+        changes.merge(const TaskChanges(coverImageAttachmentId: 0)),
+      );
+    }
+  }
+
+  /// Sends one upload and applies the answer. A failure is handled like
+  /// any other op's, except that a missing route means attachments are
+  /// switched off on the server, which no retry changes, and a missing
+  /// stored copy can never be sent.
+  Future<void> _sendUpload(OutboxRow op) async {
+    final upload = decodeQueuedUpload(op.payload);
+    if (!UploadFiles.isStoredName(upload.file)) {
+      await _failMissingCopy(op);
+      return;
+    }
+    final file = await _uploads!.fileFor(upload.file);
+    if (!file.existsSync()) {
+      await _failMissingCopy(op);
+      return;
+    }
+    final cancel = CancelToken();
+    _uploading[op.id] = cancel;
+    _uploadingChanged();
+    final TaskAttachment attachment;
+    try {
+      final length = await file.length();
+      if (_maxUploadBytes() case final limit? when length > limit) {
+        // Queued under a larger limit, or before the app had one.
+        throw const FileTooLarge(code: _fileTooLargeCode);
+      }
+      attachment =
+          await _recoverUpload(op, upload, length) ??
+          await _write.attachments.upload(
+            op.taskId,
+            fileName: upload.fileName,
+            bytes: file.openRead(),
+            length: length,
+            mimeType: upload.mimeType,
+            timeout: uploadTimeoutFor(length),
+            cancel: cancel,
+          );
+    } on VikunjaFailure catch (failure) {
+      if (_mayHaveReachedServer(failure) && !_disposed) {
+        await _db.outboxDao.markUncertain(
+          op.id,
+          sentAt: op.lastAttemptAt ?? _now(),
+        );
+      }
+      if (failure case NotFound(routeAbsent: true) when !_disposed) {
+        await _db.outboxDao.markFailed(op.id, failure);
+        _log.warning('Upload to task ${op.taskId} refused: no attachments');
+        return;
+      }
+      if (failure case NetworkFailure(problem: NetworkProblem.timeout)
+          when !_disposed) {
+        await _handleUploadTimeout(op, failure);
+        return;
+      }
+      await _handleFailure(op, failure);
+      return;
+    } on DioException catch (error) {
+      // Cancelled by the user, who dropped the op, or by dispose, which
+      // leaves it for the next start.
+      if (error.type == DioExceptionType.cancel) return;
+      await _handleFailure(
+        op,
+        UnexpectedResponse(null, message: '${error.runtimeType}'),
+      );
+      return;
+    } on FileSystemException {
+      await _failMissingCopy(op);
+      return;
+    } on Object catch (error) {
+      await _handleFailure(
+        op,
+        UnexpectedResponse(null, message: '${error.runtimeType}'),
+      );
+      return;
+    } finally {
+      if (_uploading.remove(op.id) != null) _uploadingChanged();
+    }
+    if (_disposed) return;
+    final stored = await _db.outboxDao.removeUpload(op.id);
+    if (stored != null) await _deleteStoredCopy(stored);
+    _uploaded.add(attachment);
+    _log.fine('Uploaded a file to task ${op.taskId}');
+  }
+
+  /// A timeout right after others is counted in `attempts`, which starts
+  /// again from one after any other failure: a link too slow for the file
+  /// makes it a sync problem after [maxUploadTimeoutsInARow], while being
+  /// offline (no timeout) keeps it waiting for the network.
+  Future<void> _handleUploadTimeout(OutboxRow op, NetworkFailure failure) {
+    final previous = switch (op.lastError) {
+      final json? => decodeFailure(json),
+      null => null,
+    };
+    final inARow =
+        previous is NetworkFailure && previous.problem == NetworkProblem.timeout
+        ? op.attempts + 1
+        : 1;
+    if (inARow >= maxUploadTimeoutsInARow) {
+      _log.warning(
+        'An upload to task ${op.taskId} timed out $inARow times in a row',
+      );
+      return _db.outboxDao.markFailed(op.id, failure);
+    }
+    return _handleFailure(op, failure, attempts: inARow);
+  }
+
+  Future<void> _failMissingCopy(OutboxRow op) async {
+    if (_disposed) return;
+    await _db.outboxDao.markFailed(
+      op.id,
+      const UnexpectedResponse(null, message: uploadFileMissingMessage),
+    );
+    _log.warning('The stored copy of an upload to task ${op.taskId} is gone');
+  }
+
+  /// The attachment an earlier, unanswered attempt of this upload left on
+  /// the server, if there is one: the newest attachment of the task with
+  /// the sent name and size, uploaded by this user since
+  /// [lostResponseWindow] before that attempt. Null when the upload was
+  /// never sent or nothing is found, so it must go (again).
+  Future<TaskAttachment?> _recoverUpload(
+    OutboxRow op,
+    QueuedUpload upload,
+    int length,
+  ) async {
+    final sentAt = op.sentAt;
+    if (sentAt == null) return null;
+    final details = await _read.tasks.readDetails(op.taskId);
+    final userId = _currentUserId();
+    final since = sentAt.subtract(lostResponseWindow);
+    TaskAttachment? found;
+    for (final candidate in details.attachments) {
+      final created = candidate.created;
+      if (candidate.name != upload.fileName ||
+          candidate.size != length ||
+          (userId != null && candidate.createdBy?.id != userId) ||
+          (created != null && created.isBefore(since))) {
+        continue;
+      }
+      if (found == null || candidate.id > found.id) found = candidate;
+    }
+    _log.info(
+      found == null
+          ? 'An upload to task ${op.taskId} did not reach the server; '
+                'sent again'
+          : 'An upload to task ${op.taskId} had reached the server; adopted',
+    );
+    return found;
+  }
+
+  Future<void> _deleteStoredCopy(String name) async {
+    try {
+      await _uploads?.delete(name);
+    } on FileSystemException catch (error) {
+      _log.info('Could not delete an upload copy: ${error.osError?.errorCode}');
+    }
   }
 
   /// The op's changes with every task its relations name followed to the
@@ -573,29 +982,40 @@ final class OutboxSender {
       await _db.outboxDao.removeAllOf(op.taskId);
       await _db.tasksDao.deleteRow(op.taskId);
     });
+    await sweepUploads();
   }
 
-  Future<void> _handleFailure(OutboxRow op, VikunjaFailure failure) async {
+  /// [attempts] counts the failed attempts including this one, when they
+  /// are not simply one more than before.
+  Future<void> _handleFailure(
+    OutboxRow op,
+    VikunjaFailure failure, {
+    int? attempts,
+  }) async {
     if (_disposed) return;
     if (_isTransient(failure)) {
-      final attempts = op.attempts + 1;
+      final failed = attempts ?? op.attempts + 1;
       // A Retry-After of 0 (the last second of a rate-limit window) would
       // make the next attempt immediate.
       final delay = switch (failure) {
         RateLimited(:final retryAfter?) when retryAfter > Duration.zero =>
           retryAfter > maxBackoff ? maxBackoff : retryAfter,
-        _ => _backoff(op.attempts),
+        _ => _backoff(failed - 1),
       };
       await _db.outboxDao.scheduleRetry(
         op.id,
-        attempts: attempts,
+        attempts: failed,
         failure: failure,
         nextAttemptAt: _now().add(delay),
       );
-      _blockedBy = failure;
+      if (op.kind == OutboxOperationKind.uploadAttachment.name) {
+        _uploadBlockedBy = failure;
+      } else {
+        _blockedBy = failure;
+      }
       _log.info(
         '${op.kind} for task ${op.taskId} failed with '
-        '${failure.runtimeType}, attempt $attempts; next in $delay',
+        '${failure.runtimeType}, attempt $failed; next in $delay',
       );
       return;
     }
@@ -655,38 +1075,79 @@ final class OutboxSender {
     }
   }
 
-  void _waitForInFlight(OutboxRow op) {
+  /// How long until a sender looks again at an op another isolate sends.
+  Duration _inFlightWait(OutboxRow op) {
     final now = _now();
     final untilStale = (op.lastAttemptAt ?? now)
         .add(staleSendingAfter)
         .difference(now);
-    _blockedBy = null;
-    _arm(
-      untilStale < inFlightRecheck
-          ? (untilStale.isNegative ? Duration.zero : untilStale)
-          : inFlightRecheck,
-    );
-    _emit(OutboxSenderState.waiting);
-    _log.fine('${op.kind} for task ${op.taskId} is in flight elsewhere');
+    if (untilStale < inFlightRecheck) {
+      return untilStale.isNegative ? Duration.zero : untilStale;
+    }
+    return inFlightRecheck;
   }
 
   void _arm(Duration wait) {
     _cancelTimer();
     _timer = _createTimer(wait, () {
       _timer = null;
-      unawaited(
-        drain().then<void>(
-          (_) {},
-          onError: (Object error) =>
-              _log.warning('Drain after backoff failed: ${error.runtimeType}'),
-        ),
-      );
+      _drainAfterWait();
     });
   }
+
+  /// Through a drain, which first resets an upload a dead run left
+  /// `sending`.
+  void _armUploads(Duration wait) {
+    _cancelUploadTimer();
+    _uploadTimer = _createTimer(wait, () {
+      _uploadTimer = null;
+      _drainAfterWait();
+    });
+  }
+
+  void _drainAfterWait() => unawaited(
+    drain().then<void>(
+      (_) {},
+      onError: (Object error) =>
+          _log.warning('Drain after backoff failed: ${error.runtimeType}'),
+    ),
+  );
 
   void _cancelTimer() {
     _timer?.cancel();
     _timer = null;
+  }
+
+  void _cancelUploadTimer() {
+    _uploadTimer?.cancel();
+    _uploadTimer = null;
+  }
+
+  void _uploadingChanged() {
+    if (!_disposed) _uploadingChanges.add({..._uploading.keys});
+  }
+
+  void _setQueueState(OutboxSenderState state) {
+    _queueState = state;
+    _publish();
+  }
+
+  void _setUploadState(OutboxSenderState state) {
+    _uploadState = state;
+    _publish();
+  }
+
+  void _publish() {
+    final lanes = {_queueState, _uploadState};
+    _emit(
+      _paused
+          ? OutboxSenderState.paused
+          : lanes.contains(OutboxSenderState.draining)
+          ? OutboxSenderState.draining
+          : lanes.contains(OutboxSenderState.waiting)
+          ? OutboxSenderState.waiting
+          : OutboxSenderState.idle,
+    );
   }
 
   void _emit(OutboxSenderState state) {

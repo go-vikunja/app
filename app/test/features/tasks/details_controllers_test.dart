@@ -56,6 +56,59 @@ void main() {
       await expectLater(controller.load(1), throwsA(offline));
       expect((controller.value as TaskDetailsFailed).failure, offline);
     });
+
+    test('attachment changes apply at once; a refresh keeps the details '
+        'shown while it reads and when it fails', () async {
+      final photo = sampleAttachment(id: 3);
+      final pdf = sampleAttachment(id: 5, name: 'a.pdf');
+      TaskDetails? read = TaskDetails(
+        attachments: [photo],
+        coverImageAttachmentId: 3,
+        commentCount: 4,
+      );
+      final reading = <Completer<void>>[];
+      final controller = TaskDetailsController(
+        read: (_) async {
+          final hold = Completer<void>();
+          reading.add(hold);
+          await hold.future;
+          return read ??
+              (throw const NetworkFailure(NetworkProblem.unreachable));
+        },
+        markRead: (_) async {},
+      );
+      addTearDown(controller.dispose);
+      TaskDetails shown() => (controller.value as TaskDetailsLoaded).details;
+
+      unawaited(controller.load(1));
+      reading.last.complete();
+      await pumpEventQueue();
+
+      controller
+        ..addAttachment(pdf)
+        ..addAttachment(pdf)
+        ..addAttachment(sampleAttachment(id: 8, taskId: 2));
+      expect(shown().attachments, [photo, pdf]);
+      controller.setCover(5);
+      expect(shown().coverImageAttachmentId, 5);
+      controller.removeAttachment(5);
+      expect(shown().attachments, [photo]);
+      expect(shown().coverImageAttachmentId, 0);
+      expect(shown().commentCount, 4);
+
+      read = TaskDetails(attachments: [photo, pdf]);
+      final refreshed = controller.refresh();
+      expect(controller.value, isA<TaskDetailsLoaded>());
+      reading.last.complete();
+      await refreshed;
+      expect(shown().attachments, [photo, pdf]);
+
+      read = null;
+      final failing = controller.refresh();
+      reading.last.complete();
+      await failing;
+      expect(shown().attachments, [photo, pdf]);
+    });
   });
 
   group('CommentsController', () {

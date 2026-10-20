@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/widgets/status_card.dart';
+import 'package:vikunja_mobile/core/attachments/upload_policy.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/home/presentation/account_tab.dart';
@@ -206,6 +207,39 @@ void main() {
     expect(find.byType(StatusCard), findsNothing);
     expect(find.text(en.accountSyncProblems), findsNothing);
     expect(find.text(en.accountPendingChanges(1)), findsOneWidget);
+  });
+
+  testWidgets('an upload whose stored copy is gone offers only Discard', (
+    tester,
+  ) async {
+    data.tasks.syncProblems = [
+      problem(
+        id: 'op-1',
+        title: 'Pay the bill',
+        failure: const UnexpectedResponse(
+          null,
+          message: uploadFileMissingMessage,
+        ),
+        ago: const Duration(minutes: 5),
+        kind: OutboxOperationKind.uploadAttachment,
+      ),
+      problem(
+        id: 'op-2',
+        title: 'Call mum',
+        failure: const FileTooLarge(code: 4012),
+        ago: const Duration(minutes: 5),
+        kind: OutboxOperationKind.uploadAttachment,
+      ),
+    ];
+    await pumpAccountTab(tester);
+
+    Finder inCard(String title, String label) => find.descendant(
+      of: find.widgetWithText(StatusCard, title),
+      matching: find.text(label),
+    );
+    expect(inCard('Pay the bill', en.syncProblemDiscard), findsOneWidget);
+    expect(inCard('Pay the bill', en.retry), findsNothing);
+    expect(inCard('Call mum', en.retry), findsOneWidget);
   });
 
   testWidgets('a discard that fails keeps the card and says why', (

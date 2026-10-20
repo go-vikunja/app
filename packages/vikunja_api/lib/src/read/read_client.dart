@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
@@ -232,6 +234,18 @@ final class _AttachmentsApi implements AttachmentsPort {
           : contentType,
     );
   }
+
+  @override
+  Future<void> download(
+    int taskId,
+    int attachmentId, {
+    required File target,
+    CancelToken? cancel,
+  }) => _transport.download(
+    '/tasks/$taskId/attachments/$attachmentId',
+    target,
+    cancel: cancel,
+  );
 }
 
 final class _AvatarsApi implements AvatarsPort {
@@ -628,6 +642,83 @@ final class _ReadTransport {
     }
     return (bytes: bytes.takeBytes(), contentType: contentType);
   }
+
+  /// See [AttachmentsPort.download].
+  Future<void> download(String path, File target, {CancelToken? cancel}) async {
+    await target.parent.create(recursive: true);
+    final part = File('${target.path}.part');
+    final offset = part.existsSync() ? await part.length() : 0;
+    // Only a cancel closes the connection, see [getCappedBytes]; the
+    // caller's token must not be cancelled for a failure of this one.
+    final connection = CancelToken();
+    unawaited(
+      cancel?.whenCancel.then((error) {
+        if (!connection.isCancelled) connection.cancel(error.error);
+      }),
+    );
+    final Response<ResponseBody> response;
+    try {
+      response = await _dio.get<ResponseBody>(
+        _base.replace(path: '${_base.path}$path').toString(),
+        cancelToken: connection,
+        options: Options(
+          responseType: ResponseType.stream,
+          headers: {'Accept': '*/*', if (offset > 0) 'Range': 'bytes=$offset-'},
+        ),
+      );
+    } on DioException catch (error) {
+      if (error.type == DioExceptionType.cancel) rethrow;
+      if (offset > 0 && error.response?.statusCode == _rangeNotSatisfiable) {
+        connection.cancel();
+        await part.delete();
+        return await download(path, target, cancel: cancel);
+      }
+      throw normalizeError(await _withReadErrorBody(error, connection));
+    }
+    final body = response.data;
+    if (body == null) {
+      throw UnexpectedResponse(response.statusCode, message: 'no body');
+    }
+    final resumes = response.statusCode == _partialContent;
+    if (resumes &&
+        !(response.headers.value('content-range') ?? '').startsWith(
+          'bytes $offset-',
+        )) {
+      connection.cancel();
+      await part.delete();
+      throw const UnexpectedResponse(
+        _partialContent,
+        message: 'a range that was not asked for',
+      );
+    }
+    final RandomAccessFile file;
+    try {
+      file = await part.open(mode: resumes ? FileMode.append : FileMode.write);
+    } on FileSystemException {
+      connection.cancel();
+      rethrow;
+    }
+    try {
+      await for (final chunk in body.stream) {
+        await file.writeFrom(chunk);
+      }
+    } on DioException catch (error) {
+      if (error.type == DioExceptionType.cancel) rethrow;
+      throw normalizeError(error);
+    } on FileSystemException {
+      connection.cancel();
+      rethrow;
+    } on Exception catch (error) {
+      // The adapters pass a body that breaks off on as their own errors.
+      throw NetworkFailure(NetworkProblem.unreachable, cause: error);
+    } finally {
+      await file.close();
+    }
+    await part.rename(target.path);
+  }
+
+  static const _partialContent = 206;
+  static const _rangeNotSatisfiable = 416;
 
   // An error answer to a streamed request still streams; its small JSON
   // body carries the error code.
