@@ -162,6 +162,7 @@ class _ProjectBoardState extends ConsumerState<ProjectBoard> {
         queued: source.queued,
         movedHere: source.movedHere,
         queuedDoneChanges: source.queuedDoneChanges,
+        matchingIds: source.matchingIds,
       );
     }
     return _columns;

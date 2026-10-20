@@ -1,0 +1,21 @@
+{
+  "server": "2.7.0",
+  "request": "PATCH /api/v2/filters/583",
+  "sent": {
+    "title": "This week",
+    "description": "Due within the week",
+    "filters": {
+      "filter": "due_date < now/w+1w",
+      "s": "",
+      "sort_by": [],
+      "order_by": [],
+      "filter_include_nulls": true
+    },
+    "is_favorite": false
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"id\":583,\"filters\":{\"s\":\"\",\"sort_by\":[],\"order_by\":[],\"filter\":\"due_date < now/w+1w\",\"filter_include_nulls\":true},\"title\":\"This week\",\"description\":\"Due within the week\",\"owner\":{\"id\":544,\"name\":\"\",\"username\":\"fixtureuser\",\"created\":\"2026-10-20T08:43:39Z\",\"updated\":\"2026-10-20T08:43:39Z\"},\"is_favorite\":false,\"created\":\"2026-10-20T08:43:40Z\",\"updated\":\"2026-10-20T08:43:41.110155349Z\"}\n"
+}

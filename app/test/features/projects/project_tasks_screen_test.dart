@@ -350,6 +350,40 @@ void main() {
     expect(sectionTitles(tester), [en.projectTasksDoneSection]);
   });
 
+  testWidgets('a view whose filter the device evaluates lists its matches '
+      'in their positions, done ones too, without a note', (tester) async {
+    data.tasks
+      ..setSnapshot(
+        'view:13',
+        ListSnapshot(positions: const {8: 1, 7: 2, 9: 3}, loadedAt: now),
+      )
+      ..setViewMatches(13, {7, 8, 9});
+    data.listPreferences.lastViews[1] = 13;
+    await pumpProject(tester);
+
+    expect(rows(tester), [('Eight', 0), ('Seven', 0), ('Done nine', 0)]);
+    expect(find.textContaining('priority >= 4'), findsNothing);
+  });
+
+  testWidgets('such a view needs no download to show its matches, and says '
+      'when nothing matches', (tester) async {
+    data.tasks
+      ..refreshProjectListFailure = const NetworkFailure(
+        NetworkProblem.unreachable,
+      )
+      ..setViewMatches(13, {7});
+    data.listPreferences.lastViews[1] = 13;
+    await pumpProject(tester);
+
+    expect(rows(tester), [('Seven', 0)]);
+    expect(find.text(en.projectViewNotLoadedTitle), findsNothing);
+
+    data.tasks.setViewMatches(13, {});
+    await tester.pumpAndSettle();
+    expect(find.text(en.projectViewEmptyTitle), findsOneWidget);
+    expect(find.text(en.projectViewEmptyMatchingBody), findsOneWidget);
+  });
+
   testWidgets('a view the device cannot evaluate shows its last download '
       'under a note with its filter', (tester) async {
     data.tasks.setSnapshot(

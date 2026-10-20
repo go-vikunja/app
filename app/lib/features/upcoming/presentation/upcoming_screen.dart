@@ -21,6 +21,7 @@ import 'package:vikunja_mobile/features/common/presentation/option_sheet.dart';
 import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
 import 'package:vikunja_mobile/features/inbox/presentation/inbox_button.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
+import 'package:vikunja_mobile/features/search/presentation/search_button.dart';
 import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
 import 'package:vikunja_mobile/features/sync/presentation/sync_progress_bar.dart';
 import 'package:vikunja_mobile/features/tasks/application/display_settings.dart';
@@ -34,7 +35,7 @@ import 'package:vikunja_mobile/features/upcoming/application/upcoming_sections.d
 import 'package:vikunja_mobile/features/upcoming/presentation/date_range_labels.dart';
 import 'package:vikunja_mobile/features/upcoming/presentation/day_range_picker.dart';
 
-enum _Action { toggleOverdue, toggleWithoutDueDate }
+enum _Action { refresh, toggleOverdue, toggleWithoutDueDate }
 
 enum _CustomRange { pick }
 
@@ -145,20 +146,30 @@ class _UpcomingScreenState extends ConsumerState<UpcomingScreen>
       appBar: AppBar(
         title: Text(l10n.tabUpcoming),
         actions: [
-          RefreshButton(onPressed: refreshing ? null : refresh),
+          // Refresh is in the menu, where it leaves the title room on a
+          // narrow phone; pulling the list refreshes too.
+          const SearchButton(),
           const InboxButton(),
           const AccountSwitcherButton(),
           PopupMenuButton<_Action>(
             tooltip: l10n.moreActions,
-            onSelected: (action) => _save(switch (action) {
-              _Action.toggleOverdue => preferences.copyWith(
-                showOverdue: !preferences.showOverdue,
+            onSelected: (action) => switch (action) {
+              _Action.refresh => unawaited(refresh()),
+              _Action.toggleOverdue => _save(
+                preferences.copyWith(showOverdue: !preferences.showOverdue),
               ),
-              _Action.toggleWithoutDueDate => preferences.copyWith(
-                showWithoutDueDate: !preferences.showWithoutDueDate,
+              _Action.toggleWithoutDueDate => _save(
+                preferences.copyWith(
+                  showWithoutDueDate: !preferences.showWithoutDueDate,
+                ),
               ),
-            }),
+            },
             itemBuilder: (context) => [
+              PopupMenuItem(
+                value: _Action.refresh,
+                enabled: !refreshing,
+                child: Text(l10n.refresh),
+              ),
               CheckedPopupMenuItem(
                 value: _Action.toggleOverdue,
                 checked: preferences.showOverdue,

@@ -83,6 +83,12 @@ final class IncrementalRun {
   Future<void> execute() async {
     _report(SyncPhase.projects);
     final diff = await _syncProjects();
+    await fetchSavedFilterDefinitions(
+      db: _db,
+      client: _client,
+      runId: runId,
+      request: _request,
+    );
     await _syncLabels();
     phase = SyncPhase.delta;
     _report(SyncPhase.delta);

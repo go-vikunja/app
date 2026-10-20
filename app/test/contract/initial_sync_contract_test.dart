@@ -223,7 +223,12 @@ void main() {
         expect(decodeSavedFilters(state[SyncStateKeys.savedFilters]), [
           isA<SavedFilterRef>()
               .having((f) => f.projectId, 'pseudo project', lessThan(-1))
-              .having((f) => f.title, 'title', 'My Open Tasks'),
+              .having((f) => f.title, 'title', 'My Open Tasks')
+              .having(
+                (f) => f.definition?.filter.filter,
+                'filter',
+                startsWith('done = false && assignees = '),
+              ),
         ]);
         expect(
           decodeUserSettings(state[SyncStateKeys.userSettings]),

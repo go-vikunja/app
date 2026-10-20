@@ -3398,12 +3398,6 @@
   },
   "projectViewShowDone": "Show done tasks",
   "projectViewShowDoneHint": "Off adds “done = false” to the filter, like the web's List view.",
-  "projectViewFilterLabel": "Filter",
-  "projectViewFilterHint": "priority >= 3 && due_date < now/w",
-  "@projectViewFilterHint": {
-    "description": "Example in the web's filter syntax; keep the syntax untranslated."
-  },
-  "projectViewFilterHelp": "In the web's filter syntax; the server checks it when you save.",
   "projectViewFilterInvalid": "This filter isn't valid: {message}",
   "@projectViewFilterInvalid": {
     "description": "The server's own explanation follows, in English.",
@@ -3426,5 +3420,192 @@
   "projectDeleteEverything": "This deletes its tasks and subprojects, for everyone.",
   "@projectDeleteEverything": {
     "description": "What deleting a project removes, when its tasks could not be counted."
-  }
+  },
+  "filterLabel": "Filter",
+  "filterHint": "done = false && labels in Work",
+  "@filterHint": {
+    "description": "Example in the web's filter syntax; keep the syntax untranslated."
+  },
+  "filterHelp": "In the web's filter syntax, with label and project titles. Suggestions follow what you type.",
+  "filterMatchCount": "{count, plural, =0{No task matches on this device} =1{1 task matches on this device} other{{count} tasks match on this device}}",
+  "@filterMatchCount": {
+    "description": "Live count under the filter field, from the tasks stored on the device.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "filterNotCountable": "The server applies this filter; the app can't count it here.",
+  "@filterNotCountable": {
+    "description": "Under the filter field when it is valid but names bucket_id, which only the server evaluates."
+  },
+  "filterErrorUnknownField": "A field in this filter doesn't exist. Fields are written like dueDate or labels.",
+  "filterErrorUnknownFieldNamed": "“{field}” isn't a field. Fields are written like dueDate or labels.",
+  "@filterErrorUnknownFieldNamed": {
+    "placeholders": {
+      "field": {
+        "type": "String",
+        "example": "dueDat"
+      }
+    }
+  },
+  "filterErrorLabelValue": "No label is called “{value}”.",
+  "@filterErrorLabelValue": {
+    "placeholders": {
+      "value": {
+        "type": "String",
+        "example": "Wrok"
+      }
+    }
+  },
+  "filterErrorProjectValue": "No project is called “{value}”.",
+  "@filterErrorProjectValue": {
+    "placeholders": {
+      "value": {
+        "type": "String",
+        "example": "Inbx"
+      }
+    }
+  },
+  "filterErrorFieldValue": "“{value}” isn't a valid value for {field}.",
+  "@filterErrorFieldValue": {
+    "description": "The field stays as the filter names it, like due_date.",
+    "placeholders": {
+      "value": {
+        "type": "String",
+        "example": "tomorrow"
+      },
+      "field": {
+        "type": "String",
+        "example": "due_date"
+      }
+    }
+  },
+  "filterErrorOperator": "This filter uses an operator that doesn't exist.",
+  "filterErrorValue": "A value doesn't fit its field, or no label or project has that title.",
+  "filterErrorSyntax": "This filter is incomplete. Join conditions with && or ||, close every bracket, and don't put & | ( ) in a value.",
+  "filterErrorTooComplex": "This filter is too long or nested too deeply.",
+  "filterErrorInvalid": "This filter isn't valid.",
+  "filterSuggestions": "Filter suggestions",
+  "filterSuggestionAnd": "and",
+  "@filterSuggestionAnd": {
+    "description": "Screen-reader name of the && suggestion."
+  },
+  "filterSuggestionOr": "or",
+  "@filterSuggestionOr": {
+    "description": "Screen-reader name of the || suggestion."
+  },
+  "filterDateNow": "Now",
+  "@filterDateNow": {
+    "description": "Name of the date suggestion now in the filter builder, spoken and shown as its tooltip."
+  },
+  "filterDateStartOfToday": "Start of today",
+  "@filterDateStartOfToday": {
+    "description": "Name of the date suggestion now/d in the filter builder."
+  },
+  "filterDateStartOfTomorrow": "Start of tomorrow",
+  "@filterDateStartOfTomorrow": {
+    "description": "Name of the date suggestion now/d+1d in the filter builder."
+  },
+  "filterDateInSevenDays": "In 7 days",
+  "@filterDateInSevenDays": {
+    "description": "Name of the date suggestion now+7d in the filter builder."
+  },
+  "filterDateStartOfWeek": "Start of this week",
+  "@filterDateStartOfWeek": {
+    "description": "Name of the date suggestion now/w in the filter builder."
+  },
+  "filterDateStartOfNextWeek": "Start of next week",
+  "@filterDateStartOfNextWeek": {
+    "description": "Name of the date suggestion now/w+1w in the filter builder."
+  },
+  "filterDateStartOfMonth": "Start of this month",
+  "@filterDateStartOfMonth": {
+    "description": "Name of the date suggestion now/M in the filter builder."
+  },
+  "filterDateSevenDaysAgo": "7 days ago",
+  "@filterDateSevenDaysAgo": {
+    "description": "Name of the date suggestion now-7d in the filter builder."
+  },
+  "savedFilterNew": "New saved filter",
+  "savedFilterEditTitle": "Edit saved filter",
+  "savedFilterDescriptionLabel": "Description",
+  "savedFilterIncludeNulls": "Include tasks which don't have a value set",
+  "savedFilterIncludeNullsHint": "Also lists tasks that have no value where the filter compares one, such as tasks without a due date.",
+  "savedFilterFavourite": "Favourite",
+  "savedFilterFavouriteHint": "Shows it among the favourites in the Projects tab.",
+  "savedFilterFilterRequired": "A saved filter needs a filter.",
+  "savedFilterCreated": "Saved filter created",
+  "savedFilterSaved": "Saved filter saved",
+  "savedFilterDeleted": "Saved filter deleted",
+  "savedFilterDeleteTitle": "Delete “{title}”?",
+  "@savedFilterDeleteTitle": {
+    "placeholders": {
+      "title": {
+        "type": "String",
+        "example": "My Open Tasks"
+      }
+    }
+  },
+  "savedFilterDeleteBody": "No task is deleted, only the filter and its views. This can't be undone.",
+  "savedFilterEditDiscardBody": "Your edits to this saved filter will be lost.",
+  "savedFilterLoading": "Loading the saved filter…",
+  "savedFilterLoadFailed": "The saved filter couldn't be loaded.",
+  "savedFilterChangeNeedsConnection": "Managing saved filters needs a connection to the server.",
+  "savedFilterChangeForbidden": "Only the person who made this saved filter can change it.",
+  "savedFilterGone": "The saved filter no longer exists.",
+  "savedFilterChangeInvalid": "The server didn't accept this saved filter.",
+  "search": "Search",
+  "searchPreparing": "Preparing the search",
+  "@searchPreparing": {
+    "description": "Screen-reader label of the progress bar while the search reads this device's data for the first time."
+  },
+  "searchHint": "Tasks, projects, filters, labels",
+  "searchTasks": "Tasks",
+  "searchProjects": "Projects",
+  "searchLabels": "Labels",
+  "searchStartTitle": "Search this device",
+  "searchStartBody": "Tasks by title, description, #12 or PROJ-12; projects, saved filters and labels by name. Works offline.",
+  "searchNoResultsTitle": "Nothing found",
+  "searchNoResultsBody": "Nothing on this device matches “{query}”.",
+  "@searchNoResultsBody": {
+    "placeholders": {
+      "query": {
+        "type": "String",
+        "example": "report"
+      }
+    }
+  },
+  "searchMoreTasks": "{count, plural, =1{1 more task matches. Type more to narrow it down.} other{{count} more tasks match. Type more to narrow it down.}}",
+  "@searchMoreTasks": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "searchResultCount": "{count, plural, =0{No results} =1{1 result} other{{count} results}}",
+  "@searchResultCount": {
+    "description": "Announced to screen readers as the results change.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "labelTasksEmptyTitle": "No open tasks",
+  "labelTasksEmptyBody": "Open tasks with the label “{label}” show here.",
+  "@labelTasksEmptyBody": {
+    "placeholders": {
+      "label": {
+        "type": "String",
+        "example": "Work"
+      }
+    }
+  },
+  "labelTasksGoneTitle": "This label is gone",
+  "labelTasksGoneBody": "It may have been deleted, here or on the web.",
+  "projectViewEmptyMatchingBody": "No task matches this view's filter.",
+  "clearSearch": "Clear search"
 }

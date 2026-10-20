@@ -591,7 +591,9 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
               ?switcher,
               ?notice,
               ?archivedNote,
-              if (shownKind == ViewFilterKind.other && loadedAt != null)
+              if (shownKind == ViewFilterKind.other &&
+                  list.matchingIds == null &&
+                  loadedAt != null)
                 ListNote(
                   icon: Icons.filter_alt_outlined,
                   text: l10n.projectViewFilterNotice(

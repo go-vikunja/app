@@ -5,6 +5,7 @@ import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/filters/local_filters.dart';
 import 'package:vikunja_mobile/core/repositories/bucket_repository.dart';
 
 final _log = Logger('AccountData');
@@ -19,11 +20,17 @@ typedef BoardRefresh = Future<void> Function(int projectId, int viewId);
 /// elsewhere are only known to the server. It also runs after an update
 /// of a bucket deleted elsewhere, which then leaves the board.
 final class LocalBucketRepository implements BucketRepository {
-  new(this._db, this._write, {required this._refreshBoard});
+  new(
+    this._db,
+    this._write, {
+    required this._refreshBoard,
+    DateTime Function()? now,
+  }) : _filters = LocalFilters(_db, now: now ?? DateTime.now);
 
   final AppDatabase _db;
   final VikunjaWriteClient _write;
   final BoardRefresh _refreshBoard;
+  final LocalFilters _filters;
 
   @override
   Future<void> create(int projectId, int viewId, String title) async {
@@ -153,7 +160,16 @@ final class LocalBucketRepository implements BucketRepository {
     ProjectView view,
     int bucketId,
   ) async {
-    final source = await _db.tasksDao.loadBoard(projectId, viewId);
+    // The column as the board shows it, its filter evaluated here.
+    final source = await _db.tasksDao.loadBoard(
+      projectId,
+      viewId,
+      matchingIds: await _filters.matchingOnBoard(
+        projectId,
+        view,
+        timezoneSetting: await _filters.timezoneSetting(),
+      ),
+    );
     final column = buildBoard(
       view: view,
       buckets: source.buckets,
@@ -163,6 +179,7 @@ final class LocalBucketRepository implements BucketRepository {
       queued: source.queued,
       movedHere: source.movedHere,
       queuedDoneChanges: source.queuedDoneChanges,
+      matchingIds: source.matchingIds,
     ).where((column) => column.bucket.id == bucketId).firstOrNull;
     return planBucketDeletion(
       source.buckets,

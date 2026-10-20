@@ -1,4 +1,11 @@
 export 'src/attachments/attachment_preview.dart';
+export 'src/filter/filter_context.dart';
+export 'src/filter/filter_dates.dart';
+export 'src/filter/filter_expression.dart';
+export 'src/filter/filter_parser.dart';
+export 'src/filter/filter_transforms.dart';
+export 'src/filter/filterable_task.dart';
+export 'src/filter/task_search.dart';
 export 'src/kanban/board.dart';
 export 'src/kanban/item_position.dart';
 export 'src/links/attachment_urls.dart';

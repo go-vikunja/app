@@ -1,0 +1,54 @@
+{"src":"task_search.go:302-316","f":"project = 6 || done = true && priority = 100","ids":[],"note":"left fold: (p6 OR done) AND prio100; with && precedence it would be [15]"}
+{"src":"task_search.go:220-240,282-285","f":"done = true || reminders > '2018-11-30T00:00:00+00:00' && reminders < '2018-12-02T00:00:00+00:00'","ids":[2,27],"note":"merged group joins with OR; an unmerged fold would add 47"}
+{"src":"tasks.go:303-308","fixture":"a: priority 0, b: priority 3, c: priority NULL, d: priority 1","f":"priority = 3","nulls":true,"ids":["a","b","c"]}
+{"src":"task_collection_filter.go:530-541 + tasks.go:305","fixture":"same","f":"priority in 3","nulls":true,"ids":["b","c"],"note":"no =0 arm for in"}
+{"src":"tasks.go:303-304","fixture":"x: percent_done 0, y: 0.5","f":"percent_done > 0.2","nulls":true,"ids":["y"],"note":"float: IS NULL only"}
+{"src":"task_search.go:270-275","f":"labels != 4","ids":"U1 minus {1,2}"}
+{"src":"task_search.go:270-279","f":"labels not in 4,10","ids":"U1 minus {1,2,25}"}
+{"src":"task_search.go:277-279","f":"assignees = user2","nulls":true,"ids":"U1","note":"30 has user2; everyone else has no assignee"}
+{"src":"task_search.go:70","f":"created_by = user2","nulls":true,"ids":[],"note":"no null arm for created_by"}
+{"src":"task_search.go:216-218","f":"assignees like x || done = true","ids":[2]}
+{"src":"task_collection_filter.go:212-241,249","f":"title = stuff in progress","rule":"compares title with 'stuff ?= progress'"}
+{"src":"task_collection_filter.go:249","f":"done = false and priority = 1","err":4019}
+{"src":"task_collection_filter.go:249","f":"done = false priority = 1","err":4019}
+{"src":"task_collection.go:106-117","f":"DONE = false","err":4016}
+{"src":"task_collection.go:106-117","f":"dueDate < now","err":4016}
+{"src":"task_collection_filter.go:503,518-521,166-172","f":"uid = abc","err":4019}
+{"src":"tasks.go:289-293","f":"labels like 4","err":4019,"note":"query time"}
+{"src":"task_collection_filter.go:482-485","f":"labels like foo","err":4019}
+{"src":"task_collection_filter.go:482-485","f":"labels = Work","err":4019}
+{"src":"task_collection_filter.go:530-541","f":"project in 1,,2","err":4019}
+{"src":"task_collection_filter.go:530-541","f":"project in 1,2,","err":4019}
+{"src":"task_collection_filter.go:457-458","f":"done = yes","err":4019}
+{"src":"task_collection_filter.go:457-458","f":"done = T","parse":[["done","=",true]]}
+{"src":"task_collection_filter.go:451-452","f":"priority = +3","parse":[["priority","=",3]]}
+{"src":"task_collection_filter.go:425-426","f":"title !~ x","err":4017}
+{"src":"ext:fexpr parser","f":"   ","err":4024}
+{"src":"ext:fexpr parser","f":"()","err":4024}
+{"src":"ext:fexpr parser","f":"(done = true","err":4024}
+{"src":"task_collection_filter.go:249","f":"title = 'a && b'","err":4024}
+{"src":"task_collection_filter.go:249","f":"title = foo (bar)","err":4024}
+{"src":"task_collection_filter.go:183-190","f":"project IN 1,2","err":4024}
+{"src":"ext:fexpr parser","f":"done (priority = 100)","ids":[3],"note":"half-built expression dropped by the group"}
+{"src":"ext:datemath","f":"due_date > 1544500000","value":"1970-01-18T21:01:40Z"}
+{"src":"ext:datemath","f":"due_date > 2023","tz":"Europe/Berlin","value":"2022-12-31T23:00:00Z"}
+{"src":"ext:datemath","f":"due_date > 12","tz":"UTC","value":"1970-01-01T12:00:00Z"}
+{"src":"ext:datemath","f":"due_date > 2020-01-01T10:00","tz":"UTC","value":"2020-01-01T10:00:00Z"}
+{"src":"task_collection_filter.go:249 + ext:fexpr","f":"due_date > 2020-01-01||+1M/d","err":4024,"note":"the quoting regex stops at '|', so '||+1M/d' reaches fexpr as a join plus garbage; quoting the value does not help"}
+{"src":"ext:datemath","f":"due_date > now+d","value":"now+1d"}
+{"src":"ext:datemath","f":"due_date > now/w","value":"Monday 00:00 of this week in tz"}
+{"src":"ext:datemath","f":"due_date > NOW","err":4019}
+{"src":"ext:datemath","f":"due_date > now + 1d","err":4019}
+{"src":"task_collection_filter.go:84-118","f":"due_date > 2020-01-01T10:00:00+0200","err":4019}
+{"src":"task_collection_filter.go:91-113","f":"due_date > 2023-02-30","tz":"UTC","value":"2023-03-02T00:00:00Z"}
+{"src":"task_collection_filter.go:86","f":"due_date > 2020-01-01 10:00","tz":"Europe/Berlin","value":"2020-01-01T09:00:00Z"}
+{"src":"task_collection_filter.go:349-357","f":"done = false","tz":"Mars/Base","err":2003}
+{"src":"task_collection_filter.go:331-333","f":"","tz":"Mars/Base","ids":"no filter, no error"}
+{"src":"tasks.go:294","fixture":"t1 title 'abc', t2 'aXc'","f":"title like a_c","ids":["t1","t2"],"note":"_ is a LIKE wildcard"}
+{"src":"tasks.go:313-320","search":"#5","scope":"U1","ids":[5],"note":"substring '#5' only in task 5's title; index 5 only on task 5 (15-26 have index 1)"}
+{"src":"task_collection.go:353-360","project":1,"view_filter":"done = false","f":"priority = 100","ids":[3]}
+{"src":"task_collection.go:366-368","project":1,"view_search":"unique","search":"landing","ids":[6]}
+{"src":"task_collection.go:185-186,164-176","saved_filter":"done = false (nulls false)","f":"due_date > '2018-12-01T00:00:00+00:00'","nulls":true,"ids":"U1 minus {2,39,6}","note":"nulls only for the request part: undated tasks match; 6 (due 11-30) excluded; 2/39 fail done=false"}
+{"src":"time/format.go skip+cutspace","f":"due_date < 2026-10-20  22:00","parse":[["due_date","<","2026-10-20T22:00:00.000Z"]],"note":"a run of spaces matches the layout's one space"}
+{"src":"task_collection_filter.go:482-485 before tasks.go:289-293","f":"labels like 4 && foo = 1","err":4016,"note":"like on a non-string fails only at query time, after the whole filter converts"}
+{"src":"task_collection.go:106-117 before tasks.go:289-293","f":"priority like 3 && dueDate < now","err":4016}

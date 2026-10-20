@@ -5664,24 +5664,6 @@ abstract class AppLocalizations {
   /// **'Off adds “done = false” to the filter, like the web\'s List view.'**
   String get projectViewShowDoneHint;
 
-  /// No description provided for @projectViewFilterLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Filter'**
-  String get projectViewFilterLabel;
-
-  /// Example in the web's filter syntax; keep the syntax untranslated.
-  ///
-  /// In en, this message translates to:
-  /// **'priority >= 3 && due_date < now/w'**
-  String get projectViewFilterHint;
-
-  /// No description provided for @projectViewFilterHelp.
-  ///
-  /// In en, this message translates to:
-  /// **'In the web\'s filter syntax; the server checks it when you save.'**
-  String get projectViewFilterHelp;
-
   /// The server's own explanation follows, in English.
   ///
   /// In en, this message translates to:
@@ -5729,6 +5711,390 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This deletes its tasks and subprojects, for everyone.'**
   String get projectDeleteEverything;
+
+  /// No description provided for @filterLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter'**
+  String get filterLabel;
+
+  /// Example in the web's filter syntax; keep the syntax untranslated.
+  ///
+  /// In en, this message translates to:
+  /// **'done = false && labels in Work'**
+  String get filterHint;
+
+  /// No description provided for @filterHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'In the web\'s filter syntax, with label and project titles. Suggestions follow what you type.'**
+  String get filterHelp;
+
+  /// Live count under the filter field, from the tasks stored on the device.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No task matches on this device} =1{1 task matches on this device} other{{count} tasks match on this device}}'**
+  String filterMatchCount(int count);
+
+  /// Under the filter field when it is valid but names bucket_id, which only the server evaluates.
+  ///
+  /// In en, this message translates to:
+  /// **'The server applies this filter; the app can\'t count it here.'**
+  String get filterNotCountable;
+
+  /// No description provided for @filterErrorUnknownField.
+  ///
+  /// In en, this message translates to:
+  /// **'A field in this filter doesn\'t exist. Fields are written like dueDate or labels.'**
+  String get filterErrorUnknownField;
+
+  /// No description provided for @filterErrorUnknownFieldNamed.
+  ///
+  /// In en, this message translates to:
+  /// **'“{field}” isn\'t a field. Fields are written like dueDate or labels.'**
+  String filterErrorUnknownFieldNamed(String field);
+
+  /// No description provided for @filterErrorLabelValue.
+  ///
+  /// In en, this message translates to:
+  /// **'No label is called “{value}”.'**
+  String filterErrorLabelValue(String value);
+
+  /// No description provided for @filterErrorProjectValue.
+  ///
+  /// In en, this message translates to:
+  /// **'No project is called “{value}”.'**
+  String filterErrorProjectValue(String value);
+
+  /// The field stays as the filter names it, like due_date.
+  ///
+  /// In en, this message translates to:
+  /// **'“{value}” isn\'t a valid value for {field}.'**
+  String filterErrorFieldValue(String value, String field);
+
+  /// No description provided for @filterErrorOperator.
+  ///
+  /// In en, this message translates to:
+  /// **'This filter uses an operator that doesn\'t exist.'**
+  String get filterErrorOperator;
+
+  /// No description provided for @filterErrorValue.
+  ///
+  /// In en, this message translates to:
+  /// **'A value doesn\'t fit its field, or no label or project has that title.'**
+  String get filterErrorValue;
+
+  /// No description provided for @filterErrorSyntax.
+  ///
+  /// In en, this message translates to:
+  /// **'This filter is incomplete. Join conditions with && or ||, close every bracket, and don\'t put & | ( ) in a value.'**
+  String get filterErrorSyntax;
+
+  /// No description provided for @filterErrorTooComplex.
+  ///
+  /// In en, this message translates to:
+  /// **'This filter is too long or nested too deeply.'**
+  String get filterErrorTooComplex;
+
+  /// No description provided for @filterErrorInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'This filter isn\'t valid.'**
+  String get filterErrorInvalid;
+
+  /// No description provided for @filterSuggestions.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter suggestions'**
+  String get filterSuggestions;
+
+  /// Screen-reader name of the && suggestion.
+  ///
+  /// In en, this message translates to:
+  /// **'and'**
+  String get filterSuggestionAnd;
+
+  /// Screen-reader name of the || suggestion.
+  ///
+  /// In en, this message translates to:
+  /// **'or'**
+  String get filterSuggestionOr;
+
+  /// Name of the date suggestion now in the filter builder, spoken and shown as its tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Now'**
+  String get filterDateNow;
+
+  /// Name of the date suggestion now/d in the filter builder.
+  ///
+  /// In en, this message translates to:
+  /// **'Start of today'**
+  String get filterDateStartOfToday;
+
+  /// Name of the date suggestion now/d+1d in the filter builder.
+  ///
+  /// In en, this message translates to:
+  /// **'Start of tomorrow'**
+  String get filterDateStartOfTomorrow;
+
+  /// Name of the date suggestion now+7d in the filter builder.
+  ///
+  /// In en, this message translates to:
+  /// **'In 7 days'**
+  String get filterDateInSevenDays;
+
+  /// Name of the date suggestion now/w in the filter builder.
+  ///
+  /// In en, this message translates to:
+  /// **'Start of this week'**
+  String get filterDateStartOfWeek;
+
+  /// Name of the date suggestion now/w+1w in the filter builder.
+  ///
+  /// In en, this message translates to:
+  /// **'Start of next week'**
+  String get filterDateStartOfNextWeek;
+
+  /// Name of the date suggestion now/M in the filter builder.
+  ///
+  /// In en, this message translates to:
+  /// **'Start of this month'**
+  String get filterDateStartOfMonth;
+
+  /// Name of the date suggestion now-7d in the filter builder.
+  ///
+  /// In en, this message translates to:
+  /// **'7 days ago'**
+  String get filterDateSevenDaysAgo;
+
+  /// No description provided for @savedFilterNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New saved filter'**
+  String get savedFilterNew;
+
+  /// No description provided for @savedFilterEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit saved filter'**
+  String get savedFilterEditTitle;
+
+  /// No description provided for @savedFilterDescriptionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get savedFilterDescriptionLabel;
+
+  /// No description provided for @savedFilterIncludeNulls.
+  ///
+  /// In en, this message translates to:
+  /// **'Include tasks which don\'t have a value set'**
+  String get savedFilterIncludeNulls;
+
+  /// No description provided for @savedFilterIncludeNullsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Also lists tasks that have no value where the filter compares one, such as tasks without a due date.'**
+  String get savedFilterIncludeNullsHint;
+
+  /// No description provided for @savedFilterFavourite.
+  ///
+  /// In en, this message translates to:
+  /// **'Favourite'**
+  String get savedFilterFavourite;
+
+  /// No description provided for @savedFilterFavouriteHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Shows it among the favourites in the Projects tab.'**
+  String get savedFilterFavouriteHint;
+
+  /// No description provided for @savedFilterFilterRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'A saved filter needs a filter.'**
+  String get savedFilterFilterRequired;
+
+  /// No description provided for @savedFilterCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved filter created'**
+  String get savedFilterCreated;
+
+  /// No description provided for @savedFilterSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved filter saved'**
+  String get savedFilterSaved;
+
+  /// No description provided for @savedFilterDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved filter deleted'**
+  String get savedFilterDeleted;
+
+  /// No description provided for @savedFilterDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete “{title}”?'**
+  String savedFilterDeleteTitle(String title);
+
+  /// No description provided for @savedFilterDeleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'No task is deleted, only the filter and its views. This can\'t be undone.'**
+  String get savedFilterDeleteBody;
+
+  /// No description provided for @savedFilterEditDiscardBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your edits to this saved filter will be lost.'**
+  String get savedFilterEditDiscardBody;
+
+  /// No description provided for @savedFilterLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading the saved filter…'**
+  String get savedFilterLoading;
+
+  /// No description provided for @savedFilterLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The saved filter couldn\'t be loaded.'**
+  String get savedFilterLoadFailed;
+
+  /// No description provided for @savedFilterChangeNeedsConnection.
+  ///
+  /// In en, this message translates to:
+  /// **'Managing saved filters needs a connection to the server.'**
+  String get savedFilterChangeNeedsConnection;
+
+  /// No description provided for @savedFilterChangeForbidden.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the person who made this saved filter can change it.'**
+  String get savedFilterChangeForbidden;
+
+  /// No description provided for @savedFilterGone.
+  ///
+  /// In en, this message translates to:
+  /// **'The saved filter no longer exists.'**
+  String get savedFilterGone;
+
+  /// No description provided for @savedFilterChangeInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'The server didn\'t accept this saved filter.'**
+  String get savedFilterChangeInvalid;
+
+  /// No description provided for @search.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get search;
+
+  /// Screen-reader label of the progress bar while the search reads this device's data for the first time.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing the search'**
+  String get searchPreparing;
+
+  /// No description provided for @searchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tasks, projects, filters, labels'**
+  String get searchHint;
+
+  /// No description provided for @searchTasks.
+  ///
+  /// In en, this message translates to:
+  /// **'Tasks'**
+  String get searchTasks;
+
+  /// No description provided for @searchProjects.
+  ///
+  /// In en, this message translates to:
+  /// **'Projects'**
+  String get searchProjects;
+
+  /// No description provided for @searchLabels.
+  ///
+  /// In en, this message translates to:
+  /// **'Labels'**
+  String get searchLabels;
+
+  /// No description provided for @searchStartTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Search this device'**
+  String get searchStartTitle;
+
+  /// No description provided for @searchStartBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Tasks by title, description, #12 or PROJ-12; projects, saved filters and labels by name. Works offline.'**
+  String get searchStartBody;
+
+  /// No description provided for @searchNoResultsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing found'**
+  String get searchNoResultsTitle;
+
+  /// No description provided for @searchNoResultsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing on this device matches “{query}”.'**
+  String searchNoResultsBody(String query);
+
+  /// No description provided for @searchMoreTasks.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 more task matches. Type more to narrow it down.} other{{count} more tasks match. Type more to narrow it down.}}'**
+  String searchMoreTasks(int count);
+
+  /// Announced to screen readers as the results change.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No results} =1{1 result} other{{count} results}}'**
+  String searchResultCount(int count);
+
+  /// No description provided for @labelTasksEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No open tasks'**
+  String get labelTasksEmptyTitle;
+
+  /// No description provided for @labelTasksEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Open tasks with the label “{label}” show here.'**
+  String labelTasksEmptyBody(String label);
+
+  /// No description provided for @labelTasksGoneTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'This label is gone'**
+  String get labelTasksGoneTitle;
+
+  /// No description provided for @labelTasksGoneBody.
+  ///
+  /// In en, this message translates to:
+  /// **'It may have been deleted, here or on the web.'**
+  String get labelTasksGoneBody;
+
+  /// No description provided for @projectViewEmptyMatchingBody.
+  ///
+  /// In en, this message translates to:
+  /// **'No task matches this view\'s filter.'**
+  String get projectViewEmptyMatchingBody;
+
+  /// No description provided for @clearSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear search'**
+  String get clearSearch;
 }
 
 class _AppLocalizationsDelegate

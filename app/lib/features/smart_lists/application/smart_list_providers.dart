@@ -22,3 +22,9 @@ Stream<List<Task>> favoriteTasks(Ref ref) =>
 Stream<SavedFilterTasks> savedFilterTasks(Ref ref, int pseudoProjectId) =>
     ref.watch(taskRepositoryProvider)?.watchSavedFilterTasks(pseudoProjectId) ??
     const Stream.empty();
+
+/// A label's open tasks; stays loading while no account is signed in.
+@riverpod
+Stream<List<Task>> labelTasks(Ref ref, int labelId) =>
+    ref.watch(taskRepositoryProvider)?.watchLabelTasks(labelId) ??
+    const Stream.empty();

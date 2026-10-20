@@ -3702,16 +3702,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Off adds “done = false” to the filter, like the web\'s List view.';
 
   @override
-  String get projectViewFilterLabel => 'Filter';
-
-  @override
-  String get projectViewFilterHint => 'priority >= 3 && due_date < now/w';
-
-  @override
-  String get projectViewFilterHelp =>
-      'In the web\'s filter syntax; the server checks it when you save.';
-
-  @override
   String projectViewFilterInvalid(String message) {
     return 'This filter isn\'t valid: $message';
   }
@@ -3738,4 +3728,254 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get projectDeleteEverything =>
       'This deletes its tasks and subprojects, for everyone.';
+
+  @override
+  String get filterLabel => 'Filter';
+
+  @override
+  String get filterHint => 'done = false && labels in Work';
+
+  @override
+  String get filterHelp =>
+      'In the web\'s filter syntax, with label and project titles. Suggestions follow what you type.';
+
+  @override
+  String filterMatchCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tasks match on this device',
+      one: '1 task matches on this device',
+      zero: 'No task matches on this device',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get filterNotCountable =>
+      'The server applies this filter; the app can\'t count it here.';
+
+  @override
+  String get filterErrorUnknownField =>
+      'A field in this filter doesn\'t exist. Fields are written like dueDate or labels.';
+
+  @override
+  String filterErrorUnknownFieldNamed(String field) {
+    return '“$field” isn\'t a field. Fields are written like dueDate or labels.';
+  }
+
+  @override
+  String filterErrorLabelValue(String value) {
+    return 'No label is called “$value”.';
+  }
+
+  @override
+  String filterErrorProjectValue(String value) {
+    return 'No project is called “$value”.';
+  }
+
+  @override
+  String filterErrorFieldValue(String value, String field) {
+    return '“$value” isn\'t a valid value for $field.';
+  }
+
+  @override
+  String get filterErrorOperator =>
+      'This filter uses an operator that doesn\'t exist.';
+
+  @override
+  String get filterErrorValue =>
+      'A value doesn\'t fit its field, or no label or project has that title.';
+
+  @override
+  String get filterErrorSyntax =>
+      'This filter is incomplete. Join conditions with && or ||, close every bracket, and don\'t put & | ( ) in a value.';
+
+  @override
+  String get filterErrorTooComplex =>
+      'This filter is too long or nested too deeply.';
+
+  @override
+  String get filterErrorInvalid => 'This filter isn\'t valid.';
+
+  @override
+  String get filterSuggestions => 'Filter suggestions';
+
+  @override
+  String get filterSuggestionAnd => 'and';
+
+  @override
+  String get filterSuggestionOr => 'or';
+
+  @override
+  String get filterDateNow => 'Now';
+
+  @override
+  String get filterDateStartOfToday => 'Start of today';
+
+  @override
+  String get filterDateStartOfTomorrow => 'Start of tomorrow';
+
+  @override
+  String get filterDateInSevenDays => 'In 7 days';
+
+  @override
+  String get filterDateStartOfWeek => 'Start of this week';
+
+  @override
+  String get filterDateStartOfNextWeek => 'Start of next week';
+
+  @override
+  String get filterDateStartOfMonth => 'Start of this month';
+
+  @override
+  String get filterDateSevenDaysAgo => '7 days ago';
+
+  @override
+  String get savedFilterNew => 'New saved filter';
+
+  @override
+  String get savedFilterEditTitle => 'Edit saved filter';
+
+  @override
+  String get savedFilterDescriptionLabel => 'Description';
+
+  @override
+  String get savedFilterIncludeNulls =>
+      'Include tasks which don\'t have a value set';
+
+  @override
+  String get savedFilterIncludeNullsHint =>
+      'Also lists tasks that have no value where the filter compares one, such as tasks without a due date.';
+
+  @override
+  String get savedFilterFavourite => 'Favourite';
+
+  @override
+  String get savedFilterFavouriteHint =>
+      'Shows it among the favourites in the Projects tab.';
+
+  @override
+  String get savedFilterFilterRequired => 'A saved filter needs a filter.';
+
+  @override
+  String get savedFilterCreated => 'Saved filter created';
+
+  @override
+  String get savedFilterSaved => 'Saved filter saved';
+
+  @override
+  String get savedFilterDeleted => 'Saved filter deleted';
+
+  @override
+  String savedFilterDeleteTitle(String title) {
+    return 'Delete “$title”?';
+  }
+
+  @override
+  String get savedFilterDeleteBody =>
+      'No task is deleted, only the filter and its views. This can\'t be undone.';
+
+  @override
+  String get savedFilterEditDiscardBody =>
+      'Your edits to this saved filter will be lost.';
+
+  @override
+  String get savedFilterLoading => 'Loading the saved filter…';
+
+  @override
+  String get savedFilterLoadFailed => 'The saved filter couldn\'t be loaded.';
+
+  @override
+  String get savedFilterChangeNeedsConnection =>
+      'Managing saved filters needs a connection to the server.';
+
+  @override
+  String get savedFilterChangeForbidden =>
+      'Only the person who made this saved filter can change it.';
+
+  @override
+  String get savedFilterGone => 'The saved filter no longer exists.';
+
+  @override
+  String get savedFilterChangeInvalid =>
+      'The server didn\'t accept this saved filter.';
+
+  @override
+  String get search => 'Search';
+
+  @override
+  String get searchPreparing => 'Preparing the search';
+
+  @override
+  String get searchHint => 'Tasks, projects, filters, labels';
+
+  @override
+  String get searchTasks => 'Tasks';
+
+  @override
+  String get searchProjects => 'Projects';
+
+  @override
+  String get searchLabels => 'Labels';
+
+  @override
+  String get searchStartTitle => 'Search this device';
+
+  @override
+  String get searchStartBody =>
+      'Tasks by title, description, #12 or PROJ-12; projects, saved filters and labels by name. Works offline.';
+
+  @override
+  String get searchNoResultsTitle => 'Nothing found';
+
+  @override
+  String searchNoResultsBody(String query) {
+    return 'Nothing on this device matches “$query”.';
+  }
+
+  @override
+  String searchMoreTasks(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count more tasks match. Type more to narrow it down.',
+      one: '1 more task matches. Type more to narrow it down.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String searchResultCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count results',
+      one: '1 result',
+      zero: 'No results',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get labelTasksEmptyTitle => 'No open tasks';
+
+  @override
+  String labelTasksEmptyBody(String label) {
+    return 'Open tasks with the label “$label” show here.';
+  }
+
+  @override
+  String get labelTasksGoneTitle => 'This label is gone';
+
+  @override
+  String get labelTasksGoneBody =>
+      'It may have been deleted, here or on the web.';
+
+  @override
+  String get projectViewEmptyMatchingBody =>
+      'No task matches this view\'s filter.';
+
+  @override
+  String get clearSearch => 'Clear search';
 }

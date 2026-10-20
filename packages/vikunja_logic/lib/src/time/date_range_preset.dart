@@ -1,4 +1,5 @@
 import 'package:meta/meta.dart';
+import 'package:timezone/timezone.dart';
 import 'package:vikunja_logic/src/time/datemath.dart';
 
 /// The web's date-range presets (`dateRanges.ts`), in its order.
@@ -23,9 +24,9 @@ enum DateRangePreset {
   final String from;
   final String to;
 
-  DateRange resolve(DateTime now) => DateRange(
-    from: evaluateDatemath(from, now),
-    to: evaluateDatemath(to, now),
+  DateRange resolve(DateTime now, {Location? location}) => DateRange(
+    from: evaluateDatemath(from, now, location: location),
+    to: evaluateDatemath(to, now, location: location),
   );
 
   static DateRangePreset? fromName(String? name) =>

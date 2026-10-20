@@ -27,20 +27,23 @@ import 'package:vikunja_mobile/features/projects/presentation/manage/new_project
 import 'package:vikunja_mobile/features/projects/presentation/project_move_failure.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_row.dart';
 import 'package:vikunja_mobile/features/projects/presentation/reorder_slot.dart';
+import 'package:vikunja_mobile/features/search/presentation/search_button.dart';
 import 'package:vikunja_mobile/features/smart_lists/application/smart_list_providers.dart';
 import 'package:vikunja_mobile/features/smart_lists/presentation/smart_list_row.dart';
 import 'package:vikunja_mobile/features/sync/presentation/sync_progress_bar.dart';
 
 final _log = Logger('Projects');
 
-enum _Action { toggleArchived }
+enum _Action { refresh, newSavedFilter, toggleArchived }
 
 /// The web's sidebar: the favourites (the Favorites list, saved filters and
 /// projects), every saved filter, and the project tree, archived projects
 /// on request. In the tree a long press lifts a project with its
 /// subprojects, to drop it between other projects or onto one, and screen
 /// readers move it with the row's actions; each move goes to the server
-/// at once. New projects start from the app bar or the empty state.
+/// at once. New projects start from the app bar or the empty state, new
+/// saved filters from the menu, the end of their section or the empty
+/// state.
 class ProjectsScreen extends ConsumerStatefulWidget {
   const new({super.key});
 
@@ -84,6 +87,9 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
 
   void _createProject() => unawaited(createProjectAndOpen(context));
 
+  void _createSavedFilter() =>
+      unawaited(GoRouter.of(context).push(AppRoutes.savedFilterNew));
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -107,20 +113,33 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
       appBar: AppBar(
         title: Text(l10n.tabProjects),
         actions: [
+          const SearchButton(),
           IconButton(
             onPressed: _createProject,
             tooltip: l10n.projectNew,
             icon: const Icon(Icons.add),
           ),
-          RefreshButton(onPressed: refreshing ? null : refresh),
+          // Refresh is in the menu, where it leaves the title room on a
+          // narrow phone; pulling the list refreshes too.
           PopupMenuButton<_Action>(
             tooltip: l10n.moreActions,
             onSelected: (action) => switch (action) {
+              _Action.refresh => unawaited(refresh()),
+              _Action.newSavedFilter => _createSavedFilter(),
               _Action.toggleArchived => _save(
                 preferences.copyWith(showArchived: !preferences.showArchived),
               ),
             },
             itemBuilder: (context) => [
+              PopupMenuItem(
+                value: _Action.refresh,
+                enabled: !refreshing,
+                child: Text(l10n.refresh),
+              ),
+              PopupMenuItem(
+                value: _Action.newSavedFilter,
+                child: Text(l10n.savedFilterNew),
+              ),
               CheckedPopupMenuItem(
                 value: _Action.toggleArchived,
                 checked: preferences.showArchived,
@@ -143,6 +162,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
           notice: notice,
           onOpen: _open,
           onCreate: _createProject,
+          onCreateSavedFilter: _createSavedFilter,
           onToggle: (projectId) => _toggle(preferences, projectId),
           onExpand: _expand,
         ),
@@ -217,6 +237,7 @@ class _Sections extends ConsumerStatefulWidget {
     required this.notice,
     required this.onOpen,
     required this.onCreate,
+    required this.onCreateSavedFilter,
     required this.onToggle,
     required this.onExpand,
   });
@@ -230,6 +251,7 @@ class _Sections extends ConsumerStatefulWidget {
   final Widget? notice;
   final ValueChanged<int> onOpen;
   final VoidCallback onCreate;
+  final VoidCallback onCreateSavedFilter;
   final ValueChanged<int> onToggle;
   final ValueChanged<int> onExpand;
 
@@ -689,11 +711,19 @@ class _SectionsState extends ConsumerState<_Sections> {
               body: l10n.projectsEmptyBody,
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(32, 0, 32, 32),
+              padding: const EdgeInsets.symmetric(horizontal: 32),
               child: FilledButton.icon(
                 onPressed: widget.onCreate,
                 icon: const Icon(Icons.add),
                 label: Text(l10n.projectNew),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(32, 8, 32, 32),
+              child: OutlinedButton.icon(
+                onPressed: widget.onCreateSavedFilter,
+                icon: const Icon(Icons.filter_list),
+                label: Text(l10n.savedFilterNew),
               ),
             ),
           ],
@@ -760,6 +790,7 @@ class _SectionsState extends ConsumerState<_Sections> {
                 children: [
                   for (final filter in savedFilters)
                     filterRow(filter, 'filter'),
+                  _NewSavedFilterRow(onTap: widget.onCreateSavedFilter),
                 ],
               ),
             ],
@@ -797,6 +828,27 @@ class _SectionsState extends ConsumerState<_Sections> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _NewSavedFilterRow extends StatelessWidget {
+  const new({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return ListTile(
+      key: const ValueKey('new saved filter'),
+      onTap: onTap,
+      contentPadding: const EdgeInsetsDirectional.only(start: 16, end: 8),
+      leading: ExcludeSemantics(child: Icon(Icons.add, color: colors.primary)),
+      title: Text(
+        context.l10n.savedFilterNew,
+        style: TextStyle(color: colors.primary),
       ),
     );
   }

@@ -1,0 +1,19 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v2/filters",
+  "sent": {
+    "title": "Refused",
+    "filters": {
+      "filter": "",
+      "s": "",
+      "sort_by": [],
+      "order_by": [],
+      "filter_include_nulls": false
+    }
+  },
+  "status": 201,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"id\":584,\"filters\":{\"s\":\"\",\"sort_by\":[],\"order_by\":[],\"filter\":\"\",\"filter_include_nulls\":false},\"title\":\"Refused\",\"description\":\"\",\"owner\":null,\"is_favorite\":false,\"created\":\"2026-10-20T08:43:45.19198871Z\",\"updated\":\"2026-10-20T08:43:45.192001252Z\"}\n"
+}

@@ -70,6 +70,15 @@ final class FakeSyncClient implements VikunjaReadClient {
   @override
   late final FakeAttachmentsPort attachments = FakeAttachmentsPort(this);
 
+  /// What `GET /filters/{id}` answers, by saved filter id; another id is a
+  /// `NotFound` code 11001.
+  final Map<int, SavedFilter> savedFilterDefinitions = {};
+
+  @override
+  late final FakeSavedFiltersReadPort savedFilters = FakeSavedFiltersReadPort(
+    this,
+  );
+
   /// The subscription each task / project shows on a single read.
   final Map<int, Subscription> taskSubscriptions = {};
   final Map<int, Subscription> projectSubscriptions = {};
@@ -667,5 +676,18 @@ final class FakeAttachmentsPort implements AttachmentsPort {
     );
     return _client.attachmentBlobs[(taskId, attachmentId, preview)] ??
         (throw const NotFound(code: 4002));
+  }
+}
+
+final class FakeSavedFiltersReadPort implements SavedFiltersReadPort {
+  new(this._client);
+
+  final FakeSyncClient _client;
+
+  @override
+  Future<SavedFilter> read(int id) async {
+    await _client._request('filter $id');
+    return _client.savedFilterDefinitions[id] ??
+        (throw const NotFound(code: 11001));
   }
 }

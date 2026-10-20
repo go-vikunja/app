@@ -1,0 +1,21 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v2/filters",
+  "sent": {
+    "title": "Today",
+    "description": "",
+    "filters": {
+      "filter": "due_date >= now/d && due_date < now/d+1d",
+      "s": "",
+      "sort_by": [],
+      "order_by": [],
+      "filter_include_nulls": false
+    },
+    "is_favorite": false
+  },
+  "status": 201,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"id\":583,\"filters\":{\"s\":\"\",\"sort_by\":[],\"order_by\":[],\"filter\":\"due_date >= now/d && due_date < now/d+1d\",\"filter_include_nulls\":false},\"title\":\"Today\",\"description\":\"\",\"owner\":null,\"is_favorite\":false,\"created\":\"2026-10-20T08:43:40.545225326Z\",\"updated\":\"2026-10-20T08:43:40.545230076Z\"}\n"
+}

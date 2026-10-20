@@ -9,6 +9,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/repositories/project_view_repository_providers.dart';
 import 'package:vikunja_mobile/features/common/presentation/option_sheet.dart';
+import 'package:vikunja_mobile/features/filters/presentation/filter_field.dart';
 import 'package:vikunja_mobile/features/projects/application/project_management.dart';
 import 'package:vikunja_mobile/features/projects/presentation/manage/form_parts.dart';
 import 'package:vikunja_mobile/features/projects/presentation/manage/project_change_failure.dart';
@@ -34,12 +35,12 @@ Future<void> showViewFormSheet(
   ),
 );
 
-/// The web's view form without its autocomplete: title, kind and filter in
-/// the web's syntax, which the server checks; for a list the web's default
-/// `done = false` as a switch, for a board whether its columns are its own
-/// or come from filters, whose setup stays on the web. Save waits for the
-/// server, closes and calls [onSaved], also when the sheet was dragged shut
-/// meanwhile; a refusal then comes in a snackbar.
+/// The web's view form: title, kind and filter in the web's syntax with
+/// the filter builder, which checks it on every change; for a list the
+/// web's default `done = false` as a switch, for a board whether its
+/// columns are its own or come from filters, whose setup stays on the web.
+/// Save waits for the server, closes and calls [onSaved], also when the
+/// sheet was dragged shut meanwhile; a refusal then comes in a snackbar.
 class ViewFormSheet extends ConsumerStatefulWidget {
   const new({
     required this.projectId,
@@ -60,7 +61,10 @@ class ViewFormSheet extends ConsumerStatefulWidget {
 
 class _ViewFormSheetState extends ConsumerState<ViewFormSheet> {
   late final _title = TextEditingController(text: widget.view?.title ?? '');
-  late final _filter = TextEditingController();
+  var _filter = const FilterInput(apiText: '');
+
+  /// A new one replaces the filter field, for a text set from here.
+  var _filterGeneration = 0;
   late ProjectViewKind _kind = widget.view?.kind ?? ProjectViewKind.list;
   var _showDone = false;
   late BucketConfigurationMode _mode =
@@ -83,22 +87,34 @@ class _ViewFormSheetState extends ConsumerState<ViewFormSheet> {
           ? (showDone: false, rest: '')
           : splitListFilter(text);
       _showDone = parts.showDone;
-      _filter.text = parts.rest;
+      _filter = FilterInput(apiText: parts.rest);
     } else {
-      _filter.text = text;
+      _filter = FilterInput(apiText: text);
     }
   }
 
   @override
   void dispose() {
     _title.dispose();
-    _filter.dispose();
     super.dispose();
   }
 
-  String get _filterText => _kind == ProjectViewKind.list
-      ? joinListFilter((showDone: _showDone, rest: _filter.text))
-      : _filter.text.trim();
+  String _withSwitch(String rest) => _kind == ProjectViewKind.list
+      ? joinListFilter((showDone: _showDone, rest: rest))
+      : rest.trim();
+
+  String get _filterText => _withSwitch(_filter.apiText);
+
+  void _filterChanged(FilterInput input) {
+    setState(() {
+      if (input.apiText != _filter.apiText) {
+        _filterTouched = true;
+        _filterEdited = true;
+        _filterError = null;
+      }
+      _filter = input;
+    });
+  }
 
   /// The switch of a list stands for part of the filter, so the text
   /// changes with the kind. A new view the user has not filtered yet takes
@@ -114,12 +130,13 @@ class _ViewFormSheetState extends ConsumerState<ViewFormSheet> {
       _kind = kind;
       _filterTouched = true;
       _filterError = null;
+      _filterGeneration++;
       if (kind == ProjectViewKind.list) {
         final parts = splitListFilter(text);
         _showDone = parts.showDone;
-        _filter.text = parts.rest;
+        _filter = FilterInput(apiText: parts.rest);
       } else {
-        _filter.text = text;
+        _filter = FilterInput(apiText: text);
       }
     });
   }
@@ -248,6 +265,7 @@ class _ViewFormSheetState extends ConsumerState<ViewFormSheet> {
     final colors = theme.colorScheme;
     final editing = widget.view != null;
     final emptyTitle = _title.text.trim().isEmpty;
+    final canSave = !emptyTitle && !_saving && !_filter.blocksSaving;
     return PopScope(
       canPop: !_saving,
       child: SingleChildScrollView(
@@ -263,7 +281,7 @@ class _ViewFormSheetState extends ConsumerState<ViewFormSheet> {
                   : editing
                   ? l10n.projectSave
                   : l10n.projectCreate,
-              onAction: emptyTitle || _saving ? null : () => unawaited(_save()),
+              onAction: canSave ? () => unawaited(_save()) : null,
             ),
             if (_saving) const LinearProgressIndicator(),
             Padding(
@@ -313,31 +331,17 @@ class _ViewFormSheetState extends ConsumerState<ViewFormSheet> {
                 title: Text(l10n.projectViewShowDone),
                 subtitle: Text(l10n.projectViewShowDoneHint),
               ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-              child: TextField(
-                controller: _filter,
-                enabled: !_saving,
-                // Wraps, but Return confirms instead of adding a line.
-                maxLines: null,
-                keyboardType: TextInputType.text,
-                autocorrect: false,
-                enableSuggestions: false,
-                textInputAction: TextInputAction.done,
-                decoration: InputDecoration(
-                  labelText: l10n.projectViewFilterLabel,
-                  hintText: l10n.projectViewFilterHint,
-                  helperText: l10n.projectViewFilterHelp,
-                  helperMaxLines: 6,
-                  errorText: _filterError,
-                  errorMaxLines: 8,
-                ),
-                onChanged: (_) => setState(() {
-                  _filterTouched = true;
-                  _filterEdited = true;
-                  _filterError = null;
-                }),
-              ),
+            const SizedBox(height: 8),
+            FilterField(
+              key: ValueKey(_filterGeneration),
+              initialFilter: _filter.apiText,
+              projectId: widget.projectId,
+              includeNulls: widget.view?.filter?.includeNulls ?? false,
+              search: widget.view?.filter?.search ?? '',
+              completeFilter: _withSwitch,
+              enabled: !_saving,
+              serverError: _filterError,
+              onChanged: _filterChanged,
             ),
             if (_kind == ProjectViewKind.kanban) ...[
               const SizedBox(height: 8),

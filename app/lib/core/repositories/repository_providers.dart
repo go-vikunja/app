@@ -37,6 +37,7 @@ import 'package:vikunja_mobile/core/repositories/user_repository.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine_impl.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
+import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
 
 part 'repository_providers.g.dart';
 
@@ -296,6 +297,10 @@ TaskRepository accountTaskRepository(Ref ref, String accountId) {
     ),
   );
   if (perPage == null) throw StateError('Account $accountId is not registered');
+  // Listened, not watched: a tick re-evaluates the filters with relative
+  // dates instead of rebuilding the repository and every list.
+  final clockTicks = StreamController<void>.broadcast();
+  ref.listen(clockTickProvider, (_, _) => clockTicks.add(null));
   final repository = LocalTaskRepository(
     ref.watch(appDatabaseProvider(accountId)),
     ref.watch(syncEngineProvider(accountId)),
@@ -304,8 +309,11 @@ TaskRepository accountTaskRepository(Ref ref, String accountId) {
     read: ref.watch(readClientProvider(accountId)),
     perPage: perPage,
     now: ref.watch(clockProvider),
+    clockTicks: clockTicks.stream,
   );
-  ref.onDispose(repository.dispose);
+  ref
+    ..onDispose(repository.dispose)
+    ..onDispose(clockTicks.close);
   return repository;
 }
 

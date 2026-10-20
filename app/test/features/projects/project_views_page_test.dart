@@ -143,10 +143,7 @@ void main() {
     expect(find.text(en.projectViewShowDone), findsNothing);
     // Not the list's default, which would hide the board's done column.
     expect(
-      tester
-          .widget<TextField>(sheetField(en.projectViewFilterLabel))
-          .controller!
-          .text,
+      tester.widget<TextField>(sheetField(en.filterLabel)).controller!.text,
       '',
     );
     await tester.tap(find.text(en.projectViewColumnsLabel));
@@ -154,10 +151,7 @@ void main() {
     await tester.tap(find.text(en.projectViewColumnsFilter).last);
     await tester.pumpAndSettle();
     expect(find.text(en.projectViewFilterColumnsOnWeb), findsOneWidget);
-    await tester.enterText(
-      sheetField(en.projectViewFilterLabel),
-      'priority >= 3',
-    );
+    await tester.enterText(sheetField(en.filterLabel), 'priority >= 3');
     await tester.pump();
     await submit(tester, en.projectCreate);
 
@@ -181,10 +175,7 @@ void main() {
       'List',
     );
     expect(
-      tester
-          .widget<TextField>(sheetField(en.projectViewFilterLabel))
-          .controller!
-          .text,
+      tester.widget<TextField>(sheetField(en.filterLabel)).controller!.text,
       '',
     );
     await tester.tap(find.text(en.projectViewShowDone));
@@ -212,7 +203,7 @@ void main() {
 
   testWidgets('a filter the server refuses is explained at its field, '
       'announced, and the sheet stays', (tester) async {
-    const message = "The filter expression '((' is invalid";
+    const message = "The filter expression 'priority >= 3' is invalid";
     data.views.failures['updateView'] = const DomainError(
       400,
       code: 4024,
@@ -221,13 +212,13 @@ void main() {
     await pumpViews(tester, 1);
 
     await openView(tester, en.projectViewKanban);
-    await tester.enterText(sheetField(en.projectViewFilterLabel), '((');
+    await tester.enterText(sheetField(en.filterLabel), 'priority >= 3');
     await tester.pump();
     await submit(tester, en.projectSave);
 
     expect(find.byType(ViewFormSheet), findsOneWidget);
     expect(find.text(en.projectViewFilterInvalid(message)), findsOneWidget);
-    expect(data.views.drafts.single.filter?.filter, '((');
+    expect(data.views.drafts.single.filter?.filter, 'priority >= 3');
     expect(
       tester.takeAnnouncements(),
       contains(

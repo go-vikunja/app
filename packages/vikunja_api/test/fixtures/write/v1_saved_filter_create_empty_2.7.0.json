@@ -1,0 +1,15 @@
+{
+  "server": "2.7.0",
+  "request": "PUT /api/v1/filters",
+  "sent": {
+    "title": "Refused",
+    "filters": {
+      "filter": ""
+    }
+  },
+  "status": 412,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"code\":2002,\"message\":\"Invalid Data\",\"invalid_fields\":[\"filters: non zero value required\"]}\n"
+}

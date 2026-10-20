@@ -10,6 +10,7 @@ import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/outbox/outbox_sender.dart';
 import 'package:vikunja_mobile/core/repositories/local/local_project_repository.dart';
 import 'package:vikunja_mobile/core/repositories/local/local_task_repository.dart';
+import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/settings/user_settings_json.dart';
 import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine_impl.dart';
@@ -241,7 +242,8 @@ void main() {
             await tasks.refreshSavedFilter(pseudoId);
             final list = await tasks.watchSavedFilterTasks(pseudoId).first;
 
-            expect(list.loadedAt, isNotNull);
+            // The sync read the definitions, so the device evaluates them.
+            expect(list.evaluation, FilterEvaluation.local);
             expect(_ids(list.tasks), await serverOpenTasks(pseudoId));
             expect(_ids(list.tasks), expected);
           }

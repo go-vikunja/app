@@ -17,17 +17,20 @@ abstract interface class TaskRepository {
   Stream<List<Task>> watchActiveOpenTasks();
 
   /// [watchActiveOpenTasks], or the open tasks of the saved filter the user
-  /// picked for the Overview on the web, as of its last download (the sync
-  /// downloads it each run) with this device's changes on top: a task done
-  /// or deleted here leaves at once, a task created here appears after the
-  /// next download.
+  /// picked for the Overview on the web: evaluated here from its stored
+  /// definition, so every change shows at once; while the definition is
+  /// unknown or the device cannot evaluate it, as of its last download (the
+  /// sync downloads it each run) with a task done or deleted here leaving at
+  /// once and one created here appearing after the next download.
   Stream<OverviewTasks> watchOverviewTasks();
 
   /// What a project's list view is built from; [viewId] 0 stands for a
-  /// project without a list view. Without [includeDone] the project's done
-  /// tasks are left out unless the view's last download has them (as
-  /// subtasks they still come along), for a view that would not show them:
-  /// a long-lived project holds far more done tasks than open ones.
+  /// project without a list view. The view's filter and search are
+  /// evaluated here on every change (`ProjectListSource.matchingIds`).
+  /// Without [includeDone] the project's done tasks are left out unless the
+  /// view's last download has them or its filter matches them (as subtasks
+  /// they still come along), for a view that would not show them: a
+  /// long-lived project holds far more done tasks than open ones.
   Stream<ProjectListSource> watchProjectList(
     int projectId, {
     required int viewId,
@@ -39,7 +42,8 @@ abstract interface class TaskRepository {
   /// syncs.
   Future<void> refreshProjectList(int projectId, {required int viewId});
 
-  /// What a kanban view's board is built from.
+  /// What a kanban view's board is built from, with its filter evaluated
+  /// here (`BoardSource.matchingIds`).
   Stream<BoardSource> watchBoard(int projectId, int viewId);
 
   /// Runs the sync, then downloads the board: every bucket with its first
@@ -74,11 +78,19 @@ abstract interface class TaskRepository {
   /// due date first (none last), then newest first: the Favorites list.
   Stream<List<Task>> watchFavoriteTasks();
 
-  /// A saved filter's list ([pseudoProjectId] is -2 or lower).
+  /// A saved filter's list ([pseudoProjectId] is -2 or lower): evaluated
+  /// here from its stored definition, else its last download.
   Stream<SavedFilterTasks> watchSavedFilterTasks(int pseudoProjectId);
 
-  /// Runs the sync and downloads the saved filter's open tasks; throws the
-  /// `VikunjaFailure` of the download.
+  /// The open tasks with the label [labelId], as a saved filter
+  /// `done = false && labels in <id>` lists them: outside archived
+  /// projects and favourite ones anywhere, nearest due date first (none
+  /// last), then newest first.
+  Stream<List<Task>> watchLabelTasks(int labelId);
+
+  /// Runs the sync, which brings a changed definition; a saved filter the
+  /// device cannot evaluate is then downloaded. Throws the `VikunjaFailure`
+  /// of the download.
   Future<void> refreshSavedFilter(int pseudoProjectId);
 
   Future<void> refreshOpenTasks();

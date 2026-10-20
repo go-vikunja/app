@@ -212,6 +212,28 @@ void main() {
       expect(find.text('Already done'), findsNothing);
     });
 
+    testWidgets('evaluated here, its open matches show under a note naming '
+        'it, without a time or a download state', (tester) async {
+      data.tasks
+        ..overviewFilter = filter
+        ..overviewMatches = {1, 3, 6};
+      await pumpOverview(tester);
+
+      expect(
+        find.text(en.overviewFilterSubtitle('My Open Tasks')),
+        findsOneWidget,
+      );
+      expect(find.byType(TaskRow), findsNWidgets(2));
+
+      data.tasks.overviewMatches = {6};
+      await tester.pumpAndSettle();
+      expect(
+        find.text(en.overviewFilterEmptyBody('My Open Tasks')),
+        findsOneWidget,
+      );
+      expect(find.text(en.overviewFilterNotDownloadedTitle), findsNothing);
+    });
+
     testWidgets('a download that finished after the last tick reads as now', (
       tester,
     ) async {

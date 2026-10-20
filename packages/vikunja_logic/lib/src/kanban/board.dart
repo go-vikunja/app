@@ -53,11 +53,13 @@ typedef _Listed = ({int bucketId, double position});
 /// temporary id, created or updated after [loadedAt], as a task moved into
 /// the project is, or in [movedHere], whose move into the project is not
 /// sent yet), on top of the default bucket or, done, the done bucket; older
-/// ones are on pages not downloaded yet. A view filter the device can
-/// evaluate (none, `done = false`, `done = true`) is applied to every card;
-/// under any other filter newer tasks wait for the next download. A
-/// filter-mode view shows the download only: the server decides its
-/// buckets and refuses moves.
+/// ones are on pages not downloaded yet. With [matchingIds], the tasks the
+/// view's filter matches as the device evaluated it, a card shows only when
+/// it is among them; without, a view filter the classifier knows (none,
+/// `done = false`, `done = true`) is applied to every card, and under any
+/// other filter newer tasks wait for the next download. A filter-mode view
+/// shows the download only: the server decides its buckets and refuses
+/// moves.
 List<BoardColumn> buildBoard({
   required ProjectView view,
   required List<Bucket> buckets,
@@ -67,6 +69,7 @@ List<BoardColumn> buildBoard({
   required Map<int, BucketPlacement> queued,
   Set<int> movedHere = const {},
   Set<int> queuedDoneChanges = const {},
+  Set<int>? matchingIds,
 }) {
   final columns = [...buckets]..sort(compareBucketOrder);
   if (columns.isEmpty) return const [];
@@ -90,13 +93,15 @@ List<BoardColumn> buildBoard({
       if (listed == null || !columnIds.contains(listed.bucketId)) return null;
       return _Card(task, listed.bucketId, listed.position, listed);
     }
-    if (!_matches(task, filter)) return null;
+    if (!(matchingIds?.contains(task.id) ?? _matches(task, filter))) {
+      return null;
+    }
     if (queued[task.id] case final placement?
         when columnIds.contains(placement.bucketId)) {
       return _Card(task, placement.bucketId, placement.position, listed);
     }
     if (listed == null) {
-      if (filter == ViewFilterKind.other ||
+      if ((matchingIds == null && filter == ViewFilterKind.other) ||
           !(movedHere.contains(task.id) || _isNewer(task, loadedAt))) {
         return null;
       }

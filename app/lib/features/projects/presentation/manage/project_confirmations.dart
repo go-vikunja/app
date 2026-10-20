@@ -64,14 +64,21 @@ Future<bool> confirmDeleteView(BuildContext context, {required String view}) {
 }
 
 /// True when the user chooses to drop the unsaved edits of a project.
-Future<bool> confirmDiscardProjectChanges(BuildContext context) async {
+Future<bool> confirmDiscardProjectChanges(BuildContext context) =>
+    confirmDiscardChanges(context, body: context.l10n.projectEditDiscardBody);
+
+/// True when the user chooses to drop the unsaved edits [body] names.
+Future<bool> confirmDiscardChanges(
+  BuildContext context, {
+  required String body,
+}) async {
   final l10n = context.l10n;
   final discard = await showAdaptiveDialog<bool>(
     context: context,
     builder: (context) => AlertDialog.adaptive(
       scrollable: true,
       title: Text(l10n.taskEditDiscardTitle),
-      content: Text(l10n.projectEditDiscardBody),
+      content: Text(body),
       actions: [
         AdaptiveDialogAction(
           onPressed: () => Navigator.of(context).pop(false),

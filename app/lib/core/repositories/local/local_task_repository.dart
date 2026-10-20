@@ -1,15 +1,19 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/db/watch_tables.dart';
+import 'package:vikunja_mobile/core/filters/local_filters.dart';
 import 'package:vikunja_mobile/core/outbox/outbox_sender.dart';
 import 'package:vikunja_mobile/core/outbox/pending_task_ids_source.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/repositories/local/shared_latest.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
+import 'package:vikunja_mobile/core/settings/user_settings_json.dart';
 import 'package:vikunja_mobile/core/sync/list_downloads.dart';
 import 'package:vikunja_mobile/core/sync/saved_filters.dart';
 import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
@@ -24,6 +28,15 @@ final _log = Logger('AccountData');
 /// server has named the task. A duplicate is made by the server and is
 /// online only, and so is a view's download, which needs `read` (`perPage`
 /// is the server's page size).
+///
+/// Filters are evaluated here on every change of the tasks, with the
+/// server's rules ([LocalFilters]): a view's filter and search over its
+/// project, a saved filter's over the tasks outside archived projects and
+/// the favourite ones. A filter the engine refuses, one that names
+/// `bucket_id`, and a saved filter whose definition is unknown here keep
+/// the server's answer from the last download. A filter with a relative
+/// date (`due_date < now/d+1d`) is evaluated again on every event of
+/// `clockTicks`, a broadcast stream, as the time alone changes its tasks.
 final class LocalTaskRepository
     implements TaskRepository, PendingTaskIdsSource {
   new(
@@ -34,6 +47,7 @@ final class LocalTaskRepository
     this._read,
     this._perPage = 50,
     DateTime Function()? now,
+    this._clockTicks = const Stream.empty(),
   }) : _now = now ?? DateTime.now;
 
   final AppDatabase _db;
@@ -43,11 +57,59 @@ final class LocalTaskRepository
   final VikunjaReadClient? _read;
   final int _perPage;
   final DateTime Function() _now;
+  final Stream<void> _clockTicks;
 
   // Upcoming and the Overview without a saved filter watch the same tasks.
   late final SharedLatest<List<Task>> _activeOpenTasks = SharedLatest(
     _db.tasksDao.watchActiveOpenTasks,
   );
+
+  late final LocalFilters _filters = LocalFilters(_db, now: _now);
+
+  Stream<String> _timezoneSetting() => _db.syncStateDao
+      .watchValue(SyncStateKeys.userSettings)
+      .map((stored) => decodeUserSettings(stored).timezone)
+      .distinct();
+
+  /// The saved filter [pick] finds in the stored state (null once the last
+  /// project list no longer names it), with the user's timezone setting.
+  Stream<({SavedFilterRef? filter, String timezone})> _savedFilterSelection(
+    SavedFilterRef? Function(Map<String, String> state) pick,
+  ) => _db.syncStateDao
+      .watchValues({SyncStateKeys.userSettings, SyncStateKeys.savedFilters})
+      .map(
+        (state) => (
+          filter: pick(state),
+          timezone: decodeUserSettings(state[SyncStateKeys.userSettings])
+              .timezone,
+        ),
+      )
+      .distinct();
+
+  /// The open tasks of [filter]'s evaluation here, as the Overview orders
+  /// them; null when the device cannot evaluate it.
+  Stream<List<Task>>? _openTasksOfSavedFilter(
+    SavedFilterRef filter, {
+    required String timezone,
+  }) {
+    final definition = filter.definition;
+    if (definition == null || !evaluatesLocally(definition)) return null;
+    return _openTasksMatching(definition, timezone: timezone);
+  }
+
+  Stream<List<Task>> _openTasksMatching(
+    SavedFilterDefinition definition, {
+    String timezone = '',
+  }) => _db
+      .watchTables(_db.tasksDao.savedFilterTables, () async {
+        final ids = await _filters.matchingForSavedFilter(
+          definition,
+          timezoneSetting: timezone,
+          openOnly: true,
+        );
+        return await _db.tasksDao.loadOpenTasksAmong(ids ?? const {});
+      }, alsoOn: changesWithTime(definition.filter) ? _clockTicks : null)
+      .distinct(listEquals);
 
   @override
   Stream<List<Task>> watchOpenTasks() => _db.tasksDao.watchOpenTasks();
@@ -60,34 +122,60 @@ final class LocalTaskRepository
   Stream<List<Task>> watchActiveOpenTasks() => _activeOpenTasks.stream;
 
   @override
-  Stream<OverviewTasks> watchOverviewTasks() => _switchLatest(
-    _db.syncStateDao
-        .watchValues({SyncStateKeys.userSettings, SyncStateKeys.savedFilters})
-        .map(overviewFilterIn)
-        .distinct(),
-    (filter) => filter == null
-        ? watchActiveOpenTasks().map((tasks) => OverviewTasks(tasks: tasks))
-        : _db.tasksDao
-              .watchOpenTasksInList(overviewSnapshotKey(filter.projectId))
-              .map(
-                (list) => OverviewTasks(
-                  tasks: list.tasks,
-                  filter: filter,
-                  filterLoadedAt: list.loadedAt,
-                ),
+  Stream<OverviewTasks> watchOverviewTasks() =>
+      switchLatest(_savedFilterSelection(overviewFilterIn), (selection) {
+        final filter = selection.filter;
+        if (filter == null) {
+          return watchActiveOpenTasks().map(
+            (tasks) => OverviewTasks(tasks: tasks),
+          );
+        }
+        final local = _openTasksOfSavedFilter(
+          filter,
+          timezone: selection.timezone,
+        );
+        if (local != null) {
+          return local.map(
+            (tasks) => OverviewTasks(
+              tasks: tasks,
+              filter: filter,
+              filterEvaluation: FilterEvaluation.local,
+            ),
+          );
+        }
+        return _db.tasksDao
+            .watchOpenTasksInList(overviewSnapshotKey(filter.projectId))
+            .map(
+              (list) => OverviewTasks(
+                tasks: list.tasks,
+                filter: filter,
+                filterLoadedAt: list.loadedAt,
               ),
-  );
+            );
+      });
 
   @override
   Stream<ProjectListSource> watchProjectList(
     int projectId, {
     required int viewId,
     bool includeDone = true,
-  }) => _db.tasksDao.watchProjectList(
-    projectId,
-    viewId: viewId,
-    includeDone: includeDone,
-  );
+  }) => switchLatest(_timezoneSetting(), (timezone) {
+    var viewChangesWithTime = false;
+    return _db.watchTables(_db.tasksDao.projectListTables, () async {
+      final view = viewId == 0 ? null : await _db.projectsDao.loadView(viewId);
+      viewChangesWithTime = changesWithTime(view?.filter);
+      return await _db.tasksDao.loadProjectList(
+        projectId,
+        viewId: viewId,
+        includeDone: includeDone,
+        matchingIds: await _filters.matchingInProject(
+          projectId,
+          view?.filter,
+          timezoneSetting: timezone,
+        ),
+      );
+    }, alsoOn: _clockTicks.where((_) => viewChangesWithTime));
+  });
 
   @override
   Future<void> refreshProjectList(int projectId, {required int viewId}) async {
@@ -105,7 +193,25 @@ final class LocalTaskRepository
 
   @override
   Stream<BoardSource> watchBoard(int projectId, int viewId) =>
-      _db.tasksDao.watchBoard(projectId, viewId);
+      switchLatest(_timezoneSetting(), (timezone) {
+        var viewChangesWithTime = false;
+        return _db.watchTables(_db.tasksDao.boardTables, () async {
+          final view = await _db.projectsDao.loadView(viewId);
+          viewChangesWithTime =
+              view != null &&
+              view.bucketConfigurationMode != BucketConfigurationMode.filter &&
+              changesWithTime(view.filter);
+          return await _db.tasksDao.loadBoard(
+            projectId,
+            viewId,
+            matchingIds: await _filters.matchingOnBoard(
+              projectId,
+              view,
+              timezoneSetting: timezone,
+            ),
+          );
+        }, alsoOn: _clockTicks.where((_) => viewChangesWithTime));
+      });
 
   @override
   Future<void> refreshBoard(int projectId, int viewId) async {
@@ -150,16 +256,63 @@ final class LocalTaskRepository
   Stream<List<Task>> watchFavoriteTasks() => _db.tasksDao.watchFavoriteTasks();
 
   @override
-  Stream<SavedFilterTasks> watchSavedFilterTasks(int pseudoProjectId) => _db
-      .tasksDao
-      .watchOpenTasksInList(savedFilterSnapshotKey(pseudoProjectId))
-      .map(
-        (list) => SavedFilterTasks(tasks: list.tasks, loadedAt: list.loadedAt),
+  Stream<SavedFilterTasks> watchSavedFilterTasks(int pseudoProjectId) =>
+      switchLatest(
+        _savedFilterSelection(
+          (state) => _storedSavedFilter(state, pseudoProjectId),
+        ),
+        (selection) {
+          final local = switch (selection.filter) {
+            final filter? => _openTasksOfSavedFilter(
+              filter,
+              timezone: selection.timezone,
+            ),
+            null => null,
+          };
+          if (local != null) {
+            return local.map(
+              (tasks) => SavedFilterTasks(
+                tasks: tasks,
+                evaluation: FilterEvaluation.local,
+              ),
+            );
+          }
+          return _db.tasksDao
+              .watchOpenTasksInList(savedFilterSnapshotKey(pseudoProjectId))
+              .map(
+                (list) => SavedFilterTasks(
+                  tasks: list.tasks,
+                  loadedAt: list.loadedAt,
+                ),
+              );
+        },
       );
 
   @override
+  Stream<List<Task>> watchLabelTasks(int labelId) => _openTasksMatching(
+    SavedFilterDefinition(
+      filter: ViewFilter(filter: 'done = false && labels in $labelId'),
+    ),
+  );
+
+  static SavedFilterRef? _storedSavedFilter(
+    Map<String, String> state,
+    int pseudoProjectId,
+  ) =>
+      decodeSavedFilters(state[SyncStateKeys.savedFilters])
+          .where((filter) => filter.projectId == pseudoProjectId)
+          .firstOrNull;
+
+  /// The sync brings a changed definition; only a saved filter the device
+  /// cannot evaluate is downloaded.
+  @override
   Future<void> refreshSavedFilter(int pseudoProjectId) async {
     await _sync.refresh();
+    final stored = _storedSavedFilter(
+      await _db.syncStateDao.readAll(),
+      pseudoProjectId,
+    );
+    if (evaluatesLocally(stored?.definition)) return;
     await downloadSavedFilter(
       db: _db,
       client: _readClient('A saved filter download'),
@@ -289,37 +442,3 @@ final class LocalTaskRepository
     ),
   );
 }
-
-/// The stream [inner] makes for the newest event of [source]; the previous
-/// one is cancelled.
-Stream<T> _switchLatest<S, T>(
-  Stream<S> source,
-  Stream<T> Function(S value) inner,
-) => Stream.multi((subscriber) {
-  StreamSubscription<T>? current;
-  var sourceDone = false;
-  var innerDone = true;
-  final outer = source.listen(
-    (value) {
-      unawaited(current?.cancel());
-      innerDone = false;
-      current = inner(value).listen(
-        subscriber.add,
-        onError: subscriber.addError,
-        onDone: () {
-          innerDone = true;
-          if (sourceDone) unawaited(subscriber.close());
-        },
-      );
-    },
-    onError: subscriber.addError,
-    onDone: () {
-      sourceDone = true;
-      if (innerDone) unawaited(subscriber.close());
-    },
-  );
-  subscriber.onCancel = () async {
-    await current?.cancel();
-    await outer.cancel();
-  };
-});

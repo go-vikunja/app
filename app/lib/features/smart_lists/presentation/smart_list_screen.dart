@@ -1,39 +1,48 @@
 import 'dart:async';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
+import 'package:go_router/go_router.dart';
+import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
-import 'package:vikunja_mobile/app/theme/hex_color.dart';
+import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/core/repositories/saved_filter_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
-import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_note.dart';
-import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
 import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
 import 'package:vikunja_mobile/features/overview/application/due_date_groups.dart';
-import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
+import 'package:vikunja_mobile/features/projects/presentation/manage/project_actions.dart';
 import 'package:vikunja_mobile/features/smart_lists/application/smart_list_providers.dart';
+import 'package:vikunja_mobile/features/smart_lists/presentation/due_sections_list.dart';
+import 'package:vikunja_mobile/features/smart_lists/presentation/saved_filter_failure.dart';
 import 'package:vikunja_mobile/features/sync/application/offline_state.dart';
 import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
 import 'package:vikunja_mobile/features/sync/presentation/sync_progress_bar.dart';
 import 'package:vikunja_mobile/features/tasks/application/minimum_priority_provider.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/confirm_dialog.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/relative_time.dart';
-import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_list_actions.dart';
-import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
+
+final _log = Logger('SmartList');
+
+enum _Action { edit, favourite, delete }
 
 /// A list that is no project, grouped by due date like the Overview: the
 /// open favourite tasks from the local database (Favorites, -1), or a saved
-/// filter's open tasks as of its last download (-2 and below), which the
-/// device cannot evaluate itself yet.
+/// filter's open tasks (-2 and below), evaluated here from its stored
+/// definition, or as of its last download where the device cannot (the
+/// definition is unknown, the engine refuses it, or it needs a board). A
+/// saved filter's menu edits, favourites and deletes it online.
 class SmartListScreen extends ConsumerStatefulWidget {
   const new({required this.pseudoProjectId, super.key});
 
@@ -55,17 +64,27 @@ class _SmartListScreenState extends ConsumerState<SmartListScreen>
   var _downloadedWhileMissing = false;
   var _downloading = false;
   Object? _quietFailure;
+  var _managing = false;
 
   bool get _isFavorites => widget.pseudoProjectId == Project.favoritesId;
 
   @override
   ProviderListenable<Object?> get repositoryProvider => taskRepositoryProvider;
 
-  // Favorites are local; one sync run brings their changes.
+  /// Favorites and a filter evaluated here are local; one sync run brings
+  /// their changes.
+  bool get _isLocal =>
+      _isFavorites ||
+      ref
+              .read(savedFilterTasksProvider(widget.pseudoProjectId))
+              .value
+              ?.evaluation ==
+          FilterEvaluation.local;
+
   @override
   Future<void>? startRefresh() {
     final repository = ref.read(taskRepositoryProvider);
-    return _isFavorites
+    return _isLocal
         ? repository?.refreshOpenTasks()
         : repository?.refreshSavedFilter(widget.pseudoProjectId);
   }
@@ -104,7 +123,7 @@ class _SmartListScreenState extends ConsumerState<SmartListScreen>
   /// Back online, tasks missing or stale download again: the failure kept
   /// from offline would otherwise promise a download that never comes.
   void _downloadAfterReconnect() {
-    if (_downloading || refreshing) return;
+    if (_downloading || refreshing || _isLocal) return;
     final loadedAt = ref
         .read(savedFilterTasksProvider(widget.pseudoProjectId))
         .value
@@ -158,6 +177,114 @@ class _SmartListScreenState extends ConsumerState<SmartListScreen>
     return projectDisplayTitle(l10n, filter.title, projectId: filter.projectId);
   }
 
+  /// One change at a time, said in a snackbar once the server took it, or
+  /// why it did not.
+  Future<bool> _manage(String done, Future<void> Function() send) async {
+    if (_managing) return false;
+    final l10n = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _managing = true);
+    try {
+      await send();
+      unawaited(HapticFeedback.selectionClick());
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(done)));
+      return true;
+    } on Object catch (error) {
+      _log.warning('Changing a saved filter failed: ${error.runtimeType}');
+      unawaited(HapticFeedback.heavyImpact());
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(savedFilterFailureText(l10n, error, fromForm: false)),
+          ),
+        );
+      return false;
+    } finally {
+      if (mounted) setState(() => _managing = false);
+    }
+  }
+
+  Future<void> _onAction(_Action action, SavedFilterRef filter) async {
+    final repository = ref.read(savedFilterRepositoryProvider);
+    if (repository == null) return;
+    final l10n = context.l10n;
+    final router = GoRouter.of(context);
+    switch (action) {
+      case _Action.edit:
+        unawaited(router.push(AppRoutes.savedFilterEdit(filter.projectId)));
+      case _Action.favourite:
+        final favourite = !filter.isFavorite;
+        await _manage(
+          favourite ? l10n.projectFavourited : l10n.projectUnfavourited,
+          () => repository.setFavorite(filter.projectId, favorite: favourite),
+        );
+      case _Action.delete:
+        final confirmed = await confirmAdaptive(
+          context,
+          title: l10n.savedFilterDeleteTitle(
+            projectDisplayTitle(
+              l10n,
+              filter.title,
+              projectId: filter.projectId,
+            ),
+          ),
+          body: l10n.savedFilterDeleteBody,
+          confirmLabel: l10n.projectDelete,
+          destructive: true,
+        );
+        if (!confirmed || !mounted) return;
+        final deleted = await _manage(
+          l10n.savedFilterDeleted,
+          () => repository.delete(filter.projectId),
+        );
+        if (deleted) router.go(AppRoutes.projects);
+    }
+  }
+
+  Widget _menu(AppLocalizations l10n, SavedFilterRef filter) {
+    if (_managing) {
+      return SizedBox.square(
+        dimension: kMinInteractiveDimension,
+        child: Center(
+          child: SizedBox.square(
+            dimension: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.5,
+              semanticsLabel: l10n.projectSaving,
+            ),
+          ),
+        ),
+      );
+    }
+    return PopupMenuButton<_Action>(
+      tooltip: l10n.moreActions,
+      onSelected: (action) => unawaited(_onAction(action, filter)),
+      itemBuilder: (context) => [
+        projectMenuItem(
+          _Action.edit,
+          icon: Icons.edit_outlined,
+          label: l10n.projectEdit,
+        ),
+        projectMenuItem(
+          _Action.favourite,
+          icon: filter.isFavorite ? Icons.star : Icons.star_outline,
+          label: filter.isFavorite
+              ? l10n.projectRemoveFromFavourites
+              : l10n.projectAddToFavourites,
+        ),
+        projectMenuItem(
+          _Action.delete,
+          icon: Icons.delete_outline,
+          label: l10n.projectDelete,
+          color: Theme.of(context).colorScheme.error,
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -174,9 +301,11 @@ class _SmartListScreenState extends ConsumerState<SmartListScreen>
               .watch(favoriteTasksProvider)
               .whenData((tasks) => SavedFilterTasks(tasks: tasks))
         : ref.watch(savedFilterTasksProvider(widget.pseudoProjectId));
-    if (list case AsyncData(:final value) when !_isFavorites) {
+    if (list case AsyncData(:final value)
+        when !_isFavorites && value.evaluation == FilterEvaluation.snapshot) {
       _downloadWhenNeeded(value.loadedAt, listed: !gone);
     }
+    final listed = filters == null ? null : _filterIn(filters);
     final projects = ref.watch(projectsProvider).value ?? const <Project>[];
     final projectsById = {for (final project in projects) project.id: project};
     final now = ref.watch(clockTickProvider);
@@ -189,7 +318,10 @@ class _SmartListScreenState extends ConsumerState<SmartListScreen>
     return Scaffold(
       appBar: AppBar(
         title: Text(title),
-        actions: [RefreshButton(onPressed: refreshing ? null : refresh)],
+        actions: [
+          RefreshButton(onPressed: refreshing ? null : refresh),
+          if (listed != null) _menu(l10n, listed),
+        ],
         bottom: const SyncProgressBar(),
       ),
       floatingActionButton: FloatingActionButton(
@@ -204,7 +336,8 @@ class _SmartListScreenState extends ConsumerState<SmartListScreen>
         loadingLabel: l10n.projectTasksLoading,
         builder: (value, notice) {
           final loadedAt = value.loadedAt;
-          return _Sections(
+          final local = value.evaluation == FilterEvaluation.local;
+          return DueSectionsList(
             sections: groupTasksByDueDate(withLeavingTasks(value.tasks), now),
             projectsById: projectsById,
             pendingIds: pendingIds,
@@ -212,7 +345,7 @@ class _SmartListScreenState extends ConsumerState<SmartListScreen>
             minimumPriority: minimumPriority,
             header: stackedNotes([
               ?notice,
-              if (loadedAt != null)
+              if (!local && loadedAt != null)
                 ListNote(
                   icon: Icons.filter_list,
                   text: l10n.smartListFilterNotice(
@@ -230,6 +363,11 @@ class _SmartListScreenState extends ConsumerState<SmartListScreen>
                 icon: Icons.star_outline,
                 title: l10n.favoritesEmptyTitle,
                 body: l10n.favoritesEmptyBody,
+              ),
+              _ when local => EmptyState(
+                icon: Icons.task_alt,
+                title: l10n.overviewEmptyTitle,
+                body: l10n.overviewFilterEmptyBody(title),
               ),
               (false, null) when gone => EmptyState(
                 icon: Icons.filter_list_off,
@@ -269,90 +407,4 @@ class _SmartListScreenState extends ConsumerState<SmartListScreen>
       ),
     );
   }
-}
-
-class _Sections extends StatelessWidget {
-  const new({
-    required this.sections,
-    required this.projectsById,
-    required this.pendingIds,
-    required this.now,
-    required this.minimumPriority,
-    required this.header,
-    required this.emptyState,
-    required this.onDoneChanged,
-    required this.onFavoriteChanged,
-  });
-
-  final List<DueSection> sections;
-  final Map<int, Project> projectsById;
-  final Set<int> pendingIds;
-  final DateTime now;
-  final int minimumPriority;
-  final Widget? header;
-  final Widget emptyState;
-  final void Function(Task task, {required bool done}) onDoneChanged;
-  final void Function(Task task, {required bool favorite}) onFavoriteChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    if (sections.isEmpty) {
-      return CenteredScrollView(header: header, child: emptyState);
-    }
-    return CustomScrollView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      slivers: [
-        if (header case final header?) NoticeSliver(notice: header),
-        for (final section in sections) ...[
-          SliverToBoxAdapter(
-            child: ListSectionHeader(
-              title: _sectionTitle(l10n, section.group),
-              count: section.tasks.length,
-            ),
-          ),
-          SliverList.builder(
-            itemCount: section.tasks.length,
-            itemBuilder: (context, index) {
-              final task = section.tasks[index];
-              final project = projectsById[task.projectId];
-              // The server refuses changes to the tasks of an archived
-              // project, which a saved filter can list.
-              final archived = isArchivedInTree(task.projectId, projectsById);
-              return TaskRow(
-                key: ValueKey(task.id),
-                task: task,
-                now: now,
-                minimumPriority: minimumPriority,
-                projectTitle: project?.displayTitle(l10n),
-                projectColor: parseHexColor(project?.hexColor ?? ''),
-                pending: pendingIds.contains(task.id),
-                onTap: () => unawaited(showTaskDetail(context, task: task)),
-                onDoneChanged: archived
-                    ? null
-                    : (done) => onDoneChanged(task, done: done),
-                onFavoriteChanged: archived
-                    ? null
-                    : (favorite) => onFavoriteChanged(task, favorite: favorite),
-              );
-            },
-          ),
-        ],
-        // Room for the floating action button below the last row.
-        const SliverSafeArea(
-          top: false,
-          sliver: SliverToBoxAdapter(child: SizedBox(height: 88)),
-        ),
-      ],
-    );
-  }
-
-  static String _sectionTitle(AppLocalizations l10n, DueGroup group) =>
-      switch (group) {
-        DueGroup.overdue => l10n.sectionOverdue,
-        DueGroup.today => l10n.sectionToday,
-        DueGroup.nextSevenDays => l10n.sectionNextSevenDays,
-        DueGroup.later => l10n.sectionLater,
-        DueGroup.noDueDate => l10n.sectionNoDueDate,
-      };
 }

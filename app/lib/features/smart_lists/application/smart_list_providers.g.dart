@@ -180,3 +180,86 @@ final class SavedFilterTasksFamily extends $Family
   @override
   String toString() => r'savedFilterTasksProvider';
 }
+
+/// A label's open tasks; stays loading while no account is signed in.
+
+@ProviderFor(labelTasks)
+final labelTasksProvider = LabelTasksFamily._();
+
+/// A label's open tasks; stays loading while no account is signed in.
+
+final class LabelTasksProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<Task>>,
+          List<Task>,
+          Stream<List<Task>>
+        >
+    with $FutureModifier<List<Task>>, $StreamProvider<List<Task>> {
+  /// A label's open tasks; stays loading while no account is signed in.
+  LabelTasksProvider._({
+    required LabelTasksFamily super.from,
+    required int super.argument,
+  }) : super(
+         retry: null,
+         name: r'labelTasksProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$labelTasksHash();
+
+  @override
+  String toString() {
+    return r'labelTasksProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $StreamProviderElement<List<Task>> $createElement($ProviderPointer pointer) =>
+      $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<Task>> create(Ref ref) {
+    final argument = this.argument as int;
+    return labelTasks(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is LabelTasksProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$labelTasksHash() => r'713a1f14fb458780a63a3500baf0ad19f9da60c0';
+
+/// A label's open tasks; stays loading while no account is signed in.
+
+final class LabelTasksFamily extends $Family
+    with $FunctionalFamilyOverride<Stream<List<Task>>, int> {
+  LabelTasksFamily._()
+    : super(
+        retry: null,
+        name: r'labelTasksProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// A label's open tasks; stays loading while no account is signed in.
+
+  LabelTasksProvider call(int labelId) =>
+      LabelTasksProvider._(argument: labelId, from: this);
+
+  @override
+  String toString() => r'labelTasksProvider';
+}

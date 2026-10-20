@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:vikunja_api/src/read/read_ports.dart';
 import 'package:vikunja_api/src/write/write_client.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 
@@ -270,6 +271,32 @@ abstract interface class ProjectsWritePort {
   });
 }
 
+/// Saved filters of the signed-in user. There is no list endpoint: the
+/// project list names them as pseudo projects. The server checks the filter
+/// on every write: one it cannot parse is a `DomainError` code 4024, a bad
+/// value code 4019, an unknown field code 4016; a filter without text,
+/// search, sort or include-nulls is code 2002 (v1 a 412 `DomainError`, v2 a
+/// 422 `ValidationFailed`), and so is a title outside 1 to 250 characters.
+/// Another user's saved filter is `Forbidden`, one that does not exist a
+/// `NotFound` code 11001. The answers of create and update have no owner.
+abstract interface class SavedFiltersPort implements SavedFiltersReadPort {
+  /// v2 `POST`, v1 `PUT /filters`. Not idempotent.
+  Future<SavedFilter> create(SavedFilterDraft draft);
+
+  /// Writes every field of the draft and returns the saved filter as
+  /// stored: v2 a merge-patch (an unchanged one answers 304 and is read),
+  /// v1 a read posted back whole with the draft overlaid, which keeps what
+  /// this client does not model.
+  Future<SavedFilter> update(int id, SavedFilterDraft draft);
+
+  /// Changes only the favourite, like [update].
+  Future<SavedFilter> setFavorite(int id, {required bool favorite});
+
+  /// `DELETE /filters/{id}`; one that is gone already (404 code 11001)
+  /// counts as deleted. The server keeps the views of the saved filter.
+  Future<void> delete(int id);
+}
+
 abstract interface class VikunjaWriteClient {
   TasksWritePort get tasks;
   LabelsWritePort get labels;
@@ -278,6 +305,7 @@ abstract interface class VikunjaWriteClient {
   BucketsWritePort get buckets;
   ProjectViewsWritePort get views;
   ProjectsWritePort get projects;
+  SavedFiltersPort get savedFilters;
 }
 
 /// [dio] is an authenticated client from `createAuthenticatedDio`; the

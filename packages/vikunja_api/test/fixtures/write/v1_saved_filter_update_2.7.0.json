@@ -1,0 +1,31 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v1/filters/582",
+  "sent": {
+    "id": 582,
+    "filters": {
+      "filter": "priority >= 4",
+      "s": "",
+      "sort_by": [],
+      "order_by": [],
+      "filter_include_nulls": false
+    },
+    "title": "Urgent",
+    "description": "",
+    "owner": {
+      "id": 544,
+      "name": "",
+      "username": "fixtureuser",
+      "created": "2026-10-20T08:43:39Z",
+      "updated": "2026-10-20T08:43:39Z"
+    },
+    "is_favorite": false,
+    "created": "2026-10-20T08:43:40Z",
+    "updated": "2026-10-20T08:43:40Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"id\":582,\"filters\":{\"s\":\"\",\"sort_by\":[],\"order_by\":[],\"filter\":\"priority \\u003e= 4\",\"filter_include_nulls\":false},\"title\":\"Urgent\",\"description\":\"\",\"owner\":{\"id\":544,\"name\":\"\",\"username\":\"fixtureuser\",\"created\":\"2026-10-20T08:43:39Z\",\"updated\":\"2026-10-20T08:43:39Z\"},\"is_favorite\":false,\"created\":\"2026-10-20T08:43:40Z\",\"updated\":\"2026-10-20T08:43:42.661024248Z\"}\n"
+}

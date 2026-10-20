@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "GET /api/v1/filters/582",
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"id\":582,\"filters\":{\"s\":\"\",\"sort_by\":[],\"order_by\":[],\"filter\":\"priority \\u003e= 4\",\"filter_include_nulls\":false},\"title\":\"Urgent\",\"description\":\"\",\"owner\":{\"id\":544,\"name\":\"\",\"username\":\"fixtureuser\",\"created\":\"2026-10-20T08:43:39Z\",\"updated\":\"2026-10-20T08:43:39Z\"},\"is_favorite\":false,\"created\":\"2026-10-20T08:43:40Z\",\"updated\":\"2026-10-20T08:43:42Z\"}\n"
+}

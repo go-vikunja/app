@@ -23,6 +23,9 @@ import 'package:vikunja_mobile/features/projects/presentation/manage/project_edi
 import 'package:vikunja_mobile/features/projects/presentation/manage/project_views_page.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_tasks_screen.dart';
 import 'package:vikunja_mobile/features/projects/presentation/projects_screen.dart';
+import 'package:vikunja_mobile/features/search/presentation/search_page.dart';
+import 'package:vikunja_mobile/features/smart_lists/presentation/label_tasks_screen.dart';
+import 'package:vikunja_mobile/features/smart_lists/presentation/saved_filter_form_page.dart';
 import 'package:vikunja_mobile/features/smart_lists/presentation/smart_list_screen.dart';
 import 'package:vikunja_mobile/features/sync/application/sync_status_queries.dart';
 import 'package:vikunja_mobile/features/sync/presentation/first_sync_screen.dart';
@@ -61,6 +64,16 @@ abstract final class AppRoutes {
 
   /// The server's notifications, over the shell from the Overview's bell.
   static const inbox = '$home/inbox';
+
+  /// Over the shell, from the search button of the Overview, Upcoming and
+  /// Projects; a label found there opens [labelTasks] over it.
+  static const search = '$home/search';
+  static String labelTasks(int labelId) => '$home/labels/$labelId';
+
+  /// Over the shell, from the Projects tab and a saved filter's menu.
+  static const savedFilterNew = '$home/filters/new';
+  static String savedFilterEdit(int pseudoProjectId) =>
+      '$home/filters/$pseudoProjectId/edit';
 
   /// The connect screen and the server overview over the shell, for
   /// signing in to another account; pushed, so back returns to the shell.
@@ -205,6 +218,36 @@ GoRouter appRouter(Ref ref) {
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) =>
             const AccountBoundScreen(child: InboxScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.search,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) =>
+            const AccountBoundScreen(child: SearchPage()),
+      ),
+      GoRoute(
+        path: '${AppRoutes.home}/labels/:id',
+        parentNavigatorKey: rootNavigatorKey,
+        redirect: (context, state) =>
+            _idParam(state) == null ? AppRoutes.search : null,
+        builder: (context, state) => AccountBoundScreen(
+          child: LabelTasksScreen(labelId: _idParam(state)!),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.savedFilterNew,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) =>
+            const AccountBoundScreen(child: SavedFilterFormPage()),
+      ),
+      GoRoute(
+        path: '${AppRoutes.home}/filters/:id/edit',
+        parentNavigatorKey: rootNavigatorKey,
+        redirect: (context, state) =>
+            _idParam(state) == null ? AppRoutes.projects : null,
+        builder: (context, state) => AccountBoundScreen(
+          child: SavedFilterFormPage(pseudoProjectId: _idParam(state)),
+        ),
       ),
       GoRoute(
         path: AppRoutes.addAccount,

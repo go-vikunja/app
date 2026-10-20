@@ -49,6 +49,9 @@ final class _SwitchableWriteClient implements VikunjaWriteClient {
   @override
   ProjectsWritePort get projects => _real.projects;
 
+  @override
+  SavedFiltersPort get savedFilters => _real.savedFilters;
+
   void _check() {
     if (offline) throw const NetworkFailure(NetworkProblem.unreachable);
   }

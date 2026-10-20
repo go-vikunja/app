@@ -1,0 +1,23 @@
+{"src":"components/input/filter/highlighter.test.ts:37","rule":"labels = \"Work\": decorations differ with and without label {1,'Work','ff006e'} loaded"}
+{"src":":46","text":"dueDate < now/w+1w","date-value":"now/w+1w"}
+{"src":":53","text":"labels = Work","labels":[{"id":1,"title":"Work"}],"label-value":"Work","pos":"lastIndexOf('Work')+1"}
+{"src":":61","text":"dueDate < dueDate","date-value":"the second dueDate"}
+{"src":"FilterAutocomplete.test.ts:10","fn":"calculateReplacementRange","ctx":{"keyword":"Work To Do","startPos":11,"endPos":21},"op":"in","closingQuote":false,"range":[12,22]}
+{"src":"FilterAutocomplete.test.ts:24","fn":"calculateReplacementRange","ctx":{"keyword":"Inbox","startPos":11,"endPos":16},"op":"in","closingQuote":false,"range":[12,17]}
+{"src":"FilterAutocomplete.test.ts:36","fn":"calculateReplacementRange","ctx":{"keyword":"MyProject","startPos":10,"endPos":19},"op":"=","closingQuote":false,"range":[11,20]}
+{"src":"FilterAutocomplete.test.ts:51","fn":"calculateReplacementRange","ctx":{"keyword":"Inbox, Work To Do","startPos":11,"endPos":28},"op":"in","closingQuote":false,"range":[19,29]}
+{"src":"FilterAutocomplete.test.ts:68","fn":"calculateReplacementRange","ctx":{"keyword":"One, Two, Three","startPos":11,"endPos":26},"op":"in","closingQuote":false,"range":[22,27]}
+{"src":"FilterAutocomplete.test.ts:85","fn":"calculateReplacementRange","ctx":{"keyword":"Label1, Label2","startPos":10,"endPos":24},"op":"?=","closingQuote":false,"range":[19,25]}
+{"src":"FilterAutocomplete.test.ts:102","fn":"calculateReplacementRange","ctx":{"keyword":"A,B,C","startPos":5,"endPos":10},"op":"in","closingQuote":false,"range":[10,11]}
+{"src":"FilterAutocomplete.test.ts:119","fn":"calculateReplacementRange","ctx":{"keyword":"SingleProject","startPos":11,"endPos":24},"op":"in","closingQuote":false,"range":[12,25]}
+{"src":"FilterAutocomplete.test.ts:135","fn":"calculateReplacementRange","ctx":{"keyword":"Value, With, Commas","startPos":10,"endPos":29},"op":"=","closingQuote":false,"range":[11,30]}
+{"src":"FilterAutocomplete.test.ts:149","fn":"calculateReplacementRange","ctx":{"keyword":"A, B","startPos":10,"endPos":14},"op":"!=","closingQuote":false,"range":[11,15]}
+{"src":"FilterAutocomplete.test.ts:164","fn":"calculateReplacementRange","ctx":{"keyword":"Work To Do","startPos":12,"endPos":22},"op":"=","closingQuote":true,"range":[13,24]}
+{"src":"FilterAutocomplete.test.ts:177","fn":"calculateReplacementRange","ctx":{"keyword":"Work To Do","startPos":12,"endPos":22},"op":"=","closingQuote":false,"range":[13,23]}
+{"src":"FilterAutocomplete.test.ts:202","fn":"calculateReplacementRange","ctx":{"keyword":"Inbox, Work To Do","startPos":12,"endPos":29},"op":"in","closingQuote":true,"range":[20,31]}
+{"src":"components/input/filter/FilterInput.test.ts:87","rule":"model 'labels = 1' shows 'labels = 1' while labels load, then 'labels = Work' once {1,'Work'} arrives; highlighting refreshed"}
+{"src":":103","rule":"an edit to 'labels = Personal' before labels load is not overwritten when they arrive"}
+{"src":"views/tasks/ShowTasks.test.ts:70","props":{"dateFrom":"now/d","dateTo":"now/d+1d"},"filter":"done = false && due_date < 'now/d+1d' && due_date > 'now/d'"}
+{"src":":76","props":{"showOverdue":true},"filter":"done = false && due_date < 'now/d+1d'"}
+{"src":":87","props":{"showNulls":true},"filter_include_nulls":true}
+{"src":"components/project/partials/FilterPopup.test.ts:27","rule":"Show results passes sort_by, order_by, filter, filter_include_nulls, filter_timezone through and maps s → q"}

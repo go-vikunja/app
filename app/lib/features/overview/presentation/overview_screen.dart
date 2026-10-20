@@ -20,6 +20,7 @@ import 'package:vikunja_mobile/features/inbox/presentation/inbox_button.dart';
 import 'package:vikunja_mobile/features/overview/application/due_date_groups.dart';
 import 'package:vikunja_mobile/features/overview/application/overview_tasks_provider.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
+import 'package:vikunja_mobile/features/search/presentation/search_button.dart';
 import 'package:vikunja_mobile/features/sync/application/offline_state.dart';
 import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
 import 'package:vikunja_mobile/features/sync/presentation/sync_progress_bar.dart';
@@ -31,7 +32,9 @@ import 'package:vikunja_mobile/features/tasks/presentation/task_list_actions.dar
 import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
 
 /// The open tasks across all projects, or those of the saved filter picked
-/// for the Overview on the web, grouped by due date.
+/// for the Overview on the web, grouped by due date. The filter is
+/// evaluated here from its stored definition; where the device cannot, the
+/// sync's last download of its tasks shows, saying when it ran.
 class OverviewScreen extends ConsumerStatefulWidget {
   const new({super.key});
 
@@ -71,6 +74,7 @@ class _OverviewScreenState extends ConsumerState<OverviewScreen>
       appBar: AppBar(
         title: Text(l10n.tabOverview),
         actions: [
+          const SearchButton(),
           RefreshButton(onPressed: refreshing ? null : refresh),
           const InboxButton(),
           const AccountSwitcherButton(),
@@ -140,7 +144,8 @@ class _TaskSections extends StatelessWidget {
     final filterTitle = filter == null
         ? ''
         : projectDisplayTitle(l10n, filter.title, projectId: filter.projectId);
-    final loadedAt = overview.filterLoadedAt;
+    final local = overview.filterEvaluation == FilterEvaluation.local;
+    final loadedAt = local ? null : overview.filterLoadedAt;
     final header = stackedNotes([
       ?notice,
       if (filter != null)
@@ -163,7 +168,7 @@ class _TaskSections extends StatelessWidget {
       return CenteredScrollView(
         header: header,
         child: switch (filter) {
-          _? when loadedAt == null => EmptyState(
+          _? when !local && loadedAt == null => EmptyState(
             icon: Icons.cloud_download_outlined,
             title: offline
                 ? l10n.overviewFilterNotLoadedTitle

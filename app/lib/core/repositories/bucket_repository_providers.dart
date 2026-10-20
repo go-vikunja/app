@@ -2,6 +2,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_mobile/core/repositories/bucket_repository.dart';
 import 'package:vikunja_mobile/core/repositories/local/local_bucket_repository.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/core/time/clock_provider.dart';
 
 part 'bucket_repository_providers.g.dart';
 
@@ -13,6 +14,7 @@ BucketRepository accountBucketRepository(Ref ref, String accountId) =>
       refreshBoard: ref
           .watch(accountTaskRepositoryProvider(accountId))
           .refreshBoard,
+      now: ref.watch(clockProvider),
     );
 
 /// The active account's; null while nobody is signed in.

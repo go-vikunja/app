@@ -326,7 +326,9 @@ void main() {
 
       await engine().refresh();
 
-      expect(records.map((r) => r.message), contains(endsWith(': 5 requests')));
+      // The read of the filter's definition, which the fake does not know,
+      // counts too.
+      expect(records.map((r) => r.message), contains(endsWith(': 6 requests')));
       expect(
         records.where((r) => r.level >= Level.INFO).map((r) => r.message),
         everyElement(isNot(contains('My Open Tasks'))),

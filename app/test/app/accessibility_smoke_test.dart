@@ -15,6 +15,7 @@ import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
+import 'package:vikunja_mobile/features/filters/presentation/filter_field.dart';
 import 'package:vikunja_mobile/features/home/presentation/reauth_banner.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connection_error_card.dart';
 import 'package:vikunja_mobile/features/projects/presentation/board/board_column.dart';
@@ -31,6 +32,7 @@ import 'package:vikunja_mobile/features/quick_add/application/quick_add_plan.dar
 import 'package:vikunja_mobile/features/quick_add/application/quick_add_service_provider.dart';
 import 'package:vikunja_mobile/features/quick_add/presentation/magic_suggestions.dart';
 import 'package:vikunja_mobile/features/quick_add/presentation/quick_add_help_sheet.dart';
+import 'package:vikunja_mobile/features/smart_lists/presentation/saved_filter_form_page.dart';
 import 'package:vikunja_mobile/features/sync/presentation/first_sync_screen.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/task_edit_page.dart';
@@ -567,6 +569,17 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.byType(ViewFormSheet), findsOneWidget);
+      await scrollToEnd(tester, find.byType(ViewFormSheet));
+      expect(tester.takeException(), isNull);
+      await tester.enterText(
+        find.descendant(
+          of: find.byType(FilterField),
+          matching: find.byType(TextField),
+        ),
+        'priority >= 3 && due',
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(ActionChip), findsWidgets);
       await scrollToEnd(tester, find.byType(ViewFormSheet));
       expect(tester.takeException(), isNull);
       await tester.binding.handlePopRoute();
@@ -1330,6 +1343,183 @@ void main() {
           .go(AppRoutes.project(Project.favoritesId));
       await tester.pumpAndSettle();
       await scrollToEnd(tester, find.byType(CustomScrollView));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('search with every kind of result and a label opened at '
+        '200 % in dark mode (${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      final data = richData();
+      final label = sampleLabel(
+        id: 1,
+        title: 'A rather long label title',
+        hexColor: 'ffeb10',
+      );
+      data.search.labels = [label];
+      data.projects.savedFilters = const [
+        SavedFilterRef(
+          projectId: -2,
+          title: 'Task lists with a rather long saved filter title',
+        ),
+      ];
+      data.projects.all = [
+        ...data.projects.all,
+        sampleProject(id: 3, title: 'Tasks for a project with a long title'),
+      ];
+      await pumpSignedInApp(
+        tester,
+        sync: data,
+        overrides: [
+          labelRepositoryProvider.overrideWithValue(
+            FakeLabelRepository(labels: [label]),
+          ),
+        ],
+      );
+      final l10n = lookupAppLocalizations(locale);
+
+      await tester.tap(find.byTooltip(l10n.search));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.searchStartTitle), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      await tester.enterText(find.byType(TextField), 'ti');
+      await tester.pumpAndSettle();
+      await scrollToEnd(tester, find.byType(CustomScrollView));
+      expect(find.text('A rather long label title'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(find.text('A rather long label title'));
+      await tester.pumpAndSettle();
+      await scrollToEnd(tester, find.byType(CustomScrollView));
+      expect(tester.takeException(), isNull);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField), 'nothing like this');
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.searchNoResultsTitle), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('saved filter form with the filter builder, its suggestions '
+        'and its error at 200 % in dark mode (${locale.languageCode})', (
+      tester,
+    ) async {
+      useWorstCase(tester, locale);
+      final data = richData();
+      data.search.matchCount = 1234;
+      await pumpSignedInApp(
+        tester,
+        sync: data,
+        overrides: [
+          labelRepositoryProvider.overrideWithValue(
+            FakeLabelRepository(
+              labels: [
+                sampleLabel(id: 1, title: 'A rather long label title'),
+                sampleLabel(id: 2, title: 'Another long label title'),
+              ],
+            ),
+          ),
+          userRepositoryProvider.overrideWithValue(FakeUserRepository()),
+        ],
+      );
+      final l10n = lookupAppLocalizations(locale);
+      final router = containerOf(tester).read(appRouterProvider)
+        ..go(AppRoutes.projects);
+      await tester.pumpAndSettle();
+      unawaited(router.push(AppRoutes.savedFilterNew));
+      await tester.pumpAndSettle();
+      expect(find.byType(SavedFilterFormPage), findsOneWidget);
+
+      final filter = find.descendant(
+        of: find.byType(FilterField),
+        matching: find.byType(TextField),
+      );
+      await tester.enterText(filter, 'done = false ');
+      await tester.pump(FilterField.countDelay);
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(ActionChip, '&&'), findsOneWidget);
+      expect(find.text(l10n.filterMatchCount(1234)), findsOneWidget);
+      await scrollToEnd(tester, find.byType(ListView));
+      expect(tester.takeException(), isNull);
+
+      await tester.dragUntilVisible(
+        filter,
+        find.byType(ListView),
+        const Offset(0, 200),
+      );
+      // Scrolled out of sight and back, the field kept what was typed.
+      expect(
+        tester.widget<TextField>(filter).controller!.text,
+        'done = false ',
+      );
+      await tester.enterText(filter, 'labels in ');
+      await tester.pumpAndSettle();
+      expect(
+        find.widgetWithText(ActionChip, 'A rather long label title'),
+        findsOneWidget,
+      );
+      await scrollToEnd(tester, find.byType(ListView));
+      expect(tester.takeException(), isNull);
+
+      await tester.dragUntilVisible(
+        filter,
+        find.byType(ListView),
+        const Offset(0, 200),
+      );
+      await tester.enterText(filter, 'dueDat < now && (done = true');
+      await tester.pumpAndSettle();
+      await scrollToEnd(tester, find.byType(ListView));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets("a saved filter's list with its menu, confirmation and edit "
+        'form at 200 % in dark mode (${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      final data = richData();
+      const title = 'A saved filter with a rather long title';
+      data.projects.savedFilters = const [
+        SavedFilterRef(
+          projectId: -2,
+          title: title,
+          description: 'A description that is long enough to wrap twice.',
+          definition: SavedFilterDefinition(
+            filter: ViewFilter(filter: 'done = false && priority >= 3'),
+          ),
+        ),
+      ];
+      data.tasks.setSavedFilterMatches(-2, {1, 2, 3});
+      await pumpSignedInApp(
+        tester,
+        sync: data,
+        overrides: [
+          labelRepositoryProvider.overrideWithValue(FakeLabelRepository()),
+          userRepositoryProvider.overrideWithValue(FakeUserRepository()),
+        ],
+      );
+      final l10n = lookupAppLocalizations(locale);
+      containerOf(tester).read(appRouterProvider).go(AppRoutes.project(-2));
+      await tester.pumpAndSettle();
+      await scrollToEnd(tester, find.byType(CustomScrollView));
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(find.byTooltip(l10n.moreActions));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.projectAddToFavourites), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.text(l10n.projectDelete));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.savedFilterDeleteTitle(title)), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.text(l10n.cancel));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip(l10n.moreActions));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(l10n.projectEdit));
+      await tester.pumpAndSettle();
+      expect(find.byType(SavedFilterFormPage), findsOneWidget);
+      await scrollToEnd(tester, find.byType(ListView));
       expect(tester.takeException(), isNull);
     });
 

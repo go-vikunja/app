@@ -504,6 +504,17 @@ final class DefaultSyncEngine implements SyncEngine {
       await storeSavedFilters(_db, savedFiltersIn(pseudo));
     });
     _log.info('Sync run ${current.runId}: ${byId.length} projects');
+    await fetchSavedFilterDefinitions(
+      db: _db,
+      client: _client,
+      runId: current.runId,
+      request: (send) async {
+        _checkDisposed();
+        await _db.transaction(_holdLease);
+        return await send();
+      },
+    );
+    _checkDisposed();
     return await _advance(current, SyncPhase.labels);
   }
 

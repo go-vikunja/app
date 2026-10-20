@@ -1,0 +1,46 @@
+{"src":"task_collection_filter_test.go:31","f":"done = true","parse":[["done","=",true]]}
+{"src":":40","f":"done = false","parse":[["done","=",false]]}
+{"src":":49","f":"project_id = 1","parse":[["project_id","=",1]]}
+{"src":":57","f":"project_id = 4234","parse":[["project_id","=",4234]]}
+{"src":":65","f":"project_id in 1,2,3","parse":[["project_id","in",[1,2,3]]]}
+{"src":":77","f":"project_id not in 1,2,3","parse":[["project_id","not in",[1,2,3]]]}
+{"src":":89","f":"project in 1,2,3","parse":[["project_id","in",[1,2,3]]]}
+{"src":":100","f":"project in 1, 2, 3","parse":[["project_id","in",[1,2,3]]]}
+{"src":":111","f":"due_date < now+30d","parse":[["due_date","<","now+30d (unix seconds equal)"]]}
+{"src":":120","f":"due_date < 'now+30d'","parse":[["due_date","<","now+30d"]]}
+{"src":":129","f":"title = 'foo bar'","parse":[["title","=","foo bar"]]}
+{"src":":137","f":"title = \"foo bar\"","parse":[["title","=","foo bar"]]}
+{"src":":145","f":"title = foo bar","parse":[["title","=","foo bar"]]}
+{"src":":153","f":"title = foo's bar","parse":[["title","=","foo's bar"]]}
+{"src":":161","f":"title = foo\"s bar","parse":[["title","=","foo\"s bar"]]}
+{"src":":169","f":"title like foo bar","parse":[["title","like","foo bar"]]}
+{"src":":177","f":"invalid = foo","err":4016}
+{"src":":182","f":"done = false && priority > 3","parse":[["done","=",false],["AND","priority",">",3]]}
+{"src":":193","f":"due_date < now || percent_done = 100","parse":[["due_date","<","now"],["OR","percent_done","=",100.0]]}
+{"src":":203","f":"(priority >= 4 && due_date < now+7d) || (done = false && assignees in 'John,Jane')","parse":"2 groups; g1=[priority>=4, due_date<now+7d], g2=[done=false, assignees in [John,Jane]]"}
+{"src":":223","f":"priority != 3","parse":[["priority","!=",3]]}
+{"src":":232","f":"created_by in 'user1,user6'","parse":[["created_by","in",["user1","user6"]]]}
+{"src":":241","f":"created_by in 'user1, user6'","parse":[["created_by","in",["user1","user6"]]]}
+{"src":":250","f":"created_by in 'user1, , user6,'","parse":[["created_by","in",["user1","user6"]]]}
+{"src":":259","f":"percent_done <= 50","parse":[["percent_done","<=",50.0]]}
+{"src":":268","f":"start_date = 2023-06-15","parse":[["start_date","=","2023-06-15T00:00:00Z"]]}
+{"src":":280","f":"start_date = 2023-6-5","parse":[["start_date","=","2023-06-05T00:00:00Z"]]}
+{"src":":292","f":"due_date = 2022-11-1","parse":[["due_date","=","2022-11-01T00:00:00Z"]]}
+{"src":":303","f":"priority in 1,3,5","parse":[["priority","in",[1,3,5]]]}
+{"src":":315","f":"done_at > now-7d","parse":[["done_at",">","now-7d"]]}
+{"src":":325","f":"due_date > 0000-01-01","parse":"value year == 1"}
+{"src":":333","f":"( project = 1 )","parse":"1 group [project_id = 1]"}
+{"src":":345","f":"( done = false || project = 1 )","parse":"1 group [done=false, OR project_id=1]"}
+{"src":":360","f":"title like 'stuff in progress'","parse":[["title","like","stuff in progress"]]}
+{"src":":369","f":"title like \"stuff in progress\"","parse":[["title","like","stuff in progress"]]}
+{"src":":378","f":"title like 'it\\'s in progress'","parse":[["title","like","it's in progress"]]}
+{"src":":387","f":"title like 'stuff in progress' && project in 1,2","parse":[["title","like","stuff in progress"],["AND","project_id","in",[1,2]]]}
+{"src":":401","f":"due_date = no","err":4019,"note":"datemath lexer panic recovered"}
+{"src":":472","f":"due_date < now/d","tz":"America/Los_Angeles","value":"LA local midnight today, in UTC"}
+{"src":":472","f":"due_date < now/d+1d","tz":"America/Los_Angeles","value":"LA midnight tomorrow, in UTC"}
+{"src":":472","f":"due_date < now+1d/d","tz":"America/Los_Angeles","value":"LA midnight tomorrow, in UTC"}
+{"src":":492","f":"due_date < 2026-07-15","tz":"America/Los_Angeles","value":"2026-07-15T07:00:00Z"}
+{"src":":511","f":"due_date > 0001-01-01 00:00","tz":"Europe/Berlin","value":"UTC, year>=1, not before 0001-01-01T00:00:00Z"}
+{"src":":511","f":"due_date > 0001-01-01","tz":"Europe/Berlin","value":"same"}
+{"src":":511","f":"due_date > 0000-01-01","tz":"Europe/Berlin","value":"same"}
+{"src":":511","f":"due_date > 0001-01-01T00:00:00Z","tz":"Europe/Berlin","value":"same"}

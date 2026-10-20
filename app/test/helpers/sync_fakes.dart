@@ -16,11 +16,13 @@ import 'package:vikunja_mobile/core/repositories/list_preferences_providers.dart
 import 'package:vikunja_mobile/core/repositories/project_repository.dart';
 import 'package:vikunja_mobile/core/repositories/project_view_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/core/repositories/saved_filter_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/subscription_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_details_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 import 'package:vikunja_mobile/core/repositories/task_resolver_providers.dart';
+import 'package:vikunja_mobile/core/repositories/task_search_providers.dart';
 import 'package:vikunja_mobile/core/settings/user_settings_providers.dart';
 import 'package:vikunja_mobile/core/sync/saved_filters.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine.dart';
@@ -34,6 +36,7 @@ import 'list_preferences_fakes.dart';
 import 'project_view_fakes.dart';
 import 'realtime_fakes.dart';
 import 'sample_data.dart';
+import 'saved_filter_fakes.dart';
 import 'subscription_fakes.dart';
 import 'task_details_fakes.dart';
 import 'task_edits.dart';
@@ -546,6 +549,18 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
 
   ListSnapshot _overviewSnapshot = const ListSnapshot();
 
+  /// The tasks the overview filter matches when evaluated here: set, the
+  /// Overview shows those of [all] that are open, under
+  /// `FilterEvaluation.local`, instead of the [overviewSnapshot]'s.
+  Set<int>? get overviewMatches => _overviewMatches;
+
+  set overviewMatches(Set<int>? ids) {
+    _overviewMatches = ids == null ? null : Set.unmodifiable(ids);
+    _notify();
+  }
+
+  Set<int>? _overviewMatches;
+
   /// Each list's last download, by `listKeyFor` key; see [setSnapshot].
   Map<String, ListSnapshot> get snapshots => Map.unmodifiable(_snapshots);
   final Map<String, ListSnapshot> _snapshots = {};
@@ -590,6 +605,16 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
   OverviewTasks get overviewTasks {
     final filter = _overviewFilter;
     if (filter == null) return OverviewTasks(tasks: activeOpenTasks);
+    if (_overviewMatches case final matches?) {
+      return OverviewTasks(
+        tasks: [
+          for (final task in _all)
+            if (!task.done && matches.contains(task.id)) task,
+        ]..sort(_byDueThenNewest),
+        filter: filter,
+        filterEvaluation: FilterEvaluation.local,
+      );
+    }
     final listed = _overviewSnapshot.positions;
     return OverviewTasks(
       tasks: [
@@ -601,8 +626,24 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
     );
   }
 
+  /// The tasks each view's filter matches when evaluated here, by view id:
+  /// the list and board sources carry those of the project as
+  /// `matchingIds`, and their done tasks always come along. A view without
+  /// an entry is left to its snapshot, as one the device cannot evaluate.
+  Map<int, Set<int>> get viewMatches => Map.unmodifiable(_viewMatches);
+  final Map<int, Set<int>> _viewMatches = {};
+
+  void setViewMatches(int viewId, Set<int>? ids) {
+    if (ids == null) {
+      _viewMatches.remove(viewId);
+    } else {
+      _viewMatches[viewId] = Set.unmodifiable(ids);
+    }
+    _notify();
+  }
+
   /// Like the database: without [includeDone], the done tasks the view's
-  /// download lacks stay out.
+  /// download lacks stay out, unless the view's filter matches them.
   ProjectListSource projectList(
     int projectId, {
     required int viewId,
@@ -612,8 +653,12 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
     final snapshot =
         _snapshots[listKeyFor(projectId: projectId, viewId: viewId)] ??
         const ListSnapshot();
+    final matches = _viewMatches[viewId];
     bool loaded(Task task) =>
-        includeDone || !task.done || snapshot.positions.containsKey(task.id);
+        includeDone ||
+        !task.done ||
+        snapshot.positions.containsKey(task.id) ||
+        (matches?.contains(task.id) ?? false);
     final inProject = [
       for (final task in _all)
         if (task.projectId == projectId) task,
@@ -639,6 +684,12 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
       snapshot: snapshot,
       omitsDoneTasks: inProject.any((task) => !loaded(task)),
       queuedPositions: Map.unmodifiable(_queuedPositions[viewId] ?? const {}),
+      matchingIds: matches == null
+          ? null
+          : {
+              for (final task in projectTasks)
+                if (matches.contains(task.id)) task.id,
+            },
     );
   }
 
@@ -760,25 +811,37 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
     final loadedAt = download.loadedAt;
     bool newer(DateTime? moment) =>
         loadedAt != null && moment != null && moment.isAfter(loadedAt);
+    final matches =
+        download.view?.bucketConfigurationMode == BucketConfigurationMode.filter
+        ? null
+        : _viewMatches[viewId];
     bool shown(Task task) =>
         !task.done ||
+        (matches?.contains(task.id) ?? false) ||
         task.id < 0 ||
         download.snapshot.containsKey(task.id) ||
         queued.containsKey(task.id) ||
         pendingTaskIds.contains(task.id) ||
         newer(task.created) ||
         newer(task.updated);
+    final projectTasks = [
+      for (final task in _all)
+        if (task.projectId == projectId && shown(task)) task,
+    ]..sort(_newestFirst);
     return BoardSource(
       view: download.view,
       buckets: download.buckets,
       snapshot: download.snapshot,
       loadedAt: loadedAt,
-      projectTasks: [
-        for (final task in _all)
-          if (task.projectId == projectId && shown(task)) task,
-      ]..sort(_newestFirst),
+      projectTasks: projectTasks,
       queued: Map.unmodifiable(queued),
       queuedDoneChanges: Set.unmodifiable(_queuedDoneChanges),
+      matchingIds: matches == null
+          ? null
+          : {
+              for (final task in projectTasks)
+                if (matches.contains(task.id)) task.id,
+            },
     );
   }
 
@@ -880,7 +943,32 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
     _notify();
   }
 
+  /// The tasks each saved filter matches when evaluated here, by pseudo
+  /// project id: its list shows those of [all] that are open, under
+  /// `FilterEvaluation.local`, instead of its snapshot's.
+  Map<int, Set<int>> get savedFilterMatches =>
+      Map.unmodifiable(_savedFilterMatches);
+  final Map<int, Set<int>> _savedFilterMatches = {};
+
+  void setSavedFilterMatches(int pseudoProjectId, Set<int>? ids) {
+    if (ids == null) {
+      _savedFilterMatches.remove(pseudoProjectId);
+    } else {
+      _savedFilterMatches[pseudoProjectId] = Set.unmodifiable(ids);
+    }
+    _notify();
+  }
+
   SavedFilterTasks savedFilterTasks(int pseudoProjectId) {
+    if (_savedFilterMatches[pseudoProjectId] case final matches?) {
+      return SavedFilterTasks(
+        tasks: [
+          for (final task in _all)
+            if (!task.done && matches.contains(task.id)) task,
+        ]..sort(_byDueThenNewest),
+        evaluation: FilterEvaluation.local,
+      );
+    }
     final snapshot =
         _savedFilterSnapshots[pseudoProjectId] ?? const ListSnapshot();
     return SavedFilterTasks(
@@ -909,6 +997,19 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
       _changes.stream,
     ).map((_) => savedFilterTasks(pseudoProjectId));
   }
+
+  @override
+  Stream<List<Task>> watchLabelTasks(int labelId) =>
+      _replaying(() => _all, _changes.stream).map(
+        (_) => [
+          for (final task in _all)
+            if (!task.done &&
+                (task.isFavorite ||
+                    !_archivedProjectIds.contains(task.projectId)) &&
+                task.labels.any((label) => label.id == labelId))
+              task,
+        ]..sort(_byDueThenNewest),
+      );
 
   /// Every `refreshSavedFilter`, by pseudo project id. Each runs a sync
   /// through the engine, then [onRefreshSavedFilter] (which can set the
@@ -1297,6 +1398,12 @@ final class AccountDataFakes {
   /// Changes the views of [projects].
   late final views = FakeProjectViewRepository(projects);
 
+  /// Changes the saved filters of [projects].
+  late final savedFilters = FakeSavedFilterRepository(projects);
+
+  /// Searches [tasks] and [projects].
+  late final search = FakeTaskSearch(tasks: tasks, projects: projects);
+
   /// Resolves the account's [tasks] locally, the rest from its `online`.
   late final FakeTaskResolver resolver;
   final attachmentImages = FakeAttachmentImages();
@@ -1350,6 +1457,8 @@ final class SyncFakes {
   FakeTaskDetailsRepository get details => shared.details;
   FakeBucketRepository get buckets => shared.buckets;
   FakeProjectViewRepository get views => shared.views;
+  FakeSavedFilterRepository get savedFilters => shared.savedFilters;
+  FakeTaskSearch get search => shared.search;
   FakeTaskResolver get resolver => shared.resolver;
   FakeAttachmentImages get attachmentImages => shared.attachmentImages;
 
@@ -1385,6 +1494,12 @@ final class SyncFakes {
     ),
     accountProjectViewRepositoryProvider.overrideWith(
       (ref, accountId) => forAccount(accountId).views,
+    ),
+    accountSavedFilterRepositoryProvider.overrideWith(
+      (ref, accountId) => forAccount(accountId).savedFilters,
+    ),
+    accountTaskSearchProvider.overrideWith(
+      (ref, accountId) => forAccount(accountId).search,
     ),
     accountTaskResolverProvider.overrideWith(
       (ref, accountId) => forAccount(accountId).resolver,

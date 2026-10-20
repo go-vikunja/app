@@ -1,0 +1,25 @@
+{
+  "server": "2.7.0",
+  "request": "PUT /api/v1/filters",
+  "sent": {
+    "title": "Urgent open",
+    "description": "Open and urgent",
+    "filters": {
+      "filter": "done = false && priority >= 3",
+      "s": "",
+      "sort_by": [
+        "due_date"
+      ],
+      "order_by": [
+        "asc"
+      ],
+      "filter_include_nulls": true
+    },
+    "is_favorite": false
+  },
+  "status": 201,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"id\":582,\"filters\":{\"s\":\"\",\"sort_by\":[\"due_date\"],\"order_by\":[\"asc\"],\"filter\":\"done = false \\u0026\\u0026 priority \\u003e= 3\",\"filter_include_nulls\":true},\"title\":\"Urgent open\",\"description\":\"Open and urgent\",\"owner\":null,\"is_favorite\":false,\"created\":\"2026-10-20T08:43:40.026198286Z\",\"updated\":\"2026-10-20T08:43:40.026201578Z\"}\n"
+}

@@ -80,8 +80,10 @@ bool showsDoneTasks(ViewFilterKind kind, ViewPreferences preferences) =>
 /// - [ViewFilterKind.none]: every task, the done top-level ones in the done
 ///   part, each part with its subtasks whether done or not.
 /// - [ViewFilterKind.doneOnly]: the done tasks, in the view's positions.
-/// - [ViewFilterKind.other]: the tasks of the view's last download that
-///   this device still has, in its positions.
+/// - [ViewFilterKind.other]: the tasks the device found the view's filter
+///   to match (`matchingIds`), or where it cannot evaluate the filter, the
+///   tasks of the view's last download that this device still has, in its
+///   positions.
 ///
 /// [leaving] are the tasks marked done here whose Undo is still offered,
 /// by id, as the rows showed them: they keep their place among the open
@@ -150,6 +152,15 @@ ProjectListModel buildProjectListModel(
     case ViewFilterKind.doneOnly:
       return ProjectListModel(rows: rowsOf(tasks.where((task) => task.done)));
     case ViewFilterKind.other:
+      if (source.matchingIds case final matching?) {
+        return ProjectListModel(
+          rows: rowsOf([
+            for (final task in tasks)
+              if (matching.contains(task.id) || leaving.containsKey(task.id))
+                task,
+          ]),
+        );
+      }
       return ProjectListModel(
         rows: rowsOf([
           for (final id in source.snapshot.taskIds)
@@ -160,7 +171,7 @@ ProjectListModel buildProjectListModel(
 }
 
 /// The view's positions by task id as the manual order uses them: a queued
-/// one wins over the downloaded one. Membership stays the download's.
+/// one wins over the downloaded one.
 Map<int, double> effectivePositionsOf(ProjectListSource source) =>
     source.queuedPositions.isEmpty
     ? source.snapshot.positions

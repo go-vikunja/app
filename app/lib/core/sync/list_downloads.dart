@@ -2,6 +2,7 @@ import 'package:logging/logging.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/filters/local_filters.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/settings/user_settings_json.dart';
@@ -18,12 +19,14 @@ typedef PageRequest = Future<Page<Task>> Function(
 Future<Page<Task>> _direct(Future<Page<Task>> Function() send) => send();
 
 /// The open tasks of the saved filter the Overview shows, when the user
-/// picked one the last project list named, into its snapshot (`GET
-/// /projects/{pseudo}/tasks`, the web's Home request). The snapshot is
-/// rewritten only when its tasks or their order changed, so an unchanged
-/// filter leaves the lists on screen alone; the snapshots of other filters
-/// go. Every request goes through [request]. A failed download is logged,
-/// not thrown: the Overview keeps the previous one.
+/// picked one the last project list named and the device cannot evaluate
+/// it (its definition is unknown here, or the engine refuses it), into its
+/// snapshot (`GET /projects/{pseudo}/tasks`, the web's Home request). The
+/// snapshot is rewritten only when its tasks or their order changed, so an
+/// unchanged filter leaves the lists on screen alone; the snapshots of
+/// other filters go, and so does this one's once the device evaluates the
+/// filter. Every request goes through [request]. A failed download is
+/// logged, not thrown: the Overview keeps the previous one.
 Future<void> downloadOverviewFilter({
   required AppDatabase db,
   required VikunjaReadClient client,
@@ -33,7 +36,7 @@ Future<void> downloadOverviewFilter({
   PageRequest request = _direct,
 }) async {
   final filter = overviewFilterIn(await db.syncStateDao.readAll());
-  if (filter == null) {
+  if (filter == null || evaluatesLocally(filter.definition)) {
     await db.listSnapshotsDao.removeAll(overviewSnapshotPrefix);
     return;
   }

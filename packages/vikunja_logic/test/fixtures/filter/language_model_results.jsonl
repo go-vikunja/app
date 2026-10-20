@@ -1,0 +1,46 @@
+{"src":"task_collection_test.go:837","f":"start_date > '2018-12-11T03:46:40+00:00' || end_date < '2018-12-13T11:20:01+00:00'","ids":[7,8,9,28]}
+{"src":":851","f":"start_date > '2018-12-13T11:20:00+00:00' || end_date < '2018-12-16T22:40:00+00:00'","ids":[8,9,28]}
+{"src":":864","f":"start_date > '2018-12-12T07:33:20+00:00'","ids":[]}
+{"src":":873","f":"start_date > '2018-12-12T00:00:00+00:00' && start_date < '2018-12-13T00:00:00+00:00'","ids":[7,9]}
+{"src":":885","f":"start_date >= '2018-12-12T07:33:20+00:00'","ids":[7,9]}
+{"src":":897","f":"(start_date > '2018-12-12T00:00:00+00:00' && start_date < '2018-12-13T00:00:00+00:00') || end_date > '2018-12-13T00:00:00+00:00'","ids":[7,8,9,28]}
+{"src":":911","f":"done = false","ids":"U1 minus {2,39}","note":"39 has done NULL"}
+{"src":":956","f":"done = true","ids":[2]}
+{"src":":967","f":"done != false","ids":[2],"note":"NULL done excluded"}
+{"src":":978","f":"start_date > '2018-12-11T03:46:40+00:00' || end_date < '2018-12-13T11:20:01+00:00'","nulls":true,"ids":"U1"}
+{"src":":1025","view":161,"project":1,"f":"","ids":"P1","note":"include_nulls from the view's filter"}
+{"src":":1056","project":-1,"f":"","ids":[1,15],"note":"favourites; 34 inaccessible"}
+{"src":":1068","f":"title ~ with","ids":[7,8,9,27,28,29,30,31,33,47]}
+{"src":":1088","f":"title ~ 'with'","ids":[7,8,9,27,28,29,30,31,33,47]}
+{"src":":1108","f":"reminders > '2018-10-01T00:00:00+00:00' && reminders < '2018-12-10T00:00:00+00:00'","ids":[2,27],"note":"47 has one reminder on each side: excluded (merge)"}
+{"src":":1132","f":"reminders > '2018-09-01T00:00:00+00:00' && reminders < '2018-09-02T00:00:00+00:00'","ids":[]}
+{"src":":1141","f":"reminders > '2019-01-01T00:00:00+00:00' || reminders < '2018-09-01T00:00:00+00:00'","ids":[2,47]}
+{"src":":1153","f":"id in '1,2,34'","ids":[1,2]}
+{"src":":1165","f":"id in 1,2,34","ids":[1,2]}
+{"src":":1177","f":"id ?= '1,2,34'","ids":[1,2]}
+{"src":":1189","f":"id not in '1,2,3,4'","ids":"U1 minus {1,2,3,4}"}
+{"src":":1229","f":"assignees = 'user1'","ids":[30]}
+{"src":":1240","f":"users = 'user1'","err":4016}
+{"src":":1249","f":"user_id = 'user1'","err":4016}
+{"src":":1258","f":"assignees = 'user1' || assignees = 'user2'","ids":[30]}
+{"src":":1269","f":"assignees = 1","ids":[]}
+{"src":":1278","f":"assignees ~ 'user'","ids":"U1","note":"like on assignees is dropped"}
+{"src":":1323","f":"assignees ?= '1,2'","ids":[]}
+{"src":":1332","f":"assignees ?= 'user1,user2'","ids":[30]}
+{"src":":1343","f":"created_by = 'user6'","ids":[15,16,17,18,19,20,21,22,23,24,25,26]}
+{"src":":1365","f":"created_by ?= 'user6'","ids":[15,16,17,18,19,20,21,22,23,24,25,26]}
+{"src":":1387","f":"created_by != 'user6'","ids":"U1 minus {15..26}"}
+{"src":":1419","f":"created_by = 'nonexistentuser'","ids":[]}
+{"src":":1428","f":"labels = 4","ids":[1,2]}
+{"src":":1440","f":"labels = 5","nulls":true,"ids":"U1 minus {1,2,25}","note":"label-less tasks match; 25 has label 10"}
+{"src":":1483","f":"labels != 5","ids":"U1"}
+{"src":":1529","f":"labels not in 5","ids":"U1"}
+{"src":":1577","f":"labels = 4 && labels = 5","ids":[],"note":"two EXISTS, not merged"}
+{"src":":1588","f":"labels != 4 && labels != 5","ids":"U1 minus {1,2}"}
+{"src":":1631","f":"project_id = 6","ids":[15]}
+{"src":":1642","f":"project = 6","ids":[15]}
+{"src":":1653","f":"project_id = 20","ids":[],"note":"no access: a filter never widens scope"}
+{"src":":1663","f":"index = 5","ids":[5]}
+{"src":":1835","f":"","search":"number #17","ids":[33],"note":"non-ParadeDB: substring fails everywhere, index 17 = task 33; ParadeDB returns 14 incl. 17 and 33 (:1849-1868)"}
+{"src":":2516","f":"done = false && due_date < now/d+1d","tz":"America/Los_Angeles","service_tz":"America/Los_Angeles","rule":"task due 1 h before next LA midnight matches"}
+{"src":":2567","project":"saved filter: done = false && project = P && assignees in user1","f":"(start_date >= '2020-01-01T00:00:00' && start_date <= '2020-12-31T00:00:00') || (end_date >= '2020-01-01T00:00:00' && end_date <= '2020-12-31T00:00:00')","nulls":true,"rule":"tasks in P: dated(assigned, 2020-06-01..10), dateless(assigned), dateless unassigned → [dated, dateless]"}

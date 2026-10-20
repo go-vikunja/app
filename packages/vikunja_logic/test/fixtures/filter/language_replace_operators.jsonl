@@ -1,0 +1,17 @@
+{"in":"done = false && priority > 3","out":"done = false && priority > 3"}
+{"in":"project in 1,2,3","out":"project ?= 1,2,3"}
+{"in":"project not in 1,2,3","out":"project ?!= 1,2,3"}
+{"in":"title like foo","out":"title ~ foo"}
+{"in":"done not in true,false","out":"done ?!= true,false"}
+{"in":"project in 1,2 && title like foo","out":"project ?= 1,2 && title ~ foo"}
+{"in":"title like 'stuff in progress'","out":"title ~ 'stuff in progress'"}
+{"in":"title = 'tasks not in scope'","out":"title = 'tasks not in scope'"}
+{"in":"title = 'things i like a lot'","out":"title = 'things i like a lot'"}
+{"in":"title like \"stuff in progress\"","out":"title ~ \"stuff in progress\""}
+{"in":"title = \"tasks not in scope\"","out":"title = \"tasks not in scope\""}
+{"in":"title = \"things i like a lot\"","out":"title = \"things i like a lot\""}
+{"in":"title like \"it's in progress\"","out":"title ~ \"it's in progress\""}
+{"in":"title like 'stuff in progress' && project in 1,2","out":"title ~ 'stuff in progress' && project ?= 1,2"}
+{"in":"title like 'it\\'s in progress' && project in 1,2","out":"title ~ 'it\\'s in progress' && project ?= 1,2"}
+{"in":"title like \"it\\\"s in progress\" && project in 1,2","out":"title ~ \"it\\\"s in progress\" && project ?= 1,2"}
+{"in":"title = it's cool && project in 1,2","out":"title = it's cool && project ?= 1,2"}

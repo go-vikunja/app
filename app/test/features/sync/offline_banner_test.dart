@@ -227,7 +227,9 @@ void main() {
     expect(find.byType(OfflineNotice), findsNothing);
 
     await openTab(tester, en.tabProjects);
-    await tester.tap(find.byTooltip(en.refresh));
+    await tester.tap(find.byTooltip(en.moreActions));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(en.refresh));
     await tester.pumpAndSettle();
     expect(find.byType(ProjectsScreen), findsOneWidget);
     expect(bannerText, findsOneWidget);

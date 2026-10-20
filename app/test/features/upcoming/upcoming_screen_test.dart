@@ -330,6 +330,24 @@ void main() {
     expect(data.engine.refreshCalls, 1);
   });
 
+  testWidgets('Refresh in the menu syncs too', (tester) async {
+    await pumpUpcoming(tester);
+    expect(
+      find.descendant(
+        of: find.byType(AppBar),
+        matching: find.byTooltip(en.refresh),
+      ),
+      findsNothing,
+    );
+
+    await tester.tap(find.byTooltip(en.moreActions));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(en.refresh));
+    await tester.pumpAndSettle();
+
+    expect(data.engine.refreshCalls, 1);
+  });
+
   testWidgets('in German', (tester) async {
     useLocale(tester, const Locale('de'));
     usePhoneSurface(tester, logicalSize: const Size(360, 2000));

@@ -1,5 +1,5 @@
 name: vikunja_logic
-description: Pure-Dart client logic of the Vikunja web frontend, ported (quick add, later filters, positions, checklists).
+description: Pure-Dart client logic of the Vikunja web frontend and server, ported (quick add, the filter language, positions, checklists).
 publish_to: none
 version: 0.1.0
 resolution: workspace
@@ -10,6 +10,7 @@ environment:
 dependencies:
   html: ^0.15.7
   meta: ^1.16.0
+  timezone: ^0.11.2
   vikunja_domain:
     path: ../vikunja_domain
 

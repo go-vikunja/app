@@ -79,3 +79,17 @@ String _fromCodePoint(int? codePoint, String original) =>
     codePoint == null || codePoint <= 0 || codePoint > 0x10FFFF
     ? original
     : String.fromCharCode(codePoint);
+
+/// [text] as the web's editor stores it: one paragraph per line, the
+/// characters HTML gives a meaning escaped; empty for blank text.
+String plainTextToHtml(String text) {
+  if (text.trim().isEmpty) return '';
+  return [
+    for (final line in text.split('\n'))
+      '<p>${line.replaceAllMapped(_htmlSpecial, (m) => _escapes[m[0]]!)}</p>',
+  ].join();
+}
+
+final _htmlSpecial = RegExp('[&<>"]');
+
+const _escapes = {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'};

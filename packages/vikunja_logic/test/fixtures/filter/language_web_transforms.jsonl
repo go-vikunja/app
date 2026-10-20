@@ -1,0 +1,51 @@
+{"src":"filters.test.ts:22-29","fn":"forApi","cases":{"done = ipsum":"done = ipsum","priority = ipsum":"priority = ipsum","percentDone = ipsum":"percent_done = ipsum","dueDate = ipsum":"due_date = ipsum","startDate = ipsum":"start_date = ipsum","endDate = ipsum":"end_date = ipsum","doneAt = ipsum":"done_at = ipsum","reminders = ipsum":"reminders = ipsum","assignees = ipsum":"assignees = ipsum","createdBy = ipsum":"created_by = ipsum","labels = ipsum":"labels = ipsum"}}
+{"src":":31","fn":"forApi","labels":"→1","in":"labels = lorem","out":"labels = 1"}
+{"src":":52","fn":"forApi","labels":"M","in":"labels = lorem && dueDate = now && labels = ipsum","out":"labels = 1 && due_date = now && labels = 2"}
+{"src":":62","fn":"forApi","labels":"M","in":"labels in lorem, ipsum && dueDate = now","out":"labels in 1, 2 && due_date = now"}
+{"src":":72","fn":"forApi","labels":"M","in":"labels not in lorem, ipsum && dueDate = now","out":"labels not in 1, 2 && due_date = now"}
+{"src":":82","fn":"forApi","labels":"M","in":"labels in lorem || labels in ipsum","out":"labels in 1 || labels in 2"}
+{"src":":92","fn":"forApi","projects":"→1","in":"project = lorem","out":"project = 1"}
+{"src":":102","fn":"forApi","projects":"M","in":"project = lorem && dueDate = now || project = ipsum","out":"project = 1 && due_date = now || project = 2"}
+{"src":":112","fn":"forApi","projects":"M","in":"project in lorem, ipsum","out":"project in 1, 2"}
+{"src":":122","fn":"forApi","projects":"→1","in":"project = pr","out":"project = 1"}
+{"src":":132","fn":"forApi","labels":"M","projects":"M","in":"project = lorem && labels = ipsum","out":"project = 1 && labels = 2"}
+{"src":":142","fn":"forApi","in":"dueDate = now/d || dueDate > now/w+1w","out":"due_date = now/d || due_date > now/w+1w"}
+{"src":":152","fn":"forApi","labels":"M","in":"labels in ipsum || labels in l","out":"labels in 2 || labels in l"}
+{"src":":162","fn":"forApi","in":"startdate > now","out":"start_date > now"}
+{"src":":172","fn":"forApi","labels":"→1","in":"labels = label","out":"labels = 1"}
+{"src":":182","fn":"forApi","projects":"→1","in":"project = project","out":"project = 1"}
+{"src":":192","fn":"forApi","projects":"Filtertest→123","in":"( project = Filtertest )","out":"( project = 123 )"}
+{"src":":202","fn":"forApi","labels":"label→456","projects":"Filtertest→123","in":"( labels = label || project = Filtertest )","out":"( labels = 456 || project = 123 )"}
+{"src":":212","fn":"forApi","in":"labels=ipsum","out":"labels = ipsum"}
+{"src":":222","fn":"forApi","in":"labels =ipsum","out":"labels = ipsum"}
+{"src":":232","fn":"forApi","in":"labels= ipsum","out":"labels = ipsum"}
+{"src":":275","fn":"forApi","labels":"ci: john's task→1, mary's project→2, user's label→3, it's working→4","in":"labels = \"John's Task\"","out":"labels = 1"}
+{"src":":285","fn":"forApi","labels":"same","in":"labels = 'Mary\\'s Project'","out":"labels = 2"}
+{"src":":295","fn":"forApi","projects":"same","in":"project = \"User's Label\"","out":"project = 3"}
+{"src":":307","fn":"forApi","labels":"John's→1","in":"labels = John's","out":"labels = 1"}
+{"src":":317","fn":"forApi","projects":"Mary's→2","in":"project = Mary's","out":"project = 2"}
+{"src":":329","fn":"forApi","labels":"apostrophe map","in":"labels in \"John's Task\", \"Mary's Project\"","out":"labels in 1, 2"}
+{"src":":339","fn":"forApi","labels":"apostrophe map","in":"labels not in \"User's Label\", \"It's Working\"","out":"labels not in 3, 4"}
+{"src":":349","fn":"forApi","labels":"John's Task→1, Mary's→2 (exact)","in":"labels in \"John's Task\", Mary's","out":"labels in 1, 2"}
+{"src":":366","fn":"forApi","labels":"apostrophe map","projects":"apostrophe map","in":"labels = \"John's Task\" && project = \"Mary's Project\" || priority = 1","out":"labels = 1 && project = 2 || priority = 1"}
+{"src":":377","fn":"fromApi","labels":"1→John's Task","in":"labels = 1","out":"labels = John's Task"}
+{"src":":387","fn":"fromApi","projects":"2→Mary's Project","in":"project = 2","out":"project = Mary's Project"}
+{"src":":397","fn":"fromApi","labels":"1,2→John's Task, Mary's Project","in":"labels in 1, 2","out":"labels in John's Task, Mary's Project"}
+{"src":":407","fn":"fromApi","labels":"same","projects":"same","in":"labels = 1 && project = 2 || priority = 1","out":"labels = John's Task && project = Mary's Project || priority = 1"}
+{"src":":420-426","fn":"fromApi","cases":"the inverse of :22-29 (snake → camel), e.g. due_date = ipsum → dueDate = ipsum"}
+{"src":":428","fn":"fromApi","labels":"→lorem","in":"labels = 1","out":"labels = lorem"}
+{"src":":449","fn":"fromApi","labels":"Mr","in":"labels = 1 && due_date = now && labels = 2","out":"labels = lorem && dueDate = now && labels = ipsum"}
+{"src":":459","fn":"fromApi","labels":"Mr","in":"labels in 1, 2","out":"labels in lorem, ipsum"}
+{"src":":469","fn":"fromApi","labels":"Mr","in":"labels in 1 || labels in 2","out":"labels in lorem || labels in ipsum"}
+{"src":":479","fn":"fromApi","labels":"Mr","in":"labels not in 1, 2","out":"labels not in lorem, ipsum"}
+{"src":":489","fn":"fromApi","labels":"→undefined","in":"labels = one","out":"labels = one"}
+{"src":":499","fn":"fromApi","labels":"→null","in":"labels = one","out":"labels = one"}
+{"src":":509","fn":"fromApi","projects":"→lorem","in":"project = 1","out":"project = lorem"}
+{"src":":519","fn":"fromApi","projects":"Mr","in":"project = 1 && due_date = now || project = 2","out":"project = lorem && dueDate = now || project = ipsum"}
+{"src":":529","fn":"fromApi","projects":"Mr","in":"project in 1, 2","out":"project in lorem, ipsum"}
+{"src":":539","fn":"fromApi","projects":"→undefined","in":"project = one","out":"project = one"}
+{"src":":549","fn":"fromApi","projects":"→null","in":"project = one","out":"project = one"}
+{"src":":559","fn":"fromApi","in":"due_date = now/d || due_date > now/w+1w","out":"dueDate = now/d || dueDate > now/w+1w"}
+{"src":":569","fn":"fromApi","labels":"1→My Label","in":"priority = 1 && labels = 1","out":"priority = 1 && labels = My Label"}
+{"src":":581","fn":"fromApi","projects":"2→My Project","in":"priority = 2 && project = 2","out":"priority = 2 && project = My Project"}
+{"src":":593","fn":"hasFilterQuery","cases":{"done = false":true,"hello":false}}

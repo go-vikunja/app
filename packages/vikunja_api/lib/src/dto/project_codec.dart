@@ -36,7 +36,7 @@ ProjectView? parseProjectView(Object? json) {
     kind: kind,
     position: doubleOr(map, 'position', 0),
     filter: switch (map['filter']) {
-      final Map<String, Object?> filter => _parseViewFilter(filter),
+      final Map<String, Object?> filter => parseViewFilter(filter),
       _ => null,
     },
     bucketConfigurationMode: BucketConfigurationMode.fromWire(
@@ -47,7 +47,8 @@ ProjectView? parseProjectView(Object? json) {
   );
 }
 
-ViewFilter _parseViewFilter(Map<String, Object?> json) => ViewFilter(
+/// A view's `filter` object, and a saved filter's `filters`.
+ViewFilter parseViewFilter(Map<String, Object?> json) => ViewFilter(
   filter: stringOr(json, 'filter', ''),
   search: stringOr(json, 's', ''),
   sortBy: stringListOf(json['sort_by']),
@@ -90,16 +91,16 @@ Map<String, Object?> encodeViewChanges(ViewDraft view) => {
   'title': view.title,
   'view_kind': view.kind.wireName,
   'filter': switch (view.filter) {
-    final filter? => _encodeViewFilter(filter),
+    final filter? => encodeViewFilter(filter),
     null => null,
   },
   'bucket_configuration_mode': ?view.bucketConfigurationMode?.wireName,
   'position': ?view.position,
 };
 
-// Every key is sent, so that a v2 merge-patch replaces the stored filter
-// instead of merging into it.
-Map<String, Object?> _encodeViewFilter(ViewFilter filter) => {
+/// Every key, so that a v2 merge-patch replaces the stored filter instead
+/// of merging into it.
+Map<String, Object?> encodeViewFilter(ViewFilter filter) => {
   'filter': filter.filter,
   's': filter.search,
   'sort_by': filter.sortBy,

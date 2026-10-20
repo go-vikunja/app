@@ -63,13 +63,17 @@ void main() {
       ),
   ];
 
-  ProjectView kanban({int defaultBucketId = 1, int doneBucketId = 3}) =>
-      sampleKanbanView(
-        id: 80,
-        projectId: 7,
-        defaultBucketId: defaultBucketId,
-        doneBucketId: doneBucketId,
-      );
+  ProjectView kanban({
+    int defaultBucketId = 1,
+    int doneBucketId = 3,
+    ViewFilter? filter,
+  }) => sampleKanbanView(
+    id: 80,
+    projectId: 7,
+    defaultBucketId: defaultBucketId,
+    doneBucketId: doneBucketId,
+    filter: filter,
+  );
 
   Future<void> seed({
     List<Bucket> buckets = const [todo, doing, doneBucket],
@@ -77,10 +81,12 @@ void main() {
     int defaultBucketId = 1,
     int doneBucketId = 3,
     int? serverDefaultBucketId,
+    ViewFilter? filter,
   }) async {
     final view = kanban(
       defaultBucketId: defaultBucketId,
       doneBucketId: doneBucketId,
+      filter: filter,
     );
     final serverDefault = serverDefaultBucketId ?? defaultBucketId;
     await db.projectsDao.upsertAll([
@@ -107,6 +113,7 @@ void main() {
       ..serverViews[80] = kanban(
         defaultBucketId: serverDefault,
         doneBucketId: doneBucketId,
+        filter: filter,
       );
   }
 
@@ -580,6 +587,35 @@ void main() {
       expect(write.bucketSlots[80]?[9], (bucketId: 2, position: 0.0));
       expect((await shownBoard())[2], [9, 3]);
       expect(refreshes, [(7, 80)], reason: 'only the quiet one after');
+    });
+
+    test('under a filter evaluated here, a matching task created here after '
+        'the download needs the new default first', () async {
+      await seed(
+        buckets: [emptyTodo, doing, doneBucket],
+        cards: withoutTodoCards,
+        filter: const ViewFilter(filter: 'priority >= 3'),
+      );
+      final added = sampleTask(
+        id: 9,
+        title: 'Call the plumber',
+        projectId: 7,
+        priority: TaskPriority.urgent,
+        created: now.add(const Duration(minutes: 1)),
+        updated: now.add(const Duration(minutes: 1)),
+      );
+      await db.tasksDao.upsertAll([added], syncRunId: 'run');
+      serverTasks = [...tasks, added];
+      write.bucketSlots[80]![9] = (bucketId: 1, position: 0);
+
+      await repository.delete(7, 80, 1);
+
+      expect(write.requests, [
+        'read view 80',
+        'view 80 buckets done null default 2',
+        'delete bucket 1 view 80',
+      ]);
+      expect(write.bucketSlots[80]?[9], (bucketId: 2, position: 0.0));
     });
 
     test('a task created elsewhere, which only the board download shows, '

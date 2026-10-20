@@ -12,6 +12,7 @@ import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/outbox/outbox_sender.dart';
 import 'package:vikunja_mobile/core/repositories/local/local_task_repository.dart';
+import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine_impl.dart';
 
 import '../helpers/test_database.dart';
@@ -310,8 +311,9 @@ void main() {
           },
         );
 
-        test("a view the device cannot evaluate keeps the server's order, "
-            'its done task among the open ones', () async {
+        test("a filter the classifier does not know matches the server's "
+            "on the device, and its download keeps the server's order, its "
+            'done task among the open ones', () async {
           final project = (await db.projectsDao.loadAll()).firstWhere(
             (project) => project.id == seed.importantId,
           );
@@ -345,6 +347,7 @@ void main() {
             {'expand': 'subtasks', 'per_page': '50'},
           );
           expect(_ids(listed), [for (final item in server) item['id']! as int]);
+          expect(source.matchingIds, _ids(listed).toSet());
           expect(_ids(listed), hasLength(3));
           expect(listed.first.id, seed.importantDone);
           expect(listed.first.done, isTrue);
@@ -354,7 +357,9 @@ void main() {
           final overview = await tasks.watchOverviewTasks().first;
 
           expect(overview.filter?.projectId, pseudoId);
-          expect(overview.filterLoadedAt, isNotNull);
+          // The sync read the filter's definition, so the device evaluates
+          // it.
+          expect(overview.filterEvaluation, FilterEvaluation.local);
           final server = await v2Items('/projects/$pseudoId/tasks', {
             'filter': 'done = false',
             'sort_by': ['due_date', 'id'],

@@ -86,6 +86,13 @@ final class ListSnapshotsDao extends DatabaseAccessor<AppDatabase>
         }
       });
 
+  Future<void> remove(String listKey) => transaction(() async {
+    await (delete(
+      listSnapshotTasks,
+    )..where((t) => t.listKey.equals(listKey))).go();
+    await (delete(listSnapshots)..where((s) => s.listKey.equals(listKey))).go();
+  });
+
   /// Removes the snapshots whose key starts with [prefix], except [keep].
   Future<void> removeAll(String prefix, {Set<String> keep = const {}}) =>
       transaction(() async {

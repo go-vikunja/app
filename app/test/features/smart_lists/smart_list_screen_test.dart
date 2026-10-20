@@ -179,6 +179,54 @@ void main() {
     });
   });
 
+  group('saved filter evaluated here', () {
+    testWidgets('shows its open matches at once, grouped, without a note or '
+        'a download', (tester) async {
+      data.tasks.setSavedFilterMatches(filter.projectId, {2, 4, 5});
+      await openList(tester, filter.projectId);
+
+      expect(rowTitles(tester), ['Inbox star', 'Plain']);
+      expect(headings(tester), [en.sectionToday, en.sectionNoDueDate]);
+      expect(find.byIcon(Icons.filter_list), findsNothing);
+      expect(data.tasks.savedFilterRefreshes, isEmpty);
+    });
+
+    testWidgets('a change made here shows without a download', (tester) async {
+      data.tasks.setSavedFilterMatches(filter.projectId, {4});
+      await openList(tester, filter.projectId);
+
+      data.tasks.setSavedFilterMatches(filter.projectId, {4, 1});
+      await tester.pumpAndSettle();
+
+      expect(rowTitles(tester), ['Overdue star', 'Plain']);
+      expect(data.tasks.savedFilterRefreshes, isEmpty);
+    });
+
+    testWidgets('pulling down runs a sync, which brings its changes', (
+      tester,
+    ) async {
+      data.tasks.setSavedFilterMatches(filter.projectId, {4});
+      await openList(tester, filter.projectId);
+
+      await pullToRefresh(tester, find.byType(CustomScrollView));
+
+      expect(data.engine.refreshCalls, 1);
+      expect(data.tasks.savedFilterRefreshes, isEmpty);
+    });
+
+    testWidgets('nothing open matching says so', (tester) async {
+      data.tasks.setSavedFilterMatches(filter.projectId, {5});
+      await openList(tester, filter.projectId);
+
+      expect(find.text(en.overviewEmptyTitle), findsOneWidget);
+      expect(
+        find.text(en.overviewFilterEmptyBody('Due this week')),
+        findsOneWidget,
+      );
+      expect(find.text(en.smartListFilterDownloadingTitle), findsNothing);
+    });
+  });
+
   group('saved filter', () {
     void serveFilter(List<int> taskIds) =>
         data.tasks.onRefreshSavedFilter = (pseudoProjectId) async =>

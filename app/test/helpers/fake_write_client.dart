@@ -105,8 +105,10 @@ final class FakeWriteClient implements VikunjaWriteClient {
   /// `read view <view>` (both null),
   /// `create view project <project> <title> <kind>`,
   /// `update view <view> project <project> <title> <kind>`,
-  /// `move view <view> project <project> to <position>` and
-  /// `delete view <view> project <project>`, in
+  /// `move view <view> project <project> to <position>`,
+  /// `delete view <view> project <project>`, `read filter <id>`,
+  /// `create filter <title>`, `update filter <id> <title>`,
+  /// `favorite filter <id> <bool>` and `delete filter <id>`, in
   /// order; an update's moves and positions follow it.
   final List<String> requests = [];
   final List<NewTask> creates = [];
@@ -143,6 +145,13 @@ final class FakeWriteClient implements VikunjaWriteClient {
 
   @override
   late final FakeProjectsWritePort projects = FakeProjectsWritePort(this);
+
+  /// The saved filters [savedFilters] reads and writes, by id; a filter
+  /// text in [refusedFilters] is refused with its failure.
+  final Map<int, SavedFilter> serverSavedFilters = {};
+
+  @override
+  late final FakeSavedFiltersPort savedFilters = FakeSavedFiltersPort(this);
 
   Future<void> _request(String description) async {
     requests.add(description);
@@ -1124,3 +1133,87 @@ ProjectView _withBuckets(
 );
 
 const _noPlacements = <MapEntry<int, BucketPlacement>>[];
+
+/// Saved filters as the server keeps them in [FakeWriteClient.
+/// serverSavedFilters]: a create takes the next id from [nextFilterId] and
+/// stamps `updated` from the client's clock, like every write; a filter
+/// text in `refusedFilters` fails with its failure; an unknown id is a
+/// `NotFound` code 11001, except for a delete, which counts it as deleted.
+final class FakeSavedFiltersPort implements SavedFiltersPort {
+  new(this._client);
+
+  final FakeWriteClient _client;
+
+  int nextFilterId = 300;
+
+  @override
+  Future<SavedFilter> read(int id) async {
+    await _client._request('read filter $id');
+    return _stored(id);
+  }
+
+  @override
+  Future<SavedFilter> create(SavedFilterDraft draft) async {
+    await _client._request('create filter ${draft.title}');
+    _checkFilter(draft.filter);
+    final id = nextFilterId++;
+    final now = _client._clock().toUtc();
+    return _client.serverSavedFilters[id] = SavedFilter(
+      id: id,
+      title: draft.title,
+      description: draft.description,
+      filter: draft.filter,
+      isFavorite: draft.isFavorite,
+      created: now,
+      updated: now,
+    );
+  }
+
+  @override
+  Future<SavedFilter> update(int id, SavedFilterDraft draft) async {
+    await _client._request('update filter $id ${draft.title}');
+    final stored = _stored(id);
+    _checkFilter(draft.filter);
+    return _client.serverSavedFilters[id] = SavedFilter(
+      id: id,
+      title: draft.title,
+      description: draft.description,
+      filter: draft.filter,
+      isFavorite: draft.isFavorite,
+      timezone: stored.timezone,
+      created: stored.created,
+      updated: _client._clock().toUtc(),
+    );
+  }
+
+  @override
+  Future<SavedFilter> setFavorite(int id, {required bool favorite}) async {
+    await _client._request('favorite filter $id $favorite');
+    final stored = _stored(id);
+    return _client.serverSavedFilters[id] = SavedFilter(
+      id: id,
+      title: stored.title,
+      description: stored.description,
+      filter: stored.filter,
+      isFavorite: favorite,
+      timezone: stored.timezone,
+      created: stored.created,
+      updated: stored.updated,
+    );
+  }
+
+  @override
+  Future<void> delete(int id) async {
+    await _client._request('delete filter $id');
+    _client.serverSavedFilters.remove(id);
+  }
+
+  SavedFilter _stored(int id) =>
+      _client.serverSavedFilters[id] ?? (throw const NotFound(code: 11001));
+
+  void _checkFilter(ViewFilter filter) {
+    if (_client.refusedFilters[filter.filter] case final failure?) {
+      throw failure;
+    }
+  }
+}

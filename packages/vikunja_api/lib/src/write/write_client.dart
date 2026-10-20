@@ -3,6 +3,7 @@ import 'package:vikunja_api/src/dto/bucket_codec.dart';
 import 'package:vikunja_api/src/dto/json_values.dart';
 import 'package:vikunja_api/src/dto/label_codec.dart';
 import 'package:vikunja_api/src/dto/project_codec.dart';
+import 'package:vikunja_api/src/dto/saved_filter_codec.dart';
 import 'package:vikunja_api/src/dto/subscription_codec.dart';
 import 'package:vikunja_api/src/dto/task_codec.dart';
 import 'package:vikunja_api/src/errors/normalize_error.dart';
@@ -25,7 +26,8 @@ final class WriteClient implements VikunjaWriteClient {
       subscriptions = _SubscriptionsWriteApi(transport),
       buckets = _BucketsWriteApi(transport),
       views = _ProjectViewsWriteApi(transport),
-      projects = _ProjectsWriteApi(transport);
+      projects = _ProjectsWriteApi(transport),
+      savedFilters = _SavedFiltersApi(transport);
 
   @override
   final TasksWritePort tasks;
@@ -47,6 +49,57 @@ final class WriteClient implements VikunjaWriteClient {
 
   @override
   final ProjectsWritePort projects;
+
+  @override
+  final SavedFiltersPort savedFilters;
+}
+
+final class _SavedFiltersApi implements SavedFiltersPort {
+  new(this._transport);
+
+  final _WriteTransport _transport;
+
+  @override
+  Future<SavedFilter> read(int id) async =>
+      _parse(await _transport.send('GET', '/filters/$id'));
+
+  @override
+  Future<SavedFilter> create(SavedFilterDraft draft) async => _parse(
+    await _transport.send(
+      _transport.createMethod,
+      '/filters',
+      body: encodeSavedFilterDraft(draft),
+    ),
+  );
+
+  @override
+  Future<SavedFilter> update(int id, SavedFilterDraft draft) async => _parse(
+    await _transport.patchOrReplace(
+      '/filters/$id',
+      'saved filter',
+      encodeSavedFilterDraft(draft),
+    ),
+  );
+
+  @override
+  Future<SavedFilter> setFavorite(int id, {required bool favorite}) async =>
+      _parse(
+        await _transport.patchOrReplace('/filters/$id', 'saved filter', {
+          'is_favorite': favorite,
+        }),
+      );
+
+  @override
+  Future<void> delete(int id) async {
+    try {
+      await _transport.send('DELETE', '/filters/$id');
+    } on NotFound catch (failure) {
+      if (failure.code != _savedFilterDoesNotExist) rethrow;
+    }
+  }
+
+  SavedFilter _parse(Response<Object?> response) =>
+      _transport.decode<SavedFilter>(response, parseSavedFilter);
 }
 
 final class _ProjectsWriteApi implements ProjectsWritePort {
@@ -366,6 +419,7 @@ const _alreadySubscribed = 12002;
 const _bucketDoesNotExist = 10001;
 const _projectDoesNotExist = 3001;
 const _viewDoesNotExist = 3014;
+const _savedFilterDoesNotExist = 11001;
 const _minProjectPosition = 0.1;
 
 // A v1 update replaces the task with the body: every field the server sent

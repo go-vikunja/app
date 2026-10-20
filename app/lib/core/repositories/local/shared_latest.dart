@@ -49,3 +49,37 @@ final class SharedLatest<T> {
     _latest = null;
   }
 }
+
+/// The stream [inner] makes for the newest event of [source]; the previous
+/// one is cancelled.
+Stream<T> switchLatest<S, T>(
+  Stream<S> source,
+  Stream<T> Function(S value) inner,
+) => Stream.multi((subscriber) {
+  StreamSubscription<T>? current;
+  var sourceDone = false;
+  var innerDone = true;
+  final outer = source.listen(
+    (value) {
+      unawaited(current?.cancel());
+      innerDone = false;
+      current = inner(value).listen(
+        subscriber.add,
+        onError: subscriber.addError,
+        onDone: () {
+          innerDone = true;
+          if (sourceDone) unawaited(subscriber.close());
+        },
+      );
+    },
+    onError: subscriber.addError,
+    onDone: () {
+      sourceDone = true;
+      if (innerDone) unawaited(subscriber.close());
+    },
+  );
+  subscriber.onCancel = () async {
+    await current?.cancel();
+    await outer.cancel();
+  };
+});

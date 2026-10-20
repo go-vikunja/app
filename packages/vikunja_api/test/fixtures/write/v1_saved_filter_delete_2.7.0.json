@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "DELETE /api/v1/filters/582",
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"message\":\"Successfully deleted.\"}\n"
+}

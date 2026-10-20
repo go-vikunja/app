@@ -1,0 +1,9 @@
+{"src":"filter_complexity_test.go:36","f":"'(' x100 + 'done = true' + ')' x100","parse":"1 filter"}
+{"src":":42","f":"'(' x101 + 'done = true' + ')' x101","err":4033,"reason":"it exceeds the 100-level nesting limit"}
+{"src":":64","f":"'done = false && ' x1300 (~20 KiB)","err":4033,"reason":"it exceeds the 16384-byte limit; message must not echo the filter"}
+{"src":":74","f":"'project not in 1 && ' repeated past 16 KiB raw (shorter after preprocessing)","err":4033}
+{"src":":92","f":"'title = value' + \"'\" x9000 + 'suffix' (expands past 16 KiB)","err":4033}
+{"src":":106","f":"title = '<200 x (>' && done = false","parse":"2 filters (parens in quotes not counted)"}
+{"src":":113","f":"title = 'a \\'' + '( ' x150 + 'done = false' + ' )' x150","err":4033}
+{"src":":119","f":"done = true)","err":4024}
+{"src":":132","f":"done = true &&","err":4024}

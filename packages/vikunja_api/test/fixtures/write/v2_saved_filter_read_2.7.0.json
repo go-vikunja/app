@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "GET /api/v2/filters/583",
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"$schema\":\"http://localhost:34527/api/v2/schemas/SavedFilterReadBody.json\",\"id\":583,\"filters\":{\"s\":\"\",\"sort_by\":[],\"order_by\":[],\"filter\":\"due_date >= now/d && due_date < now/d+1d\",\"filter_include_nulls\":false},\"title\":\"Today\",\"description\":\"\",\"owner\":{\"id\":544,\"name\":\"\",\"username\":\"fixtureuser\",\"created\":\"2026-10-20T08:43:39Z\",\"updated\":\"2026-10-20T08:43:39Z\"},\"is_favorite\":false,\"created\":\"2026-10-20T08:43:40Z\",\"updated\":\"2026-10-20T08:43:40Z\",\"max_permission\":2}\n"
+}

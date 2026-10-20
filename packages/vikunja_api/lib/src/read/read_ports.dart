@@ -198,6 +198,14 @@ final class AvatarImage {
   bool get isSvg => contentType == 'image/svg+xml';
 }
 
+abstract interface class SavedFiltersReadPort {
+  /// `GET /filters/{id}` on both versions: the only place the filter
+  /// itself comes from (the project list names saved filters without it).
+  /// Another user's is `Forbidden`, one that does not exist a `NotFound`
+  /// code 11001.
+  Future<SavedFilter> read(int id);
+}
+
 abstract interface class VikunjaReadClient {
   ProjectsPort get projects;
   LabelsPort get labels;
@@ -209,6 +217,7 @@ abstract interface class VikunjaReadClient {
   CommentsPort get comments;
   AttachmentsPort get attachments;
   BucketsPort get buckets;
+  SavedFiltersReadPort get savedFilters;
 }
 
 /// [dio] is an authenticated client from `createAuthenticatedDio`; the

@@ -8,6 +8,7 @@ import 'package:vikunja_api/src/dto/json_values.dart';
 import 'package:vikunja_api/src/dto/label_codec.dart';
 import 'package:vikunja_api/src/dto/notification_codec.dart';
 import 'package:vikunja_api/src/dto/project_codec.dart';
+import 'package:vikunja_api/src/dto/saved_filter_codec.dart';
 import 'package:vikunja_api/src/dto/subscription_codec.dart';
 import 'package:vikunja_api/src/dto/task_codec.dart';
 import 'package:vikunja_api/src/dto/task_details_codec.dart';
@@ -34,7 +35,8 @@ final class ReadClient implements VikunjaReadClient {
       avatars = _AvatarsApi(transport),
       comments = _CommentsApi(transport),
       attachments = _AttachmentsApi(transport),
-      buckets = _BucketsApi(transport);
+      buckets = _BucketsApi(transport),
+      savedFilters = _SavedFiltersApi(transport);
 
   @override
   final ProjectsPort projects;
@@ -65,6 +67,21 @@ final class ReadClient implements VikunjaReadClient {
 
   @override
   final BucketsPort buckets;
+
+  @override
+  final SavedFiltersReadPort savedFilters;
+}
+
+final class _SavedFiltersApi implements SavedFiltersReadPort {
+  new(this._transport);
+
+  final _ReadTransport _transport;
+
+  @override
+  Future<SavedFilter> read(int id) async {
+    final response = await _transport.get('/filters/$id');
+    return _transport.decode<SavedFilter>(response, parseSavedFilter);
+  }
 }
 
 final class _BucketsApi implements BucketsPort {

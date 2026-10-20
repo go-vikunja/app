@@ -91,6 +91,7 @@ List<BoardColumn> _build({
   Map<int, BucketPlacement> queued = const {},
   Set<int> movedHere = const {},
   Set<int> queuedDoneChanges = const {},
+  Set<int>? matchingIds,
 }) => buildBoard(
   view: view,
   buckets: buckets ?? _buckets,
@@ -100,6 +101,7 @@ List<BoardColumn> _build({
   queued: queued,
   movedHere: movedHere,
   queuedDoneChanges: queuedDoneChanges,
+  matchingIds: matchingIds,
 );
 
 Map<int, List<int>> _idsByBucket(List<BoardColumn> board) => {
@@ -816,6 +818,50 @@ void main() {
       );
 
       expect(_idsByBucket(board)[_toDo], [1, 2, 3]);
+    });
+
+    test('the tasks the device matched show, listed or newer, and no '
+        'others', () {
+      final board = _build(
+        view: _view(filter: 'priority >= 3'),
+        tasks: [
+          ..._downloadedTasks,
+          task(-1),
+          task(9, created: _after),
+          task(-2),
+        ],
+        matchingIds: {1, 3, 4, -1, 9},
+      );
+
+      expect(_idsByBucket(board), {
+        _toDo: [-1, 9, 1, 3],
+        _doing: [4],
+        _done: <int>[],
+      });
+    });
+
+    test('matched tasks win over the classifier', () {
+      final board = _build(
+        view: _view(filter: 'done = false'),
+        tasks: [_old(1), _old(2, done: true), _old(3), _old(4)],
+        matchingIds: {2, 3},
+      );
+
+      expect(_idsByBucket(board), {
+        _toDo: [2, 3],
+        _doing: <int>[],
+        _done: <int>[],
+      });
+    });
+
+    test('a filter-mode view ignores them', () {
+      final board = _build(
+        view: _view(mode: BucketConfigurationMode.filter, filter: 'x'),
+        tasks: _downloadedTasks,
+        matchingIds: const {},
+      );
+
+      expect(board.expand((c) => c.tasks).map((t) => t.id), [1, 2, 3, 4]);
     });
   });
 }

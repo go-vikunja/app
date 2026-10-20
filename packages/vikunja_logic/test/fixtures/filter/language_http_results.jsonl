@@ -1,0 +1,18 @@
+{"src":"webtests/task_collection_test.go:76","project":1,"search":"unique","contains":[6],"not":[1,2,3,4,5,7,8,9,10,11,12,13,14]}
+{"src":":94","project":1,"search":"uNIQue","contains":[6],"note":"case-insensitive"}
+{"src":":112","project":1,"search":"landing","contains":[48],"not":[1]}
+{"src":":119","project":1,"search":"LANDING","contains":[48]}
+{"src":":124","project":1,"search":"branding","contains":[48],"note":"description match"}
+{"src":":132","project":1,"sort":"priority","rule":"ends with 33,47,48 (NULL priority last, id asc)"}
+{"src":":137","project":1,"sort":"priority desc","rule":"starts 3 (100), 4 (1)"}
+{"src":":148","project":1,"sort":"due_date","rule":"starts 6"}
+{"src":":153","project":1,"sort":"due_date desc","rule":"starts 28, 5, 6"}
+{"src":":179","sort":"loremipsum","err":4016}
+{"src":":184","sort":"id","order":"loremipsum","err":4014}
+{"src":":200","project":1,"f":"start_date > '2018-12-11T03:46:40+00:00' || end_date < '2018-12-13T11:20:01+00:00' || due_date > '2018-11-29T14:00:00+00:00'","contains":[5,6,7,8,9],"not":[1,2,3,4,10,11,12,13,14]}
+{"src":":224","project":1,"f":"start_date > '2018-10-20T01:46:40+00:00'","contains":[7,9],"not":[1,2,3,4,5,6,8,10,11,12,13,14],"full":[7,9,27,28]}
+{"src":":247","project":1,"f":"end_date > '2018-12-13T11:20:01+00:00'","ids":[]}
+{"src":":260","project":1,"f":"start_date > 1544500000 || end_date < 1513164001 || due_date > 1543500000","contains":[5,6,7,9],"not":[1,2,3,4,8,10,11,12,13,14],"note":"numbers are epoch MILLISECONDS → 1970 boundaries; full set [5,6,7,9,27,28]"}
+{"src":":284","f":"due_date > invalid","err":4019}
+{"src":":295","project":-2,"f":"","contains":[5,6,7,8,9],"not":[1,2,3,4,10,11,12,13,14]}
+{"src":":421","f":"(all-tasks scope) the same date-range filters as :200/:224/:247","rule":"same task sets as project 1 here"}

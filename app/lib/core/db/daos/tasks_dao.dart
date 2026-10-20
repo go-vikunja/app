@@ -25,6 +25,17 @@ part 'tasks_dao.g.dart';
 
 typedef _TaskRows = ({TaskRow task, UserRow? createdBy});
 
+/// A task row with what the filter language reads from its relations: the
+/// creator's username (empty when unknown), label ids, assignee usernames
+/// and the reminder instants.
+typedef FilterRow = ({
+  TaskRow task,
+  String createdBy,
+  Set<int> labelIds,
+  Set<String> assignees,
+  List<DateTime> reminders,
+});
+
 @DriftAccessor(
   tables: [
     Tasks,
@@ -178,18 +189,36 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
     required int viewId,
     bool includeDone = true,
   }) => watchTables(
-    {..._readTables, listSnapshots, listSnapshotTasks},
+    projectListTables,
     () => loadProjectList(projectId, viewId: viewId, includeDone: includeDone),
   );
 
+  /// What [loadProjectList] reads, plus the views and projects a filter
+  /// evaluation needs.
+  Set<ResultSetImplementation<dynamic, dynamic>> get projectListTables => {
+    ..._readTables,
+    listSnapshots,
+    listSnapshotTasks,
+    projectViews,
+  };
+
+  /// What the candidates of a saved filter are read from.
+  Set<ResultSetImplementation<dynamic, dynamic>> get savedFilterTables => {
+    ..._readTables,
+    projects,
+  };
+
+  /// [matchingIds]: the tasks the view's filter matches as evaluated here;
+  /// they are loaded also when done, and passed on.
   Future<ProjectListSource> loadProjectList(
     int projectId, {
     required int viewId,
     bool includeDone = true,
+    Set<int>? matchingIds,
   }) async {
     final listKey = listKeyFor(projectId: projectId, viewId: viewId);
     final inProject = tasks.projectId.equals(projectId) & _visible;
-    final projectTasks = await _load(
+    var projectTasks = await _load(
       where: includeDone
           ? inProject
           : inProject &
@@ -197,6 +226,13 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
                     tasks.id.isInQuery(_snapshotTaskIds(listKey))),
       orderBy: _newestFirst,
     );
+    if (!includeDone && matchingIds != null) {
+      final loaded = {for (final task in projectTasks) task.id};
+      projectTasks = [
+        ...projectTasks,
+        ...await _loadIds(matchingIds.difference(loaded)),
+      ]..sort(_compareNewestFirst);
+    }
     final byId = {for (final task in projectTasks) task.id: task};
     // The hydrated relations only name local tasks that are not queued for
     // deletion, so every id asked for here exists.
@@ -217,11 +253,134 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
       tasksById: byId,
       snapshot: await attachedDatabase.listSnapshotsDao.load(listKey),
       omitsDoneTasks:
-          !includeDone && await _hasDoneTasksOutside(projectId, listKey),
+          !includeDone &&
+          await _hasDoneTasksOutside(
+            projectId,
+            listKey,
+            matchingIds: matchingIds,
+          ),
       queuedPositions: viewId == 0
           ? const {}
           : await _queuedPositions(projectId, viewId),
+      matchingIds: matchingIds,
     );
+  }
+
+  static int _compareNewestFirst(Task a, Task b) {
+    if ((a.id < 0) != (b.id < 0)) return a.id < 0 ? -1 : 1;
+    return b.id.abs().compareTo(a.id.abs());
+  }
+
+  /// The project's tasks as the filter language reads them: what a view of
+  /// it covers, archived project included; with [openOnly] the open ones.
+  Future<List<FilterRow>> loadFilterRowsInProject(
+    int projectId, {
+    bool openOnly = false,
+  }) => _loadFilterRows(
+    tasks.projectId.equals(projectId) &
+        _visible &
+        (openOnly ? tasks.done.equals(false) : const Constant(true)),
+  );
+
+  /// The tasks a saved filter covers: those outside archived projects and
+  /// their subprojects, and the favourite ones anywhere, as the server's
+  /// `GET /tasks`; with [openOnly] the open ones.
+  Future<List<FilterRow>> loadFilterRowsOfSavedFilters({
+    bool openOnly = false,
+  }) async {
+    final archived = await _archivedProjectIds();
+    final candidates = openOnly
+        ? _visible & tasks.done.equals(false)
+        : _visible;
+    return await _loadFilterRows(
+      archived.isEmpty
+          ? candidates
+          : candidates &
+                (tasks.projectId.isNotIn(archived) |
+                    tasks.isFavorite.equals(true)),
+    );
+  }
+
+  /// Three batched queries per chunk of rows, and only the columns the
+  /// filter language reads from the relations.
+  Future<List<FilterRow>> _loadFilterRows(Expression<bool> where) async {
+    final query = select(tasks).join([
+      leftOuterJoin(users, users.id.equalsExp(tasks.createdById)),
+    ])..where(where);
+    final rows = [
+      for (final row in await query.get())
+        (
+          task: row.readTable(tasks),
+          createdBy: row.readTableOrNull(users)?.username ?? '',
+        ),
+    ];
+    final labelIds = <int, Set<int>>{};
+    final assignees = <int, Set<String>>{};
+    final reminders = <int, List<DateTime>>{};
+    final ids = [for (final row in rows) row.task.id];
+    for (var start = 0; start < ids.length; start += _chunkSize) {
+      final chunk = ids.sublist(
+        start,
+        (start + _chunkSize).clamp(0, ids.length),
+      );
+      final labelQuery = selectOnly(taskLabels)
+        ..addColumns([taskLabels.taskId, taskLabels.labelId])
+        ..where(taskLabels.taskId.isIn(chunk));
+      for (final row in await labelQuery.get()) {
+        labelIds
+            .putIfAbsent(row.read(taskLabels.taskId)!, () => {})
+            .add(row.read(taskLabels.labelId)!);
+      }
+      final assigneeQuery =
+          selectOnly(
+              taskAssignees,
+            ).join([innerJoin(users, users.id.equalsExp(taskAssignees.userId))])
+            ..addColumns([taskAssignees.taskId, users.username])
+            ..where(taskAssignees.taskId.isIn(chunk));
+      for (final row in await assigneeQuery.get()) {
+        assignees
+            .putIfAbsent(row.read(taskAssignees.taskId)!, () => {})
+            .add(row.read(users.username)!);
+      }
+      final reminderQuery = selectOnly(taskReminders)
+        ..addColumns([taskReminders.taskId, taskReminders.reminder])
+        ..where(
+          taskReminders.taskId.isIn(chunk) & taskReminders.reminder.isNotNull(),
+        );
+      for (final row in await reminderQuery.get()) {
+        reminders
+            .putIfAbsent(row.read(taskReminders.taskId)!, () => [])
+            .add(
+              row.readWithConverter<DateTime?, int>(taskReminders.reminder)!,
+            );
+      }
+    }
+    return [
+      for (final (:task, :createdBy) in rows)
+        (
+          task: task,
+          createdBy: createdBy,
+          labelIds: labelIds[task.id] ?? const {},
+          assignees: assignees[task.id] ?? const {},
+          reminders: reminders[task.id] ?? const [],
+        ),
+    ];
+  }
+
+  /// The tasks with [ids] that are open, as [watchOpenTasks] orders them.
+  Future<List<Task>> loadOpenTasksAmong(Set<int> ids) async =>
+      (await _loadIds(ids, openOnly: true))..sort(_compareByDueDate);
+
+  static int _compareByDueDate(Task a, Task b) {
+    final byDue = switch ((a.dueDate, b.dueDate)) {
+      (null, null) => 0,
+      (null, _) => 1,
+      (_, null) => -1,
+      (final a?, final b?) => a.compareTo(b),
+    };
+    if (byDue != 0) return byDue;
+    if ((a.id < 0) != (b.id < 0)) return a.id < 0 ? -1 : 1;
+    return b.id.abs().compareTo(a.id.abs());
   }
 
   /// The unsent positions of the project's tasks on the view, by task id.
@@ -241,17 +400,25 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// What a kanban view's board is built from, see [BoardSource].
-  Stream<BoardSource> watchBoard(int projectId, int viewId) => watchTables({
+  Stream<BoardSource> watchBoard(int projectId, int viewId) =>
+      watchTables(boardTables, () => loadBoard(projectId, viewId));
+
+  Set<ResultSetImplementation<dynamic, dynamic>> get boardTables => {
     ..._readTables,
     listSnapshots,
     listSnapshotTasks,
     projectViews,
     attachedDatabase.kanbanBuckets,
-  }, () => loadBoard(projectId, viewId));
+  };
 
   /// A long-lived project holds far more done tasks than open ones, so
-  /// only the done ones the board can show are loaded.
-  Future<BoardSource> loadBoard(int projectId, int viewId) async {
+  /// only the done ones the board can show are loaded; [matchingIds], the
+  /// tasks the view's filter matches as evaluated here, is passed on.
+  Future<BoardSource> loadBoard(
+    int projectId,
+    int viewId, {
+    Set<int>? matchingIds,
+  }) async {
     final board = await attachedDatabase.kanbanDao.load(viewId);
     final listKey = KanbanDao.boardKey(viewId);
     var shown =
@@ -266,10 +433,19 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
           tasks.created.isBiggerThanValue(millis) |
           tasks.updated.isBiggerThanValue(millis);
     }
-    final projectTasks = await _load(
+    var projectTasks = await _load(
       where: tasks.projectId.equals(projectId) & _visible & shown,
       orderBy: _newestFirst,
     );
+    // After a download only the tasks above can show; before one every
+    // task counts as newer, the done matches too.
+    if (matchingIds != null && board.loadedAt == null) {
+      final loaded = {for (final task in projectTasks) task.id};
+      projectTasks = [
+        ...projectTasks,
+        ...await _loadIds(matchingIds.difference(loaded)),
+      ]..sort(_compareNewestFirst);
+    }
     final view = await (select(
       projectViews,
     )..where((v) => v.id.equals(viewId))).getSingleOrNull();
@@ -291,6 +467,7 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
         for (final (id, changes) in pending)
           if (changes.done != null) id,
       },
+      matchingIds: matchingIds,
     );
   }
 
@@ -315,7 +492,11 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
     ];
   }
 
-  Future<bool> _hasDoneTasksOutside(int projectId, String listKey) async {
+  Future<bool> _hasDoneTasksOutside(
+    int projectId,
+    String listKey, {
+    Set<int>? matchingIds,
+  }) async {
     final query = selectOnly(tasks)
       ..addColumns([tasks.id])
       ..where(
@@ -323,9 +504,14 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
             _visible &
             tasks.done.equals(true) &
             tasks.id.isNotInQuery(_snapshotTaskIds(listKey)),
-      )
-      ..limit(1);
-    return (await query.get()).isNotEmpty;
+      );
+    if (matchingIds == null) {
+      query.limit(1);
+      return (await query.get()).isNotEmpty;
+    }
+    return (await query.get()).any(
+      (row) => !matchingIds.contains(row.read(tasks.id)),
+    );
   }
 
   BaseSelectStatement<TypedResult> _snapshotTaskIds(String listKey) =>
@@ -333,7 +519,7 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
         ..addColumns([listSnapshotTasks.taskId])
         ..where(listSnapshotTasks.listKey.equals(listKey));
 
-  Future<List<Task>> _loadIds(Set<int> ids) async {
+  Future<List<Task>> _loadIds(Set<int> ids, {bool openOnly = false}) async {
     final all = ids.toList();
     return [
       for (var start = 0; start < all.length; start += _chunkSize)
@@ -342,7 +528,8 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
               tasks.id.isIn(
                 all.sublist(start, (start + _chunkSize).clamp(0, all.length)),
               ) &
-              _visible,
+              _visible &
+              (openOnly ? tasks.done.equals(false) : const Constant(true)),
           orderBy: const [],
         ),
     ];
@@ -351,12 +538,15 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
   /// Every task, newest first, without the labels, assignees, reminders
   /// and relations the other reads load; so it re-runs only when the tasks
   /// table changes.
-  Stream<List<Task>> watchSearchableTasks() => watchTables({tasks}, () async {
+  Stream<List<Task>> watchSearchableTasks() =>
+      watchTables({tasks}, loadSearchableTasks);
+
+  Future<List<Task>> loadSearchableTasks() async {
     final query = select(tasks)
       ..where((t) => _visible)
       ..orderBy([for (final term in _newestFirst) (_) => term]);
     return [for (final row in await query.get()) taskFromRow(row)];
-  });
+  }
 
   /// One task, following a temporary id to the server id once the create
   /// is answered; null once the row is gone or queued for deletion.

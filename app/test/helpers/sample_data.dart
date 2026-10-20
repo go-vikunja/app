@@ -166,6 +166,7 @@ ProjectView sampleKanbanView({
   int defaultBucketId = 0,
   int doneBucketId = 0,
   BucketConfigurationMode mode = BucketConfigurationMode.manual,
+  ViewFilter? filter,
 }) => ProjectView(
   id: id,
   projectId: projectId,
@@ -175,6 +176,7 @@ ProjectView sampleKanbanView({
   bucketConfigurationMode: mode,
   defaultBucketId: defaultBucketId,
   doneBucketId: doneBucketId,
+  filter: filter,
 );
 
 Label sampleLabel({

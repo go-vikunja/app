@@ -411,6 +411,11 @@ class _ProjectListBodyState extends State<ProjectListBody> {
     final source = widget.source;
     final loaded = source.snapshot.loadedAt != null;
     return switch (widget.kind) {
+      ViewFilterKind.other when source.matchingIds != null => EmptyState(
+        icon: Icons.filter_alt_outlined,
+        title: l10n.projectViewEmptyTitle,
+        body: l10n.projectViewEmptyMatchingBody,
+      ),
       ViewFilterKind.other when !loaded && widget.offline => EmptyState(
         icon: Icons.cloud_download_outlined,
         title: l10n.projectViewNotLoadedTitle,

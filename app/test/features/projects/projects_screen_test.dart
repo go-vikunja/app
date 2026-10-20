@@ -21,6 +21,12 @@ import '../../helpers/sample_data.dart';
 import '../../helpers/server_connections.dart';
 import '../../helpers/sync_fakes.dart';
 
+Future<void> refreshFromMenu(WidgetTester tester) async {
+  await tester.tap(find.byTooltip(en.moreActions));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text(en.refresh));
+}
+
 void main() {
   final now = DateTime(2026, 10, 10, 12);
   late SyncFakes data;
@@ -103,7 +109,7 @@ void main() {
     await pumpProjects(tester);
     data.engine.onRefresh = () async => throw const ServerFailure(502);
 
-    await tester.tap(find.byTooltip(en.refresh));
+    await refreshFromMenu(tester);
     await tester.pumpAndSettle();
 
     expect(find.byType(DataFailureCard), findsOneWidget);
@@ -134,12 +140,12 @@ void main() {
     expect(data.engine.refreshCalls, 1);
   });
 
-  testWidgets('the app bar button refreshes without a drag', (tester) async {
+  testWidgets('Refresh in the menu runs a sync without a drag', (tester) async {
     await pumpProjects(tester);
     data.engine.onRefresh = () async =>
         data.projects.all = [sampleProject(id: 9, title: 'Fresh')];
 
-    await tester.tap(find.byTooltip(en.refresh));
+    await refreshFromMenu(tester);
     await tester.pumpAndSettle();
 
     expect(rowTitles(tester), ['Fresh']);
@@ -165,7 +171,7 @@ void main() {
     await tester.tap(find.byTooltip(en.projectCollapse('Work')));
     await tester.pumpAndSettle();
     data.engine.onRefresh = () async => throw const ServerFailure(502);
-    await tester.tap(find.byTooltip(en.refresh));
+    await refreshFromMenu(tester);
     await tester.pumpAndSettle();
     expect(find.byType(DataFailureCard), findsOneWidget);
     expect(rowTitles(tester), ['Home', 'Home', 'Work']);
