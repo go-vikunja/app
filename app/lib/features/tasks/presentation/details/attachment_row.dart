@@ -92,7 +92,10 @@ class AttachmentRow extends StatelessWidget {
     // The menu stays its own node beside the row's.
     final row = MergeSemantics(
       child: ListTile(
-        contentPadding: EdgeInsets.zero,
+        contentPadding: EdgeInsetsDirectional.only(
+          start: 12,
+          end: trailing == null ? 16 : 0,
+        ),
         leading: ExcludeSemantics(
           child: image
               ? AttachmentThumbnail(
@@ -141,7 +144,10 @@ class AttachmentRow extends StatelessWidget {
     return Row(
       children: [
         Expanded(child: row),
-        trailing,
+        Padding(
+          padding: const EdgeInsetsDirectional.only(end: 4),
+          child: trailing,
+        ),
       ],
     );
   }

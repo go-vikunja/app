@@ -15,6 +15,7 @@ import 'package:vikunja_mobile/core/network/client_identity.dart';
 import 'package:vikunja_mobile/core/network/dio_factory.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
+import 'package:vikunja_mobile/features/home/application/app_version.dart';
 import 'package:vikunja_mobile/features/home/presentation/home_shell.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_server_screen.dart';
 
@@ -140,6 +141,7 @@ void main() {
         ProviderScope(
           key: UniqueKey(),
           overrides: [
+            appVersionProvider.overrideWithValue(testAppVersion),
             dioProvider.overrideWithValue(dio),
             authDioProvider.overrideWithValue(dio),
             externalLinkOpenerProvider.overrideWithValue(

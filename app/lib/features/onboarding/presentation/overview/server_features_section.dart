@@ -20,7 +20,7 @@ class ServerFeaturesSection extends StatelessWidget {
         if (features.isEmpty)
           Text(l10n.featuresNone)
         else
-          Card.outlined(
+          Card(
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Column(

@@ -9,6 +9,7 @@ import 'package:vikunja_mobile/app/vikunja_app.dart';
 import 'package:vikunja_mobile/core/links/external_link_opener.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
+import 'package:vikunja_mobile/features/home/application/app_version.dart';
 import 'package:vikunja_mobile/features/onboarding/application/current_server.dart';
 
 import 'auth_fakes.dart';
@@ -42,6 +43,10 @@ void useAccessibilityExtremes(WidgetTester tester) {
   addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
 }
 
+/// The version the Account tab shows; the real one comes with the client
+/// identity, which would also give the screens a real HTTP client.
+const AppVersion testAppVersion = (version: '1.0.0', build: '42');
+
 ProviderContainer containerOf(WidgetTester tester) =>
     ProviderScope.containerOf(tester.element(find.byType(VikunjaApp)));
 
@@ -54,6 +59,7 @@ List<Override> appOverrides({
   SyncFakes? sync,
   NotificationFakes? notifications,
 }) => [
+  appVersionProvider.overrideWithValue(testAppVersion),
   serverConnectorProvider.overrideWithValue(connector ?? FakeServerConnector()),
   externalLinkOpenerProvider.overrideWithValue(
     linkOpener ?? FakeExternalLinkOpener(),

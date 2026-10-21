@@ -14,6 +14,7 @@ import 'package:vikunja_mobile/core/repositories/account_settings_repository_pro
 import 'package:vikunja_mobile/features/account_settings/application/integration_addresses.dart';
 import 'package:vikunja_mobile/features/account_settings/application/totp_status_reading.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/account_security_failure.dart';
+import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_rows.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/one_time_secret_view.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/security_list_body.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/sign_in_provider_name.dart';
@@ -232,15 +233,17 @@ class _CaldavPageState extends ConsumerState<CaldavPage> {
       color: colors.onSurfaceVariant,
     );
 
-    Widget copyRow(String label, String value, String tooltip) => ListTile(
-      title: Text(label),
-      subtitle: SelectableText(value, style: theme.textTheme.bodyLarge),
-      trailing: IconButton(
-        onPressed: () => unawaited(_copy(value)),
-        tooltip: tooltip,
-        icon: Icon(_copiedValue == value ? Icons.check : Icons.copy),
-      ),
-    );
+    Widget copyRow(IconData icon, String label, String value, String tooltip) =>
+        ListTile(
+          leading: Icon(icon),
+          title: Text(label),
+          subtitle: SelectableText(value, style: theme.textTheme.bodyLarge),
+          trailing: IconButton(
+            onPressed: () => unawaited(_copy(value)),
+            tooltip: tooltip,
+            icon: Icon(_copiedValue == value ? Icons.check : Icons.copy),
+          ),
+        );
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.caldavTitle)),
@@ -257,8 +260,18 @@ class _CaldavPageState extends ConsumerState<CaldavPage> {
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
               child: Text(l10n.caldavIntro, style: mutedStyle),
             ),
-            copyRow(l10n.caldavAddress, address, l10n.caldavCopyAddress),
-            copyRow(l10n.caldavUsername, username, l10n.caldavCopyUsername),
+            copyRow(
+              Icons.link,
+              l10n.caldavAddress,
+              address,
+              l10n.caldavCopyAddress,
+            ),
+            copyRow(
+              Icons.person_outline,
+              l10n.caldavUsername,
+              username,
+              l10n.caldavCopyUsername,
+            ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
               child: Text(password, style: theme.textTheme.bodyMedium),
@@ -289,7 +302,12 @@ class _CaldavPageState extends ConsumerState<CaldavPage> {
                 ],
               ),
             ),
-            ListSectionHeader(title: l10n.caldavTokens),
+            const SizedBox(height: 8),
+            const Divider(height: 1),
+            ListSectionHeader(
+              title: l10n.caldavTokens,
+              padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 0),
+            ),
           ],
         ),
         empty: tokens != null && tokens.isEmpty
@@ -304,6 +322,7 @@ class _CaldavPageState extends ConsumerState<CaldavPage> {
             alignment: AlignmentDirectional.centerStart,
             child: FilledButton.tonalIcon(
               onPressed: _creating ? null : () => unawaited(_create(username)),
+              style: inlineFilledButtonStyle(context),
               icon: _creating
                   ? SizedBox.square(
                       dimension: 18,

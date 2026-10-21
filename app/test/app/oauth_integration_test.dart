@@ -16,6 +16,7 @@ import 'package:vikunja_mobile/core/auth/web_authenticator.dart';
 import 'package:vikunja_mobile/core/links/external_link_opener.dart';
 import 'package:vikunja_mobile/core/network/dio_factory.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
+import 'package:vikunja_mobile/features/home/application/app_version.dart';
 import 'package:vikunja_mobile/features/home/presentation/home_shell.dart';
 import 'package:vikunja_mobile/features/notifications/application/notifications_onboarding.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_server_screen.dart';
@@ -360,6 +361,7 @@ void main() {
           ProviderScope(
             key: UniqueKey(),
             overrides: [
+              appVersionProvider.overrideWithValue(testAppVersion),
               dioProvider.overrideWithValue(dio),
               authDioProvider.overrideWithValue(dio),
               secureStoreProvider.overrideWithValue(secureStore),
@@ -395,7 +397,10 @@ void main() {
       expect(find.byType(HomeShell), findsOneWidget);
       await openTab(tester, en.tabAccount);
       expect(find.text(_name), findsOneWidget);
-      expect(find.text('@$_username'), findsOneWidget);
+      expect(
+        find.text(en.accountSubtitle(_username, _root.host)),
+        findsOneWidget,
+      );
 
       final authorizeUrl = webApp.opened.single;
       expect(

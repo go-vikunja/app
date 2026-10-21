@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -127,7 +128,9 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('opens from the profile header and from its row', (tester) async {
+  testWidgets('opens from the profile header, its Edit and its row', (
+    tester,
+  ) async {
     usePhoneSurface(tester);
     await auth.seedAccount(
       fullServer270(),
@@ -146,7 +149,13 @@ void main() {
     await tester.tap(find.text(en.accountSettingsEntry));
     await tester.pumpAndSettle();
     expect(find.byType(AccountSettingsPage), findsOneWidget);
-    expect(repository().calls, ['refresh', 'refresh']);
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(OutlinedButton, en.accountHeaderEdit));
+    await tester.pumpAndSettle();
+    expect(find.byType(AccountSettingsPage), findsOneWidget);
+    expect(repository().calls, ['refresh', 'refresh', 'refresh']);
   });
 
   testWidgets('shows the stored settings in the web order', (tester) async {
@@ -372,13 +381,6 @@ void main() {
             ),
             settings: const UserSettings(),
           ),
-          (
-            name: 'colour scheme',
-            row: () => en.accountSettingsColorScheme,
-            option: () => en.accountSettingsColorSchemeDark,
-            changes: const UserSettingsChanges(colorSchema: ColorSchema.dark),
-            settings: const UserSettings(),
-          ),
         ];
     for (final testCase in cases) {
       testWidgets('the ${testCase.name}', (tester) async {
@@ -393,6 +395,93 @@ void main() {
         expect(repository().changes, [testCase.changes]);
       });
     }
+
+    testWidgets('the colour scheme, side by side', (tester) async {
+      final semantics = tester.ensureSemantics();
+      await pumpPage(tester);
+
+      final dark = find.widgetWithText(
+        SegmentedButton<ColorSchema>,
+        en.accountSettingsColorSchemeDark,
+      );
+      await scrollTo(tester, dark);
+      expect(
+        tester.getSemantics(find.text(en.accountSettingsColorSchemeSystem)),
+        isSemantics(isSelected: true, isInMutuallyExclusiveGroup: true),
+      );
+      await tester.tap(find.text(en.accountSettingsColorSchemeDark));
+      await tester.pumpAndSettle();
+
+      expect(repository().changes, [
+        const UserSettingsChanges(colorSchema: ColorSchema.dark),
+      ]);
+      expect(
+        tester.getSemantics(find.text(en.accountSettingsColorSchemeDark)),
+        isSemantics(isSelected: true),
+      );
+      semantics.dispose();
+    });
+
+    testWidgets('the chosen colour scheme carries a check where the '
+        'segments have room for their icons', (tester) async {
+      await pumpPage(tester);
+      usePhoneSurface(tester, logicalSize: const Size(700, 740));
+      await tester.pumpAndSettle();
+
+      final control = find.byType(SegmentedButton<ColorSchema>);
+      await scrollTo(tester, control);
+      Finder inSegmentOf(String label, Finder matching) => find.descendant(
+        of: find.ancestor(
+          of: find.text(label),
+          matching: find.byType(TextButton),
+        ),
+        matching: matching,
+      );
+      expect(
+        inSegmentOf(
+          en.accountSettingsColorSchemeSystem,
+          find.byIcon(Icons.check),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        inSegmentOf(
+          en.accountSettingsColorSchemeLight,
+          find.byIcon(Icons.light_mode_outlined),
+        ),
+        findsOneWidget,
+      );
+      expect(find.byIcon(Icons.brightness_auto_outlined), findsNothing);
+      expect(
+        tester.getSize(control).width,
+        moreOrLessEquals(700 - 32, epsilon: 1),
+      );
+    });
+
+    testWidgets('the colour scheme on iOS, in a sliding segmented control', (
+      tester,
+    ) async {
+      final semantics = tester.ensureSemantics();
+      await pumpPage(tester);
+
+      final dark = find.descendant(
+        of: find.byType(CupertinoSlidingSegmentedControl<ColorSchema>),
+        matching: find.text(en.accountSettingsColorSchemeDark),
+      );
+      await scrollTo(tester, dark);
+      expect(find.byType(SegmentedButton<ColorSchema>), findsNothing);
+      expect(
+        tester.getSemantics(find.text(en.accountSettingsColorSchemeSystem)),
+        isSemantics(isSelected: true, isInMutuallyExclusiveGroup: true),
+      );
+      await tester.tap(dark);
+      await tester.pumpAndSettle();
+
+      expect(repository().changes, [
+        const UserSettingsChanges(colorSchema: ColorSchema.dark),
+      ]);
+      semantics.dispose();
+    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 
     testWidgets('the same choice again sends nothing', (tester) async {
       await pumpPage(tester);
@@ -648,8 +737,10 @@ void main() {
       );
       await pumpPage(tester);
 
-      await tapRow(tester, en.accountSettingsColorScheme);
-      await choose(tester, en.accountSettingsColorSchemeDark);
+      final dark = find.text(en.accountSettingsColorSchemeDark);
+      await scrollTo(tester, dark);
+      await tester.tap(dark);
+      await tester.pumpAndSettle();
 
       expect(find.text(en.accountSettingsUnconfirmed), findsOneWidget);
     });

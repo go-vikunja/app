@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/create/project_field.dart';
 
 import '../../../helpers/pump_app.dart';
 import 'composer_harness.dart';
@@ -12,8 +13,8 @@ void main() {
   Finder addButton(int count) =>
       find.widgetWithText(FilledButton, en.newTaskAddMany(count));
 
-  Finder projectChip(String title) =>
-      find.ancestor(of: find.text(title), matching: find.byType(ActionChip));
+  Finder projectField(String title) =>
+      find.ancestor(of: find.text(title), matching: find.byType(ProjectField));
 
   testWidgets('indented lines show how many become subtasks', (tester) async {
     await harness.open(tester);
@@ -51,11 +52,11 @@ void main() {
   });
 
   testWidgets('a subtask without a project goes with its parent, so the '
-      'project chip shows the parent project', (tester) async {
+      'project field shows the parent project', (tester) async {
     await harness.open(tester);
     await typeLine(tester, 'Launch +Work\n  Prepare slides');
 
-    expect(tester.widget<ActionChip>(projectChip('Work')).onPressed, isNull);
+    expect(tester.widget<ProjectField>(projectField('Work')).onPressed, isNull);
 
     await tester.tap(addButton(2));
     await tester.pumpAndSettle();

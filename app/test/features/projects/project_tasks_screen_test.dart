@@ -110,18 +110,31 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  // The item's text sits under an IgnorePointer; the item itself takes taps.
-  Future<void> toggleShowDone(WidgetTester tester) async {
+  Future<void> refreshFromMenu(WidgetTester tester) async {
     await openMenu(tester);
-    await tester.tap(
-      find.byWidgetPredicate((widget) => widget is CheckedPopupMenuItem),
-    );
+    await tester.tap(find.text(en.refresh));
     await tester.pumpAndSettle();
   }
 
-  Future<void> selectView(WidgetTester tester, String title) async {
-    await tester.tap(find.widgetWithText(ChoiceChip, title));
+  final showDoneChip = find.widgetWithText(FilterChip, en.projectShowDoneChip);
+
+  Future<void> toggleShowDone(WidgetTester tester) async {
+    await tester.tap(showDoneChip);
     await tester.pumpAndSettle();
+  }
+
+  // The tabs scroll when their titles do not fit.
+  Future<void> selectView(WidgetTester tester, String title) async {
+    final tab = find.widgetWithText(Tab, title);
+    await tester.ensureVisible(tab);
+    await tester.pumpAndSettle();
+    await tester.tap(tab);
+    await tester.pumpAndSettle();
+  }
+
+  String selectedView(WidgetTester tester) {
+    final bar = tester.widget<TabBar>(find.byType(TabBar));
+    return (bar.tabs[bar.controller!.index] as Tab).text!;
   }
 
   testWidgets("shows the list view's open tasks in its positions, each "
@@ -139,7 +152,13 @@ void main() {
       ('Orphan', 0),
     ]);
     // A subtask from another project names it.
-    expect(find.text('#4 · Home'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.ancestor(of: find.text('#4'), matching: find.byType(TaskRow)),
+        matching: find.text('Home'),
+      ),
+      findsOneWidget,
+    );
     expect(find.text('#2'), findsOneWidget);
     expect(
       tester.widget<Text>(find.text('Done child')).style?.decoration,
@@ -148,6 +167,105 @@ void main() {
     expect(sectionTitles(tester), isEmpty);
     // Downloaded just now: nothing to fetch.
     expect(data.tasks.projectListRefreshes, isEmpty);
+  });
+
+  testWidgets("under the title the project's own tasks show its progress; "
+      'rows lead with their identifier', (tester) async {
+    final semantics = tester.ensureSemantics();
+    await pumpProject(tester);
+
+    // Tasks 1 to 9 without 4, which is in another project; 3 of them done.
+    expect(find.text(en.projectProgressDone(3, 8)), findsOneWidget);
+    expect(
+      tester
+          .widget<LinearProgressIndicator>(
+            find.descendant(
+              of: find.byType(AppBar),
+              matching: find.byType(LinearProgressIndicator),
+            ),
+          )
+          .value,
+      3 / 8,
+    );
+    expect(
+      find.bySemanticsLabel(en.projectProgressSemantics(3, 8)),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .widgetList<TaskRow>(find.byType(TaskRow))
+          .map((row) => row.identifierBeforeTitle),
+      everyElement(isTrue),
+    );
+    expect(
+      find.widgetWithText(FloatingActionButton, en.newTask),
+      findsOneWidget,
+    );
+
+    data.tasks.all = [
+      for (final task in data.tasks.all)
+        if (task.id == 8) task.copyWith(done: true) else task,
+    ];
+    await tester.pumpAndSettle();
+    expect(find.text(en.projectProgressDone(4, 8)), findsOneWidget);
+    semantics.dispose();
+  });
+
+  testWidgets('a long identifier sends every identifier of the list to the '
+      'line below its title, so that the rows agree', (tester) async {
+    data.tasks.all = [
+      sampleTask(id: 7, title: 'Seven', identifier: 'LONGIDENT-7'),
+      sampleTask(id: 8, title: 'Eight'),
+    ];
+    await pumpProject(tester);
+
+    bool leads(String identifier, String title) =>
+        tester.getTopLeft(find.text(identifier)).dy <
+        tester.getBottomLeft(find.text(title)).dy;
+    expect(leads('LONGIDENT-7', 'Seven'), isFalse);
+    expect(leads('#8', 'Eight'), isFalse);
+  });
+
+  testWidgets('the tabs follow views added and removed while open', (
+    tester,
+  ) async {
+    await pumpProject(tester);
+    expect(find.byType(Tab), findsNWidgets(4));
+
+    data.projects.all = [
+      work(views: [listView, kanban]),
+      sampleProject(id: 2, title: 'Home', hexColor: '1973ff'),
+    ];
+    await tester.pumpAndSettle();
+    expect(find.byType(Tab), findsNWidgets(2));
+    expect(selectedView(tester), en.projectViewList);
+
+    await selectView(tester, en.projectViewKanban);
+    expect(selectedView(tester), en.projectViewKanban);
+    expect(find.byType(TaskRow), findsNothing);
+
+    data.projects.all = [
+      work(views: [listView]),
+      sampleProject(id: 2, title: 'Home', hexColor: '1973ff'),
+    ];
+    await tester.pumpAndSettle();
+    expect(find.byType(TabBar), findsNothing);
+    expect(find.byType(TaskRow), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a project without tasks shows no progress', (tester) async {
+    data.tasks.all = [];
+    await pumpProject(tester);
+
+    expect(find.text(en.projectProgressDone(0, 0)), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byType(AppBar),
+        matching: find.byType(LinearProgressIndicator),
+      ),
+      findsNothing,
+    );
   });
 
   testWidgets('nested rows are indented, at most four levels deep', (
@@ -225,8 +343,7 @@ void main() {
     await pumpProject(tester);
     data.tasks.refreshProjectListFailure = const Forbidden(code: 3004);
 
-    await tester.tap(find.byTooltip(en.refresh));
-    await tester.pumpAndSettle();
+    await refreshFromMenu(tester);
 
     expect(data.tasks.projectListRefreshes, [(1, 11)]);
     expect(find.byType(TaskRow), findsNWidgets(7));
@@ -259,26 +376,19 @@ void main() {
     expect(find.byType(DataFailureCard), findsNothing);
   });
 
-  testWidgets('the switcher offers the list and kanban views and remembers '
-      'the one picked', (tester) async {
+  testWidgets('the tabs offer the list and kanban views and remember the one '
+      'picked', (tester) async {
     await pumpProject(tester);
 
-    expect(find.byType(ChoiceChip), findsNWidgets(4));
-    expect(find.widgetWithText(ChoiceChip, en.projectViewList), findsOneWidget);
-    expect(
-      find.widgetWithText(ChoiceChip, en.projectViewKanban),
-      findsOneWidget,
-    );
+    expect(find.byType(Tab), findsNWidgets(4));
+    expect(find.widgetWithText(Tab, en.projectViewList), findsOneWidget);
+    expect(find.widgetWithText(Tab, en.projectViewKanban), findsOneWidget);
+    expect(selectedView(tester), en.projectViewList);
 
     await selectView(tester, 'Everything');
 
     expect(data.listPreferences.saves, ['remember 1 12']);
-    expect(
-      tester
-          .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Everything'))
-          .selected,
-      isTrue,
-    );
+    expect(selectedView(tester), 'Everything');
     // Without a filter the done tasks show below, the open child of the
     // done parent under it.
     expect(sectionTitles(tester), [en.projectTasksDoneSection]);
@@ -290,21 +400,16 @@ void main() {
     expect(data.tasks.projectListRefreshes, [(1, 12)]);
   });
 
-  testWidgets('switching views keeps the chips and the rows on screen while '
+  testWidgets('switching views keeps the tabs and the rows on screen while '
       'the other view loads', (tester) async {
     final semantics = tester.ensureSemantics();
     await pumpProject(tester);
 
-    await tester.tap(find.widgetWithText(ChoiceChip, 'Everything'));
+    await tester.tap(find.widgetWithText(Tab, 'Everything'));
     await tester.pump();
 
-    expect(find.byType(ChoiceChip), findsNWidgets(4));
-    expect(
-      tester
-          .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Everything'))
-          .selected,
-      isTrue,
-    );
+    expect(find.byType(Tab), findsNWidgets(4));
+    expect(selectedView(tester), 'Everything');
     expect(find.byType(LoadingPlaceholder), findsNothing);
     expect(find.byType(TaskRow), findsWidgets);
 
@@ -313,7 +418,7 @@ void main() {
     semantics.dispose();
   });
 
-  testWidgets('a view that fails to load keeps the switcher to go back', (
+  testWidgets('a view that fails to load keeps the tabs to go back', (
     tester,
   ) async {
     data.tasks.projectListErrors[13] = const ServerFailure(500);
@@ -322,12 +427,12 @@ void main() {
     await selectView(tester, 'Urgent');
     // Retried a while first; the other view's rows do not stand in.
     expect(find.byType(TaskRow), findsNothing);
-    expect(find.byType(ChoiceChip), findsNWidgets(4));
+    expect(find.byType(Tab), findsNWidgets(4));
     for (var i = 0; i < 12; i++) {
       await tester.pump(const Duration(seconds: 7));
     }
     expect(find.byType(DataFailureCard), findsOneWidget);
-    expect(find.byType(ChoiceChip), findsNWidgets(4));
+    expect(find.byType(Tab), findsNWidgets(4));
 
     await selectView(tester, en.projectViewList);
     expect(find.byType(DataFailureCard), findsNothing);
@@ -341,12 +446,7 @@ void main() {
     // Only the view shown downloads.
     expect(data.tasks.projectListRefreshes, [(1, 12)]);
 
-    expect(
-      tester
-          .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Everything'))
-          .selected,
-      isTrue,
-    );
+    expect(selectedView(tester), 'Everything');
     expect(sectionTitles(tester), [en.projectTasksDoneSection]);
   });
 
@@ -402,8 +502,8 @@ void main() {
       find.text(en.projectViewFilterNotice('priority >= 4', '3 minutes ago')),
       findsOneWidget,
     );
-    await openMenu(tester);
-    expect(find.text(en.projectTasksShowDone), findsNothing);
+    // Its filter decides about the done tasks.
+    expect(showDoneChip, findsNothing);
   });
 
   testWidgets('a download that finished after the last tick reads as now', (
@@ -554,6 +654,30 @@ void main() {
     expect(find.text('Done nine'), findsNothing);
   });
 
+  testWidgets('a row that stops being the last keeps its element, so its '
+      'state and focus', (tester) async {
+    await pumpProject(tester);
+    await toggleShowDone(tester);
+    Element orphan() => tester.element(
+      find.ancestor(of: find.text('Orphan'), matching: find.byType(TaskRow)),
+    );
+    final before = orphan();
+
+    data.tasks.all = [
+      ...tasks(),
+      sampleTask(
+        id: 10,
+        title: 'Done ten',
+        done: true,
+        doneAt: now.subtract(const Duration(days: 2)),
+      ),
+    ];
+    await tester.pumpAndSettle();
+
+    expect(rows(tester).last, ('Done ten', 0));
+    expect(identical(orphan(), before), isTrue);
+  });
+
   testWidgets('only a view that shows done tasks loads them', (tester) async {
     await pumpProject(tester);
     expect(data.tasks.projectListWatches.last, (1, 11, false));
@@ -583,13 +707,12 @@ void main() {
     ];
     await pumpProject(tester);
 
-    expect(find.byType(ChoiceChip), findsNothing);
+    expect(find.byType(TabBar), findsNothing);
     // No positions without a view: newest first.
     expect(rows(tester).first, ('Eight', 0));
     expect(data.tasks.projectListRefreshes, isEmpty);
 
-    await tester.tap(find.byTooltip(en.refresh));
-    await tester.pumpAndSettle();
+    await refreshFromMenu(tester);
     expect(data.tasks.projectListRefreshes, [(1, 0)]);
   });
 
@@ -622,7 +745,11 @@ void main() {
     useLocale(tester, const Locale('de'));
     await pumpProject(tester);
 
-    expect(find.widgetWithText(ChoiceChip, de.projectViewList), findsOneWidget);
+    expect(find.widgetWithText(Tab, de.projectViewList), findsOneWidget);
+    expect(
+      find.widgetWithText(FilterChip, de.projectShowDoneChip),
+      findsOneWidget,
+    );
     expect(
       find.byTooltip(de.projectSortCurrent(de.sortManual)),
       findsOneWidget,

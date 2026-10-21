@@ -13,6 +13,8 @@ import 'package:vikunja_mobile/features/account_settings/presentation/account_de
 import 'package:vikunja_mobile/features/account_settings/presentation/web_settings_page_opener.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/account_actions.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/accounts_section.dart';
+import 'package:vikunja_mobile/features/common/presentation/settings_section.dart';
+import 'package:vikunja_mobile/features/home/application/app_version.dart';
 import 'package:vikunja_mobile/features/home/presentation/account_header.dart';
 import 'package:vikunja_mobile/features/home/presentation/appearance_section.dart';
 import 'package:vikunja_mobile/features/home/presentation/pending_changes_line.dart';
@@ -28,9 +30,9 @@ import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
 import 'package:vikunja_mobile/features/sync/presentation/sync_progress_bar.dart';
 
 /// Who is signed in with the way to the account's settings on the server,
-/// a session that needs a new sign-in, the other accounts, the sync state
-/// with the changes still waiting for the server, what is set on this
-/// device only (notifications, colours), and sign-out.
+/// a session that needs a new sign-in, the other accounts, the server with
+/// the sync state and the changes still waiting for it, what is set on this
+/// device only (notifications, colours), sign-out and the app's version.
 class AccountTab extends ConsumerWidget {
   const new({super.key});
 
@@ -67,11 +69,15 @@ class AccountTab extends ConsumerWidget {
         (state) => state.value?.profile?.deletionScheduledAt,
       ),
     );
+    final connection = entry.connection;
+    final serverVersion =
+        connection.info.version?.display ?? connection.info.rawVersion;
     final signOutLabel = switch ((signingOut, accounts.accounts.length > 1)) {
       (true, _) => l10n.homeSigningOut,
       (false, true) => l10n.homeSignOutOfThisAccount,
       (false, false) => l10n.homeSignOut,
     };
+    const bannerPadding = EdgeInsets.fromLTRB(16, 8, 16, 8);
 
     return Scaffold(
       appBar: AppBar(
@@ -81,33 +87,35 @@ class AccountTab extends ConsumerWidget {
       body: SafeArea(
         top: false,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          padding: const EdgeInsets.only(top: 8, bottom: 24),
           children: [
             // During sign-out the logout's refresh can end the session,
             // which must not offer a sign-in racing the wipe.
-            if (entry.account.needsReauth && !signingOut) ...[
-              ReauthBanner(
-                serverRoot: entry.connection.rootUri,
-                isSigningIn: isSigningIn,
-                onSignInAgain: () => unawaited(
-                  ref
-                      .read(signInControllerProvider.notifier)
-                      .signInAgain(entry),
+            if (entry.account.needsReauth && !signingOut)
+              Padding(
+                padding: bannerPadding,
+                child: ReauthBanner(
+                  serverRoot: connection.rootUri,
+                  isSigningIn: isSigningIn,
+                  onSignInAgain: () => unawaited(
+                    ref
+                        .read(signInControllerProvider.notifier)
+                        .signInAgain(entry),
+                  ),
                 ),
               ),
-              const SizedBox(height: 16),
-            ],
-            if (signIn case SignInFailed(:final error, :final serverRoot)) ...[
-              ConnectionErrorCard(
-                message: describeSignInFailure(
-                  l10n,
-                  error,
-                  serverRoot: serverRoot,
-                  platform: theme.platform,
+            if (signIn case SignInFailed(:final error, :final serverRoot))
+              Padding(
+                padding: bannerPadding,
+                child: ConnectionErrorCard(
+                  message: describeSignInFailure(
+                    l10n,
+                    error,
+                    serverRoot: serverRoot,
+                    platform: theme.platform,
+                  ),
                 ),
               ),
-              const SizedBox(height: 16),
-            ],
             // The account being signed out must not be changed or read
             // again on the server.
             AccountHeader(
@@ -117,7 +125,7 @@ class AccountTab extends ConsumerWidget {
             if (deletionScheduledAt != null)
               DeletionScheduledNote(
                 scheduledAt: deletionScheduledAt,
-                padding: const EdgeInsets.only(top: 16),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                 // Cancelling needs the password, so the web's page does it
                 // (D14).
                 onCancel: () => unawaited(
@@ -129,9 +137,7 @@ class AccountTab extends ConsumerWidget {
                   ),
                 ),
               ),
-            const SizedBox(height: 8),
             ListTile(
-              contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.manage_accounts_outlined),
               title: Text(l10n.accountSettingsEntry),
               subtitle: Text(l10n.accountSettingsEntrySubtitle),
@@ -139,33 +145,47 @@ class AccountTab extends ConsumerWidget {
               enabled: !busy,
               onTap: () => _openSettings(context),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 8),
             AccountsSection(busy: busy),
-            const SizedBox(height: 24),
-            SyncStatusSection(entry: entry, signingOut: signingOut),
-            PendingChangesLine(
-              entry: entry,
-              canSend: !signingOut && !entry.account.needsReauth,
+            SettingsSection(
+              title: l10n.accountServerHeading,
+              children: [
+                if (serverVersion.isNotEmpty)
+                  ListTile(
+                    leading: const Icon(Icons.dns_outlined),
+                    title: Text(l10n.overviewVikunjaVersion(serverVersion)),
+                  ),
+                SyncStatusSection(entry: entry, signingOut: signingOut),
+                PendingChangesLine(
+                  entry: entry,
+                  canSend: !signingOut && !entry.account.needsReauth,
+                ),
+                SyncProblemsSection(entry: entry),
+              ],
             ),
-            SyncProblemsSection(entry: entry),
-            const SizedBox(height: 24),
-            const _OnThisDeviceHeading(),
-            const SizedBox(height: 16),
             NotificationsSection(entry: entry),
             const AppearanceSection(),
-            const SizedBox(height: 32),
-            OutlinedButton.icon(
-              onPressed: busy
-                  ? null
-                  : () => unawaited(_signOut(context, ref, entry)),
-              icon: signingOut
-                  ? const SizedBox.square(
-                      dimension: 18,
-                      child: CircularProgressIndicator.adaptive(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.logout),
-              label: Text(signOutLabel),
+            const SizedBox(height: 16),
+            Center(
+              child: OutlinedButton.icon(
+                onPressed: busy
+                    ? null
+                    : () => unawaited(_signOut(context, ref, entry)),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: theme.colorScheme.error,
+                ),
+                icon: signingOut
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator.adaptive(
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Icon(Icons.logout),
+                label: Text(signOutLabel),
+              ),
             ),
+            const _AppVersionLine(),
           ],
         ),
       ),
@@ -173,33 +193,25 @@ class AccountTab extends ConsumerWidget {
   }
 }
 
-/// Above the sections that stay on this phone, apart from the account's
-/// settings, which follow it to every device.
-class _OnThisDeviceHeading extends StatelessWidget {
+class _AppVersionLine extends ConsumerWidget {
   const new();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
     final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Semantics(
-          header: true,
-          child: Text(
-            l10n.onThisDeviceHeading,
-            style: theme.textTheme.titleLarge,
-          ),
+    final (:version, :build) = ref.watch(appVersionProvider);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Text(
+        build.isEmpty
+            ? l10n.accountAppVersionWithoutBuild(version)
+            : l10n.accountAppVersion(version, build),
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
         ),
-        const SizedBox(height: 4),
-        Text(
-          l10n.onThisDeviceSubtitle,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-      ],
+        textAlign: TextAlign.center,
+      ),
     );
   }
 }

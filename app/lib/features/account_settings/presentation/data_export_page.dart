@@ -11,6 +11,7 @@ import 'package:vikunja_mobile/core/repositories/account_security_repository_pro
 import 'package:vikunja_mobile/core/repositories/account_settings_repository_providers.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/account_settings/application/web_settings_pages.dart';
+import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_rows.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/security_list_body.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/web_settings_page_opener.dart';
 import 'package:vikunja_mobile/features/common/presentation/file_size_text.dart';
@@ -129,6 +130,7 @@ class _DataExportPageState extends ConsumerState<DataExportPage> {
                       action: FilledButton.icon(
                         onPressed: () =>
                             unawaited(_openWeb(WebSettingsPage.exportDownload)),
+                        style: inlineFilledButtonStyle(context),
                         icon: const Icon(Icons.open_in_new),
                         label: Text(l10n.dataExportDownload),
                       ),

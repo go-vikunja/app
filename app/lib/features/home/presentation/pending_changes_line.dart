@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_rows.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_message.dart';
 import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
 
@@ -63,56 +64,36 @@ class _PendingChangesLineState extends ConsumerState<PendingChangesLine> {
 
     final l10n = context.l10n;
     final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-    return Padding(
-      padding: const EdgeInsets.only(top: 16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return SettingsBlock(
+      icon: Icons.cloud_upload_outlined,
+      verticalPadding: 4,
+      iconTopPadding: 12,
+      // The button goes below the text when large text leaves no room.
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 8,
         children: [
           Padding(
-            padding: const EdgeInsets.only(top: 12),
-            child: ExcludeSemantics(
-              child: Icon(
-                Icons.cloud_upload_outlined,
-                color: colors.onSurfaceVariant,
-              ),
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Text(
+              l10n.accountPendingChanges(count),
+              style: theme.textTheme.bodyLarge,
             ),
           ),
-          const SizedBox(width: 12),
-          // The button goes below the text when large text leaves no room.
-          Expanded(
-            child: Wrap(
-              alignment: WrapAlignment.spaceBetween,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              spacing: 8,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  child: Text(
-                    l10n.accountPendingChanges(count),
-                    style: theme.textTheme.bodyLarge,
-                  ),
-                ),
-                if (sendable)
-                  TextButton.icon(
-                    onPressed: widget.canSend && !_sending
-                        ? () => unawaited(_send())
-                        : null,
-                    icon: _sending
-                        ? const SizedBox.square(
-                            dimension: 18,
-                            child: CircularProgressIndicator.adaptive(
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : const Icon(Icons.send_outlined),
-                    label: Text(
-                      _sending ? l10n.accountSending : l10n.accountSendNow,
-                    ),
-                  ),
-              ],
+          if (sendable)
+            TextButton.icon(
+              onPressed: widget.canSend && !_sending
+                  ? () => unawaited(_send())
+                  : null,
+              icon: _sending
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator.adaptive(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.send_outlined),
+              label: Text(_sending ? l10n.accountSending : l10n.accountSendNow),
             ),
-          ),
         ],
       ),
     );

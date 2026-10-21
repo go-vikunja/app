@@ -122,10 +122,15 @@ void main() {
     await pumpAccountTab(tester);
 
     double top(String text) => tester.getTopLeft(find.text(text)).dy;
-    final heading = top(en.onThisDeviceHeading);
-    expect(top(en.accountPendingChanges(2)), lessThan(heading));
-    expect(top(en.accountSyncProblems), lessThan(heading));
-    expect(top(en.notificationsHeading), greaterThan(heading));
+    final server = top(en.accountServerHeading);
+    final deviceOnly = top(en.notificationsHeading);
+    expect(
+      tester.getCenter(find.text(en.onThisDeviceHeading)).dy,
+      closeTo(tester.getCenter(find.text(en.notificationsHeading)).dy, 1),
+    );
+    for (final text in [en.accountPendingChanges(2), en.accountSyncProblems]) {
+      expect(top(text), allOf(greaterThan(server), lessThan(deviceOnly)));
+    }
   });
 
   testWidgets('"Send now" that cannot send says why', (tester) async {

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:material_ui/material_ui.dart';
@@ -10,17 +11,15 @@ import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
-import 'package:vikunja_mobile/features/accounts/presentation/account_switcher_button.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_note.dart';
-import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
 import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
-import 'package:vikunja_mobile/features/inbox/presentation/inbox_button.dart';
+import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/overview/application/due_date_groups.dart';
 import 'package:vikunja_mobile/features/overview/application/overview_tasks_provider.dart';
+import 'package:vikunja_mobile/features/overview/presentation/overview_header.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
-import 'package:vikunja_mobile/features/search/presentation/search_button.dart';
 import 'package:vikunja_mobile/features/sync/application/offline_state.dart';
 import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
 import 'package:vikunja_mobile/features/sync/presentation/sync_progress_bar.dart';
@@ -58,9 +57,14 @@ class _OverviewScreenState extends ConsumerState<OverviewScreen>
   Future<void>? startRefresh() =>
       ref.read(taskRepositoryProvider)?.refreshOpenTasks();
 
+  // Keeps the header, and the focus in it, between the loading and the
+  // list states.
+  final GlobalKey _headerKey = GlobalKey();
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final colors = Theme.of(context).colorScheme;
     final overview = ref.watch(overviewTasksProvider);
     final projects = ref.watch(projectsProvider).value ?? const <Project>[];
     final projectsById = {for (final project in projects) project.id: project};
@@ -69,47 +73,76 @@ class _OverviewScreenState extends ConsumerState<OverviewScreen>
     final pendingIds =
         ref.watch(pendingTaskIdsProvider).unwrapPrevious().value ?? const {};
     final offline = ref.watch(offlineProvider) != null;
+    Widget header({int? tasksLeft}) => OverviewHeader(
+      key: _headerKey,
+      now: now,
+      tasksLeft: tasksLeft,
+      onRefresh: refreshing ? null : () => unawaited(refresh()),
+    );
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.tabOverview),
-        actions: [
-          const SearchButton(),
-          RefreshButton(onPressed: refreshing ? null : refresh),
-          const InboxButton(),
-          const AccountSwitcherButton(),
-        ],
-        bottom: const SyncProgressBar(),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        // A page over the shell (the inbox, the edit page) finds the heroes
-        // of every tab's top route; the project screen's button would share
-        // the default tag.
-        heroTag: null,
-        onPressed: () => unawaited(showNewTaskSheet(context)),
-        icon: const Icon(Icons.add),
-        label: Text(l10n.newTask),
-      ),
-      body: buildRefreshable(
-        overview,
-        loadingLabel: l10n.overviewLoading,
-        builder: (value, notice) => _TaskSections(
-          overview: value,
-          sections: groupTasksByDueDate(withLeavingTasks(value.tasks), now),
-          projectsById: projectsById,
-          pendingIds: pendingIds,
-          now: now,
-          minimumPriority: minimumPriority,
-          offline: offline,
-          notice: notice,
-          onDoneChanged: (task, {required done}) =>
-              unawaited(setTaskDone(task, done: done)),
-          onFavoriteChanged: (task, {required favorite}) =>
-              unawaited(setTaskFavorite(task, favorite: favorite)),
+    // Without an app bar, the status bar's icons follow the screen's colour.
+    final overlayStyle =
+        ThemeData.estimateBrightnessForColor(colors.surface) == Brightness.dark
+        ? SystemUiOverlayStyle.light
+        : SystemUiOverlayStyle.dark;
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: overlayStyle.copyWith(statusBarColor: const Color(0x00000000)),
+      child: Scaffold(
+        floatingActionButton: FloatingActionButton.extended(
+          // A page over the shell (the inbox, the edit page) finds the
+          // heroes of every tab's top route; the project screen's button
+          // would share the default tag.
+          heroTag: null,
+          onPressed: () => unawaited(showNewTaskSheet(context)),
+          icon: const Icon(Icons.add),
+          label: Text(l10n.newTask),
+        ),
+        body: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              const SyncProgressBar(),
+              Expanded(
+                child: buildRefreshable(
+                  overview,
+                  loadingLabel: l10n.overviewLoading,
+                  header: header(),
+                  builder: (value, notice) {
+                    final sections = groupTasksByDueDate(
+                      withLeavingTasks(value.tasks),
+                      now,
+                    );
+                    return _TaskSections(
+                      overview: value,
+                      sections: sections,
+                      projectsById: projectsById,
+                      pendingIds: pendingIds,
+                      now: now,
+                      minimumPriority: minimumPriority,
+                      offline: offline,
+                      header: header(tasksLeft: _tasksLeftToday(sections)),
+                      notice: notice,
+                      onDoneChanged: (task, {required done}) =>
+                          unawaited(setTaskDone(task, done: done)),
+                      onFavoriteChanged: (task, {required favorite}) =>
+                          unawaited(setTaskFavorite(task, favorite: favorite)),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
+
+  static int _tasksLeftToday(List<DueSection> sections) => [
+    for (final section in sections)
+      if (section.group == DueGroup.overdue || section.group == DueGroup.today)
+        for (final task in section.tasks)
+          if (!task.done) task,
+  ].length;
 }
 
 class _TaskSections extends StatelessWidget {
@@ -121,6 +154,7 @@ class _TaskSections extends StatelessWidget {
     required this.now,
     required this.minimumPriority,
     required this.offline,
+    required this.header,
     required this.notice,
     required this.onDoneChanged,
     required this.onFavoriteChanged,
@@ -133,6 +167,9 @@ class _TaskSections extends StatelessWidget {
   final DateTime now;
   final int minimumPriority;
   final bool offline;
+
+  /// The search bar and the greeting, above the notes.
+  final Widget header;
   final Widget? notice;
   final void Function(Task task, {required bool done}) onDoneChanged;
   final void Function(Task task, {required bool favorite}) onFavoriteChanged;
@@ -146,7 +183,7 @@ class _TaskSections extends StatelessWidget {
         : projectDisplayTitle(l10n, filter.title, projectId: filter.projectId);
     final local = overview.filterEvaluation == FilterEvaluation.local;
     final loadedAt = local ? null : overview.filterLoadedAt;
-    final header = stackedNotes([
+    final notes = stackedNotes([
       ?notice,
       if (filter != null)
         ListNote(
@@ -164,6 +201,13 @@ class _TaskSections extends StatelessWidget {
                 ),
         ),
     ]);
+    final header = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        this.header,
+        if (notes != null) ...[const SizedBox(height: 16), notes],
+      ],
+    );
     if (sections.isEmpty) {
       return CenteredScrollView(
         header: header,
@@ -191,15 +235,14 @@ class _TaskSections extends StatelessWidget {
     return CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
-        if (header case final header?) NoticeSliver(notice: header),
-        for (final section in sections) ...[
-          SliverToBoxAdapter(
-            child: ListSectionHeader(
-              title: _sectionTitle(l10n, section.group),
-              count: section.tasks.length,
-            ),
-          ),
-          SliverList.builder(
+        NoticeSliver(notice: header),
+        for (final section in sections)
+          SliverSectionCard(
+            title: _sectionTitle(l10n, section.group),
+            count: section.tasks.length,
+            titleColor: section.group == DueGroup.overdue
+                ? Theme.of(context).colorScheme.error
+                : null,
             itemCount: section.tasks.length,
             itemBuilder: (context, index) {
               final task = section.tasks[index];
@@ -219,7 +262,6 @@ class _TaskSections extends StatelessWidget {
               );
             },
           ),
-        ],
         // Room for the floating action button below the last row.
         const SliverSafeArea(
           top: false,

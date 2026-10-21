@@ -333,6 +333,134 @@ final class BoardSourceFamily extends $Family
   String toString() => r'boardSourceProvider';
 }
 
+/// Stays loading while no account is signed in.
+
+@ProviderFor(projectProgress)
+final projectProgressProvider = ProjectProgressFamily._();
+
+/// Stays loading while no account is signed in.
+
+final class ProjectProgressProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<ProjectProgress>,
+          ProjectProgress,
+          Stream<ProjectProgress>
+        >
+    with $FutureModifier<ProjectProgress>, $StreamProvider<ProjectProgress> {
+  /// Stays loading while no account is signed in.
+  ProjectProgressProvider._({
+    required ProjectProgressFamily super.from,
+    required int super.argument,
+  }) : super(
+         retry: null,
+         name: r'projectProgressProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$projectProgressHash();
+
+  @override
+  String toString() {
+    return r'projectProgressProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $StreamProviderElement<ProjectProgress> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<ProjectProgress> create(Ref ref) {
+    final argument = this.argument as int;
+    return projectProgress(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is ProjectProgressProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$projectProgressHash() => r'6f6a7bbd9ed01a29a7d8c1dc1682c0da062b0496';
+
+/// Stays loading while no account is signed in.
+
+final class ProjectProgressFamily extends $Family
+    with $FunctionalFamilyOverride<Stream<ProjectProgress>, int> {
+  ProjectProgressFamily._()
+    : super(
+        retry: null,
+        name: r'projectProgressProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// Stays loading while no account is signed in.
+
+  ProjectProgressProvider call(int projectId) =>
+      ProjectProgressProvider._(argument: projectId, from: this);
+
+  @override
+  String toString() => r'projectProgressProvider';
+}
+
+/// Stays loading while no account is signed in.
+
+@ProviderFor(openTaskCounts)
+final openTaskCountsProvider = OpenTaskCountsProvider._();
+
+/// Stays loading while no account is signed in.
+
+final class OpenTaskCountsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<Map<int, int>>,
+          Map<int, int>,
+          Stream<Map<int, int>>
+        >
+    with $FutureModifier<Map<int, int>>, $StreamProvider<Map<int, int>> {
+  /// Stays loading while no account is signed in.
+  OpenTaskCountsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'openTaskCountsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$openTaskCountsHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<Map<int, int>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<Map<int, int>> create(Ref ref) {
+    return openTaskCounts(ref);
+  }
+}
+
+String _$openTaskCountsHash() => r'3f1e06006dde7a752827db5bce5097c3b457d44f';
+
 /// [listKey] from `listKeyFor`; the defaults while nobody is signed in.
 
 @ProviderFor(viewPreferences)

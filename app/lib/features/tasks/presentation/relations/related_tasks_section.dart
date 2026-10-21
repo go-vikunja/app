@@ -1,7 +1,9 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/tasks/application/relation_search.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/details/detail_section_header.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/relations/relation_row.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_formatting.dart';
 
@@ -41,7 +43,7 @@ class RelatedTasksSection extends StatelessWidget {
         DetailSectionHeader(title: l10n.taskDetailRelatedTasks),
         for (final (kind, others) in groups) ...[
           Padding(
-            padding: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsetsDirectional.fromSTEB(20, 4, 20, 4),
             child: Text(
               relationKindLabel(l10n, kind),
               style: theme.textTheme.labelMedium?.copyWith(
@@ -49,22 +51,32 @@ class RelatedTasksSection extends StatelessWidget {
               ),
             ),
           ),
-          for (final other in others)
-            RelationRow(
-              key: ValueKey((kind, other.id)),
-              task: other,
-              projectTitle: projectTitleOf?.call(other),
-              onOpen: () => onOpen(other),
-              onRemove: onRemove == null ? null : () => onRemove(kind, other),
-            ),
+          SectionCard(
+            children: [
+              for (final other in others)
+                RelationRow(
+                  key: ValueKey((kind, other.id)),
+                  task: other,
+                  projectTitle: projectTitleOf?.call(other),
+                  onOpen: () => onOpen(other),
+                  onRemove: onRemove == null
+                      ? null
+                      : () => onRemove(kind, other),
+                ),
+            ],
+          ),
+          const SizedBox(height: 4),
         ],
         if (onAdd case final onAdd?)
-          Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: TextButton.icon(
-              onPressed: onAdd,
-              icon: const Icon(Icons.add_link),
-              label: Text(l10n.taskDetailAddRelation),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton.icon(
+                onPressed: onAdd,
+                icon: const Icon(Icons.add_link),
+                label: Text(l10n.taskDetailAddRelation),
+              ),
             ),
           ),
       ],
@@ -95,14 +107,18 @@ class ParentTasksBlock extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         DetailSectionHeader(title: l10n.taskDetailParentTask),
-        for (final parent in parents)
-          RelationRow(
-            key: ValueKey(parent.id),
-            task: parent,
-            projectTitle: projectTitleOf?.call(parent),
-            onOpen: () => onOpen(parent),
-            onRemove: onRemove == null ? null : () => onRemove(parent),
-          ),
+        SectionCard(
+          children: [
+            for (final parent in parents)
+              RelationRow(
+                key: ValueKey(parent.id),
+                task: parent,
+                projectTitle: projectTitleOf?.call(parent),
+                onOpen: () => onOpen(parent),
+                onRemove: onRemove == null ? null : () => onRemove(parent),
+              ),
+          ],
+        ),
       ],
     );
   }

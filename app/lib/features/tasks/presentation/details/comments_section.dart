@@ -5,8 +5,10 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
+import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/common/presentation/user_avatar.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/comments_controller.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/details/detail_section_header.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/details_notice.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/reaction_chips.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
@@ -27,39 +29,67 @@ List<Widget> commentsSection({
   final authors = {
     for (final comment in state.comments) comment.id: comment.author,
   };
+  final comments = state.comments;
   return [
     _CommentsHeader(count: count, state: state, controller: controller),
     if (!state.shown)
-      Align(
-        alignment: AlignmentDirectional.centerStart,
-        child: _ShowCommentsButton(
-          onPressed: state.loading ? null : controller.show,
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: _ShowCommentsButton(
+            onPressed: state.loading ? null : controller.show,
+          ),
         ),
       ),
-    for (final comment in state.comments)
-      CommentTile(
+    for (final (index, comment) in comments.indexed)
+      Padding(
         key: ValueKey(('comment', comment.id)),
-        comment: comment,
-        onLink: onLink,
-        onTaskLink: onTaskLink,
-        projectId: projectId,
-        replyAuthorOf: (id) => authors[id],
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: SectionCardItem(
+          first: index == 0,
+          last: index == comments.length - 1,
+          child: CommentTile(
+            comment: comment,
+            onLink: onLink,
+            onTaskLink: onTaskLink,
+            projectId: projectId,
+            replyAuthorOf: (id) => authors[id],
+          ),
+        ),
       ),
     if (state.shown && state.loading && !state.hasMore)
-      const _CommentsLoading(),
+      const _Inset(child: _CommentsLoading()),
     if (state.shown && !state.loading && state.failure != null)
-      DetailsNotice(
-        text: (l10n) => commentsFailureText(l10n, state.failure!),
-        onRetry: () => unawaited(controller.retry()),
+      _Inset(
+        child: DetailsNotice(
+          text: (l10n) => commentsFailureText(l10n, state.failure!),
+          onRetry: () => unawaited(controller.retry()),
+        ),
       ),
     if (state.shown && state.failure == null && state.hasMore)
-      Align(
-        alignment: AlignmentDirectional.centerStart,
-        child: _MoreCommentsButton(
-          onPressed: state.loading ? null : controller.loadMore,
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: _MoreCommentsButton(
+            onPressed: state.loading ? null : controller.loadMore,
+          ),
         ),
       ),
   ];
+}
+
+class _Inset extends StatelessWidget {
+  const new({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 16),
+    child: child,
+  );
 }
 
 String commentsFailureText(AppLocalizations l10n, Object failure) =>
@@ -98,25 +128,10 @@ class _CommentsHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(top: 12),
-      child: Wrap(
-        alignment: WrapAlignment.spaceBetween,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        spacing: 8,
-        children: [
-          Semantics(
-            header: true,
-            child: Text(
-              l10n.taskDetailComments(count),
-              style: theme.textTheme.titleSmall?.copyWith(
-                color: theme.colorScheme.primary,
-              ),
-            ),
-          ),
-          if (state.shown)
-            Semantics(
+    return DetailSectionHeader(
+      title: l10n.taskDetailComments(count),
+      trailing: state.shown
+          ? Semantics(
               hint: l10n.commentsChangeOrder,
               child: TextButton.icon(
                 onPressed: () => unawaited(controller.toggleOrder()),
@@ -127,9 +142,8 @@ class _CommentsHeader extends StatelessWidget {
                       : l10n.commentsOldestFirst,
                 ),
               ),
-            ),
-        ],
-      ),
+            )
+          : null,
     );
   }
 }
@@ -250,7 +264,7 @@ class CommentTile extends ConsumerWidget {
         l10n.commentEdited(spoken(updated)),
     ].join(', ');
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

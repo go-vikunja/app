@@ -6,8 +6,8 @@ import 'package:vikunja_mobile/features/quick_add/presentation/magic_spans.dart'
 import 'package:vikunja_mobile/features/quick_add/presentation/magic_text_controller.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_formatting.dart';
 
-/// Buttons above the keyboard that type the mode's prefixes, a priority
-/// menu and the way to the syntax help.
+/// Assist chips above the keyboard that type the mode's prefixes, a
+/// priority menu and the way to the syntax help.
 class MagicToolbar extends StatelessWidget {
   const new({
     required this.prefixes,
@@ -26,13 +26,15 @@ class MagicToolbar extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
+      padding: const EdgeInsetsDirectional.only(end: 4),
       child: Row(
         children: [
           Expanded(
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
+              padding: const EdgeInsetsDirectional.only(start: 16, end: 8),
               child: Row(
+                spacing: 8,
                 children: [
                   _PrefixButton(
                     kind: MagicSpanKind.label,
@@ -113,18 +115,16 @@ class _PrefixButton extends StatelessWidget {
   final VoidCallback onPressed;
 
   @override
-  Widget build(BuildContext context) => Tooltip(
-    message: tooltip,
-    child: TextButton.icon(
-      icon: Icon(icon, color: MagicColors.accentOf(context, kind)),
-      // The tooltip names the button; the prefix only shows what it types.
-      label: ExcludeSemantics(
-        child: Text(
-          prefix,
-          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
-        ),
+  Widget build(BuildContext context) => ActionChip(
+    avatar: Icon(icon, color: MagicColors.accentOf(context, kind)),
+    // The tooltip names the chip; the prefix only shows what it types.
+    label: ExcludeSemantics(
+      child: Text(
+        prefix,
+        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
       ),
-      onPressed: onPressed,
     ),
+    tooltip: tooltip,
+    onPressed: onPressed,
   );
 }

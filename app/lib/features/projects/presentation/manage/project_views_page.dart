@@ -13,6 +13,7 @@ import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
+import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/projects/presentation/manage/project_change_failure.dart';
 import 'package:vikunja_mobile/features/projects/presentation/manage/project_confirmations.dart';
@@ -172,20 +173,24 @@ class _ProjectViewsPageState extends ConsumerState<ProjectViewsPage> {
                 ),
               ),
             ),
-            for (final (index, view) in views.indexed)
-              _ViewRow(
-                key: ValueKey(view.id),
-                view: view,
-                busy: _busyViewId == view.id,
-                enabled: !busy,
-                canMoveUp: planViewMove(views, view.id, index - 1) != null,
-                canMoveDown:
-                    index < views.length - 1 &&
-                    planViewMove(views, view.id, index + 1) != null,
-                canDelete: views.length > 1,
-                onTap: () => unawaited(_edit(view)),
-                onAction: (action) => _onAction(view, index, action),
-              ),
+            SectionCard(
+              children: [
+                for (final (index, view) in views.indexed)
+                  _ViewRow(
+                    key: ValueKey(view.id),
+                    view: view,
+                    busy: _busyViewId == view.id,
+                    enabled: !busy,
+                    canMoveUp: planViewMove(views, view.id, index - 1) != null,
+                    canMoveDown:
+                        index < views.length - 1 &&
+                        planViewMove(views, view.id, index + 1) != null,
+                    canDelete: views.length > 1,
+                    onTap: () => unawaited(_edit(view)),
+                    onAction: (action) => _onAction(view, index, action),
+                  ),
+              ],
+            ),
           ],
         ),
         (_, true) => CenteredScrollView(

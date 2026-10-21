@@ -384,10 +384,10 @@ class AttachmentIcon extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: colors.surfaceContainerHigh,
+        color: colors.secondaryContainer,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Icon(icon, color: colors.onSurfaceVariant),
+      child: Icon(icon, color: colors.onSecondaryContainer),
     );
   }
 }

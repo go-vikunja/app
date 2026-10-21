@@ -413,9 +413,9 @@ class _ApiTokenFormPageState extends ConsumerState<ApiTokenFormPage> {
               runSpacing: 4,
               children: [
                 for (final preset in ApiTokenPreset.values)
-                  OutlinedButton(
+                  ActionChip(
                     onPressed: enabled ? () => _applyPreset(preset) : null,
-                    child: Text(_presetLabel(l10n, preset)),
+                    label: Text(_presetLabel(l10n, preset)),
                   ),
               ],
             ),

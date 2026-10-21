@@ -19,8 +19,10 @@ import 'package:vikunja_mobile/features/attachments/application/attachment_provi
 import 'package:vikunja_mobile/features/attachments/application/queue_attachments.dart';
 import 'package:vikunja_mobile/features/attachments/presentation/attachment_messages.dart';
 import 'package:vikunja_mobile/features/attachments/presentation/attachment_source_items.dart';
+import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/confirm_dialog.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/attachment_row.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/details/detail_section_header.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/pending_upload_row.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/task_details_controller.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/rich_text/attachment_image_viewer.dart';
@@ -296,113 +298,88 @@ class _TaskAttachmentsSectionState
     final cover = widget.details?.coverImageAttachmentId ?? 0;
     final canDownload = attachments != null;
 
-    return Padding(
-      padding: const EdgeInsets.only(top: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _Heading(
-            onAdd: canChange && !_queueing
-                ? (source) => unawaited(_add(source))
-                : null,
-          ),
-          for (final upload in pending)
-            PendingUploadRow(
-              key: ValueKey(('upload', upload.operationId)),
-              upload: upload,
-              onCancel: () => unawaited(_cancel(upload)),
+    final rows = [
+      for (final upload in pending)
+        PendingUploadRow(
+          key: ValueKey(('upload', upload.operationId)),
+          upload: upload,
+          onCancel: () => unawaited(_cancel(upload)),
+        ),
+      for (final attachment in listed)
+        AttachmentRow(
+          key: ValueKey(('attachment', attachment.id)),
+          attachment: attachment,
+          isCover: attachment.id == cover,
+          busyStatus: switch (_busy[attachment.id]) {
+            _Busy.downloading => l10n.attachmentDownloading,
+            _Busy.deleting => l10n.attachmentDeleting,
+            _Busy.saving => l10n.attachmentSaving,
+            null => null,
+          },
+          onCancel: _busy[attachment.id] == _Busy.downloading
+              ? () => _cancelDownload(attachment)
+              : null,
+          onOpen: canDownload ? (origin) => _open(attachment, origin) : null,
+          actions: [
+            if (canDownload) ...[
+              AttachmentAction.open,
+              AttachmentAction.share,
+              AttachmentAction.save,
+            ],
+            if (canChange) ...[
+              if (attachment.id == cover)
+                AttachmentAction.removeCover
+              // Kanban cards draw the cover as an image, as on the web.
+              else if (canPreviewImage(attachment.name, attachment.mime))
+                AttachmentAction.makeCover,
+              AttachmentAction.delete,
+            ],
+          ],
+          onAction: (action, origin) => switch (action) {
+            AttachmentAction.open => _open(attachment, origin),
+            AttachmentAction.share => unawaited(_share(attachment, origin)),
+            AttachmentAction.save => unawaited(_save(attachment, origin)),
+            AttachmentAction.makeCover => unawaited(
+              _setCover(attachment, cover: true),
             ),
-          for (final attachment in listed)
-            AttachmentRow(
-              key: ValueKey(('attachment', attachment.id)),
-              attachment: attachment,
-              isCover: attachment.id == cover,
-              busyStatus: switch (_busy[attachment.id]) {
-                _Busy.downloading => l10n.attachmentDownloading,
-                _Busy.deleting => l10n.attachmentDeleting,
-                _Busy.saving => l10n.attachmentSaving,
-                null => null,
-              },
-              onCancel: _busy[attachment.id] == _Busy.downloading
-                  ? () => _cancelDownload(attachment)
-                  : null,
-              onOpen: canDownload
-                  ? (origin) => _open(attachment, origin)
-                  : null,
-              actions: [
-                if (canDownload) ...[
-                  AttachmentAction.open,
-                  AttachmentAction.share,
-                  AttachmentAction.save,
-                ],
-                if (canChange) ...[
-                  if (attachment.id == cover)
-                    AttachmentAction.removeCover
-                  // Kanban cards draw the cover as an image, as on the web.
-                  else if (canPreviewImage(attachment.name, attachment.mime))
-                    AttachmentAction.makeCover,
-                  AttachmentAction.delete,
-                ],
-              ],
-              onAction: (action, origin) => switch (action) {
-                AttachmentAction.open => _open(attachment, origin),
-                AttachmentAction.share => unawaited(_share(attachment, origin)),
-                AttachmentAction.save => unawaited(_save(attachment, origin)),
-                AttachmentAction.makeCover => unawaited(
-                  _setCover(attachment, cover: true),
-                ),
-                AttachmentAction.removeCover => unawaited(
-                  _setCover(attachment, cover: false),
-                ),
-                AttachmentAction.delete => unawaited(
-                  _delete(attachment, isCover: attachment.id == cover),
-                ),
-              },
+            AttachmentAction.removeCover => unawaited(
+              _setCover(attachment, cover: false),
             ),
-          if (_queueing)
-            Semantics(
+            AttachmentAction.delete => unawaited(
+              _delete(attachment, isCover: attachment.id == cover),
+            ),
+          },
+        ),
+    ];
+    final canAdd = canChange && !_queueing;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        DetailSectionHeader(
+          title: l10n.taskDetailAttachments,
+          actions: [
+            if (canAdd)
+              PopupMenuButton<AttachmentSource>(
+                tooltip: l10n.attachmentAdd,
+                icon: const Icon(Icons.add),
+                onSelected: (source) => unawaited(_add(source)),
+                itemBuilder: (context) =>
+                    attachmentSourceItems(l10n, AttachmentSource.values),
+              )
+            else
+              const SizedBox(height: kMinInteractiveDimension),
+          ],
+        ),
+        if (rows.isNotEmpty) SectionCard(children: rows),
+        if (_queueing)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: Semantics(
               label: l10n.attachmentAdd,
               child: const LinearProgressIndicator(),
             ),
-        ],
-      ),
-    );
-  }
-}
-
-/// The section's title with the menu of where to add files from.
-class _Heading extends StatelessWidget {
-  const new({required this.onAdd});
-
-  final ValueChanged<AttachmentSource>? onAdd;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final theme = Theme.of(context);
-    final heading = Semantics(
-      header: true,
-      child: Text(
-        l10n.taskDetailAttachments,
-        style: theme.textTheme.titleSmall?.copyWith(
-          color: theme.colorScheme.primary,
-        ),
-      ),
-    );
-    final onAdd = this.onAdd;
-    return Row(
-      children: [
-        Expanded(child: heading),
-        if (onAdd != null)
-          PopupMenuButton<AttachmentSource>(
-            tooltip: l10n.attachmentAdd,
-            icon: const Icon(Icons.add),
-            onSelected: onAdd,
-            itemBuilder: (context) =>
-                attachmentSourceItems(l10n, AttachmentSource.values),
-          )
-        else
-          const SizedBox(height: kMinInteractiveDimension),
+          ),
       ],
     );
   }

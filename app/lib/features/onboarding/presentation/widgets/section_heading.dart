@@ -14,7 +14,7 @@ class SectionHeading extends StatelessWidget {
         header: true,
         child: Text(
           text,
-          style: theme.textTheme.titleMedium?.copyWith(
+          style: theme.textTheme.titleSmall?.copyWith(
             color: theme.colorScheme.primary,
           ),
         ),

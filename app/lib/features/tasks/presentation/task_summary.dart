@@ -5,8 +5,8 @@ import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/theme/hex_color.dart';
 import 'package:vikunja_mobile/features/tasks/application/task_row_content.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
-import 'package:vikunja_mobile/features/tasks/presentation/task_chips.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_formatting.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/task_meta.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row_parts.dart';
 
 /// What a task row or a board card shows of a task, the web row's content,
@@ -15,8 +15,11 @@ import 'package:vikunja_mobile/features/tasks/presentation/task_row_parts.dart';
 final class TaskSummary {
   const new _({
     required this.task,
+    required this.identifier,
+    required this.projectTitle,
     required this.details,
     required this.dueText,
+    required this.dueTone,
     required this.spokenDue,
     required this.overdue,
     required this.showsPriority,
@@ -37,17 +40,18 @@ final class TaskSummary {
   }) {
     final due = task.dueDate;
     final dueText = due == null ? null : formatter.relative(due, now: now);
+    // A task not yet sent has no identifier until the server assigns one.
+    final identifier = task.id > 0 ? task.displayIdentifier : null;
     return TaskSummary._(
       task: task,
-      // A task not yet sent has no identifier until the server assigns one.
-      details: [
-        if (task.id > 0) task.displayIdentifier,
-        ?projectTitle,
-      ].join(' · '),
+      identifier: identifier,
+      projectTitle: projectTitle,
+      details: [?identifier, ?projectTitle].join(' · '),
       dueText: dueText,
+      dueTone: DueTone.of(task, now: now),
       spokenDue: due == null ? null : formatter.semanticsLabel(due) ?? dueText,
       overdue: task.isOverdue(now),
-      showsPriority: PriorityChip.showsOnRow(
+      showsPriority: PriorityFlag.showsOnRow(
         task,
         minimumPriority: minimumPriority,
       ),
@@ -60,10 +64,15 @@ final class TaskSummary {
   }
 
   final Task task;
+  final String? identifier;
 
-  /// The identifier and the project of a task from elsewhere, joined.
+  /// For a task from another project than the list's.
+  final String? projectTitle;
+
+  /// [identifier] and [projectTitle] joined, as screen readers hear them.
   final String details;
   final String? dueText;
+  final DueTone dueTone;
   final String? spokenDue;
   final bool overdue;
   final bool showsPriority;
@@ -109,14 +118,9 @@ class TaskProgressBar extends StatelessWidget {
   final double percentDone;
 
   @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return LinearProgressIndicator(
-      value: percentDone.clamp(0, 1),
-      minHeight: 4,
-      borderRadius: BorderRadius.circular(2),
-      color: colors.onSurfaceVariant,
-      backgroundColor: colors.surfaceContainerHighest,
-    );
-  }
+  Widget build(BuildContext context) => LinearProgressIndicator(
+    value: percentDone.clamp(0, 1),
+    minHeight: 4,
+    borderRadius: BorderRadius.circular(2),
+  );
 }

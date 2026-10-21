@@ -363,15 +363,6 @@
       }
     }
   },
-  "homeUsername": "@{username}",
-  "@homeUsername": {
-    "placeholders": {
-      "username": {
-        "type": "String",
-        "example": "alice"
-      }
-    }
-  },
   "homeSignOut": "Sign out",
   "homeSignOutOfThisAccount": "Sign out of this account",
   "homeSigningOut": "Signing out…",
@@ -732,10 +723,9 @@
   "@favouriteLabel": {
     "description": "Semantic label of the star shown on favourite projects and tasks."
   },
-  "projectTasksShowDone": "Show done tasks",
   "projectTasksLoading": "Loading tasks…",
   "projectTasksEmptyTitle": "No open tasks",
-  "projectTasksEmptyBody": "Everything in this project is done. Turn on “Show done tasks” to see them.",
+  "projectTasksEmptyBody": "Everything in this project is done. Turn on “Show done” to see them.",
   "projectTasksEmptyAllTitle": "No tasks",
   "projectTasksEmptyAllBody": "This project has no tasks yet.",
   "moreActions": "More",
@@ -1793,7 +1783,7 @@
   "inboxTitle": "Notifications",
   "inboxButton": "{count, plural, =0{Notifications} =1{Notifications, 1 unread} other{Notifications, {count} unread}}",
   "@inboxButton": {
-    "description": "Screen reader label of the bell in the Overview's app bar.",
+    "description": "Screen reader label of the bell on the Overview and of the notifications item in Upcoming's menu.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -4568,5 +4558,164 @@
   "dataExportNoneBody": "Request one below. An export is kept for seven days.",
   "dataExportRequest": "Request a new export",
   "dataExportRequestNote": "Opens the web in your browser. The server emails you when the export is ready, and this page shows it too.",
-  "dataExportDownload": "Download"
+  "dataExportDownload": "Download",
+  "overviewGreetingMorning": "Good morning, {name}",
+  "@overviewGreetingMorning": {
+    "description": "Headline of the Overview before noon.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Mara Keller"
+      }
+    }
+  },
+  "overviewGreetingAfternoon": "Good afternoon, {name}",
+  "@overviewGreetingAfternoon": {
+    "description": "Headline of the Overview from noon to 6 pm.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Mara Keller"
+      }
+    }
+  },
+  "overviewGreetingEvening": "Good evening, {name}",
+  "@overviewGreetingEvening": {
+    "description": "Headline of the Overview from 6 pm to 5 am.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Mara Keller"
+      }
+    }
+  },
+  "overviewTasksLeftToday": "{count, plural, =0{Nothing left for today} =1{1 task left for today} other{{count} tasks left for today}}",
+  "@overviewTasksLeftToday": {
+    "description": "Under the Overview's greeting: the open tasks it shows that are due today or overdue.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "decimalPattern",
+        "example": "2"
+      }
+    }
+  },
+  "upcomingSubtitle": "{range}, {dates} · {count, plural, =0{nothing open} =1{1 open} other{{count} open}}",
+  "@upcomingSubtitle": {
+    "description": "Under Upcoming's app bar: the date range's name, its days and how many open tasks are due in it.",
+    "placeholders": {
+      "range": {
+        "type": "String",
+        "example": "Next 7 Days"
+      },
+      "dates": {
+        "type": "String",
+        "example": "Oct 13 – Oct 20"
+      },
+      "count": {
+        "type": "int",
+        "format": "decimalPattern",
+        "example": "5"
+      }
+    }
+  },
+  "upcomingDaySemantics": "{day}, {count, plural, =0{nothing open} =1{1 open} other{{count} open}}",
+  "@upcomingDaySemantics": {
+    "description": "Screen reader label of a day in Upcoming's day strip.",
+    "placeholders": {
+      "day": {
+        "type": "String",
+        "example": "Wed, Oct 14"
+      },
+      "count": {
+        "type": "int",
+        "format": "decimalPattern",
+        "example": "2"
+      }
+    }
+  },
+  "upcomingShowDayHint": "Show only this day",
+  "@upcomingShowDayHint": {
+    "description": "Screen reader hint of a day in Upcoming's day strip that is not selected."
+  },
+  "upcomingShowRangeHint": "Show the whole range",
+  "@upcomingShowRangeHint": {
+    "description": "Screen reader hint of the selected day in Upcoming's day strip: another tap shows every day again."
+  },
+  "upcomingNothingPlanned": "Nothing planned",
+  "@upcomingNothingPlanned": {
+    "description": "Upcoming with one day picked in the day strip that has no open tasks."
+  },
+  "taskDetailMarkDone": "Mark as done",
+  "@taskDetailMarkDone": {
+    "description": "The detail sheet's full-width button that marks an open task done."
+  },
+  "taskDetailMarkNotDone": "Mark as not done",
+  "@taskDetailMarkNotDone": {
+    "description": "The detail sheet's full-width button that reopens a done task."
+  },
+  "taskDetailStatusOpen": "Open",
+  "@taskDetailStatusOpen": {
+    "description": "The status of a task that is not done, beside its project in the detail sheet."
+  },
+  "projectShowDoneChip": "Show done",
+  "@projectShowDoneChip": {
+    "description": "Filter chip under a project's view tabs that adds the done tasks to a list view."
+  },
+  "projectProgressDone": "{done} of {total} done",
+  "@projectProgressDone": {
+    "description": "Under a project's title: how many of the project's own tasks are done.",
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "projectProgressSemantics": "Project progress: {done} of {total} tasks done",
+  "@projectProgressSemantics": {
+    "description": "What screen readers say for the progress line under a project's title.",
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "accountHeaderEdit": "Edit",
+  "@accountHeaderEdit": {
+    "description": "Outlined button in the Account tab's profile header; opens the account settings."
+  },
+  "accountServerHeading": "Server",
+  "@accountServerHeading": {
+    "description": "Account tab section with the server's version, the sync status and the changes waiting for the server."
+  },
+  "accountAppVersion": "Rurana {version} ({build})",
+  "@accountAppVersion": {
+    "description": "The app's version line at the end of the Account tab.",
+    "placeholders": {
+      "version": {
+        "type": "String",
+        "example": "1.0.0"
+      },
+      "build": {
+        "type": "String",
+        "example": "42"
+      }
+    }
+  },
+  "accountAppVersionWithoutBuild": "Rurana {version}",
+  "@accountAppVersionWithoutBuild": {
+    "description": "The app's version line when the build number is unknown.",
+    "placeholders": {
+      "version": {
+        "type": "String",
+        "example": "1.0.0"
+      }
+    }
+  }
 }

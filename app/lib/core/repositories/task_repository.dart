@@ -80,6 +80,14 @@ abstract interface class TaskRepository {
   /// due date first (none last), then newest first: the Favorites list.
   Stream<List<Task>> watchFavoriteTasks();
 
+  /// How many of the project's own tasks there are and how many are done,
+  /// its subprojects' left out.
+  Stream<ProjectProgress> watchProjectProgress(int projectId);
+
+  /// By project id, how many open tasks each project holds itself;
+  /// projects without any are left out.
+  Stream<Map<int, int>> watchOpenTaskCounts();
+
   /// A saved filter's list ([pseudoProjectId] is -2 or lower): evaluated
   /// here from its stored definition, else its last download.
   Stream<SavedFilterTasks> watchSavedFilterTasks(int pseudoProjectId);

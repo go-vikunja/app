@@ -270,6 +270,14 @@ final class LocalTaskRepository
   Stream<List<Task>> watchFavoriteTasks() => _db.tasksDao.watchFavoriteTasks();
 
   @override
+  Stream<ProjectProgress> watchProjectProgress(int projectId) =>
+      _db.tasksDao.watchProjectProgress(projectId);
+
+  @override
+  Stream<Map<int, int>> watchOpenTaskCounts() =>
+      _db.tasksDao.watchOpenTaskCounts();
+
+  @override
   Stream<SavedFilterTasks> watchSavedFilterTasks(int pseudoProjectId) =>
       switchLatest(
         _savedFilterSelection(

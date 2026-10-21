@@ -16,8 +16,8 @@ import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
-import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
 import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
+import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/inbox/application/activity_sections.dart';
 import 'package:vikunja_mobile/features/inbox/application/inbox_providers.dart';
 import 'package:vikunja_mobile/features/inbox/presentation/inbox_row.dart';
@@ -182,11 +182,9 @@ class _InboxList extends StatelessWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
         if (notice case final notice?) NoticeSliver(notice: notice),
-        for (final section in sections) ...[
-          SliverToBoxAdapter(
-            child: ListSectionHeader(title: _dayTitle(l10n, section.day)),
-          ),
-          SliverList.builder(
+        for (final section in sections)
+          SliverSectionCard(
+            title: _dayTitle(l10n, section.day),
             itemCount: section.items.length,
             itemBuilder: (context, index) {
               final item = section.items[index];
@@ -198,7 +196,6 @@ class _InboxList extends StatelessWidget {
               );
             },
           ),
-        ],
         const SliverSafeArea(
           top: false,
           sliver: SliverToBoxAdapter(child: SizedBox(height: 16)),

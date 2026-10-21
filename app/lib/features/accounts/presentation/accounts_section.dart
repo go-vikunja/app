@@ -8,6 +8,7 @@ import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/features/accounts/application/account_switcher.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/account_actions.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/account_tile.dart';
+import 'package:vikunja_mobile/features/common/presentation/settings_section.dart';
 
 /// The accounts other than the active one, most recently active first: a
 /// tap switches, the menu removes one. Then Add account. Everything rests
@@ -20,7 +21,6 @@ class AccountsSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
-    final theme = Theme.of(context);
     final state = ref.watch(accountsProvider).value;
     final others = [
       for (final entry
@@ -28,35 +28,27 @@ class AccountsSection extends ConsumerWidget {
         if (entry.id != state?.activeAccountId) entry,
     ];
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return SettingsSection(
+      title: l10n.accountsHeading,
       children: [
-        Semantics(
-          header: true,
-          child: Text(
-            l10n.accountsHeading,
-            style: theme.textTheme.titleSmall?.copyWith(
-              color: theme.colorScheme.primary,
-            ),
-          ),
-        ),
-        const SizedBox(height: 4),
         for (final entry in others)
           AccountTile(
             key: ValueKey(entry.id),
             entry: entry,
-            contentPadding: EdgeInsets.zero,
             onTap: busy
                 ? null
                 : () => unawaited(switchToAccount(context, ref, entry)),
             trailing: _AccountMenu(entry: entry, enabled: !busy),
           ),
         ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: const SizedBox.square(
-            dimension: 40,
-            child: Icon(Icons.person_add_alt_1_outlined),
-          ),
+          // As wide as the accounts' avatars above it, so the titles line
+          // up; alone it lines up with the other sections' icons.
+          leading: others.isEmpty
+              ? const Icon(Icons.person_add_alt_1_outlined)
+              : const SizedBox.square(
+                  dimension: 40,
+                  child: Icon(Icons.person_add_alt_1_outlined),
+                ),
           title: Text(l10n.accountAdd),
           onTap: busy ? null : () => addAccount(context),
         ),

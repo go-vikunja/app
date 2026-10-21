@@ -972,6 +972,25 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
   Stream<List<Task>> watchFavoriteTasks() =>
       _replaying(() => _all, _changes.stream).map((_) => favoriteTasks);
 
+  @override
+  Stream<ProjectProgress> watchProjectProgress(int projectId) =>
+      _replaying(() => _all, _changes.stream).map((_) {
+        final own = _all.where((task) => task.projectId == projectId);
+        return (done: own.where((task) => task.done).length, total: own.length);
+      });
+
+  @override
+  Stream<Map<int, int>> watchOpenTaskCounts() =>
+      _replaying(() => _all, _changes.stream).map((_) {
+        final counts = <int, int>{};
+        for (final task in _all) {
+          if (!task.done) {
+            counts.update(task.projectId, (n) => n + 1, ifAbsent: () => 1);
+          }
+        }
+        return counts;
+      });
+
   /// Each saved filter's last download, by pseudo project id; its tasks
   /// that are in [all] and open show, like the local database's.
   Map<int, ListSnapshot> get savedFilterSnapshots =>

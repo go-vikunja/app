@@ -204,6 +204,7 @@ void main() {
     tester,
   ) async {
     await pumpPage(tester);
+    await scrollTo(tester, find.text(en.caldavTokensEmpty));
     expect(find.text(en.caldavTokensEmpty), findsOneWidget);
 
     await scrollTo(tester, find.text(en.caldavNewToken));

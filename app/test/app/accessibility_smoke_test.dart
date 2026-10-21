@@ -28,6 +28,7 @@ import 'package:vikunja_mobile/features/account_settings/presentation/one_time_s
 import 'package:vikunja_mobile/features/account_settings/presentation/sessions_page.dart';
 import 'package:vikunja_mobile/features/attachments/application/attachment_picker.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
+import 'package:vikunja_mobile/features/common/presentation/search_pill.dart';
 import 'package:vikunja_mobile/features/description_editor/application/editor_protocol.dart';
 import 'package:vikunja_mobile/features/description_editor/presentation/description_editor_page.dart';
 import 'package:vikunja_mobile/features/description_editor/presentation/editor_toolbar.dart';
@@ -59,6 +60,7 @@ import 'package:vikunja_mobile/features/tasks/presentation/pickers/assignee_pick
 import 'package:vikunja_mobile/features/tasks/presentation/relations/add_relation_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
+import 'package:vikunja_mobile/features/upcoming/presentation/day_strip.dart';
 import 'package:vikunja_mobile/features/upcoming/presentation/upcoming_screen.dart';
 
 import '../features/account_settings/avatar_fakes.dart';
@@ -98,17 +100,29 @@ void main() {
               .first,
         )
         .position;
-    for (var i = 0; i < 50 && position.extentAfter > 0; i++) {
+    for (var i = 0; i < 80 && position.extentAfter > 0; i++) {
       await tester.drag(scrollView, const Offset(0, -300));
       await tester.pumpAndSettle();
     }
     expect(position.extentAfter, 0);
   }
 
-  /// Taps the row's title at its start, clear of the floating action
-  /// button that may cover the row's end on a small screen.
+  /// Scrolls the row into view below the Overview's header and taps its
+  /// title at its start, clear of the floating action button that may
+  /// cover the row's end on a small screen.
   Future<void> tapRow(WidgetTester tester, String titleStart) async {
-    final title = find.textContaining(titleStart).first;
+    final title = find.textContaining(titleStart);
+    await tester.scrollUntilVisible(
+      title,
+      300,
+      scrollable: find
+          .descendant(
+            of: find.byType(CustomScrollView).first,
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await tester.pumpAndSettle();
     await tester.tapAt(tester.getTopLeft(title) + const Offset(4, 4));
     await tester.pumpAndSettle();
   }
@@ -1778,7 +1792,7 @@ void main() {
       );
       final l10n = lookupAppLocalizations(locale);
 
-      await tester.tap(find.byTooltip(l10n.search));
+      await tester.tap(find.byType(SearchPill));
       await tester.pumpAndSettle();
       expect(find.text(l10n.searchStartTitle), findsOneWidget);
       expect(tester.takeException(), isNull);
@@ -1941,7 +1955,7 @@ void main() {
       await scrollToEnd(tester, find.byType(CustomScrollView));
       expect(tester.takeException(), isNull);
 
-      // The range button scrolls with the rows.
+      // The day strip scrolls with the rows; today picked alone.
       tester
           .state<ScrollableState>(
             find
@@ -1954,7 +1968,17 @@ void main() {
           .position
           .jumpTo(0);
       await tester.pumpAndSettle();
-      await tester.tap(find.text(l10n.rangeRestOfThisMonth));
+      await tester.tap(
+        find
+            .descendant(
+              of: find.byType(DayStrip),
+              matching: find.byType(InkWell),
+            )
+            .first,
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.byTooltip(l10n.upcomingSelectRange));
       await tester.pumpAndSettle();
       await scrollToEnd(tester, find.byType(ListView).last);
       expect(tester.takeException(), isNull);
@@ -1974,7 +1998,7 @@ void main() {
 
       await openTab(tester, l10n.tabUpcoming);
 
-      // The range button scrolls with the rows rather than above them.
+      // The day strip scrolls with the rows rather than above them.
       final list = find.descendant(
         of: find.byType(UpcomingScreen),
         matching: find.byType(CustomScrollView),
@@ -1984,7 +2008,7 @@ void main() {
         greaterThanOrEqualTo(landscape.height * 0.5),
       );
       expect(
-        find.descendant(of: list, matching: find.byType(OutlinedButton)),
+        find.descendant(of: list, matching: find.byType(DayStrip)),
         findsOneWidget,
       );
       await scrollToEnd(tester, list);
@@ -2079,19 +2103,7 @@ void main() {
         expect(position.extentAfter, 0);
       }
 
-      containerOf(tester).read(appRouterProvider).go(AppRoutes.project(1));
-      await tester.pumpAndSettle();
-      await jumpToEnd();
-      expect(tester.takeException(), isNull);
-
-      await tester.tap(find.byIcon(Icons.sort));
-      await tester.pumpAndSettle();
-      await scrollToEnd(tester, find.byType(ListView).last);
-      expect(tester.takeException(), isNull);
-      await tester.tap(find.text(l10n.sortTitleAsc));
-      await tester.pumpAndSettle();
-
-      tester
+      void jumpToTop() => tester
           .state<ScrollableState>(
             find
                 .descendant(
@@ -2102,8 +2114,31 @@ void main() {
           )
           .position
           .jumpTo(0);
+
+      containerOf(tester).read(appRouterProvider).go(AppRoutes.project(1));
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(ChoiceChip, 'Filtered'));
+      await jumpToEnd();
+      expect(tester.takeException(), isNull);
+
+      // The sort chip is above the rows, beside Show done in a row that
+      // scrolls sideways.
+      jumpToTop();
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byIcon(Icons.sort));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.sort));
+      await tester.pumpAndSettle();
+      await scrollToEnd(tester, find.byType(ListView).last);
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.text(l10n.sortTitleAsc));
+      await tester.pumpAndSettle();
+
+      jumpToTop();
+      await tester.pumpAndSettle();
+      final filtered = find.widgetWithText(Tab, 'Filtered');
+      await tester.ensureVisible(filtered);
+      await tester.pumpAndSettle();
+      await tester.tap(filtered);
       await tester.pumpAndSettle();
       await jumpToEnd();
       expect(tester.takeException(), isNull);
@@ -2117,8 +2152,7 @@ void main() {
       await pumpSignedInApp(tester, sync: data);
 
       data.engine.onRefresh = () async => throw const ServerFailure(502);
-      await tester.tap(find.byTooltip(l10n.refresh));
-      await tester.pumpAndSettle();
+      await pullToRefresh(tester, find.byType(CustomScrollView));
       expect(find.byType(DataFailureCard), findsOneWidget);
       await scrollToEnd(tester, find.byType(CustomScrollView));
 
@@ -2138,8 +2172,7 @@ void main() {
       await tester.pumpAndSettle();
       data.engine.onRefresh = () async =>
           throw const NetworkFailure(NetworkProblem.unreachable);
-      await tester.tap(find.byTooltip(l10n.refresh));
-      await tester.pumpAndSettle();
+      await pullToRefresh(tester, find.byType(CustomScrollView));
       expect(
         find.textContaining(l10n.offlineNotice, findRichText: true),
         findsOneWidget,
@@ -2392,6 +2425,16 @@ void main() {
       expect(tester.takeException(), isNull);
 
       final upload = find.widgetWithText(ListTile, l10n.avatarProviderUpload);
+      await tester.scrollUntilVisible(
+        upload,
+        -100,
+        scrollable: find
+            .descendant(
+              of: find.byType(AvatarPage),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
       await Scrollable.ensureVisible(tester.element(upload), alignment: 0.5);
       await tester.pumpAndSettle();
       await tester.tap(upload);

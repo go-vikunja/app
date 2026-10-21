@@ -475,11 +475,6 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String homeUsername(String username) {
-    return '@$username';
-  }
-
-  @override
   String get homeSignOut => 'Abmelden';
 
   @override
@@ -866,9 +861,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String get favouriteLabel => 'Favorit';
 
   @override
-  String get projectTasksShowDone => 'Erledigte Aufgaben anzeigen';
-
-  @override
   String get projectTasksLoading => 'Aufgaben werden geladen …';
 
   @override
@@ -876,7 +868,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get projectTasksEmptyBody =>
-      'In diesem Projekt ist alles erledigt. Schalte „Erledigte Aufgaben anzeigen“ ein, um sie zu sehen.';
+      'In diesem Projekt ist alles erledigt. Schalte „Erledigte zeigen“ ein, um sie zu sehen.';
 
   @override
   String get projectTasksEmptyAllTitle => 'Keine Aufgaben';
@@ -5576,4 +5568,114 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get dataExportDownload => 'Herunterladen';
+
+  @override
+  String overviewGreetingMorning(String name) {
+    return 'Guten Morgen, $name';
+  }
+
+  @override
+  String overviewGreetingAfternoon(String name) {
+    return 'Guten Tag, $name';
+  }
+
+  @override
+  String overviewGreetingEvening(String name) {
+    return 'Guten Abend, $name';
+  }
+
+  @override
+  String overviewTasksLeftToday(int count) {
+    final intl.NumberFormat countNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String countString = countNumberFormat.format(count);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Noch $countString Aufgaben für heute',
+      one: 'Noch 1 Aufgabe für heute',
+      zero: 'Für heute ist nichts mehr offen',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String upcomingSubtitle(String range, String dates, int count) {
+    final intl.NumberFormat countNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String countString = countNumberFormat.format(count);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countString offen',
+      one: '1 offen',
+      zero: 'nichts offen',
+    );
+    return '$range, $dates · $_temp0';
+  }
+
+  @override
+  String upcomingDaySemantics(String day, int count) {
+    final intl.NumberFormat countNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String countString = countNumberFormat.format(count);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countString offen',
+      one: '1 offen',
+      zero: 'nichts offen',
+    );
+    return '$day, $_temp0';
+  }
+
+  @override
+  String get upcomingShowDayHint => 'Nur diesen Tag zeigen';
+
+  @override
+  String get upcomingShowRangeHint => 'Ganzen Zeitraum zeigen';
+
+  @override
+  String get upcomingNothingPlanned => 'Nichts geplant';
+
+  @override
+  String get taskDetailMarkDone => 'Als erledigt markieren';
+
+  @override
+  String get taskDetailMarkNotDone => 'Als nicht erledigt markieren';
+
+  @override
+  String get taskDetailStatusOpen => 'Offen';
+
+  @override
+  String get projectShowDoneChip => 'Erledigte zeigen';
+
+  @override
+  String projectProgressDone(int done, int total) {
+    return '$done von $total erledigt';
+  }
+
+  @override
+  String projectProgressSemantics(int done, int total) {
+    return 'Projektfortschritt: $done von $total Aufgaben erledigt';
+  }
+
+  @override
+  String get accountHeaderEdit => 'Bearbeiten';
+
+  @override
+  String get accountServerHeading => 'Server';
+
+  @override
+  String accountAppVersion(String version, String build) {
+    return 'Rurana $version ($build)';
+  }
+
+  @override
+  String accountAppVersionWithoutBuild(String version) {
+    return 'Rurana $version';
+  }
 }

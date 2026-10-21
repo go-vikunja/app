@@ -12,6 +12,7 @@ import 'package:vikunja_mobile/features/quick_add/presentation/magic_text_contro
 import 'package:vikunja_mobile/features/quick_add/presentation/magic_toolbar.dart';
 import 'package:vikunja_mobile/features/quick_add/presentation/quick_add_help_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/create/project_field.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/task_edit_page.dart';
 
 import '../../../helpers/pump_app.dart';
@@ -65,8 +66,13 @@ void main() {
   bool fieldFocused(WidgetTester tester) =>
       tester.widget<EditableText>(find.byType(EditableText)).focusNode.hasFocus;
 
-  Finder projectChip(String title) =>
-      find.ancestor(of: find.text(title), matching: find.byType(ActionChip));
+  Finder projectField(String title) =>
+      find.ancestor(of: find.text(title), matching: find.byType(ProjectField));
+
+  Finder pickDateChip() => find.ancestor(
+    of: find.text(en.newTaskPickDate),
+    matching: find.byType(ActionChip),
+  );
 
   Finder shortcutChip(String label) =>
       find.ancestor(of: find.text(label), matching: find.byType(ChoiceChip));
@@ -104,7 +110,7 @@ void main() {
       expect(marked.style?.fontWeight, FontWeight.w700);
       expect(chip(en.quickAddProjectNotFound('Nowhere')), findsOneWidget);
       expect(
-        tester.widget<ActionChip>(projectChip('Inbox')).onPressed,
+        tester.widget<ProjectField>(projectField('Inbox')).onPressed,
         isNotNull,
       );
     });
@@ -268,7 +274,7 @@ void main() {
 
       expect(composerText(tester), 'Fix fence +GB ');
       expect(chip('Garage Sale › Backlog'), findsOneWidget);
-      expect(projectChip('Garage Sale › Backlog'), findsOneWidget);
+      expect(projectField('Garage Sale › Backlog'), findsOneWidget);
     });
 
     testWidgets('a title several projects share without anything telling '
@@ -503,10 +509,7 @@ void main() {
       );
       expect(tomorrow.selected, isTrue);
       expect(tomorrow.onSelected, isNull);
-      expect(
-        tester.widget<ActionChip>(projectChip(en.newTaskPickDate)).onPressed,
-        isNull,
-      );
+      expect(tester.widget<ActionChip>(pickDateChip()).onPressed, isNull);
 
       await removeChip(
         tester,
@@ -518,15 +521,18 @@ void main() {
       expect(tomorrow.onSelected, isNotNull);
     });
 
-    testWidgets('a +project in the text shows on the project chip, which '
+    testWidgets('a +project in the text shows on the project field, which '
         'waits until it is removed', (tester) async {
       await harness.open(tester);
       await typeLine(tester, 'Plan +Work ');
 
-      expect(tester.widget<ActionChip>(projectChip('Work')).onPressed, isNull);
+      expect(
+        tester.widget<ProjectField>(projectField('Work')).onPressed,
+        isNull,
+      );
       await typeLine(tester, 'Plan');
       expect(
-        tester.widget<ActionChip>(projectChip('Inbox')).onPressed,
+        tester.widget<ProjectField>(projectField('Inbox')).onPressed,
         isNotNull,
       );
     });
@@ -542,7 +548,7 @@ void main() {
       expect(tomorrow.selected, isFalse);
       expect(tomorrow.onSelected, isNotNull);
       expect(
-        tester.widget<ActionChip>(projectChip('Inbox')).onPressed,
+        tester.widget<ProjectField>(projectField('Inbox')).onPressed,
         isNotNull,
       );
 
@@ -551,7 +557,10 @@ void main() {
         tester.widget<ChoiceChip>(shortcutChip(en.shortcutTomorrow)).onSelected,
         isNull,
       );
-      expect(tester.widget<ActionChip>(projectChip('Work')).onPressed, isNull);
+      expect(
+        tester.widget<ProjectField>(projectField('Work')).onPressed,
+        isNull,
+      );
     });
 
     testWidgets('the due chip goes to quick add for the lines without a '

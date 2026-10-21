@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/theme/app_theme.dart';
 import 'package:vikunja_mobile/features/quick_add/presentation/magic_spans.dart';
 import 'package:vikunja_mobile/features/quick_add/presentation/magic_text_controller.dart';
 
@@ -290,10 +291,7 @@ class _Code extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
         child: Text(
           text,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            fontFamily: 'monospace',
-            fontFamilyFallback: const ['Menlo', 'Roboto Mono', 'Courier'],
-          ),
+          style: theme.textTheme.bodyMedium?.merge(AppTheme.monospace),
         ),
       ),
     );

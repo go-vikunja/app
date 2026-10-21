@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 
 import '../../helpers/sample_data.dart';
 import '../../helpers/test_database.dart';
@@ -275,6 +276,52 @@ void main() {
       expect(await db.tasksDao.idsInProject(5), [1, 2, 3]);
     });
 
+    test(
+      "a project's progress counts its own tasks and the done ones",
+      () async {
+        expect(await db.tasksDao.watchProjectProgress(5).first, (
+          done: 1,
+          total: 3,
+        ));
+        expect(await db.tasksDao.watchProjectProgress(7).first, (
+          done: 0,
+          total: 0,
+        ));
+      },
+    );
+
+    test('the open tasks are counted per project', () async {
+      expect(await db.tasksDao.watchOpenTaskCounts().first, {5: 2, 6: 1});
+    });
+
+    test('the counts and the progress follow only writes that change them, '
+        'not every write to the tasks', () async {
+      final counts = <Map<int, int>>[];
+      final progress = <ProjectProgress>[];
+      final subscriptions = [
+        db.tasksDao.watchOpenTaskCounts().listen(counts.add),
+        db.tasksDao.watchProjectProgress(5).listen(progress.add),
+      ];
+      addTearDown(() async {
+        for (final subscription in subscriptions) {
+          await subscription.cancel();
+        }
+      });
+      await pumpEventQueue();
+
+      await upsert([sampleTask(id: 1, title: 'A renamed', projectId: 5)]);
+      await pumpEventQueue();
+      expect(counts, [
+        {5: 2, 6: 1},
+      ]);
+      expect(progress, [(done: 1, total: 3)]);
+
+      await upsert([sampleTask(id: 1, title: 'A', projectId: 5, done: true)]);
+      await pumpEventQueue();
+      expect(counts.last, {5: 1, 6: 1});
+      expect(progress.last, (done: 2, total: 3));
+    });
+
     test('finds several by id, unknown ids left out', () async {
       final found = await db.tasksDao.findAll([1, 3, 99]);
 
@@ -343,6 +390,18 @@ void main() {
 
       expect(open.map((t) => t.id), [dated, 2, second, first, 3, 1]);
       expect(project.map((t) => t.id), [dated, second, first, 2, 1]);
+    });
+
+    test('count in the progress and the open tasks, unlike a task queued '
+        'for deletion', () async {
+      await create(_tempTask);
+      await db.outboxDao.queueDelete(2, now: now);
+
+      expect(await db.tasksDao.watchProjectProgress(5).first, (
+        done: 0,
+        total: 2,
+      ));
+      expect(await db.tasksDao.watchOpenTaskCounts().first, {5: 2, 6: 1});
     });
 
     test('are left out of the counts, which mirror the server', () async {

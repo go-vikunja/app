@@ -7,6 +7,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/router/pushed_pages.dart';
+import 'package:vikunja_mobile/app/theme/hex_color.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/text/html_to_text.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
@@ -14,6 +15,7 @@ import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
+import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
 import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
@@ -212,9 +214,7 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
                 ? null
                 : () => unawaited(_editDescription()),
             titleController: _title,
-            projectTitle: ref
-                .watch(projectByIdProvider(draft.projectId))
-                ?.displayTitle(l10n),
+            project: ref.watch(projectByIdProvider(draft.projectId)),
             onChanged: _update,
             onPickProject: () => unawaited(_pickProject()),
             onPickLabels: () => unawaited(_pickLabels()),
@@ -243,7 +243,7 @@ class _Form extends ConsumerWidget {
     required this.description,
     required this.onEditDescription,
     required this.titleController,
-    required this.projectTitle,
+    required this.project,
     required this.onChanged,
     required this.onPickProject,
     required this.onPickLabels,
@@ -257,7 +257,7 @@ class _Form extends ConsumerWidget {
   final String description;
   final VoidCallback? onEditDescription;
   final TextEditingController titleController;
-  final String? projectTitle;
+  final Project? project;
   final void Function(TaskDraft Function(TaskDraft draft) change) onChanged;
   final VoidCallback onPickProject;
   final VoidCallback onPickLabels;
@@ -273,6 +273,7 @@ class _Form extends ConsumerWidget {
     final shortcuts = buildDateShortcuts(now);
     final percent = (draft.percentDone * 100).round();
     final descriptionText = htmlToPlainText(description);
+    final projectColor = parseHexColor(project?.hexColor ?? '');
 
     return ListView(
       padding: const EdgeInsets.only(top: 8, bottom: 32),
@@ -297,9 +298,14 @@ class _Form extends ConsumerWidget {
         ),
         const SizedBox(height: 8),
         ListTile(
-          leading: Icon(Icons.folder_outlined, color: colors.onSurfaceVariant),
+          leading: Icon(
+            Icons.folder_outlined,
+            color: projectColor ?? colors.onSurfaceVariant,
+          ),
           title: Text(l10n.taskEditProject),
-          subtitle: Text(projectTitle ?? l10n.projectUnknownTitle),
+          subtitle: Text(
+            project?.displayTitle(l10n) ?? l10n.projectUnknownTitle,
+          ),
           trailing: const Icon(Icons.arrow_drop_down),
           onTap: onPickProject,
         ),
@@ -353,7 +359,7 @@ class _Form extends ConsumerWidget {
         DateField(
           label: l10n.taskDetailDueDate,
           clearLabel: l10n.taskEditClearDueDate,
-          icon: Icons.event,
+          icon: Icons.event_outlined,
           value: draft.dueDate,
           now: now,
           shortcuts: shortcuts,
@@ -447,19 +453,8 @@ class _SectionTitle extends StatelessWidget {
   final String text;
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-      child: Semantics(
-        header: true,
-        child: Text(
-          text,
-          style: theme.textTheme.titleSmall?.copyWith(
-            color: theme.colorScheme.primary,
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => ListSectionHeader(
+    title: text,
+    padding: const EdgeInsetsDirectional.fromSTEB(16, 16, 16, 4),
+  );
 }

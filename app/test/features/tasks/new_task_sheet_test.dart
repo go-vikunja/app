@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/create/project_field.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/task_edit_page.dart';
 
 import '../../helpers/pump_app.dart';
@@ -32,10 +33,10 @@ void main() {
   bool addEnabled(WidgetTester tester) =>
       tester.widget<FilledButton>(addButton()).onPressed != null;
 
-  Finder projectChip(String title) =>
-      find.ancestor(of: find.text(title), matching: find.byType(ActionChip));
+  Finder projectField(String title) =>
+      find.ancestor(of: find.text(title), matching: find.byType(ProjectField));
 
-  testWidgets('the overview has an extended FAB, a project a plain one', (
+  testWidgets('the overview and a project have an extended FAB', (
     tester,
   ) async {
     await harness.pumpApp(tester);
@@ -46,11 +47,10 @@ void main() {
 
     routerOf(tester).go(AppRoutes.project(1));
     await tester.pumpAndSettle();
-    final fab = tester.widget<FloatingActionButton>(
-      find.byType(FloatingActionButton),
+    expect(
+      find.widgetWithText(FloatingActionButton, en.newTask),
+      findsOneWidget,
     );
-    expect(fab.tooltip, en.newTask);
-    expect(fab.isExtended, isFalse);
   });
 
   testWidgets('opens with the title focused, Add disabled until typed, and '
@@ -59,7 +59,7 @@ void main() {
 
     expect(tester.widget<TextField>(composerField()).autofocus, isTrue);
     expect(addEnabled(tester), isFalse);
-    expect(projectChip('Inbox'), findsOneWidget);
+    expect(projectField('Inbox'), findsOneWidget);
     for (final label in [
       en.shortcutToday,
       en.shortcutTomorrow,
@@ -86,21 +86,21 @@ void main() {
   testWidgets('a project list preselects its own project', (tester) async {
     await harness.open(tester, projectId: 3);
 
-    expect(projectChip('Garage Sale'), findsOneWidget);
+    expect(projectField('Garage Sale'), findsOneWidget);
   });
 
   testWidgets("the user's default project comes before the Inbox, the "
       "list's own project before both", (tester) async {
     harness.settings = const UserSettings(defaultProjectId: 3);
     await harness.open(tester);
-    expect(projectChip('Garage Sale'), findsOneWidget);
+    expect(projectField('Garage Sale'), findsOneWidget);
 
     await tester.tapAt(const Offset(10, 10));
     await tester.pumpAndSettle();
     routerOf(tester).go(AppRoutes.project(1));
     await tester.pumpAndSettle();
     await openSheet(tester);
-    expect(projectChip('Work'), findsOneWidget);
+    expect(projectField('Work'), findsOneWidget);
   });
 
   testWidgets('without an Inbox the first project of the tree is used', (
@@ -112,7 +112,7 @@ void main() {
     ];
     await harness.open(tester);
 
-    expect(projectChip('Alpha'), findsOneWidget);
+    expect(projectField('Alpha'), findsOneWidget);
   });
 
   testWidgets('Add hands the text to quick add with the project, dates the '
@@ -183,15 +183,15 @@ void main() {
     expect(find.byType(NewTaskSheet), findsOneWidget);
   });
 
-  testWidgets('the project chip opens the picker', (tester) async {
+  testWidgets('the project field opens the picker', (tester) async {
     await harness.open(tester);
 
-    await tester.tap(projectChip('Inbox'));
+    await tester.tap(projectField('Inbox'));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(ListTile, 'Garage Sale'));
     await tester.pumpAndSettle();
 
-    expect(projectChip('Garage Sale'), findsOneWidget);
+    expect(projectField('Garage Sale'), findsOneWidget);
     await typeLine(tester, 'Moved');
     await tester.tap(addButton());
     await tester.pumpAndSettle();

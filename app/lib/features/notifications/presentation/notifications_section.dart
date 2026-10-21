@@ -10,6 +10,8 @@ import 'package:vikunja_mobile/core/notifications/notification_actions.dart';
 import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
 import 'package:vikunja_mobile/core/notifications/notification_preferences.dart';
 import 'package:vikunja_mobile/core/notifications/notification_providers.dart';
+import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_rows.dart';
+import 'package:vikunja_mobile/features/common/presentation/settings_section.dart';
 import 'package:vikunja_mobile/features/notifications/application/account_notification_preferences.dart';
 import 'package:vikunja_mobile/features/notifications/application/notification_providers.dart';
 import 'package:vikunja_mobile/features/notifications/application/os_notification_capabilities.dart';
@@ -93,18 +95,16 @@ class NotificationsSection extends ConsumerWidget {
       color: colors.onSurfaceVariant,
     );
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return SettingsSection(
+      title: l10n.notificationsHeading,
+      trailing: const OnThisDeviceMark(),
       children: [
-        Semantics(
-          header: true,
-          child: Text(
-            l10n.notificationsHeading,
-            style: theme.textTheme.titleSmall?.copyWith(color: colors.primary),
-          ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+          child: Text(l10n.onThisDeviceSubtitle, style: secondary),
         ),
         SwitchListTile.adaptive(
-          contentPadding: EdgeInsets.zero,
+          secondary: const Icon(Icons.alarm_outlined),
           title: Text(l10n.notificationsReminders),
           subtitle: Text(l10n.notificationsRemindersSubtitle),
           value: preferences.reminders,
@@ -112,7 +112,7 @@ class NotificationsSection extends ConsumerWidget {
               unawaited(_write(ref, preferences.copyWith(reminders: value))),
         ),
         SwitchListTile.adaptive(
-          contentPadding: EdgeInsets.zero,
+          secondary: const Icon(Icons.event_outlined),
           title: Text(l10n.notificationsDueDates),
           subtitle: Text(l10n.notificationsDueDatesSubtitle),
           value: preferences.dueDates,
@@ -120,7 +120,7 @@ class NotificationsSection extends ConsumerWidget {
               unawaited(_write(ref, preferences.copyWith(dueDates: value))),
         ),
         SwitchListTile.adaptive(
-          contentPadding: EdgeInsets.zero,
+          secondary: const Icon(Icons.forum_outlined),
           title: Text(l10n.notificationsActivity),
           subtitle: Text(l10n.notificationsActivitySubtitle),
           value: preferences.activity,
@@ -170,22 +170,14 @@ class NotificationsSection extends ConsumerWidget {
               child: Text(l10n.notificationsAllowExactAlarms),
             ),
           ),
-        if (scheduled != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Text(
-              l10n.notificationsScheduled(scheduled),
-              style: secondary,
-            ),
-          ),
-        const SizedBox(height: 8),
-        Align(
-          alignment: AlignmentDirectional.centerStart,
-          child: TextButton.icon(
-            onPressed: granted ? () => unawaited(_sendTest(ref, l10n)) : null,
-            icon: const Icon(Icons.notification_add_outlined),
-            label: Text(l10n.notificationsSendTest),
-          ),
+        ListTile(
+          leading: const Icon(Icons.notification_add_outlined),
+          title: Text(l10n.notificationsSendTest),
+          subtitle: scheduled == null
+              ? null
+              : Text(l10n.notificationsScheduled(scheduled)),
+          enabled: granted,
+          onTap: () => unawaited(_sendTest(ref, l10n)),
         ),
       ],
     );
@@ -202,32 +194,22 @@ class _StatusLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return SettingsBlock(
+      icon: icon,
+      iconColor: theme.colorScheme.error,
+      verticalPadding: 4,
+      iconTopPadding: 12,
+      // The button goes below the text when large text leaves no room.
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 8,
         children: [
           Padding(
-            padding: const EdgeInsets.only(top: 10),
-            child: ExcludeSemantics(child: Icon(icon, color: colors.error)),
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Text(text, style: theme.textTheme.bodyLarge),
           ),
-          const SizedBox(width: 12),
-          // The button goes below the text when large text leaves no room.
-          Expanded(
-            child: Wrap(
-              alignment: WrapAlignment.spaceBetween,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              spacing: 8,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  child: Text(text, style: theme.textTheme.bodyLarge),
-                ),
-                action,
-              ],
-            ),
-          ),
+          action,
         ],
       ),
     );

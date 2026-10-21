@@ -32,7 +32,7 @@ class PendingUploadRow extends StatelessWidget {
     };
     final row = MergeSemantics(
       child: ListTile(
-        contentPadding: EdgeInsets.zero,
+        contentPadding: const EdgeInsetsDirectional.only(start: 12),
         leading: ExcludeSemantics(
           child: AttachmentIcon(
             icon: attachmentIconFor(upload.fileName, upload.mimeType ?? ''),
@@ -58,10 +58,13 @@ class PendingUploadRow extends StatelessWidget {
     return Row(
       children: [
         Expanded(child: row),
-        IconButton(
-          onPressed: onCancel,
-          tooltip: l10n.attachmentCancelUpload(upload.fileName),
-          icon: const Icon(Icons.close),
+        Padding(
+          padding: const EdgeInsetsDirectional.only(end: 4),
+          child: IconButton(
+            onPressed: onCancel,
+            tooltip: l10n.attachmentCancelUpload(upload.fileName),
+            icon: const Icon(Icons.close),
+          ),
         ),
       ],
     );

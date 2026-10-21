@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/features/common/presentation/count_badge.dart';
 import 'package:vikunja_mobile/features/projects/application/board_moves.dart';
 
 /// One column of a kanban board: the bucket's title, done marker, count and
@@ -165,8 +166,8 @@ class BoardColumnViewState extends State<BoardColumnView> {
     return SizedBox(
       width: widget.width,
       child: Material(
-        color: colors.surfaceContainer,
-        borderRadius: BorderRadius.circular(16),
+        color: colors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(12),
         clipBehavior: Clip.antiAlias,
         child: NotificationListener<ScrollNotification>(
           onNotification: _onScroll,
@@ -177,7 +178,7 @@ class BoardColumnViewState extends State<BoardColumnView> {
               PinnedHeaderSliver(
                 child: ColoredBox(
                   key: _header,
-                  color: colors.surfaceContainer,
+                  color: colors.surfaceContainerLow,
                   child: _ColumnHeader(
                     bucket: column.bucket,
                     count: column.shownCount,
@@ -291,16 +292,14 @@ class _ColumnHeader extends StatelessWidget {
               ),
               const SizedBox(width: 6),
             ],
-            Expanded(
+            Flexible(
               child: Text(bucket.title, style: theme.textTheme.titleSmall),
             ),
             const SizedBox(width: 8),
-            Text(
-              limited ? '$count/${bucket.limit}' : '$count',
-              style: theme.textTheme.labelLarge?.copyWith(
-                color: full ? colors.error : colors.onSurfaceVariant,
-                fontWeight: full ? FontWeight.w700 : null,
-              ),
+            CountBadge(
+              count: count,
+              limit: limited ? bucket.limit : null,
+              alert: full,
             ),
           ],
         ),
@@ -309,19 +308,20 @@ class _ColumnHeader extends StatelessWidget {
     final menu = this.menu;
     if (menu == null) {
       return Padding(
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: heading,
       );
     }
-    // The button's own padding stands in for the header's at its end.
+    // The button's own padding stands in for the header's at its end; at
+    // the top, where a short column keeps it in sight under a long title.
     return Padding(
-      padding: const EdgeInsetsDirectional.only(start: 12),
+      padding: const EdgeInsetsDirectional.only(start: 16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.only(top: 12, bottom: 8),
+              padding: const EdgeInsets.symmetric(vertical: 14),
               child: heading,
             ),
           ),

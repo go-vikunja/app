@@ -16,7 +16,7 @@ class SignInMethodsSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SectionHeading(l10n.signInMethodsHeading),
-        Card.outlined(
+        Card(
           clipBehavior: Clip.antiAlias,
           child: ListTile(
             leading: const Icon(Icons.open_in_browser),

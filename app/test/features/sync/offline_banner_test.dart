@@ -112,7 +112,7 @@ void main() {
     await goOffline(tester);
 
     final banner = tester.getRect(find.byType(OfflineBanner));
-    expect(banner.left, tester.getRect(find.byType(NavigationRail)).right + 1);
+    expect(banner.left, tester.getRect(find.byType(NavigationRail)).right);
     expect(banner.right, 800);
     expect(banner.bottom, 600);
   });
@@ -205,8 +205,7 @@ void main() {
     await pumpSignedInApp(tester, sync: data, now: now);
     data.engine.onRefresh = () async => throw unreachable;
 
-    await tester.tap(find.byTooltip(en.refresh));
-    await tester.pumpAndSettle();
+    await pullToRefresh(tester, find.byType(CustomScrollView));
     expect(bannerText, findsOneWidget);
 
     await tester.tap(find.byType(OfflineBanner));

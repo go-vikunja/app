@@ -231,7 +231,9 @@ void main() {
       expect(inSheet(find.text(en.taskDuplicated)), findsOneWidget);
       expect(inSheet(find.text(en.taskRelationCopiedTo)), findsOneWidget);
 
-      await tester.tap(inSheet(find.text(en.taskDuplicateOpen)));
+      await tester.tap(
+        inSheet(find.widgetWithText(SnackBarAction, en.taskDuplicateOpen)),
+      );
       await tester.pumpAndSettle();
 
       expect(find.byType(TaskDetailSheet), findsNWidgets(2));

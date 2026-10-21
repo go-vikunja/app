@@ -90,11 +90,16 @@ class ProjectListBody extends StatefulWidget {
 }
 
 class _ProjectListBodyState extends State<ProjectListBody> {
+  static const _divider = Divider(height: 1);
+
   final GlobalKey _openRowsKey = GlobalKey();
   final _slots = <int, BuildContext>{};
   late final _edgeScroller = DragEdgeScroller(onScrolled: _followPointer);
 
   List<ListGroup> _groups = const [];
+
+  /// For every row alike, set with the list's width in [build].
+  bool _identifiersLead = false;
   int? _held;
   Offset? _pointer;
   int? _dropIndex;
@@ -244,35 +249,43 @@ class _ProjectListBodyState extends State<ProjectListBody> {
         : const [];
     final doneRows = model.doneRows ?? const [];
     return LayoutBuilder(
-      builder: (context, constraints) => DragTarget<_RowDrag>(
-        onWillAcceptWithDetails: (_) => widget.onReorder != null,
-        onAcceptWithDetails: (details) => _drop(details.data.task),
-        onLeave: (_) => _setDropIndex(null),
-        builder: (context, _, _) => CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            if (widget.header case final header?) NoticeSliver(notice: header),
-            if (reorderable)
-              _groupList(width: constraints.maxWidth)
-            else
-              _rows(model.rows, key: _openRowsKey),
-            if (doneRows.isNotEmpty) ...[
-              SliverToBoxAdapter(
-                child: ListSectionHeader(
-                  title: l10n.projectTasksDoneSection,
-                  count: doneRows.where((row) => row.depth == 0).length,
+      builder: (context, constraints) {
+        _identifiersLead = TaskRow.identifiersFitBeforeTitle(
+          context,
+          [...model.rows, ...doneRows].map((row) => row.task),
+          rowWidth: constraints.maxWidth,
+        );
+        return DragTarget<_RowDrag>(
+          onWillAcceptWithDetails: (_) => widget.onReorder != null,
+          onAcceptWithDetails: (details) => _drop(details.data.task),
+          onLeave: (_) => _setDropIndex(null),
+          builder: (context, _, _) => CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              if (widget.header case final header?)
+                NoticeSliver(notice: header),
+              if (reorderable)
+                _groupList(width: constraints.maxWidth)
+              else
+                _rows(model.rows, key: _openRowsKey),
+              if (doneRows.isNotEmpty) ...[
+                SliverToBoxAdapter(
+                  child: ListSectionHeader(
+                    title: l10n.projectTasksDoneSection,
+                    count: doneRows.where((row) => row.depth == 0).length,
+                  ),
                 ),
+                _rows(doneRows),
+              ],
+              // Room for the floating action button below the last row.
+              const SliverSafeArea(
+                top: false,
+                sliver: SliverToBoxAdapter(child: SizedBox(height: 88)),
               ),
-              _rows(doneRows),
             ],
-            // Room for the floating action button below the last row.
-            const SliverSafeArea(
-              top: false,
-              sliver: SliverToBoxAdapter(child: SizedBox(height: 88)),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -337,8 +350,11 @@ class _ProjectListBodyState extends State<ProjectListBody> {
                 onDragEnd: (_) => _endDrag(),
                 child: LiftableRow(liftable: movable, child: top),
               ),
-              for (final (i, row) in group.rows.indexed.skip(1))
+              for (final (i, row) in group.rows.indexed.skip(1)) ...[
+                _divider,
                 _row(context, row, key: keys[i]),
+              ],
+              if (index < groups.length - 1) _divider,
             ],
           ),
         );
@@ -367,8 +383,16 @@ class _ProjectListBodyState extends State<ProjectListBody> {
     return SliverList.builder(
       key: key,
       itemCount: rows.length,
-      itemBuilder: (context, index) =>
+      // The last row is wrapped too: a row that stops being the last
+      // keeps its key, its place and so its state.
+      itemBuilder: (context, index) => Column(
+        key: ValueKey(('divided', keys[index])),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
           _row(context, rows[index], key: keys[index]),
+          if (index < rows.length - 1) _divider,
+        ],
+      ),
     );
   }
 
@@ -390,6 +414,7 @@ class _ProjectListBodyState extends State<ProjectListBody> {
       task: task,
       now: widget.now,
       minimumPriority: widget.minimumPriority,
+      identifierBeforeTitle: _identifiersLead,
       depth: row.depth,
       parentTitle: row.parent?.title,
       projectTitle: elsewhere?.displayTitle(context.l10n),

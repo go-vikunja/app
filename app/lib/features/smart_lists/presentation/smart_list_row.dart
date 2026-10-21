@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/favourite_button.dart';
 
 /// A list in the Projects tab that is no project: the Favorites list or a
 /// saved filter.
@@ -34,11 +35,7 @@ class SmartListRow extends StatelessWidget {
       title: Text(title),
       subtitle: subtitle == null ? null : Text(subtitle!),
       trailing: favorite
-          ? Icon(
-              Icons.star,
-              color: colors.tertiary,
-              semanticLabel: l10n.favouriteLabel,
-            )
+          ? Semantics(label: l10n.favouriteLabel, child: const FilledStar())
           : null,
     );
   }

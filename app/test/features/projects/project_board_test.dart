@@ -8,6 +8,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
+import 'package:vikunja_mobile/features/common/presentation/count_badge.dart';
 import 'package:vikunja_mobile/features/projects/presentation/board/board_card.dart';
 import 'package:vikunja_mobile/features/projects/presentation/board/board_column.dart';
 import 'package:vikunja_mobile/features/projects/presentation/board/column_menu.dart';
@@ -161,16 +162,15 @@ void main() {
       card.task.title,
   ];
 
-  Text countIn(WidgetTester tester, String column) {
-    final header = find.descendant(
-      of: columnOf(column),
-      matching: find.byWidgetPredicate(
-        (widget) =>
-            widget is Text && RegExp(r'^\d+(/\d+)?$').hasMatch(widget.data!),
+  Text countIn(WidgetTester tester, String column) => tester.widget<Text>(
+    find.descendant(
+      of: find.descendant(
+        of: columnOf(column),
+        matching: find.byType(CountBadge),
       ),
-    );
-    return tester.widget<Text>(header);
-  }
+      matching: find.byType(Text),
+    ),
+  );
 
   /// Long-presses [title]'s card and moves it to [to] in steps, so the
   /// board follows the finger, then lets go.
@@ -240,17 +240,17 @@ void main() {
   }
 
   group('the view', () {
-    testWidgets('the switcher offers the kanban view among the list views, '
-        'the default name translated', (tester) async {
+    testWidgets('the tabs offer the kanban view among the list views, the '
+        'default name translated', (tester) async {
       useLocale(tester, const Locale('de'));
       data.listPreferences.lastViews.clear();
       await pumpBoard(tester);
 
-      expect(find.widgetWithText(ChoiceChip, de.projectViewList), findsOne);
-      expect(find.widgetWithText(ChoiceChip, de.projectViewKanban), findsOne);
+      expect(find.widgetWithText(Tab, de.projectViewList), findsOne);
+      expect(find.widgetWithText(Tab, de.projectViewKanban), findsOne);
       expect(find.byType(TaskRow), findsWidgets);
 
-      await tester.tap(find.widgetWithText(ChoiceChip, de.projectViewKanban));
+      await tester.tap(find.widgetWithText(Tab, de.projectViewKanban));
       await tester.pumpAndSettle();
 
       expect(find.byType(TaskRow), findsNothing);
@@ -269,26 +269,27 @@ void main() {
       expect(data.tasks.boardWatches.last, (1, 14));
     });
 
-    testWidgets('a project with only a kanban view opens it without a '
-        'switcher', (tester) async {
+    testWidgets('a project with only a kanban view opens it without tabs', (
+      tester,
+    ) async {
       data.projects.all = [
         work(views: [kanban]),
       ];
       await pumpBoard(tester);
 
-      expect(find.byType(ChoiceChip), findsNothing);
+      expect(find.byType(TabBar), findsNothing);
       expect(columnTitles(tester), ['To-Do', 'Doing', 'Done']);
     });
 
-    testWidgets('the app bar keeps refresh and follow, without sort and show '
-        'done', (tester) async {
+    testWidgets('the menu keeps refresh and follow; no sort and show done '
+        'chips', (tester) async {
       await pumpBoard(tester);
 
-      expect(find.byTooltip(en.refresh), findsOneWidget);
       expect(find.byIcon(Icons.sort), findsNothing);
+      expect(find.text(en.projectShowDoneChip), findsNothing);
       await tester.tap(find.byTooltip(en.moreActions));
       await tester.pumpAndSettle();
-      expect(find.text(en.projectTasksShowDone), findsNothing);
+      expect(find.text(en.refresh), findsOneWidget);
       expect(find.text(en.followProject), findsOneWidget);
     });
   });
@@ -319,9 +320,13 @@ void main() {
       expect(cardsIn(tester, 'Done'), ['Finished']);
 
       expect(countIn(tester, 'To-Do').data, '3');
-      expect(countIn(tester, 'To-Do').style?.color, colors.onSurfaceVariant);
+      expect(
+        countIn(tester, 'To-Do').style?.color,
+        colors.onSecondaryContainer,
+      );
+      // Full: in the error colours, as on the web.
       expect(countIn(tester, 'Doing').data, '2/2');
-      expect(countIn(tester, 'Doing').style?.color, colors.error);
+      expect(countIn(tester, 'Doing').style?.color, colors.onError);
       expect(
         find.descendant(
           of: columnOf('Done'),
@@ -332,6 +337,34 @@ void main() {
       expect(find.byIcon(Icons.done_all), findsOneWidget);
       expect(find.byTooltip(en.boardDoneColumnHint), findsOneWidget);
     });
+
+    for (final brightness in Brightness.values) {
+      testWidgets('a card is lighter than its column in ${brightness.name} '
+          'mode', (tester) async {
+        tester.platformDispatcher.platformBrightnessTestValue = brightness;
+        addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+        data.tasks.setBoard(
+          kanban,
+          buckets: [bucket(21, 'To-Do', count: 3)],
+          snapshot: snapshot,
+          loadedAt: now,
+        );
+        await pumpBoard(tester);
+        final theme = Theme.of(tester.element(find.byType(BoardCard).first));
+        expect(theme.brightness, brightness);
+
+        final card = tester.widget<Card>(
+          find.descendant(
+            of: cardOf('Write report'),
+            matching: find.byType(Card),
+          ),
+        );
+        expect(
+          card.color!.computeLuminance(),
+          greaterThan(theme.colorScheme.surfaceContainerLow.computeLuminance()),
+        );
+      });
+    }
 
     testWidgets('an open task downloaded in the done column stays there '
         'until it is reopened here', (tester) async {
@@ -398,12 +431,7 @@ void main() {
       final card = cardOf('Write report');
       final colors = Theme.of(tester.element(card)).colorScheme;
 
-      for (final text in [
-        'WORK-1',
-        'Office',
-        en.priorityHigh,
-        '1 of 2 tasks',
-      ]) {
+      for (final text in ['WORK-1', 'Office', en.priorityHigh, '1/2']) {
         expect(find.descendant(of: card, matching: find.text(text)), findsOne);
       }
       final due = find.descendant(
@@ -466,7 +494,7 @@ void main() {
                 .first,
           )
           .position;
-      expect(tester.getSize(columnOf('To-Do')).width, 340);
+      expect(tester.getSize(columnOf('To-Do')).width, 280);
       expect(
         tester
             .getSize(
@@ -476,7 +504,7 @@ void main() {
               ),
             )
             .width,
-        340 - 2 * 8,
+        280 - 2 * 8,
         reason: 'a card fills its column, whatever its content',
       );
 
@@ -487,7 +515,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(position.pixels, 340 + 8);
+      expect(position.pixels, 280 + 12);
     });
 
     testWidgets('in landscape the first column and the tile after the last '
@@ -497,7 +525,7 @@ void main() {
       storeBoard(columns: [...buckets(), bucket(24, 'Later')]);
       await pumpBoard(tester, size: const Size(844, 390));
 
-      expect(tester.getRect(columnOf('To-Do')).left, 47 + 12);
+      expect(tester.getRect(columnOf('To-Do')).left, 47 + 16);
       final board = tester.state<ScrollableState>(
         find
             .descendant(
@@ -508,7 +536,7 @@ void main() {
       );
       board.position.jumpTo(board.position.maxScrollExtent);
       await tester.pumpAndSettle();
-      expect(tester.getRect(find.byType(NewColumnTile)).right, 844 - 47 - 12);
+      expect(tester.getRect(find.byType(NewColumnTile)).right, 844 - 47 - 16);
     }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 
     testWidgets('a tap opens the task', (tester) async {
@@ -691,7 +719,7 @@ void main() {
       }
       final held = position.pixels;
       expect(held, greaterThan(0));
-      expect(held % (340 + 8), isNot(0));
+      expect(held % (280 + 12), isNot(0));
       for (var i = 0; i < 20; i++) {
         await tester.pump(const Duration(milliseconds: 50));
       }
@@ -704,7 +732,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(data.tasks.placements.single.$3.bucketId, underFinger);
-      expect(position.pixels % (340 + 8), 0);
+      expect(position.pixels % (280 + 12), 0);
     });
 
     testWidgets('after a drop into the next column, the board settles on '
@@ -733,14 +761,14 @@ void main() {
         await tester.pump(const Duration(milliseconds: 16));
       }
       // Nearer the first column, where the board would settle by itself.
-      expect(position.pixels, lessThan((340 + 8) / 2));
+      expect(position.pixels, lessThan((280 + 12) / 2));
       expect(tester.getRect(columnOf('Doing')).left, lessThan(330));
 
       await gesture.up();
       await tester.pumpAndSettle();
 
       expect(data.tasks.placements.single.$3.bucketId, 22);
-      expect(position.pixels, 340 + 8);
+      expect(position.pixels, 280 + 12);
     });
 
     testWidgets('below the last card loaded of a column with more, a card '
@@ -1273,14 +1301,16 @@ void main() {
       expect(find.text(en.boardDownloadFailedBody), findsOneWidget);
     });
 
-    testWidgets('pulling down on a column and the refresh button download '
+    testWidgets('pulling down on a column and Refresh in the menu download '
         'the board', (tester) async {
       await pumpBoard(tester, size: const Size(400, 800));
 
       await pullToRefresh(tester, cardsOfColumn('To-Do'));
       expect(data.tasks.boardRefreshes, [(1, 14)]);
 
-      await tester.tap(find.byTooltip(en.refresh));
+      await tester.tap(find.byTooltip(en.moreActions));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(en.refresh));
       await tester.pumpAndSettle();
       expect(data.tasks.boardRefreshes, [(1, 14), (1, 14)]);
     });

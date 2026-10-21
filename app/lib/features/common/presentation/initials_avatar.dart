@@ -26,7 +26,8 @@ class InitialsAvatar extends StatelessWidget {
     final style = switch (radius) {
       >= 30 => theme.textTheme.headlineSmall,
       >= 20 => theme.textTheme.titleSmall,
-      _ => theme.textTheme.labelMedium,
+      > 12 => theme.textTheme.labelMedium,
+      _ => theme.textTheme.labelSmall?.copyWith(fontSize: 10),
     };
     return ExcludeSemantics(
       child: CircleAvatar(

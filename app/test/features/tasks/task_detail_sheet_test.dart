@@ -1,11 +1,12 @@
 import 'package:cupertino_ui/cupertino_ui.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/widgets/adaptive_navigation_bar.dart';
 import 'package:vikunja_mobile/features/projects/presentation/projects_screen.dart';
-import 'package:vikunja_mobile/features/tasks/presentation/task_chips.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/task_meta.dart';
 
 import '../../helpers/pump_app.dart';
 import '../../helpers/sample_data.dart';
@@ -67,20 +68,23 @@ void main() {
     expect(inSheet('Quarterly report'), findsOneWidget);
     expect(inSheet('WORK-1'), findsOneWidget);
     expect(inSheet('Work'), findsOneWidget);
-    final done = tester.widget<CheckboxListTile>(
-      find.descendant(of: sheet, matching: find.byType(CheckboxListTile)),
+    expect(inSheet(en.taskDetailStatusOpen), findsOneWidget);
+    expect(
+      find.descendant(
+        of: sheet,
+        matching: find.widgetWithText(FilledButton, en.taskDetailMarkDone),
+      ),
+      findsOneWidget,
     );
-    expect(done.value, isFalse);
-    expect(inSheet(en.taskDone), findsOneWidget);
     expect(inSheet(en.taskDetailDueDate), findsOneWidget);
     expect(inSheet('Oct 12, 2026 9:30 AM'), findsOneWidget);
     expect(inSheet('Oct 11, 2026 8:00 AM'), findsOneWidget);
-    expect(inSheet(en.priorityHigh), findsNWidgets(2));
+    expect(inSheet(en.priorityHigh), findsOneWidget);
     expect(inSheet(en.taskPercentDone(50)), findsOneWidget);
     expect(inSheet('Every 2 weeks'), findsOneWidget);
     expect(inSheet('1 hour before the due date'), findsOneWidget);
     expect(
-      find.descendant(of: sheet, matching: find.byType(LabelChip)),
+      find.descendant(of: sheet, matching: find.byType(LabelPill)),
       findsOneWidget,
     );
     expect(inSheet('AE'), findsOneWidget);
@@ -154,8 +158,16 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text(en.tabProjects), warnIfMissed: false);
-    await tester.pumpAndSettle();
+    // The sheet's own controls lie over the tab, so a tap there would
+    // reach them; nothing of the bar may take it.
+    final hit = HitTestResult();
+    tester.binding.hitTestInView(
+      hit,
+      tester.getCenter(find.text(en.tabProjects)),
+      tester.view.viewId,
+    );
+    final bar = tester.renderObject(find.byType(AdaptiveNavigationBar));
+    expect(hit.path.where((entry) => entry.target == bar), isEmpty);
     expect(find.byType(ProjectsScreen), findsNothing);
     expect(find.byType(TaskDetailSheet), findsOneWidget);
   });
@@ -223,7 +235,7 @@ void main() {
     final sheet = find.byType(TaskDetailSheet);
     Finder inSheet(Finder finder) =>
         find.descendant(of: sheet, matching: finder);
-    expect(inSheet(find.byType(LabelChip)), findsNothing);
+    expect(inSheet(find.byType(LabelPill)), findsNothing);
 
     // Only the child rows change, as a local save of these fields does.
     data.tasks.all = [
@@ -276,5 +288,29 @@ void main() {
 
     expect(find.text('12. Okt. 2026 09:30'), findsOneWidget);
     expect(find.text('Alle 2 Wochen'), findsOneWidget);
+  });
+
+  testWidgets('the attribute card puts each value beside its name', (
+    tester,
+  ) async {
+    await openDetail(tester, 'Quarterly report');
+
+    final name = tester.getRect(find.text(en.taskDetailDueDate));
+    final value = tester.getRect(find.text('Oct 12, 2026 9:30 AM'));
+    expect(value.left, greaterThan(name.right));
+    expect(value.center.dy, closeTo(name.center.dy, 1));
+  });
+
+  testWidgets('at 200 % text the attribute card puts each value under its '
+      'name', (tester) async {
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await openDetail(tester, 'Quarterly report');
+
+    final name = tester.getRect(find.text(en.taskDetailDueDate));
+    final value = tester.getRect(find.text('Oct 12, 2026 9:30 AM'));
+    expect(value.top, greaterThanOrEqualTo(name.bottom));
+    expect(value.left, closeTo(name.left, 1));
+    expect(tester.takeException(), isNull);
   });
 }

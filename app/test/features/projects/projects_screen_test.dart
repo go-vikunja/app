@@ -13,6 +13,7 @@ import 'package:vikunja_mobile/features/projects/presentation/project_tasks_scre
 import 'package:vikunja_mobile/features/smart_lists/application/smart_list_providers.dart';
 import 'package:vikunja_mobile/features/smart_lists/presentation/smart_list_row.dart';
 import 'package:vikunja_mobile/features/smart_lists/presentation/smart_list_screen.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/favourite_button.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
 
 import '../../helpers/auth_fakes.dart';
@@ -64,11 +65,39 @@ void main() {
     expect(rowTitles(tester), ['Home', 'Home', 'Work', 'Admin', 'Reports']);
     expect(find.text('Old'), findsNothing);
     expect(find.text(en.projectChildCount(2)), findsOneWidget);
-    final stars = tester.widgetList<Icon>(find.byIcon(Icons.star));
-    expect(stars.map((icon) => icon.semanticLabel), [
-      en.favouriteLabel,
-      en.favouriteLabel,
-    ]);
+    final stars = find.descendant(
+      of: find.byType(ProjectRow),
+      matching: find.byType(FilledStar),
+    );
+    expect(stars, findsNWidgets(2));
+    expect(
+      find.ancestor(
+        of: stars,
+        matching: find.byWidgetPredicate(
+          (widget) =>
+              widget is Semantics &&
+              widget.properties.label == en.favouriteLabel,
+        ),
+      ),
+      findsNWidgets(2),
+    );
+  });
+
+  testWidgets("a project's open tasks show beside its subprojects, done "
+      "ones and its subprojects' not counted", (tester) async {
+    data.tasks.all = [
+      sampleTask(id: 1, title: 'Open'),
+      sampleTask(id: 2, title: 'Also open'),
+      sampleTask(id: 3, title: 'Done', done: true),
+      sampleTask(id: 4, title: 'In a subproject', projectId: 3),
+    ];
+    await pumpProjects(tester);
+
+    expect(
+      find.text('${en.smartListOpenTaskCount(2)} · ${en.projectChildCount(2)}'),
+      findsOneWidget,
+    );
+    expect(find.text(en.smartListOpenTaskCount(1)), findsOneWidget);
   });
 
   testWidgets('children are indented and can be collapsed', (tester) async {

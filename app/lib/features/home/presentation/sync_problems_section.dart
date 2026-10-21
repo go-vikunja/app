@@ -34,30 +34,32 @@ class SyncProblemsSection extends ConsumerWidget {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final now = ref.watch(clockTickProvider);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const SizedBox(height: 24),
-        Semantics(
-          header: true,
-          child: Text(
-            l10n.accountSyncProblems,
-            style: theme.textTheme.titleSmall?.copyWith(
-              color: theme.colorScheme.error,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Semantics(
+            header: true,
+            child: Text(
+              l10n.accountSyncProblems,
+              style: theme.textTheme.titleSmall?.copyWith(
+                color: theme.colorScheme.error,
+              ),
             ),
           ),
-        ),
-        for (final problem in problems)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: _ProblemCard(
-              key: ValueKey(problem.operationId),
-              problem: problem,
-              now: now,
-              serverRoot: entry.connection.rootUri,
+          for (final problem in problems)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: _ProblemCard(
+                key: ValueKey(problem.operationId),
+                problem: problem,
+                now: now,
+                serverRoot: entry.connection.rootUri,
+              ),
             ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 }

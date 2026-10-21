@@ -89,6 +89,12 @@ class _ActivityAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    // The icon's ring takes the colour of what lies below: a card's or the
+    // screen's.
+    final ring = switch (Material.maybeOf(context)?.color) {
+      final Color color when color.a > 0 => color,
+      _ => colors.surface,
+    };
     final icon = activityIcon(item.kind);
     final doer = item.doerName;
     if (doer == null) {
@@ -111,10 +117,7 @@ class _ActivityAvatar extends StatelessWidget {
               end: -4,
               bottom: -4,
               child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: colors.surface,
-                  shape: BoxShape.circle,
-                ),
+                decoration: BoxDecoration(color: ring, shape: BoxShape.circle),
                 child: Padding(
                   padding: const EdgeInsets.all(2),
                   child: Icon(icon, size: 14, color: colors.primary),

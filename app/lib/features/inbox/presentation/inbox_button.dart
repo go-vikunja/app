@@ -7,8 +7,8 @@ import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/features/inbox/application/inbox_providers.dart';
 
-/// The bell in the Overview's app bar, with the unread count; opens the
-/// inbox over the shell.
+/// The bell beside the Overview's greeting, with the unread count; opens
+/// the inbox over the shell.
 class InboxButton extends ConsumerWidget {
   const new({super.key});
 

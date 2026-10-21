@@ -1,17 +1,24 @@
 import 'dart:async';
 import 'dart:ui' show Tristate;
 
-import 'package:flutter/semantics.dart' show SemanticsAction;
+import 'package:flutter/semantics.dart'
+    show CustomSemanticsAction, SemanticsAction;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
+import 'package:vikunja_mobile/features/accounts/presentation/account_switcher_button.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
-import 'package:vikunja_mobile/features/tasks/presentation/task_chips.dart';
+import 'package:vikunja_mobile/features/common/presentation/search_pill.dart';
+import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
+import 'package:vikunja_mobile/features/inbox/presentation/inbox_button.dart';
+import 'package:vikunja_mobile/features/overview/presentation/overview_screen.dart';
+import 'package:vikunja_mobile/features/search/presentation/search_page.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/task_meta.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
 
 import '../../helpers/pump_app.dart';
@@ -72,6 +79,10 @@ void main() {
     await pumpSignedInApp(tester, sync: data, now: now);
   }
 
+  SemanticsFinder greeting() => find.semantics.byLabel(
+    RegExp(en.overviewGreetingAfternoon('Alice Example')),
+  );
+
   List<String> sectionTitles(WidgetTester tester) => [
     for (final header in tester.widgetList<ListSectionHeader>(
       find.byType(ListSectionHeader),
@@ -93,14 +104,140 @@ void main() {
     ]);
     expect(find.byType(TaskRow), findsNWidgets(5));
     expect(find.text('Already done'), findsNothing);
-    expect(find.text('WORK-1 · Work'), findsOneWidget);
-    expect(find.text('#2 · Home'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.ancestor(
+          of: find.text('WORK-1'),
+          matching: find.byType(TaskRow),
+        ),
+        matching: find.text('Work'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.ancestor(of: find.text('#2'), matching: find.byType(TaskRow)),
+        matching: find.text('Home'),
+      ),
+      findsOneWidget,
+    );
     expect(find.text('1 day ago'), findsOneWidget);
     expect(find.text('in 6 hours'), findsOneWidget);
     expect(find.text('in 3 days'), findsOneWidget);
     expect(find.text('in 20 days'), findsOneWidget);
     // Synced just now: no quiet sync at start.
     expect(data.engine.refreshCalls, 0);
+  });
+
+  testWidgets('a search bar and a greeting with the date, the tasks left '
+      'for today and the bell take the place of the app bar', (tester) async {
+    await pumpOverview(tester);
+
+    final overview = find.byType(OverviewScreen);
+    expect(
+      find.descendant(of: overview, matching: find.byType(AppBar)),
+      findsNothing,
+    );
+    expect(find.byTooltip(en.refresh), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byType(SearchPill),
+        matching: find.byType(AccountSwitcherButton),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Saturday, October 10'), findsOneWidget);
+    expect(
+      find.text(en.overviewGreetingAfternoon('Alice Example')),
+      findsOneWidget,
+    );
+    // The overdue bill and the call due later today.
+    expect(find.text(en.overviewTasksLeftToday(2)), findsOneWidget);
+    expect(
+      find.descendant(of: overview, matching: find.byType(InboxButton)),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text(en.search));
+    await tester.pumpAndSettle();
+    expect(find.byType(SearchPage), findsOneWidget);
+  });
+
+  testWidgets('a task marked done no longer counts as left for today', (
+    tester,
+  ) async {
+    await pumpOverview(tester);
+
+    await tester.tap(
+      find.descendant(
+        of: find.widgetWithText(TaskRow, 'Call mum'),
+        matching: find.byTooltip(en.taskMarkDone),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text(en.overviewTasksLeftToday(1)), findsOneWidget);
+  });
+
+  for (final (hour, greet) in [
+    (5, en.overviewGreetingMorning),
+    (11, en.overviewGreetingMorning),
+    (17, en.overviewGreetingAfternoon),
+    (18, en.overviewGreetingEvening),
+    (2, en.overviewGreetingEvening),
+  ]) {
+    testWidgets('at $hour o’clock it says ${greet('…')}', (tester) async {
+      usePhoneSurface(tester);
+      data.tasks.all = [sampleTask(id: 4, title: 'Plan trip')];
+      await pumpSignedInApp(
+        tester,
+        sync: data,
+        now: DateTime(2026, 10, 10, hour),
+      );
+
+      expect(find.text(greet('Alice Example')), findsOneWidget);
+      expect(find.text(en.overviewTasksLeftToday(0)), findsOneWidget);
+    });
+  }
+
+  testWidgets('sections are cards with their count; the overdue title takes '
+      'the error colour', (tester) async {
+    await pumpOverview(tester);
+
+    final headers = tester
+        .widgetList<ListSectionHeader>(find.byType(ListSectionHeader))
+        .map((header) => (header.title, header.count));
+    expect(headers, [
+      (en.sectionOverdue, 1),
+      (en.sectionToday, 1),
+      (en.sectionNextSevenDays, 1),
+      (en.sectionLater, 1),
+      (en.sectionNoDueDate, 1),
+    ]);
+    expect(find.byType(SectionCardItem), findsNWidgets(5));
+    final context = tester.element(find.byType(OverviewScreen));
+    final colors = Theme.of(context).colorScheme;
+    expect(
+      tester.widget<Text>(find.text(en.sectionOverdue)).style?.color,
+      colors.error,
+    );
+    expect(
+      tester.widget<Text>(find.text(en.sectionToday)).style?.color,
+      colors.primary,
+    );
+  });
+
+  testWidgets('the header in German', (tester) async {
+    useLocale(tester, const Locale('de'));
+    await pumpOverview(tester);
+
+    expect(find.text('Samstag, 10. Oktober'), findsOneWidget);
+    expect(
+      find.text(de.overviewGreetingAfternoon('Alice Example')),
+      findsOneWidget,
+    );
+    expect(find.text(de.overviewTasksLeftToday(2)), findsOneWidget);
+    expect(find.text(de.search), findsOneWidget);
   });
 
   testWidgets('overdue due dates use the error colour', (tester) async {
@@ -113,16 +250,16 @@ void main() {
     expect(upcoming.style?.color, isNot(Theme.of(context).colorScheme.error));
   });
 
-  testWidgets('shows priority chips from medium up, labels in their colour', (
+  testWidgets('shows priority flags from medium up, labels in their colour', (
     tester,
   ) async {
     await pumpOverview(tester);
 
-    expect(find.byType(PriorityChip), findsNWidgets(3));
+    expect(find.byType(PriorityFlag), findsNWidgets(3));
     expect(find.text(en.priorityUrgent), findsOneWidget);
     expect(find.text(en.priorityHigh), findsOneWidget);
     expect(find.text(en.priorityMedium), findsOneWidget);
-    expect(find.byType(LabelChip), findsNWidgets(2));
+    expect(find.byType(LabelPill), findsNWidgets(2));
     final sunny = tester.widget<Text>(find.text('Sunny'));
     expect(sunny.style?.color, const Color(0xFF000000));
     final night = tester.widget<Text>(find.text('Night'));
@@ -168,13 +305,13 @@ void main() {
     semantics.dispose();
   });
 
-  testWidgets('the minimum priority setting decides which chips show', (
+  testWidgets('the minimum priority setting decides which flags show', (
     tester,
   ) async {
     data.shared.settings = const UserSettings(minimumPriority: 4);
     await pumpOverview(tester);
 
-    expect(find.byType(PriorityChip), findsOneWidget);
+    expect(find.byType(PriorityFlag), findsOneWidget);
     expect(find.text(en.priorityUrgent), findsOneWidget);
   });
 
@@ -410,8 +547,7 @@ void main() {
 
     // Back online, the next sync clears it.
     data.engine.onRefresh = null;
-    await tester.tap(find.byTooltip(en.refresh));
-    await tester.pumpAndSettle();
+    await pullToRefresh(tester, find.byType(CustomScrollView));
     expect(find.textContaining(en.offlineNotice), findsNothing);
   });
 
@@ -453,32 +589,60 @@ void main() {
     expect(find.byType(TaskRow), findsNWidgets(5));
   });
 
-  testWidgets('the app bar button refreshes without a drag', (tester) async {
+  testWidgets('the greeting is the heading and names the route, as the '
+      "other tabs' app bar titles do", (tester) async {
+    final semantics = tester.ensureSemantics();
+    await pumpOverview(tester);
+
+    final node = tester.getSemantics(
+      find.text(en.overviewGreetingAfternoon('Alice Example')),
+    );
+    expect(node, isSemantics(isHeader: true, namesRoute: true));
+    expect(node.label, startsWith(en.tabOverview));
+    semantics.dispose();
+  });
+
+  testWidgets('screen readers refresh from the greeting, which cannot pull '
+      'the list', (tester) async {
+    final semantics = tester.ensureSemantics();
     await pumpOverview(tester);
     data.engine.onRefresh = () async =>
         data.tasks.all = openTasks().sublist(0, 1);
 
-    await tester.tap(find.byTooltip(en.refresh));
+    tester.semantics.customAction(
+      greeting(),
+      CustomSemanticsAction(label: en.refresh),
+    );
     await tester.pumpAndSettle();
 
     expect(data.engine.refreshCalls, 1);
     expect(find.byType(TaskRow), findsOneWidget);
+    semantics.dispose();
   });
 
-  testWidgets('the refresh button waits for a running sync', (tester) async {
+  testWidgets('the refresh action waits for a running sync', (tester) async {
+    final semantics = tester.ensureSemantics();
     await pumpOverview(tester);
     final run = Completer<void>();
     data.engine.onRefresh = () => run.future;
+    bool offersRefresh() => greeting()
+        .evaluate()
+        .single
+        .getSemanticsData()
+        .hasAction(SemanticsAction.customAction);
 
-    await tester.tap(find.byTooltip(en.refresh));
+    tester.semantics.customAction(
+      greeting(),
+      CustomSemanticsAction(label: en.refresh),
+    );
     await tester.pump();
-
-    final refreshButton = find.widgetWithIcon(IconButton, Icons.refresh);
-    expect(tester.widget<IconButton>(refreshButton).onPressed, isNull);
+    expect(offersRefresh(), isFalse);
 
     run.complete();
     await tester.pumpAndSettle();
-    expect(tester.widget<IconButton>(refreshButton).onPressed, isNotNull);
+    expect(offersRefresh(), isTrue);
+    expect(data.engine.refreshCalls, 1);
+    semantics.dispose();
   });
 
   group('"now" moves on', () {
@@ -559,8 +723,7 @@ void main() {
     data.engine.onRefresh = () async =>
         throw const SessionEnded(SessionEndReason.expired, code: 16003);
 
-    await tester.tap(find.byTooltip(en.refresh));
-    await tester.pumpAndSettle();
+    await pullToRefresh(tester, find.byType(CustomScrollView));
 
     expect(
       find.text(en.dataFailureSessionEnded('tasks.example.org')),
@@ -580,8 +743,7 @@ void main() {
 
     data.engine.onRefresh = () async =>
         throw const NetworkFailure(NetworkProblem.unreachable);
-    await tester.tap(find.byTooltip(de.refresh));
-    await tester.pumpAndSettle();
+    await pullToRefresh(tester, find.byType(CustomScrollView));
     expect(find.textContaining(de.offlineNotice), findsOneWidget);
   });
 }

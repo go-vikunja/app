@@ -2,9 +2,12 @@ import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/features/common/presentation/avatar_stack.dart';
+import 'package:vikunja_mobile/features/common/presentation/identifier_text.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
-import 'package:vikunja_mobile/features/tasks/presentation/task_chips.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/task_meta.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row_parts.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_summary.dart';
 
@@ -44,47 +47,28 @@ class BoardCard extends ConsumerWidget {
       minimumPriority: minimumPriority,
       formatter: MomentFormatter.watch(context, ref),
     );
-    final detailStyle = theme.textTheme.bodySmall?.copyWith(
+    final mutedSmall = theme.textTheme.bodySmall?.copyWith(
       color: colors.onSurfaceVariant,
     );
-    final dueStyle = summary.overdue
-        ? detailStyle?.copyWith(
-            color: colors.error,
-            fontWeight: FontWeight.w600,
-          )
-        : detailStyle;
-    final iconColor = colors.onSurfaceVariant;
-    final dueText = summary.dueText;
+    Widget metaIcon(IconData icon) =>
+        Icon(icon, size: 14, color: colors.onSurfaceVariant);
+    final identifier = summary.identifier;
     final taskColor = summary.taskColor;
 
-    final topRow = [
+    final meta = [
       if (task.done) const _DoneBadge(),
-      if (summary.details.isNotEmpty) Text(summary.details, style: detailStyle),
-      if (dueText != null)
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.event,
-              size: 14,
-              color: summary.overdue ? colors.error : iconColor,
-            ),
-            const SizedBox(width: 4),
-            Flexible(child: Text(dueText, style: dueStyle)),
-          ],
-        ),
-    ];
-    final footer = [
-      for (final label in summary.labels) LabelChip(label: label),
-      if (summary.showsPriority) PriorityChip(priority: task.priority),
-      if (summary.described) Icon(Icons.notes, size: 16, color: iconColor),
-      if (task.repeats) Icon(Icons.repeat, size: 16, color: iconColor),
-      if (pending) Icon(Icons.cloud_off_outlined, size: 16, color: iconColor),
-      if (task.assignees.isNotEmpty) AssigneeAvatars(users: task.assignees),
+      if (identifier != null)
+        IdentifierText(identifier, style: const TextStyle(fontSize: 11)),
+      if (summary.showsPriority) PriorityFlag(priority: task.priority),
+      if (summary.dueText case final due?)
+        DueBadge(text: due, tone: summary.dueTone),
       if (!summary.checklist.isEmpty)
-        ChecklistSummary(statistics: summary.checklist, style: detailStyle),
+        _ChecklistCount(statistics: summary.checklist, style: mutedSmall),
+      if (summary.described) metaIcon(Icons.notes),
+      if (task.repeats) metaIcon(Icons.repeat),
+      if (pending) metaIcon(Icons.cloud_off_outlined),
     ];
-    final title = Text(task.title, style: theme.textTheme.bodyLarge);
+    final title = Text(task.title, style: theme.textTheme.bodyMedium);
 
     return Semantics(
       container: true,
@@ -94,11 +78,14 @@ class BoardCard extends ConsumerWidget {
       child: ExcludeSemantics(
         child: Card(
           margin: EdgeInsets.zero,
-          elevation: 0,
-          color: colors.surfaceContainerLowest,
+          elevation: 1,
+          // A dark surface is darker than the column, and no shadow shows
+          // there to lift the card.
+          color: theme.brightness == Brightness.dark
+              ? colors.surfaceContainerHigh
+              : colors.surface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
-            side: BorderSide(color: colors.outlineVariant),
           ),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
@@ -108,39 +95,60 @@ class BoardCard extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (topRow.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Wrap(
-                        spacing: 8,
-                        runSpacing: 4,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: topRow,
-                      ),
-                    ),
                   if (taskColor == null)
                     title
                   else
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
                       children: [
-                        ColorDot(color: taskColor),
+                        Text.rich(
+                          WidgetSpan(
+                            alignment: PlaceholderAlignment.middle,
+                            child: ColorDot(color: taskColor),
+                          ),
+                          style: theme.textTheme.bodyMedium,
+                        ),
                         const SizedBox(width: 6),
                         Expanded(child: title),
                       ],
                     ),
-                  if (summary.percent > 0)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: TaskProgressBar(percentDone: task.percentDone),
-                    ),
-                  if (footer.isNotEmpty)
+                  if (summary.labels.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
                       child: Wrap(
-                        spacing: 6,
+                        spacing: 4,
                         runSpacing: 4,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: footer,
+                        children: [
+                          for (final label in summary.labels)
+                            LabelPill(label: label),
+                        ],
+                      ),
+                    ),
+                  if (summary.percent > 0)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: TaskProgressBar(percentDone: task.percentDone),
+                    ),
+                  if (meta.isNotEmpty || task.assignees.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Expanded(
+                            child: Wrap(
+                              spacing: 10,
+                              runSpacing: 4,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: meta,
+                            ),
+                          ),
+                          if (task.assignees.isNotEmpty) ...[
+                            const SizedBox(width: 8),
+                            AvatarStack(users: task.assignees),
+                          ],
+                        ],
                       ),
                     ),
                 ],
@@ -151,6 +159,31 @@ class BoardCard extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// The description's checkboxes, "1/3" after a checkbox icon, as in the
+/// task row.
+class _ChecklistCount extends StatelessWidget {
+  const new({required this.statistics, required this.style});
+
+  final ChecklistStatistics statistics;
+  final TextStyle? style;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Icon(
+        statistics.allDone ? Icons.check_box : Icons.check_box_outlined,
+        size: 14,
+        color: style?.color,
+      ),
+      const SizedBox(width: 2),
+      Flexible(
+        child: Text('${statistics.checked}/${statistics.total}', style: style),
+      ),
+    ],
+  );
 }
 
 /// The web's small "Done" tag on a done card.
@@ -164,13 +197,13 @@ class _DoneBadge extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: colors.primaryContainer,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(4),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
         child: Text(
           context.l10n.taskDoneSemantics,
-          style: theme.textTheme.labelMedium?.copyWith(
+          style: theme.textTheme.labelSmall?.copyWith(
             color: colors.onPrimaryContainer,
           ),
         ),

@@ -8,6 +8,7 @@ import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
+import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_rows.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_message.dart';
 import 'package:vikunja_mobile/features/home/presentation/background_sync_line.dart';
 import 'package:vikunja_mobile/features/sync/presentation/sync_phase_label.dart';
@@ -57,102 +58,95 @@ class SyncStatusSection extends ConsumerWidget {
       color: colors.onSurfaceVariant,
     );
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ExcludeSemantics(
-              child: Icon(Icons.sync, color: colors.onSurfaceVariant),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
+    return SettingsBlock(
+      icon: Icons.sync,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: 4,
+        children: [
+          // A run is announced once, not per phase: the timer runs one
+          // every minute. A failure is announced when it appears; the time
+          // ticks every minute and is only read on focus.
+          if (status case SyncRunning(:final phase))
+            Semantics(
+              container: true,
+              liveRegion: true,
+              label: l10n.accountSyncing,
+              excludeSemantics: true,
+              child: Text(
+                syncPhaseLabel(l10n, phase),
+                style: theme.textTheme.bodyLarge,
+              ),
+            )
+          else
+            Text(switch (lastSyncedAt) {
+              final at? when isJustNow(at, now: now) =>
+                l10n.accountLastSyncedJustNow,
+              final at? => l10n.accountLastSynced(
+                formatRelativeTime(l10n, at, now: now),
+              ),
+              null => l10n.accountNeverSynced,
+            }, style: theme.textTheme.bodyLarge),
+          if (status case SyncFailed(:final failure))
+            Semantics(
+              container: true,
+              liveRegion: true,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 spacing: 4,
                 children: [
-                  // A run is announced once, not per phase: the timer runs
-                  // one every minute. A failure is announced when it
-                  // appears; the time ticks every minute and is only read
-                  // on focus.
-                  if (status case SyncRunning(:final phase))
-                    Semantics(
-                      container: true,
-                      liveRegion: true,
-                      label: l10n.accountSyncing,
-                      excludeSemantics: true,
-                      child: Text(
-                        syncPhaseLabel(l10n, phase),
-                        style: theme.textTheme.bodyLarge,
-                      ),
-                    )
-                  else
-                    Text(switch (lastSyncedAt) {
-                      final at? when isJustNow(at, now: now) =>
-                        l10n.accountLastSyncedJustNow,
-                      final at? => l10n.accountLastSynced(
-                        formatRelativeTime(l10n, at, now: now),
-                      ),
-                      null => l10n.accountNeverSynced,
-                    }, style: theme.textTheme.bodyLarge),
-                  if (status case SyncFailed(:final failure))
-                    Semantics(
-                      container: true,
-                      liveRegion: true,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        spacing: 4,
-                        children: [
-                          Text(
-                            l10n.accountSyncFailed,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: colors.error,
-                            ),
-                          ),
-                          Text(
-                            describeDataFailure(
-                              l10n,
-                              failure,
-                              serverRoot: entry.connection.rootUri,
-                              platform: theme.platform,
-                              stale: lastSyncedAt != null,
-                            ).explanation,
-                            style: secondary,
-                          ),
-                        ],
-                      ),
+                  Text(
+                    l10n.accountSyncFailed,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colors.error,
                     ),
-                  BackgroundSyncLine(accountId: entry.id),
+                  ),
+                  Text(
+                    describeDataFailure(
+                      l10n,
+                      failure,
+                      serverRoot: entry.connection.rootUri,
+                      platform: theme.platform,
+                      stale: lastSyncedAt != null,
+                    ).explanation,
+                    style: secondary,
+                  ),
                 ],
               ),
             ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            FilledButton.tonalIcon(
-              onPressed: canSync ? () => _syncNow(ref) : null,
-              icon: running
-                  ? const SizedBox.square(
-                      dimension: 18,
-                      child: CircularProgressIndicator.adaptive(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.sync),
-              label: Text(running ? l10n.accountSyncing : l10n.accountSyncNow),
+          BackgroundSyncLine(accountId: entry.id),
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                FilledButton.tonalIcon(
+                  onPressed: canSync ? () => _syncNow(ref) : null,
+                  style: inlineFilledButtonStyle(context),
+                  icon: running
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator.adaptive(
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Icon(Icons.sync),
+                  label: Text(
+                    running ? l10n.accountSyncing : l10n.accountSyncNow,
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: canSync ? () => _fullResync(ref) : null,
+                  icon: const Icon(Icons.cloud_download_outlined),
+                  label: Text(l10n.accountFullResync),
+                ),
+              ],
             ),
-            TextButton.icon(
-              onPressed: canSync ? () => _fullResync(ref) : null,
-              icon: const Icon(Icons.cloud_download_outlined),
-              label: Text(l10n.accountFullResync),
-            ),
-          ],
-        ),
-      ],
+          ),
+        ],
+      ),
     );
   }
 }

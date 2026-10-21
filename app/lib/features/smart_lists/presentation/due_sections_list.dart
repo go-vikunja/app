@@ -6,8 +6,8 @@ import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/theme/hex_color.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
-import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
 import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
+import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/overview/application/due_date_groups.dart';
 import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
@@ -49,14 +49,13 @@ class DueSectionsList extends StatelessWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
         if (header case final header?) NoticeSliver(notice: header),
-        for (final section in sections) ...[
-          SliverToBoxAdapter(
-            child: ListSectionHeader(
-              title: dueSectionTitle(l10n, section.group),
-              count: section.tasks.length,
-            ),
-          ),
-          SliverList.builder(
+        for (final section in sections)
+          SliverSectionCard(
+            title: dueSectionTitle(l10n, section.group),
+            count: section.tasks.length,
+            titleColor: section.group == DueGroup.overdue
+                ? Theme.of(context).colorScheme.error
+                : null,
             itemCount: section.tasks.length,
             itemBuilder: (context, index) {
               final task = section.tasks[index];
@@ -82,7 +81,6 @@ class DueSectionsList extends StatelessWidget {
               );
             },
           ),
-        ],
         // Room for the floating action button below the last row.
         const SliverSafeArea(
           top: false,

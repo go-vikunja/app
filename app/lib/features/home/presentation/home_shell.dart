@@ -151,8 +151,8 @@ class _HomeShellState extends ConsumerState<HomeShell> {
 
     final destinations = [
       AdaptiveDestination(
-        icon: Icons.task_alt_outlined,
-        selectedIcon: Icons.task_alt,
+        icon: Icons.home_outlined,
+        selectedIcon: Icons.home,
         label: l10n.tabOverview,
       ),
       AdaptiveDestination(
@@ -215,14 +215,12 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       // snackbars then stay beside it rather than across it.
       child: Row(
         children: [
-          if (rail) ...[
+          if (rail)
             AdaptiveNavigationRail(
               selectedIndex: widget.navigationShell.currentIndex,
               onDestinationSelected: _selectTab,
               destinations: destinations,
             ),
-            const VerticalDivider(width: 1, thickness: 1),
-          ],
           Expanded(
             child: Scaffold(
               body: content,

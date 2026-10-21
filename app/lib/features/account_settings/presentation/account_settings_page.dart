@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:math' as math;
 
+import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -33,9 +35,9 @@ import 'package:vikunja_mobile/features/account_settings/presentation/searchable
 import 'package:vikunja_mobile/features/account_settings/presentation/sign_in_provider_name.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/web_settings_page_opener.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
-import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
 import 'package:vikunja_mobile/features/common/presentation/option_sheet.dart';
+import 'package:vikunja_mobile/features/common/presentation/settings_section.dart';
 import 'package:vikunja_mobile/features/common/presentation/user_avatar.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/server_address_display.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
@@ -504,89 +506,98 @@ class _Settings extends ConsumerWidget {
           emphasized: true,
           action: TextButton(onPressed: onRetry, child: Text(l10n.retry)),
         ),
-      ListSectionHeader(title: l10n.accountSettingsProfile),
-      ListTile(
-        leading: UserAvatar(
-          user: User(
-            id: account.userId,
-            username: account.username,
-            name: account.displayName,
-          ),
-          radius: 20,
-          accountId: entry.id,
-          primary: true,
-        ),
-        title: Text(l10n.accountSettingsAvatar),
-        subtitle: switch (state.avatarProvider) {
-          final provider? => Text(avatarProviderLabel(l10n, provider)),
-          null => null,
-        },
-        trailing: const Icon(Icons.chevron_right),
-        onTap: () =>
-            unawaited(GoRouter.of(context).push(AppRoutes.accountAvatar)),
-      ),
-      Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-        child: TextField(
-          controller: nameController,
-          enabled: canChange && isLocalUser,
-          textInputAction: TextInputAction.done,
-          textCapitalization: TextCapitalization.words,
-          decoration: InputDecoration(
-            labelText: l10n.accountSettingsName,
-            helperText: switch (profile) {
-              null => l10n.accountSettingsWaitingForProfile,
-              _ when isLocalUser => l10n.accountSettingsNameHelp(
-                account.username,
+      SettingsSection(
+        title: l10n.accountSettingsProfile,
+        dividerAbove: false,
+        children: [
+          ListTile(
+            leading: UserAvatar(
+              user: User(
+                id: account.userId,
+                username: account.username,
+                name: account.displayName,
               ),
-              _ => l10n.accountSettingsNameManaged(provider),
+              radius: 20,
+              accountId: entry.id,
+              primary: true,
+            ),
+            title: Text(l10n.accountSettingsAvatar),
+            subtitle: switch (state.avatarProvider) {
+              final provider? => Text(avatarProviderLabel(l10n, provider)),
+              null => null,
             },
-            helperMaxLines: 4,
-            errorText: errors[AccountSettingsField.name],
-            errorMaxLines: 4,
-            suffixIcon: nameDirty && canChange
-                ? IconButton(
-                    onPressed: onSaveName,
-                    tooltip: l10n.accountSettingsNameSave,
-                    icon: const Icon(Icons.check),
-                  )
-                : null,
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () =>
+                unawaited(GoRouter.of(context).push(AppRoutes.accountAvatar)),
           ),
-          onChanged: (_) => onNameChanged(),
-          onSubmitted: (_) => onSaveName(),
-        ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: TextField(
+              controller: nameController,
+              enabled: canChange && isLocalUser,
+              textInputAction: TextInputAction.done,
+              textCapitalization: TextCapitalization.words,
+              decoration: InputDecoration(
+                labelText: l10n.accountSettingsName,
+                helperText: switch (profile) {
+                  null => l10n.accountSettingsWaitingForProfile,
+                  _ when isLocalUser => l10n.accountSettingsNameHelp(
+                    account.username,
+                  ),
+                  _ => l10n.accountSettingsNameManaged(provider),
+                },
+                helperMaxLines: 4,
+                errorText: errors[AccountSettingsField.name],
+                errorMaxLines: 4,
+                suffixIcon: nameDirty && canChange
+                    ? IconButton(
+                        onPressed: onSaveName,
+                        tooltip: l10n.accountSettingsNameSave,
+                        icon: const Icon(Icons.check),
+                      )
+                    : null,
+              ),
+              onChanged: (_) => onNameChanged(),
+              onSubmitted: (_) => onSaveName(),
+            ),
+          ),
+        ],
       ),
-      ListSectionHeader(title: l10n.accountSettingsSignIn),
-      if (profile == null)
-        SettingsNote(
-          text: l10n.accountSettingsWaitingForProfile,
-          icon: Icons.hourglass_empty,
-        )
-      else if (isLocalUser) ...[
-        ListTile(
-          leading: const Icon(Icons.password),
-          title: Text(l10n.accountSettingsChangePassword),
-          subtitle: Text(l10n.accountSettingsChangePasswordHint),
-          trailing: const Icon(Icons.open_in_new),
-          onTap: () => onOpenWeb(WebSettingsPage.password),
-        ),
-        ListTile(
-          leading: const Icon(Icons.alternate_email),
-          title: Text(l10n.accountSettingsChangeEmail),
-          subtitle: Text(switch (profile.pendingEmail) {
-            final email? when email.isNotEmpty =>
-              l10n.accountSettingsPendingEmail(email),
-            _ => l10n.accountSettingsOpensWeb,
-          }),
-          trailing: const Icon(Icons.open_in_new),
-          onTap: () => onOpenWeb(WebSettingsPage.email),
-        ),
-      ] else
-        ListTile(
-          leading: const Icon(Icons.verified_user_outlined),
-          title: Text(l10n.accountSettingsManagedBySignInNamed(provider)),
-        ),
-      ...securitySection(
+      SettingsSection(
+        title: l10n.accountSettingsSignIn,
+        children: [
+          if (profile == null)
+            SettingsNote(
+              text: l10n.accountSettingsWaitingForProfile,
+              icon: Icons.hourglass_empty,
+            )
+          else if (isLocalUser) ...[
+            ListTile(
+              leading: const Icon(Icons.password),
+              title: Text(l10n.accountSettingsChangePassword),
+              subtitle: Text(l10n.accountSettingsChangePasswordHint),
+              trailing: const Icon(Icons.open_in_new),
+              onTap: () => onOpenWeb(WebSettingsPage.password),
+            ),
+            ListTile(
+              leading: const Icon(Icons.alternate_email),
+              title: Text(l10n.accountSettingsChangeEmail),
+              subtitle: Text(switch (profile.pendingEmail) {
+                final email? when email.isNotEmpty =>
+                  l10n.accountSettingsPendingEmail(email),
+                _ => l10n.accountSettingsOpensWeb,
+              }),
+              trailing: const Icon(Icons.open_in_new),
+              onTap: () => onOpenWeb(WebSettingsPage.email),
+            ),
+          ] else
+            ListTile(
+              leading: const Icon(Icons.verified_user_outlined),
+              title: Text(l10n.accountSettingsManagedBySignInNamed(provider)),
+            ),
+        ],
+      ),
+      securitySection(
         l10n: l10n,
         connection: entry.connection,
         profile: profile,
@@ -594,352 +605,389 @@ class _Settings extends ConsumerWidget {
         onOpenTotp: () => onOpenWeb(WebSettingsPage.totp),
         onOpenSessions: () => onOpenPage(AppRoutes.accountSessions),
       ),
-      ListSectionHeader(title: l10n.accountSettingsDefaults),
-      SettingChoiceTile(
-        title: l10n.accountSettingsDefaultProject,
-        value: defaultProjectLabel(l10n, settings.defaultProjectId, projects),
-        error: errors[AccountSettingsField.defaultProject],
-        onTap: whenChangeable(() async {
-          final picked = await pickDefaultProject(
-            context,
-            projects: projects,
-            selectedId: settings.defaultProjectId,
-          );
-          if (picked == null || picked == (settings.defaultProjectId ?? 0)) {
-            return;
-          }
-          onSave(
-            AccountSettingsField.defaultProject,
-            UserSettingsChanges(
-              defaultProjectId: picked == 0
-                  ? const SettingChange.clear()
-                  : SettingChange.set(picked),
+      SettingsSection(
+        title: l10n.accountSettingsDefaults,
+        children: [
+          SettingChoiceTile(
+            leading: const Icon(Icons.folder_outlined),
+            title: l10n.accountSettingsDefaultProject,
+            value: defaultProjectLabel(
+              l10n,
+              settings.defaultProjectId,
+              projects,
             ),
-          );
-        }),
-      ),
-      SettingChoiceTile(
-        title: l10n.accountSettingsDefaultView,
-        value: _defaultViewLabel(l10n, settings.defaultViewKind),
-        error: errors[AccountSettingsField.defaultView],
-        onTap: whenChangeable(
-          () => onChoose<SettingChange<ProjectViewKind>>(
-            AccountSettingsField.defaultView,
+            error: errors[AccountSettingsField.defaultProject],
+            onTap: whenChangeable(() async {
+              final picked = await pickDefaultProject(
+                context,
+                projects: projects,
+                selectedId: settings.defaultProjectId,
+              );
+              if (picked == null ||
+                  picked == (settings.defaultProjectId ?? 0)) {
+                return;
+              }
+              onSave(
+                AccountSettingsField.defaultProject,
+                UserSettingsChanges(
+                  defaultProjectId: picked == 0
+                      ? const SettingChange.clear()
+                      : SettingChange.set(picked),
+                ),
+              );
+            }),
+          ),
+          SettingChoiceTile(
+            leading: const Icon(Icons.view_agenda_outlined),
             title: l10n.accountSettingsDefaultView,
-            options: [
-              SheetOption(
-                value: const SettingChange.clear(),
-                label: l10n.accountSettingsDefaultViewFirst,
-                selected: settings.defaultViewKind == null,
-              ),
-              for (final kind in ProjectViewKind.values)
-                SheetOption(
-                  value: SettingChange.set(kind),
-                  label: viewKindOptionLabel(l10n, kind),
-                  selected: settings.defaultViewKind == kind,
-                ),
-            ],
-            changes: (value) => UserSettingsChanges(defaultViewKind: value),
-          ),
-        ),
-      ),
-      SettingChoiceTile(
-        title: l10n.accountSettingsQuickAddMagic,
-        value: _magicModeLabel(l10n, settings.quickAddMagicMode),
-        error: errors[AccountSettingsField.quickAddMagic],
-        onTap: whenChangeable(
-          () => onChoose<QuickAddMagicMode>(
-            AccountSettingsField.quickAddMagic,
-            title: l10n.accountSettingsQuickAddMagic,
-            options: [
-              for (final mode in QuickAddMagicMode.values)
-                SheetOption(
-                  value: mode,
-                  label: _magicModeLabel(l10n, mode),
-                  selected: settings.quickAddMagicMode == mode,
-                ),
-            ],
-            changes: (value) => UserSettingsChanges(quickAddMagicMode: value),
-          ),
-        ),
-      ),
-      SettingChoiceTile(
-        title: l10n.accountSettingsMinimumPriority,
-        value: priorityLabel(
-          l10n,
-          TaskPriority.fromValue(settings.effectiveMinimumPriority),
-        ),
-        error: errors[AccountSettingsField.minimumPriority],
-        onTap: whenChangeable(
-          () => onChoose<TaskPriority>(
-            AccountSettingsField.minimumPriority,
-            title: l10n.accountSettingsMinimumPriority,
-            options: [
-              for (final priority in TaskPriority.values)
-                if (priority != TaskPriority.unset)
+            value: _defaultViewLabel(l10n, settings.defaultViewKind),
+            error: errors[AccountSettingsField.defaultView],
+            onTap: whenChangeable(
+              () => onChoose<SettingChange<ProjectViewKind>>(
+                AccountSettingsField.defaultView,
+                title: l10n.accountSettingsDefaultView,
+                options: [
                   SheetOption(
-                    value: priority,
-                    label: priorityLabel(l10n, priority),
-                    selected:
-                        settings.effectiveMinimumPriority == priority.value,
+                    value: const SettingChange.clear(),
+                    label: l10n.accountSettingsDefaultViewFirst,
+                    selected: settings.defaultViewKind == null,
                   ),
-            ],
-            changes: (value) =>
-                UserSettingsChanges(minimumPriority: value.value),
-          ),
-        ),
-      ),
-      SettingChoiceTile(
-        title: l10n.accountSettingsOverviewFilter,
-        value: _overviewFilterLabel(
-          l10n,
-          settings.filterIdUsedOnOverview,
-          savedFilters,
-        ),
-        error: errors[AccountSettingsField.overviewFilter],
-        onTap: whenChangeable(
-          () => onChoose<SettingChange<int>>(
-            AccountSettingsField.overviewFilter,
-            title: l10n.accountSettingsOverviewFilter,
-            options: [
-              SheetOption(
-                value: const SettingChange.clear(),
-                label: l10n.accountSettingsOverviewFilterNone,
-                selected: settings.filterIdUsedOnOverview == null,
+                  for (final kind in ProjectViewKind.values)
+                    SheetOption(
+                      value: SettingChange.set(kind),
+                      label: viewKindOptionLabel(l10n, kind),
+                      selected: settings.defaultViewKind == kind,
+                    ),
+                ],
+                changes: (value) => UserSettingsChanges(defaultViewKind: value),
               ),
-              for (final filter in savedFilters)
-                SheetOption(
-                  value: SettingChange.set(filter.projectId),
-                  label: projectDisplayTitle(
-                    l10n,
-                    filter.title,
-                    projectId: filter.projectId,
-                  ),
-                  selected: settings.filterIdUsedOnOverview == filter.projectId,
-                ),
-            ],
-            changes: (value) =>
-                UserSettingsChanges(filterIdUsedOnOverview: value),
-          ),
-        ),
-      ),
-      SettingChoiceTile(
-        title: l10n.accountSettingsWeekStart,
-        value: weekdayName(settings.weekStart.clamp(0, 6)),
-        error: errors[AccountSettingsField.weekStart],
-        onTap: whenChangeable(
-          () => onChoose<int>(
-            AccountSettingsField.weekStart,
-            title: l10n.accountSettingsWeekStart,
-            options: [
-              for (var day = 0; day < 7; day++)
-                SheetOption(
-                  value: day,
-                  label: weekdayName(day),
-                  selected: settings.weekStart == day,
-                ),
-            ],
-            changes: (value) => UserSettingsChanges(weekStart: value),
-          ),
-        ),
-      ),
-      ListSectionHeader(title: l10n.accountSettingsTimeAndLanguage),
-      SettingChoiceTile(
-        title: l10n.accountSettingsTimezone,
-        value: settings.timezone.isEmpty
-            ? l10n.accountSettingsTimezoneServerDefault
-            : settings.timezone.replaceAll('_', ' '),
-        help: l10n.accountSettingsTimezoneHelp,
-        error: errors[AccountSettingsField.timezone],
-        onTap: whenChangeable(() async {
-          final picked = await _pickTimeZone(context, settings.timezone);
-          if (picked == null || picked == settings.timezone) return;
-          onSave(
-            AccountSettingsField.timezone,
-            UserSettingsChanges(timezone: picked),
-          );
-        }),
-      ),
-      SettingChoiceTile(
-        title: l10n.accountSettingsLanguage,
-        value: switch (settings.language) {
-          '' => l10n.accountSettingsLanguageNotSet,
-          final code => serverLanguageOf(code)?.name ?? code,
-        },
-        help: l10n.accountSettingsLanguageHelp,
-        error: errors[AccountSettingsField.language],
-        onTap: whenChangeable(() async {
-          final picked = await _pickLanguage(context, settings.language);
-          if (picked == null || picked == settings.language) return;
-          onSave(
-            AccountSettingsField.language,
-            UserSettingsChanges(language: picked),
-          );
-        }),
-      ),
-      SettingChoiceTile(
-        title: l10n.accountSettingsDateDisplay,
-        value: l10n.accountSettingsDateExample(switch (settings.dateDisplay) {
-          DateDisplay.relative => formatter.relative(
-            now.add(const Duration(days: 3)),
-            now: now,
-          ),
-          _ => formatter.absolute(now),
-        }),
-        error: errors[AccountSettingsField.dateDisplay],
-        onTap: whenChangeable(
-          () => onChoose<SettingChange<DateDisplay>>(
-            AccountSettingsField.dateDisplay,
-            title: l10n.accountSettingsDateDisplay,
-            options: [
-              SheetOption(
-                value: const SettingChange.clear(),
-                label: l10n.accountSettingsDateDisplayDevice,
-                selected: settings.dateDisplay == null,
-              ),
-              for (final displayOption in DateDisplay.values)
-                SheetOption(
-                  value: SettingChange.set(displayOption),
-                  label: _dateDisplayLabel(l10n, displayOption, now),
-                  selected: settings.dateDisplay == displayOption,
-                ),
-            ],
-            changes: (value) => UserSettingsChanges(dateDisplay: value),
-          ),
-        ),
-      ),
-      SettingChoiceTile(
-        title: l10n.accountSettingsTimeFormat,
-        value: _timeFormatLabel(l10n, settings.timeFormat, now),
-        error: errors[AccountSettingsField.timeFormat],
-        onTap: whenChangeable(
-          () => onChoose<SettingChange<TimeFormat>>(
-            AccountSettingsField.timeFormat,
-            title: l10n.accountSettingsTimeFormat,
-            options: [
-              SheetOption(
-                value: const SettingChange.clear(),
-                label: l10n.accountSettingsTimeFormatDevice,
-                selected: settings.timeFormat == null,
-              ),
-              for (final format in TimeFormat.values)
-                SheetOption(
-                  value: SettingChange.set(format),
-                  label: _timeFormatLabel(l10n, format, now),
-                  selected: settings.timeFormat == format,
-                ),
-            ],
-            changes: (value) => UserSettingsChanges(timeFormat: value),
-          ),
-        ),
-      ),
-      ListSectionHeader(title: l10n.accountSettingsEmailNotifications),
-      if (!entry.connection.info.emailRemindersEnabled)
-        SettingsNote(
-          text: l10n.accountSettingsEmailsOff,
-          icon: Icons.unsubscribe_outlined,
-        ),
-      _SettingSwitch(
-        title: l10n.accountSettingsEmailReminders,
-        subtitle: l10n.accountSettingsEmailRemindersSubtitle,
-        value: settings.emailRemindersEnabled,
-        error: errors[AccountSettingsField.emailReminders],
-        onChanged: canChange
-            ? (value) => onSave(
-                AccountSettingsField.emailReminders,
-                UserSettingsChanges(emailRemindersEnabled: value),
-              )
-            : null,
-      ),
-      _SettingSwitch(
-        title: l10n.accountSettingsOverdueReminders,
-        subtitle: l10n.accountSettingsOverdueRemindersSubtitle,
-        value: settings.overdueTasksRemindersEnabled,
-        error: errors[AccountSettingsField.overdueReminders],
-        onChanged: canChange
-            ? (value) => onSave(
-                AccountSettingsField.overdueReminders,
-                UserSettingsChanges(overdueTasksRemindersEnabled: value),
-              )
-            : null,
-      ),
-      if (settings.overdueTasksRemindersEnabled)
-        SettingChoiceTile(
-          title: l10n.accountSettingsOverdueTime,
-          value: formatter.timeOfDay(
-            DateTime(
-              2000,
-              1,
-              1,
-              settings.overdueTasksRemindersTime.hour,
-              settings.overdueTasksRemindersTime.minute,
             ),
           ),
-          error: errors[AccountSettingsField.overdueTime],
-          onTap: whenChangeable(() async {
-            final current = settings.overdueTasksRemindersTime;
-            final picked = await pickTimeOfDay(
-              context,
-              initial: TimeOfDay(hour: current.hour, minute: current.minute),
-              display: display,
-              title: l10n.accountSettingsOverdueTime,
-            );
-            if (picked == null) return;
-            final time = ClockTime(picked.hour, picked.minute);
-            if (time == current) return;
-            onSave(
-              AccountSettingsField.overdueTime,
-              UserSettingsChanges(overdueTasksRemindersTime: time),
-            );
-          }),
-        ),
-      ListSectionHeader(title: l10n.accountSettingsPrivacy),
-      _SettingSwitch(
-        title: l10n.accountSettingsDiscoverableByName,
-        subtitle: l10n.accountSettingsDiscoverableByNameSubtitle,
-        value: settings.discoverableByName,
-        error: errors[AccountSettingsField.discoverableByName],
-        onChanged: canChange
-            ? (value) => onSave(
-                AccountSettingsField.discoverableByName,
-                UserSettingsChanges(discoverableByName: value),
-              )
-            : null,
-      ),
-      _SettingSwitch(
-        title: l10n.accountSettingsDiscoverableByEmail,
-        subtitle: l10n.accountSettingsDiscoverableByEmailSubtitle,
-        value: settings.discoverableByEmail,
-        error: errors[AccountSettingsField.discoverableByEmail],
-        onChanged: canChange
-            ? (value) => onSave(
-                AccountSettingsField.discoverableByEmail,
-                UserSettingsChanges(discoverableByEmail: value),
-              )
-            : null,
-      ),
-      ListSectionHeader(title: l10n.accountSettingsAppearance),
-      SettingChoiceTile(
-        title: l10n.accountSettingsColorScheme,
-        value: _colorSchemaLabel(l10n, settings.colorSchema),
-        error: errors[AccountSettingsField.colorScheme],
-        onTap: whenChangeable(
-          () => onChoose<ColorSchema>(
-            AccountSettingsField.colorScheme,
-            title: l10n.accountSettingsColorScheme,
-            options: [
-              for (final schema in ColorSchema.values)
-                SheetOption(
-                  value: schema,
-                  label: _colorSchemaLabel(l10n, schema),
-                  selected: settings.colorSchema == schema,
-                ),
-            ],
-            changes: (value) => UserSettingsChanges(colorSchema: value),
+          SettingChoiceTile(
+            leading: const Icon(Icons.auto_awesome_outlined),
+            title: l10n.accountSettingsQuickAddMagic,
+            value: _magicModeLabel(l10n, settings.quickAddMagicMode),
+            error: errors[AccountSettingsField.quickAddMagic],
+            onTap: whenChangeable(
+              () => onChoose<QuickAddMagicMode>(
+                AccountSettingsField.quickAddMagic,
+                title: l10n.accountSettingsQuickAddMagic,
+                options: [
+                  for (final mode in QuickAddMagicMode.values)
+                    SheetOption(
+                      value: mode,
+                      label: _magicModeLabel(l10n, mode),
+                      selected: settings.quickAddMagicMode == mode,
+                    ),
+                ],
+                changes: (value) =>
+                    UserSettingsChanges(quickAddMagicMode: value),
+              ),
+            ),
           ),
-        ),
+          SettingChoiceTile(
+            leading: const Icon(Icons.flag_outlined),
+            title: l10n.accountSettingsMinimumPriority,
+            value: priorityLabel(
+              l10n,
+              TaskPriority.fromValue(settings.effectiveMinimumPriority),
+            ),
+            error: errors[AccountSettingsField.minimumPriority],
+            onTap: whenChangeable(
+              () => onChoose<TaskPriority>(
+                AccountSettingsField.minimumPriority,
+                title: l10n.accountSettingsMinimumPriority,
+                options: [
+                  for (final priority in TaskPriority.values)
+                    if (priority != TaskPriority.unset)
+                      SheetOption(
+                        value: priority,
+                        label: priorityLabel(l10n, priority),
+                        selected:
+                            settings.effectiveMinimumPriority == priority.value,
+                      ),
+                ],
+                changes: (value) =>
+                    UserSettingsChanges(minimumPriority: value.value),
+              ),
+            ),
+          ),
+          SettingChoiceTile(
+            leading: const Icon(Icons.filter_alt_outlined),
+            title: l10n.accountSettingsOverviewFilter,
+            value: _overviewFilterLabel(
+              l10n,
+              settings.filterIdUsedOnOverview,
+              savedFilters,
+            ),
+            error: errors[AccountSettingsField.overviewFilter],
+            onTap: whenChangeable(
+              () => onChoose<SettingChange<int>>(
+                AccountSettingsField.overviewFilter,
+                title: l10n.accountSettingsOverviewFilter,
+                options: [
+                  SheetOption(
+                    value: const SettingChange.clear(),
+                    label: l10n.accountSettingsOverviewFilterNone,
+                    selected: settings.filterIdUsedOnOverview == null,
+                  ),
+                  for (final filter in savedFilters)
+                    SheetOption(
+                      value: SettingChange.set(filter.projectId),
+                      label: projectDisplayTitle(
+                        l10n,
+                        filter.title,
+                        projectId: filter.projectId,
+                      ),
+                      selected:
+                          settings.filterIdUsedOnOverview == filter.projectId,
+                    ),
+                ],
+                changes: (value) =>
+                    UserSettingsChanges(filterIdUsedOnOverview: value),
+              ),
+            ),
+          ),
+          SettingChoiceTile(
+            leading: const Icon(Icons.date_range_outlined),
+            title: l10n.accountSettingsWeekStart,
+            value: weekdayName(settings.weekStart.clamp(0, 6)),
+            error: errors[AccountSettingsField.weekStart],
+            onTap: whenChangeable(
+              () => onChoose<int>(
+                AccountSettingsField.weekStart,
+                title: l10n.accountSettingsWeekStart,
+                options: [
+                  for (var day = 0; day < 7; day++)
+                    SheetOption(
+                      value: day,
+                      label: weekdayName(day),
+                      selected: settings.weekStart == day,
+                    ),
+                ],
+                changes: (value) => UserSettingsChanges(weekStart: value),
+              ),
+            ),
+          ),
+        ],
       ),
-      ...integrationsSection(
+      SettingsSection(
+        title: l10n.accountSettingsTimeAndLanguage,
+        children: [
+          SettingChoiceTile(
+            leading: const Icon(Icons.public_outlined),
+            title: l10n.accountSettingsTimezone,
+            value: settings.timezone.isEmpty
+                ? l10n.accountSettingsTimezoneServerDefault
+                : settings.timezone.replaceAll('_', ' '),
+            help: l10n.accountSettingsTimezoneHelp,
+            error: errors[AccountSettingsField.timezone],
+            onTap: whenChangeable(() async {
+              final picked = await _pickTimeZone(context, settings.timezone);
+              if (picked == null || picked == settings.timezone) return;
+              onSave(
+                AccountSettingsField.timezone,
+                UserSettingsChanges(timezone: picked),
+              );
+            }),
+          ),
+          SettingChoiceTile(
+            leading: const Icon(Icons.translate_outlined),
+            title: l10n.accountSettingsLanguage,
+            value: switch (settings.language) {
+              '' => l10n.accountSettingsLanguageNotSet,
+              final code => serverLanguageOf(code)?.name ?? code,
+            },
+            help: l10n.accountSettingsLanguageHelp,
+            error: errors[AccountSettingsField.language],
+            onTap: whenChangeable(() async {
+              final picked = await _pickLanguage(context, settings.language);
+              if (picked == null || picked == settings.language) return;
+              onSave(
+                AccountSettingsField.language,
+                UserSettingsChanges(language: picked),
+              );
+            }),
+          ),
+          SettingChoiceTile(
+            leading: const Icon(Icons.calendar_today_outlined),
+            title: l10n.accountSettingsDateDisplay,
+            value: l10n.accountSettingsDateExample(
+              switch (settings.dateDisplay) {
+                DateDisplay.relative => formatter.relative(
+                  now.add(const Duration(days: 3)),
+                  now: now,
+                ),
+                _ => formatter.absolute(now),
+              },
+            ),
+            error: errors[AccountSettingsField.dateDisplay],
+            onTap: whenChangeable(
+              () => onChoose<SettingChange<DateDisplay>>(
+                AccountSettingsField.dateDisplay,
+                title: l10n.accountSettingsDateDisplay,
+                options: [
+                  SheetOption(
+                    value: const SettingChange.clear(),
+                    label: l10n.accountSettingsDateDisplayDevice,
+                    selected: settings.dateDisplay == null,
+                  ),
+                  for (final displayOption in DateDisplay.values)
+                    SheetOption(
+                      value: SettingChange.set(displayOption),
+                      label: _dateDisplayLabel(l10n, displayOption, now),
+                      selected: settings.dateDisplay == displayOption,
+                    ),
+                ],
+                changes: (value) => UserSettingsChanges(dateDisplay: value),
+              ),
+            ),
+          ),
+          SettingChoiceTile(
+            leading: const Icon(Icons.schedule_outlined),
+            title: l10n.accountSettingsTimeFormat,
+            value: _timeFormatLabel(l10n, settings.timeFormat, now),
+            error: errors[AccountSettingsField.timeFormat],
+            onTap: whenChangeable(
+              () => onChoose<SettingChange<TimeFormat>>(
+                AccountSettingsField.timeFormat,
+                title: l10n.accountSettingsTimeFormat,
+                options: [
+                  SheetOption(
+                    value: const SettingChange.clear(),
+                    label: l10n.accountSettingsTimeFormatDevice,
+                    selected: settings.timeFormat == null,
+                  ),
+                  for (final format in TimeFormat.values)
+                    SheetOption(
+                      value: SettingChange.set(format),
+                      label: _timeFormatLabel(l10n, format, now),
+                      selected: settings.timeFormat == format,
+                    ),
+                ],
+                changes: (value) => UserSettingsChanges(timeFormat: value),
+              ),
+            ),
+          ),
+        ],
+      ),
+      SettingsSection(
+        title: l10n.accountSettingsEmailNotifications,
+        children: [
+          if (!entry.connection.info.emailRemindersEnabled)
+            SettingsNote(
+              text: l10n.accountSettingsEmailsOff,
+              icon: Icons.unsubscribe_outlined,
+            ),
+          _SettingSwitch(
+            icon: Icons.mail_outline,
+            title: l10n.accountSettingsEmailReminders,
+            subtitle: l10n.accountSettingsEmailRemindersSubtitle,
+            value: settings.emailRemindersEnabled,
+            error: errors[AccountSettingsField.emailReminders],
+            onChanged: canChange
+                ? (value) => onSave(
+                    AccountSettingsField.emailReminders,
+                    UserSettingsChanges(emailRemindersEnabled: value),
+                  )
+                : null,
+          ),
+          _SettingSwitch(
+            icon: Icons.notification_important_outlined,
+            title: l10n.accountSettingsOverdueReminders,
+            subtitle: l10n.accountSettingsOverdueRemindersSubtitle,
+            value: settings.overdueTasksRemindersEnabled,
+            error: errors[AccountSettingsField.overdueReminders],
+            onChanged: canChange
+                ? (value) => onSave(
+                    AccountSettingsField.overdueReminders,
+                    UserSettingsChanges(overdueTasksRemindersEnabled: value),
+                  )
+                : null,
+          ),
+          if (settings.overdueTasksRemindersEnabled)
+            SettingChoiceTile(
+              leading: const Icon(Icons.alarm_outlined),
+              title: l10n.accountSettingsOverdueTime,
+              value: formatter.timeOfDay(
+                DateTime(
+                  2000,
+                  1,
+                  1,
+                  settings.overdueTasksRemindersTime.hour,
+                  settings.overdueTasksRemindersTime.minute,
+                ),
+              ),
+              error: errors[AccountSettingsField.overdueTime],
+              onTap: whenChangeable(() async {
+                final current = settings.overdueTasksRemindersTime;
+                final picked = await pickTimeOfDay(
+                  context,
+                  initial: TimeOfDay(
+                    hour: current.hour,
+                    minute: current.minute,
+                  ),
+                  display: display,
+                  title: l10n.accountSettingsOverdueTime,
+                );
+                if (picked == null) return;
+                final time = ClockTime(picked.hour, picked.minute);
+                if (time == current) return;
+                onSave(
+                  AccountSettingsField.overdueTime,
+                  UserSettingsChanges(overdueTasksRemindersTime: time),
+                );
+              }),
+            ),
+        ],
+      ),
+      SettingsSection(
+        title: l10n.accountSettingsPrivacy,
+        children: [
+          _SettingSwitch(
+            icon: Icons.person_search_outlined,
+            title: l10n.accountSettingsDiscoverableByName,
+            subtitle: l10n.accountSettingsDiscoverableByNameSubtitle,
+            value: settings.discoverableByName,
+            error: errors[AccountSettingsField.discoverableByName],
+            onChanged: canChange
+                ? (value) => onSave(
+                    AccountSettingsField.discoverableByName,
+                    UserSettingsChanges(discoverableByName: value),
+                  )
+                : null,
+          ),
+          _SettingSwitch(
+            icon: Icons.contact_mail_outlined,
+            title: l10n.accountSettingsDiscoverableByEmail,
+            subtitle: l10n.accountSettingsDiscoverableByEmailSubtitle,
+            value: settings.discoverableByEmail,
+            error: errors[AccountSettingsField.discoverableByEmail],
+            onChanged: canChange
+                ? (value) => onSave(
+                    AccountSettingsField.discoverableByEmail,
+                    UserSettingsChanges(discoverableByEmail: value),
+                  )
+                : null,
+          ),
+        ],
+      ),
+      SettingsSection(
+        title: l10n.accountSettingsAppearance,
+        children: [
+          _ColorSchemeChoice(
+            value: settings.colorSchema,
+            error: errors[AccountSettingsField.colorScheme],
+            onChanged: canChange
+                ? (schema) => onSave(
+                    AccountSettingsField.colorScheme,
+                    UserSettingsChanges(colorSchema: schema),
+                  )
+                : null,
+          ),
+        ],
+      ),
+      integrationsSection(
         l10n: l10n,
         connection: entry.connection,
         overview: security,
@@ -947,7 +995,7 @@ class _Settings extends ConsumerWidget {
         onOpenCaldav: () =>
             onOpenPage(AppRoutes.accountCaldav, extra: security.totp?.name),
       ),
-      ...yourDataSection(
+      yourDataSection(
         l10n: l10n,
         formatter: formatter,
         overview: security,
@@ -977,6 +1025,7 @@ class _Settings extends ConsumerWidget {
 
 class _SettingSwitch extends StatelessWidget {
   const new({
+    required this.icon,
     required this.title,
     required this.subtitle,
     required this.value,
@@ -984,6 +1033,7 @@ class _SettingSwitch extends StatelessWidget {
     this.error,
   });
 
+  final IconData icon;
   final String title;
   final String subtitle;
   final bool value;
@@ -992,28 +1042,135 @@ class _SettingSwitch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final error = this.error;
     return SwitchListTile.adaptive(
+      secondary: Icon(icon),
       title: Text(title),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(subtitle),
-          if (error != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text(
-                error,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.error,
-                ),
-              ),
-            ),
-        ],
+        children: [Text(subtitle), if (error != null) SettingErrorText(error)],
       ),
       value: value,
       onChanged: onChanged,
+    );
+  }
+}
+
+/// Light, dark or the system's, side by side: a pick saves at once.
+class _ColorSchemeChoice extends StatelessWidget {
+  const new({
+    required this.value,
+    required this.error,
+    required this.onChanged,
+  });
+
+  final ColorSchema value;
+  final String? error;
+
+  /// Null shows the choice disabled.
+  final ValueChanged<ColorSchema>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final error = this.error;
+    final onChanged = this.onChanged;
+    final enabled = onChanged != null;
+    final segments = [
+      (ColorSchema.light, Icons.light_mode_outlined),
+      (ColorSchema.dark, Icons.dark_mode_outlined),
+      (ColorSchema.auto, Icons.brightness_auto_outlined),
+    ];
+    final control = switch (theme.platform) {
+      TargetPlatform.iOS || TargetPlatform.macOS => SizedBox(
+        width: double.infinity,
+        child: CupertinoSlidingSegmentedControl<ColorSchema>(
+          groupValue: value,
+          disabledChildren: enabled
+              ? const {}
+              : {for (final (schema, _) in segments) schema},
+          onValueChanged: (schema) {
+            if (schema != null) onChanged?.call(schema);
+          },
+          children: {
+            for (final (schema, _) in segments)
+              schema: Text(
+                _colorSchemaLabel(l10n, schema),
+                textAlign: TextAlign.center,
+              ),
+          },
+        ),
+      ),
+      _ => LayoutBuilder(
+        builder: (context, constraints) {
+          // The icons go first when the labels would have to wrap.
+          final labelStyle = theme.textTheme.labelLarge;
+          final scaler = MediaQuery.textScalerOf(context);
+          final widestLabel = segments
+              .map((segment) {
+                final painter = TextPainter(
+                  text: TextSpan(
+                    text: _colorSchemaLabel(l10n, segment.$1),
+                    style: labelStyle,
+                  ),
+                  textDirection: Directionality.of(context),
+                  textScaler: scaler,
+                  maxLines: 1,
+                )..layout();
+                final width = painter.width;
+                painter.dispose();
+                return width;
+              })
+              .reduce(math.max);
+          const iconAndPadding = 12 + 18 + 8 + 16;
+          final withIcons =
+              constraints.maxWidth / segments.length >=
+              widestLabel + iconAndPadding + 2;
+          return SegmentedButton<ColorSchema>(
+            segments: [
+              for (final (schema, icon) in segments)
+                ButtonSegment(
+                  value: schema,
+                  icon: withIcons ? Icon(icon) : null,
+                  label: Text(_colorSchemaLabel(l10n, schema)),
+                ),
+            ],
+            selected: {value},
+            // The check takes the icon's place; the fill alone is too
+            // faint a sign of the choice.
+            showSelectedIcon: withIcons,
+            expandedInsets: EdgeInsets.zero,
+            onSelectionChanged: onChanged == null
+                ? null
+                : (selected) => onChanged(selected.single),
+          );
+        },
+      ),
+    };
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SettingsBlock(
+          icon: Icons.contrast,
+          child: Text(
+            l10n.accountSettingsColorScheme,
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: enabled ? null : colors.onSurface.withValues(alpha: 0.38),
+            ),
+          ),
+        ),
+        // Across the whole width, below the icon too: inset like the
+        // title, a segment has no room for its icon and the check.
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [control, if (error != null) SettingErrorText(error)],
+          ),
+        ),
+      ],
     );
   }
 }

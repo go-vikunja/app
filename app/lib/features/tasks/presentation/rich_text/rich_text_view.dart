@@ -5,15 +5,11 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/theme/app_theme.dart';
 import 'package:vikunja_mobile/app/theme/hex_color.dart';
 import 'package:vikunja_mobile/features/common/presentation/user_avatar.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/rich_text/attachment_image_view.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/rich_text/inline_pills.dart';
-
-const _monospace = TextStyle(
-  fontFamily: 'monospace',
-  fontFamilyFallback: ['Menlo', 'Courier New', 'Courier'],
-);
 
 // A span of up to 1000 columns would turn a small text into a million
 // cells; a larger table shows row by row instead.
@@ -295,7 +291,7 @@ final class _Renderer {
     }
     if (marks.contains(RichMark.code)) {
       style = style
-          .merge(_monospace)
+          .merge(AppTheme.monospace)
           .copyWith(backgroundColor: colors.surfaceContainerHighest);
     }
     final script = marks.contains(RichMark.superscript)
@@ -520,7 +516,7 @@ final class _Renderer {
   Widget codeBlock(String text, _BlockStyle style) {
     final code = Text(
       text,
-      style: style.text.merge(_monospace),
+      style: style.text.merge(AppTheme.monospace),
       softWrap: style.inTable,
     );
     return DecoratedBox(

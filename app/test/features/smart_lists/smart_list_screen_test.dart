@@ -512,7 +512,7 @@ void main() {
       );
       await openList(tester, filter.projectId);
 
-      await tester.tap(find.byTooltip(en.newTask));
+      await tester.tap(find.text(en.newTask));
       await tester.pumpAndSettle();
 
       expect(find.byType(NewTaskSheet), findsOneWidget);

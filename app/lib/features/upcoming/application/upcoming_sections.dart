@@ -55,3 +55,32 @@ DateTime _lastDayOf(DateRange range) {
   final first = DateTime(from.year, from.month, from.day);
   return (first, last.isBefore(first) ? first : last);
 }
+
+/// The calendar days of [range] for the day strip; null for a range of
+/// more than [maxDays] days, whose strip would be too long to find a day
+/// in.
+List<DateTime>? stripDaysOf(DateRange range, {int maxDays = 31}) {
+  final (first, last) = daysOf(range);
+  final days = <DateTime>[];
+  for (
+    var day = first;
+    !day.isAfter(last);
+    day = DateTime(day.year, day.month, day.day + 1)
+  ) {
+    if (days.length == maxDays) return null;
+    days.add(day);
+  }
+  return days;
+}
+
+/// The selection's dated tasks by the local day they are due, the overdue
+/// ones before the rest: what a day in the strip counts and shows once
+/// picked.
+Map<DateTime, List<Task>> tasksByDay(UpcomingSelection selection) {
+  final days = <DateTime, List<Task>>{};
+  for (final task in [...selection.overdue, ...selection.inRange]) {
+    final due = task.dueDate!.toLocal();
+    (days[DateTime(due.year, due.month, due.day)] ??= []).add(task);
+  }
+  return days;
+}

@@ -10,6 +10,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/router/pushed_pages.dart';
+import 'package:vikunja_mobile/app/theme/app_theme.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/text/html_to_text.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
@@ -317,6 +318,7 @@ class _Form extends StatelessWidget {
           child: TextField(
             controller: identifierController,
             enabled: enabled,
+            style: AppTheme.monospace,
             maxLength: projectIdentifierMaxLength,
             autocorrect: false,
             enableSuggestions: false,

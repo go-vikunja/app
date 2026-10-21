@@ -15,7 +15,7 @@ import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_note.dart';
-import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
+import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_row.dart';
@@ -210,13 +210,9 @@ class _Results extends ConsumerWidget {
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       slivers: [
         if (results.taskCount > 0) ...[
-          SliverToBoxAdapter(
-            child: ListSectionHeader(
-              title: l10n.searchTasks,
-              count: results.taskCount,
-            ),
-          ),
-          SliverList.builder(
+          SliverSectionCard(
+            title: l10n.searchTasks,
+            count: results.taskCount,
             itemCount: tasks.length,
             itemBuilder: (context, index) {
               final task = tasks[index];
@@ -254,58 +250,49 @@ class _Results extends ConsumerWidget {
             ),
         ],
         if (results.projects.isNotEmpty) ...[
-          SliverToBoxAdapter(
-            child: ListSectionHeader(
-              title: l10n.searchProjects,
-              count: results.projects.length,
-            ),
-          ),
-          SliverList.list(
-            children: [
-              for (final project in results.projects)
-                ProjectRow(
-                  key: ValueKey(('project', project.id)),
-                  project: project,
-                  onTap: () => router.go(AppRoutes.project(project.id)),
-                ),
-            ],
+          SliverSectionCard(
+            title: l10n.searchProjects,
+            count: results.projects.length,
+            itemCount: results.projects.length,
+            itemBuilder: (context, index) {
+              final project = results.projects[index];
+              return ProjectRow(
+                key: ValueKey(('project', project.id)),
+                project: project,
+                onTap: () => router.go(AppRoutes.project(project.id)),
+              );
+            },
           ),
         ],
         if (results.savedFilters.isNotEmpty) ...[
-          SliverToBoxAdapter(
-            child: ListSectionHeader(
-              title: l10n.savedFiltersHeading,
-              count: results.savedFilters.length,
-            ),
-          ),
-          SliverList.list(
-            children: [
-              for (final filter in results.savedFilters)
-                _SavedFilterResult(
-                  key: ValueKey(('filter', filter.projectId)),
-                  filter: filter,
-                  onTap: () => router.go(AppRoutes.project(filter.projectId)),
-                ),
-            ],
+          SliverSectionCard(
+            title: l10n.savedFiltersHeading,
+            count: results.savedFilters.length,
+            itemCount: results.savedFilters.length,
+            itemBuilder: (context, index) {
+              final filter = results.savedFilters[index];
+              return _SavedFilterResult(
+                key: ValueKey(('filter', filter.projectId)),
+                filter: filter,
+                onTap: () => router.go(AppRoutes.project(filter.projectId)),
+              );
+            },
           ),
         ],
         if (results.labels.isNotEmpty) ...[
-          SliverToBoxAdapter(
-            child: ListSectionHeader(
-              title: l10n.searchLabels,
-              count: results.labels.length,
-            ),
-          ),
-          SliverList.list(
-            children: [
-              for (final label in results.labels)
-                _LabelResult(
-                  key: ValueKey(('label', label.id)),
-                  label: label,
-                  onTap: () =>
-                      unawaited(router.push(AppRoutes.labelTasks(label.id))),
-                ),
-            ],
+          SliverSectionCard(
+            title: l10n.searchLabels,
+            count: results.labels.length,
+            itemCount: results.labels.length,
+            itemBuilder: (context, index) {
+              final label = results.labels[index];
+              return _LabelResult(
+                key: ValueKey(('label', label.id)),
+                label: label,
+                onTap: () =>
+                    unawaited(router.push(AppRoutes.labelTasks(label.id))),
+              );
+            },
           ),
         ],
         const SliverSafeArea(

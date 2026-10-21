@@ -73,4 +73,59 @@ void main() {
       (DateTime(2026, 10, 13), DateTime(2026, 10, 13)),
     );
   });
+
+  test("the strip has every day of a range up to 31 days, across a month's "
+      'end and a clock change', () {
+    final days = stripDaysOf(
+      DateRange(from: DateTime(2026, 10, 13, 9), to: DateTime(2026, 11, 12, 9)),
+    )!;
+    expect(days, hasLength(31));
+    expect(days.first, DateTime(2026, 10, 13));
+    expect(days.last, DateTime(2026, 11, 12));
+    expect(days, contains(DateTime(2026, 10, 25)));
+    expect(days.toSet(), hasLength(31));
+
+    expect(
+      stripDaysOf(
+        DateRange(from: DateTime(2026, 10, 13), to: DateTime(2026, 10, 14)),
+      ),
+      [DateTime(2026, 10, 13)],
+    );
+    expect(
+      stripDaysOf(DateRange(from: DateTime(2026), to: DateTime(2026, 2, 2))),
+      isNull,
+    );
+  });
+
+  test('tasks by day put the overdue ones of a day before the rest', () {
+    final lateYesterday = sampleTask(
+      id: 1,
+      title: 'Yesterday',
+      due: DateTime(2026, 10, 12, 18),
+    );
+    final thisMorning = sampleTask(
+      id: 2,
+      title: 'This morning',
+      due: DateTime(2026, 10, 13, 8),
+    );
+    final tonight = sampleTask(
+      id: 3,
+      title: 'Tonight',
+      due: DateTime(2026, 10, 13, 21),
+    );
+
+    expect(
+      tasksByDay(
+        UpcomingSelection(
+          overdue: [lateYesterday, thisMorning],
+          inRange: [tonight],
+          withoutDueDate: [sampleTask(id: 4, title: 'Someday')],
+        ),
+      ),
+      {
+        DateTime(2026, 10, 12): [lateYesterday],
+        DateTime(2026, 10, 13): [thisMorning, tonight],
+      },
+    );
+  });
 }

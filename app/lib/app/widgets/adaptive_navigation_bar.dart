@@ -39,10 +39,11 @@ class AdaptiveNavigationBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Both bars have a fixed height; the labels scale a little, not twice.
-    return MediaQuery.withClampedTextScaling(
-      maxScaleFactor: 1.3,
-      child: switch (Theme.of(context).platform) {
-        TargetPlatform.iOS || TargetPlatform.macOS => CupertinoTabBar(
+    return switch (Theme.of(context).platform) {
+      TargetPlatform.iOS ||
+      TargetPlatform.macOS => MediaQuery.withClampedTextScaling(
+        maxScaleFactor: 1.3,
+        child: CupertinoTabBar(
           currentIndex: selectedIndex,
           onTap: onDestinationSelected,
           items: [
@@ -54,7 +55,13 @@ class AdaptiveNavigationBar extends StatelessWidget {
               ),
           ],
         ),
-        _ => NavigationBar(
+      ),
+      // Up to this scale the longest label, bold when selected, keeps to one
+      // line in a quarter of a 320 dp phone; a wrapped one would push its
+      // indicator out of line with the others.
+      _ => MediaQuery.withClampedTextScaling(
+        maxScaleFactor: 1.15,
+        child: NavigationBar(
           selectedIndex: selectedIndex,
           onDestinationSelected: onDestinationSelected,
           destinations: [
@@ -66,8 +73,8 @@ class AdaptiveNavigationBar extends StatelessWidget {
               ),
           ],
         ),
-      },
-    );
+      ),
+    };
   }
 }
 

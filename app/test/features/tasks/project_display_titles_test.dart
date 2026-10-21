@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/create/project_field.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 
 import '../../helpers/pump_app.dart';
@@ -65,14 +66,14 @@ void main() {
     final harness = ComposerHarness();
     await harness.open(tester);
 
-    Finder projectChip(String title) => find.descendant(
+    Finder projectField(String title) => find.descendant(
       of: find.byType(NewTaskSheet),
       matching: find.ancestor(
         of: find.text(title),
-        matching: find.byType(ActionChip),
+        matching: find.byType(ProjectField),
       ),
     );
-    expect(projectChip('Eingang'), findsOneWidget);
+    expect(projectField('Eingang'), findsOneWidget);
 
     await typeLine(tester, 'Buy milk +Inbox');
     await tester.pumpAndSettle();

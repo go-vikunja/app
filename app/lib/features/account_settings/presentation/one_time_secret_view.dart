@@ -5,17 +5,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/theme/app_theme.dart';
 import 'package:vikunja_mobile/app/widgets/adaptive_dialog_action.dart';
 import 'package:vikunja_mobile/core/platform/secure_display.dart';
 import 'package:vikunja_mobile/core/platform/sensitive_clipboard.dart';
 import 'package:vikunja_mobile/features/common/presentation/announce.dart';
 
 final _log = Logger('OneTimeSecret');
-
-const _monospace = TextStyle(
-  fontFamily: 'monospace',
-  fontFamilyFallback: ['Menlo', 'Courier New', 'Courier'],
-);
 
 /// A token's value right after the server made it, the only time it can
 /// be seen: copied to a clipboard that keeps it out of previews, kept out
@@ -170,7 +166,9 @@ class _OneTimeSecretViewState extends ConsumerState<OneTimeSecretView> {
                   },
                   child: SelectableText(
                     widget.secret,
-                    style: theme.textTheme.titleMedium?.merge(_monospace),
+                    style: theme.textTheme.titleMedium?.merge(
+                      AppTheme.monospace,
+                    ),
                     onSelectionChanged: (selection, _) =>
                         _selection = selection,
                     contextMenuBuilder: _selectionMenu,

@@ -9,6 +9,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/app/theme/hex_color.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 import 'package:vikunja_mobile/core/settings/user_settings_providers.dart';
@@ -30,6 +31,7 @@ import 'package:vikunja_mobile/features/quick_add/presentation/quick_add_preview
 import 'package:vikunja_mobile/features/tasks/application/date_shortcuts.dart';
 import 'package:vikunja_mobile/features/tasks/application/default_project.dart';
 import 'package:vikunja_mobile/features/tasks/application/display_settings.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/create/project_field.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/shortcut_chips.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/date_time_picker.dart';
@@ -586,10 +588,10 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           child: Semantics(
             header: true,
-            child: Text(l10n.newTask, style: theme.textTheme.titleMedium),
+            child: Text(l10n.newTask, style: theme.textTheme.headlineSmall),
           ),
         ),
         Padding(
@@ -631,27 +633,31 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
             lineCount: taskCount,
             subtaskCount: subtaskCount,
           ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: ActionChip(
-            avatar: Icon(
-              Icons.folder_outlined,
-              color: matchedProject != null
-                  ? MagicColors.accentOf(context, MagicSpanKind.project)
-                  : colors.onSurfaceVariant,
-            ),
-            label: Text(
-              projectTitle,
-              semanticsLabel: l10n.taskEditProjectSemantics(projectTitle),
-            ),
+          child: ProjectField(
+            title: projectTitle,
+            color: parseHexColor(project?.hexColor ?? ''),
             // A +project in the text decides until it is removed.
+            leading: matchedProject == null
+                ? null
+                : Icon(
+                    Icons.folder_outlined,
+                    color: MagicColors.accentOf(context, MagicSpanKind.project),
+                  ),
             onPressed: matchedProject != null
                 ? null
                 : () => unawaited(_pickProject(projects, fallback?.id)),
           ),
         ),
-        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+          child: _SectionTitle(
+            icon: Icons.calendar_today_outlined,
+            text: l10n.taskDetailDueDate,
+          ),
+        ),
         DateShortcutChips(
           options: shortcuts,
           selectedDay: dueDay,
@@ -684,7 +690,10 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
                 deleteButtonTooltipMessage: l10n.taskEditClearDueDate,
               ),
             ActionChip(
-              avatar: Icon(Icons.event, color: colors.onSurfaceVariant),
+              avatar: Icon(
+                Icons.calendar_month_outlined,
+                color: colors.onSurfaceVariant,
+              ),
               label: Text(l10n.newTaskPickDate),
               onPressed: dueLocked ? null : () => unawaited(_pickDue(now)),
             ),
@@ -767,6 +776,32 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// A muted label with its icon over a group of chips.
+class _SectionTitle extends StatelessWidget {
+  const new({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = theme.colorScheme.onSurfaceVariant;
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: color),
+        const SizedBox(width: 8),
+        Flexible(
+          child: Text(
+            text,
+            style: theme.textTheme.labelLarge?.copyWith(color: color),
+          ),
+        ),
+      ],
     );
   }
 }

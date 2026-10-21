@@ -81,6 +81,7 @@ void main() {
       );
 
   final allItems = [
+    en.refresh,
     en.projectEdit,
     en.projectViews,
     en.projectDuplicate,
@@ -94,20 +95,41 @@ void main() {
   ];
 
   group('the menu', () {
-    testWidgets("offers the web's actions in its order", (tester) async {
+    testWidgets("offers the web's actions in groups, after Refresh", (
+      tester,
+    ) async {
       await pumpProject(tester, 1);
       await openMenu(tester);
 
       expect(shownInOrder(tester, allItems), [
+        en.refresh,
         en.projectEdit,
         en.projectViews,
-        en.projectDuplicate,
-        en.projectArchive,
+        en.projectAddToFavourites,
         en.followProject,
         en.projectNewSubproject,
-        en.projectAddToFavourites,
+        en.projectDuplicate,
+        en.projectArchive,
         en.projectDelete,
       ]);
+      final dividers = [
+        for (final divider in find.byType(PopupMenuDivider).evaluate())
+          tester.getTopLeft(find.byWidget(divider.widget)).dy,
+      ];
+      double top(String label) => tester.getTopLeft(find.text(label)).dy;
+      expect(dividers, hasLength(3));
+      expect(
+        dividers[0],
+        inExclusiveRange(top(en.refresh), top(en.projectEdit)),
+      );
+      expect(
+        dividers[1],
+        inExclusiveRange(top(en.followProject), top(en.projectNewSubproject)),
+      );
+      expect(
+        dividers[2],
+        inExclusiveRange(top(en.projectDuplicate), top(en.projectArchive)),
+      );
     });
 
     testWidgets('of an archived project only unarchives it, and follows', (
@@ -117,6 +139,7 @@ void main() {
       await openMenu(tester);
 
       expect(shownInOrder(tester, allItems), [
+        en.refresh,
         en.projectUnarchive,
         en.followProject,
       ]);
@@ -166,6 +189,51 @@ void main() {
       const ProjectChanges(isFavorite: false),
     ));
     expect(find.text(en.projectUnfavourited), findsOneWidget);
+  });
+
+  testWidgets('the star in the app bar does what the menu does', (
+    tester,
+  ) async {
+    await pumpProject(tester, 1);
+    // The task rows' stars share the English tooltips.
+    final starButton = find.descendant(
+      of: find.byType(AppBar),
+      matching: find.byWidgetPredicate(
+        (widget) => widget is IconButton && widget.isSelected != null,
+      ),
+    );
+    IconButton star() => tester.widget<IconButton>(starButton);
+    expect(star().isSelected, isFalse);
+    expect(star().tooltip, en.projectAddToFavourites);
+
+    await tester.tap(starButton);
+    await tester.pumpAndSettle();
+    expect(data.projects.updates, [
+      (1, const ProjectChanges(isFavorite: true)),
+    ]);
+    expect(find.text(en.projectFavourited), findsOneWidget);
+    expect(star().isSelected, isTrue);
+    expect(star().tooltip, en.projectRemoveFromFavourites);
+
+    await tester.tap(starButton);
+    await tester.pumpAndSettle();
+    expect(data.projects.updates.last, (
+      1,
+      const ProjectChanges(isFavorite: false),
+    ));
+    expect(star().isSelected, isFalse);
+  });
+
+  testWidgets('an archived project shows no star to change', (tester) async {
+    await pumpProject(tester, 5);
+
+    expect(
+      find.descendant(
+        of: find.byType(AppBar),
+        matching: find.byTooltip(en.projectAddToFavourites),
+      ),
+      findsNothing,
+    );
   });
 
   testWidgets('a change refused for a stored title over the limit asks to '
@@ -235,9 +303,10 @@ void main() {
       );
       expect(find.text(en.projectArchivedDone), findsOneWidget);
       expect(find.text(en.projectArchivedNote), findsOneWidget);
-      expect(find.byTooltip(en.newTask), findsNothing);
+      expect(find.byType(FloatingActionButton), findsNothing);
       await openMenu(tester);
       expect(shownInOrder(tester, allItems), [
+        en.refresh,
         en.projectUnarchive,
         en.followProject,
       ]);
@@ -407,7 +476,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text(en.projectGoneTitle), findsOneWidget);
-    expect(find.byTooltip(en.newTask), findsNothing);
+    expect(find.byType(FloatingActionButton), findsNothing);
   });
 
   testWidgets('New subproject creates one under this project and opens it', (
@@ -501,7 +570,13 @@ void main() {
       await tester.tap(find.text(en.projectDuplicate));
       await tester.pump();
       expect(find.text(en.projectDuplicating), findsOneWidget);
-      expect(find.byType(LinearProgressIndicator), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(DuplicateProjectSheet),
+          matching: find.byType(LinearProgressIndicator),
+        ),
+        findsOneWidget,
+      );
 
       answer.complete();
       await tester.pumpAndSettle();

@@ -90,18 +90,18 @@ class ProjectBoard extends ConsumerStatefulWidget {
 }
 
 class _ProjectBoardState extends ConsumerState<ProjectBoard> {
-  static const _gap = 8.0;
-  static const _sidePadding = 12.0;
-  static const _maxColumnWidth = 340.0;
+  static const _gap = 12.0;
+  static const _sidePadding = 16.0;
+  static const _maxColumnWidth = 280.0;
   static const _minBoardHeight = 320.0;
   static const _autoScrollEdge = 48.0;
 
   /// [NoticeSliver]'s space above the notes.
   static const _noticeTop = 8.0;
 
-  /// Room for the next column to peek in on a phone, at most 340 wide.
+  /// Room for the next column to peek in on a phone, at most 280 wide.
   static double _columnWidthIn(double boardWidth) =>
-      math.min(boardWidth - 48, _maxColumnWidth);
+      math.min(boardWidth - 80, _maxColumnWidth);
 
   final _horizontal = ScrollController();
   final _snapGrid = _SnapGrid();

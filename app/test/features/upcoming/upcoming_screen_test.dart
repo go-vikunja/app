@@ -1,3 +1,5 @@
+import 'dart:ui' show Tristate;
+
 import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:flutter/semantics.dart' show SemanticsAction;
 import 'package:flutter_test/flutter_test.dart';
@@ -7,9 +9,12 @@ import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
 import 'package:vikunja_mobile/features/accounts/application/account_switcher.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
+import 'package:vikunja_mobile/features/inbox/presentation/inbox_button.dart';
+import 'package:vikunja_mobile/features/inbox/presentation/inbox_screen.dart';
 import 'package:vikunja_mobile/features/overview/presentation/overview_screen.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_write_feedback.dart';
+import 'package:vikunja_mobile/features/upcoming/presentation/day_strip.dart';
 import 'package:vikunja_mobile/features/upcoming/presentation/upcoming_screen.dart';
 
 import '../../helpers/pump_app.dart';
@@ -86,17 +91,22 @@ void main() {
   }
 
   Future<void> openRangeSheet(WidgetTester tester) async {
-    await tester.tap(find.text(en.rangeNext7Days));
+    await tester.tap(find.byTooltip(en.upcomingSelectRange));
     await tester.pumpAndSettle();
   }
+
+  Finder day(String label) => find.bySemanticsLabel(RegExp('^$label, '));
 
   testWidgets('shows the next seven days by day below the pinned overdue '
       "tasks, with each task's project", (tester) async {
     await pumpUpcoming(tester);
 
     expect(find.byType(UpcomingScreen), findsOneWidget);
-    expect(find.text(en.rangeNext7Days), findsOneWidget);
-    expect(find.text('Oct 13 – Oct 20'), findsOneWidget);
+    // The overdue bill and this morning's task are not in the range.
+    expect(
+      find.text(en.upcomingSubtitle(en.rangeNext7Days, 'Oct 13 – Oct 20', 3)),
+      findsOneWidget,
+    );
     expect(sectionTitles(tester), [
       en.sectionOverdue,
       en.sectionToday,
@@ -110,21 +120,32 @@ void main() {
       'Water plants',
       'Write report',
     ]);
-    expect(find.text('#3 · Work'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.ancestor(of: find.text('#3'), matching: find.byType(TaskRow)),
+        matching: find.text('Work'),
+      ),
+      findsOneWidget,
+    );
     expect(data.listPreferences.saves, isEmpty);
   });
 
-  testWidgets('the range button reads as one button with the range', (
-    tester,
-  ) async {
+  testWidgets('the range button in the app bar reads as one button with the '
+      'range', (tester) async {
     final semantics = tester.ensureSemantics();
     await pumpUpcoming(tester);
 
-    final node = tester.getSemantics(find.byType(OutlinedButton));
+    final button = find.byTooltip(en.upcomingSelectRange);
+    expect(
+      find.descendant(of: find.byType(AppBar), matching: button),
+      findsOneWidget,
+    );
+    final node = tester.getSemantics(button);
     expect(
       node.label,
       en.upcomingRangeSemantics(en.rangeNext7Days, 'Oct 13 – Oct 20'),
     );
+    expect(node.hint, en.upcomingSelectRange);
     expect(node.getSemanticsData().hasAction(SemanticsAction.tap), isTrue);
     semantics.dispose();
   });
@@ -191,8 +212,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(data.listPreferences.upcoming.preset, DateRangePreset.thisMonth);
-    expect(find.text(en.rangeThisMonth), findsOneWidget);
-    expect(find.text('Oct 1 – Oct 31'), findsOneWidget);
+    expect(
+      find.text(en.upcomingSubtitle(en.rangeThisMonth, 'Oct 1 – Oct 31', 4)),
+      findsOneWidget,
+    );
     expect(rowTitles(tester), contains('Plan trip'));
     // Overdue tasks stay pinned above and are not repeated in their day.
     expect(
@@ -209,13 +232,9 @@ void main() {
     await pumpUpcoming(tester);
 
     expect(
-      find.descendant(
-        of: find.byType(OutlinedButton),
-        matching: find.text(en.rangeTomorrow),
-      ),
+      find.text(en.upcomingSubtitle(en.rangeTomorrow, 'Oct 14', 1)),
       findsOneWidget,
     );
-    expect(find.text('Oct 14'), findsOneWidget);
     expect(sectionTitles(tester), [en.sectionOverdue, en.sectionTomorrow]);
     expect(rowTitles(tester), [
       'Pay the bill',
@@ -247,8 +266,12 @@ void main() {
     expect(saved.preset, isNull);
     expect(saved.customFrom, DateTime(2026, 10, 13));
     expect(saved.customTo, DateTime(2026, 10, 20));
-    expect(find.text(en.upcomingRangeCustom), findsOneWidget);
-    expect(find.text('Oct 13 – Oct 20'), findsOneWidget);
+    expect(
+      find.text(
+        en.upcomingSubtitle(en.upcomingRangeCustom, 'Oct 13 – Oct 20', 3),
+      ),
+      findsOneWidget,
+    );
     // Whole days now: the task due this morning is back in Today.
     expect(sectionTitles(tester).take(2), [en.sectionOverdue, en.sectionToday]);
   });
@@ -279,6 +302,98 @@ void main() {
     expect(saved.customFrom, DateTime(2026, 10, 13));
     expect(saved.customTo, DateTime(2026, 10, 20));
   }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+  testWidgets("the day strip shows the range's days with their open tasks; "
+      'a tap picks a day, another the whole range', (tester) async {
+    final semantics = tester.ensureSemantics();
+    await pumpUpcoming(tester);
+
+    expect(find.byType(DayStrip), findsOneWidget);
+    for (final label in [
+      en.upcomingDaySemantics('Tue, Oct 13', 2),
+      en.upcomingDaySemantics('Wed, Oct 14', 1),
+      en.upcomingDaySemantics('Thu, Oct 15', 0),
+      en.upcomingDaySemantics('Tue, Oct 20', 0),
+    ]) {
+      expect(find.bySemanticsLabel(label), findsOneWidget);
+    }
+    expect(day('Wed, Oct 21'), findsNothing);
+    final wednesday = tester.getSemantics(day('Wed, Oct 14'));
+    expect(wednesday.flagsCollection.isSelected, isNot(Tristate.isTrue));
+    expect(wednesday.hint, en.upcomingShowDayHint);
+    expect(wednesday.getSemanticsData().hasAction(SemanticsAction.tap), isTrue);
+
+    await tester.tap(day('Wed, Oct 14'));
+    await tester.pumpAndSettle();
+    expect(sectionTitles(tester), [en.sectionTomorrow]);
+    expect(rowTitles(tester), ['Water plants']);
+    final picked = tester.getSemantics(day('Wed, Oct 14'));
+    expect(picked.flagsCollection.isSelected, Tristate.isTrue);
+    expect(picked.hint, en.upcomingShowRangeHint);
+
+    await tester.tap(day('Wed, Oct 14'));
+    await tester.pumpAndSettle();
+    expect(sectionTitles(tester), [
+      en.sectionOverdue,
+      en.sectionToday,
+      en.sectionTomorrow,
+      'Fri, Oct 16',
+    ]);
+    semantics.dispose();
+  });
+
+  testWidgets('a picked day shows its overdue tasks too; a day without '
+      'tasks has nothing planned', (tester) async {
+    await pumpUpcoming(tester);
+
+    await tester.tap(day('Tue, Oct 13'));
+    await tester.pumpAndSettle();
+    expect(sectionTitles(tester), [en.sectionToday]);
+    expect(rowTitles(tester), ['Earlier today', 'Call mum']);
+
+    await tester.tap(day('Thu, Oct 15'));
+    await tester.pumpAndSettle();
+    expect(sectionTitles(tester), ['Thu, Oct 15']);
+    expect(find.byType(TaskRow), findsNothing);
+    expect(find.text(en.upcomingNothingPlanned), findsOneWidget);
+  });
+
+  testWidgets('another range shows all of its days again', (tester) async {
+    await pumpUpcoming(tester);
+    await tester.tap(day('Wed, Oct 14'));
+    await tester.pumpAndSettle();
+
+    await openRangeSheet(tester);
+    await tester.tap(find.text(en.rangeThisWeek));
+    await tester.pumpAndSettle();
+
+    expect(sectionTitles(tester).first, en.sectionOverdue);
+    expect(rowTitles(tester), contains('Write report'));
+  });
+
+  testWidgets('a range of more than 31 days has no day strip', (tester) async {
+    data.listPreferences.setUpcoming(
+      const UpcomingPreferences(preset: DateRangePreset.thisYear),
+    );
+    await pumpUpcoming(tester);
+
+    expect(find.byType(DayStrip), findsNothing);
+    expect(rowTitles(tester), contains('Plan trip'));
+  });
+
+  testWidgets('the inbox is in the menu, with the unread count', (
+    tester,
+  ) async {
+    await pumpUpcoming(tester);
+    expect(find.byType(InboxButton), findsNothing);
+
+    await tester.tap(find.byTooltip(en.moreActions));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(en.inboxButton(0)));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(InboxScreen), findsOneWidget);
+  });
 
   testWidgets('without tasks in the range says there is nothing to do', (
     tester,
@@ -354,7 +469,9 @@ void main() {
     await pumpSignedInApp(tester, sync: data, now: now);
     await openTab(tester, de.tabUpcoming);
 
-    expect(find.text(de.rangeNext7Days), findsOneWidget);
+    expect(find.textContaining(de.rangeNext7Days), findsOneWidget);
+    expect(find.textContaining('3 offen'), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp('^Di., 13. Okt.')), findsOneWidget);
     expect(sectionTitles(tester).take(3), [
       de.sectionOverdue,
       de.sectionToday,
@@ -380,7 +497,7 @@ void main() {
     await accounts.pump(tester);
     await openTab(tester, en.tabUpcoming);
     expect(find.text('Alice task'), findsOneWidget);
-    expect(find.text(en.rangeNext30Days), findsOneWidget);
+    expect(find.textContaining(en.rangeNext30Days), findsOneWidget);
 
     await containerOf(tester)
         .read(accountSwitcherProvider)
@@ -400,6 +517,6 @@ void main() {
     await openTab(tester, en.tabUpcoming);
     expect(find.text('Bob task'), findsOneWidget);
     expect(find.text('Alice task'), findsNothing);
-    expect(find.text(en.rangeNext7Days), findsOneWidget);
+    expect(find.textContaining(en.rangeNext7Days), findsOneWidget);
   });
 }

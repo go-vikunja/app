@@ -4,7 +4,7 @@ import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/features/account_settings/application/totp_status_reading.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/account_deletion.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_rows.dart';
-import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
+import 'package:vikunja_mobile/features/common/presentation/settings_section.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
 
 /// Why the two-factor status is not known.
@@ -91,7 +91,7 @@ bool offersTotp(ServerConnection connection, UserProfile? profile) =>
     (profile?.isLocalUser ?? false);
 
 /// Two-factor authentication and the sessions, after Password and email.
-List<Widget> securitySection({
+Widget securitySection({
   required AppLocalizations l10n,
   required ServerConnection connection,
   required UserProfile? profile,
@@ -105,75 +105,80 @@ List<Widget> securitySection({
     (null, TotpProblem.notOffered || TotpProblem.notLocal) => true,
     _ => false,
   };
-  return [
-    ListSectionHeader(title: l10n.accountSettingsSecurity),
-    if (offersTotp(connection, profile))
-      SettingChoiceTile(
-        leading: const Icon(Icons.verified_user_outlined),
-        title: l10n.accountSettingsTotp,
-        value: switch ((totp, problem)) {
-          _ when !canReadTotpStatus(connection) =>
-            l10n.accountSettingsTotpNotChecked,
-          (TotpStatus.enabled, _) => l10n.accountSettingsTotpOn,
-          (TotpStatus.notSetUp, _) => l10n.accountSettingsTotpOff,
-          (TotpStatus.setupStarted, _) => l10n.accountSettingsTotpSetupStarted,
-          (_, TotpProblem.notOffered) => l10n.accountSettingsTotpNotOffered,
-          (_, TotpProblem.notLocal) => l10n.accountSettingsTotpNotAvailable,
-          (_, TotpProblem.failed) => l10n.accountSettingsTotpUnknown,
-          (null, null) => l10n.accountSettingsTotpChecking,
-        },
-        help: switch (totp) {
-          _ when unavailable => null,
-          TotpStatus.enabled => l10n.accountSettingsTotpOnNote,
-          _ => l10n.accountSettingsTotpTurnOnNote,
-        },
-        trailing: unavailable ? null : const Icon(Icons.open_in_new),
-        onTap: unavailable ? null : onOpenTotp,
+  return SettingsSection(
+    title: l10n.accountSettingsSecurity,
+    children: [
+      if (offersTotp(connection, profile))
+        SettingChoiceTile(
+          leading: const Icon(Icons.verified_user_outlined),
+          title: l10n.accountSettingsTotp,
+          value: switch ((totp, problem)) {
+            _ when !canReadTotpStatus(connection) =>
+              l10n.accountSettingsTotpNotChecked,
+            (TotpStatus.enabled, _) => l10n.accountSettingsTotpOn,
+            (TotpStatus.notSetUp, _) => l10n.accountSettingsTotpOff,
+            (TotpStatus.setupStarted, _) =>
+              l10n.accountSettingsTotpSetupStarted,
+            (_, TotpProblem.notOffered) => l10n.accountSettingsTotpNotOffered,
+            (_, TotpProblem.notLocal) => l10n.accountSettingsTotpNotAvailable,
+            (_, TotpProblem.failed) => l10n.accountSettingsTotpUnknown,
+            (null, null) => l10n.accountSettingsTotpChecking,
+          },
+          help: switch (totp) {
+            _ when unavailable => null,
+            TotpStatus.enabled => l10n.accountSettingsTotpOnNote,
+            _ => l10n.accountSettingsTotpTurnOnNote,
+          },
+          trailing: unavailable ? null : const Icon(Icons.open_in_new),
+          onTap: unavailable ? null : onOpenTotp,
+        ),
+      ListTile(
+        leading: const Icon(Icons.devices_outlined),
+        title: Text(l10n.accountSettingsSessions),
+        subtitle: Text(switch (overview.sessionCount) {
+          final count? => l10n.accountSettingsSessionsCount(count),
+          null => l10n.accountSettingsSessionsHint,
+        }),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: onOpenSessions,
       ),
-    ListTile(
-      leading: const Icon(Icons.devices_outlined),
-      title: Text(l10n.accountSettingsSessions),
-      subtitle: Text(switch (overview.sessionCount) {
-        final count? => l10n.accountSettingsSessionsCount(count),
-        null => l10n.accountSettingsSessionsHint,
-      }),
-      trailing: const Icon(Icons.chevron_right),
-      onTap: onOpenSessions,
-    ),
-  ];
+    ],
+  );
 }
 
 /// API tokens and CalDAV, after Appearance.
-List<Widget> integrationsSection({
+Widget integrationsSection({
   required AppLocalizations l10n,
   required ServerConnection connection,
   required SecurityOverview overview,
   required VoidCallback onOpenApiTokens,
   required VoidCallback onOpenCaldav,
-}) => [
-  ListSectionHeader(title: l10n.accountSettingsIntegrations),
-  ListTile(
-    leading: const Icon(Icons.key_outlined),
-    title: Text(l10n.accountSettingsApiTokens),
-    subtitle: Text(switch (overview.apiTokenCount) {
-      final count? => l10n.accountSettingsApiTokensCount(count),
-      null => l10n.accountSettingsApiTokensHint,
-    }),
-    trailing: const Icon(Icons.chevron_right),
-    onTap: onOpenApiTokens,
-  ),
-  if (connection.capabilities.has(Capability.caldav))
+}) => SettingsSection(
+  title: l10n.accountSettingsIntegrations,
+  children: [
     ListTile(
-      leading: const Icon(Icons.calendar_month_outlined),
-      title: Text(l10n.accountSettingsCaldav),
-      subtitle: Text(l10n.accountSettingsCaldavHint),
+      leading: const Icon(Icons.key_outlined),
+      title: Text(l10n.accountSettingsApiTokens),
+      subtitle: Text(switch (overview.apiTokenCount) {
+        final count? => l10n.accountSettingsApiTokensCount(count),
+        null => l10n.accountSettingsApiTokensHint,
+      }),
       trailing: const Icon(Icons.chevron_right),
-      onTap: onOpenCaldav,
+      onTap: onOpenApiTokens,
     ),
-];
+    if (connection.capabilities.has(Capability.caldav))
+      ListTile(
+        leading: const Icon(Icons.calendar_month_outlined),
+        title: Text(l10n.accountSettingsCaldav),
+        subtitle: Text(l10n.accountSettingsCaldavHint),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: onOpenCaldav,
+      ),
+  ],
+);
 
 /// The data export with its status.
-List<Widget> yourDataSection({
+Widget yourDataSection({
   required AppLocalizations l10n,
   required MomentFormatter formatter,
   required SecurityOverview overview,
@@ -181,21 +186,23 @@ List<Widget> yourDataSection({
   required VoidCallback onOpenExport,
 }) {
   final export = overview.export;
-  return [
-    ListSectionHeader(title: l10n.accountSettingsYourData),
-    ListTile(
-      leading: const Icon(Icons.download_outlined),
-      title: Text(l10n.accountSettingsExport),
-      subtitle: Text(switch ((overview.exportRead, export)) {
-        (true, final export?) when !export.isExpiredAt(now) =>
-          l10n.accountSettingsExportReady(formatter.absolute(export.expires)),
-        (true, _) => l10n.accountSettingsExportNone,
-        (false, _) => l10n.accountSettingsExportHint,
-      }),
-      trailing: const Icon(Icons.chevron_right),
-      onTap: onOpenExport,
-    ),
-  ];
+  return SettingsSection(
+    title: l10n.accountSettingsYourData,
+    children: [
+      ListTile(
+        leading: const Icon(Icons.download_outlined),
+        title: Text(l10n.accountSettingsExport),
+        subtitle: Text(switch ((overview.exportRead, export)) {
+          (true, final export?) when !export.isExpiredAt(now) =>
+            l10n.accountSettingsExportReady(formatter.absolute(export.expires)),
+          (true, _) => l10n.accountSettingsExportNone,
+          (false, _) => l10n.accountSettingsExportHint,
+        }),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: onOpenExport,
+      ),
+    ],
+  );
 }
 
 /// Deleting the account, last and in the error colour, where the server
@@ -217,8 +224,8 @@ List<Widget> deleteAccountSection({
   }
   final error = theme.colorScheme.error;
   return [
-    const SizedBox(height: 16),
-    const Divider(),
+    const Divider(height: 1),
+    const SizedBox(height: 8),
     ListTile(
       leading: Icon(Icons.person_remove_outlined, color: error),
       title: Text(

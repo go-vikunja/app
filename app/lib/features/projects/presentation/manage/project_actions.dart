@@ -183,7 +183,8 @@ mixin ProjectManagementActions<W extends ConsumerStatefulWidget>
   }
 }
 
-/// An item of the project menu, laid out like its Follow item.
+/// An item of the project menu, laid out like its Follow item: a muted
+/// icon, or one in [color] with the label.
 PopupMenuItem<T> projectMenuItem<T>(
   T value, {
   required IconData icon,
@@ -196,7 +197,7 @@ PopupMenuItem<T> projectMenuItem<T>(
   enabled: enabled,
   child: Row(
     children: [
-      Icon(icon, color: color),
+      ProjectMenuIcon(icon, color: color),
       const SizedBox(width: 12),
       Flexible(
         child: hint == null
@@ -206,6 +207,19 @@ PopupMenuItem<T> projectMenuItem<T>(
     ],
   ),
 );
+
+class ProjectMenuIcon extends StatelessWidget {
+  const new(this.icon, {this.color, super.key});
+
+  final IconData icon;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) => Icon(
+    icon,
+    color: color ?? Theme.of(context).colorScheme.onSurfaceVariant,
+  );
+}
 
 class _LabelAndHint extends StatelessWidget {
   const new({required this.label, required this.hint});

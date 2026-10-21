@@ -20,6 +20,7 @@ import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
 import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
+import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/projects/application/project_moves.dart';
 import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
@@ -103,12 +104,15 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
         (tasks) => (tasks.hasValue || tasks.hasError, tasks.value?.length ?? 0),
       ),
     );
+    final openTaskCounts = ref.watch(openTaskCountsProvider);
     // The tree would otherwise show expanded for a moment, then collapse,
-    // and be pushed down by the sections above it as they arrive.
+    // and be pushed down by the sections above it and its rows' counts as
+    // they arrive.
     final ready =
         (treePreferences.hasValue || treePreferences.hasError) &&
         (savedFiltersValue.hasValue || savedFiltersValue.hasError) &&
-        favoritesLoaded;
+        favoritesLoaded &&
+        (openTaskCounts.hasValue || openTaskCounts.hasError);
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.tabProjects),
@@ -159,6 +163,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
           preferences: preferences,
           savedFilters: savedFilters,
           favoriteTaskCount: favoriteTaskCount,
+          openTaskCounts: openTaskCounts.value ?? const {},
           notice: notice,
           onOpen: _open,
           onCreate: _createProject,
@@ -234,6 +239,7 @@ class _Sections extends ConsumerStatefulWidget {
     required this.preferences,
     required this.savedFilters,
     required this.favoriteTaskCount,
+    required this.openTaskCounts,
     required this.notice,
     required this.onOpen,
     required this.onCreate,
@@ -248,6 +254,9 @@ class _Sections extends ConsumerStatefulWidget {
 
   /// The Favorites list shows while there is one, as on the server.
   final int favoriteTaskCount;
+
+  /// By project id.
+  final Map<int, int> openTaskCounts;
   final Widget? notice;
   final ValueChanged<int> onOpen;
   final VoidCallback onCreate;
@@ -263,6 +272,15 @@ class _SectionsState extends ConsumerState<_Sections> {
   /// The part of a row's height at its top and at its bottom that drops
   /// beside it; the middle drops into it.
   static const _edgeShare = 0.25;
+
+  /// As [SectionCard] lays out its card and header.
+  static const _cardMargin = EdgeInsets.symmetric(horizontal: 16);
+  static const _cardHeaderPadding = EdgeInsetsDirectional.fromSTEB(
+    20,
+    16,
+    20,
+    4,
+  );
 
   final GlobalKey _treeKey = GlobalKey();
   final _slots = <int, BuildContext>{};
@@ -620,6 +638,7 @@ class _SectionsState extends ConsumerState<_Sections> {
         : null;
     final projectRow = ProjectRow(
       project: project,
+      openTaskCount: widget.openTaskCounts[project.id] ?? 0,
       depth: row.depth,
       childCount: row.node.children.length,
       expanded: !preferences.collapsed.contains(project.id),
@@ -659,6 +678,7 @@ class _SectionsState extends ConsumerState<_Sections> {
             width: width,
             child: ProjectRow(
               project: project,
+              openTaskCount: widget.openTaskCounts[project.id] ?? 0,
               childCount: row.node.children.length,
               onTap: () {},
             ),
@@ -743,6 +763,28 @@ class _SectionsState extends ConsumerState<_Sections> {
       onTap: () => widget.onOpen(filter.projectId),
     );
 
+    final favouriteRows = [
+      if (widget.favoriteTaskCount > 0)
+        SmartListRow(
+          key: const ValueKey('favorites'),
+          icon: Icons.star_outline,
+          title: l10n.projectsFavouriteTasks,
+          subtitle: l10n.smartListOpenTaskCount(widget.favoriteTaskCount),
+          onTap: () => widget.onOpen(Project.favoritesId),
+        ),
+      for (final filter in favouriteFilters) filterRow(filter, 'favourite'),
+      for (final project in favourites)
+        ProjectRow(
+          key: ValueKey(('favourite', project.id)),
+          project: project,
+          openTaskCount: widget.openTaskCounts[project.id] ?? 0,
+          onTap: () => widget.onOpen(project.id),
+        ),
+    ];
+    final filterRows = [
+      for (final filter in savedFilters) filterRow(filter, 'filter'),
+      _NewSavedFilterRow(onTap: widget.onCreateSavedFilter),
+    ];
     final heldRows = {
       ..._subtreeRows(_held),
       ..._subtreeRows(sending?.projectId),
@@ -755,69 +797,61 @@ class _SectionsState extends ConsumerState<_Sections> {
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
             if (widget.notice case final notice?) NoticeSliver(notice: notice),
-            if (hasFavourites) ...[
-              SliverToBoxAdapter(
-                child: ListSectionHeader(title: l10n.projectsFavouritesHeading),
+            if (hasFavourites)
+              SliverSectionCard(
+                title: l10n.projectsFavouritesHeading,
+                itemCount: favouriteRows.length,
+                itemBuilder: (context, index) => favouriteRows[index],
               ),
-              SliverList.list(
-                children: [
-                  if (widget.favoriteTaskCount > 0)
-                    SmartListRow(
-                      key: const ValueKey('favorites'),
-                      icon: Icons.star_outline,
-                      title: l10n.projectsFavouriteTasks,
-                      subtitle: l10n.smartListOpenTaskCount(
-                        widget.favoriteTaskCount,
+            if (savedFilters.isNotEmpty)
+              SliverSectionCard(
+                title: l10n.savedFiltersHeading,
+                itemCount: filterRows.length,
+                itemBuilder: (context, index) => filterRows[index],
+              ),
+            if (rows.isNotEmpty)
+              SliverMainAxisGroup(
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: ListSectionHeader(
+                      title: l10n.projectsAllHeading,
+                      padding: _cardHeaderPadding,
+                    ),
+                  ),
+                  SliverPadding(
+                    padding: _cardMargin,
+                    sliver: SliverList.builder(
+                      key: _treeKey,
+                      itemCount: rows.length,
+                      findChildIndexCallback: (key) {
+                        if (key case ValueKey<(String, int)>(
+                          value: (_, final id),
+                        )) {
+                          final index = rows.indexWhere(
+                            (row) => row.node.project.id == id,
+                          );
+                          return index < 0 ? null : index;
+                        }
+                        return null;
+                      },
+                      itemBuilder: (context, index) => SectionCardItem(
+                        key: ValueKey((
+                          'tree slot',
+                          rows[index].node.project.id,
+                        )),
+                        first: index == 0,
+                        last: index == rows.length - 1,
+                        child: _treeRow(
+                          context,
+                          index,
+                          width: constraints.maxWidth - _cardMargin.horizontal,
+                          heldRows: heldRows,
+                        ),
                       ),
-                      onTap: () => widget.onOpen(Project.favoritesId),
                     ),
-                  for (final filter in favouriteFilters)
-                    filterRow(filter, 'favourite'),
-                  for (final project in favourites)
-                    ProjectRow(
-                      key: ValueKey(('favourite', project.id)),
-                      project: project,
-                      onTap: () => widget.onOpen(project.id),
-                    ),
+                  ),
                 ],
               ),
-            ],
-            if (savedFilters.isNotEmpty) ...[
-              SliverToBoxAdapter(
-                child: ListSectionHeader(title: l10n.savedFiltersHeading),
-              ),
-              SliverList.list(
-                children: [
-                  for (final filter in savedFilters)
-                    filterRow(filter, 'filter'),
-                  _NewSavedFilterRow(onTap: widget.onCreateSavedFilter),
-                ],
-              ),
-            ],
-            if (rows.isNotEmpty) ...[
-              SliverToBoxAdapter(
-                child: ListSectionHeader(title: l10n.projectsAllHeading),
-              ),
-              SliverList.builder(
-                key: _treeKey,
-                itemCount: rows.length,
-                findChildIndexCallback: (key) {
-                  if (key case ValueKey<(String, int)>(value: (_, final id))) {
-                    final index = rows.indexWhere(
-                      (row) => row.node.project.id == id,
-                    );
-                    return index < 0 ? null : index;
-                  }
-                  return null;
-                },
-                itemBuilder: (context, index) => _treeRow(
-                  context,
-                  index,
-                  width: constraints.maxWidth,
-                  heldRows: heldRows,
-                ),
-              ),
-            ],
             SliverSafeArea(
               top: false,
               // While a project is held, room below the last row to drop

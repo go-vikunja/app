@@ -324,12 +324,12 @@ class _SmartListScreenState extends ConsumerState<SmartListScreen>
         ],
         bottom: const SyncProgressBar(),
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         // A page over the shell finds the heroes of every tab's top route.
         heroTag: null,
         onPressed: () => unawaited(showNewTaskSheet(context)),
-        tooltip: l10n.newTask,
-        child: const Icon(Icons.add),
+        icon: const Icon(Icons.add),
+        label: Text(l10n.newTask),
       ),
       body: buildRefreshable(
         list,

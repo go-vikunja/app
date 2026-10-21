@@ -7,6 +7,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/realtime/realtime_connection.dart';
+import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/home/presentation/account_tab.dart';
@@ -233,7 +234,7 @@ void main() {
       final rail = tester.getRect(find.byType(NavigationRail));
       final content = tester.getRect(find.byType(OverviewScreen));
       expect(rail.left, 0);
-      expect(content.left, greaterThan(rail.right));
+      expect(content.left, rail.right);
       expect(content.bottom, wide.height);
 
       await openTab(tester, en.tabProjects);
@@ -384,7 +385,7 @@ void main() {
       expect(find.byType(SnackBar), findsOneWidget);
       expect(
         tester.getRect(find.byType(SnackBar)).left,
-        greaterThan(tester.getRect(find.byType(NavigationRail)).right),
+        greaterThanOrEqualTo(tester.getRect(find.byType(NavigationRail)).right),
       );
     });
 
@@ -421,7 +422,7 @@ void main() {
   });
 
   group('quiet sync', () {
-    testWidgets('a sync after the first shows a slim bar under the app bar', (
+    testWidgets('a sync after the first shows a slim bar at the top', (
       tester,
     ) async {
       await pumpSignedInApp(tester, sync: data, now: now);
@@ -429,8 +430,10 @@ void main() {
       data.engine.onRefresh = () => run.future;
       expect(progressBar(find.byType(OverviewScreen)), findsNothing);
 
-      await tester.tap(find.byTooltip(en.refresh));
-      await tester.pump();
+      unawaited(
+        containerOf(tester).read(taskRepositoryProvider)!.refreshOpenTasks(),
+      );
+      await pumpFrames(tester, 2);
 
       expect(progressBar(find.byType(OverviewScreen)), findsOneWidget);
       final bar = tester.widget<LinearProgressIndicator>(

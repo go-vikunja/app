@@ -28,19 +28,20 @@ import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/projects/presentation/board/project_board.dart';
 import 'package:vikunja_mobile/features/projects/presentation/manage/project_actions.dart';
+import 'package:vikunja_mobile/features/projects/presentation/project_header.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_list_body.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_view_labels.dart';
 import 'package:vikunja_mobile/features/sync/application/offline_state.dart';
 import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
-import 'package:vikunja_mobile/features/sync/presentation/sync_progress_bar.dart';
 import 'package:vikunja_mobile/features/tasks/application/minimum_priority_provider.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/favourite_button.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/follow/follow_controller.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/relative_time.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_list_actions.dart';
 
 enum _Action {
-  toggleShowDone,
+  refresh,
   edit,
   views,
   duplicate,
@@ -118,9 +119,9 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
   final _quietFailures = <int, Object>{};
   _Shown? _lastShown;
 
-  // The chips survive the loading and failure states of a view switch, so
-  // the tapped one keeps its focus.
-  final GlobalKey _switcherKey = GlobalKey();
+  // The chips move between the list and its loading and failure states,
+  // so the tapped one keeps its focus.
+  final GlobalKey _controlsKey = GlobalKey();
 
   /// Saved filters show as projects with ids below zero; nobody follows
   /// them.
@@ -445,13 +446,26 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
       default:
         shownData = current;
     }
-    final switcher = views.length > 1
-        ? _ViewSwitcher(
-            key: _switcherKey,
+    final tabs = views.length > 1
+        ? ProjectViewTabs(
             views: views,
             selectedId: viewId,
             onSelected: _selectView,
           )
+        : null;
+    final listControls = board
+        ? null
+        : ProjectListControls(
+            key: _controlsKey,
+            sort: preferences.sort,
+            onSort: () => unawaited(_chooseSort(listKey, preferences)),
+            showDone: preferences.showDone,
+            onShowDoneChanged: kind == ViewFilterKind.openOnly
+                ? () => _toggleShowDone(listKey, preferences)
+                : null,
+          );
+    final progress = _followable && ProjectAppBarBottom.showsProgressIn(context)
+        ? ref.watch(projectProgressProvider(widget.projectId)).value
         : null;
     final downloadFailure = refreshFailure ?? _quietFailures[viewId];
     final offlineOrUnreachable = offline || downloadFailure is NetworkFailure;
@@ -465,14 +479,17 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
       appBar: AppBar(
         title: Text(project?.displayTitle(l10n) ?? l10n.projectUnknownTitle),
         actions: [
-          RefreshButton(onPressed: refreshing ? null : refresh),
-          if (!board)
+          if (project != null && _followable && !archived)
             IconButton(
-              onPressed: () => unawaited(_chooseSort(listKey, preferences)),
-              tooltip: l10n.projectSortCurrent(
-                sortLabel(l10n, preferences.sort),
-              ),
-              icon: const Icon(Icons.sort),
+              onPressed: managingProject
+                  ? null
+                  : () => unawaited(toggleProjectFavourite(project)),
+              tooltip: project.isFavorite
+                  ? l10n.projectRemoveFromFavourites
+                  : l10n.projectAddToFavourites,
+              isSelected: project.isFavorite,
+              icon: const Icon(Icons.star_outline),
+              selectedIcon: const FilledStar(),
             ),
           if (managingProject)
             SizedBox.square(
@@ -490,19 +507,17 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
           else
             PopupMenuButton<_Action>(
               tooltip: l10n.moreActions,
-              onSelected: (action) => _onAction(
-                action,
-                project: project,
-                listKey: listKey,
-                preferences: preferences,
-              ),
+              onSelected: (action) => _onAction(action, project: project),
               itemBuilder: (context) => [
-                if (!board && kind == ViewFilterKind.openOnly)
-                  CheckedPopupMenuItem(
-                    value: _Action.toggleShowDone,
-                    checked: preferences.showDone,
-                    child: Text(l10n.projectTasksShowDone),
-                  ),
+                // For whoever cannot pull the list, a screen reader among
+                // them.
+                projectMenuItem(
+                  _Action.refresh,
+                  icon: Icons.refresh,
+                  label: l10n.refresh,
+                  enabled: !refreshing,
+                ),
+                if (_followable) const PopupMenuDivider(),
                 ..._projectItems(
                   context,
                   project: project,
@@ -516,21 +531,25 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
               ],
             ),
         ],
-        bottom: const SyncProgressBar(),
+        bottom: ProjectAppBarBottom(
+          progress: progress,
+          textScaler: MediaQuery.textScalerOf(context),
+          tabs: tabs,
+        ),
       ),
       floatingActionButton: archived
           ? null
-          : FloatingActionButton(
+          : FloatingActionButton.extended(
               onPressed: () => unawaited(
                 showNewTaskSheet(context, projectId: widget.projectId),
               ),
-              tooltip: l10n.newTask,
-              child: const Icon(Icons.add),
+              icon: const Icon(Icons.add),
+              label: Text(l10n.newTask),
             ),
       body: buildRefreshable(
         shownData,
         loadingLabel: l10n.projectTasksLoading,
-        header: switcher,
+        header: listControls,
         // A board's columns scroll inside its horizontal scroll.
         notificationPredicate: board
             ? (notification) => notification.metrics.axis == Axis.vertical
@@ -548,7 +567,7 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
               archived: archived,
               offline: offlineOrUnreachable,
               downloadFailed: downloadFailed,
-              notes: [?switcher, ?notice, ?archivedNote],
+              notes: [?notice, ?archivedNote],
               now: now,
               minimumPriority: minimumPriority,
               pendingIds: pendingIds,
@@ -588,7 +607,7 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
             offline: offlineOrUnreachable,
             downloadFailed: downloadFailed,
             header: stackedNotes([
-              ?switcher,
+              ?listControls,
               ?notice,
               ?archivedNote,
               if (shownKind == ViewFilterKind.other &&
@@ -633,14 +652,9 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
     );
   }
 
-  void _onAction(
-    _Action action, {
-    required Project? project,
-    required String listKey,
-    required ViewPreferences preferences,
-  }) {
-    if (action == _Action.toggleShowDone) {
-      _toggleShowDone(listKey, preferences);
+  void _onAction(_Action action, {required Project? project}) {
+    if (action == _Action.refresh) {
+      unawaited(refresh());
       return;
     }
     if (action == _Action.follow) {
@@ -665,15 +679,15 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
         unawaited(toggleProjectFavourite(project));
       case _Action.delete:
         unawaited(deleteProject(project));
-      case _Action.toggleShowDone || _Action.follow:
+      case _Action.refresh || _Action.follow:
         break;
     }
   }
 
-  /// The web's project menu, for what the app offers, Follow among them;
-  /// an archived project only offers to unarchive it, which waits for its
-  /// archived parent. Like the web, the user's default project cannot be
-  /// archived and offers no Delete.
+  /// The web's project menu, for what the app offers, Follow among them,
+  /// in groups; an archived project only offers to unarchive it, which
+  /// waits for its archived parent. Like the web, the user's default
+  /// project cannot be archived and offers no Delete.
   List<PopupMenuEntry<_Action>> _projectItems(
     BuildContext context, {
     required Project? project,
@@ -708,29 +722,31 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
         label: l10n.projectViews,
       ),
       projectMenuItem(
-        _Action.duplicate,
-        icon: Icons.content_copy,
-        label: l10n.projectDuplicate,
-      ),
-      projectMenuItem(
-        _Action.archive,
-        icon: Icons.archive_outlined,
-        label: l10n.projectArchive,
-        enabled: !isDefault,
-        hint: isDefault ? l10n.projectArchiveDefaultHint : null,
+        _Action.favourite,
+        icon: project.isFavorite ? Icons.star : Icons.star_outline,
+        label: project.isFavorite
+            ? l10n.projectRemoveFromFavourites
+            : l10n.projectAddToFavourites,
       ),
       _followItem(l10n),
+      const PopupMenuDivider(),
       projectMenuItem(
         _Action.newSubproject,
         icon: Icons.create_new_folder_outlined,
         label: l10n.projectNewSubproject,
       ),
       projectMenuItem(
-        _Action.favourite,
-        icon: project.isFavorite ? Icons.star : Icons.star_outline,
-        label: project.isFavorite
-            ? l10n.projectRemoveFromFavourites
-            : l10n.projectAddToFavourites,
+        _Action.duplicate,
+        icon: Icons.content_copy_outlined,
+        label: l10n.projectDuplicate,
+      ),
+      const PopupMenuDivider(),
+      projectMenuItem(
+        _Action.archive,
+        icon: Icons.archive_outlined,
+        label: l10n.projectArchive,
+        enabled: !isDefault,
+        hint: isDefault ? l10n.projectArchiveDefaultHint : null,
       ),
       if (!isDefault)
         projectMenuItem(
@@ -756,8 +772,10 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
       },
       child: Row(
         children: [
-          Icon(
-            following ? Icons.notifications_off_outlined : Icons.notifications,
+          ProjectMenuIcon(
+            following
+                ? Icons.notifications_off_outlined
+                : Icons.notifications_outlined,
           ),
           const SizedBox(width: 12),
           Flexible(
@@ -767,41 +785,6 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
               _ => l10n.followProject,
             }),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-/// One chip per view the app shows, when the project has more than one.
-class _ViewSwitcher extends StatelessWidget {
-  const new({
-    required this.views,
-    required this.selectedId,
-    required this.onSelected,
-    super.key,
-  });
-
-  final List<ProjectView> views;
-  final int selectedId;
-  final ValueChanged<int> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    return Semantics(
-      container: true,
-      label: l10n.projectViewSwitch,
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 4,
-        children: [
-          for (final view in views)
-            ChoiceChip(
-              label: Text(viewTitle(l10n, view)),
-              selected: view.id == selectedId,
-              onSelected: (_) => onSelected(view.id),
-            ),
         ],
       ),
     );

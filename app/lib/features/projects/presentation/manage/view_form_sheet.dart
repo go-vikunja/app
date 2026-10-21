@@ -329,6 +329,7 @@ class _ViewFormSheetState extends ConsumerState<ViewFormSheet> {
                         _filterEdited = true;
                         _filterError = null;
                       }),
+                secondary: Icon(Icons.task_alt, color: colors.onSurfaceVariant),
                 title: Text(l10n.projectViewShowDone),
                 subtitle: Text(l10n.projectViewShowDoneHint),
               ),

@@ -184,6 +184,9 @@ final class ProjectListSource {
 
 typedef BoardSlot = ({int bucketId, double position});
 
+/// How many of a project's own tasks there are, and how many are done.
+typedef ProjectProgress = ({int done, int total});
+
 /// What a kanban view's board is built from (`buildBoard`): the view's
 /// columns and the cards they held as of the last board download
 /// ([loadedAt] null: never downloaded), the project's tasks as this device

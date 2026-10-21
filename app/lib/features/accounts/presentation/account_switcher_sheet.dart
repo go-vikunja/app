@@ -94,7 +94,7 @@ class AccountSwitcherSheet extends ConsumerWidget {
               header: true,
               child: Text(
                 l10n.accountsHeading,
-                style: theme.textTheme.titleLarge,
+                style: theme.textTheme.headlineSmall,
               ),
             ),
           ),

@@ -4,13 +4,16 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/theme/hex_color.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/favourite_button.dart';
 
-/// A project in the Projects tab; in the tree with its depth, its children
-/// count and expand control, and [actions] for screen readers.
+/// A project in the Projects tab with its open tasks; in the tree with its
+/// depth, its children count and expand control, and [actions] for screen
+/// readers.
 class ProjectRow extends StatelessWidget {
   const new({
     required this.project,
     required this.onTap,
+    this.openTaskCount = 0,
     this.depth = 0,
     this.childCount = 0,
     this.expanded = false,
@@ -21,6 +24,9 @@ class ProjectRow extends StatelessWidget {
 
   final Project project;
   final VoidCallback onTap;
+
+  /// The project's own, not its subprojects'.
+  final int openTaskCount;
   final int depth;
   final int childCount;
   final bool expanded;
@@ -37,6 +43,10 @@ class ProjectRow extends StatelessWidget {
     final colors = theme.colorScheme;
     final color = parseHexColor(project.hexColor);
     final title = project.displayTitle(l10n);
+    final details = [
+      if (openTaskCount > 0) l10n.smartListOpenTaskCount(openTaskCount),
+      if (childCount > 0) l10n.projectChildCount(childCount),
+    ];
     return ListTile(
       onTap: onTap,
       contentPadding: EdgeInsetsDirectional.only(
@@ -55,9 +65,7 @@ class ProjectRow extends StatelessWidget {
         customSemanticsActions: actions.isEmpty ? null : actions,
         child: Text(title),
       ),
-      subtitle: childCount > 0
-          ? Text(l10n.projectChildCount(childCount))
-          : null,
+      subtitle: details.isEmpty ? null : Text(details.join(' · ')),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -68,11 +76,7 @@ class ProjectRow extends StatelessWidget {
               semanticLabel: l10n.projectArchived,
             ),
           if (project.isFavorite)
-            Icon(
-              Icons.star,
-              color: colors.tertiary,
-              semanticLabel: l10n.favouriteLabel,
-            ),
+            Semantics(label: l10n.favouriteLabel, child: const FilledStar()),
           if (onToggleExpanded case final onToggle? when childCount > 0)
             IconButton(
               onPressed: onToggle,

@@ -824,12 +824,6 @@ abstract class AppLocalizations {
   /// **'Sign in again as @{expected}. If the browser signs you in on its own, sign out of {host} in the browser first.'**
   String signInDifferentUserSuggestion(String expected, String host);
 
-  /// No description provided for @homeUsername.
-  ///
-  /// In en, this message translates to:
-  /// **'@{username}'**
-  String homeUsername(String username);
-
   /// No description provided for @homeSignOut.
   ///
   /// In en, this message translates to:
@@ -1394,12 +1388,6 @@ abstract class AppLocalizations {
   /// **'Favourite'**
   String get favouriteLabel;
 
-  /// No description provided for @projectTasksShowDone.
-  ///
-  /// In en, this message translates to:
-  /// **'Show done tasks'**
-  String get projectTasksShowDone;
-
   /// No description provided for @projectTasksLoading.
   ///
   /// In en, this message translates to:
@@ -1415,7 +1403,7 @@ abstract class AppLocalizations {
   /// No description provided for @projectTasksEmptyBody.
   ///
   /// In en, this message translates to:
-  /// **'Everything in this project is done. Turn on “Show done tasks” to see them.'**
+  /// **'Everything in this project is done. Turn on “Show done” to see them.'**
   String get projectTasksEmptyBody;
 
   /// No description provided for @projectTasksEmptyAllTitle.
@@ -3176,7 +3164,7 @@ abstract class AppLocalizations {
   /// **'Notifications'**
   String get inboxTitle;
 
-  /// Screen reader label of the bell in the Overview's app bar.
+  /// Screen reader label of the bell on the Overview and of the notifications item in Upcoming's menu.
   ///
   /// In en, this message translates to:
   /// **'{count, plural, =0{Notifications} =1{Notifications, 1 unread} other{Notifications, {count} unread}}'**
@@ -8645,6 +8633,120 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Download'**
   String get dataExportDownload;
+
+  /// Headline of the Overview before noon.
+  ///
+  /// In en, this message translates to:
+  /// **'Good morning, {name}'**
+  String overviewGreetingMorning(String name);
+
+  /// Headline of the Overview from noon to 6 pm.
+  ///
+  /// In en, this message translates to:
+  /// **'Good afternoon, {name}'**
+  String overviewGreetingAfternoon(String name);
+
+  /// Headline of the Overview from 6 pm to 5 am.
+  ///
+  /// In en, this message translates to:
+  /// **'Good evening, {name}'**
+  String overviewGreetingEvening(String name);
+
+  /// Under the Overview's greeting: the open tasks it shows that are due today or overdue.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{Nothing left for today} =1{1 task left for today} other{{count} tasks left for today}}'**
+  String overviewTasksLeftToday(int count);
+
+  /// Under Upcoming's app bar: the date range's name, its days and how many open tasks are due in it.
+  ///
+  /// In en, this message translates to:
+  /// **'{range}, {dates} · {count, plural, =0{nothing open} =1{1 open} other{{count} open}}'**
+  String upcomingSubtitle(String range, String dates, int count);
+
+  /// Screen reader label of a day in Upcoming's day strip.
+  ///
+  /// In en, this message translates to:
+  /// **'{day}, {count, plural, =0{nothing open} =1{1 open} other{{count} open}}'**
+  String upcomingDaySemantics(String day, int count);
+
+  /// Screen reader hint of a day in Upcoming's day strip that is not selected.
+  ///
+  /// In en, this message translates to:
+  /// **'Show only this day'**
+  String get upcomingShowDayHint;
+
+  /// Screen reader hint of the selected day in Upcoming's day strip: another tap shows every day again.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the whole range'**
+  String get upcomingShowRangeHint;
+
+  /// Upcoming with one day picked in the day strip that has no open tasks.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing planned'**
+  String get upcomingNothingPlanned;
+
+  /// The detail sheet's full-width button that marks an open task done.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark as done'**
+  String get taskDetailMarkDone;
+
+  /// The detail sheet's full-width button that reopens a done task.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark as not done'**
+  String get taskDetailMarkNotDone;
+
+  /// The status of a task that is not done, beside its project in the detail sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get taskDetailStatusOpen;
+
+  /// Filter chip under a project's view tabs that adds the done tasks to a list view.
+  ///
+  /// In en, this message translates to:
+  /// **'Show done'**
+  String get projectShowDoneChip;
+
+  /// Under a project's title: how many of the project's own tasks are done.
+  ///
+  /// In en, this message translates to:
+  /// **'{done} of {total} done'**
+  String projectProgressDone(int done, int total);
+
+  /// What screen readers say for the progress line under a project's title.
+  ///
+  /// In en, this message translates to:
+  /// **'Project progress: {done} of {total} tasks done'**
+  String projectProgressSemantics(int done, int total);
+
+  /// Outlined button in the Account tab's profile header; opens the account settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get accountHeaderEdit;
+
+  /// Account tab section with the server's version, the sync status and the changes waiting for the server.
+  ///
+  /// In en, this message translates to:
+  /// **'Server'**
+  String get accountServerHeading;
+
+  /// The app's version line at the end of the Account tab.
+  ///
+  /// In en, this message translates to:
+  /// **'Rurana {version} ({build})'**
+  String accountAppVersion(String version, String build);
+
+  /// The app's version line when the build number is unknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Rurana {version}'**
+  String accountAppVersionWithoutBuild(String version);
 }
 
 class _AppLocalizationsDelegate

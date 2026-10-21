@@ -9,6 +9,7 @@ import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_server_screen.dart';
 import 'package:vikunja_mobile/features/sync/presentation/first_sync_screen.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/create/project_field.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/task_edit_page.dart';
 
 import '../features/quick_add/presentation/composer_harness.dart';
@@ -32,8 +33,8 @@ void main() {
   String location(WidgetTester tester) =>
       routerOf(tester).state.matchedLocation;
 
-  Finder projectChip(String title) =>
-      find.ancestor(of: find.text(title), matching: find.byType(ActionChip));
+  Finder projectField(String title) =>
+      find.ancestor(of: find.text(title), matching: find.byType(ProjectField));
 
   testWidgets('registers the New task shortcut in the device language', (
     tester,
@@ -62,7 +63,7 @@ void main() {
     expect(find.byType(NewTaskSheet), findsOneWidget);
     expect(location(tester), AppRoutes.overview);
     // The overview has no project of its own.
-    expect(projectChip('Inbox'), findsOneWidget);
+    expect(projectField('Inbox'), findsOneWidget);
 
     harness.shortcuts
       ..trigger(newTaskShortcutType)

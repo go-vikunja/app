@@ -8,6 +8,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/repositories/bucket_repository.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/features/common/presentation/count_badge.dart';
 import 'package:vikunja_mobile/features/projects/presentation/board/board_card.dart';
 import 'package:vikunja_mobile/features/projects/presentation/board/board_column.dart';
 import 'package:vikunja_mobile/features/projects/presentation/board/column_changes.dart';
@@ -419,13 +420,13 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(data.buckets.calls, ['setLimit 1 14 22 1']);
-      final count = tester.widget<Text>(
-        find.descendant(of: columnOf('Doing'), matching: find.text('2/1')),
+      final count = tester.widget<CountBadge>(
+        find.descendant(
+          of: columnOf('Doing'),
+          matching: find.byType(CountBadge),
+        ),
       );
-      expect(
-        count.style?.color,
-        Theme.of(tester.element(columnOf('Doing'))).colorScheme.error,
-      );
+      expect((count.count, count.limit, count.alert), (2, 1, true));
     });
 
     testWidgets('0 is no limit, and the same limit sends nothing', (
@@ -613,7 +614,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(columnTitles(tester), ['Doing', 'Backlog', 'Complete']);
-      expect(position.pixels, 340 + 8);
+      expect(position.pixels, 280 + 12);
       semantics.dispose();
     });
   });
@@ -723,7 +724,7 @@ void main() {
         tester.getRect(tile).left,
         greaterThan(tester.getRect(columnOf('Complete')).right),
       );
-      expect(tester.getSize(tile).width, 340);
+      expect(tester.getSize(tile).width, 280);
       await tester.tap(find.text(en.boardCreateColumn));
       await tester.pumpAndSettle();
       expect(find.text(en.boardNewColumn), findsOne);
@@ -772,11 +773,11 @@ void main() {
                 .first,
           )
           .position;
-      expect(tester.getSize(find.byType(NewColumnTile)).width, 340);
+      expect(tester.getSize(find.byType(NewColumnTile)).width, 280);
 
       for (final (title, settled) in [
-        ('Backlog', 340.0 + 8),
-        ('Doing', 2 * (340.0 + 8)),
+        ('Backlog', 280.0 + 12),
+        ('Doing', 2 * (280.0 + 12)),
       ]) {
         await tester.timedDrag(
           headerOf(title),
@@ -793,7 +794,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(position.pixels, position.maxScrollExtent);
-      expect(tester.getRect(find.byType(NewColumnTile)).right, 400 - 12);
+      expect(tester.getRect(find.byType(NewColumnTile)).right, 400 - 16);
     });
   });
 

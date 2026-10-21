@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart' show mapEquals;
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/db/daos/kanban_dao.dart';
@@ -652,6 +653,46 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
       ..addColumns([total])
       ..where(tasks.projectId.isNotIn(excluded) & _onServer);
     return query.map((row) => row.read(total)!).getSingle();
+  }
+
+  /// A project's own tasks as the lists show them (created here included,
+  /// queued deletions not), and how many of them are done.
+  Stream<ProjectProgress> watchProjectProgress(int projectId) {
+    final count = tasks.id.count();
+    final query = selectOnly(tasks)
+      ..addColumns([tasks.done, count])
+      ..where(tasks.projectId.equals(projectId) & _visible)
+      ..groupBy([tasks.done]);
+    return query.watch().map((rows) {
+      var done = 0;
+      var total = 0;
+      for (final row in rows) {
+        final tasksOfKind = row.read(count)!;
+        total += tasksOfKind;
+        if (row.read(tasks.done)!) done += tasksOfKind;
+      }
+      return (done: done, total: total);
+    }).distinct();
+  }
+
+  /// By project id, the open tasks the lists show; projects without any
+  /// are left out.
+  Stream<Map<int, int>> watchOpenTaskCounts() {
+    final count = tasks.id.count();
+    final query = selectOnly(tasks)
+      ..addColumns([tasks.projectId, count])
+      ..where(tasks.done.equals(false) & _visible)
+      ..groupBy([tasks.projectId]);
+    // Drift runs the query again on every write to the tasks table.
+    return query
+        .watch()
+        .map(
+          (rows) => {
+            for (final row in rows)
+              row.read(tasks.projectId)!: row.read(count)!,
+          },
+        )
+        .distinct(mapEquals);
   }
 
   Future<List<int>> idsInProject(int projectId) =>

@@ -47,7 +47,10 @@ void main() {
     expect(find.byType(HomeShell), findsOneWidget);
     await openTab(tester, en.tabAccount);
     expect(find.text('Alice Example'), findsOneWidget);
-    expect(find.text(en.homeUsername('alice')), findsOneWidget);
+    expect(
+      find.text(en.accountSubtitle('alice', 'tasks.example.org')),
+      findsOneWidget,
+    );
     expect(auth.webAuthenticator.schemes, [oauthCallbackScheme]);
     final accounts = containerOf(tester).read(accountsProvider).value;
     expect(accounts?.activeAccount?.account.userId, 7);

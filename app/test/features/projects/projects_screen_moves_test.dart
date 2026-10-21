@@ -427,7 +427,8 @@ void main() {
         sampleProject(id: 7, title: 'Garden', position: 400),
       ];
       await pumpProjects(tester);
-      final favourite = find.byKey(const ValueKey(('favourite', 2)));
+      // The section card's slot carries the row's key too.
+      final favourite = find.byKey(const ValueKey(('favourite', 2))).last;
       final garden = tester.getCenter(rowOf('Garden'));
 
       final gesture = await tester.startGesture(tester.getCenter(favourite));

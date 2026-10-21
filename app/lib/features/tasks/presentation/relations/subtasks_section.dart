@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/details/detail_section_header.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/relations/relation_row.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
 
@@ -82,25 +84,30 @@ class _SubtasksSectionState extends State<SubtasksSection> {
           title: l10n.taskDetailSubtasks,
           trailing: subtasks.isEmpty
               ? null
-              : l10n.taskDetailSubtasksDone(done, subtasks.length),
+              : Text(l10n.taskDetailSubtasksDone(done, subtasks.length)),
         ),
-        for (final subtask in subtasks)
-          RelationRow(
-            key: ValueKey(subtask.id),
-            task: subtask,
-            projectTitle: widget.projectTitleOf?.call(subtask),
-            leading: TaskDoneControl(
-              done: subtask.done,
-              onChanged: onDoneChanged == null
-                  ? null
-                  : (done) => onDoneChanged(subtask, done: done),
-            ),
-            onOpen: () => widget.onOpen(subtask),
-            onRemove: onRemove == null ? null : () => onRemove(subtask),
+        if (subtasks.isNotEmpty)
+          SectionCard(
+            children: [
+              for (final subtask in subtasks)
+                RelationRow(
+                  key: ValueKey(subtask.id),
+                  task: subtask,
+                  projectTitle: widget.projectTitleOf?.call(subtask),
+                  leading: TaskDoneControl(
+                    done: subtask.done,
+                    onChanged: onDoneChanged == null
+                        ? null
+                        : (done) => onDoneChanged(subtask, done: done),
+                  ),
+                  onOpen: () => widget.onOpen(subtask),
+                  onRemove: onRemove == null ? null : () => onRemove(subtask),
+                ),
+            ],
           ),
         if (widget.onAdd != null)
           Padding(
-            padding: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             child: TextField(
               controller: _title,
               focusNode: _focus,

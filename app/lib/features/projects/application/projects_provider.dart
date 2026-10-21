@@ -49,6 +49,18 @@ Stream<BoardSource> boardSource(Ref ref, int projectId, int viewId) =>
     ref.watch(taskRepositoryProvider)?.watchBoard(projectId, viewId) ??
     const Stream.empty();
 
+/// Stays loading while no account is signed in.
+@riverpod
+Stream<ProjectProgress> projectProgress(Ref ref, int projectId) =>
+    ref.watch(taskRepositoryProvider)?.watchProjectProgress(projectId) ??
+    const Stream.empty();
+
+/// Stays loading while no account is signed in.
+@riverpod
+Stream<Map<int, int>> openTaskCounts(Ref ref) =>
+    ref.watch(taskRepositoryProvider)?.watchOpenTaskCounts() ??
+    const Stream.empty();
+
 /// [listKey] from `listKeyFor`; the defaults while nobody is signed in.
 @riverpod
 Stream<ViewPreferences> viewPreferences(Ref ref, String listKey) =>

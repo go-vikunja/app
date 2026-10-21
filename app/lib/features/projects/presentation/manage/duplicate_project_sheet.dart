@@ -165,6 +165,10 @@ class _DuplicateProjectSheetState extends ConsumerState<DuplicateProjectSheet> {
               onChanged: _duplicating
                   ? null
                   : (value) => setState(() => _copyShares = value),
+              secondary: Icon(
+                Icons.group_outlined,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
               title: Text(l10n.projectDuplicateShares),
               subtitle: Text(l10n.projectDuplicateSharesHint),
             ),

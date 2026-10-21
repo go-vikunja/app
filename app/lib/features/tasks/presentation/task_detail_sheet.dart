@@ -13,6 +13,7 @@ import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/router/pop_pages_over_shell.dart';
 import 'package:vikunja_mobile/app/router/pushed_pages.dart';
+import 'package:vikunja_mobile/app/theme/app_theme.dart';
 import 'package:vikunja_mobile/app/theme/hex_color.dart';
 import 'package:vikunja_mobile/core/attachments/attachment_image_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
@@ -23,6 +24,9 @@ import 'package:vikunja_mobile/core/repositories/task_details_repository_provide
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 import 'package:vikunja_mobile/core/settings/user_settings_providers.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
+import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
+import 'package:vikunja_mobile/features/common/presentation/identifier_text.dart';
+import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/common/presentation/user_avatar.dart';
 import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
@@ -37,6 +41,7 @@ import 'package:vikunja_mobile/features/tasks/presentation/delete_task_dialog.da
 import 'package:vikunja_mobile/features/tasks/presentation/details/attachments_section.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/comments_controller.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/comments_section.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/details/detail_section_header.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/details_notice.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/project_breadcrumb.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/reaction_chips.dart';
@@ -52,8 +57,8 @@ import 'package:vikunja_mobile/features/tasks/presentation/relations/related_tas
 import 'package:vikunja_mobile/features/tasks/presentation/relations/subtasks_section.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/rich_text/rich_html.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/rich_text/rich_link_actions.dart';
-import 'package:vikunja_mobile/features/tasks/presentation/task_chips.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_formatting.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/task_meta.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row_parts.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_write_feedback.dart';
 
@@ -87,6 +92,8 @@ Future<void> showTaskDetail(
         isScrollControlled: true,
         useSafeArea: true,
         showDragHandle: true,
+        // The page's colour, under the cards of the sections.
+        backgroundColor: Theme.of(context).colorScheme.surface,
         builder: (context) => DraggableScrollableSheet(
           expand: false,
           initialChildSize: 0.65,
@@ -527,13 +534,110 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
     final color = parseHexColor(task.hexColor);
     final checklist = checklistStatistics(task.description);
     final formatter = MomentFormatter.watch(context, ref);
-    _Property dateProperty(IconData icon, String label, DateTime moment) =>
-        _Property(
-          icon: icon,
-          label: label,
-          value: formatter.absolute(moment),
-          semanticsValue: formatter.semanticsLabel(moment),
-        );
+    final now = ref.watch(clockTickProvider);
+    _Attribute dateAttribute(
+      IconData icon,
+      String label,
+      DateTime moment, {
+      TextStyle? style,
+    }) => _Attribute.text(
+      icon: icon,
+      label: label,
+      text: formatter.absolute(moment),
+      semanticsText: formatter.semanticsLabel(moment),
+      style: style,
+    );
+    final attributes = [
+      if (task.dueDate case final dueDate?)
+        dateAttribute(
+          Icons.event_outlined,
+          l10n.taskDetailDueDate,
+          dueDate,
+          style: TextStyle(
+            fontWeight: FontWeight.w500,
+            color: switch (DueTone.of(task, now: now)) {
+              DueTone.overdue => colors.error,
+              DueTone.today => colors.primary,
+              DueTone.later => colors.onSurface,
+              DueTone.done => colors.onSurfaceVariant,
+            },
+          ),
+        ),
+      if (task.startDate case final startDate?)
+        dateAttribute(
+          Icons.play_arrow_outlined,
+          l10n.taskDetailStartDate,
+          startDate,
+        ),
+      if (task.endDate case final endDate?)
+        dateAttribute(Icons.stop_outlined, l10n.taskDetailEndDate, endDate),
+      if (task.priority != TaskPriority.unset)
+        _Attribute(
+          icon: Icons.flag_outlined,
+          label: l10n.taskDetailPriority,
+          value: (_) => _PriorityValue(priority: task.priority),
+        ),
+      if (percent > 0)
+        _Attribute.text(
+          icon: Icons.percent,
+          label: l10n.taskDetailProgress,
+          text: l10n.taskPercentDone(percent),
+        ),
+      if (repeat != null)
+        _Attribute.text(
+          icon: Icons.repeat,
+          label: l10n.taskDetailRepeat,
+          text: repeat,
+        ),
+      if (task.reminders.isNotEmpty)
+        _Attribute.text(
+          icon: Icons.alarm_outlined,
+          label: l10n.taskDetailReminders,
+          text: [
+            for (final reminder in task.reminders)
+              formatReminder(
+                l10n,
+                reminder,
+                formatAbsolute: formatter.absolute,
+              ),
+          ].join('\n'),
+          semanticsText: [
+            for (final reminder in task.reminders)
+              formatReminder(
+                l10n,
+                reminder,
+                formatAbsolute: formatter.spokenAbsolute,
+              ),
+          ].join('\n'),
+        ),
+      if (task.labels.isNotEmpty)
+        _Attribute(
+          icon: Icons.label_outline,
+          label: l10n.taskDetailLabels,
+          value: (alignment) => Wrap(
+            alignment: alignment,
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (final label in rowLabels(task.labels))
+                LabelPill(label: label),
+            ],
+          ),
+        ),
+      if (task.assignees.isNotEmpty)
+        _Attribute(
+          icon: Icons.people_outline,
+          label: l10n.taskDetailAssignees,
+          value: (alignment) => Wrap(
+            alignment: alignment,
+            spacing: 12,
+            runSpacing: 8,
+            children: [
+              for (final user in task.assignees) _Assignee(user: user),
+            ],
+          ),
+        ),
+    ];
 
     return ScaffoldMessenger(
       key: _messenger,
@@ -554,84 +658,112 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                 // field, which keeps it up for the next one.
                 keyboardDismissBehavior:
                     ScrollViewKeyboardDismissBehavior.onDrag,
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                padding: const EdgeInsets.only(bottom: 24),
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      IconButton(
-                        onPressed: repository == null
-                            ? null
-                            : () => _edit(task),
-                        tooltip: l10n.taskEdit,
-                        icon: const Icon(Icons.edit_outlined),
-                      ),
-                      ValueListenableBuilder(
-                        valueListenable: _follow,
-                        builder: (context, state, _) => FollowButton(
-                          state: task.id < 0 ? const FollowUnknown() : state,
-                          onPressed: () =>
-                              unawaited(_toggleFollow(task, projectTitles)),
+                  Padding(
+                    padding: const EdgeInsetsDirectional.only(
+                      start: 16,
+                      end: 4,
+                    ),
+                    child: Row(
+                      children: [
+                        if (color != null) ...[
+                          ColorDot(color: color),
+                          const SizedBox(width: 8),
+                        ],
+                        // A task not yet sent has no identifier until the
+                        // server assigns one. Beside five actions in large
+                        // text it shrinks rather than break in two.
+                        Expanded(
+                          child: task.id > 0
+                              ? FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: AlignmentDirectional.centerStart,
+                                  child: IdentifierText(
+                                    taskIdentifierIn(task, project),
+                                    style: const TextStyle(fontSize: 16),
+                                  ),
+                                )
+                              : const SizedBox.shrink(),
                         ),
-                      ),
-                      FavouriteButton(
-                        isFavorite: task.isFavorite,
-                        onChanged: repository == null
-                            ? null
-                            : (favorite) => unawaited(
-                                writeTaskFavorite(
-                                  repository,
-                                  task,
-                                  favorite: favorite,
-                                ),
-                              ),
-                      ),
-                      PopupMenuButton<_SheetAction>(
-                        tooltip: l10n.moreActions,
-                        enabled: repository != null,
-                        onSelected: (action) => switch (action) {
-                          _SheetAction.duplicate => unawaited(
-                            _duplicate(repository!, task),
+                        IconButton(
+                          onPressed: repository == null
+                              ? null
+                              : () => _edit(task),
+                          tooltip: l10n.taskEdit,
+                          icon: const Icon(Icons.edit_outlined),
+                        ),
+                        ValueListenableBuilder(
+                          valueListenable: _follow,
+                          builder: (context, state, _) => FollowButton(
+                            state: task.id < 0 ? const FollowUnknown() : state,
+                            onPressed: () =>
+                                unawaited(_toggleFollow(task, projectTitles)),
                           ),
-                          _SheetAction.delete => unawaited(
-                            _delete(repository!, task),
-                          ),
-                        },
-                        itemBuilder: (context) => [
-                          PopupMenuItem(
-                            value: _SheetAction.duplicate,
-                            enabled: !_duplicating,
-                            child: Row(
-                              children: [
-                                const Icon(Icons.content_copy_outlined),
-                                const SizedBox(width: 12),
-                                Flexible(child: Text(l10n.taskDuplicate)),
-                              ],
-                            ),
-                          ),
-                          PopupMenuItem(
-                            value: _SheetAction.delete,
-                            child: Row(
-                              children: [
-                                Icon(Icons.delete_outline, color: colors.error),
-                                const SizedBox(width: 12),
-                                Flexible(
-                                  child: Text(
-                                    l10n.taskDelete,
-                                    style: TextStyle(color: colors.error),
+                        ),
+                        FavouriteButton(
+                          isFavorite: task.isFavorite,
+                          onChanged: repository == null
+                              ? null
+                              : (favorite) => unawaited(
+                                  writeTaskFavorite(
+                                    repository,
+                                    task,
+                                    favorite: favorite,
                                   ),
                                 ),
-                              ],
+                        ),
+                        PopupMenuButton<_SheetAction>(
+                          tooltip: l10n.moreActions,
+                          enabled: repository != null,
+                          onSelected: (action) => switch (action) {
+                            _SheetAction.duplicate => unawaited(
+                              _duplicate(repository!, task),
                             ),
-                          ),
-                        ],
-                      ),
-                      IconButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        tooltip: l10n.taskDetailClose,
-                        icon: const Icon(Icons.close),
-                      ),
-                    ],
+                            _SheetAction.delete => unawaited(
+                              _delete(repository!, task),
+                            ),
+                          },
+                          itemBuilder: (context) => [
+                            PopupMenuItem(
+                              value: _SheetAction.duplicate,
+                              enabled: !_duplicating,
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.content_copy_outlined),
+                                  const SizedBox(width: 12),
+                                  Flexible(child: Text(l10n.taskDuplicate)),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuDivider(),
+                            PopupMenuItem(
+                              value: _SheetAction.delete,
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.delete_outline,
+                                    color: colors.error,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Flexible(
+                                    child: Text(
+                                      l10n.taskDelete,
+                                      style: TextStyle(color: colors.error),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          tooltip: l10n.taskDetailClose,
+                          icon: const Icon(Icons.close),
+                        ),
+                      ],
+                    ),
                   ),
                   SizedBox(
                     height: 4,
@@ -639,189 +771,62 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                         ? const LinearProgressIndicator()
                         : null,
                   ),
-                  // A task not yet sent has no identifier until the server
-                  // assigns one.
-                  if (task.id > 0 || color != null)
-                    Row(
+                  _Inset(
+                    child: Wrap(
+                      spacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        if (color != null) ...[
-                          ColorDot(color: color),
-                          const SizedBox(width: 8),
-                        ],
-                        if (task.id > 0)
-                          Flexible(
-                            child: Text(
-                              taskIdentifierIn(task, project),
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: colors.onSurfaceVariant,
-                              ),
-                            ),
+                        if (project != null)
+                          ProjectBreadcrumb(
+                            path: projectPath(project, projects),
+                            onOpen: (project) =>
+                                unawaited(_openProject(project)),
                           ),
-                      ],
-                    ),
-                  // One node: the heading, its tap and the hint together.
-                  MergeSemantics(
-                    child: Semantics(
-                      header: true,
-                      button: repository != null,
-                      hint: repository == null ? null : l10n.taskEdit,
-                      child: InkWell(
-                        onTap: repository == null ? null : () => _edit(task),
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          constraints: const BoxConstraints(minHeight: 48),
-                          alignment: AlignmentDirectional.centerStart,
-                          padding: const EdgeInsets.symmetric(vertical: 4),
-                          child: Text(
-                            task.title,
-                            style: task.done
-                                ? theme.textTheme.titleLarge?.copyWith(
-                                    decoration: TextDecoration.lineThrough,
-                                    color: colors.onSurfaceVariant,
-                                  )
-                                : theme.textTheme.titleLarge,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  if (project != null)
-                    ProjectBreadcrumb(
-                      path: projectPath(project, projects),
-                      onOpen: (project) => unawaited(_openProject(project)),
-                    ),
-                  if (checklist.total > 0)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Align(
-                        alignment: AlignmentDirectional.centerStart,
-                        child: ChecklistSummary(
-                          statistics: checklist,
-                          style: theme.textTheme.bodyMedium?.copyWith(
+                        Text(
+                          task.done ? l10n.taskDone : l10n.taskDetailStatusOpen,
+                          style: theme.textTheme.bodySmall?.copyWith(
                             color: colors.onSurfaceVariant,
                           ),
                         ),
-                      ),
+                        if (pending) const _PendingNote(),
+                      ],
                     ),
+                  ),
                   ValueListenableBuilder(
                     valueListenable: _follow,
                     builder: (context, state, _) => switch (state) {
                       FollowKnown(:final subscription?)
                           when task.id > 0 && _follow.inherits(subscription) =>
-                        _InheritedFollowNote(
-                          projectTitle: projectTitles[subscription.entityId],
+                        _Inset(
+                          child: _InheritedFollowNote(
+                            projectTitle: projectTitles[subscription.entityId],
+                          ),
                         ),
                       _ => const SizedBox.shrink(),
                     },
                   ),
                   const SizedBox(height: 4),
-                  CheckboxListTile.adaptive(
-                    value: task.done,
-                    onChanged: repository == null
-                        ? null
-                        : (done) => unawaited(
-                            writeTaskDone(
-                              repository,
-                              task,
-                              done: done ?? false,
-                            ),
-                          ),
-                    title: Text(l10n.taskDone),
-                    controlAffinity: ListTileControlAffinity.leading,
-                    contentPadding: EdgeInsets.zero,
+                  _Inset(
+                    child: _Title(
+                      task: task,
+                      onEdit: repository == null ? null : () => _edit(task),
+                    ),
                   ),
-                  if (pending || PriorityChip.shows(task.priority)) ...[
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        if (PriorityChip.shows(task.priority))
-                          PriorityChip(priority: task.priority),
-                        if (pending) const _PendingChip(),
-                      ],
+                  const SizedBox(height: 12),
+                  _Inset(
+                    child: _DoneButton(
+                      done: task.done,
+                      onPressed: repository == null
+                          ? null
+                          : () => unawaited(
+                              writeTaskDone(repository, task, done: !task.done),
+                            ),
                     ),
-                    const SizedBox(height: 8),
+                  ),
+                  if (attributes.isNotEmpty) ...[
+                    const SizedBox(height: 20),
+                    SectionCard(children: attributes),
                   ],
-                  if (task.dueDate case final dueDate?)
-                    dateProperty(Icons.event, l10n.taskDetailDueDate, dueDate),
-                  if (task.startDate case final startDate?)
-                    dateProperty(
-                      Icons.play_arrow_outlined,
-                      l10n.taskDetailStartDate,
-                      startDate,
-                    ),
-                  if (task.endDate case final endDate?)
-                    dateProperty(
-                      Icons.stop_outlined,
-                      l10n.taskDetailEndDate,
-                      endDate,
-                    ),
-                  if (task.priority != TaskPriority.unset)
-                    _Property(
-                      icon: Icons.flag_outlined,
-                      label: l10n.taskDetailPriority,
-                      value: priorityLabel(l10n, task.priority),
-                    ),
-                  if (percent > 0)
-                    _Property(
-                      icon: Icons.percent,
-                      label: l10n.taskDetailProgress,
-                      value: l10n.taskPercentDone(percent),
-                    ),
-                  if (repeat != null)
-                    _Property(
-                      icon: Icons.repeat,
-                      label: l10n.taskDetailRepeat,
-                      value: repeat,
-                    ),
-                  if (task.reminders.isNotEmpty)
-                    _Property(
-                      icon: Icons.alarm,
-                      label: l10n.taskDetailReminders,
-                      value: [
-                        for (final reminder in task.reminders)
-                          formatReminder(
-                            l10n,
-                            reminder,
-                            formatAbsolute: formatter.absolute,
-                          ),
-                      ].join('\n'),
-                      semanticsValue: [
-                        for (final reminder in task.reminders)
-                          formatReminder(
-                            l10n,
-                            reminder,
-                            formatAbsolute: formatter.spokenAbsolute,
-                          ),
-                      ].join('\n'),
-                    ),
-                  if (task.labels.isNotEmpty)
-                    _PropertyBlock(
-                      icon: Icons.label_outline,
-                      label: l10n.taskDetailLabels,
-                      child: Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: [
-                          for (final label in rowLabels(task.labels))
-                            LabelChip(label: label),
-                        ],
-                      ),
-                    ),
-                  if (task.assignees.isNotEmpty)
-                    _PropertyBlock(
-                      icon: Icons.people_outline,
-                      label: l10n.taskDetailAssignees,
-                      child: Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          for (final user in task.assignees)
-                            _Assignee(user: user),
-                        ],
-                      ),
-                    ),
                   if (task.parentTasks.isNotEmpty)
                     ParentTasksBlock(
                       parents: inCreationOrder(task.parentTasks),
@@ -841,7 +846,7 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                   if (task.subtasks.isNotEmpty || repository != null)
                     SubtasksSection(
                       // Keeps the typed title and the focus when rows above
-                      // come or go, such as the pending chip.
+                      // come or go, such as the pending note.
                       key: const ValueKey('subtasks'),
                       subtasks: inCreationOrder(task.subtasks),
                       projectTitleOf: otherProjectTitle,
@@ -865,40 +870,52 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                           ? null
                           : (title) => _addSubtask(repository, task, title),
                     ),
-                  const SizedBox(height: 12),
-                  _DescriptionHeading(
-                    onEdit: descriptionWriter != null && hasDescription(task)
-                        ? () => unawaited(_editDescription(task))
+                  DetailSectionHeader(
+                    title: l10n.taskDetailDescription,
+                    trailing: checklist.total > 0
+                        ? ChecklistSummary(statistics: checklist, style: null)
                         : null,
+                    actions: [
+                      if (descriptionWriter != null && hasDescription(task))
+                        IconButton(
+                          onPressed: () => unawaited(_editDescription(task)),
+                          tooltip: l10n.taskDetailEditDescription,
+                          icon: const Icon(Icons.edit_note),
+                        ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
-                  _Description(
-                    task: task,
-                    onLink: _openLink,
-                    onTaskLink: (taskId) => unawaited(_openLinkedTask(taskId)),
-                    onAdd: descriptionWriter == null
-                        ? null
-                        : () => unawaited(_editDescription(task)),
-                    onToggleTaskItem: descriptionWriter == null
-                        ? null
-                        : (html, item) => unawaited(
-                            _toggleChecklistItem(
-                              descriptionWriter,
-                              task,
-                              html,
-                              item,
-                            ),
-                          ),
+                  SectionCard(
+                    children: [
+                      _Description(
+                        task: task,
+                        onLink: _openLink,
+                        onTaskLink: (taskId) =>
+                            unawaited(_openLinkedTask(taskId)),
+                        onAdd: descriptionWriter == null
+                            ? null
+                            : () => unawaited(_editDescription(task)),
+                        onToggleTaskItem: descriptionWriter == null
+                            ? null
+                            : (html, item) => unawaited(
+                                _toggleChecklistItem(
+                                  descriptionWriter,
+                                  task,
+                                  html,
+                                  item,
+                                ),
+                              ),
+                      ),
+                    ],
                   ),
                   if (details != null && details.reactions.isNotEmpty)
                     Padding(
-                      padding: const EdgeInsets.only(top: 8),
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                       child: ReactionChips(reactions: details.reactions),
                     ),
                   if (_details.value case TaskDetailsFailed(:final failure)
                       when task.id > 0)
                     Padding(
-                      padding: const EdgeInsets.only(top: 8),
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                       child: DetailsNotice(
                         text: (l10n) => failure is NetworkFailure
                             ? l10n.taskDetailDetailsOffline
@@ -937,7 +954,7 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                       projectId: task.projectId,
                     ),
                   const SizedBox(height: 16),
-                  TaskMetadataLine(task: task),
+                  _Inset(child: TaskMetadataLine(task: task)),
                 ],
               );
             },
@@ -948,48 +965,89 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
   }
 }
 
-class _SectionHeading extends StatelessWidget {
-  const new({required this.text});
+class _Inset extends StatelessWidget {
+  const new({required this.child});
 
-  final String text;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 16),
+    child: child,
+  );
+}
+
+/// The title, which opens the edit page; one node with the heading, its
+/// tap and the hint.
+class _Title extends StatelessWidget {
+  const new({required this.task, required this.onEdit});
+
+  final Task task;
+  final VoidCallback? onEdit;
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final theme = Theme.of(context);
-    return Semantics(
-      header: true,
-      child: Text(
-        text,
-        style: theme.textTheme.titleSmall?.copyWith(
-          color: theme.colorScheme.primary,
+    final style = theme.textTheme.headlineSmall;
+    return MergeSemantics(
+      child: Semantics(
+        header: true,
+        button: onEdit != null,
+        hint: onEdit == null ? null : l10n.taskEdit,
+        child: InkWell(
+          onTap: onEdit,
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 48),
+            alignment: AlignmentDirectional.centerStart,
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Text(
+              task.title,
+              style: task.done
+                  ? style?.copyWith(
+                      decoration: TextDecoration.lineThrough,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    )
+                  : style,
+            ),
+          ),
         ),
       ),
     );
   }
 }
 
-/// The section's heading with the editor's button beside it while there is
-/// a description to edit.
-class _DescriptionHeading extends StatelessWidget {
-  const new({required this.onEdit});
+/// The done toggle as a full-width button: filled while the task is open,
+/// outlined once it is done.
+class _DoneButton extends StatelessWidget {
+  const new({required this.done, required this.onPressed});
 
-  final VoidCallback? onEdit;
+  final bool done;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final heading = _SectionHeading(text: l10n.taskDetailDescription);
-    final onEdit = this.onEdit;
-    if (onEdit == null) return heading;
-    return Row(
-      children: [
-        Expanded(child: heading),
-        IconButton(
-          onPressed: onEdit,
-          tooltip: l10n.taskDetailEditDescription,
-          icon: const Icon(Icons.edit_note),
-        ),
-      ],
+    final filled = Theme.of(context).filledButtonTheme.style;
+    return SizedBox(
+      width: double.infinity,
+      child: done
+          ? OutlinedButton.icon(
+              onPressed: onPressed,
+              // The filled button's size, so a toggle moves nothing below.
+              style: ButtonStyle(
+                minimumSize: filled?.minimumSize,
+                textStyle: filled?.textStyle,
+              ),
+              icon: const Icon(Icons.undo),
+              label: Text(l10n.taskDetailMarkNotDone),
+            )
+          : FilledButton.icon(
+              onPressed: onPressed,
+              icon: const Icon(Icons.check),
+              label: Text(l10n.taskDetailMarkDone),
+            ),
     );
   }
 }
@@ -1018,30 +1076,40 @@ class _Description extends StatelessWidget {
     final theme = Theme.of(context);
     final onAdd = this.onAdd;
     final empty = onAdd == null
-        ? Text(
-            l10n.taskDetailNoDescription,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+        ? Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(
+              l10n.taskDetailNoDescription,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
           )
-        : Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: TextButton.icon(
-              onPressed: onAdd,
-              icon: const Icon(Icons.add),
-              label: Text(l10n.taskDetailAddDescription),
+        // The button's own padding lines its icon up with the card's text.
+        : Padding(
+            padding: const EdgeInsets.all(4),
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton.icon(
+                onPressed: onAdd,
+                icon: const Icon(Icons.add),
+                label: Text(l10n.taskDetailAddDescription),
+              ),
             ),
           );
     if (!hasDescription(task)) return empty;
-    return SelectionArea(
-      child: RichHtml(
-        html: task.description,
-        onLink: onLink,
-        onTaskLink: onTaskLink,
-        onToggleTaskItem: onToggleTaskItem,
-        style: theme.textTheme.bodyLarge,
-        projectId: task.projectId,
-        empty: empty,
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: SelectionArea(
+        child: RichHtml(
+          html: task.description,
+          onLink: onLink,
+          onTaskLink: onTaskLink,
+          onToggleTaskItem: onToggleTaskItem,
+          style: theme.textTheme.bodyLarge,
+          projectId: task.projectId,
+          empty: empty,
+        ),
       ),
     );
   }
@@ -1083,88 +1151,161 @@ class _InheritedFollowNote extends StatelessWidget {
   }
 }
 
-class _PendingChip extends StatelessWidget {
+class _PendingNote extends StatelessWidget {
   const new();
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final colors = Theme.of(context).colorScheme;
-    return Chip(
-      avatar: Icon(Icons.cloud_off_outlined, color: colors.onSurfaceVariant),
-      label: Text(l10n.taskNotYetSynced),
-      visualDensity: VisualDensity.compact,
-    );
-  }
-}
-
-class _Property extends StatelessWidget {
-  const new({
-    required this.icon,
-    required this.label,
-    required this.value,
-    this.semanticsValue,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-
-  /// What screen readers hear instead of [value].
-  final String? semanticsValue;
-
-  @override
-  Widget build(BuildContext context) => _PropertyBlock(
-    icon: icon,
-    label: label,
-    child: Text(
-      value,
-      semanticsLabel: semanticsValue,
-      style: Theme.of(context).textTheme.bodyLarge,
-    ),
-  );
-}
-
-class _PropertyBlock extends StatelessWidget {
-  const new({required this.icon, required this.label, required this.child});
-
-  final IconData icon;
-  final String label;
-  final Widget child;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: MergeSemantics(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 2),
-              child: Icon(icon, size: 20, color: colors.onSurfaceVariant),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          Icons.cloud_off_outlined,
+          size: 16,
+          color: colors.onSurfaceVariant,
+        ),
+        const SizedBox(width: 4),
+        Flexible(
+          child: Text(
+            context.l10n.taskNotYetSynced,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colors.onSurfaceVariant,
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: colors.onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// One row of the attribute card: an icon, the name in a column of its
+/// own and the value at the end; the value goes under the name when the
+/// two do not fit side by side, as at a large text size. [value] gets the
+/// alignment of the side it is on.
+class _Attribute extends StatelessWidget {
+  const new({required this.icon, required this.label, required this.value});
+
+  factory text({
+    required IconData icon,
+    required String label,
+    required String text,
+    String? semanticsText,
+    TextStyle? style,
+  }) => _Attribute(
+    icon: icon,
+    label: label,
+    value: (alignment) => Text(
+      text,
+      semanticsLabel: semanticsText,
+      style: style,
+      textAlign: alignment == WrapAlignment.end
+          ? TextAlign.end
+          : TextAlign.start,
+    ),
+  );
+
+  final IconData icon;
+  final String label;
+  final Widget Function(WrapAlignment alignment) value;
+
+  static const _labelWidth = 96.0;
+  static const _minValueWidth = 120.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final labelWidth = MediaQuery.textScalerOf(context).scale(_labelWidth);
+    final name = Text(
+      label,
+      style: theme.textTheme.bodyMedium?.copyWith(
+        color: colors.onSurfaceVariant,
+      ),
+    );
+    final glyph = Icon(icon, size: 20, color: colors.onSurfaceVariant);
+    return MergeSemantics(
+      child: DefaultTextStyle.merge(
+        style: theme.textTheme.bodyMedium,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 40),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final sideBySide =
+                    constraints.maxWidth - 20 - 16 - labelWidth - 16 >=
+                    _minValueWidth;
+                if (!sideBySide) {
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: glyph,
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          spacing: 4,
+                          children: [name, value(WrapAlignment.start)],
+                        ),
+                      ),
+                    ],
+                  );
+                }
+                return Row(
+                  children: [
+                    glyph,
+                    const SizedBox(width: 16),
+                    SizedBox(width: labelWidth, child: name),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Align(
+                        alignment: AlignmentDirectional.centerEnd,
+                        child: value(WrapAlignment.end),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  child,
-                ],
-              ),
+                  ],
+                );
+              },
             ),
-          ],
+          ),
         ),
       ),
+    );
+  }
+}
+
+/// The priority with its flag: in the error colour from urgent up, amber
+/// for high, muted below.
+class _PriorityValue extends StatelessWidget {
+  const new({required this.priority});
+
+  final TaskPriority priority;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final (icon, color) = switch (priority.value) {
+      >= 4 => (Icons.flag, colors.error),
+      3 => (Icons.flag, HighlightColors.of(context).highlight),
+      _ => (Icons.outlined_flag, colors.onSurfaceVariant),
+    };
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: color),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Text(
+            priorityLabel(context.l10n, priority),
+            style: priority.value >= 4 ? TextStyle(color: colors.error) : null,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -1178,14 +1319,9 @@ class _Assignee extends StatelessWidget {
   Widget build(BuildContext context) => Row(
     mainAxisSize: MainAxisSize.min,
     children: [
-      UserAvatar(user: user, radius: 14),
+      UserAvatar(user: user, radius: 12),
       const SizedBox(width: 6),
-      Flexible(
-        child: Text(
-          user.displayName,
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-      ),
+      Flexible(child: Text(user.displayName)),
     ],
   );
 }

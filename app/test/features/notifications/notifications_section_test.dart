@@ -158,13 +158,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(notifications.calls('openNotificationSettings'), 1);
 
-    final testButton = tester.widget<TextButton>(
-      find.ancestor(
-        of: find.text(en.notificationsSendTest),
-        matching: find.byType(TextButton),
-      ),
+    final testRow = tester.widget<ListTile>(
+      find.widgetWithText(ListTile, en.notificationsSendTest),
     );
-    expect(testButton.onPressed, isNull);
+    expect(testRow.enabled, isFalse);
   });
 
   testWidgets('never asked: off, with a request', (tester) async {

@@ -8,6 +8,8 @@ import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/repositories/task_search.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
+import 'package:vikunja_mobile/features/common/presentation/search_pill.dart';
+import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_row.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_tasks_screen.dart';
 import 'package:vikunja_mobile/features/search/presentation/search_page.dart';
@@ -73,7 +75,7 @@ void main() {
 
   Future<void> openSearch(WidgetTester tester) async {
     await pumpApp(tester);
-    await tester.tap(find.byTooltip(en.search));
+    await tester.tap(find.byType(SearchPill));
     await tester.pumpAndSettle();
   }
 
@@ -87,6 +89,12 @@ void main() {
     );
     await tester.pumpAndSettle();
   }
+
+  // The row's key marks its slot in the card too.
+  Finder labelRow(int id) => find.descendant(
+    of: find.byType(SectionCardItem),
+    matching: find.byKey(ValueKey(('label', id))),
+  );
 
   List<String> headings(WidgetTester tester) => [
     for (final header in tester.widgetList<ListSectionHeader>(
@@ -106,7 +114,10 @@ void main() {
 
     for (final tab in [null, en.tabUpcoming, en.tabProjects]) {
       if (tab != null) await openTab(tester, tab);
-      await tester.tap(find.byTooltip(en.search));
+      // The Overview's search bar, the others' app bar button.
+      await tester.tap(
+        tab == null ? find.byType(SearchPill) : find.byTooltip(en.search),
+      );
       await tester.pumpAndSettle();
       expect(find.byType(SearchPage), findsOneWidget);
       expect(find.text(en.searchStartTitle), findsOneWidget);
@@ -146,7 +157,7 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Reports due'), findsOneWidget);
-    expect(find.byKey(const ValueKey(('label', 5))), findsOneWidget);
+    expect(labelRow(5), findsOneWidget);
     expect(find.text('Old report'), findsNothing);
   });
 
@@ -232,7 +243,7 @@ void main() {
     final indexing = data.search.indexing = Completer<void>();
     await pumpApp(tester);
     // The progress bar runs until the search is ready, so nothing settles.
-    await tester.tap(find.byTooltip(en.search));
+    await tester.tap(find.byType(SearchPill));
     await pumpFrames(tester, 10);
 
     expect(data.search.queries, ['']);
@@ -323,7 +334,7 @@ void main() {
       await openSearch(tester);
       await search(tester, 'reporting');
 
-      await tester.tap(find.byKey(const ValueKey(('label', 5))));
+      await tester.tap(labelRow(5));
       await tester.pumpAndSettle();
 
       expect(find.byType(LabelTasksScreen), findsOneWidget);

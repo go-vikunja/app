@@ -28,11 +28,7 @@ void main() {
   }
 
   Future<void> toggleShowDone(WidgetTester tester) async {
-    await tester.tap(find.byTooltip(en.moreActions));
-    await tester.pumpAndSettle();
-    await tester.tap(
-      find.byWidgetPredicate((widget) => widget is CheckedPopupMenuItem),
-    );
+    await tester.tap(find.widgetWithText(FilterChip, en.projectShowDoneChip));
     await tester.pumpAndSettle();
   }
 
@@ -63,7 +59,7 @@ void main() {
   });
 
   testWidgets(
-    'with done tasks shown the row stays, and its circle reopens it',
+    'with done tasks shown the row stays, and its checkbox reopens it',
     (tester) async {
       await pumpProject(tester);
       await toggleShowDone(tester);

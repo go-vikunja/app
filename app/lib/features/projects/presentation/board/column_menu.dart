@@ -12,9 +12,10 @@ enum ColumnAction {
   delete,
 }
 
-/// A column's options in the web's order. Move left and right show only
-/// where the column can go; Delete is disabled, saying why, for the last
-/// column. While [saving], a progress indicator stands in for the button.
+/// A column's options in the web's order, in groups. Move left and right
+/// show only where the column can go; Delete is disabled, saying why, for
+/// the last column. While [saving], a progress indicator stands in for the
+/// button.
 class ColumnMenuButton extends StatelessWidget {
   const new({
     required this.bucket,
@@ -74,6 +75,7 @@ class ColumnMenuButton extends StatelessWidget {
             limit > 0 ? '$limit' : l10n.boardColumnLimitNotSet,
           ),
         ),
+        const PopupMenuDivider(),
         CheckedPopupMenuItem(
           value: ColumnAction.done,
           checked: isDone,
@@ -90,6 +92,7 @@ class ColumnMenuButton extends StatelessWidget {
             hint: l10n.boardDefaultColumnHint,
           ),
         ),
+        if (canMoveLeft || canMoveRight) const PopupMenuDivider(),
         if (canMoveLeft)
           _item(
             ColumnAction.moveLeft,
@@ -102,6 +105,7 @@ class ColumnMenuButton extends StatelessWidget {
             Icons.arrow_forward,
             l10n.boardColumnMoveRight,
           ),
+        const PopupMenuDivider(),
         _item(
           ColumnAction.delete,
           Icons.delete_outline,

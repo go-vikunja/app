@@ -6,9 +6,13 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/theme/app_theme.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/features/common/presentation/avatar_stack.dart';
+import 'package:vikunja_mobile/features/common/presentation/identifier_text.dart';
 import 'package:vikunja_mobile/features/common/presentation/initials_avatar.dart';
+import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/tasks/application/task_row_content.dart';
-import 'package:vikunja_mobile/features/tasks/presentation/task_chips.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/favourite_button.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/task_meta.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row_parts.dart';
 
@@ -58,7 +62,24 @@ void main() {
     int depth = 0,
     String? parentTitle,
     bool pending = false,
+    bool identifierBeforeTitle = false,
+    ValueChanged<bool>? onDoneChanged,
+    bool inCard = false,
   }) async {
+    final row = TaskRow(
+      task: task,
+      now: now,
+      minimumPriority: minimumPriority,
+      projectTitle: projectTitle,
+      projectColor: projectColor,
+      identifierBeforeTitle: identifierBeforeTitle,
+      depth: depth,
+      parentTitle: parentTitle,
+      pending: pending,
+      onTap: () {},
+      onDoneChanged: onDoneChanged ?? (_) {},
+      onFavoriteChanged: (_) {},
+    );
     await tester.pumpWidget(
       ProviderScope(
         overrides: [activeAccountIdProvider.overrideWithValue(null)],
@@ -70,19 +91,10 @@ void main() {
           home: Scaffold(
             body: ListView(
               children: [
-                TaskRow(
-                  task: task,
-                  now: now,
-                  minimumPriority: minimumPriority,
-                  projectTitle: projectTitle,
-                  projectColor: projectColor,
-                  depth: depth,
-                  parentTitle: parentTitle,
-                  pending: pending,
-                  onTap: () {},
-                  onDoneChanged: (_) {},
-                  onFavoriteChanged: (_) {},
-                ),
+                if (inCard)
+                  SectionCard(title: 'Today', children: [row])
+                else
+                  row,
               ],
             ),
           ),
@@ -101,7 +113,8 @@ void main() {
       pending: true,
     );
 
-    expect(find.text('WORK-7 · Work'), findsOneWidget);
+    expect(find.widgetWithText(IdentifierText, 'WORK-7'), findsOneWidget);
+    expect(find.text('Work'), findsOneWidget);
     expect(find.byType(ColorDot), findsNWidgets(2));
     expect(find.text('1 day ago'), findsOneWidget);
     final context = tester.element(find.text('1 day ago'));
@@ -112,8 +125,8 @@ void main() {
     expect(find.text(en.priorityMedium), findsOneWidget);
     expect(
       [
-        for (final chip in tester.widgetList<LabelChip>(find.byType(LabelChip)))
-          chip.label.title,
+        for (final pill in tester.widgetList<LabelPill>(find.byType(LabelPill)))
+          pill.label.title,
       ],
       ['alpha', 'Beta'],
     );
@@ -121,7 +134,7 @@ void main() {
     expect(find.text(en.taskMoreAssignees(1)), findsOneWidget);
     expect(find.byIcon(Icons.notes), findsOneWidget);
     expect(find.byIcon(Icons.repeat), findsOneWidget);
-    expect(find.text(en.taskChecklistProgress(1, 2)), findsOneWidget);
+    expect(find.text('1/2'), findsOneWidget);
     expect(find.byType(LinearProgressIndicator), findsOneWidget);
     expect(find.textContaining('40'), findsNothing);
     expect(find.byIcon(Icons.cloud_off_outlined), findsOneWidget);
@@ -140,8 +153,9 @@ void main() {
       tester.widget<Text>(find.text('1 day ago')).style?.color,
       isNot(Theme.of(context).colorScheme.error),
     );
-    expect(find.byType(PriorityChip), findsNothing);
-    expect(find.text(en.taskChecklistAllDone(2)), findsOneWidget);
+    expect(find.byType(PriorityFlag), findsNothing);
+    expect(find.text('2/2'), findsOneWidget);
+    expect(find.byIcon(Icons.check_box), findsOneWidget);
   });
 
   testWidgets('each element only shows when the web shows it', (tester) async {
@@ -157,13 +171,13 @@ void main() {
       minimumPriority: 4,
     );
 
-    expect(find.byType(PriorityChip), findsNothing);
+    expect(find.byType(PriorityFlag), findsNothing);
     expect(find.byIcon(Icons.notes), findsNothing);
     expect(find.byIcon(Icons.repeat), findsNothing);
     expect(find.byType(LinearProgressIndicator), findsNothing);
-    expect(find.byType(ChecklistSummary), findsNothing);
+    expect(find.byIcon(Icons.check_box_outlined), findsNothing);
     expect(find.byType(ColorDot), findsNothing);
-    expect(find.byType(AssigneeAvatars), findsNothing);
+    expect(find.byType(AvatarStack), findsNothing);
     expect(find.text('#1'), findsOneWidget);
 
     await pumpRow(
@@ -251,6 +265,137 @@ void main() {
       Brightness.dark,
     );
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets("in a project's own list the identifier leads the title", (
+    tester,
+  ) async {
+    await pumpRow(tester, richTask(), identifierBeforeTitle: true);
+
+    final identifier = find.widgetWithText(IdentifierText, 'WORK-7');
+    expect(identifier, findsOneWidget);
+    final title = find.text('Pay the bill');
+    expect(
+      tester.getTopRight(identifier).dx,
+      lessThan(tester.getTopLeft(title).dx),
+    );
+    expect(
+      tester.getBottomLeft(identifier).dy,
+      closeTo(tester.getBottomLeft(title).dy, 4),
+    );
+    expect(
+      tester.getTopLeft(find.text('1 day ago')).dy,
+      greaterThan(tester.getBottomLeft(title).dy),
+    );
+  });
+
+  testWidgets("a list's identifiers lead the titles while the longest takes "
+      'a fifth of a row at most', (tester) async {
+    await pumpRow(tester, richTask());
+    final context = tester.element(find.byType(TaskRow));
+    final short = sampleTask(id: 8, title: 'Short');
+    final long = sampleTask(id: 7, title: 'Long', identifier: 'LONGIDENT-7');
+
+    bool fit(List<Task> tasks) =>
+        TaskRow.identifiersFitBeforeTitle(context, tasks, rowWidth: 320);
+    expect(fit([short]), isTrue);
+    expect(fit([short, long]), isFalse);
+    expect(fit(const []), isTrue);
+  });
+
+  testWidgets('without it the identifier goes to the line below the title', (
+    tester,
+  ) async {
+    usePhoneSurface(tester, logicalSize: const Size(320, 640));
+    useAccessibilityExtremes(tester);
+    await pumpRow(
+      tester,
+      sampleTask(id: 7, title: 'Pay the bill', identifier: 'LONGIDENT-7'),
+    );
+
+    expect(
+      tester.getTopLeft(find.text('LONGIDENT-7')).dy,
+      greaterThan(tester.getBottomLeft(find.text('Pay the bill')).dy),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the due date takes the primary colour later today and stays '
+      'muted on other days', (tester) async {
+    Color? dueColor(String text) =>
+        tester.widget<Text>(find.text(text)).style?.color;
+    await pumpRow(
+      tester,
+      sampleTask(
+        id: 1,
+        title: 'Tonight',
+        due: now.add(const Duration(hours: 6)),
+      ),
+    );
+    final colors = Theme.of(tester.element(find.byType(TaskRow))).colorScheme;
+    expect(dueColor('in 6 hours'), colors.primary);
+
+    await pumpRow(
+      tester,
+      sampleTask(id: 1, title: 'Later', due: now.add(const Duration(days: 3))),
+    );
+    expect(dueColor('in 3 days'), colors.onSurfaceVariant);
+  });
+
+  testWidgets('the done control is a square checkbox that reports the '
+      'other state', (tester) async {
+    final changes = <bool>[];
+    await pumpRow(
+      tester,
+      sampleTask(id: 1, title: 'Row'),
+      onDoneChanged: changes.add,
+    );
+
+    final checkbox = find.descendant(
+      of: find.byTooltip(en.taskMarkDone),
+      matching: find.byType(Checkbox),
+    );
+    expect(tester.widget<Checkbox>(checkbox).value, isFalse);
+    await tester.tap(checkbox);
+    expect(changes, [true]);
+
+    await pumpRow(tester, richTask(done: true), onDoneChanged: changes.add);
+    await tester.tap(find.byTooltip(en.taskMarkNotDone));
+    expect(changes, [true, false]);
+  });
+
+  testWidgets("a favourite's star is filled with the highlight colour", (
+    tester,
+  ) async {
+    await pumpRow(tester, sampleTask(id: 1, title: 'Starred', favorite: true));
+
+    final star = tester.widget<Icon>(
+      find.descendant(
+        of: find.byType(FilledStar),
+        matching: find.byIcon(Icons.star),
+      ),
+    );
+    final theme = Theme.of(tester.element(find.byType(TaskRow)));
+    expect(star.color, theme.extension<HighlightColors>()!.highlight);
+  });
+
+  testWidgets("in a section card the avatars' ring takes the card's colour", (
+    tester,
+  ) async {
+    await pumpRow(tester, richTask(), inCard: true);
+
+    final ring = tester
+        .widgetList<DecoratedBox>(
+          find.descendant(
+            of: find.byType(AvatarStack),
+            matching: find.byType(DecoratedBox),
+          ),
+        )
+        .map((box) => box.decoration)
+        .whereType<BoxDecoration>()
+        .firstWhere((decoration) => decoration.border != null);
+    final colors = Theme.of(tester.element(find.byType(TaskRow))).colorScheme;
+    expect((ring.border! as Border).top.color, colors.surfaceContainerLow);
   });
 
   test('labels are deduplicated by id, the last copy where the first was, '

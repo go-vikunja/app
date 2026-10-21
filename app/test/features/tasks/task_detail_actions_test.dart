@@ -1,4 +1,5 @@
 import 'package:cupertino_ui/cupertino_ui.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
@@ -35,17 +36,41 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('the Done checkbox marks the task done and the sheet follows '
-      'the row, without a snackbar', (tester) async {
+  testWidgets('Mark as done marks the task done and the sheet follows the '
+      'row, without a snackbar; Mark as not done reopens it', (tester) async {
     await openDetail(tester, 'Bare task');
+    Finder markDone() =>
+        inSheet(find.widgetWithText(FilledButton, en.taskDetailMarkDone));
+    Finder markNotDone() =>
+        inSheet(find.widgetWithText(OutlinedButton, en.taskDetailMarkNotDone));
+    expect(inSheet(find.text(en.taskDetailStatusOpen)), findsOneWidget);
+    final doneSize = tester.getSize(markDone());
+    final labelSize = tester
+        .renderObject<RenderParagraph>(
+          inSheet(find.text(en.taskDetailMarkDone)),
+        )
+        .text
+        .style
+        ?.fontSize;
 
-    await tester.tap(inSheet(find.byType(CheckboxListTile)));
+    await tester.tap(markDone());
     await tester.pumpAndSettle();
 
     expect(data.tasks.writes, ['setDone 2 true']);
-    CheckboxListTile checkbox() =>
-        tester.widget<CheckboxListTile>(inSheet(find.byType(CheckboxListTile)));
-    expect(checkbox().value, isTrue);
+    expect(markDone(), findsNothing);
+    expect(markNotDone(), findsOneWidget);
+    expect(tester.getSize(markNotDone()), doneSize);
+    expect(
+      tester
+          .renderObject<RenderParagraph>(
+            inSheet(find.text(en.taskDetailMarkNotDone)),
+          )
+          .text
+          .style
+          ?.fontSize,
+      labelSize,
+    );
+    expect(inSheet(find.text(en.taskDone)), findsOneWidget);
     final title = tester.widget<Text>(inSheet(find.text('Bare task')));
     expect(title.style?.decoration, TextDecoration.lineThrough);
     expect(
@@ -54,10 +79,11 @@ void main() {
     );
     expect(find.text(en.undo), findsNothing);
 
-    await tester.tap(inSheet(find.byType(CheckboxListTile)));
+    await tester.tap(markNotDone());
     await tester.pumpAndSettle();
     expect(data.tasks.writes.last, 'setDone 2 false');
-    expect(checkbox().value, isFalse);
+    expect(markDone(), findsOneWidget);
+    expect(inSheet(find.text(en.taskDetailStatusOpen)), findsOneWidget);
     expect(
       inSheet(find.textContaining(en.taskDetailDoneWhen(''))),
       findsNothing,
@@ -165,7 +191,9 @@ void main() {
     data.tasks.pendingTaskIds = {1};
     await openDetail(tester, 'Quarterly report');
 
-    await tester.tap(inSheet(find.byType(CheckboxListTile)));
+    await tester.ensureVisible(inSheet(find.text(en.taskDetailMarkDone)));
+    await tester.pumpAndSettle();
+    await tester.tap(inSheet(find.text(en.taskDetailMarkDone)));
     await tester.pumpAndSettle();
     expect(data.tasks.writes, ['setDone 1 true']);
     await openMenu(tester, en.moreActions);
@@ -177,7 +205,8 @@ void main() {
     useLocale(tester, const Locale('de'));
     await openDetail(tester, 'Bare task');
 
-    expect(inSheet(find.text(de.taskDone)), findsOneWidget);
+    expect(inSheet(find.text(de.taskDetailStatusOpen)), findsOneWidget);
+    expect(inSheet(find.text(de.taskDetailMarkDone)), findsOneWidget);
     expect(inSheet(find.byTooltip(de.taskAddFavourite)), findsOneWidget);
     await openMenu(tester, de.moreActions);
     await tester.tap(find.text(de.taskDelete));

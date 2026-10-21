@@ -14,6 +14,7 @@ import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/account_settings/application/api_token_permissions.dart';
 import 'package:vikunja_mobile/features/account_settings/application/integration_addresses.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/account_security_failure.dart';
+import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_rows.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/security_list_body.dart';
 import 'package:vikunja_mobile/features/common/presentation/announce.dart';
 import 'package:vikunja_mobile/features/common/presentation/external_link.dart';
@@ -173,6 +174,7 @@ class _ApiTokensPageState extends ConsumerState<ApiTokensPage> {
                 body: l10n.apiTokensEmptyBody,
                 action: FilledButton.tonalIcon(
                   onPressed: () => unawaited(_create()),
+                  style: inlineFilledButtonStyle(context),
                   icon: const Icon(Icons.add),
                   label: Text(l10n.apiTokensNew),
                 ),

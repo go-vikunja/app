@@ -11,8 +11,8 @@ import 'package:vikunja_mobile/features/common/presentation/user_avatar.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_tasks_screen.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/reaction_chips.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/rich_text/attachment_image_viewer.dart';
-import 'package:vikunja_mobile/features/tasks/presentation/task_chips.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/task_meta.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row_parts.dart';
 
 import '../../helpers/auth_fakes.dart';
@@ -186,7 +186,7 @@ void main() {
       await openDetail(tester, 4);
 
       final labels = tester
-          .widgetList<LabelChip>(inSheet(find.byType(LabelChip)))
+          .widgetList<LabelPill>(inSheet(find.byType(LabelPill)))
           .map((chip) => chip.label.title);
       expect(labels, ['Alpha', 'zeta']);
       expect(inSheet(find.byType(UserAvatar)), findsNWidgets(2));
