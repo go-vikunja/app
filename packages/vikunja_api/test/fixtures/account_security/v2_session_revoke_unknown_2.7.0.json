@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "DELETE /api/v2/user/sessions/00000000-0000-4000-8000-000000000000",
+  "status": 404,
+  "headers": {
+    "content-type": "application/problem+json"
+  },
+  "body": "{\"$schema\":\"http://localhost:34527/api/v2/schemas/VikunjaErrorModel.json\",\"title\":\"Not Found\",\"status\":404,\"detail\":\"The session does not exist.\",\"code\":16001}\n"
+}

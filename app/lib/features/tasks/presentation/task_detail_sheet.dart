@@ -12,6 +12,7 @@ import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/router/pop_pages_over_shell.dart';
+import 'package:vikunja_mobile/app/router/pushed_pages.dart';
 import 'package:vikunja_mobile/app/theme/hex_color.dart';
 import 'package:vikunja_mobile/core/attachments/attachment_image_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
@@ -321,8 +322,9 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
   /// edit was saved or not; the server's task does not say so.
   Future<void> _editDescription(Task task) async {
     final l10n = context.l10n;
-    final saved = await GoRouter.of(context)
-        .push<bool>(AppRoutes.taskDescription(task.id));
+    final saved = await context.pushPage<bool>(
+      AppRoutes.taskDescription(task.id),
+    );
     if (!mounted) return;
     unawaited(_details.refresh());
     if (saved ?? false) _showMessage(l10n.descriptionEditorSaved);

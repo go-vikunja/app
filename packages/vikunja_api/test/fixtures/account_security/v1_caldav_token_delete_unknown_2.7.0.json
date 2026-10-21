@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "DELETE /api/v1/user/settings/token/caldav/10",
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"message\":\"The token was deleted successfully.\"}\n"
+}

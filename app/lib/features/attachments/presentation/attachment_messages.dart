@@ -1,16 +1,9 @@
-import 'package:intl/intl.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
-import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/repositories/attachment_repository.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 import 'package:vikunja_mobile/features/attachments/application/queue_attachments.dart';
-
-/// [bytes] the way the web writes sizes, with the locale's decimal sign.
-String formatFileSize(AppLocalizations l10n, int bytes) => humanSize(
-  bytes,
-  formatNumber: NumberFormat.decimalPattern(l10n.localeName).format,
-);
+import 'package:vikunja_mobile/features/common/presentation/file_size_text.dart';
 
 /// Why an attachment action failed, as the user reads it; a [download]
 /// changes nothing on the server.

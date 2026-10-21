@@ -2,7 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/attachments/pending_upload.dart';
-import 'package:vikunja_mobile/features/attachments/presentation/attachment_messages.dart';
+import 'package:vikunja_mobile/features/common/presentation/file_size_text.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/attachment_row.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/rich_text/attachment_image_view.dart';
 

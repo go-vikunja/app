@@ -36,12 +36,13 @@ final class WriteTransport {
     String method,
     String path, {
     Map<String, Object?>? body,
+    Map<String, String>? query,
     String? contentType,
     bool acceptNotModified = false,
   }) async {
     try {
       return await _dio.requestUri<Object?>(
-        _base.replace(path: '${_base.path}$path'),
+        _base.replace(path: '${_base.path}$path', queryParameters: query),
         data: body,
         options: Options(
           method: method,

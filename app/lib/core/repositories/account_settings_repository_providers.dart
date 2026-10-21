@@ -1,5 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/auth/deleted_account.dart';
 import 'package:vikunja_mobile/core/avatar/avatar_providers.dart';
 import 'package:vikunja_mobile/core/repositories/account_settings_repository.dart';
 import 'package:vikunja_mobile/core/repositories/local/local_account_settings_repository.dart';
@@ -26,9 +27,10 @@ AccountSettingsRepository accountSettingsRepositoryFor(
       if (entry == null) {
         throw StateError('Account $accountId is not registered');
       }
-      return await gateway.currentUserWithProfile(
-        entry.connection,
-        sessions.forAccount(accountId),
+      final session = sessions.forAccount(accountId);
+      return await endingSessionOfDeletedAccount(
+        session,
+        () => gateway.currentUserWithProfile(entry.connection, session),
       );
     },
     onName: (name) => registry.updateDisplayName(accountId, name),

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:logging/logging.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:vikunja_mobile/core/platform/device_channel.dart';
 import 'package:vikunja_mobile/core/storage/preferences_store.dart';
 
 final _log = Logger('ClientIdentity');
@@ -14,8 +15,6 @@ final class ClientIdentity {
     required this.platform,
     required this.osVersion,
   });
-
-  static const _deviceChannel = MethodChannel('dev.coderoftime.vikunja/device');
 
   static Future<ClientIdentity> load({PreferencesStore? preferences}) async {
     final packageInfo = await PackageInfo.fromPlatform();
@@ -31,7 +30,7 @@ final class ClientIdentity {
     if (Platform.isAndroid) {
       // dart:io reports the Linux kernel version on Android.
       return await loadAndroidVersion(
-        fromChannel: () => _deviceChannel.invokeMethod<String>('osVersion'),
+        fromChannel: () => deviceChannel.invokeMethod<String>('osVersion'),
         preferences: preferences,
       );
     }

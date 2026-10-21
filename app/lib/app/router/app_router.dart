@@ -2,7 +2,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/account_bound_screen.dart';
+import 'package:vikunja_mobile/app/router/pushed_pages.dart';
 import 'package:vikunja_mobile/app/router/root_modal_routes.dart';
 import 'package:vikunja_mobile/app/router/splash_screen.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
@@ -11,7 +13,12 @@ import 'package:vikunja_mobile/core/links/deep_link_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_page.dart';
+import 'package:vikunja_mobile/features/account_settings/presentation/api_token_form_page.dart';
+import 'package:vikunja_mobile/features/account_settings/presentation/api_tokens_page.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/avatar_page.dart';
+import 'package:vikunja_mobile/features/account_settings/presentation/caldav_page.dart';
+import 'package:vikunja_mobile/features/account_settings/presentation/data_export_page.dart';
+import 'package:vikunja_mobile/features/account_settings/presentation/sessions_page.dart';
 import 'package:vikunja_mobile/features/description_editor/application/description_target.dart';
 import 'package:vikunja_mobile/features/description_editor/presentation/description_editor_page.dart';
 import 'package:vikunja_mobile/features/home/presentation/account_tab.dart';
@@ -88,6 +95,11 @@ abstract final class AppRoutes {
   /// settings of the account, not the device's.
   static const accountSettings = '$home/account-settings';
   static const accountAvatar = '$accountSettings/avatar';
+  static const accountSessions = '$accountSettings/sessions';
+  static const accountApiTokens = '$accountSettings/api-tokens';
+  static const accountApiTokenNew = '$accountApiTokens/new';
+  static const accountCaldav = '$accountSettings/caldav';
+  static const accountDataExport = '$accountSettings/data-export';
 
   /// The connect screen and the server overview over the shell, for
   /// signing in to another account; pushed, so back returns to the shell.
@@ -143,7 +155,7 @@ GoRouter appRouter(Ref ref) {
     // the start still goes through the splash, and the deep-link source
     // reads the link itself.
     overridePlatformDefaultLocation: true,
-    observers: [ref.watch(rootModalRoutesProvider)],
+    observers: [ref.watch(rootModalRoutesProvider), PushedPages()],
     refreshListenable: Listenable.merge([
       currentServer,
       accounts,
@@ -296,6 +308,41 @@ GoRouter appRouter(Ref ref) {
             parentNavigatorKey: rootNavigatorKey,
             builder: (context, state) =>
                 const AccountBoundScreen(child: AvatarPage()),
+          ),
+          GoRoute(
+            path: 'sessions',
+            parentNavigatorKey: rootNavigatorKey,
+            builder: (context, state) =>
+                const AccountBoundScreen(child: SessionsPage()),
+          ),
+          GoRoute(
+            path: 'api-tokens',
+            parentNavigatorKey: rootNavigatorKey,
+            builder: (context, state) =>
+                const AccountBoundScreen(child: ApiTokensPage()),
+            routes: [
+              GoRoute(
+                path: 'new',
+                parentNavigatorKey: rootNavigatorKey,
+                builder: (context, state) =>
+                    const AccountBoundScreen(child: ApiTokenFormPage()),
+              ),
+            ],
+          ),
+          GoRoute(
+            path: 'caldav',
+            parentNavigatorKey: rootNavigatorKey,
+            builder: (context, state) => AccountBoundScreen(
+              child: CaldavPage(
+                knownTotp: TotpStatus.values.asNameMap()[state.extra],
+              ),
+            ),
+          ),
+          GoRoute(
+            path: 'data-export',
+            parentNavigatorKey: rootNavigatorKey,
+            builder: (context, state) =>
+                const AccountBoundScreen(child: DataExportPage()),
           ),
         ],
       ),

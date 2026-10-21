@@ -106,6 +106,44 @@ void main() {
       );
     });
 
+    test('redacts TOTP secrets and setup links', () {
+      const secret = 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP';
+      const link =
+          'otpauth://totp/Vikunja:alice?algorithm=SHA1&digits=6'
+          '&issuer=Vikunja&period=30&secret=$secret';
+      final redacted = [
+        redactSecrets('{"secret":"$secret","enabled":false,"url":"$link"}'),
+        redactSecrets('{secret: $secret, enabled: false}'),
+        redactSecrets('opening $link failed'),
+        redactSecrets('enroll?secret=$secret&x=1'),
+      ];
+
+      expect(
+        redacted[0],
+        '{"secret":"[redacted]","enabled":false,"url":"[redacted]"}',
+      );
+      expect(redacted[1], '{secret: [redacted], enabled: false}');
+      expect(redacted[2], 'opening [redacted] failed');
+      expect(redacted[3], 'enroll?secret=[redacted]&x=1');
+      for (final text in redacted) {
+        expect(text, isNot(contains(secret)));
+        expect(text, isNot(contains('alice')));
+      }
+    });
+
+    test('redacts new API and CalDAV tokens in create answers', () {
+      final apiToken = 'tk_${'0a' * 20}';
+      final caldavToken = 'aB3' * 21 + 'x';
+      expect(
+        redactSecrets('{"id":4,"title":"CI","token":"$apiToken"}'),
+        '{"id":4,"title":"CI","token":"[redacted]"}',
+      );
+      expect(
+        redactSecrets('created $caldavToken for CalDAV'),
+        'created [redacted] for CalDAV',
+      );
+    });
+
     test('redacts short bearer tokens too', () {
       expect(redactSecrets('Bearer abcd1234'), 'Bearer [redacted]');
     });

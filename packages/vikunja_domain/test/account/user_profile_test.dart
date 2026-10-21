@@ -2,8 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 
 void main() {
-  test('the defaults: a local account without a provider, no pending email '
-      'and no update time', () {
+  test('the defaults: a local account without a provider, no pending email, '
+      'no update time and no deletion scheduled', () {
     const profile = UserProfile(id: 1, username: 'dora');
 
     expect(profile.name, '');
@@ -11,6 +11,7 @@ void main() {
     expect(profile.authProvider, '');
     expect(profile.pendingEmail, isNull);
     expect(profile.updated, isNull);
+    expect(profile.deletionScheduledAt, isNull);
   });
 
   test('displayName is the trimmed name, else the username', () {
@@ -92,6 +93,15 @@ void main() {
         name: 'Dora',
         authProvider: 'local',
         updated: updated,
+      ),
+      UserProfile(
+        id: 1,
+        username: 'dora',
+        name: 'Dora',
+        authProvider: 'local',
+        pendingEmail: 'new@example.com',
+        updated: updated,
+        deletionScheduledAt: updated.add(const Duration(days: 3)),
       ),
     ]) {
       expect(other, isNot(base));

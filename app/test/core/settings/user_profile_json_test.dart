@@ -13,6 +13,7 @@ void main() {
         authProvider: 'Company SSO',
         pendingEmail: 'new@example.org',
         updated: DateTime.utc(2026, 10, 20, 9, 30, 15),
+        deletionScheduledAt: DateTime.utc(2026, 10, 23, 9, 30, 15),
       ),
       const UserProfile(id: 8, username: 'bob'),
     ];
@@ -36,6 +37,17 @@ void main() {
     );
   });
 
+  test('a profile stored before the deletion date was kept has none', () {
+    final profile = decodeUserProfile(
+      '{"id": 7, "username": "alice", "name": "Alice", '
+      '"is_local_user": true, "auth_provider": "local", '
+      '"updated": "2026-10-20T09:30:00.000Z"}',
+    );
+
+    expect(profile?.deletionScheduledAt, isNull);
+    expect(profile?.name, 'Alice');
+  });
+
   test('nothing stored, or a value this version cannot read, is null', () {
     for (final stored in [
       null,
@@ -53,7 +65,8 @@ void main() {
   test('odd fields fall back one by one', () {
     final profile = decodeUserProfile(
       '{"id": 7, "username": "alice", "name": 3, "is_local_user": "no", '
-      '"auth_provider": null, "pending_email": "", "updated": "yesterday"}',
+      '"auth_provider": null, "pending_email": "", "updated": "yesterday", '
+      '"deletion_scheduled_at": 3}',
     );
 
     expect(profile, const UserProfile(id: 7, username: 'alice'));

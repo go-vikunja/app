@@ -19,6 +19,7 @@ export 'src/lists/view_filter_kind.dart';
 export 'src/quick_add/indented_lines.dart';
 export 'src/quick_add/parsed_task_text.dart';
 export 'src/quick_add/quick_add_parser.dart';
+export 'src/security/device_description.dart';
 export 'src/text/checklist.dart';
 export 'src/text/checklist_toggle.dart';
 export 'src/text/rich_text.dart';

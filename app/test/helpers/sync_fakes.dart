@@ -13,7 +13,10 @@ import 'package:vikunja_mobile/core/db/account_database_files.dart';
 import 'package:vikunja_mobile/core/files/file_actions_providers.dart';
 import 'package:vikunja_mobile/core/outbox/pending_task_ids_source.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
+import 'package:vikunja_mobile/core/platform/secure_display.dart';
+import 'package:vikunja_mobile/core/platform/sensitive_clipboard.dart';
 import 'package:vikunja_mobile/core/realtime/realtime_providers.dart';
+import 'package:vikunja_mobile/core/repositories/account_security_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/account_settings_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/activity_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/attachment_repository_providers.dart';
@@ -38,6 +41,7 @@ import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/accounts/application/account_switcher.dart';
 import 'package:vikunja_mobile/features/sync/application/inactive_outboxes.dart';
 
+import 'account_security_fakes.dart';
 import 'account_settings_fakes.dart';
 import 'activity_fakes.dart';
 import 'attachment_fakes.dart';
@@ -1668,6 +1672,7 @@ final class AccountDataFakes {
     projects.tasks = tasks;
     resolver = FakeTaskResolver(local: () => tasks.all);
     accountSettings.onStateChanged = (state) => settings = state.settings;
+    accountSecurity = FakeAccountSecurityRepository(now: () => now);
   }
 
   late final FakeSyncEngine engine;
@@ -1698,6 +1703,10 @@ final class AccountDataFakes {
   /// The account settings page's data; a change it makes also becomes
   /// [settings].
   final accountSettings = FakeAccountSettingsRepository();
+
+  /// The security settings, sessions, tokens and export of the account
+  /// settings pages, at the fakes' `now`.
+  late final FakeAccountSecurityRepository accountSecurity;
 
   /// What `userSettingsProvider` reports while the account is active.
   UserSettings get settings => _settings;
@@ -1730,6 +1739,10 @@ final class SyncFakes {
   final shareSource = FakeShareIntentSource();
   final fileActions = FakeFileActions();
 
+  /// What a one-time secret view copied, and whether it hid the screen.
+  final clipboard = FakeSensitiveClipboard();
+  final secureDisplay = FakeSecureDisplay();
+
   /// Refuses every upgrade, so no screen test opens a socket or waits on
   /// one; a test of the realtime path lets it accept.
   final realtime = FakeRealtimeConnector(accepts: false);
@@ -1757,6 +1770,7 @@ final class SyncFakes {
   FakeTaskResolver get resolver => shared.resolver;
   FakeAttachmentImages get attachmentImages => shared.attachmentImages;
   FakeAttachmentRepository get attachments => shared.attachments;
+  FakeAccountSecurityRepository get accountSecurity => shared.accountSecurity;
 
   AccountDataFakes forAccount(String accountId) =>
       accounts[accountId] ?? shared;
@@ -1829,6 +1843,11 @@ final class SyncFakes {
     accountSettingsRepositoryForProvider.overrideWith(
       (ref, accountId) => forAccount(accountId).accountSettings,
     ),
+    accountSecurityRepositoryForProvider.overrideWith(
+      (ref, accountId) => forAccount(accountId).accountSecurity,
+    ),
+    sensitiveClipboardProvider.overrideWithValue(clipboard),
+    secureDisplayProvider.overrideWithValue(secureDisplay),
     // The real one opens the account's database; every list reads it.
     userSettingsProvider.overrideWith((ref) {
       final accountId = ref.watch(activeAccountIdProvider);

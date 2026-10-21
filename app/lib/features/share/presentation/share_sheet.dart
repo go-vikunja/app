@@ -16,6 +16,7 @@ import 'package:vikunja_mobile/core/share/share_providers.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/features/attachments/application/queue_attachments.dart';
 import 'package:vikunja_mobile/features/attachments/presentation/attachment_messages.dart';
+import 'package:vikunja_mobile/features/common/presentation/file_size_text.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/server_address_display.dart';
 import 'package:vikunja_mobile/features/overview/application/open_tasks_provider.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';

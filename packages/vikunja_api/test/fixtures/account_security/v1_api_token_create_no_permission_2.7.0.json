@@ -1,0 +1,14 @@
+{
+  "server": "2.7.0",
+  "request": "PUT /api/v1/tokens",
+  "sent": {
+    "title": "Nothing",
+    "permissions": {},
+    "expires_at": "2026-11-20T12:00:00.000Z"
+  },
+  "status": 412,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"code\":2002,\"message\":\"Invalid Data\",\"invalid_fields\":[\"permissions: non zero value required\"]}\n"
+}

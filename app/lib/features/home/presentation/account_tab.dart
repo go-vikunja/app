@@ -7,6 +7,10 @@ import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/repositories/account_settings_repository_providers.dart';
+import 'package:vikunja_mobile/features/account_settings/application/web_settings_pages.dart';
+import 'package:vikunja_mobile/features/account_settings/presentation/account_deletion.dart';
+import 'package:vikunja_mobile/features/account_settings/presentation/web_settings_page_opener.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/account_actions.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/accounts_section.dart';
 import 'package:vikunja_mobile/features/home/presentation/account_header.dart';
@@ -58,6 +62,11 @@ class AccountTab extends ConsumerWidget {
     final isSigningIn = signIn is SignInInProgress;
     final signingOut = ref.watch(signOutControllerProvider);
     final busy = signingOut || isSigningIn;
+    final deletionScheduledAt = ref.watch(
+      accountSettingsProvider.select(
+        (state) => state.value?.profile?.deletionScheduledAt,
+      ),
+    );
     final signOutLabel = switch ((signingOut, accounts.accounts.length > 1)) {
       (true, _) => l10n.homeSigningOut,
       (false, true) => l10n.homeSignOutOfThisAccount,
@@ -105,6 +114,21 @@ class AccountTab extends ConsumerWidget {
               entry: entry,
               onOpenSettings: busy ? null : () => _openSettings(context),
             ),
+            if (deletionScheduledAt != null)
+              DeletionScheduledNote(
+                scheduledAt: deletionScheduledAt,
+                padding: const EdgeInsets.only(top: 16),
+                // Cancelling needs the password, so the web's page does it
+                // (D14).
+                onCancel: () => unawaited(
+                  openWebSettingsPage(
+                    context,
+                    ref,
+                    entry,
+                    WebSettingsPage.deletion,
+                  ),
+                ),
+              ),
             const SizedBox(height: 8),
             ListTile(
               contentPadding: EdgeInsets.zero,

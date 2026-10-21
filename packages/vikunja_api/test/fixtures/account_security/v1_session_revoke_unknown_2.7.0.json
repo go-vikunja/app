@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "DELETE /api/v1/user/sessions/00000000-0000-4000-8000-000000000000",
+  "status": 404,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"code\":16001,\"message\":\"The session does not exist.\"}\n"
+}

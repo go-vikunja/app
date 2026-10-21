@@ -1,0 +1,18 @@
+{
+  "server": "2.7.0",
+  "request": "PUT /api/v1/tokens",
+  "sent": {
+    "title": "Flying",
+    "permissions": {
+      "tasks": [
+        "fly"
+      ]
+    },
+    "expires_at": "2026-11-20T12:00:00.000Z"
+  },
+  "status": 400,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"code\":14002,\"message\":\"The permission fly of group tasks is invalid.\",\"i18n_params\":{\"group\":\"tasks\",\"permission\":\"fly\"}}\n"
+}

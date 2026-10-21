@@ -4957,4 +4957,623 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get avatarPickFailed => 'Die Fotos konnten nicht geöffnet werden.';
+
+  @override
+  String get accountSettingsSecurity => 'Sicherheit';
+
+  @override
+  String get accountSettingsTotp => 'Zwei-Faktor-Authentifizierung';
+
+  @override
+  String get accountSettingsTotpOn => 'An';
+
+  @override
+  String get accountSettingsTotpOff => 'Aus';
+
+  @override
+  String get accountSettingsTotpSetupStarted =>
+      'Einrichtung nicht abgeschlossen';
+
+  @override
+  String get accountSettingsTotpChecking => 'Wird geprüft …';
+
+  @override
+  String get accountSettingsTotpUnknown => 'Konnte nicht geprüft werden';
+
+  @override
+  String get accountSettingsTotpNotOffered =>
+      'Von diesem Server nicht angeboten';
+
+  @override
+  String get accountSettingsTotpNotAvailable =>
+      'Für dieses Konto nicht verfügbar';
+
+  @override
+  String get accountSettingsTotpNotChecked =>
+      'Über eine unverschlüsselte Verbindung nicht geprüft';
+
+  @override
+  String get accountSettingsTotpTurnOnNote =>
+      'Öffnet das Web in deinem Browser. Das Einschalten meldet dich überall ab, auch in dieser App. Melde dich danach hier erneut an; dein Browser fragt nach dem Code.';
+
+  @override
+  String get accountSettingsTotpOnNote =>
+      'Öffnet das Web in deinem Browser. Zum Ausschalten brauchst du dein Passwort.';
+
+  @override
+  String get accountSettingsSessions => 'Sitzungen';
+
+  @override
+  String accountSettingsSessionsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count angemeldete Geräte und Browser',
+      one: '1 angemeldetes Gerät oder Browser',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get accountSettingsSessionsHint => 'Wo du angemeldet bist';
+
+  @override
+  String get accountSettingsIntegrations => 'Integrationen';
+
+  @override
+  String get accountSettingsApiTokens => 'API-Tokens';
+
+  @override
+  String accountSettingsApiTokensCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Tokens',
+      one: '1 Token',
+      zero: 'Keine Tokens',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get accountSettingsApiTokensHint => 'Für Skripte und andere Apps';
+
+  @override
+  String get accountSettingsCaldav => 'CalDAV';
+
+  @override
+  String get accountSettingsCaldavHint =>
+      'Deine Aufgaben in Kalender- und Aufgaben-Apps';
+
+  @override
+  String get accountSettingsYourData => 'Deine Daten';
+
+  @override
+  String get accountSettingsExport => 'Deine Daten exportieren';
+
+  @override
+  String accountSettingsExportReady(String date) {
+    return 'Bereit zum Herunterladen bis $date';
+  }
+
+  @override
+  String get accountSettingsExportNone => 'Noch kein Export';
+
+  @override
+  String get accountSettingsExportHint =>
+      'Eine Kopie deiner Projekte und Aufgaben';
+
+  @override
+  String get accountSettingsDeleteAccount => 'Konto löschen';
+
+  @override
+  String get accountSettingsWebAsksPassword =>
+      'Das Web fragt nach deinem Passwort.';
+
+  @override
+  String accountDeletionScheduled(String date) {
+    return 'Dein Konto wird am $date gelöscht.';
+  }
+
+  @override
+  String accountDeletionOverdue(String date) {
+    return 'Dein Konto ist seit $date zur Löschung fällig.';
+  }
+
+  @override
+  String get accountDeletionCancel => 'Löschung abbrechen';
+
+  @override
+  String accountDeletionScheduledRow(String date) {
+    return 'Löschung am $date. Abbrechen kannst du sie im Web.';
+  }
+
+  @override
+  String accountDeletionOverdueRow(String date) {
+    return 'Löschung seit $date fällig. Abbrechen kannst du sie im Web.';
+  }
+
+  @override
+  String get accountDeletionDialogTitle => 'Dein Konto löschen?';
+
+  @override
+  String get accountDeletionDialogPermanent =>
+      'Das Löschen deines Kontos ist endgültig. Alle Projekte und Aufgaben, die dir gehören, werden mit gelöscht; was du mit anderen geteilt hast, geht an sie über.';
+
+  @override
+  String get accountDeletionDialogEmail =>
+      'Der Server schickt dir einen Link zur Bestätigung per E-Mail. Nach der Bestätigung wird dein Konto nach drei Tagen gelöscht; bis dahin kannst du es dir anders überlegen.';
+
+  @override
+  String get accountDeletionDialogNoEmail =>
+      'Verschickt dein Server keine E-Mails, bitte seine Administration, dein Konto zu löschen.';
+
+  @override
+  String get accountDeletionContinue => 'Im Browser fortfahren';
+
+  @override
+  String get accountSecurityNeedsConnection =>
+      'Dafür ist eine Verbindung zum Server nötig.';
+
+  @override
+  String get accountSecurityUnconfirmed =>
+      'Die Antwort des Servers kam nicht an. Aktualisiere, um zu sehen, ob es geklappt hat.';
+
+  @override
+  String get accountSecuritySignInAgain => 'Melde dich zuerst erneut an.';
+
+  @override
+  String get accountSecurityNotOffered => 'Dieser Server bietet das nicht an.';
+
+  @override
+  String get accountSecurityRateLimited =>
+      'Der Server ist ausgelastet. Versuche es in einer Minute erneut.';
+
+  @override
+  String accountSecurityRefused(String message) {
+    return 'Der Server hat abgelehnt: $message';
+  }
+
+  @override
+  String get accountSecurityFailed =>
+      'Das hat nicht geklappt. Versuche es später erneut.';
+
+  @override
+  String get accountSecurityWorking => 'Wird ausgeführt';
+
+  @override
+  String accountSecurityCreated(String date) {
+    return 'Erstellt am $date';
+  }
+
+  @override
+  String get sessionsTitle => 'Sitzungen';
+
+  @override
+  String get sessionsIntro =>
+      'Diese Geräte und Browser sind in deinem Konto angemeldet. Beendest du eine Sitzung, wird das Gerät oder der Browser abgemeldet; das kann bis zu 10 Minuten dauern.';
+
+  @override
+  String get sessionsLoading => 'Sitzungen werden geladen …';
+
+  @override
+  String get sessionsThisDevice => 'Dieses Gerät';
+
+  @override
+  String get sessionsThisDeviceHint =>
+      'Um diese Sitzung zu beenden, melde dich in dieser App vom Konto ab.';
+
+  @override
+  String sessionsLastActive(String when) {
+    return 'Zuletzt aktiv $when';
+  }
+
+  @override
+  String get sessionsLastActiveLabel => 'Zuletzt aktiv';
+
+  @override
+  String get sessionsSignedIn => 'Angemeldet am';
+
+  @override
+  String get sessionsDevice => 'Gerät';
+
+  @override
+  String get sessionsIpAddress => 'IP-Adresse';
+
+  @override
+  String get sessionsUnknownDevice => 'Unbekanntes Gerät';
+
+  @override
+  String sessionsBrowserOn(String browser, String system) {
+    return '$browser unter $system';
+  }
+
+  @override
+  String get sessionsDartClient => 'Eine App ohne Namen';
+
+  @override
+  String get sessionsEnd => 'Sitzung beenden';
+
+  @override
+  String get sessionsEndTitle => 'Diese Sitzung beenden?';
+
+  @override
+  String sessionsEndBody(String device) {
+    return '$device wird abgemeldet. Das kann bis zu 10 Minuten dauern.';
+  }
+
+  @override
+  String get sessionsEnded =>
+      'Sitzung beendet. Es kann bis zu 10 Minuten dauern, bis das wirkt.';
+
+  @override
+  String get sessionsEndOthers => 'Alle anderen Sitzungen beenden';
+
+  @override
+  String get sessionsEndOthersTitle => 'Alle anderen Sitzungen beenden?';
+
+  @override
+  String sessionsEndOthersBody(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Alle $count anderen Geräte und Browser werden',
+      one: 'Das andere Gerät oder der andere Browser wird',
+    );
+    return '$_temp0 innerhalb von 10 Minuten abgemeldet. Dieses Gerät bleibt angemeldet.';
+  }
+
+  @override
+  String sessionsEndedOthers(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count Sitzungen beendet. Es kann bis zu 10 Minuten dauern, bis das wirkt.',
+      one:
+          '1 Sitzung beendet. Es kann bis zu 10 Minuten dauern, bis das wirkt.',
+      zero: 'Keine andere Sitzung zu beenden.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sessionsNotAllEnded(int ended, int notEnded) {
+    return 'Beendet: $ended. Noch angemeldet: $notEnded.';
+  }
+
+  @override
+  String get sessionsNoOthers => 'Keine anderen Sitzungen';
+
+  @override
+  String get sessionsNoOthersBody =>
+      'Nur dieses Gerät ist in deinem Konto angemeldet.';
+
+  @override
+  String sessionsOptionsFor(String device) {
+    return 'Optionen für $device';
+  }
+
+  @override
+  String get apiTokensTitle => 'API-Tokens';
+
+  @override
+  String get apiTokensIntro =>
+      'Mit API-Tokens können Skripte und andere Apps die API von Vikunja ohne dein Passwort nutzen. Ein Token darf nur, was seine Berechtigungen erlauben.';
+
+  @override
+  String get apiTokensDocs => 'API-Dokumentation';
+
+  @override
+  String get apiTokensLoading => 'API-Tokens werden geladen …';
+
+  @override
+  String get apiTokensEmptyTitle => 'Keine API-Tokens';
+
+  @override
+  String get apiTokensEmptyBody =>
+      'Erstelle eins für ein Skript oder eine andere App.';
+
+  @override
+  String get apiTokensNew => 'Neues Token';
+
+  @override
+  String apiTokensExpires(String date) {
+    return 'Läuft ab am $date';
+  }
+
+  @override
+  String apiTokensExpired(String when) {
+    return 'Abgelaufen $when';
+  }
+
+  @override
+  String apiTokensPermissionCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Berechtigungen',
+      one: '1 Berechtigung',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get apiTokensPermissions => 'Berechtigungen';
+
+  @override
+  String get apiTokensDelete => 'Token löschen';
+
+  @override
+  String apiTokensDeleteTitle(String title) {
+    return 'Das Token „$title“ löschen?';
+  }
+
+  @override
+  String get apiTokensDeleteBody =>
+      'Apps und Skripte, die es nutzen, funktionieren dann nicht mehr. Das lässt sich nicht rückgängig machen.';
+
+  @override
+  String get apiTokensDeleted => 'Token gelöscht';
+
+  @override
+  String get apiTokenFormTitle => 'Neues API-Token';
+
+  @override
+  String get apiTokenFormCreate => 'Erstellen';
+
+  @override
+  String get apiTokenFormCreating => 'Wird erstellt …';
+
+  @override
+  String get apiTokenFormLoading => 'Berechtigungen werden geladen …';
+
+  @override
+  String get apiTokenFormName => 'Titel';
+
+  @override
+  String get apiTokenFormNameHint => 'Ein Titel, den du später wiedererkennst';
+
+  @override
+  String get apiTokenFormNameRequired => 'Gib einen Titel ein.';
+
+  @override
+  String get apiTokenFormExpiry => 'Läuft ab';
+
+  @override
+  String apiTokenFormExpiryDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'In $days Tagen',
+      one: 'In 1 Tag',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get apiTokenFormExpiryCustom => 'Tag auswählen …';
+
+  @override
+  String get apiTokenFormExpiryPick => 'Gültig bis einschließlich';
+
+  @override
+  String apiTokenFormExpiryThrough(String date) {
+    return 'Bis einschließlich $date';
+  }
+
+  @override
+  String get apiTokenFormExpiryPast =>
+      'Wähle einen Tag, der noch nicht vorbei ist.';
+
+  @override
+  String get apiTokenFormPermissions => 'Berechtigungen';
+
+  @override
+  String get apiTokenFormPermissionsHelp =>
+      'Wähle, was das Token darf. Die Namen kommen vom Server und sind nicht übersetzt.';
+
+  @override
+  String get apiTokenFormPermissionsRequired =>
+      'Wähle mindestens eine Berechtigung.';
+
+  @override
+  String get apiTokenFormNoPermissions =>
+      'Dieser Server bietet keine Berechtigungen für Tokens an.';
+
+  @override
+  String get apiTokenFormPresets => 'Voreinstellungen';
+
+  @override
+  String get apiTokenPresetReadOnly => 'Nur lesen';
+
+  @override
+  String get apiTokenPresetTasks => 'Aufgabenverwaltung';
+
+  @override
+  String get apiTokenPresetProjects => 'Projektverwaltung';
+
+  @override
+  String get apiTokenPresetFullAccess => 'Voller Zugriff';
+
+  @override
+  String apiTokenFormGroupSelected(int selected, int total) {
+    return '$selected von $total';
+  }
+
+  @override
+  String apiTokenFormShowGroup(String group) {
+    return 'Berechtigungen von $group zeigen';
+  }
+
+  @override
+  String apiTokenFormHideGroup(String group) {
+    return 'Berechtigungen von $group ausblenden';
+  }
+
+  @override
+  String get apiTokenFormDiscardBody => 'Das Token wurde nicht erstellt.';
+
+  @override
+  String get oneTimeSecretApiTitle => 'Dein neues API-Token';
+
+  @override
+  String get oneTimeSecretCaldavTitle => 'Dein neues CalDAV-Token';
+
+  @override
+  String get oneTimeSecretLabel => 'Das neue Token';
+
+  @override
+  String get oneTimeSecretCopy => 'Kopieren';
+
+  @override
+  String get copiedToClipboard => 'Kopiert';
+
+  @override
+  String get copyToClipboardFailed =>
+      'Kopieren hat nicht geklappt. Versuch es noch einmal.';
+
+  @override
+  String get oneTimeSecretOnce =>
+      'Du wirst es nicht noch einmal sehen. Bewahre es sicher auf, etwa in einem Passwort-Manager.';
+
+  @override
+  String get oneTimeSecretApiUsage =>
+      'Skripte und Apps senden es als Bearer-Token im Authorization-Header.';
+
+  @override
+  String oneTimeSecretCaldavUsage(String username) {
+    return 'Gib es in deiner CalDAV-App als Passwort ein, mit dem Benutzernamen $username.';
+  }
+
+  @override
+  String get oneTimeSecretDone => 'Fertig';
+
+  @override
+  String get oneTimeSecretLeaveTitle => 'Ohne Kopieren verlassen?';
+
+  @override
+  String get oneTimeSecretLeaveBody =>
+      'Das Token wird nur jetzt angezeigt. Ohne es musst du ein neues erstellen.';
+
+  @override
+  String get oneTimeSecretStay => 'Bleiben';
+
+  @override
+  String get oneTimeSecretLeave => 'Verlassen';
+
+  @override
+  String get caldavTitle => 'CalDAV';
+
+  @override
+  String get caldavIntro =>
+      'Verbinde Kalender- und Aufgaben-Apps, die CalDAV unterstützen, um deine Aufgaben dort zu sehen und zu ändern. Gib diese Adresse in der App ein:';
+
+  @override
+  String get caldavAddress => 'CalDAV-Adresse';
+
+  @override
+  String get caldavUsername => 'Benutzername';
+
+  @override
+  String get caldavCopyAddress => 'Adresse kopieren';
+
+  @override
+  String get caldavCopyUsername => 'Benutzernamen kopieren';
+
+  @override
+  String get caldavPasswordOrToken =>
+      'Als Passwort nimmst du ein CalDAV-Token oder dein Kontopasswort.';
+
+  @override
+  String get caldavTokenTotp =>
+      'Die Zwei-Faktor-Authentifizierung ist an, daher funktioniert dein Kontopasswort hier nicht. Nimm ein CalDAV-Token als Passwort.';
+
+  @override
+  String caldavTokenProvider(String provider) {
+    return 'Du meldest dich über $provider an, nimm daher ein CalDAV-Token als Passwort.';
+  }
+
+  @override
+  String get caldavTokenUnknown =>
+      'Nimm ein CalDAV-Token als Passwort. Dein Kontopasswort geht auch, außer die Zwei-Faktor-Authentifizierung ist an.';
+
+  @override
+  String get caldavApiTokenHint =>
+      'Ein API-Token mit der CalDAV-Berechtigung funktioniert ebenfalls als Passwort.';
+
+  @override
+  String get caldavDocs => 'Mehr über CalDAV in Vikunja';
+
+  @override
+  String get caldavTokens => 'CalDAV-Tokens';
+
+  @override
+  String get caldavTokensLoading => 'CalDAV-Tokens werden geladen …';
+
+  @override
+  String get caldavTokensEmpty => 'Noch keine CalDAV-Tokens.';
+
+  @override
+  String caldavTokenName(int id) {
+    return 'Token $id';
+  }
+
+  @override
+  String get caldavNewToken => 'Neues CalDAV-Token';
+
+  @override
+  String caldavDeleteToken(int id) {
+    return 'Token $id löschen';
+  }
+
+  @override
+  String caldavDeleteTitle(int id) {
+    return 'Token $id löschen?';
+  }
+
+  @override
+  String get caldavDeleteBody =>
+      'CalDAV-Apps, die es nutzen, können sich dann nicht mehr anmelden. Das lässt sich nicht rückgängig machen.';
+
+  @override
+  String get caldavDelete => 'Löschen';
+
+  @override
+  String get caldavTokenDeleted => 'CalDAV-Token gelöscht';
+
+  @override
+  String get dataExportTitle => 'Deine Daten exportieren';
+
+  @override
+  String get dataExportIntro =>
+      'Der Export enthält deine Projekte, Aufgaben, Kommentare, Anhänge und gespeicherten Filter. Du kannst ihn in jeden Vikunja-Server importieren.';
+
+  @override
+  String get dataExportLoading => 'Export wird gesucht …';
+
+  @override
+  String get dataExportReadyTitle => 'Bereit zum Herunterladen';
+
+  @override
+  String dataExportReadyBody(String size, String date) {
+    return '$size, verfügbar bis $date';
+  }
+
+  @override
+  String get dataExportNoneTitle => 'Noch kein Export';
+
+  @override
+  String get dataExportNoneBody =>
+      'Fordere unten einen an. Ein Export wird sieben Tage aufbewahrt.';
+
+  @override
+  String get dataExportRequest => 'Neuen Export anfordern';
+
+  @override
+  String get dataExportRequestNote =>
+      'Öffnet das Web in deinem Browser. Der Server schickt dir eine E-Mail, sobald der Export bereit ist, und diese Seite zeigt ihn dann auch.';
+
+  @override
+  String get dataExportDownload => 'Herunterladen';
 }

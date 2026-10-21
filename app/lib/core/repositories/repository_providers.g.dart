@@ -395,6 +395,90 @@ final class UserSettingsWritePortFamily extends $Family
   String toString() => r'userSettingsWritePortProvider';
 }
 
+@ProviderFor(accountSecurityPort)
+final accountSecurityPortProvider = AccountSecurityPortFamily._();
+
+final class AccountSecurityPortProvider
+    extends
+        $FunctionalProvider<
+          AccountSecurityPort,
+          AccountSecurityPort,
+          AccountSecurityPort
+        >
+    with $Provider<AccountSecurityPort> {
+  AccountSecurityPortProvider._({
+    required AccountSecurityPortFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'accountSecurityPortProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$accountSecurityPortHash();
+
+  @override
+  String toString() {
+    return r'accountSecurityPortProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $ProviderElement<AccountSecurityPort> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  AccountSecurityPort create(Ref ref) {
+    final argument = this.argument as String;
+    return accountSecurityPort(ref, argument);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AccountSecurityPort value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AccountSecurityPort>(value),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is AccountSecurityPortProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$accountSecurityPortHash() =>
+    r'a6026084c70e82977297884b6376b02d08f5b929';
+
+final class AccountSecurityPortFamily extends $Family
+    with $FunctionalFamilyOverride<AccountSecurityPort, String> {
+  AccountSecurityPortFamily._()
+    : super(
+        retry: null,
+        name: r'accountSecurityPortProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  AccountSecurityPortProvider call(String accountId) =>
+      AccountSecurityPortProvider._(argument: accountId, from: this);
+
+  @override
+  String toString() => r'accountSecurityPortProvider';
+}
+
 @ProviderFor(accountDatabaseFiles)
 final accountDatabaseFilesProvider = AccountDatabaseFilesProvider._();
 
@@ -831,7 +915,7 @@ final class SyncEngineProvider
   }
 }
 
-String _$syncEngineHash() => r'0ec69e7daa103101b2d83702f8a8b04b2a50a2d9';
+String _$syncEngineHash() => r'dfdc871c3b94be95cbfeb08aabb74cd2ff02b2ba';
 
 /// One account's sync engine; disposed with its database on sign-out.
 

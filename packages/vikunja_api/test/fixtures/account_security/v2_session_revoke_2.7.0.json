@@ -1,0 +1,7 @@
+{
+  "server": "2.7.0",
+  "request": "DELETE /api/v2/user/sessions/99392678-be79-4a08-97f7-5f08f10e230e",
+  "status": 204,
+  "headers": {},
+  "body": ""
+}

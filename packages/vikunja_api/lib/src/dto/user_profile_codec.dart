@@ -17,6 +17,7 @@ UserProfile? parseUserProfile(Object? json) {
         _ => null,
       },
       updated: dateOf(map['updated']),
+      deletionScheduledAt: dateOf(map['deletion_scheduled_at']),
     );
   }
   return null;

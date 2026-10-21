@@ -9,6 +9,8 @@ Future<DateTime?> showCupertinoPickerSheet(
   required DateTime initial,
   required bool use24Hour,
   String? title,
+  DateTime? minimum,
+  DateTime? maximum,
 }) => showCupertinoModalPopup<DateTime>(
   context: context,
   builder: (context) => _CupertinoPickerSheet(
@@ -16,6 +18,8 @@ Future<DateTime?> showCupertinoPickerSheet(
     initial: initial,
     use24Hour: use24Hour,
     title: title,
+    minimum: minimum,
+    maximum: maximum,
   ),
 );
 
@@ -25,12 +29,16 @@ class _CupertinoPickerSheet extends StatefulWidget {
     required this.initial,
     required this.use24Hour,
     required this.title,
+    required this.minimum,
+    required this.maximum,
   });
 
   final CupertinoDatePickerMode mode;
   final DateTime initial;
   final bool use24Hour;
   final String? title;
+  final DateTime? minimum;
+  final DateTime? maximum;
 
   @override
   State<_CupertinoPickerSheet> createState() => _CupertinoPickerSheetState();
@@ -80,6 +88,8 @@ class _CupertinoPickerSheetState extends State<_CupertinoPickerSheet> {
               child: CupertinoDatePicker(
                 mode: widget.mode,
                 initialDateTime: widget.initial,
+                minimumDate: widget.minimum,
+                maximumDate: widget.maximum,
                 use24hFormat: widget.use24Hour,
                 onDateTimeChanged: (value) => _value = value,
               ),

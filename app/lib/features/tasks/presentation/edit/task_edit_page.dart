@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/app/router/pushed_pages.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/text/html_to_text.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
@@ -141,8 +142,9 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
     if (current == null) return;
     final messenger = ScaffoldMessenger.of(context);
     final l10n = context.l10n;
-    final saved = await GoRouter.of(context)
-        .push<bool>(AppRoutes.taskDescription(current.id));
+    final saved = await context.pushPage<bool>(
+      AppRoutes.taskDescription(current.id),
+    );
     if (saved ?? false) {
       messenger
         ..hideCurrentSnackBar()

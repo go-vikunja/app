@@ -13,6 +13,9 @@ String encodeUserProfile(UserProfile profile) => jsonEncode({
   'auth_provider': profile.authProvider,
   'pending_email': ?profile.pendingEmail,
   'updated': ?profile.updated?.toUtc().toIso8601String(),
+  'deletion_scheduled_at': ?profile.deletionScheduledAt
+      ?.toUtc()
+      .toIso8601String(),
 });
 
 UserProfile? decodeUserProfile(String? stored) {
@@ -42,6 +45,10 @@ UserProfile? decodeUserProfile(String? stored) {
       },
       updated: switch (json['updated']) {
         final String updated => DateTime.tryParse(updated)?.toUtc(),
+        _ => null,
+      },
+      deletionScheduledAt: switch (json['deletion_scheduled_at']) {
+        final String scheduled => DateTime.tryParse(scheduled)?.toUtc(),
         _ => null,
       },
     );

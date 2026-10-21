@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "DELETE /api/v1/user/sessions/27c9b42b-0ce4-4774-a234-ef842636a84e",
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"message\":\"Successfully deleted.\"}\n"
+}

@@ -10,22 +10,28 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/app/router/pushed_pages.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
-import 'package:vikunja_mobile/core/links/external_link_opener.dart';
+import 'package:vikunja_mobile/core/repositories/account_security_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/account_settings_repository.dart';
 import 'package:vikunja_mobile/core/repositories/account_settings_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
+import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/account_settings/application/server_languages.dart';
 import 'package:vikunja_mobile/features/account_settings/application/time_zone_choices.dart';
+import 'package:vikunja_mobile/features/account_settings/application/totp_status_reading.dart';
 import 'package:vikunja_mobile/features/account_settings/application/web_settings_pages.dart';
+import 'package:vikunja_mobile/features/account_settings/presentation/account_deletion.dart';
+import 'package:vikunja_mobile/features/account_settings/presentation/account_security_sections.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_failure.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_rows.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/avatar_labels.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/default_project_picker.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/searchable_option_sheet.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/sign_in_provider_name.dart';
+import 'package:vikunja_mobile/features/account_settings/presentation/web_settings_page_opener.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
@@ -35,7 +41,6 @@ import 'package:vikunja_mobile/features/onboarding/presentation/server_address_d
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/projects/presentation/manage/project_confirmations.dart';
 import 'package:vikunja_mobile/features/projects/presentation/manage/view_labels.dart';
-import 'package:vikunja_mobile/features/session/application/session_check.dart';
 import 'package:vikunja_mobile/features/session/application/sign_in_controller.dart';
 import 'package:vikunja_mobile/features/smart_lists/application/smart_list_providers.dart';
 import 'package:vikunja_mobile/features/sync/application/offline_state.dart';
@@ -49,8 +54,11 @@ final _log = Logger('AccountSettingsPage');
 /// The account's settings on the server, which follow it to every device,
 /// in the web's order where it has the same ones. A switch or a pick saves
 /// at once and the name on Done, always online; offline the page only
-/// shows them. A refused value is shown at its control. Password and email
-/// are changed on the web's own pages in the browser.
+/// shows them. A refused value is shown at its control. Password and email,
+/// two-factor authentication, the data export's request and download and
+/// the account's deletion are left to the web's own pages in the browser,
+/// because they ask for the password or a code (D14); sessions, tokens and
+/// CalDAV have pages of their own.
 class AccountSettingsPage extends ConsumerStatefulWidget {
   const new({super.key});
 
@@ -70,18 +78,33 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
   /// Whether the server answered this page's last request; null before
   /// one, while the last sync run's outcome decides.
   bool? _reachable;
+  SecurityOverview _security = const SecurityOverview();
+
+  // Up to 2.6 and during a setup, the two-factor status comes with its
+  // secret, so it is read when the page opens and after its web page only.
+  bool _totpPageOpened = false;
 
   @override
   void initState() {
     super.initState();
-    // Back from the web's email page, a pending change shows at once.
-    _lifecycle = AppLifecycleListener(onResume: () => unawaited(_refresh()));
+    // Back from the web's email or two-factor page, a pending change shows
+    // at once.
+    _lifecycle = AppLifecycleListener(
+      onResume: () {
+        unawaited(_refresh());
+        unawaited(_refreshSecurity(totp: _totpPageOpened));
+        _totpPageOpened = false;
+      },
+    );
     ref.listenManual(
       accountSettingsProvider,
       (_, next) => _adoptName(next.value?.settings.name),
       fireImmediately: true,
     );
-    WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(_refresh()));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_refresh());
+      unawaited(_refreshSecurity(totp: true));
+    });
   }
 
   @override
@@ -113,6 +136,86 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
     } on Object catch (error) {
       _log.info('Refreshing the account settings failed: ${error.runtimeType}');
     }
+  }
+
+  /// Each part on its own and never throwing: one that cannot be read
+  /// keeps what it showed. The two-factor status only with [totp].
+  Future<void> _refreshSecurity({bool totp = false}) async {
+    final repository = ref.read(accountSecurityRepositoryProvider);
+    final entry = ref.read(accountsProvider).value?.activeAccount;
+    if (repository == null || entry == null) return;
+    final UserProfile? profile;
+    try {
+      profile = (await ref.read(accountSettingsProvider.future)).profile;
+    } on Object catch (error) {
+      _log.info('Reading the stored profile failed: ${error.runtimeType}');
+      return;
+    }
+    if (!mounted) return;
+    Future<void> read<T>(
+      String part,
+      Future<T> Function() load,
+      SecurityOverview Function(T value) apply, {
+      SecurityOverview Function(Object error)? onError,
+    }) async {
+      try {
+        final value = await load();
+        if (mounted) setState(() => _security = apply(value));
+      } on Object catch (error) {
+        _log.info('Reading the $part failed: ${error.runtimeType}');
+        if (mounted && onError != null) {
+          setState(() => _security = onError(error));
+        }
+      }
+    }
+
+    await [
+      if (totp &&
+          entry.connection.capabilities.has(Capability.totp) &&
+          (profile?.isLocalUser ?? true) &&
+          canReadTotpStatus(entry.connection))
+        read(
+          'two-factor status',
+          repository.totpStatus,
+          (status) => _security.withTotp(status),
+          onError: (error) => _security.withTotp(
+            _security.totp,
+            SecurityOverview.problemOf(error),
+          ),
+        ),
+      read(
+        'sessions',
+        repository.sessions,
+        (sessions) => _security.withSessionCount(sessions.length),
+      ),
+      read(
+        'API tokens',
+        repository.apiTokens,
+        (tokens) => _security.withApiTokenCount(tokens.length),
+      ),
+      read(
+        'data export',
+        repository.dataExport,
+        (export) => _security.withExport(export),
+      ),
+    ].wait;
+  }
+
+  Future<void> _openPage(String location, {Object? extra}) async {
+    await context.pushPage<void>(location, extra: extra);
+    if (mounted) await _refreshSecurity();
+  }
+
+  Future<void> _deleteAccount(RegisteredAccount entry) async {
+    final profile = ref.read(accountSettingsProvider).value?.profile;
+    if (profile?.deletionScheduledAt == null) {
+      final confirmed = await confirmAccountDeletion(
+        context,
+        isLocalUser: profile?.isLocalUser ?? true,
+      );
+      if (!confirmed || !mounted) return;
+    }
+    await _openWebPage(entry, WebSettingsPage.deletion);
   }
 
   Future<bool> _save(
@@ -205,26 +308,9 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
     }
   }
 
-  Future<void> _openWebPage(
-    RegisteredAccount entry,
-    WebSettingsPage page,
-  ) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final l10n = context.l10n;
-    // The access token outlives a session the password change ended.
-    if (page == WebSettingsPage.password) {
-      ref.read(sessionCheckProvider).refreshOnNextCheck(entry.id);
-    }
-    final opened = await ref
-        .read(externalLinkOpenerProvider)
-        .open(webSettingsPageUri(entry.connection, page));
-    if (!opened) {
-      messenger
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(content: Text(l10n.accountSettingsWebNotOpened)),
-        );
-    }
+  Future<void> _openWebPage(RegisteredAccount entry, WebSettingsPage page) {
+    if (page == WebSettingsPage.totp) _totpPageOpened = true;
+    return openWebSettingsPage(context, ref, entry, page);
   }
 
   Future<void> _choose<T extends Object>(
@@ -302,6 +388,10 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
             onSave: (field, changes) => unawaited(_save(field, changes)),
             onChoose: _chooseQuietly,
             onOpenWeb: (page) => unawaited(_openWebPage(entry, page)),
+            security: _security,
+            onOpenPage: (location, {extra}) =>
+                unawaited(_openPage(location, extra: extra)),
+            onDeleteAccount: () => unawaited(_deleteAccount(entry)),
           ),
           _ => CenteredScrollView(
             child: LoadingPlaceholder(label: l10n.accountSettingsLoading),
@@ -336,6 +426,9 @@ class _Settings extends ConsumerWidget {
     required this.onSave,
     required this.onChoose,
     required this.onOpenWeb,
+    required this.security,
+    required this.onOpenPage,
+    required this.onDeleteAccount,
   });
 
   final RegisteredAccount entry;
@@ -358,6 +451,9 @@ class _Settings extends ConsumerWidget {
   onSave;
   final _ChooseSetting onChoose;
   final ValueChanged<WebSettingsPage> onOpenWeb;
+  final SecurityOverview security;
+  final void Function(String location, {Object? extra}) onOpenPage;
+  final VoidCallback onDeleteAccount;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -373,7 +469,8 @@ class _Settings extends ConsumerWidget {
         ref.watch(savedFiltersProvider).value ?? const <SavedFilterRef>[];
     final display = DisplaySettings.from(settings);
     final formatter = MomentFormatter.of(context, display);
-    final now = DateTime.now();
+    final now = ref.watch(clockProvider)();
+    final theme = Theme.of(context);
     final locale = l10n.localeName;
     VoidCallback? whenChangeable(VoidCallback action) =>
         canChange ? action : null;
@@ -382,6 +479,11 @@ class _Settings extends ConsumerWidget {
         intl.DateFormat.EEEE(locale).format(DateTime(2023, 1, 1 + day));
 
     final children = <Widget>[
+      if (profile?.deletionScheduledAt case final scheduledAt?)
+        DeletionScheduledNote(
+          scheduledAt: scheduledAt,
+          onCancel: () => onOpenWeb(WebSettingsPage.deletion),
+        ),
       SettingsNote(
         text: l10n.accountSettingsIntro(displayHost(entry.connection.rootUri)),
       ),
@@ -484,6 +586,14 @@ class _Settings extends ConsumerWidget {
           leading: const Icon(Icons.verified_user_outlined),
           title: Text(l10n.accountSettingsManagedBySignInNamed(provider)),
         ),
+      ...securitySection(
+        l10n: l10n,
+        connection: entry.connection,
+        profile: profile,
+        overview: security,
+        onOpenTotp: () => onOpenWeb(WebSettingsPage.totp),
+        onOpenSessions: () => onOpenPage(AppRoutes.accountSessions),
+      ),
       ListSectionHeader(title: l10n.accountSettingsDefaults),
       SettingChoiceTile(
         title: l10n.accountSettingsDefaultProject,
@@ -829,10 +939,37 @@ class _Settings extends ConsumerWidget {
           ),
         ),
       ),
+      ...integrationsSection(
+        l10n: l10n,
+        connection: entry.connection,
+        overview: security,
+        onOpenApiTokens: () => onOpenPage(AppRoutes.accountApiTokens),
+        onOpenCaldav: () =>
+            onOpenPage(AppRoutes.accountCaldav, extra: security.totp?.name),
+      ),
+      ...yourDataSection(
+        l10n: l10n,
+        formatter: formatter,
+        overview: security,
+        now: now,
+        onOpenExport: () => onOpenPage(AppRoutes.accountDataExport),
+      ),
+      ...deleteAccountSection(
+        l10n: l10n,
+        theme: theme,
+        formatter: formatter,
+        connection: entry.connection,
+        profile: profile,
+        now: now,
+        onDelete: onDeleteAccount,
+      ),
     ];
 
     return ListView(
-      padding: const EdgeInsets.only(top: 8, bottom: 32),
+      // An explicit padding replaces the system bars' and cutouts'.
+      padding:
+          MediaQuery.paddingOf(context) +
+          const EdgeInsets.only(top: 8, bottom: 32),
       children: children,
     );
   }

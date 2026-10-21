@@ -1,8 +1,12 @@
 package dev.coderoftime.vikunja
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.os.PersistableBundle
+import android.view.WindowManager
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -54,6 +58,8 @@ class MainActivity : FlutterActivity() {
             .setMethodCallHandler { call, result ->
                 when (call.method) {
                     "osVersion" -> result.success(Build.VERSION.RELEASE)
+                    "copySensitive" -> copySensitive(call.argument<String>("text"), result)
+                    "setSecure" -> setSecure(call.argument<Boolean>("secure"), result)
                     else -> result.notImplemented()
                 }
             }
@@ -72,9 +78,38 @@ class MainActivity : FlutterActivity() {
         super.cleanUpFlutterEngine(flutterEngine)
     }
 
+    private fun copySensitive(text: String?, result: MethodChannel.Result) {
+        if (text == null) {
+            result.error("invalid_arguments", "text is missing", null)
+            return
+        }
+        val clip = ClipData.newPlainText("", text)
+        clip.description.extras = PersistableBundle().apply { putBoolean(EXTRA_IS_SENSITIVE, true) }
+        getSystemService(ClipboardManager::class.java).setPrimaryClip(clip)
+        result.success(null)
+    }
+
+    private fun setSecure(secure: Boolean?, result: MethodChannel.Result) {
+        when (secure) {
+            true -> window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+            false -> window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+            null -> {
+                result.error("invalid_arguments", "secure is missing", null)
+                return
+            }
+        }
+        result.success(null)
+    }
+
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if (fileActions?.onActivityResult(requestCode, resultCode, data) == true) return
         if (documents?.onActivityResult(requestCode, resultCode, data) == true) return
         super.onActivityResult(requestCode, resultCode, data)
+    }
+
+    private companion object {
+        // ClipDescription.EXTRA_IS_SENSITIVE from API 33; Android 13 hides the
+        // clipboard preview of a clip marked with it, older versions ignore it.
+        const val EXTRA_IS_SENSITIVE = "android.content.extra.IS_SENSITIVE"
     }
 }

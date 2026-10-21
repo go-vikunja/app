@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
@@ -345,8 +347,28 @@ void main() {
           'auth_provider': 3,
           'pending_email': '',
           'updated': '0001-01-01T00:00:00Z',
+          'deletion_scheduled_at': 'soon',
         }),
         const UserProfile(id: 1, username: 'dora'),
+      );
+    });
+
+    test("deletion_scheduled_at: Go's zero time is none", () {
+      for (final name in ['v1_user', 'v2_user']) {
+        final profile = parseUserProfile(
+          jsonDecode(
+            fixtureJson('user_settings/${name}_2.7.0.json')['body']! as String,
+          ),
+        );
+        expect(profile!.deletionScheduledAt, isNull, reason: name);
+      }
+      expect(
+        parseUserProfile({
+          'id': 1,
+          'username': 'dora',
+          'deletion_scheduled_at': '2026-10-24T05:22:43Z',
+        })!.deletionScheduledAt,
+        DateTime.utc(2026, 10, 24, 5, 22, 43),
       );
     });
 

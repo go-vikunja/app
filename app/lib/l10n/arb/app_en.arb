@@ -4136,5 +4136,437 @@
   "avatarUploading": "Uploading…",
   "avatarImageUnusable": "This picture cannot be used. Choose a PNG or JPEG photo.",
   "avatarImageTooLarge": "This picture is too large for the server.",
-  "avatarPickFailed": "The photos could not be opened."
+  "avatarPickFailed": "The photos could not be opened.",
+  "accountSettingsSecurity": "Security",
+  "accountSettingsTotp": "Two-factor authentication",
+  "accountSettingsTotpOn": "On",
+  "accountSettingsTotpOff": "Off",
+  "accountSettingsTotpSetupStarted": "Setup not finished",
+  "accountSettingsTotpChecking": "Checking…",
+  "accountSettingsTotpUnknown": "Could not be checked",
+  "accountSettingsTotpNotOffered": "Not offered by this server",
+  "accountSettingsTotpNotAvailable": "Not available for this account",
+  "accountSettingsTotpNotChecked": "Not checked over an unencrypted connection",
+  "accountSettingsTotpTurnOnNote": "Opens the web in your browser. Turning it on signs you out everywhere, this app included. Then sign in here again; your browser asks for the code.",
+  "accountSettingsTotpOnNote": "Opens the web in your browser. Turning it off needs your password.",
+  "accountSettingsSessions": "Sessions",
+  "accountSettingsSessionsCount": "{count, plural, =1{1 signed-in device or browser} other{{count} signed-in devices and browsers}}",
+  "@accountSettingsSessionsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "accountSettingsSessionsHint": "Where you are signed in",
+  "accountSettingsIntegrations": "Integrations",
+  "accountSettingsApiTokens": "API tokens",
+  "accountSettingsApiTokensCount": "{count, plural, =0{No tokens} =1{1 token} other{{count} tokens}}",
+  "@accountSettingsApiTokensCount": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "2"
+      }
+    }
+  },
+  "accountSettingsApiTokensHint": "For scripts and other apps",
+  "accountSettingsCaldav": "CalDAV",
+  "@accountSettingsCaldav": {
+    "description": "The protocol's name; not translated."
+  },
+  "accountSettingsCaldavHint": "Your tasks in calendar and task apps",
+  "accountSettingsYourData": "Your data",
+  "accountSettingsExport": "Export your data",
+  "accountSettingsExportReady": "Ready to download until {date}",
+  "@accountSettingsExportReady": {
+    "placeholders": {
+      "date": {
+        "type": "String",
+        "example": "10/28/2026 7:20 AM"
+      }
+    }
+  },
+  "accountSettingsExportNone": "No export yet",
+  "accountSettingsExportHint": "A copy of your projects and tasks",
+  "accountSettingsDeleteAccount": "Delete account",
+  "accountSettingsWebAsksPassword": "The web asks for your password.",
+  "accountDeletionScheduled": "Your account will be deleted on {date}.",
+  "@accountDeletionScheduled": {
+    "placeholders": {
+      "date": {
+        "type": "String",
+        "example": "October 24, 2026 at 7:22 AM"
+      }
+    }
+  },
+  "accountDeletionOverdue": "Your account has been due for deletion since {date}.",
+  "@accountDeletionOverdue": {
+    "placeholders": {
+      "date": {
+        "type": "String",
+        "example": "October 18, 2026 at 5:22 AM"
+      }
+    }
+  },
+  "accountDeletionCancel": "Cancel deletion",
+  "accountDeletionScheduledRow": "Deletion on {date}. Cancel it on the web.",
+  "@accountDeletionScheduledRow": {
+    "placeholders": {
+      "date": {
+        "type": "String",
+        "example": "October 24, 2026 at 7:22 AM"
+      }
+    }
+  },
+  "accountDeletionOverdueRow": "Deletion due since {date}. Cancel it on the web.",
+  "@accountDeletionOverdueRow": {
+    "placeholders": {
+      "date": {
+        "type": "String",
+        "example": "October 18, 2026 at 5:22 AM"
+      }
+    }
+  },
+  "accountDeletionDialogTitle": "Delete your account?",
+  "accountDeletionDialogPermanent": "Deleting your account is permanent. All projects and tasks you own are deleted with it; what you shared with others passes to them.",
+  "accountDeletionDialogEmail": "The server emails you a link to confirm. Once you confirm, your account is deleted after three days; until then you can change your mind.",
+  "accountDeletionDialogNoEmail": "If your server does not send emails, ask its administrator to delete your account.",
+  "accountDeletionContinue": "Continue in the browser",
+  "accountSecurityNeedsConnection": "This needs a connection to the server.",
+  "accountSecurityUnconfirmed": "The server's answer did not arrive. Refresh to see whether it worked.",
+  "accountSecuritySignInAgain": "Sign in again first.",
+  "accountSecurityNotOffered": "This server does not offer this.",
+  "accountSecurityRateLimited": "The server is busy. Try again in a minute.",
+  "accountSecurityRefused": "The server refused: {message}",
+  "@accountSecurityRefused": {
+    "placeholders": {
+      "message": {
+        "type": "String",
+        "example": "Invalid Data"
+      }
+    }
+  },
+  "accountSecurityFailed": "That did not work. Try again later.",
+  "accountSecurityWorking": "Working",
+  "@accountSecurityWorking": {
+    "description": "Screen readers say it for a spinner on a row while it is changed."
+  },
+  "accountSecurityCreated": "Created {date}",
+  "@accountSecurityCreated": {
+    "placeholders": {
+      "date": {
+        "type": "String",
+        "example": "10/20/2026 9:00 AM"
+      }
+    }
+  },
+  "sessionsTitle": "Sessions",
+  "sessionsIntro": "These devices and browsers are signed in to your account. Ending a session signs that device or browser out; it can take up to 10 minutes.",
+  "sessionsLoading": "Loading sessions…",
+  "sessionsThisDevice": "This device",
+  "sessionsThisDeviceHint": "To end this session, sign out of the account in this app.",
+  "sessionsLastActive": "Last active {when}",
+  "@sessionsLastActive": {
+    "placeholders": {
+      "when": {
+        "type": "String",
+        "example": "3 hours ago"
+      }
+    }
+  },
+  "sessionsLastActiveLabel": "Last active",
+  "sessionsSignedIn": "Signed in",
+  "sessionsDevice": "Device",
+  "sessionsIpAddress": "IP address",
+  "sessionsUnknownDevice": "Unknown device",
+  "sessionsBrowserOn": "{browser} on {system}",
+  "@sessionsBrowserOn": {
+    "placeholders": {
+      "browser": {
+        "type": "String",
+        "example": "Firefox"
+      },
+      "system": {
+        "type": "String",
+        "example": "Linux"
+      }
+    }
+  },
+  "sessionsDartClient": "An app without a name",
+  "@sessionsDartClient": {
+    "description": "A session whose User-Agent is only the Dart runtime, e.g. a script."
+  },
+  "sessionsEnd": "End session",
+  "sessionsEndTitle": "End this session?",
+  "sessionsEndBody": "{device} will be signed out. It can take up to 10 minutes.",
+  "@sessionsEndBody": {
+    "placeholders": {
+      "device": {
+        "type": "String",
+        "example": "Firefox on Linux"
+      }
+    }
+  },
+  "sessionsEnded": "Session ended. It can take up to 10 minutes to take effect.",
+  "sessionsEndOthers": "End all other sessions",
+  "sessionsEndOthersTitle": "End all other sessions?",
+  "sessionsEndOthersBody": "{count, plural, =1{The other device or browser is signed out} other{All {count} other devices and browsers are signed out}} within 10 minutes. This device stays signed in.",
+  "@sessionsEndOthersBody": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "2"
+      }
+    }
+  },
+  "sessionsEndedOthers": "{count, plural, =0{No other session to end.} =1{1 session ended. It can take up to 10 minutes to take effect.} other{{count} sessions ended. It can take up to 10 minutes to take effect.}}",
+  "@sessionsEndedOthers": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "2"
+      }
+    }
+  },
+  "sessionsNotAllEnded": "Ended: {ended}. Still signed in: {notEnded}.",
+  "@sessionsNotAllEnded": {
+    "placeholders": {
+      "ended": {
+        "type": "int",
+        "example": "1"
+      },
+      "notEnded": {
+        "type": "int",
+        "example": "2"
+      }
+    }
+  },
+  "sessionsNoOthers": "No other sessions",
+  "sessionsNoOthersBody": "Only this device is signed in to your account.",
+  "sessionsOptionsFor": "Options for {device}",
+  "@sessionsOptionsFor": {
+    "placeholders": {
+      "device": {
+        "type": "String",
+        "example": "Firefox on Linux"
+      }
+    }
+  },
+  "apiTokensTitle": "API tokens",
+  "apiTokensIntro": "API tokens let scripts and other apps use Vikunja's API without your password. A token can only do what its permissions allow.",
+  "apiTokensDocs": "API documentation",
+  "apiTokensLoading": "Loading API tokens…",
+  "apiTokensEmptyTitle": "No API tokens",
+  "apiTokensEmptyBody": "Create one for a script or another app.",
+  "apiTokensNew": "New token",
+  "apiTokensExpires": "Expires {date}",
+  "@apiTokensExpires": {
+    "placeholders": {
+      "date": {
+        "type": "String",
+        "example": "11/20/2026 9:00 AM"
+      }
+    }
+  },
+  "apiTokensExpired": "Expired {when}",
+  "@apiTokensExpired": {
+    "placeholders": {
+      "when": {
+        "type": "String",
+        "example": "3 days ago"
+      }
+    }
+  },
+  "apiTokensPermissionCount": "{count, plural, =1{1 permission} other{{count} permissions}}",
+  "@apiTokensPermissionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "4"
+      }
+    }
+  },
+  "apiTokensPermissions": "Permissions",
+  "apiTokensDelete": "Delete token",
+  "apiTokensDeleteTitle": "Delete the token “{title}”?",
+  "@apiTokensDeleteTitle": {
+    "placeholders": {
+      "title": {
+        "type": "String",
+        "example": "Home Assistant"
+      }
+    }
+  },
+  "apiTokensDeleteBody": "Apps and scripts using it stop working. This cannot be undone.",
+  "apiTokensDeleted": "Token deleted",
+  "apiTokenFormTitle": "New API token",
+  "apiTokenFormCreate": "Create",
+  "apiTokenFormCreating": "Creating…",
+  "apiTokenFormLoading": "Loading permissions…",
+  "apiTokenFormName": "Title",
+  "apiTokenFormNameHint": "A title you will recognise later",
+  "apiTokenFormNameRequired": "Enter a title.",
+  "apiTokenFormExpiry": "Expires",
+  "apiTokenFormExpiryDays": "{days, plural, =1{In 1 day} other{In {days} days}}",
+  "@apiTokenFormExpiryDays": {
+    "placeholders": {
+      "days": {
+        "type": "int",
+        "example": "30"
+      }
+    }
+  },
+  "apiTokenFormExpiryCustom": "Pick a day…",
+  "apiTokenFormExpiryPick": "Valid through",
+  "apiTokenFormExpiryThrough": "Through {date}",
+  "@apiTokenFormExpiryThrough": {
+    "placeholders": {
+      "date": {
+        "type": "String",
+        "example": "Nov 20, 2026"
+      }
+    }
+  },
+  "apiTokenFormExpiryPast": "Pick a day that has not passed yet.",
+  "apiTokenFormPermissions": "Permissions",
+  "apiTokenFormPermissionsHelp": "Choose what the token may do. The names come from the server and are not translated.",
+  "apiTokenFormPermissionsRequired": "Choose at least one permission.",
+  "apiTokenFormNoPermissions": "This server offers no permissions for tokens.",
+  "apiTokenFormPresets": "Quick presets",
+  "apiTokenPresetReadOnly": "Read only",
+  "apiTokenPresetTasks": "Task management",
+  "apiTokenPresetProjects": "Project management",
+  "apiTokenPresetFullAccess": "Full access",
+  "apiTokenFormGroupSelected": "{selected} of {total}",
+  "@apiTokenFormGroupSelected": {
+    "placeholders": {
+      "selected": {
+        "type": "int",
+        "example": "3"
+      },
+      "total": {
+        "type": "int",
+        "example": "10"
+      }
+    }
+  },
+  "apiTokenFormShowGroup": "Show the permissions of {group}",
+  "@apiTokenFormShowGroup": {
+    "placeholders": {
+      "group": {
+        "type": "String",
+        "example": "Tasks"
+      }
+    }
+  },
+  "apiTokenFormHideGroup": "Hide the permissions of {group}",
+  "@apiTokenFormHideGroup": {
+    "placeholders": {
+      "group": {
+        "type": "String",
+        "example": "Tasks"
+      }
+    }
+  },
+  "apiTokenFormDiscardBody": "The token has not been created.",
+  "oneTimeSecretApiTitle": "Your new API token",
+  "oneTimeSecretCaldavTitle": "Your new CalDAV token",
+  "oneTimeSecretLabel": "The new token",
+  "oneTimeSecretCopy": "Copy",
+  "copiedToClipboard": "Copied",
+  "copyToClipboardFailed": "Copying did not work. Try again.",
+  "oneTimeSecretOnce": "You won't see it again. Store it somewhere safe, such as a password manager.",
+  "oneTimeSecretApiUsage": "Scripts and apps send it as a bearer token in the Authorization header.",
+  "oneTimeSecretCaldavUsage": "Enter it as the password in your CalDAV app, with the username {username}.",
+  "@oneTimeSecretCaldavUsage": {
+    "placeholders": {
+      "username": {
+        "type": "String",
+        "example": "alice"
+      }
+    }
+  },
+  "oneTimeSecretDone": "Done",
+  "oneTimeSecretLeaveTitle": "Leave without copying?",
+  "oneTimeSecretLeaveBody": "The token is shown only now. Without it, you will have to create a new one.",
+  "oneTimeSecretStay": "Stay",
+  "oneTimeSecretLeave": "Leave",
+  "caldavTitle": "CalDAV",
+  "caldavIntro": "Connect calendar and task apps that speak CalDAV to see and change your tasks there. Enter this address in the app:",
+  "caldavAddress": "CalDAV address",
+  "caldavUsername": "Username",
+  "caldavCopyAddress": "Copy the address",
+  "caldavCopyUsername": "Copy the username",
+  "caldavPasswordOrToken": "As the password, use a CalDAV token or your account password.",
+  "caldavTokenTotp": "Two-factor authentication is on, so your account password does not work here. Use a CalDAV token as the password.",
+  "caldavTokenProvider": "You sign in through {provider}, so use a CalDAV token as the password.",
+  "@caldavTokenProvider": {
+    "placeholders": {
+      "provider": {
+        "type": "String",
+        "example": "Keycloak"
+      }
+    }
+  },
+  "caldavTokenUnknown": "Use a CalDAV token as the password. Your account password works too, unless two-factor authentication is on.",
+  "caldavApiTokenHint": "An API token with the CalDAV permission works as the password too.",
+  "caldavDocs": "More about CalDAV in Vikunja",
+  "caldavTokens": "CalDAV tokens",
+  "caldavTokensLoading": "Loading CalDAV tokens…",
+  "caldavTokensEmpty": "No CalDAV tokens yet.",
+  "caldavTokenName": "Token {id}",
+  "@caldavTokenName": {
+    "placeholders": {
+      "id": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "caldavNewToken": "New CalDAV token",
+  "caldavDeleteToken": "Delete token {id}",
+  "@caldavDeleteToken": {
+    "placeholders": {
+      "id": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "caldavDeleteTitle": "Delete token {id}?",
+  "@caldavDeleteTitle": {
+    "placeholders": {
+      "id": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "caldavDeleteBody": "CalDAV apps using it can no longer sign in. This cannot be undone.",
+  "caldavDelete": "Delete",
+  "caldavTokenDeleted": "CalDAV token deleted",
+  "dataExportTitle": "Export your data",
+  "dataExportIntro": "The export holds your projects, tasks, comments, attachments and saved filters. You can import it into any Vikunja server.",
+  "dataExportLoading": "Looking for an export…",
+  "dataExportReadyTitle": "Ready to download",
+  "dataExportReadyBody": "{size}, available until {date}",
+  "@dataExportReadyBody": {
+    "placeholders": {
+      "size": {
+        "type": "String",
+        "example": "2.4 KB"
+      },
+      "date": {
+        "type": "String",
+        "example": "10/28/2026 7:20 AM"
+      }
+    }
+  },
+  "dataExportNoneTitle": "No export yet",
+  "dataExportNoneBody": "Request one below. An export is kept for seven days.",
+  "dataExportRequest": "Request a new export",
+  "dataExportRequestNote": "Opens the web in your browser. The server emails you when the export is ready, and this page shows it too.",
+  "dataExportDownload": "Download"
 }

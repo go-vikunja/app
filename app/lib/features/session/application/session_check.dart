@@ -4,6 +4,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_gateways.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/auth/deleted_account.dart';
 import 'package:vikunja_mobile/core/auth/session_manager.dart';
 
 part 'session_check.g.dart';
@@ -48,10 +49,11 @@ final class SessionCheck {
     _lastChecked[entry.id] = now;
     _running.add(entry.id);
     try {
-      if (refresh) await _sessions.forAccount(entry.id).refreshNow();
-      await _accountGateway.currentUser(
-        entry.connection,
-        _sessions.forAccount(entry.id),
+      final session = _sessions.forAccount(entry.id);
+      if (refresh) await session.refreshNow();
+      await endingSessionOfDeletedAccount(
+        session,
+        () => _accountGateway.currentUser(entry.connection, session),
       );
     } on SessionEnded {
       // Marked by the session manager, or the account was signed out.
@@ -65,9 +67,9 @@ final class SessionCheck {
   }
 
   /// Before the user leaves for a page that can end the session, the web's
-  /// password page: the next [check] of the account (the app back in front)
-  /// runs at once and rotates the tokens, because the access token outlives
-  /// the session by up to ten minutes.
+  /// password or two-factor page: the next [check] of the account (the app
+  /// back in front) runs at once and rotates the tokens, because the access
+  /// token outlives the session by up to ten minutes.
   void refreshOnNextCheck(String accountId) =>
       _refreshOnNextCheck.add(accountId);
 

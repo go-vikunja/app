@@ -27,11 +27,16 @@ final _redactions = <(RegExp, String Function(Match))>[
     (_) => redactedPlaceholder,
   ),
   (RegExp(r'\btk_[A-Za-z0-9]+'), (_) => redactedPlaceholder),
+  // A TOTP setup link carries the secret and names the account.
+  (
+    RegExp('otpauth://[^\\s"\'<>]+', caseSensitive: false),
+    (_) => redactedPlaceholder,
+  ),
   (
     RegExp(
       '"(password|old_password|new_password|token|access_token|refresh_token|'
-      'id_token|code|code_verifier|client_secret|totp_passcode|passcode|'
-      r'state)"\s*:\s*"[^"]*"',
+      'id_token|code|code_verifier|client_secret|secret|totp_passcode|'
+      r'passcode|state)"\s*:\s*"[^"]*"',
       caseSensitive: false,
     ),
     (m) => '"${m[1]}":"$redactedPlaceholder"',
@@ -39,7 +44,7 @@ final _redactions = <(RegExp, String Function(Match))>[
   (
     RegExp(
       r'\b(password|token|access_token|refresh_token|id_token|code|'
-      r'code_verifier|client_secret|state)=[^&\s"]+',
+      r'code_verifier|client_secret|secret|state)=[^&\s"]+',
       caseSensitive: false,
     ),
     (m) => '${m[1]}=$redactedPlaceholder',
@@ -49,7 +54,7 @@ final _redactions = <(RegExp, String Function(Match))>[
   (
     RegExp(
       r'\b(access_token|refresh_token|id_token|code_verifier|client_secret|'
-      r'password)\s*:\s*[^\s,;}\]]+',
+      r'secret|password)\s*:\s*[^\s,;}\]]+',
       caseSensitive: false,
     ),
     (m) => '${m[1]}: $redactedPlaceholder',

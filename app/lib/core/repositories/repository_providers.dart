@@ -16,6 +16,7 @@ import 'package:vikunja_mobile/core/attachments/attachment_image_providers.dart'
 import 'package:vikunja_mobile/core/attachments/upload_files.dart';
 import 'package:vikunja_mobile/core/attachments/upload_policy.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/auth/deleted_account.dart';
 import 'package:vikunja_mobile/core/auth/session_manager.dart';
 import 'package:vikunja_mobile/core/auth/sign_out.dart';
 import 'package:vikunja_mobile/core/avatar/avatar_providers.dart';
@@ -82,6 +83,13 @@ VikunjaWriteClient writeClient(Ref ref, String accountId) => createWriteClient(
 @riverpod
 UserSettingsWritePort userSettingsWritePort(Ref ref, String accountId) =>
     createUserSettingsWritePort(
+      dio: ref.watch(accountDioProvider(accountId)),
+      connection: _connectionOf(ref, accountId),
+    );
+
+@riverpod
+AccountSecurityPort accountSecurityPort(Ref ref, String accountId) =>
+    createAccountSecurityPort(
       dio: ref.watch(accountDioProvider(accountId)),
       connection: _connectionOf(ref, accountId),
     );
@@ -245,9 +253,10 @@ SyncEngine syncEngine(Ref ref, String accountId) {
       if (entry == null) {
         throw StateError('Account $accountId is not registered');
       }
-      final current = await gateway.currentUserWithProfile(
-        entry.connection,
-        sessions.forAccount(accountId),
+      final session = sessions.forAccount(accountId);
+      final current = await endingSessionOfDeletedAccount(
+        session,
+        () => gateway.currentUserWithProfile(entry.connection, session),
       );
       final UserProfile(:username, :name, :updated) = current.profile;
       if (updated != null &&

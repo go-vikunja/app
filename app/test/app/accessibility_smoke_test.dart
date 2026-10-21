@@ -18,8 +18,14 @@ import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/share/share_intent_source.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_page.dart';
+import 'package:vikunja_mobile/features/account_settings/presentation/api_token_form_page.dart';
+import 'package:vikunja_mobile/features/account_settings/presentation/api_tokens_page.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/avatar_crop_page.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/avatar_page.dart';
+import 'package:vikunja_mobile/features/account_settings/presentation/caldav_page.dart';
+import 'package:vikunja_mobile/features/account_settings/presentation/data_export_page.dart';
+import 'package:vikunja_mobile/features/account_settings/presentation/one_time_secret_view.dart';
+import 'package:vikunja_mobile/features/account_settings/presentation/sessions_page.dart';
 import 'package:vikunja_mobile/features/attachments/application/attachment_picker.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
 import 'package:vikunja_mobile/features/description_editor/application/editor_protocol.dart';
@@ -58,6 +64,7 @@ import 'package:vikunja_mobile/features/upcoming/presentation/upcoming_screen.da
 import '../features/account_settings/avatar_fakes.dart';
 import '../features/accounts/accounts_harness.dart';
 import '../features/tasks/edit_page_harness.dart';
+import '../helpers/account_security_fakes.dart';
 import '../helpers/account_settings_fakes.dart';
 import '../helpers/attachment_picker_fake.dart';
 import '../helpers/auth_fakes.dart';
@@ -2412,6 +2419,333 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text(l10n.avatarImageTooLarge), findsOneWidget);
       await scrollToEnd(tester, find.byType(SingleChildScrollView).last);
+      expect(tester.takeException(), isNull);
+    });
+
+    Finder dialogAction(String label) =>
+        find.descendant(of: find.byType(Dialog), matching: find.text(label));
+
+    Future<void> pushOverShell(WidgetTester tester, String location) async {
+      unawaited(containerOf(tester).read(appRouterProvider).push(location));
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> scrollToTop(WidgetTester tester, Finder scrollView) async {
+      tester
+          .state<ScrollableState>(
+            find
+                .descendant(of: scrollView, matching: find.byType(Scrollable))
+                .first,
+          )
+          .position
+          .jumpTo(0);
+      await tester.pumpAndSettle();
+    }
+
+    /// Scrolls [page] from the top until [finder] shows, then taps it.
+    Future<void> tapInView(
+      WidgetTester tester,
+      Finder page,
+      Finder finder,
+    ) async {
+      await scrollToTop(tester, page);
+      await tester.scrollUntilVisible(
+        finder,
+        100,
+        scrollable: find
+            .descendant(of: page, matching: find.byType(Scrollable))
+            .first,
+      );
+      await tester.ensureVisible(finder);
+      await tester.pumpAndSettle();
+      await tester.tap(finder);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('account settings security, integrations, data and deletion '
+        'with the scheduled note and the deletion dialog at 200 % in dark '
+        'mode (${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      final l10n = lookupAppLocalizations(locale);
+      final data = richData();
+      data.accountSecurity
+        ..totp = TotpStatus.setupStarted
+        ..export = UserDataExport(
+          id: 3,
+          size: 123456789,
+          expires: DateTime.now().add(const Duration(days: 6)),
+        );
+      data.shared.accountSettings.state = fakeAccountSettingsState(
+        deletionScheduledAt: DateTime.now().add(const Duration(days: 3)),
+      );
+      await pumpSignedInApp(tester, sync: data);
+      await pushOverShell(tester, AppRoutes.accountSettings);
+
+      expect(
+        find.text(l10n.accountDeletionCancel, skipOffstage: false),
+        findsOneWidget,
+      );
+      await scrollToEnd(tester, settingsList());
+      expect(tester.takeException(), isNull);
+
+      data.shared.accountSettings.state = fakeAccountSettingsState();
+      await tester.pumpAndSettle();
+      await openSettingsRow(tester, l10n.accountSettingsDeleteAccount);
+      expect(find.text(l10n.accountDeletionDialogTitle), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.tap(dialogAction(l10n.cancel));
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('account tab with a scheduled deletion at 200 % in dark mode '
+        '(${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      final l10n = lookupAppLocalizations(locale);
+      final data = richData();
+      data.shared.accountSettings.state = fakeAccountSettingsState(
+        deletionScheduledAt: DateTime.now().add(const Duration(days: 3)),
+      );
+      await pumpSignedInApp(tester, sync: data);
+      await openTab(tester, l10n.tabAccount);
+
+      expect(
+        find.text(l10n.accountDeletionCancel, skipOffstage: false),
+        findsOneWidget,
+      );
+      await scrollToEnd(tester, find.byType(ListView));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('sessions with a menu, the details, both confirmations and a '
+        'partial failure at 200 % in dark mode (${locale.languageCode})', (
+      tester,
+    ) async {
+      useWorstCase(tester, locale);
+      final l10n = lookupAppLocalizations(locale);
+      final data = richData();
+      final now = DateTime.now();
+      data.accountSecurity.sessionList = [
+        ...fakeSessions(now),
+        UserSession(
+          id: 'long',
+          deviceInfo:
+              'AnUnknownClientWithAVeryLongName/12.3.4 (an operating system '
+              'with a long description; more details)',
+          ipAddress: '2001:0db8:85a3:0000:0000:8a2e:0370:7334',
+          created: now.subtract(const Duration(days: 30)),
+          lastActive: now.subtract(const Duration(days: 20)),
+        ),
+      ];
+      data.accountSecurity.revokeFailures[fakeScriptSessionId] =
+          const NetworkFailure(NetworkProblem.unreachable);
+      await pumpSignedInApp(tester, sync: data);
+      await pushOverShell(tester, AppRoutes.accountSessions);
+
+      expect(find.byType(SessionsPage), findsOneWidget);
+      await scrollToEnd(tester, find.byType(SessionsPage));
+      expect(tester.takeException(), isNull);
+
+      await tapInView(
+        tester,
+        find.byType(SessionsPage),
+        find.byTooltip(
+          l10n.sessionsOptionsFor(l10n.sessionsBrowserOn('Firefox', 'Linux')),
+        ),
+      );
+      expect(tester.takeException(), isNull);
+      await tester.tap(
+        find.ancestor(
+          of: find.text(l10n.sessionsEnd),
+          matching: find.byWidgetPredicate((widget) => widget is PopupMenuItem),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      await tester.tap(dialogAction(l10n.cancel));
+      await tester.pumpAndSettle();
+
+      await tapInView(
+        tester,
+        find.byType(SessionsPage),
+        find.textContaining('AnUnknownClient'),
+      );
+      await scrollToEnd(tester, find.byType(BottomSheet));
+      expect(tester.takeException(), isNull);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      await tapInView(
+        tester,
+        find.byType(SessionsPage),
+        find.text(l10n.sessionsEndOthers),
+      );
+      expect(tester.takeException(), isNull);
+      await tester.tap(dialogAction(l10n.sessionsEndOthers));
+      await tester.pumpAndSettle();
+      expect(find.byType(SnackBar), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('API tokens, a token sheet, the form with every group, the '
+        'expiry picker and the one-time token at 200 % in dark mode '
+        '(${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      final l10n = lookupAppLocalizations(locale);
+      final data = richData();
+      final now = DateTime.now();
+      data.accountSecurity.apiTokenList = [
+        fakeApiToken(
+          title: 'A token for the home automation with a long title',
+          expiresAt: now.add(const Duration(days: 12)),
+          permissions: const {
+            'projects_views_tasks': ['read_all'],
+            'tasks_attachments': ['create', 'delete', 'read_all', 'read_one'],
+          },
+        ),
+        fakeApiToken(
+          id: 2,
+          title: 'Expired',
+          expiresAt: now.subtract(const Duration(days: 40)),
+        ),
+      ];
+      await pumpSignedInApp(tester, sync: data);
+      await pushOverShell(tester, AppRoutes.accountApiTokens);
+
+      await scrollToEnd(tester, find.byType(ApiTokensPage));
+      expect(tester.takeException(), isNull);
+      await tapInView(
+        tester,
+        find.byType(ApiTokensPage),
+        find.textContaining('home automation'),
+      );
+      await scrollToEnd(tester, find.byType(BottomSheet));
+      expect(tester.takeException(), isNull);
+      await tester.tap(
+        find.widgetWithText(OutlinedButton, l10n.apiTokensDelete),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      await tester.tap(dialogAction(l10n.cancel));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip(l10n.apiTokensNew));
+      await tester.pumpAndSettle();
+      expect(find.byType(ApiTokenFormPage), findsOneWidget);
+      await tester.enterText(
+        find.byType(TextField),
+        'A token for a script with a title long enough to wrap twice',
+      );
+      await tapInView(
+        tester,
+        find.byType(ApiTokenFormPage),
+        find.text(l10n.apiTokenPresetFullAccess),
+      );
+      for (final group in ['Labels', 'Tasks', 'Other']) {
+        await tapInView(
+          tester,
+          find.byType(ApiTokenFormPage),
+          find.byTooltip(l10n.apiTokenFormShowGroup(group)),
+        );
+      }
+      await scrollToEnd(tester, find.byType(ApiTokenFormPage));
+      expect(tester.takeException(), isNull);
+
+      await tapInView(
+        tester,
+        find.byType(ApiTokenFormPage),
+        find.text(l10n.apiTokenFormExpiry),
+      );
+      await scrollToEnd(tester, find.byType(BottomSheet));
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.text(l10n.apiTokenFormExpiryCustom));
+      await tester.pumpAndSettle();
+      expect(find.byType(DatePickerDialog), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.text(l10n.cancel).last);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text(l10n.apiTokenFormCreate));
+      await tester.pumpAndSettle();
+      expect(find.byType(OneTimeSecretView), findsOneWidget);
+      await scrollToEnd(tester, find.byType(OneTimeSecretView));
+      expect(tester.takeException(), isNull);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.oneTimeSecretLeaveTitle), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.text(l10n.oneTimeSecretStay));
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('CalDAV with tokens, a confirmation and a new token at 200 % '
+        'in dark mode (${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      final l10n = lookupAppLocalizations(locale);
+      final data = richData();
+      data.accountSecurity
+        ..totp = TotpStatus.enabled
+        ..caldavTokenList = [
+          for (var id = 1; id <= 3; id++)
+            CaldavToken(
+              id: id,
+              created: DateTime.now().subtract(Duration(days: id)),
+            ),
+        ];
+      data.shared.accountSettings.state = fakeAccountSettingsState(
+        settings: const UserSettings(name: 'Maximiliane'),
+      );
+      await pumpSignedInApp(tester, sync: data);
+      await pushOverShell(tester, AppRoutes.accountCaldav);
+
+      expect(find.text(l10n.caldavTokenTotp), findsOneWidget);
+      await scrollToEnd(tester, find.byType(CaldavPage));
+      expect(tester.takeException(), isNull);
+      await tapInView(
+        tester,
+        find.byType(CaldavPage),
+        find.byTooltip(l10n.caldavDeleteToken(3)),
+      );
+      expect(tester.takeException(), isNull);
+      await tester.tap(dialogAction(l10n.cancel));
+      await tester.pumpAndSettle();
+
+      await tapInView(
+        tester,
+        find.byType(CaldavPage),
+        find.text(l10n.caldavNewToken),
+      );
+      expect(find.byType(OneTimeSecretPage), findsOneWidget);
+      await scrollToEnd(tester, find.byType(OneTimeSecretPage));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('data export ready, and failing, at 200 % in dark mode '
+        '(${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      final l10n = lookupAppLocalizations(locale);
+      final data = richData();
+      data.accountSecurity.export = UserDataExport(
+        id: 3,
+        size: 123456789,
+        expires: DateTime.now().add(const Duration(days: 6)),
+      );
+      await pumpSignedInApp(tester, sync: data);
+      await pushOverShell(tester, AppRoutes.accountDataExport);
+
+      await scrollToEnd(tester, find.byType(DataExportPage));
+      expect(tester.takeException(), isNull);
+
+      await scrollToTop(tester, find.byType(DataExportPage));
+      data.accountSecurity.failures['dataExport'] = const NetworkFailure(
+        NetworkProblem.timeout,
+      );
+      await tester.fling(
+        find.text(l10n.dataExportIntro),
+        const Offset(0, 600),
+        1000,
+      );
+      await tester.pumpAndSettle();
+      await scrollToEnd(tester, find.byType(DataExportPage));
       expect(tester.takeException(), isNull);
     });
 

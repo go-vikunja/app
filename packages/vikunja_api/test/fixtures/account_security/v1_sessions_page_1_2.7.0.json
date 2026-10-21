@@ -1,0 +1,11 @@
+{
+  "server": "2.7.0",
+  "request": "GET /api/v1/user/sessions?page=1&per_page=2",
+  "status": 200,
+  "headers": {
+    "content-type": "application/json",
+    "x-pagination-total-pages": "2",
+    "x-pagination-result-count": "2"
+  },
+  "body": "[{\"id\":\"99392678-be79-4a08-97f7-5f08f10e230e\",\"device_info\":\"Rurana/0.31.0+42 (android 15)\",\"ip_address\":\"172.20.0.1\",\"last_active\":\"2026-10-21T06:19:09Z\",\"created\":\"2026-10-21T06:19:09Z\"},{\"id\":\"4fba43b8-d48d-479f-894b-9d9f21f8b421\",\"device_info\":\"Rurana fixture capture\",\"ip_address\":\"172.20.0.1\",\"last_active\":\"2026-10-21T06:19:09Z\",\"created\":\"2026-10-21T06:19:09Z\"}]\n"
+}

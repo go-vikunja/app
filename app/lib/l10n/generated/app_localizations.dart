@@ -7691,6 +7691,960 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The photos could not be opened.'**
   String get avatarPickFailed;
+
+  /// No description provided for @accountSettingsSecurity.
+  ///
+  /// In en, this message translates to:
+  /// **'Security'**
+  String get accountSettingsSecurity;
+
+  /// No description provided for @accountSettingsTotp.
+  ///
+  /// In en, this message translates to:
+  /// **'Two-factor authentication'**
+  String get accountSettingsTotp;
+
+  /// No description provided for @accountSettingsTotpOn.
+  ///
+  /// In en, this message translates to:
+  /// **'On'**
+  String get accountSettingsTotpOn;
+
+  /// No description provided for @accountSettingsTotpOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get accountSettingsTotpOff;
+
+  /// No description provided for @accountSettingsTotpSetupStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Setup not finished'**
+  String get accountSettingsTotpSetupStarted;
+
+  /// No description provided for @accountSettingsTotpChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking…'**
+  String get accountSettingsTotpChecking;
+
+  /// No description provided for @accountSettingsTotpUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not be checked'**
+  String get accountSettingsTotpUnknown;
+
+  /// No description provided for @accountSettingsTotpNotOffered.
+  ///
+  /// In en, this message translates to:
+  /// **'Not offered by this server'**
+  String get accountSettingsTotpNotOffered;
+
+  /// No description provided for @accountSettingsTotpNotAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Not available for this account'**
+  String get accountSettingsTotpNotAvailable;
+
+  /// No description provided for @accountSettingsTotpNotChecked.
+  ///
+  /// In en, this message translates to:
+  /// **'Not checked over an unencrypted connection'**
+  String get accountSettingsTotpNotChecked;
+
+  /// No description provided for @accountSettingsTotpTurnOnNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Opens the web in your browser. Turning it on signs you out everywhere, this app included. Then sign in here again; your browser asks for the code.'**
+  String get accountSettingsTotpTurnOnNote;
+
+  /// No description provided for @accountSettingsTotpOnNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Opens the web in your browser. Turning it off needs your password.'**
+  String get accountSettingsTotpOnNote;
+
+  /// No description provided for @accountSettingsSessions.
+  ///
+  /// In en, this message translates to:
+  /// **'Sessions'**
+  String get accountSettingsSessions;
+
+  /// No description provided for @accountSettingsSessionsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 signed-in device or browser} other{{count} signed-in devices and browsers}}'**
+  String accountSettingsSessionsCount(int count);
+
+  /// No description provided for @accountSettingsSessionsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Where you are signed in'**
+  String get accountSettingsSessionsHint;
+
+  /// No description provided for @accountSettingsIntegrations.
+  ///
+  /// In en, this message translates to:
+  /// **'Integrations'**
+  String get accountSettingsIntegrations;
+
+  /// No description provided for @accountSettingsApiTokens.
+  ///
+  /// In en, this message translates to:
+  /// **'API tokens'**
+  String get accountSettingsApiTokens;
+
+  /// No description provided for @accountSettingsApiTokensCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No tokens} =1{1 token} other{{count} tokens}}'**
+  String accountSettingsApiTokensCount(int count);
+
+  /// No description provided for @accountSettingsApiTokensHint.
+  ///
+  /// In en, this message translates to:
+  /// **'For scripts and other apps'**
+  String get accountSettingsApiTokensHint;
+
+  /// The protocol's name; not translated.
+  ///
+  /// In en, this message translates to:
+  /// **'CalDAV'**
+  String get accountSettingsCaldav;
+
+  /// No description provided for @accountSettingsCaldavHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Your tasks in calendar and task apps'**
+  String get accountSettingsCaldavHint;
+
+  /// No description provided for @accountSettingsYourData.
+  ///
+  /// In en, this message translates to:
+  /// **'Your data'**
+  String get accountSettingsYourData;
+
+  /// No description provided for @accountSettingsExport.
+  ///
+  /// In en, this message translates to:
+  /// **'Export your data'**
+  String get accountSettingsExport;
+
+  /// No description provided for @accountSettingsExportReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready to download until {date}'**
+  String accountSettingsExportReady(String date);
+
+  /// No description provided for @accountSettingsExportNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No export yet'**
+  String get accountSettingsExportNone;
+
+  /// No description provided for @accountSettingsExportHint.
+  ///
+  /// In en, this message translates to:
+  /// **'A copy of your projects and tasks'**
+  String get accountSettingsExportHint;
+
+  /// No description provided for @accountSettingsDeleteAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete account'**
+  String get accountSettingsDeleteAccount;
+
+  /// No description provided for @accountSettingsWebAsksPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'The web asks for your password.'**
+  String get accountSettingsWebAsksPassword;
+
+  /// No description provided for @accountDeletionScheduled.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account will be deleted on {date}.'**
+  String accountDeletionScheduled(String date);
+
+  /// No description provided for @accountDeletionOverdue.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account has been due for deletion since {date}.'**
+  String accountDeletionOverdue(String date);
+
+  /// No description provided for @accountDeletionCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel deletion'**
+  String get accountDeletionCancel;
+
+  /// No description provided for @accountDeletionScheduledRow.
+  ///
+  /// In en, this message translates to:
+  /// **'Deletion on {date}. Cancel it on the web.'**
+  String accountDeletionScheduledRow(String date);
+
+  /// No description provided for @accountDeletionOverdueRow.
+  ///
+  /// In en, this message translates to:
+  /// **'Deletion due since {date}. Cancel it on the web.'**
+  String accountDeletionOverdueRow(String date);
+
+  /// No description provided for @accountDeletionDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete your account?'**
+  String get accountDeletionDialogTitle;
+
+  /// No description provided for @accountDeletionDialogPermanent.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleting your account is permanent. All projects and tasks you own are deleted with it; what you shared with others passes to them.'**
+  String get accountDeletionDialogPermanent;
+
+  /// No description provided for @accountDeletionDialogEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'The server emails you a link to confirm. Once you confirm, your account is deleted after three days; until then you can change your mind.'**
+  String get accountDeletionDialogEmail;
+
+  /// No description provided for @accountDeletionDialogNoEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'If your server does not send emails, ask its administrator to delete your account.'**
+  String get accountDeletionDialogNoEmail;
+
+  /// No description provided for @accountDeletionContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue in the browser'**
+  String get accountDeletionContinue;
+
+  /// No description provided for @accountSecurityNeedsConnection.
+  ///
+  /// In en, this message translates to:
+  /// **'This needs a connection to the server.'**
+  String get accountSecurityNeedsConnection;
+
+  /// No description provided for @accountSecurityUnconfirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'The server\'s answer did not arrive. Refresh to see whether it worked.'**
+  String get accountSecurityUnconfirmed;
+
+  /// No description provided for @accountSecuritySignInAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in again first.'**
+  String get accountSecuritySignInAgain;
+
+  /// No description provided for @accountSecurityNotOffered.
+  ///
+  /// In en, this message translates to:
+  /// **'This server does not offer this.'**
+  String get accountSecurityNotOffered;
+
+  /// No description provided for @accountSecurityRateLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'The server is busy. Try again in a minute.'**
+  String get accountSecurityRateLimited;
+
+  /// No description provided for @accountSecurityRefused.
+  ///
+  /// In en, this message translates to:
+  /// **'The server refused: {message}'**
+  String accountSecurityRefused(String message);
+
+  /// No description provided for @accountSecurityFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'That did not work. Try again later.'**
+  String get accountSecurityFailed;
+
+  /// Screen readers say it for a spinner on a row while it is changed.
+  ///
+  /// In en, this message translates to:
+  /// **'Working'**
+  String get accountSecurityWorking;
+
+  /// No description provided for @accountSecurityCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Created {date}'**
+  String accountSecurityCreated(String date);
+
+  /// No description provided for @sessionsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sessions'**
+  String get sessionsTitle;
+
+  /// No description provided for @sessionsIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'These devices and browsers are signed in to your account. Ending a session signs that device or browser out; it can take up to 10 minutes.'**
+  String get sessionsIntro;
+
+  /// No description provided for @sessionsLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading sessions…'**
+  String get sessionsLoading;
+
+  /// No description provided for @sessionsThisDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'This device'**
+  String get sessionsThisDevice;
+
+  /// No description provided for @sessionsThisDeviceHint.
+  ///
+  /// In en, this message translates to:
+  /// **'To end this session, sign out of the account in this app.'**
+  String get sessionsThisDeviceHint;
+
+  /// No description provided for @sessionsLastActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Last active {when}'**
+  String sessionsLastActive(String when);
+
+  /// No description provided for @sessionsLastActiveLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Last active'**
+  String get sessionsLastActiveLabel;
+
+  /// No description provided for @sessionsSignedIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in'**
+  String get sessionsSignedIn;
+
+  /// No description provided for @sessionsDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Device'**
+  String get sessionsDevice;
+
+  /// No description provided for @sessionsIpAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'IP address'**
+  String get sessionsIpAddress;
+
+  /// No description provided for @sessionsUnknownDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown device'**
+  String get sessionsUnknownDevice;
+
+  /// No description provided for @sessionsBrowserOn.
+  ///
+  /// In en, this message translates to:
+  /// **'{browser} on {system}'**
+  String sessionsBrowserOn(String browser, String system);
+
+  /// A session whose User-Agent is only the Dart runtime, e.g. a script.
+  ///
+  /// In en, this message translates to:
+  /// **'An app without a name'**
+  String get sessionsDartClient;
+
+  /// No description provided for @sessionsEnd.
+  ///
+  /// In en, this message translates to:
+  /// **'End session'**
+  String get sessionsEnd;
+
+  /// No description provided for @sessionsEndTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'End this session?'**
+  String get sessionsEndTitle;
+
+  /// No description provided for @sessionsEndBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{device} will be signed out. It can take up to 10 minutes.'**
+  String sessionsEndBody(String device);
+
+  /// No description provided for @sessionsEnded.
+  ///
+  /// In en, this message translates to:
+  /// **'Session ended. It can take up to 10 minutes to take effect.'**
+  String get sessionsEnded;
+
+  /// No description provided for @sessionsEndOthers.
+  ///
+  /// In en, this message translates to:
+  /// **'End all other sessions'**
+  String get sessionsEndOthers;
+
+  /// No description provided for @sessionsEndOthersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'End all other sessions?'**
+  String get sessionsEndOthersTitle;
+
+  /// No description provided for @sessionsEndOthersBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{The other device or browser is signed out} other{All {count} other devices and browsers are signed out}} within 10 minutes. This device stays signed in.'**
+  String sessionsEndOthersBody(int count);
+
+  /// No description provided for @sessionsEndedOthers.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No other session to end.} =1{1 session ended. It can take up to 10 minutes to take effect.} other{{count} sessions ended. It can take up to 10 minutes to take effect.}}'**
+  String sessionsEndedOthers(int count);
+
+  /// No description provided for @sessionsNotAllEnded.
+  ///
+  /// In en, this message translates to:
+  /// **'Ended: {ended}. Still signed in: {notEnded}.'**
+  String sessionsNotAllEnded(int ended, int notEnded);
+
+  /// No description provided for @sessionsNoOthers.
+  ///
+  /// In en, this message translates to:
+  /// **'No other sessions'**
+  String get sessionsNoOthers;
+
+  /// No description provided for @sessionsNoOthersBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Only this device is signed in to your account.'**
+  String get sessionsNoOthersBody;
+
+  /// No description provided for @sessionsOptionsFor.
+  ///
+  /// In en, this message translates to:
+  /// **'Options for {device}'**
+  String sessionsOptionsFor(String device);
+
+  /// No description provided for @apiTokensTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'API tokens'**
+  String get apiTokensTitle;
+
+  /// No description provided for @apiTokensIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'API tokens let scripts and other apps use Vikunja\'s API without your password. A token can only do what its permissions allow.'**
+  String get apiTokensIntro;
+
+  /// No description provided for @apiTokensDocs.
+  ///
+  /// In en, this message translates to:
+  /// **'API documentation'**
+  String get apiTokensDocs;
+
+  /// No description provided for @apiTokensLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading API tokens…'**
+  String get apiTokensLoading;
+
+  /// No description provided for @apiTokensEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No API tokens'**
+  String get apiTokensEmptyTitle;
+
+  /// No description provided for @apiTokensEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Create one for a script or another app.'**
+  String get apiTokensEmptyBody;
+
+  /// No description provided for @apiTokensNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New token'**
+  String get apiTokensNew;
+
+  /// No description provided for @apiTokensExpires.
+  ///
+  /// In en, this message translates to:
+  /// **'Expires {date}'**
+  String apiTokensExpires(String date);
+
+  /// No description provided for @apiTokensExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Expired {when}'**
+  String apiTokensExpired(String when);
+
+  /// No description provided for @apiTokensPermissionCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 permission} other{{count} permissions}}'**
+  String apiTokensPermissionCount(int count);
+
+  /// No description provided for @apiTokensPermissions.
+  ///
+  /// In en, this message translates to:
+  /// **'Permissions'**
+  String get apiTokensPermissions;
+
+  /// No description provided for @apiTokensDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete token'**
+  String get apiTokensDelete;
+
+  /// No description provided for @apiTokensDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete the token “{title}”?'**
+  String apiTokensDeleteTitle(String title);
+
+  /// No description provided for @apiTokensDeleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Apps and scripts using it stop working. This cannot be undone.'**
+  String get apiTokensDeleteBody;
+
+  /// No description provided for @apiTokensDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Token deleted'**
+  String get apiTokensDeleted;
+
+  /// No description provided for @apiTokenFormTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New API token'**
+  String get apiTokenFormTitle;
+
+  /// No description provided for @apiTokenFormCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Create'**
+  String get apiTokenFormCreate;
+
+  /// No description provided for @apiTokenFormCreating.
+  ///
+  /// In en, this message translates to:
+  /// **'Creating…'**
+  String get apiTokenFormCreating;
+
+  /// No description provided for @apiTokenFormLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading permissions…'**
+  String get apiTokenFormLoading;
+
+  /// No description provided for @apiTokenFormName.
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get apiTokenFormName;
+
+  /// No description provided for @apiTokenFormNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'A title you will recognise later'**
+  String get apiTokenFormNameHint;
+
+  /// No description provided for @apiTokenFormNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a title.'**
+  String get apiTokenFormNameRequired;
+
+  /// No description provided for @apiTokenFormExpiry.
+  ///
+  /// In en, this message translates to:
+  /// **'Expires'**
+  String get apiTokenFormExpiry;
+
+  /// No description provided for @apiTokenFormExpiryDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{days, plural, =1{In 1 day} other{In {days} days}}'**
+  String apiTokenFormExpiryDays(int days);
+
+  /// No description provided for @apiTokenFormExpiryCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a day…'**
+  String get apiTokenFormExpiryCustom;
+
+  /// No description provided for @apiTokenFormExpiryPick.
+  ///
+  /// In en, this message translates to:
+  /// **'Valid through'**
+  String get apiTokenFormExpiryPick;
+
+  /// No description provided for @apiTokenFormExpiryThrough.
+  ///
+  /// In en, this message translates to:
+  /// **'Through {date}'**
+  String apiTokenFormExpiryThrough(String date);
+
+  /// No description provided for @apiTokenFormExpiryPast.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a day that has not passed yet.'**
+  String get apiTokenFormExpiryPast;
+
+  /// No description provided for @apiTokenFormPermissions.
+  ///
+  /// In en, this message translates to:
+  /// **'Permissions'**
+  String get apiTokenFormPermissions;
+
+  /// No description provided for @apiTokenFormPermissionsHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose what the token may do. The names come from the server and are not translated.'**
+  String get apiTokenFormPermissionsHelp;
+
+  /// No description provided for @apiTokenFormPermissionsRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose at least one permission.'**
+  String get apiTokenFormPermissionsRequired;
+
+  /// No description provided for @apiTokenFormNoPermissions.
+  ///
+  /// In en, this message translates to:
+  /// **'This server offers no permissions for tokens.'**
+  String get apiTokenFormNoPermissions;
+
+  /// No description provided for @apiTokenFormPresets.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick presets'**
+  String get apiTokenFormPresets;
+
+  /// No description provided for @apiTokenPresetReadOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Read only'**
+  String get apiTokenPresetReadOnly;
+
+  /// No description provided for @apiTokenPresetTasks.
+  ///
+  /// In en, this message translates to:
+  /// **'Task management'**
+  String get apiTokenPresetTasks;
+
+  /// No description provided for @apiTokenPresetProjects.
+  ///
+  /// In en, this message translates to:
+  /// **'Project management'**
+  String get apiTokenPresetProjects;
+
+  /// No description provided for @apiTokenPresetFullAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Full access'**
+  String get apiTokenPresetFullAccess;
+
+  /// No description provided for @apiTokenFormGroupSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'{selected} of {total}'**
+  String apiTokenFormGroupSelected(int selected, int total);
+
+  /// No description provided for @apiTokenFormShowGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the permissions of {group}'**
+  String apiTokenFormShowGroup(String group);
+
+  /// No description provided for @apiTokenFormHideGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide the permissions of {group}'**
+  String apiTokenFormHideGroup(String group);
+
+  /// No description provided for @apiTokenFormDiscardBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The token has not been created.'**
+  String get apiTokenFormDiscardBody;
+
+  /// No description provided for @oneTimeSecretApiTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your new API token'**
+  String get oneTimeSecretApiTitle;
+
+  /// No description provided for @oneTimeSecretCaldavTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your new CalDAV token'**
+  String get oneTimeSecretCaldavTitle;
+
+  /// No description provided for @oneTimeSecretLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'The new token'**
+  String get oneTimeSecretLabel;
+
+  /// No description provided for @oneTimeSecretCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get oneTimeSecretCopy;
+
+  /// No description provided for @copiedToClipboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied'**
+  String get copiedToClipboard;
+
+  /// No description provided for @copyToClipboardFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Copying did not work. Try again.'**
+  String get copyToClipboardFailed;
+
+  /// No description provided for @oneTimeSecretOnce.
+  ///
+  /// In en, this message translates to:
+  /// **'You won\'t see it again. Store it somewhere safe, such as a password manager.'**
+  String get oneTimeSecretOnce;
+
+  /// No description provided for @oneTimeSecretApiUsage.
+  ///
+  /// In en, this message translates to:
+  /// **'Scripts and apps send it as a bearer token in the Authorization header.'**
+  String get oneTimeSecretApiUsage;
+
+  /// No description provided for @oneTimeSecretCaldavUsage.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter it as the password in your CalDAV app, with the username {username}.'**
+  String oneTimeSecretCaldavUsage(String username);
+
+  /// No description provided for @oneTimeSecretDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get oneTimeSecretDone;
+
+  /// No description provided for @oneTimeSecretLeaveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave without copying?'**
+  String get oneTimeSecretLeaveTitle;
+
+  /// No description provided for @oneTimeSecretLeaveBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The token is shown only now. Without it, you will have to create a new one.'**
+  String get oneTimeSecretLeaveBody;
+
+  /// No description provided for @oneTimeSecretStay.
+  ///
+  /// In en, this message translates to:
+  /// **'Stay'**
+  String get oneTimeSecretStay;
+
+  /// No description provided for @oneTimeSecretLeave.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave'**
+  String get oneTimeSecretLeave;
+
+  /// No description provided for @caldavTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'CalDAV'**
+  String get caldavTitle;
+
+  /// No description provided for @caldavIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect calendar and task apps that speak CalDAV to see and change your tasks there. Enter this address in the app:'**
+  String get caldavIntro;
+
+  /// No description provided for @caldavAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'CalDAV address'**
+  String get caldavAddress;
+
+  /// No description provided for @caldavUsername.
+  ///
+  /// In en, this message translates to:
+  /// **'Username'**
+  String get caldavUsername;
+
+  /// No description provided for @caldavCopyAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy the address'**
+  String get caldavCopyAddress;
+
+  /// No description provided for @caldavCopyUsername.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy the username'**
+  String get caldavCopyUsername;
+
+  /// No description provided for @caldavPasswordOrToken.
+  ///
+  /// In en, this message translates to:
+  /// **'As the password, use a CalDAV token or your account password.'**
+  String get caldavPasswordOrToken;
+
+  /// No description provided for @caldavTokenTotp.
+  ///
+  /// In en, this message translates to:
+  /// **'Two-factor authentication is on, so your account password does not work here. Use a CalDAV token as the password.'**
+  String get caldavTokenTotp;
+
+  /// No description provided for @caldavTokenProvider.
+  ///
+  /// In en, this message translates to:
+  /// **'You sign in through {provider}, so use a CalDAV token as the password.'**
+  String caldavTokenProvider(String provider);
+
+  /// No description provided for @caldavTokenUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Use a CalDAV token as the password. Your account password works too, unless two-factor authentication is on.'**
+  String get caldavTokenUnknown;
+
+  /// No description provided for @caldavApiTokenHint.
+  ///
+  /// In en, this message translates to:
+  /// **'An API token with the CalDAV permission works as the password too.'**
+  String get caldavApiTokenHint;
+
+  /// No description provided for @caldavDocs.
+  ///
+  /// In en, this message translates to:
+  /// **'More about CalDAV in Vikunja'**
+  String get caldavDocs;
+
+  /// No description provided for @caldavTokens.
+  ///
+  /// In en, this message translates to:
+  /// **'CalDAV tokens'**
+  String get caldavTokens;
+
+  /// No description provided for @caldavTokensLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading CalDAV tokens…'**
+  String get caldavTokensLoading;
+
+  /// No description provided for @caldavTokensEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No CalDAV tokens yet.'**
+  String get caldavTokensEmpty;
+
+  /// No description provided for @caldavTokenName.
+  ///
+  /// In en, this message translates to:
+  /// **'Token {id}'**
+  String caldavTokenName(int id);
+
+  /// No description provided for @caldavNewToken.
+  ///
+  /// In en, this message translates to:
+  /// **'New CalDAV token'**
+  String get caldavNewToken;
+
+  /// No description provided for @caldavDeleteToken.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete token {id}'**
+  String caldavDeleteToken(int id);
+
+  /// No description provided for @caldavDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete token {id}?'**
+  String caldavDeleteTitle(int id);
+
+  /// No description provided for @caldavDeleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'CalDAV apps using it can no longer sign in. This cannot be undone.'**
+  String get caldavDeleteBody;
+
+  /// No description provided for @caldavDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get caldavDelete;
+
+  /// No description provided for @caldavTokenDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'CalDAV token deleted'**
+  String get caldavTokenDeleted;
+
+  /// No description provided for @dataExportTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Export your data'**
+  String get dataExportTitle;
+
+  /// No description provided for @dataExportIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'The export holds your projects, tasks, comments, attachments and saved filters. You can import it into any Vikunja server.'**
+  String get dataExportIntro;
+
+  /// No description provided for @dataExportLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Looking for an export…'**
+  String get dataExportLoading;
+
+  /// No description provided for @dataExportReadyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready to download'**
+  String get dataExportReadyTitle;
+
+  /// No description provided for @dataExportReadyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{size}, available until {date}'**
+  String dataExportReadyBody(String size, String date);
+
+  /// No description provided for @dataExportNoneTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No export yet'**
+  String get dataExportNoneTitle;
+
+  /// No description provided for @dataExportNoneBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Request one below. An export is kept for seven days.'**
+  String get dataExportNoneBody;
+
+  /// No description provided for @dataExportRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'Request a new export'**
+  String get dataExportRequest;
+
+  /// No description provided for @dataExportRequestNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Opens the web in your browser. The server emails you when the export is ready, and this page shows it too.'**
+  String get dataExportRequestNote;
+
+  /// No description provided for @dataExportDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'Download'**
+  String get dataExportDownload;
 }
 
 class _AppLocalizationsDelegate

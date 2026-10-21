@@ -1,0 +1,18 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v2/tokens",
+  "sent": {
+    "title": "",
+    "permissions": {
+      "tasks": [
+        "read_all"
+      ]
+    },
+    "expires_at": "2026-11-20T12:00:00.000Z"
+  },
+  "status": 422,
+  "headers": {
+    "content-type": "application/problem+json"
+  },
+  "body": "{\"$schema\":\"http://localhost:34527/api/v2/schemas/VikunjaErrorModel.json\",\"title\":\"Unprocessable Entity\",\"status\":422,\"detail\":\"validation failed\",\"errors\":[{\"message\":\"expected length >= 1\",\"location\":\"body.title\",\"value\":\"\"}]}\n"
+}

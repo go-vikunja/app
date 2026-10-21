@@ -9,10 +9,12 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/app/router/pushed_pages.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/text/html_to_text.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
+import 'package:vikunja_mobile/features/common/presentation/form_parts.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
 import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
@@ -164,8 +166,9 @@ class _ProjectEditPageState extends ConsumerState<ProjectEditPage> {
   Future<void> _editDescription() async {
     final messenger = ScaffoldMessenger.of(context);
     final l10n = context.l10n;
-    final saved = await GoRouter.of(context)
-        .push<bool>(AppRoutes.projectDescription(widget.projectId));
+    final saved = await context.pushPage<bool>(
+      AppRoutes.projectDescription(widget.projectId),
+    );
     if (saved ?? false) {
       messenger
         ..hideCurrentSnackBar()

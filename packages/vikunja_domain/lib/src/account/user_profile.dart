@@ -13,6 +13,7 @@ final class UserProfile {
     this.authProvider = '',
     this.pendingEmail,
     this.updated,
+    this.deletionScheduledAt,
   });
 
   final int id;
@@ -34,6 +35,11 @@ final class UserProfile {
   /// changed, since avatar answers carry no cache validators.
   final DateTime? updated;
 
+  /// When the server will delete the account, set once the user confirmed
+  /// the deletion mail. A past date does not mean the account is gone: the
+  /// hourly deletion can fail and retry.
+  final DateTime? deletionScheduledAt;
+
   String get displayName => name.trim().isEmpty ? username : name.trim();
 
   User get user => User(id: id, username: username, name: name);
@@ -47,7 +53,8 @@ final class UserProfile {
       other.isLocalUser == isLocalUser &&
       other.authProvider == authProvider &&
       other.pendingEmail == pendingEmail &&
-      other.updated == updated;
+      other.updated == updated &&
+      other.deletionScheduledAt == deletionScheduledAt;
 
   @override
   int get hashCode => Object.hash(
@@ -58,6 +65,7 @@ final class UserProfile {
     authProvider,
     pendingEmail,
     updated,
+    deletionScheduledAt,
   );
 
   @override

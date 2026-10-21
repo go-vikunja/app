@@ -19,6 +19,7 @@ import 'package:vikunja_mobile/features/attachments/application/attachment_picke
 import 'package:vikunja_mobile/features/attachments/presentation/attachment_messages.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
+import 'package:vikunja_mobile/features/common/presentation/file_size_text.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
 import 'package:vikunja_mobile/features/description_editor/application/description_drafts.dart';
 import 'package:vikunja_mobile/features/description_editor/application/description_target.dart';

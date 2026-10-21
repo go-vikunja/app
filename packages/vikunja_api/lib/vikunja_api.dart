@@ -1,3 +1,4 @@
+export 'src/account/account_security_port.dart';
 export 'src/account/user_api.dart';
 export 'src/auth/access_token_source.dart';
 export 'src/auth/auth_interceptor.dart';

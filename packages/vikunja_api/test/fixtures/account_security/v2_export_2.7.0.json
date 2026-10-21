@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "GET /api/v2/user/export",
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"$schema\":\"http://localhost:34527/api/v2/schemas/UserExportStatus.json\",\"id\":461,\"size\":1087,\"created\":\"2026-10-21T06:19:21Z\",\"expires\":\"2026-10-28T06:19:21Z\"}\n"
+}

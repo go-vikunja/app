@@ -1,0 +1,22 @@
+{
+  "server": "2.7.0",
+  "request": "PUT /api/v1/tokens",
+  "sent": {
+    "title": "Home Assistant",
+    "permissions": {
+      "tasks": [
+        "read_all",
+        "update"
+      ],
+      "caldav": [
+        "access"
+      ]
+    },
+    "expires_at": "2026-11-20T12:00:00.000Z"
+  },
+  "status": 201,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"id\":91,\"title\":\"Home Assistant\",\"token\":\"tk_0000000000000000000000000000000000000000\",\"permissions\":{\"caldav\":[\"access\"],\"tasks\":[\"read_all\",\"update\"]},\"expires_at\":\"2026-11-20T12:00:00Z\",\"created\":\"2026-10-21T06:19:11.722658244Z\",\"owner_id\":1007}\n"
+}

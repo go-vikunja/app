@@ -9,6 +9,7 @@ import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dar
 
 import '../../helpers/editor_bridge_fakes.dart';
 import '../../helpers/pump_app.dart';
+import '../../helpers/route_report.dart';
 import '../../helpers/sample_data.dart';
 import '../../helpers/sync_fakes.dart';
 
@@ -120,6 +121,21 @@ void main() {
 
       expect(data.details.calls, hasLength(reads + 1));
       expect(inSheet(find.text('IMG_1.png')), findsOneWidget);
+    });
+
+    testWidgets('saved after the app was opened again during the editor, '
+        'the sheet still says so and reads the details again', (tester) async {
+      await openSheet(tester, 'Quarterly report');
+      await tester.tap(inSheet(find.byTooltip(en.taskDetailEditDescription)));
+      await tester.pumpAndSettle();
+      final reads = data.details.calls.length;
+
+      await reportRouteFromPlatform(tester);
+      await saveEdit(tester, '<p>Numbers, charts and a summary</p>');
+
+      expect(find.byType(DescriptionEditorPage), findsNothing);
+      expect(inSheet(find.text(en.descriptionEditorSaved)), findsOneWidget);
+      expect(data.details.calls, hasLength(reads + 1));
     });
 
     testWidgets('a task without a description offers "Add description"', (
@@ -236,6 +252,19 @@ void main() {
       expect(data.tasks.updates, isEmpty);
     });
 
+    testWidgets('saved after the app was opened again during the editor, '
+        'the page still says so', (tester) async {
+      await openEditPage(tester, 1);
+      await tester.tap(find.text(en.taskDetailDescription));
+      await tester.pumpAndSettle();
+
+      await reportRouteFromPlatform(tester);
+      await saveEdit(tester, '<p>Only numbers</p>');
+
+      expect(find.byType(DescriptionEditorPage), findsNothing);
+      expect(find.text(en.descriptionEditorSaved), findsOneWidget);
+    });
+
     testWidgets('without a description the row says so', (tester) async {
       await openEditPage(tester, 2);
 
@@ -280,6 +309,25 @@ void main() {
         (1, const ProjectChanges(description: '<p>About everything</p>')),
       ]);
       expect(find.text('About everything'), findsOneWidget);
+      expect(find.text(en.descriptionEditorSaved), findsOneWidget);
+    });
+
+    testWidgets('saved after the app was opened again during the editor, '
+        'the page still says so', (tester) async {
+      await pumpApp(tester);
+      unawaited(
+        containerOf(tester)
+            .read(appRouterProvider)
+            .push(AppRoutes.projectEdit(1)),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(en.projectEditDescription));
+      await tester.pumpAndSettle();
+
+      await reportRouteFromPlatform(tester);
+      await saveEdit(tester, '<p>About everything</p>');
+
+      expect(find.byType(DescriptionEditorPage), findsNothing);
       expect(find.text(en.descriptionEditorSaved), findsOneWidget);
     });
   });

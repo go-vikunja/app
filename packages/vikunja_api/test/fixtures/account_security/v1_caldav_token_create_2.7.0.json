@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "PUT /api/v1/user/settings/token/caldav",
+  "status": 201,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"id\":9,\"token\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"created\":\"2026-10-21T06:19:17.974650068Z\"}\n"
+}

@@ -293,6 +293,7 @@ void main() {
         isLocalUser: false,
         authProvider: 'ldap',
         updated: now,
+        deletionScheduledAt: now.add(const Duration(days: 3)),
       );
       final withProfile = DefaultSyncEngine(
         db: db,

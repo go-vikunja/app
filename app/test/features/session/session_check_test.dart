@@ -191,4 +191,38 @@ void main() {
       );
     });
   });
+
+  group('a deleted account', () {
+    test('asks for a new sign-in at once, while its access token still '
+        'works', () async {
+      final entry = await seed();
+      auth.accountGateway.onCurrentUser = (_) async =>
+          throw const NotFound(code: 1005);
+      auth.tokenGateway.onRefresh = (_) async => throw const SessionEnded(
+        SessionEndReason.invalidRefreshToken,
+        code: 16002,
+      );
+
+      await check.check(entry);
+
+      expect(auth.tokenGateway.refreshedTokens, hasLength(1));
+      expect((await auth.registry.find(entry.id))!.account.needsReauth, isTrue);
+      now = now.add(const Duration(minutes: 5));
+      await check.check((await auth.registry.find(entry.id))!);
+      expect(auth.accountGateway.currentUserTokens, hasLength(1));
+    });
+
+    test('another missing thing does not refresh', () async {
+      final entry = await seed();
+      auth.accountGateway.onCurrentUser = (_) async => throw const NotFound();
+
+      await check.check(entry);
+
+      expect(auth.tokenGateway.refreshedTokens, isEmpty);
+      expect(
+        (await auth.registry.find(entry.id))!.account.needsReauth,
+        isFalse,
+      );
+    });
+  });
 }

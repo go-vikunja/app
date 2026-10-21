@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "GET /api/v2/tokens?page=1&per_page=50",
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"$schema\":\"http://localhost:34527/api/v2/schemas/PaginatedAPIToken.json\",\"items\":[{\"id\":91,\"title\":\"Home Assistant\",\"permissions\":{\"caldav\":[\"access\"],\"tasks\":[\"read_all\",\"update\"]},\"expires_at\":\"2026-11-20T12:00:00Z\",\"created\":\"2026-10-21T06:19:11Z\",\"owner_id\":1007},{\"id\":92,\"title\":\"Backup script\",\"permissions\":{\"other\":[\"user\"],\"projects\":[\"read_all\",\"read_one\"]},\"expires_at\":\"2027-01-19T12:00:00Z\",\"created\":\"2026-10-21T06:19:12Z\",\"owner_id\":1007}],\"total\":2,\"page\":1,\"per_page\":50,\"total_pages\":1}\n"
+}

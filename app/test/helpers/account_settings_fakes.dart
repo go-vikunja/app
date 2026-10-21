@@ -19,6 +19,7 @@ AccountSettingsState fakeAccountSettingsState({
   bool isLocalUser = true,
   String authProvider = 'local',
   String? pendingEmail,
+  DateTime? deletionScheduledAt,
   AvatarProvider? avatarProvider = AvatarProvider.initials,
 }) => AccountSettingsState(
   settings: settings,
@@ -30,6 +31,7 @@ AccountSettingsState fakeAccountSettingsState({
     authProvider: authProvider,
     pendingEmail: pendingEmail,
     updated: fakeProfileUpdated,
+    deletionScheduledAt: deletionScheduledAt,
   ),
   avatarProvider: avatarProvider,
 );
@@ -141,6 +143,7 @@ final class FakeAccountSettingsRepository implements AccountSettingsRepository {
       updated: (profile.updated ?? fakeProfileUpdated).add(
         const Duration(seconds: 1),
       ),
+      deletionScheduledAt: profile.deletionScheduledAt,
     ),
   };
 
@@ -239,6 +242,7 @@ final class FakeUserSettingsWritePort implements UserSettingsWritePort {
     updated: (profile.updated ?? fakeProfileUpdated).add(
       const Duration(seconds: 1),
     ),
+    deletionScheduledAt: profile.deletionScheduledAt,
   );
 
   Future<void> _request(String method, String detail) async {

@@ -1,0 +1,22 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v2/tokens",
+  "sent": {
+    "title": "Backup script",
+    "permissions": {
+      "projects": [
+        "read_all",
+        "read_one"
+      ],
+      "other": [
+        "user"
+      ]
+    },
+    "expires_at": "2027-01-19T12:00:00.000Z"
+  },
+  "status": 201,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"id\":92,\"title\":\"Backup script\",\"token\":\"tk_0000000000000000000000000000000000000000\",\"permissions\":{\"other\":[\"user\"],\"projects\":[\"read_all\",\"read_one\"]},\"expires_at\":\"2027-01-19T12:00:00Z\",\"created\":\"2026-10-21T06:19:12.236850649Z\",\"owner_id\":1007}\n"
+}

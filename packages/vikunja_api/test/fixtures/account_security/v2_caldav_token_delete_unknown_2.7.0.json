@@ -1,0 +1,7 @@
+{
+  "server": "2.7.0",
+  "request": "DELETE /api/v2/user/settings/token/caldav/10",
+  "status": 204,
+  "headers": {},
+  "body": ""
+}

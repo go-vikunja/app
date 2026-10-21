@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v2/user/settings/token/caldav",
+  "status": 201,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"$schema\":\"http://localhost:34527/api/v2/schemas/Token.json\",\"id\":10,\"token\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"created\":\"2026-10-21T06:19:18.599313432Z\"}\n"
+}

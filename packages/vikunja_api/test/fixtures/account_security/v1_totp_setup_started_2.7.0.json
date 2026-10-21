@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "GET /api/v1/user/settings/totp",
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"secret\":\"<redacted>\",\"enabled\":false,\"url\":\"otpauth://totp/Vikunja:fixtureuser?algorithm=SHA1\\u0026digits=6\\u0026issuer=Vikunja\\u0026period=30\\u0026secret=<redacted>\"}\n"
+}
