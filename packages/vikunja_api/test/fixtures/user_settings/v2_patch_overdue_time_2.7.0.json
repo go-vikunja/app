@@ -1,0 +1,12 @@
+{
+  "server": "2.7.0",
+  "request": "PATCH /api/v2/user/settings/general",
+  "sent": {
+    "overdue_tasks_reminders_time": "25:00"
+  },
+  "status": 422,
+  "headers": {
+    "content-type": "application/problem+json"
+  },
+  "body": "{\"$schema\":\"http://localhost/api/v2/schemas/VikunjaErrorModel.json\",\"title\":\"Unprocessable Entity\",\"status\":422,\"detail\":\"Struct is invalid. Invalid Data\",\"errors\":[{\"message\":\"25:00 does not validate as time\",\"location\":\"body.overdue_tasks_reminders_time\"}],\"code\":2002}\n"
+}

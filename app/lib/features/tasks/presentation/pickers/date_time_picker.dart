@@ -1,9 +1,9 @@
 import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/l10n/picker_localizations.dart';
 import 'package:vikunja_mobile/features/tasks/application/date_shortcuts.dart';
 import 'package:vikunja_mobile/features/tasks/application/display_settings.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/pickers/cupertino_picker_sheet.dart';
 
 /// A date with a time: the Material date picker followed by the time
 /// picker, or one Cupertino wheel. Starts from [current], else today at the
@@ -20,14 +20,13 @@ Future<DateTime?> pickDateTime(
   final initial =
       current?.toLocal() ?? dayWithTime(now, current: null, now: now);
   return switch (Theme.of(context).platform) {
-    TargetPlatform.iOS || TargetPlatform.macOS => showCupertinoModalPopup(
-      context: context,
-      builder: (context) => _CupertinoDateTimeSheet(
-        initial: initial,
-        use24Hour:
-            display.use24HourFormat ??
-            MediaQuery.alwaysUse24HourFormatOf(context),
-      ),
+    TargetPlatform.iOS || TargetPlatform.macOS => showCupertinoPickerSheet(
+      context,
+      mode: CupertinoDatePickerMode.dateAndTime,
+      initial: initial,
+      use24Hour:
+          display.use24HourFormat ??
+          MediaQuery.alwaysUse24HourFormatOf(context),
     ),
     _ => _pickWithMaterialDialogs(
       context,
@@ -69,57 +68,4 @@ Future<DateTime?> _pickWithMaterialDialogs(
     time?.hour ?? initial.hour,
     time?.minute ?? initial.minute,
   );
-}
-
-class _CupertinoDateTimeSheet extends StatefulWidget {
-  const new({required this.initial, required this.use24Hour});
-
-  final DateTime initial;
-  final bool use24Hour;
-
-  @override
-  State<_CupertinoDateTimeSheet> createState() =>
-      _CupertinoDateTimeSheetState();
-}
-
-class _CupertinoDateTimeSheetState extends State<_CupertinoDateTimeSheet> {
-  late DateTime _value = widget.initial;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final background = CupertinoTheme.of(context).scaffoldBackgroundColor;
-    return ColoredBox(
-      color: background,
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                CupertinoButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: Text(l10n.pickerCancel),
-                ),
-                CupertinoButton(
-                  onPressed: () => Navigator.of(context).pop(_value),
-                  child: Text(l10n.pickerDone),
-                ),
-              ],
-            ),
-            SizedBox(
-              height: 216,
-              child: CupertinoDatePicker(
-                initialDateTime: widget.initial,
-                use24hFormat: widget.use24Hour,
-                onDateTimeChanged: (value) => _value = value,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }

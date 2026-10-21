@@ -14,6 +14,7 @@ import 'package:vikunja_mobile/core/files/file_actions_providers.dart';
 import 'package:vikunja_mobile/core/outbox/pending_task_ids_source.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/realtime/realtime_providers.dart';
+import 'package:vikunja_mobile/core/repositories/account_settings_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/activity_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/attachment_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/bucket_repository_providers.dart';
@@ -37,6 +38,7 @@ import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/accounts/application/account_switcher.dart';
 import 'package:vikunja_mobile/features/sync/application/inactive_outboxes.dart';
 
+import 'account_settings_fakes.dart';
 import 'activity_fakes.dart';
 import 'attachment_fakes.dart';
 import 'bucket_fakes.dart';
@@ -1665,6 +1667,7 @@ final class AccountDataFakes {
     tasks = FakeTaskRepository(engine);
     projects.tasks = tasks;
     resolver = FakeTaskResolver(local: () => tasks.all);
+    accountSettings.onStateChanged = (state) => settings = state.settings;
   }
 
   late final FakeSyncEngine engine;
@@ -1691,6 +1694,10 @@ final class AccountDataFakes {
   late final FakeTaskResolver resolver;
   final attachmentImages = FakeAttachmentImages();
   final attachments = FakeAttachmentRepository();
+
+  /// The account settings page's data; a change it makes also becomes
+  /// [settings].
+  final accountSettings = FakeAccountSettingsRepository();
 
   /// What `userSettingsProvider` reports while the account is active.
   UserSettings get settings => _settings;
@@ -1818,6 +1825,9 @@ final class SyncFakes {
     // The real one opens the account's database.
     accountPendingChangesProvider.overrideWith(
       (ref, accountId) => forAccount(accountId).tasks.watchPendingChanges(),
+    ),
+    accountSettingsRepositoryForProvider.overrideWith(
+      (ref, accountId) => forAccount(accountId).accountSettings,
     ),
     // The real one opens the account's database; every list reads it.
     userSettingsProvider.overrideWith((ref) {

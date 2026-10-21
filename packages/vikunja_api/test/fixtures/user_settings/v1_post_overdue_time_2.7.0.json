@@ -1,0 +1,42 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v1/user/settings/general",
+  "sent": {
+    "name": "Dora Explorer",
+    "email_reminders_enabled": true,
+    "discoverable_by_name": true,
+    "discoverable_by_email": true,
+    "overdue_tasks_reminders_enabled": true,
+    "overdue_tasks_reminders_time": "25:00",
+    "default_project_id": 2942,
+    "week_start": 1,
+    "language": "",
+    "timezone": "Europe/Berlin",
+    "frontend_settings": {
+      "color_schema": "dark",
+      "default_view": "kanban",
+      "minimum_priority": 4,
+      "play_sound_when_done": false,
+      "quick_add_default_reminders": [
+        {
+          "relative_period": -3600,
+          "relative_to": "due_date"
+        }
+      ],
+      "quick_add_magic_mode": "todoist",
+      "rurana_unknown_key": {
+        "nested": [
+          1,
+          2
+        ]
+      },
+      "sidebar_width": 320,
+      "time_format": "12h"
+    }
+  },
+  "status": 412,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"code\":2002,\"message\":\"Invalid Data\",\"invalid_fields\":[\"overdue_tasks_reminders_time: 25:00 does not validate as time\"]}\n"
+}

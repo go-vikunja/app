@@ -1,0 +1,12 @@
+{
+  "server": "2.7.0",
+  "request": "PATCH /api/v2/user/settings/general",
+  "sent": {
+    "week_start": 7
+  },
+  "status": 422,
+  "headers": {
+    "content-type": "application/problem+json"
+  },
+  "body": "{\"$schema\":\"http://localhost/api/v2/schemas/VikunjaErrorModel.json\",\"title\":\"Unprocessable Entity\",\"status\":422,\"detail\":\"validation failed\",\"errors\":[{\"message\":\"expected number <= 6\",\"location\":\"body.week_start\",\"value\":7}]}\n"
+}

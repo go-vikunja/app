@@ -5,6 +5,12 @@ import 'package:vikunja_mobile/core/settings/user_settings_json.dart';
 void main() {
   test('round-trips every field', () {
     const settings = UserSettings(
+      name: 'Anna Example',
+      emailRemindersEnabled: true,
+      discoverableByName: true,
+      discoverableByEmail: true,
+      overdueTasksRemindersEnabled: false,
+      overdueTasksRemindersTime: ClockTime(7, 5),
       defaultProjectId: 12,
       weekStart: 1,
       timezone: 'Europe/Berlin',
@@ -148,5 +154,28 @@ void main() {
       ),
       contains('"comment_sort_order":"desc"'),
     );
+  });
+
+  test('settings stored before the account settings page read as the '
+      "server's defaults for a new user", () {
+    final settings = decodeUserSettings('{"week_start": 1}');
+
+    expect(settings.name, '');
+    expect(settings.emailRemindersEnabled, isFalse);
+    expect(settings.discoverableByName, isFalse);
+    expect(settings.discoverableByEmail, isFalse);
+    expect(settings.overdueTasksRemindersEnabled, isTrue);
+    expect(settings.overdueTasksRemindersTime, const ClockTime(9, 0));
+  });
+
+  test('odd account fields fall back one by one', () {
+    final settings = decodeUserSettings(
+      '{"name": 5, "email_reminders_enabled": "yes", '
+      '"discoverable_by_name": 1, "discoverable_by_email": null, '
+      '"overdue_tasks_reminders_enabled": "no", '
+      '"overdue_tasks_reminders_time": "25:00"}',
+    );
+
+    expect(settings, const UserSettings());
   });
 }

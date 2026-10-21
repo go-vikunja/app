@@ -1,0 +1,12 @@
+{
+  "server": "2.7.0",
+  "request": "PUT /api/v2/user/settings/avatar/provider",
+  "sent": {
+    "avatar_provider": "robohash"
+  },
+  "status": 412,
+  "headers": {
+    "content-type": "application/problem+json"
+  },
+  "body": "{\"$schema\":\"http://localhost:34527/api/v2/schemas/VikunjaErrorModel.json\",\"title\":\"Precondition Failed\",\"status\":412,\"detail\":\"Invalid avatar provider setting. See docs for valid types.\",\"code\":1018}\n"
+}

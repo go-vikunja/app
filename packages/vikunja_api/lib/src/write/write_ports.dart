@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:vikunja_api/src/read/read_ports.dart';
+import 'package:vikunja_api/src/write/user_settings_write_api.dart';
 import 'package:vikunja_api/src/write/write_client.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 
@@ -366,6 +367,66 @@ abstract interface class AttachmentsWritePort {
   Future<void> delete(int taskId, int attachmentId);
 }
 
+/// The settings and the profile as stored after a write, read back from
+/// `GET /user`: the write answers carry neither.
+typedef UserSettingsWriteResult = ({
+  UserProfile profile,
+  UserSettings settings,
+});
+
+/// The signed-in user's general settings and avatar. The server keeps no
+/// order between overlapping writes, so callers send one at a time.
+abstract interface class UserSettingsWritePort {
+  /// Writes only what [changes] set and returns the stored state.
+  ///
+  /// With [Capability.userSettingsMergePatch] (2.7.0+) a v2 merge-patch of
+  /// the changed fields, the `frontend_settings` keys inside it, which the
+  /// server merges deeply (a cleared one is `null`, which removes the key);
+  /// an unchanged state answers 304. Older servers replace every setting,
+  /// an omitted `frontend_settings` wiping the whole object: the adapter
+  /// reads the settings fresh from `GET /user`, applies [changes] to that
+  /// JSON, keeping every key it does not know, and writes it back whole
+  /// (v2 `PUT`, on 2.3 v1 `POST /user/settings/general`).
+  ///
+  /// Refusals: a timezone the server cannot load is a `DomainError` code
+  /// 1025, a default project that is archived, missing or not writable code
+  /// 3017; a week start outside 0–6 or a reminder time the server cannot
+  /// parse a `ValidationFailed` (code 2002, or none for v2's own schema
+  /// check) naming the field.
+  Future<UserSettingsWriteResult> update(UserSettingsChanges changes);
+
+  /// v2 `GET /user/settings/avatar/provider`, v1 `GET
+  /// /user/settings/avatar`; null for a value this client does not know.
+  Future<AvatarProvider?> avatarProvider();
+
+  /// v2 `PUT /user/settings/avatar/provider`, v1 `POST
+  /// /user/settings/avatar`; bumps the user's `updated`. [AvatarProvider.upload]
+  /// without an uploaded image makes the server fail every request for
+  /// the avatar. The sign-in providers' values are an [ArgumentError]
+  /// before any request; a value the server does not know is a
+  /// `DomainError` code 1018.
+  Future<void> setAvatarProvider(AvatarProvider provider);
+
+  /// v2 `PUT /user/settings/avatar`, v1 `PUT /user/settings/avatar/upload`:
+  /// one multipart part `avatar` with [bytes], exactly [length] bytes long
+  /// and read once. The server sets the provider to `upload` itself and
+  /// bumps the user's `updated`. It sniffs PNG, JPEG, GIF, BMP, TIFF and
+  /// WebP from the bytes, fits the image into 1024 × 1024 keeping its
+  /// aspect ratio and ignores EXIF orientation, so callers crop and rotate
+  /// first.
+  ///
+  /// Anything else is a `ValidationFailed` naming `avatar`; more than 50
+  /// megapixels a `DomainError` code 4032; a body above the server's
+  /// request limit [FileTooLarge]. [timeout] bounds sending and, again,
+  /// waiting for the answer.
+  Future<void> uploadAvatar({
+    required String fileName,
+    required Stream<List<int>> bytes,
+    required int length,
+    Duration? timeout,
+  });
+}
+
 abstract interface class VikunjaWriteClient {
   TasksWritePort get tasks;
   AttachmentsWritePort get attachments;
@@ -384,3 +445,9 @@ VikunjaWriteClient createWriteClient({
   required Dio dio,
   required ServerConnection connection,
 }) => WriteClient(dio: dio, connection: connection);
+
+/// Over [dio] and [connection] like [createWriteClient].
+UserSettingsWritePort createUserSettingsWritePort({
+  required Dio dio,
+  required ServerConnection connection,
+}) => UserSettingsWriteApi(dio: dio, connection: connection);

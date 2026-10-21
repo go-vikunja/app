@@ -201,6 +201,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text(en.appearanceHeading), findsOneWidget);
       expect(find.text(en.appearanceSystemColorsSubtitle), findsOneWidget);
+      expect(find.text(en.appearanceLightDarkHint), findsOneWidget);
       expect(tester.widget<SwitchListTile>(toggle).value, isTrue);
 
       await tester.tap(toggle);

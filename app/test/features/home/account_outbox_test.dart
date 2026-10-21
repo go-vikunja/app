@@ -108,6 +108,26 @@ void main() {
     expect(find.text(en.accountSendNow), findsNothing);
   });
 
+  testWidgets('pending changes and sync problems show with the sync, not '
+      "under the device's own settings", (tester) async {
+    data.tasks.pendingChanges = 2;
+    data.tasks.syncProblems = [
+      problem(
+        id: 'op-1',
+        title: 'Pay the bill',
+        failure: const Forbidden(code: 7003),
+        ago: const Duration(minutes: 5),
+      ),
+    ];
+    await pumpAccountTab(tester);
+
+    double top(String text) => tester.getTopLeft(find.text(text)).dy;
+    final heading = top(en.onThisDeviceHeading);
+    expect(top(en.accountPendingChanges(2)), lessThan(heading));
+    expect(top(en.accountSyncProblems), lessThan(heading));
+    expect(top(en.notificationsHeading), greaterThan(heading));
+  });
+
   testWidgets('"Send now" that cannot send says why', (tester) async {
     data.tasks.pendingChanges = 1;
     data.tasks.sendBlockedBy = const NetworkFailure(NetworkProblem.timeout);

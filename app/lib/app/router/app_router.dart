@@ -10,6 +10,8 @@ import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/links/deep_link_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
+import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_page.dart';
+import 'package:vikunja_mobile/features/account_settings/presentation/avatar_page.dart';
 import 'package:vikunja_mobile/features/description_editor/application/description_target.dart';
 import 'package:vikunja_mobile/features/description_editor/presentation/description_editor_page.dart';
 import 'package:vikunja_mobile/features/home/presentation/account_tab.dart';
@@ -81,6 +83,11 @@ abstract final class AppRoutes {
   static const savedFilterNew = '$home/filters/new';
   static String savedFilterEdit(int pseudoProjectId) =>
       '$home/filters/$pseudoProjectId/edit';
+
+  /// Over the shell, from the Account tab's profile header; the server's
+  /// settings of the account, not the device's.
+  static const accountSettings = '$home/account-settings';
+  static const accountAvatar = '$accountSettings/avatar';
 
   /// The connect screen and the server overview over the shell, for
   /// signing in to another account; pushed, so back returns to the shell.
@@ -277,6 +284,20 @@ GoRouter appRouter(Ref ref) {
         builder: (context, state) => AccountBoundScreen(
           child: SavedFilterFormPage(pseudoProjectId: _idParam(state)),
         ),
+      ),
+      GoRoute(
+        path: AppRoutes.accountSettings,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) =>
+            const AccountBoundScreen(child: AccountSettingsPage()),
+        routes: [
+          GoRoute(
+            path: 'avatar',
+            parentNavigatorKey: rootNavigatorKey,
+            builder: (context, state) =>
+                const AccountBoundScreen(child: AvatarPage()),
+          ),
+        ],
       ),
       GoRoute(
         path: AppRoutes.addAccount,

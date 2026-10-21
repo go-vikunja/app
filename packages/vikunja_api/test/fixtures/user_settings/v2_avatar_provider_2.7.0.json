@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "GET /api/v2/user/settings/avatar/provider",
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"$schema\":\"http://localhost:34527/api/v2/schemas/UserAvatarProviderBody.json\",\"avatar_provider\":\"initials\"}\n"
+}

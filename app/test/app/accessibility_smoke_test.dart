@@ -17,6 +17,10 @@ import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/share/share_intent_source.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
+import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_page.dart';
+import 'package:vikunja_mobile/features/account_settings/presentation/avatar_crop_page.dart';
+import 'package:vikunja_mobile/features/account_settings/presentation/avatar_page.dart';
+import 'package:vikunja_mobile/features/attachments/application/attachment_picker.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
 import 'package:vikunja_mobile/features/description_editor/application/editor_protocol.dart';
 import 'package:vikunja_mobile/features/description_editor/presentation/description_editor_page.dart';
@@ -51,8 +55,11 @@ import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dar
 import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
 import 'package:vikunja_mobile/features/upcoming/presentation/upcoming_screen.dart';
 
+import '../features/account_settings/avatar_fakes.dart';
 import '../features/accounts/accounts_harness.dart';
 import '../features/tasks/edit_page_harness.dart';
+import '../helpers/account_settings_fakes.dart';
+import '../helpers/attachment_picker_fake.dart';
 import '../helpers/auth_fakes.dart';
 import '../helpers/editor_bridge_fakes.dart';
 import '../helpers/fake_quick_add_service.dart';
@@ -2194,6 +2201,217 @@ void main() {
       );
       expect(find.text(l10n.accountSyncFailed), findsOneWidget);
       await scrollToEnd(tester, find.byType(ListView));
+      expect(tester.takeException(), isNull);
+    });
+
+    Finder settingsList() => find.descendant(
+      of: find.byType(AccountSettingsPage),
+      matching: find.byType(ListView),
+    );
+
+    Future<void> openSettingsRow(WidgetTester tester, String title) async {
+      final row = find.widgetWithText(ListTile, title);
+      tester
+          .state<ScrollableState>(
+            find.descendant(
+              of: settingsList(),
+              matching: find.byType(Scrollable),
+            ),
+          )
+          .position
+          .jumpTo(0);
+      await tester.pump();
+      for (var i = 0; i < 80 && row.evaluate().isEmpty; i++) {
+        await tester.drag(settingsList(), const Offset(0, -200));
+        await tester.pump();
+      }
+      await Scrollable.ensureVisible(tester.element(row.first), alignment: 0.3);
+      await tester.pumpAndSettle();
+      await tester.tap(row.first);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('account settings with every section, its sheets, the time '
+        'picker and a refused value at 200 % in dark mode '
+        '(${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      final l10n = lookupAppLocalizations(locale);
+      final data = richData();
+      data.projects.savedFilters = const [
+        SavedFilterRef(
+          projectId: -2,
+          title: 'A saved filter with a title long enough to wrap',
+        ),
+      ];
+      data.shared.accountSettings.state = fakeAccountSettingsState(
+        settings: const UserSettings(
+          name: 'Maximiliane Musterfrau-Beispielhausen',
+          defaultProjectId: 1,
+          timezone: 'America/Argentina/ComodRivadavia',
+          language: 'de-swiss',
+          dateDisplay: DateDisplay.weekdayDayMonthYear,
+          timeFormat: TimeFormat.twelveHour,
+          filterIdUsedOnOverview: -2,
+        ),
+        pendingEmail: 'maximiliane.musterfrau-beispielhausen@example.org',
+      );
+      await pumpSignedInApp(tester, sync: data);
+      unawaited(
+        containerOf(tester)
+            .read(appRouterProvider)
+            .push(AppRoutes.accountSettings),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AccountSettingsPage), findsOneWidget);
+      await scrollToEnd(tester, settingsList());
+      expect(tester.takeException(), isNull);
+
+      await openSettingsRow(tester, l10n.accountSettingsDateDisplay);
+      await scrollToEnd(tester, find.byType(BottomSheet));
+      expect(tester.takeException(), isNull);
+      await tester.tapAt(const Offset(10, 10));
+      await tester.pumpAndSettle();
+
+      await openSettingsRow(tester, l10n.accountSettingsLanguage);
+      await scrollToEnd(tester, find.byType(BottomSheet));
+      expect(tester.takeException(), isNull);
+      await tester.tapAt(const Offset(10, 10));
+      await tester.pumpAndSettle();
+
+      await openSettingsRow(tester, l10n.accountSettingsOverdueTime);
+      expect(find.byType(TimePickerDialog), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.text(l10n.cancel).last);
+      await tester.pumpAndSettle();
+
+      data.shared.accountSettings.failures['update'] = const DomainError(
+        400,
+        code: 1025,
+      );
+      await openSettingsRow(tester, l10n.accountSettingsTimezone);
+      // Which zones are suggested depends on where the tests run.
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Text &&
+              (widget.data == l10n.accountSettingsTimezoneDevice ||
+                  widget.data == l10n.accountSettingsTimezoneSameAsDevice),
+        ),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+      await tester.enterText(
+        find.widgetWithText(TextField, l10n.accountSettingsTimezoneSearch),
+        'Kolkata',
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Asia/Kolkata'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text(l10n.accountSettingsTimezoneInvalid('Asia/Kolkata')),
+        findsOneWidget,
+      );
+      await scrollToEnd(tester, settingsList());
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('account settings of a sign-in provider account, offline, at '
+        '200 % in dark mode (${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      final l10n = lookupAppLocalizations(locale);
+      final data = richData(
+        status: SyncFailed(
+          failure: const NetworkFailure(NetworkProblem.unreachable),
+          lastSyncedAt: DateTime.now().subtract(const Duration(days: 2)),
+        ),
+      );
+      data.engine.onRefresh = () async =>
+          throw const NetworkFailure(NetworkProblem.unreachable);
+      data.shared.accountSettings.failures['refresh'] = const NetworkFailure(
+        NetworkProblem.unreachable,
+      );
+      data.shared.accountSettings.state = fakeAccountSettingsState(
+        isLocalUser: false,
+        authProvider: 'A sign-in provider with a long name',
+      );
+      await pumpSignedInApp(tester, sync: data);
+      unawaited(
+        containerOf(tester)
+            .read(appRouterProvider)
+            .push(AppRoutes.accountSettings),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text(l10n.accountSettingsOffline), findsOneWidget);
+      await scrollToEnd(tester, settingsList());
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('avatar page, the photo sheet and the crop page with a '
+        'refused upload at 200 % in dark mode (${locale.languageCode})', (
+      tester,
+    ) async {
+      useWorstCase(tester, locale);
+      final l10n = lookupAppLocalizations(locale);
+      final data = richData();
+      data.shared.accountSettings.failures['uploadAvatar'] = const DomainError(
+        400,
+        code: 4032,
+      );
+      final picker = FakeAttachmentPicker()
+        ..photos = [const PickedFile(path: '/picked/a.png', name: 'a.png')];
+      final files = FakeAvatarFiles();
+      await pumpSignedInApp(
+        tester,
+        sync: data,
+        overrides: [picker.providerOverride, files.providerOverride],
+      );
+      unawaited(
+        containerOf(tester)
+            .read(appRouterProvider)
+            .push(AppRoutes.accountAvatar),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AvatarPage), findsOneWidget);
+      await scrollToEnd(
+        tester,
+        find.descendant(
+          of: find.byType(AvatarPage),
+          matching: find.byType(ListView),
+        ),
+      );
+      expect(tester.takeException(), isNull);
+
+      final upload = find.widgetWithText(ListTile, l10n.avatarProviderUpload);
+      await Scrollable.ensureVisible(tester.element(upload), alignment: 0.5);
+      await tester.pumpAndSettle();
+      await tester.tap(upload);
+      await tester.pumpAndSettle();
+      await scrollToEnd(tester, find.byType(BottomSheet));
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.text(l10n.avatarChoosePhoto));
+      for (var i = 0; i < 20; i++) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 20)),
+        );
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      await tester.pumpAndSettle();
+      expect(find.byType(AvatarCropPage), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(find.text(l10n.avatarCropUpload));
+      for (var i = 0; i < 20; i++) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 20)),
+        );
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.avatarImageTooLarge), findsOneWidget);
+      await scrollToEnd(tester, find.byType(SingleChildScrollView).last);
       expect(tester.takeException(), isNull);
     });
 

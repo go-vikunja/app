@@ -311,6 +311,90 @@ final class WriteClientFamily extends $Family
   String toString() => r'writeClientProvider';
 }
 
+@ProviderFor(userSettingsWritePort)
+final userSettingsWritePortProvider = UserSettingsWritePortFamily._();
+
+final class UserSettingsWritePortProvider
+    extends
+        $FunctionalProvider<
+          UserSettingsWritePort,
+          UserSettingsWritePort,
+          UserSettingsWritePort
+        >
+    with $Provider<UserSettingsWritePort> {
+  UserSettingsWritePortProvider._({
+    required UserSettingsWritePortFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'userSettingsWritePortProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$userSettingsWritePortHash();
+
+  @override
+  String toString() {
+    return r'userSettingsWritePortProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $ProviderElement<UserSettingsWritePort> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  UserSettingsWritePort create(Ref ref) {
+    final argument = this.argument as String;
+    return userSettingsWritePort(ref, argument);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(UserSettingsWritePort value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<UserSettingsWritePort>(value),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is UserSettingsWritePortProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$userSettingsWritePortHash() =>
+    r'1c2c23388efcd87ff62ddc55c003b9eab147693a';
+
+final class UserSettingsWritePortFamily extends $Family
+    with $FunctionalFamilyOverride<UserSettingsWritePort, String> {
+  UserSettingsWritePortFamily._()
+    : super(
+        retry: null,
+        name: r'userSettingsWritePortProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  UserSettingsWritePortProvider call(String accountId) =>
+      UserSettingsWritePortProvider._(argument: accountId, from: this);
+
+  @override
+  String toString() => r'userSettingsWritePortProvider';
+}
+
 @ProviderFor(accountDatabaseFiles)
 final accountDatabaseFilesProvider = AccountDatabaseFilesProvider._();
 
@@ -747,7 +831,7 @@ final class SyncEngineProvider
   }
 }
 
-String _$syncEngineHash() => r'1a0b9a68c73a8684c4f6f8672398267099c1fc0c';
+String _$syncEngineHash() => r'0ec69e7daa103101b2d83702f8a8b04b2a50a2d9';
 
 /// One account's sync engine; disposed with its database on sign-out.
 

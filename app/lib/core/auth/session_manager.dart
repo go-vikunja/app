@@ -119,6 +119,22 @@ final class SessionManager implements AccessTokenSource {
     }
   }
 
+  /// Rotates the tokens now, however long the access token still lasts: a
+  /// session the server ended (a password change ends every session of the
+  /// user) shows only on a refresh, while its access token keeps working
+  /// until it expires. Throws like a refresh, [SessionEnded] once the
+  /// session is gone; without `refreshes` it does nothing.
+  Future<void> refreshNow() async {
+    final epoch = _epoch;
+    try {
+      final session = await _currentSession(epoch);
+      if (!_refreshes) return;
+      await _refreshFrom(session);
+    } on _Retired {
+      throw const SessionEnded(SessionEndReason.invalidRefreshToken);
+    }
+  }
+
   /// The stored token while it lasts; afterwards the request fails like a
   /// rejected token, which the outbox retries later from an isolate that
   /// refreshes. A sibling's newer token in storage is taken instead.

@@ -755,6 +755,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'The colours of your wallpaper instead of the app\'s blue';
 
   @override
+  String get appearanceLightDarkHint =>
+      'Light or dark is your account\'s colour scheme, in Account settings.';
+
+  @override
   String projectChildCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
@@ -1922,7 +1926,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String quickAddHelpMode(String mode) {
-    return 'These are the $mode prefixes, as set in your Vikunja settings on the web.';
+    return 'These are the $mode prefixes, as set in your account settings.';
   }
 
   @override
@@ -2776,7 +2780,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String overviewFilterNotLoadedBody(String title) {
-    return 'Your Overview shows the saved filter “$title”, picked on the web. Its tasks download with the next sync.';
+    return 'Your Overview shows the saved filter “$title”, picked in your account settings. Its tasks download with the next sync.';
   }
 
   @override
@@ -4480,4 +4484,424 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get syncProblemNoDescription => 'No description';
+
+  @override
+  String get accountSettingsEntry => 'Account settings';
+
+  @override
+  String get accountSettingsEntrySubtitle =>
+      'Name, avatar, colour scheme and preferences, saved on the server for all your devices';
+
+  @override
+  String get accountHeaderTapHint => 'open the account settings';
+
+  @override
+  String get onThisDeviceHeading => 'On this device';
+
+  @override
+  String get onThisDeviceSubtitle =>
+      'These settings stay on this device and are not saved to your account.';
+
+  @override
+  String get accountSettingsTitle => 'Account settings';
+
+  @override
+  String accountSettingsIntro(String host) {
+    return 'Saved to your account on $host: they apply on the web and on all your devices.';
+  }
+
+  @override
+  String get accountSettingsOffline =>
+      'Offline: account settings can be changed once the server can be reached again.';
+
+  @override
+  String get accountSettingsLoading => 'Loading account settings…';
+
+  @override
+  String get accountSettingsSaved => 'Saved';
+
+  @override
+  String get accountSettingsSaving => 'Saving';
+
+  @override
+  String get accountSettingsProfile => 'Profile';
+
+  @override
+  String get accountSettingsName => 'Name';
+
+  @override
+  String accountSettingsNameHelp(String username) {
+    return 'Shown instead of your username. Leave it empty to show @$username.';
+  }
+
+  @override
+  String accountSettingsNameManaged(String provider) {
+    return 'Your sign-in provider ($provider) sets your name at every sign-in. Change it there.';
+  }
+
+  @override
+  String get accountSettingsNameSave => 'Save name';
+
+  @override
+  String get accountSettingsNameDiscardBody =>
+      'The name you typed has not been saved.';
+
+  @override
+  String get accountSettingsNameSaved => 'Name saved';
+
+  @override
+  String get accountSettingsAvatar => 'Avatar';
+
+  @override
+  String get accountSettingsSignIn => 'Password and email';
+
+  @override
+  String get accountSettingsWaitingForProfile =>
+      'Available once the server has said how you sign in.';
+
+  @override
+  String get accountSettingsChangePassword => 'Change password';
+
+  @override
+  String get accountSettingsChangePasswordHint =>
+      'Opens the web in your browser. Afterwards, sign in here again; changes not sent yet are kept.';
+
+  @override
+  String get accountSettingsChangeEmail => 'Change email address';
+
+  @override
+  String get accountSettingsOpensWeb => 'Opens the web in your browser';
+
+  @override
+  String accountSettingsPendingEmail(String email) {
+    return 'Waiting for confirmation of $email';
+  }
+
+  @override
+  String accountSettingsManagedBySignInNamed(String provider) {
+    return 'Managed by your sign-in provider ($provider)';
+  }
+
+  @override
+  String get accountSettingsWebNotOpened => 'The browser could not be opened.';
+
+  @override
+  String get accountSettingsDefaults => 'Defaults';
+
+  @override
+  String get accountSettingsDefaultProject => 'Default project';
+
+  @override
+  String get accountSettingsDefaultProjectNone => 'None';
+
+  @override
+  String get accountSettingsDefaultProjectUnknown =>
+      'A project not on this device';
+
+  @override
+  String get accountSettingsDefaultProjectInvalid =>
+      'Choose a project you can add tasks to that is not archived.';
+
+  @override
+  String get accountSettingsDefaultView => 'Default view';
+
+  @override
+  String get accountSettingsDefaultViewFirst => 'First view';
+
+  @override
+  String get accountSettingsQuickAddMagic => 'Quick Add Magic';
+
+  @override
+  String get accountSettingsQuickAddMagicDisabled => 'Off';
+
+  @override
+  String get accountSettingsQuickAddMagicVikunja => 'Vikunja';
+
+  @override
+  String get accountSettingsQuickAddMagicTodoist => 'Todoist';
+
+  @override
+  String get accountSettingsMinimumPriority => 'Priorities shown from';
+
+  @override
+  String get accountSettingsOverviewFilter => 'Overview shows';
+
+  @override
+  String get accountSettingsOverviewFilterNone => 'All open tasks';
+
+  @override
+  String get accountSettingsOverviewFilterUnknown =>
+      'A saved filter not on this device';
+
+  @override
+  String get accountSettingsWeekStart => 'First day of the week';
+
+  @override
+  String get accountSettingsTimeAndLanguage => 'Time and language';
+
+  @override
+  String get accountSettingsTimezone => 'Time zone';
+
+  @override
+  String get accountSettingsTimezoneServerDefault => 'The server\'s default';
+
+  @override
+  String get accountSettingsTimezoneHelp =>
+      'For saved filters, emails and reminders sent by the server. The app shows times in this device\'s zone.';
+
+  @override
+  String get accountSettingsTimezoneSearch => 'Search time zones';
+
+  @override
+  String get accountSettingsTimezoneDevice => 'This device';
+
+  @override
+  String get accountSettingsTimezoneSameAsDevice => 'Same time as this device';
+
+  @override
+  String get accountSettingsTimezoneAll => 'All time zones';
+
+  @override
+  String accountSettingsTimezoneInvalid(String zone) {
+    return 'The server does not know the time zone $zone. Choose another one.';
+  }
+
+  @override
+  String get accountSettingsLanguage => 'Language';
+
+  @override
+  String get accountSettingsLanguageHelp =>
+      'For emails and the web. The app follows your device\'s language.';
+
+  @override
+  String get accountSettingsLanguageNotSet => 'Not set';
+
+  @override
+  String get accountSettingsLanguageSearch => 'Search languages';
+
+  @override
+  String get accountSettingsDateDisplay => 'Date format';
+
+  @override
+  String get accountSettingsDateDisplayDevice => 'As on this device';
+
+  @override
+  String get accountSettingsDateDisplayRelative => 'Relative, e.g. in 3 days';
+
+  @override
+  String get accountSettingsDateMonthDayYearDashed => 'MM-DD-YYYY';
+
+  @override
+  String get accountSettingsDateDayMonthYearDashed => 'DD-MM-YYYY';
+
+  @override
+  String get accountSettingsDateYearMonthDayDashed => 'YYYY-MM-DD';
+
+  @override
+  String get accountSettingsDateMonthDayYearSlashed => 'MM/DD/YYYY';
+
+  @override
+  String get accountSettingsDateDayMonthYearSlashed => 'DD/MM/YYYY';
+
+  @override
+  String get accountSettingsDateYearMonthDaySlashed => 'YYYY/MM/DD';
+
+  @override
+  String accountSettingsDateExample(String example) {
+    return 'Example: $example';
+  }
+
+  @override
+  String get accountSettingsTimeFormat => 'Time format';
+
+  @override
+  String get accountSettingsTimeFormatDevice => 'As on this device';
+
+  @override
+  String get accountSettingsTimeFormat12 => '12-hour';
+
+  @override
+  String get accountSettingsTimeFormat24 => '24-hour';
+
+  @override
+  String get accountSettingsEmailNotifications => 'Email notifications';
+
+  @override
+  String get accountSettingsEmailsOff =>
+      'This server does not send reminder emails at the moment. The settings are kept for when it does.';
+
+  @override
+  String get accountSettingsEmailReminders => 'Task reminders by email';
+
+  @override
+  String get accountSettingsEmailRemindersSubtitle =>
+      'An email for each reminder, besides this device\'s notifications';
+
+  @override
+  String get accountSettingsOverdueReminders => 'Daily overdue summary';
+
+  @override
+  String get accountSettingsOverdueRemindersSubtitle =>
+      'An email listing your overdue tasks that are not done';
+
+  @override
+  String get accountSettingsOverdueTime => 'Time of the summary';
+
+  @override
+  String get accountSettingsOverdueTimeInvalid =>
+      'The server refused this time.';
+
+  @override
+  String get accountSettingsPrivacy => 'Privacy';
+
+  @override
+  String get accountSettingsDiscoverableByName => 'Findable by name';
+
+  @override
+  String get accountSettingsDiscoverableByNameSubtitle =>
+      'Others can add you to teams and projects by searching for your name';
+
+  @override
+  String get accountSettingsDiscoverableByEmail => 'Findable by email';
+
+  @override
+  String get accountSettingsDiscoverableByEmailSubtitle =>
+      'Others can add you to teams and projects by searching for your full email address';
+
+  @override
+  String get accountSettingsAppearance => 'Appearance';
+
+  @override
+  String get accountSettingsColorScheme => 'Colour scheme';
+
+  @override
+  String get accountSettingsColorSchemeLight => 'Light';
+
+  @override
+  String get accountSettingsColorSchemeSystem => 'System';
+
+  @override
+  String get accountSettingsColorSchemeDark => 'Dark';
+
+  @override
+  String get accountSettingsNothingFound => 'Nothing found';
+
+  @override
+  String get accountSettingsNeedsConnection =>
+      'Changing account settings needs a connection to the server.';
+
+  @override
+  String get accountSettingsUnconfirmed =>
+      'The change could not be confirmed. Check it again once the connection is back.';
+
+  @override
+  String get accountSettingsSignInAgain =>
+      'Sign in again to change account settings.';
+
+  @override
+  String accountSettingsRefused(String message) {
+    return 'The server refused the change: $message';
+  }
+
+  @override
+  String get accountSettingsInvalid => 'The server refused this value.';
+
+  @override
+  String get accountSettingsFailed =>
+      'The change could not be saved. Try again later.';
+
+  @override
+  String get avatarTitle => 'Avatar';
+
+  @override
+  String get avatarCurrent => 'Your avatar';
+
+  @override
+  String get avatarProviderDefault => 'Default';
+
+  @override
+  String get avatarProviderDefaultSubtitle => 'A plain picture';
+
+  @override
+  String get avatarProviderInitials => 'Initials';
+
+  @override
+  String get avatarProviderInitialsSubtitle => 'Your initials';
+
+  @override
+  String get avatarProviderGravatar => 'Gravatar';
+
+  @override
+  String get avatarProviderGravatarSubtitle =>
+      'The picture for your email address at gravatar.com';
+
+  @override
+  String get avatarProviderMarble => 'Marble';
+
+  @override
+  String get avatarProviderMarbleSubtitle =>
+      'A colourful pattern made from your username';
+
+  @override
+  String get avatarProviderUpload => 'Your photo';
+
+  @override
+  String get avatarProviderUploadSubtitle => 'A photo from this device';
+
+  @override
+  String get avatarProviderUploadReplace => 'Choose another photo';
+
+  @override
+  String get avatarProviderLdap => 'From your directory';
+
+  @override
+  String get avatarProviderOpenId => 'From your sign-in provider';
+
+  @override
+  String get avatarAppShowsInitials =>
+      'This app shows your initials for the default, initials and marble avatars; the web draws them.';
+
+  @override
+  String get avatarManagedLdap =>
+      'Your avatar comes from your organisation\'s directory (LDAP). Ask your IT team how to change it.';
+
+  @override
+  String avatarManagedOpenId(String provider) {
+    return 'Your avatar comes from your sign-in provider ($provider). Change it there.';
+  }
+
+  @override
+  String get avatarChoosePhoto => 'Choose a photo';
+
+  @override
+  String get avatarTakePhoto => 'Take a photo';
+
+  @override
+  String get avatarChanged => 'Avatar changed';
+
+  @override
+  String get avatarUploaded => 'Photo uploaded';
+
+  @override
+  String get avatarCropTitle => 'Your new avatar';
+
+  @override
+  String get avatarCropHint =>
+      'Drag to move the photo and pinch to zoom. The square becomes your avatar.';
+
+  @override
+  String get avatarCropUpload => 'Upload';
+
+  @override
+  String get avatarUploading => 'Uploading…';
+
+  @override
+  String get avatarImageUnusable =>
+      'This picture cannot be used. Choose a PNG or JPEG photo.';
+
+  @override
+  String get avatarImageTooLarge => 'This picture is too large for the server.';
+
+  @override
+  String get avatarPickFailed => 'The photos could not be opened.';
 }

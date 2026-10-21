@@ -1,10 +1,17 @@
 import 'package:dio/dio.dart';
 import 'package:vikunja_api/src/dto/user_codec.dart';
+import 'package:vikunja_api/src/dto/user_profile_codec.dart';
 import 'package:vikunja_api/src/dto/user_settings_codec.dart';
 import 'package:vikunja_api/src/errors/normalize_error.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 
 typedef UserWithSettings = ({User user, UserSettings settings});
+
+typedef UserWithProfile = ({
+  User user,
+  UserProfile profile,
+  UserSettings settings,
+});
 
 /// Account endpoints over an authenticated client from
 /// `createAuthenticatedDio`. Throws `VikunjaFailure`; a cancelled request
@@ -22,12 +29,23 @@ final class AccountApi {
   /// Settings the client cannot read are the defaults; only a body that is
   /// not a user fails.
   Future<UserWithSettings> currentUserWithSettings() async {
+    final (:user, profile: _, :settings) = await currentUserWithProfile();
+    return (user: user, settings: settings);
+  }
+
+  /// [currentUserWithSettings] with the profile from the same read.
+  Future<UserWithProfile> currentUserWithProfile() async {
     final json = await _send('GET', '/user');
     final user = parseUser(json);
-    if (user == null) {
+    final profile = parseUserProfile(json);
+    if (user == null || profile == null) {
       throw const UnexpectedResponse(200, message: 'not a user');
     }
-    return (user: user, settings: parseUserSettings(json['settings']));
+    return (
+      user: user,
+      profile: profile,
+      settings: parseUserSettings(json['settings']),
+    );
   }
 
   /// Ends the server session of the current token (best effort for callers).

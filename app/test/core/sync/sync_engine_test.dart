@@ -9,6 +9,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/settings/user_profile_json.dart';
 import 'package:vikunja_mobile/core/settings/user_settings_json.dart';
 import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine_impl.dart';
@@ -281,6 +282,42 @@ void main() {
 
       final stored = await db.syncStateDao.readAll();
       expect(decodeUserSettings(stored[SyncStateKeys.userSettings]), settings);
+    });
+
+    test('the account phase stores the profile when the source reads it, '
+        'and a source without it leaves the stored one', () async {
+      final profile = UserProfile(
+        id: me.id,
+        username: me.username,
+        name: 'Me Renamed',
+        isLocalUser: false,
+        authProvider: 'ldap',
+        updated: now,
+      );
+      final withProfile = DefaultSyncEngine(
+        db: db,
+        client: client,
+        perPage: 50,
+        currentUserWithProfile: () async => (
+          user: User(id: me.id, username: me.username, name: 'Me Renamed'),
+          profile: profile,
+          settings: settings,
+        ),
+        now: () => now,
+      );
+      addTearDown(withProfile.dispose);
+
+      await withProfile.ensureInitialSync();
+      final stored = await db.syncStateDao.readAll();
+      expect(decodeUserProfile(stored[SyncStateKeys.userProfile]), profile);
+
+      await engine().fullResync();
+      expect(
+        decodeUserProfile(
+          (await db.syncStateDao.readAll())[SyncStateKeys.userProfile],
+        ),
+        profile,
+      );
     });
 
     test('a failing user read fails the run before the projects', () async {

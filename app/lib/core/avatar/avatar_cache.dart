@@ -40,6 +40,47 @@ final class AvatarCache {
   final _avatars = <(String, int), CachedAvatar>{};
   final _retryAt = <(String, int), DateTime>{};
   final _inFlight = <(String, int), Future<CachedAvatar>>{};
+  final _generations = <String, int>{};
+  final _knownUpdates = <String, DateTime>{};
+  final _evictions = StreamController<String>.broadcast(sync: true);
+
+  /// Grows with every [evict] of the user; a widget that keys its request
+  /// on it asks again.
+  int generationOf(String username) => _generations[username] ?? 0;
+
+  /// The usernames [evict] forgot.
+  Stream<String> get evictions => _evictions.stream;
+
+  /// Forgets every size of the user's avatar, which the user has just
+  /// changed; an answer still on its way is not kept. [updated] is the
+  /// user's `updated` after the change, so [noteUpdated] does not evict a
+  /// second time for it.
+  void evict(String username, {DateTime? updated}) {
+    if (updated != null) _knownUpdates[username] = updated;
+    _generations[username] = generationOf(username) + 1;
+    bool ofUser((String, int) key) => key.$1 == username;
+    _avatars.removeWhere((key, _) => ofUser(key));
+    _retryAt.removeWhere((key, _) => ofUser(key));
+    _inFlight.removeWhere((key, _) => ofUser(key));
+    if (!_evictions.isClosed) _evictions.add(username);
+  }
+
+  /// The server bumps a user's `updated` with every change to the user, the
+  /// avatar included, and avatar answers carry no cache validators, so a
+  /// different [updated] than the one noted before evicts; the first one
+  /// noted is only remembered.
+  void noteUpdated(String username, DateTime updated) {
+    final known = _knownUpdates[username];
+    _knownUpdates[username] = updated;
+    if (known != null && known != updated) evict(username);
+  }
+
+  /// [updated] after a change that left the avatar as it was, so
+  /// [noteUpdated] does not evict for it.
+  void recordUpdated(String username, DateTime updated) =>
+      _knownUpdates[username] = updated;
+
+  Future<void> dispose() => _evictions.close();
 
   /// Null until [load] has finished for it, and again once a passing
   /// failure may be retried.
@@ -59,15 +100,24 @@ final class AvatarCache {
   Future<CachedAvatar> load(String username, int size) {
     if (peek(username, size) case final avatar?) return Future.value(avatar);
     final key = (username, size);
-    // whenComplete would wait for a returned future, and the removed one is
-    // this very future.
-    return _inFlight[key] ??= _download(
-      username,
-      size,
-    ).whenComplete(() => unawaited(_inFlight.remove(key)));
+    if (_inFlight[key] case final running?) return running;
+    late final Future<CachedAvatar> download;
+    // After an evict, another download of the same key may be in flight.
+    download = _download(username, size, generationOf(username)).whenComplete(
+      () {
+        if (identical(_inFlight[key], download)) {
+          unawaited(_inFlight.remove(key));
+        }
+      },
+    );
+    return _inFlight[key] = download;
   }
 
-  Future<CachedAvatar> _download(String username, int size) async {
+  Future<CachedAvatar> _download(
+    String username,
+    int size,
+    int generation,
+  ) async {
     final key = (username, size);
     CachedAvatar avatar;
     _retryAt.remove(key);
@@ -79,10 +129,12 @@ final class AvatarCache {
     } on Object catch (error) {
       _log.fine('Avatar unavailable: ${error.runtimeType}');
       avatar = CachedAvatar.initials;
+      if (generation != generationOf(username)) return avatar;
       if (error is! NotFound && error is! Forbidden) {
         _retryAt[key] = _now().add(retryAfter);
       }
     }
+    if (generation != generationOf(username)) return avatar;
     _avatars[key] = avatar;
     while (_avatars.length > capacity) {
       _retryAt.remove(_avatars.keys.first);

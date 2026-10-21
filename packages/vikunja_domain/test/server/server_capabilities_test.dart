@@ -46,6 +46,7 @@ const Set<Capability> _v2Only = {
   Capability.bulkCreateTasks,
   Capability.pendingEmail,
   Capability.byIndexRedirect,
+  Capability.userSettingsMergePatch,
   Capability.timeTracking,
   Capability.adminPanel,
   Capability.auditLogs,
@@ -119,7 +120,17 @@ void main() {
         Capability.bulkCreateTasks,
         Capability.pendingEmail,
         Capability.byIndexRedirect,
+        Capability.userSettingsMergePatch,
       });
+    });
+
+    test('2.6.0 with v2 has pending email but replaces the settings whole', () {
+      final capabilities = ServerCapabilities.derive(
+        info: _info('v2.6.0'),
+        apiVersions: _both,
+      );
+      expect(capabilities.has(Capability.pendingEmail), isTrue);
+      expect(capabilities.has(Capability.userSettingsMergePatch), isFalse);
     });
 
     test('a build after a tag counts as that release', () {

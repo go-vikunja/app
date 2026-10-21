@@ -26,6 +26,16 @@ abstract final class SyncStateKeys {
   /// see `encodeUserSettings`. Absent before the first run.
   static const userSettings = 'user_settings';
 
+  /// The account's `UserProfile` from the same `GET /user`, see
+  /// `encodeUserProfile`. Absent before the first run of a version that
+  /// stores it.
+  static const userProfile = 'user_profile';
+
+  /// The account's avatar provider by its wire name, as the account
+  /// settings last read or wrote it; the sync does not read it. Absent
+  /// until then.
+  static const avatarProvider = 'avatar_provider';
+
   /// The saved filters the last project list named, see
   /// `encodeSavedFilters`; absent while it named none.
   static const savedFilters = 'saved_filters';

@@ -1,0 +1,13 @@
+{
+  "server": "2.7.0",
+  "request": "PUT /api/v1/user/settings/avatar/upload",
+  "sent": {
+    "file_name": "huge.png",
+    "length": 58400
+  },
+  "status": 400,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"code\":4032,\"message\":\"Image dimensions 10000x6000 are invalid or exceed the maximum of 50000000 pixels.\"}\n"
+}

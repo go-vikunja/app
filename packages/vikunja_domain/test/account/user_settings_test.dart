@@ -91,6 +91,188 @@ void main() {
     }
   });
 
+  test('the account settings of a new user: no name, no emails, not '
+      'discoverable, the overdue summary on at 9:00', () {
+    const settings = UserSettings();
+    expect(settings.name, '');
+    expect(settings.emailRemindersEnabled, isFalse);
+    expect(settings.discoverableByName, isFalse);
+    expect(settings.discoverableByEmail, isFalse);
+    expect(settings.overdueTasksRemindersEnabled, isTrue);
+    expect(settings.overdueTasksRemindersTime, const ClockTime(9, 0));
+  });
+
+  group('ClockTime', () {
+    test("parses Go's 15:04 layout, with or without a leading zero", () {
+      expect(ClockTime.tryParse('9:00'), const ClockTime(9, 0));
+      expect(ClockTime.tryParse('09:00'), const ClockTime(9, 0));
+      expect(ClockTime.tryParse('23:59'), const ClockTime(23, 59));
+      expect(ClockTime.tryParse('0:05'), const ClockTime(0, 5));
+    });
+
+    test('refuses what the server refuses', () {
+      for (final value in [
+        '7:5',
+        '09:00:00',
+        '9',
+        '9.30',
+        '',
+        '24:00',
+        '12:60',
+        ' 9:00',
+        '9:00 ',
+        '123:00',
+        null,
+        900,
+      ]) {
+        expect(ClockTime.tryParse(value), isNull, reason: '$value');
+      }
+    });
+
+    test('is sent zero-padded, as the web sends it', () {
+      expect(const ClockTime(9, 0).wireName, '09:00');
+      expect(const ClockTime(21, 5).wireName, '21:05');
+      expect(const ClockTime(0, 0).wireName, '00:00');
+    });
+
+    test('equal by hour and minute', () {
+      expect(const ClockTime(7, 30), const ClockTime(7, 30));
+      expect(const ClockTime(7, 30).hashCode, const ClockTime(7, 30).hashCode);
+      expect(const ClockTime(7, 30), isNot(const ClockTime(7, 31)));
+      expect(const ClockTime(7, 30).toString(), 'ClockTime(07:30)');
+    });
+  });
+
+  group('copyWith', () {
+    const full = UserSettings(
+      name: 'Dora',
+      emailRemindersEnabled: true,
+      discoverableByName: true,
+      discoverableByEmail: true,
+      overdueTasksRemindersEnabled: false,
+      overdueTasksRemindersTime: ClockTime(18, 30),
+      defaultProjectId: 3,
+      weekStart: 1,
+      timezone: 'Europe/Berlin',
+      language: 'de-DE',
+      quickAddMagicMode: QuickAddMagicMode.todoist,
+      quickAddDefaultReminders: [Duration(minutes: -15)],
+      filterIdUsedOnOverview: -553,
+      minimumPriority: 3,
+      commentSortOrder: CommentSortOrder.newestFirst,
+      dateDisplay: DateDisplay.dayMonthYear,
+      timeFormat: TimeFormat.twelveHour,
+      colorSchema: ColorSchema.dark,
+      defaultViewKind: ProjectViewKind.kanban,
+    );
+
+    test('without arguments keeps every field', () {
+      expect(full.copyWith(), full);
+      expect(const UserSettings().copyWith(), const UserSettings());
+    });
+
+    test('replaces each field on its own', () {
+      expect(full.copyWith(name: 'Boots').name, 'Boots');
+      expect(full.copyWith(emailRemindersEnabled: false), isNot(full));
+      expect(
+        full.copyWith(discoverableByName: false).discoverableByName,
+        false,
+      );
+      expect(
+        full.copyWith(discoverableByEmail: false).discoverableByEmail,
+        false,
+      );
+      expect(
+        full
+            .copyWith(overdueTasksRemindersEnabled: true)
+            .overdueTasksRemindersEnabled,
+        isTrue,
+      );
+      expect(
+        full
+            .copyWith(overdueTasksRemindersTime: const ClockTime(7, 0))
+            .overdueTasksRemindersTime,
+        const ClockTime(7, 0),
+      );
+      expect(full.copyWith(defaultProjectId: 9).defaultProjectId, 9);
+      expect(full.copyWith(weekStart: 6).weekStart, 6);
+      expect(full.copyWith(timezone: 'UTC').timezone, 'UTC');
+      expect(full.copyWith(language: 'en').language, 'en');
+      expect(
+        full
+            .copyWith(quickAddMagicMode: QuickAddMagicMode.disabled)
+            .quickAddMagicMode,
+        QuickAddMagicMode.disabled,
+      );
+      expect(
+        full
+            .copyWith(quickAddDefaultReminders: const [])
+            .quickAddDefaultReminders,
+        isEmpty,
+      );
+      expect(
+        full.copyWith(filterIdUsedOnOverview: -600).filterIdUsedOnOverview,
+        -600,
+      );
+      expect(full.copyWith(minimumPriority: 5).minimumPriority, 5);
+      expect(
+        full
+            .copyWith(commentSortOrder: CommentSortOrder.oldestFirst)
+            .commentSortOrder,
+        CommentSortOrder.oldestFirst,
+      );
+      expect(
+        full.copyWith(dateDisplay: DateDisplay.relative).dateDisplay,
+        DateDisplay.relative,
+      );
+      expect(
+        full.copyWith(timeFormat: TimeFormat.twentyFourHour).timeFormat,
+        TimeFormat.twentyFourHour,
+      );
+      expect(
+        full.copyWith(colorSchema: ColorSchema.light).colorSchema,
+        ColorSchema.light,
+      );
+      expect(
+        full.copyWith(defaultViewKind: ProjectViewKind.list).defaultViewKind,
+        ProjectViewKind.list,
+      );
+    });
+
+    test('null unsets the nullable fields', () {
+      final cleared = full.copyWith(
+        defaultProjectId: null,
+        filterIdUsedOnOverview: null,
+        dateDisplay: null,
+        timeFormat: null,
+        defaultViewKind: null,
+      );
+
+      expect(cleared.defaultProjectId, isNull);
+      expect(cleared.filterIdUsedOnOverview, isNull);
+      expect(cleared.dateDisplay, isNull);
+      expect(cleared.timeFormat, isNull);
+      expect(cleared.defaultViewKind, isNull);
+      expect(cleared.name, 'Dora');
+      expect(cleared.minimumPriority, 3);
+    });
+
+    test('every new field counts for equality', () {
+      const plain = UserSettings();
+      for (final changed in const [
+        UserSettings(name: 'Dora'),
+        UserSettings(emailRemindersEnabled: true),
+        UserSettings(discoverableByName: true),
+        UserSettings(discoverableByEmail: true),
+        UserSettings(overdueTasksRemindersEnabled: false),
+        UserSettings(overdueTasksRemindersTime: ClockTime(10, 0)),
+      ]) {
+        expect(changed, isNot(plain));
+        expect(changed.hashCode, isNot(plain.hashCode));
+      }
+    });
+  });
+
   group('equality', () {
     const base = UserSettings(
       defaultProjectId: 3,

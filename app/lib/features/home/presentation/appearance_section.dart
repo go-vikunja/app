@@ -6,8 +6,8 @@ import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/theme/theme_providers.dart';
 
 /// The device-wide choice between the system's colours and the brand blue;
-/// only where the system has a palette (Android 12 and later). The light
-/// or dark mode follows the account's setting on the web.
+/// only where the system has a palette (Android 12 and later), with the
+/// way to the account's colour scheme (light or dark).
 class AppearanceSection extends ConsumerWidget {
   const new({super.key});
 
@@ -40,6 +40,12 @@ class AppearanceSection extends ConsumerWidget {
             value: enabled,
             onChanged: (value) => unawaited(
               ref.read(useSystemColorsProvider.notifier).set(enabled: value),
+            ),
+          ),
+          Text(
+            l10n.appearanceLightDarkHint,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
         ],

@@ -614,6 +614,7 @@
   "@appearanceSystemColorsSubtitle": {
     "description": "Under the switch for Android's dynamic colours; the switch applies to the whole device."
   },
+  "appearanceLightDarkHint": "Light or dark is your account's colour scheme, in Account settings.",
   "projectChildCount": "{count, plural, =1{1 subproject} other{{count} subprojects}}",
   "@projectChildCount": {
     "placeholders": {
@@ -1657,7 +1658,7 @@
   "@quickAddHelpExampleProject": {
     "description": "A project title in the example line; one word."
   },
-  "quickAddHelpMode": "These are the {mode} prefixes, as set in your Vikunja settings on the web.",
+  "quickAddHelpMode": "These are the {mode} prefixes, as set in your account settings.",
   "@quickAddHelpMode": {
     "placeholders": {
       "mode": {
@@ -2517,7 +2518,7 @@
     }
   },
   "overviewFilterNotLoadedTitle": "This filter loads once you're online",
-  "overviewFilterNotLoadedBody": "Your Overview shows the saved filter “{title}”, picked on the web. Its tasks download with the next sync.",
+  "overviewFilterNotLoadedBody": "Your Overview shows the saved filter “{title}”, picked in your account settings. Its tasks download with the next sync.",
   "@overviewFilterNotLoadedBody": {
     "placeholders": {
       "title": {
@@ -3917,5 +3918,223 @@
   "syncProblemYourVersion": "Your version",
   "syncProblemWebVersion": "Web version",
   "syncProblemWebTaskGone": "This task is no longer on the server.",
-  "syncProblemNoDescription": "No description"
+  "syncProblemNoDescription": "No description",
+  "accountSettingsEntry": "Account settings",
+  "accountSettingsEntrySubtitle": "Name, avatar, colour scheme and preferences, saved on the server for all your devices",
+  "accountHeaderTapHint": "open the account settings",
+  "@accountHeaderTapHint": {
+    "description": "Screen readers say it after 'Double tap to' on the profile header."
+  },
+  "onThisDeviceHeading": "On this device",
+  "@onThisDeviceHeading": {
+    "description": "Heads the Account tab's settings that stay on the phone (notifications, colours)."
+  },
+  "onThisDeviceSubtitle": "These settings stay on this device and are not saved to your account.",
+  "accountSettingsTitle": "Account settings",
+  "accountSettingsIntro": "Saved to your account on {host}: they apply on the web and on all your devices.",
+  "@accountSettingsIntro": {
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "tasks.example.org"
+      }
+    }
+  },
+  "accountSettingsOffline": "Offline: account settings can be changed once the server can be reached again.",
+  "accountSettingsLoading": "Loading account settings…",
+  "accountSettingsSaved": "Saved",
+  "@accountSettingsSaved": {
+    "description": "Announced to screen readers after a setting was saved on the server."
+  },
+  "accountSettingsSaving": "Saving",
+  "@accountSettingsSaving": {
+    "description": "Screen readers' name for the progress bar while a change is sent to the server."
+  },
+  "accountSettingsProfile": "Profile",
+  "accountSettingsName": "Name",
+  "accountSettingsNameHelp": "Shown instead of your username. Leave it empty to show @{username}.",
+  "@accountSettingsNameHelp": {
+    "placeholders": {
+      "username": {
+        "type": "String",
+        "example": "alice"
+      }
+    }
+  },
+  "accountSettingsNameManaged": "Your sign-in provider ({provider}) sets your name at every sign-in. Change it there.",
+  "@accountSettingsNameManaged": {
+    "placeholders": {
+      "provider": {
+        "type": "String",
+        "example": "Keycloak"
+      }
+    }
+  },
+  "accountSettingsNameSave": "Save name",
+  "accountSettingsNameDiscardBody": "The name you typed has not been saved.",
+  "accountSettingsNameSaved": "Name saved",
+  "accountSettingsAvatar": "Avatar",
+  "accountSettingsSignIn": "Password and email",
+  "accountSettingsWaitingForProfile": "Available once the server has said how you sign in.",
+  "accountSettingsChangePassword": "Change password",
+  "accountSettingsChangePasswordHint": "Opens the web in your browser. Afterwards, sign in here again; changes not sent yet are kept.",
+  "accountSettingsChangeEmail": "Change email address",
+  "accountSettingsOpensWeb": "Opens the web in your browser",
+  "accountSettingsPendingEmail": "Waiting for confirmation of {email}",
+  "@accountSettingsPendingEmail": {
+    "placeholders": {
+      "email": {
+        "type": "String",
+        "example": "alice@example.org"
+      }
+    }
+  },
+  "accountSettingsManagedBySignInNamed": "Managed by your sign-in provider ({provider})",
+  "@accountSettingsManagedBySignInNamed": {
+    "placeholders": {
+      "provider": {
+        "type": "String",
+        "example": "Keycloak"
+      }
+    }
+  },
+  "accountSettingsWebNotOpened": "The browser could not be opened.",
+  "accountSettingsDefaults": "Defaults",
+  "accountSettingsDefaultProject": "Default project",
+  "accountSettingsDefaultProjectNone": "None",
+  "accountSettingsDefaultProjectUnknown": "A project not on this device",
+  "accountSettingsDefaultProjectInvalid": "Choose a project you can add tasks to that is not archived.",
+  "accountSettingsDefaultView": "Default view",
+  "accountSettingsDefaultViewFirst": "First view",
+  "accountSettingsQuickAddMagic": "Quick Add Magic",
+  "accountSettingsQuickAddMagicDisabled": "Off",
+  "accountSettingsQuickAddMagicVikunja": "Vikunja",
+  "accountSettingsQuickAddMagicTodoist": "Todoist",
+  "accountSettingsMinimumPriority": "Priorities shown from",
+  "@accountSettingsMinimumPriority": {
+    "description": "The lowest priority task rows show, the web's minimum visible task priority."
+  },
+  "accountSettingsOverviewFilter": "Overview shows",
+  "@accountSettingsOverviewFilter": {
+    "description": "What the Overview tab lists: all open tasks or a saved filter."
+  },
+  "accountSettingsOverviewFilterNone": "All open tasks",
+  "accountSettingsOverviewFilterUnknown": "A saved filter not on this device",
+  "accountSettingsWeekStart": "First day of the week",
+  "accountSettingsTimeAndLanguage": "Time and language",
+  "accountSettingsTimezone": "Time zone",
+  "accountSettingsTimezoneServerDefault": "The server's default",
+  "accountSettingsTimezoneHelp": "For saved filters, emails and reminders sent by the server. The app shows times in this device's zone.",
+  "accountSettingsTimezoneSearch": "Search time zones",
+  "accountSettingsTimezoneDevice": "This device",
+  "accountSettingsTimezoneSameAsDevice": "Same time as this device",
+  "@accountSettingsTimezoneSameAsDevice": {
+    "description": "Heads the time zones whose clocks match this device's over the coming year."
+  },
+  "accountSettingsTimezoneAll": "All time zones",
+  "accountSettingsTimezoneInvalid": "The server does not know the time zone {zone}. Choose another one.",
+  "@accountSettingsTimezoneInvalid": {
+    "placeholders": {
+      "zone": {
+        "type": "String",
+        "example": "America/Ciudad Juarez"
+      }
+    }
+  },
+  "accountSettingsLanguage": "Language",
+  "accountSettingsLanguageHelp": "For emails and the web. The app follows your device's language.",
+  "accountSettingsLanguageNotSet": "Not set",
+  "accountSettingsLanguageSearch": "Search languages",
+  "accountSettingsDateDisplay": "Date format",
+  "accountSettingsDateDisplayDevice": "As on this device",
+  "accountSettingsDateDisplayRelative": "Relative, e.g. in 3 days",
+  "accountSettingsDateMonthDayYearDashed": "MM-DD-YYYY",
+  "accountSettingsDateDayMonthYearDashed": "DD-MM-YYYY",
+  "accountSettingsDateYearMonthDayDashed": "YYYY-MM-DD",
+  "accountSettingsDateMonthDayYearSlashed": "MM/DD/YYYY",
+  "accountSettingsDateDayMonthYearSlashed": "DD/MM/YYYY",
+  "accountSettingsDateYearMonthDaySlashed": "YYYY/MM/DD",
+  "accountSettingsDateExample": "Example: {example}",
+  "@accountSettingsDateExample": {
+    "placeholders": {
+      "example": {
+        "type": "String",
+        "example": "10/20/2026 14:30"
+      }
+    }
+  },
+  "accountSettingsTimeFormat": "Time format",
+  "accountSettingsTimeFormatDevice": "As on this device",
+  "accountSettingsTimeFormat12": "12-hour",
+  "accountSettingsTimeFormat24": "24-hour",
+  "accountSettingsEmailNotifications": "Email notifications",
+  "accountSettingsEmailsOff": "This server does not send reminder emails at the moment. The settings are kept for when it does.",
+  "accountSettingsEmailReminders": "Task reminders by email",
+  "accountSettingsEmailRemindersSubtitle": "An email for each reminder, besides this device's notifications",
+  "accountSettingsOverdueReminders": "Daily overdue summary",
+  "accountSettingsOverdueRemindersSubtitle": "An email listing your overdue tasks that are not done",
+  "accountSettingsOverdueTime": "Time of the summary",
+  "accountSettingsOverdueTimeInvalid": "The server refused this time.",
+  "accountSettingsPrivacy": "Privacy",
+  "accountSettingsDiscoverableByName": "Findable by name",
+  "accountSettingsDiscoverableByNameSubtitle": "Others can add you to teams and projects by searching for your name",
+  "accountSettingsDiscoverableByEmail": "Findable by email",
+  "accountSettingsDiscoverableByEmailSubtitle": "Others can add you to teams and projects by searching for your full email address",
+  "accountSettingsAppearance": "Appearance",
+  "accountSettingsColorScheme": "Colour scheme",
+  "accountSettingsColorSchemeLight": "Light",
+  "accountSettingsColorSchemeSystem": "System",
+  "accountSettingsColorSchemeDark": "Dark",
+  "accountSettingsNothingFound": "Nothing found",
+  "accountSettingsNeedsConnection": "Changing account settings needs a connection to the server.",
+  "accountSettingsUnconfirmed": "The change could not be confirmed. Check it again once the connection is back.",
+  "accountSettingsSignInAgain": "Sign in again to change account settings.",
+  "accountSettingsRefused": "The server refused the change: {message}",
+  "@accountSettingsRefused": {
+    "placeholders": {
+      "message": {
+        "type": "String",
+        "example": "Invalid Data"
+      }
+    }
+  },
+  "accountSettingsInvalid": "The server refused this value.",
+  "accountSettingsFailed": "The change could not be saved. Try again later.",
+  "avatarTitle": "Avatar",
+  "avatarCurrent": "Your avatar",
+  "avatarProviderDefault": "Default",
+  "avatarProviderDefaultSubtitle": "A plain picture",
+  "avatarProviderInitials": "Initials",
+  "avatarProviderInitialsSubtitle": "Your initials",
+  "avatarProviderGravatar": "Gravatar",
+  "avatarProviderGravatarSubtitle": "The picture for your email address at gravatar.com",
+  "avatarProviderMarble": "Marble",
+  "avatarProviderMarbleSubtitle": "A colourful pattern made from your username",
+  "avatarProviderUpload": "Your photo",
+  "avatarProviderUploadSubtitle": "A photo from this device",
+  "avatarProviderUploadReplace": "Choose another photo",
+  "avatarProviderLdap": "From your directory",
+  "avatarProviderOpenId": "From your sign-in provider",
+  "avatarAppShowsInitials": "This app shows your initials for the default, initials and marble avatars; the web draws them.",
+  "avatarManagedLdap": "Your avatar comes from your organisation's directory (LDAP). Ask your IT team how to change it.",
+  "avatarManagedOpenId": "Your avatar comes from your sign-in provider ({provider}). Change it there.",
+  "@avatarManagedOpenId": {
+    "placeholders": {
+      "provider": {
+        "type": "String",
+        "example": "Keycloak"
+      }
+    }
+  },
+  "avatarChoosePhoto": "Choose a photo",
+  "avatarTakePhoto": "Take a photo",
+  "avatarChanged": "Avatar changed",
+  "avatarUploaded": "Photo uploaded",
+  "avatarCropTitle": "Your new avatar",
+  "avatarCropHint": "Drag to move the photo and pinch to zoom. The square becomes your avatar.",
+  "avatarCropUpload": "Upload",
+  "avatarUploading": "Uploading…",
+  "avatarImageUnusable": "This picture cannot be used. Choose a PNG or JPEG photo.",
+  "avatarImageTooLarge": "This picture is too large for the server.",
+  "avatarPickFailed": "The photos could not be opened."
 }

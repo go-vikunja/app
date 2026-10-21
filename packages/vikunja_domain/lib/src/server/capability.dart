@@ -9,6 +9,10 @@ enum Capability {
   bulkCreateTasks,
   pendingEmail,
   byIndexRedirect,
+
+  /// v2 `PATCH /user/settings/general` as a deep merge-patch; older servers
+  /// replace every setting on a write.
+  userSettingsMergePatch,
   localAuth,
   ldapAuth,
   openIdConnect,

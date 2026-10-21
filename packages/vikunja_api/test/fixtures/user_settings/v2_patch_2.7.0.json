@@ -1,0 +1,19 @@
+{
+  "server": "2.7.0",
+  "request": "PATCH /api/v2/user/settings/general",
+  "sent": {
+    "name": "Dora",
+    "discoverable_by_name": true,
+    "overdue_tasks_reminders_time": "18:30",
+    "week_start": 1,
+    "frontend_settings": {
+      "date_display": null,
+      "minimum_priority": 4
+    }
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"$schema\":\"http://localhost/api/v2/schemas/UserActionMessageBody.json\",\"message\":\"The settings were updated successfully.\"}\n"
+}

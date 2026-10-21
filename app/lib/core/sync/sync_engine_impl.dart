@@ -6,7 +6,7 @@ import 'package:logging/logging.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
-import 'package:vikunja_mobile/core/settings/user_settings_json.dart';
+import 'package:vikunja_mobile/core/settings/current_user_store.dart';
 import 'package:vikunja_mobile/core/sync/archived_projects.dart';
 import 'package:vikunja_mobile/core/sync/incremental_run.dart';
 import 'package:vikunja_mobile/core/sync/list_downloads.dart';
@@ -22,8 +22,17 @@ final _log = Logger('SyncEngine');
 /// `GET /user`, which the read client does not cover.
 typedef CurrentUserSource = Future<UserWithSettings> Function();
 
-/// The sync of one account. Every run first stores the current user and
-/// their settings (`GET /user`). A full run goes account → projects →
+/// The same read with the profile, which a run then stores too.
+typedef CurrentProfileSource = Future<UserWithProfile> Function();
+
+typedef _CurrentUser = ({
+  User user,
+  UserProfile? profile,
+  UserSettings settings,
+});
+
+/// The sync of one account. Every run first stores the current user, their
+/// settings and profile (`GET /user`). A full run goes account → projects →
 /// labels → tasks → archived projects' tasks → finishing: tasks are pulled
 /// keyset by id (`id > lastId`, sorted by id, one page per request), open
 /// ones first, every page is checkpointed in `sync_state` so a killed app
@@ -52,11 +61,13 @@ final class DefaultSyncEngine implements SyncEngine {
     required this._db,
     required this._client,
     required int perPage,
-    this._currentUser,
+    CurrentUserSource? currentUser,
+    CurrentProfileSource? currentUserWithProfile,
     DateTime Function()? now,
     this.headless = false,
     Future<void> Function(Duration duration)? delay,
   }) : _perPage = perPage,
+       _currentUser = _currentUserOf(currentUserWithProfile, currentUser),
        _now = now ?? DateTime.now,
        _delay = delay ?? Future<void>.delayed {
     if (perPage < 1) throw ArgumentError.value(perPage, 'perPage');
@@ -66,7 +77,7 @@ final class DefaultSyncEngine implements SyncEngine {
   final AppDatabase _db;
   final VikunjaReadClient _client;
   final int _perPage;
-  final CurrentUserSource? _currentUser;
+  final Future<_CurrentUser> Function()? _currentUser;
   final DateTime Function() _now;
   final Future<void> Function(Duration duration) _delay;
 
@@ -340,6 +351,26 @@ final class DefaultSyncEngine implements SyncEngine {
     }
   }
 
+  /// [withProfile] wins; [withoutProfile] leaves the stored profile alone.
+  static Future<_CurrentUser> Function()? _currentUserOf(
+    CurrentProfileSource? withProfile,
+    CurrentUserSource? withoutProfile,
+  ) {
+    if (withProfile != null) {
+      return () async {
+        final (:user, :profile, :settings) = await withProfile();
+        return (user: user, profile: profile, settings: settings);
+      };
+    }
+    if (withoutProfile != null) {
+      return () async {
+        final (:user, :settings) = await withoutProfile();
+        return (user: user, profile: null, settings: settings);
+      };
+    }
+    return null;
+  }
+
   static DateTime? _stored(Map<String, String> state, String key) =>
       DateTime.tryParse(state[key] ?? '')?.toUtc();
 
@@ -447,25 +478,20 @@ final class DefaultSyncEngine implements SyncEngine {
   }
 
   /// The user joins the known people, so `@me` resolves offline; the
-  /// settings change on the web at any time, so every run reads them. What
-  /// is unchanged is not written, so the lists on screen are not reloaded.
+  /// settings and the profile change on the web at any time, so every run
+  /// reads them. What is unchanged is not written, so the lists on screen
+  /// are not reloaded.
   Future<void> _storeCurrentUser() async {
     final currentUser = _currentUser;
     if (currentUser == null) return;
-    final (:user, :settings) = await currentUser();
+    final (:user, :profile, :settings) = await currentUser();
     _checkDisposed();
-    final encoded = encodeUserSettings(settings);
-    await _db.transaction(() async {
-      final stored = await _db.usersDao.find(user.id);
-      // The email is not stored.
-      if (stored?.username != user.username || stored?.name != user.name) {
-        await _db.usersDao.upsertAll([user]);
-      }
-      final state = await _db.syncStateDao.readAll();
-      if (state[SyncStateKeys.userSettings] != encoded) {
-        await _db.syncStateDao.write({SyncStateKeys.userSettings: encoded});
-      }
-    });
+    await storeCurrentUser(
+      _db,
+      user: user,
+      settings: settings,
+      profile: profile,
+    );
   }
 
   /// All pages, archived projects included, in one list; the pseudo projects

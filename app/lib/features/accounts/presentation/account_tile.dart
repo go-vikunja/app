@@ -1,12 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/features/accounts/application/account_switcher.dart';
-import 'package:vikunja_mobile/features/common/presentation/initials_avatar.dart';
+import 'package:vikunja_mobile/features/common/presentation/user_avatar.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/server_address_display.dart';
 
-/// One account in the switcher or the Accounts section: initials, name,
+/// One account in the switcher or the Accounts section: avatar, name,
 /// `@username · host`, and badges for a session that ended and for changes
 /// not sent yet. The [current] account is marked instead of [trailing].
 class AccountTile extends ConsumerWidget {
@@ -56,9 +57,14 @@ class AccountTile extends ConsumerWidget {
       selected: current,
       onTap: onTap,
       contentPadding: contentPadding,
-      leading: InitialsAvatar(
-        name: account.displayName,
+      leading: UserAvatar(
+        user: User(
+          id: account.userId,
+          username: account.username,
+          name: account.displayName,
+        ),
         radius: 20,
+        accountId: entry.id,
         primary: true,
       ),
       title: Text(account.displayName),

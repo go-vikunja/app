@@ -153,6 +153,16 @@ final class _FakeVikunja implements HttpClientAdapter {
         : null;
     final route = '${options.method} ${uri.path}';
     final _Captured response;
+    // The own avatar the account shows; [seen] is the session's log.
+    if (uri.path.startsWith('/api/v2/avatar/')) {
+      return ResponseBody.fromString(
+        '<svg xmlns="http://www.w3.org/2000/svg"/>',
+        200,
+        headers: {
+          Headers.contentTypeHeader: ['image/svg+xml'],
+        },
+      );
+    }
     if (uri.origin != _root.origin) {
       throw DioException.connectionError(
         requestOptions: options,

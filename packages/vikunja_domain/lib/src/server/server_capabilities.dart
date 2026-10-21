@@ -42,7 +42,10 @@ final class ServerCapabilities {
       ],
       if (hasV2 && atLeast(2, 5)) Capability.bulkCreateTasks,
       if (hasV2 && atLeast(2, 6)) Capability.pendingEmail,
-      if (hasV2 && atLeast(2, 7)) Capability.byIndexRedirect,
+      if (hasV2 && atLeast(2, 7)) ...[
+        Capability.byIndexRedirect,
+        Capability.userSettingsMergePatch,
+      ],
       if (auth.localEnabled) Capability.localAuth,
       if (auth.ldapEnabled) Capability.ldapAuth,
       if (auth.openIdConnectEnabled && auth.openIdProviders.isNotEmpty)

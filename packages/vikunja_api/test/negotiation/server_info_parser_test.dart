@@ -390,6 +390,7 @@ void main() {
         Capability.bulkCreateTasks,
         Capability.pendingEmail,
         Capability.byIndexRedirect,
+        Capability.userSettingsMergePatch,
         Capability.localAuth,
         Capability.registration,
         Capability.linkSharing,

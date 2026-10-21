@@ -1,8 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/account_actions.dart';
@@ -21,9 +23,10 @@ import 'package:vikunja_mobile/features/session/presentation/sign_in_failure_mes
 import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
 import 'package:vikunja_mobile/features/sync/presentation/sync_progress_bar.dart';
 
-/// Who is signed in, a session that needs a new sign-in, the other
-/// accounts, the sync state, the notifications, the colours, the changes
-/// still waiting for the server, and sign-out.
+/// Who is signed in with the way to the account's settings on the server,
+/// a session that needs a new sign-in, the other accounts, the sync state
+/// with the changes still waiting for the server, what is set on this
+/// device only (notifications, colours), and sign-out.
 class AccountTab extends ConsumerWidget {
   const new({super.key});
 
@@ -39,6 +42,9 @@ class AccountTab extends ConsumerWidget {
         ref.read(pendingChangesProvider).unwrapPrevious().value ?? 0,
   );
 
+  void _openSettings(BuildContext context) =>
+      unawaited(GoRouter.of(context).push(AppRoutes.accountSettings));
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final accounts = ref.watch(accountsProvider).value;
@@ -51,6 +57,7 @@ class AccountTab extends ConsumerWidget {
     final signIn = ref.watch(signInControllerProvider);
     final isSigningIn = signIn is SignInInProgress;
     final signingOut = ref.watch(signOutControllerProvider);
+    final busy = signingOut || isSigningIn;
     final signOutLabel = switch ((signingOut, accounts.accounts.length > 1)) {
       (true, _) => l10n.homeSigningOut,
       (false, true) => l10n.homeSignOutOfThisAccount,
@@ -92,22 +99,39 @@ class AccountTab extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
             ],
-            AccountHeader(entry: entry),
+            // The account being signed out must not be changed or read
+            // again on the server.
+            AccountHeader(
+              entry: entry,
+              onOpenSettings: busy ? null : () => _openSettings(context),
+            ),
+            const SizedBox(height: 8),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.manage_accounts_outlined),
+              title: Text(l10n.accountSettingsEntry),
+              subtitle: Text(l10n.accountSettingsEntrySubtitle),
+              trailing: const Icon(Icons.chevron_right),
+              enabled: !busy,
+              onTap: () => _openSettings(context),
+            ),
             const SizedBox(height: 24),
-            AccountsSection(busy: signingOut || isSigningIn),
+            AccountsSection(busy: busy),
             const SizedBox(height: 24),
             SyncStatusSection(entry: entry, signingOut: signingOut),
-            const SizedBox(height: 24),
-            NotificationsSection(entry: entry),
-            const AppearanceSection(),
             PendingChangesLine(
               entry: entry,
               canSend: !signingOut && !entry.account.needsReauth,
             ),
             SyncProblemsSection(entry: entry),
+            const SizedBox(height: 24),
+            const _OnThisDeviceHeading(),
+            const SizedBox(height: 16),
+            NotificationsSection(entry: entry),
+            const AppearanceSection(),
             const SizedBox(height: 32),
             OutlinedButton.icon(
-              onPressed: signingOut || isSigningIn
+              onPressed: busy
                   ? null
                   : () => unawaited(_signOut(context, ref, entry)),
               icon: signingOut
@@ -121,6 +145,37 @@ class AccountTab extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Above the sections that stay on this phone, apart from the account's
+/// settings, which follow it to every device.
+class _OnThisDeviceHeading extends StatelessWidget {
+  const new();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Semantics(
+          header: true,
+          child: Text(
+            l10n.onThisDeviceHeading,
+            style: theme.textTheme.titleLarge,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          l10n.onThisDeviceSubtitle,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
     );
   }
 }

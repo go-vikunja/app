@@ -761,6 +761,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Die Farben deines Hintergrundbilds statt des App-Blaus';
 
   @override
+  String get appearanceLightDarkHint =>
+      'Hell oder dunkel ist das Farbschema deines Kontos, in den Kontoeinstellungen.';
+
+  @override
   String projectChildCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
@@ -1941,7 +1945,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String quickAddHelpMode(String mode) {
-    return 'Das sind die $mode-Präfixe, wie in deinen Vikunja-Einstellungen im Web festgelegt.';
+    return 'Das sind die $mode-Präfixe, wie in deinen Kontoeinstellungen festgelegt.';
   }
 
   @override
@@ -2802,7 +2806,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String overviewFilterNotLoadedBody(String title) {
-    return 'Dein Überblick zeigt den gespeicherten Filter „$title“, den du im Web gewählt hast. Seine Aufgaben kommen mit der nächsten Synchronisierung.';
+    return 'Dein Überblick zeigt den gespeicherten Filter „$title“, den du in deinen Kontoeinstellungen gewählt hast. Seine Aufgaben kommen mit der nächsten Synchronisierung.';
   }
 
   @override
@@ -4529,4 +4533,428 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get syncProblemNoDescription => 'Keine Beschreibung';
+
+  @override
+  String get accountSettingsEntry => 'Kontoeinstellungen';
+
+  @override
+  String get accountSettingsEntrySubtitle =>
+      'Name, Avatar, Farbschema und Vorlieben, auf dem Server für alle deine Geräte gespeichert';
+
+  @override
+  String get accountHeaderTapHint => 'Kontoeinstellungen öffnen';
+
+  @override
+  String get onThisDeviceHeading => 'Auf diesem Gerät';
+
+  @override
+  String get onThisDeviceSubtitle =>
+      'Diese Einstellungen bleiben auf diesem Gerät und werden nicht in deinem Konto gespeichert.';
+
+  @override
+  String get accountSettingsTitle => 'Kontoeinstellungen';
+
+  @override
+  String accountSettingsIntro(String host) {
+    return 'In deinem Konto auf $host gespeichert und im Web und auf allen deinen Geräten gültig.';
+  }
+
+  @override
+  String get accountSettingsOffline =>
+      'Offline: Kontoeinstellungen lassen sich ändern, sobald der Server wieder erreichbar ist.';
+
+  @override
+  String get accountSettingsLoading => 'Kontoeinstellungen werden geladen …';
+
+  @override
+  String get accountSettingsSaved => 'Gespeichert';
+
+  @override
+  String get accountSettingsSaving => 'Wird gespeichert';
+
+  @override
+  String get accountSettingsProfile => 'Profil';
+
+  @override
+  String get accountSettingsName => 'Name';
+
+  @override
+  String accountSettingsNameHelp(String username) {
+    return 'Wird statt deines Benutzernamens angezeigt. Leer lassen, um @$username anzuzeigen.';
+  }
+
+  @override
+  String accountSettingsNameManaged(String provider) {
+    return 'Dein Anmeldedienst ($provider) setzt deinen Namen bei jeder Anmeldung. Ändere ihn dort.';
+  }
+
+  @override
+  String get accountSettingsNameSave => 'Namen speichern';
+
+  @override
+  String get accountSettingsNameDiscardBody =>
+      'Der eingegebene Name wurde nicht gespeichert.';
+
+  @override
+  String get accountSettingsNameSaved => 'Name gespeichert';
+
+  @override
+  String get accountSettingsAvatar => 'Avatar';
+
+  @override
+  String get accountSettingsSignIn => 'Passwort und E-Mail';
+
+  @override
+  String get accountSettingsWaitingForProfile =>
+      'Verfügbar, sobald der Server mitgeteilt hat, wie du dich anmeldest.';
+
+  @override
+  String get accountSettingsChangePassword => 'Passwort ändern';
+
+  @override
+  String get accountSettingsChangePasswordHint =>
+      'Öffnet das Web in deinem Browser. Melde dich danach hier erneut an; noch nicht gesendete Änderungen bleiben erhalten.';
+
+  @override
+  String get accountSettingsChangeEmail => 'E-Mail-Adresse ändern';
+
+  @override
+  String get accountSettingsOpensWeb => 'Öffnet das Web in deinem Browser';
+
+  @override
+  String accountSettingsPendingEmail(String email) {
+    return 'Wartet auf Bestätigung von $email';
+  }
+
+  @override
+  String accountSettingsManagedBySignInNamed(String provider) {
+    return 'Wird von deinem Anmeldedienst ($provider) verwaltet';
+  }
+
+  @override
+  String get accountSettingsWebNotOpened =>
+      'Der Browser konnte nicht geöffnet werden.';
+
+  @override
+  String get accountSettingsDefaults => 'Voreinstellungen';
+
+  @override
+  String get accountSettingsDefaultProject => 'Standardprojekt';
+
+  @override
+  String get accountSettingsDefaultProjectNone => 'Keines';
+
+  @override
+  String get accountSettingsDefaultProjectUnknown =>
+      'Ein Projekt, das nicht auf diesem Gerät ist';
+
+  @override
+  String get accountSettingsDefaultProjectInvalid =>
+      'Wähle ein Projekt, in dem du Aufgaben anlegen darfst und das nicht archiviert ist.';
+
+  @override
+  String get accountSettingsDefaultView => 'Standardansicht';
+
+  @override
+  String get accountSettingsDefaultViewFirst => 'Erste Ansicht';
+
+  @override
+  String get accountSettingsQuickAddMagic => 'Quick Add Magic';
+
+  @override
+  String get accountSettingsQuickAddMagicDisabled => 'Aus';
+
+  @override
+  String get accountSettingsQuickAddMagicVikunja => 'Vikunja';
+
+  @override
+  String get accountSettingsQuickAddMagicTodoist => 'Todoist';
+
+  @override
+  String get accountSettingsMinimumPriority => 'Prioritäten anzeigen ab';
+
+  @override
+  String get accountSettingsOverviewFilter => 'Überblick zeigt';
+
+  @override
+  String get accountSettingsOverviewFilterNone => 'Alle offenen Aufgaben';
+
+  @override
+  String get accountSettingsOverviewFilterUnknown =>
+      'Ein gespeicherter Filter, der nicht auf diesem Gerät ist';
+
+  @override
+  String get accountSettingsWeekStart => 'Erster Tag der Woche';
+
+  @override
+  String get accountSettingsTimeAndLanguage => 'Zeit und Sprache';
+
+  @override
+  String get accountSettingsTimezone => 'Zeitzone';
+
+  @override
+  String get accountSettingsTimezoneServerDefault => 'Standard des Servers';
+
+  @override
+  String get accountSettingsTimezoneHelp =>
+      'Für gespeicherte Filter, E-Mails und Erinnerungen des Servers. Die App zeigt Zeiten in der Zeitzone dieses Geräts.';
+
+  @override
+  String get accountSettingsTimezoneSearch => 'Zeitzonen durchsuchen';
+
+  @override
+  String get accountSettingsTimezoneDevice => 'Dieses Gerät';
+
+  @override
+  String get accountSettingsTimezoneSameAsDevice =>
+      'Gleiche Zeit wie dieses Gerät';
+
+  @override
+  String get accountSettingsTimezoneAll => 'Alle Zeitzonen';
+
+  @override
+  String accountSettingsTimezoneInvalid(String zone) {
+    return 'Der Server kennt die Zeitzone $zone nicht. Wähle eine andere.';
+  }
+
+  @override
+  String get accountSettingsLanguage => 'Sprache';
+
+  @override
+  String get accountSettingsLanguageHelp =>
+      'Für E-Mails und das Web. Die App folgt der Sprache deines Geräts.';
+
+  @override
+  String get accountSettingsLanguageNotSet => 'Nicht festgelegt';
+
+  @override
+  String get accountSettingsLanguageSearch => 'Sprachen durchsuchen';
+
+  @override
+  String get accountSettingsDateDisplay => 'Datumsformat';
+
+  @override
+  String get accountSettingsDateDisplayDevice => 'Wie auf diesem Gerät';
+
+  @override
+  String get accountSettingsDateDisplayRelative => 'Relativ, z. B. in 3 Tagen';
+
+  @override
+  String get accountSettingsDateMonthDayYearDashed => 'MM-TT-JJJJ';
+
+  @override
+  String get accountSettingsDateDayMonthYearDashed => 'TT-MM-JJJJ';
+
+  @override
+  String get accountSettingsDateYearMonthDayDashed => 'JJJJ-MM-TT';
+
+  @override
+  String get accountSettingsDateMonthDayYearSlashed => 'MM/TT/JJJJ';
+
+  @override
+  String get accountSettingsDateDayMonthYearSlashed => 'TT/MM/JJJJ';
+
+  @override
+  String get accountSettingsDateYearMonthDaySlashed => 'JJJJ/MM/TT';
+
+  @override
+  String accountSettingsDateExample(String example) {
+    return 'Beispiel: $example';
+  }
+
+  @override
+  String get accountSettingsTimeFormat => 'Zeitformat';
+
+  @override
+  String get accountSettingsTimeFormatDevice => 'Wie auf diesem Gerät';
+
+  @override
+  String get accountSettingsTimeFormat12 => '12 Stunden';
+
+  @override
+  String get accountSettingsTimeFormat24 => '24 Stunden';
+
+  @override
+  String get accountSettingsEmailNotifications => 'E-Mail-Benachrichtigungen';
+
+  @override
+  String get accountSettingsEmailsOff =>
+      'Dieser Server verschickt derzeit keine Erinnerungs-E-Mails. Die Einstellungen bleiben für später erhalten.';
+
+  @override
+  String get accountSettingsEmailReminders => 'Erinnerungen per E-Mail';
+
+  @override
+  String get accountSettingsEmailRemindersSubtitle =>
+      'Eine E-Mail zu jeder Erinnerung, zusätzlich zu den Benachrichtigungen auf diesem Gerät';
+
+  @override
+  String get accountSettingsOverdueReminders =>
+      'Tägliche Zusammenfassung überfälliger Aufgaben';
+
+  @override
+  String get accountSettingsOverdueRemindersSubtitle =>
+      'Eine E-Mail mit deinen überfälligen, nicht erledigten Aufgaben';
+
+  @override
+  String get accountSettingsOverdueTime => 'Uhrzeit der Zusammenfassung';
+
+  @override
+  String get accountSettingsOverdueTimeInvalid =>
+      'Der Server hat diese Uhrzeit abgelehnt.';
+
+  @override
+  String get accountSettingsPrivacy => 'Privatsphäre';
+
+  @override
+  String get accountSettingsDiscoverableByName => 'Über den Namen auffindbar';
+
+  @override
+  String get accountSettingsDiscoverableByNameSubtitle =>
+      'Andere können dich über die Suche nach deinem Namen zu Teams und Projekten hinzufügen';
+
+  @override
+  String get accountSettingsDiscoverableByEmail =>
+      'Über die E-Mail-Adresse auffindbar';
+
+  @override
+  String get accountSettingsDiscoverableByEmailSubtitle =>
+      'Andere können dich über die Suche nach deiner vollständigen E-Mail-Adresse zu Teams und Projekten hinzufügen';
+
+  @override
+  String get accountSettingsAppearance => 'Darstellung';
+
+  @override
+  String get accountSettingsColorScheme => 'Farbschema';
+
+  @override
+  String get accountSettingsColorSchemeLight => 'Hell';
+
+  @override
+  String get accountSettingsColorSchemeSystem => 'System';
+
+  @override
+  String get accountSettingsColorSchemeDark => 'Dunkel';
+
+  @override
+  String get accountSettingsNothingFound => 'Nichts gefunden';
+
+  @override
+  String get accountSettingsNeedsConnection =>
+      'Kontoeinstellungen lassen sich nur mit Verbindung zum Server ändern.';
+
+  @override
+  String get accountSettingsUnconfirmed =>
+      'Die Änderung konnte nicht bestätigt werden. Prüfe sie erneut, sobald die Verbindung zurück ist.';
+
+  @override
+  String get accountSettingsSignInAgain =>
+      'Melde dich erneut an, um Kontoeinstellungen zu ändern.';
+
+  @override
+  String accountSettingsRefused(String message) {
+    return 'Der Server hat die Änderung abgelehnt: $message';
+  }
+
+  @override
+  String get accountSettingsInvalid => 'Der Server hat diesen Wert abgelehnt.';
+
+  @override
+  String get accountSettingsFailed =>
+      'Die Änderung konnte nicht gespeichert werden. Versuche es später erneut.';
+
+  @override
+  String get avatarTitle => 'Avatar';
+
+  @override
+  String get avatarCurrent => 'Dein Avatar';
+
+  @override
+  String get avatarProviderDefault => 'Standard';
+
+  @override
+  String get avatarProviderDefaultSubtitle => 'Ein schlichtes Bild';
+
+  @override
+  String get avatarProviderInitials => 'Initialen';
+
+  @override
+  String get avatarProviderInitialsSubtitle => 'Deine Initialen';
+
+  @override
+  String get avatarProviderGravatar => 'Gravatar';
+
+  @override
+  String get avatarProviderGravatarSubtitle =>
+      'Das Bild zu deiner E-Mail-Adresse bei gravatar.com';
+
+  @override
+  String get avatarProviderMarble => 'Murmel';
+
+  @override
+  String get avatarProviderMarbleSubtitle =>
+      'Ein buntes Muster aus deinem Benutzernamen';
+
+  @override
+  String get avatarProviderUpload => 'Dein Foto';
+
+  @override
+  String get avatarProviderUploadSubtitle => 'Ein Foto von diesem Gerät';
+
+  @override
+  String get avatarProviderUploadReplace => 'Anderes Foto wählen';
+
+  @override
+  String get avatarProviderLdap => 'Aus deinem Verzeichnis';
+
+  @override
+  String get avatarProviderOpenId => 'Von deinem Anmeldedienst';
+
+  @override
+  String get avatarAppShowsInitials =>
+      'Diese App zeigt für die Avatare Standard, Initialen und Murmel deine Initialen; das Web zeichnet sie.';
+
+  @override
+  String get avatarManagedLdap =>
+      'Dein Avatar kommt aus dem Verzeichnisdienst deiner Organisation (LDAP). Frag dein IT-Team, wie du ihn änderst.';
+
+  @override
+  String avatarManagedOpenId(String provider) {
+    return 'Dein Avatar kommt von deinem Anmeldedienst ($provider). Ändere ihn dort.';
+  }
+
+  @override
+  String get avatarChoosePhoto => 'Foto auswählen';
+
+  @override
+  String get avatarTakePhoto => 'Foto aufnehmen';
+
+  @override
+  String get avatarChanged => 'Avatar geändert';
+
+  @override
+  String get avatarUploaded => 'Foto hochgeladen';
+
+  @override
+  String get avatarCropTitle => 'Dein neuer Avatar';
+
+  @override
+  String get avatarCropHint =>
+      'Ziehe das Foto, um es zu verschieben, und zoome mit zwei Fingern. Das Quadrat wird dein Avatar.';
+
+  @override
+  String get avatarCropUpload => 'Hochladen';
+
+  @override
+  String get avatarUploading => 'Wird hochgeladen …';
+
+  @override
+  String get avatarImageUnusable =>
+      'Dieses Bild kann nicht verwendet werden. Wähle ein PNG- oder JPEG-Foto.';
+
+  @override
+  String get avatarImageTooLarge => 'Dieses Bild ist zu groß für den Server.';
+
+  @override
+  String get avatarPickFailed => 'Die Fotos konnten nicht geöffnet werden.';
 }

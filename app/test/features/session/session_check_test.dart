@@ -132,4 +132,63 @@ void main() {
 
     expect(auth.accountGateway.currentUserTokens, isEmpty);
   });
+
+  group("after the web's password page", () {
+    test(
+      'the next check rotates a valid token at once, and only that one',
+      () async {
+        final entry = await seed();
+        await check.check(entry);
+        final fresh = issueTokens(issuedAt: now);
+        auth.tokenGateway.onRefresh = (_) async => fresh;
+
+        check.refreshOnNextCheck(entry.id);
+        now = now.add(const Duration(seconds: 5));
+        await check.check(entry);
+        now = now.add(const Duration(minutes: 2));
+        await check.check(entry);
+
+        expect(auth.tokenGateway.refreshedTokens, hasLength(1));
+        expect(auth.accountGateway.currentUserTokens, [
+          isNot(fresh.accessToken),
+          fresh.accessToken,
+          fresh.accessToken,
+        ]);
+      },
+    );
+
+    test(
+      'a changed password, which ended the session, marks the account',
+      () async {
+        final entry = await seed();
+        auth.tokenGateway.onRefresh = (_) async => throw const SessionEnded(
+          SessionEndReason.invalidRefreshToken,
+          code: 16002,
+        );
+
+        check.refreshOnNextCheck(entry.id);
+        await check.check(entry);
+
+        expect(
+          (await auth.registry.find(entry.id))!.account.needsReauth,
+          isTrue,
+        );
+        expect(auth.accountGateway.currentUserTokens, isEmpty);
+      },
+    );
+
+    test('a refresh that cannot reach the server is swallowed', () async {
+      final entry = await seed();
+      auth.tokenGateway.onRefresh = (_) async =>
+          throw const NetworkFailure(NetworkProblem.unreachable);
+
+      check.refreshOnNextCheck(entry.id);
+      await check.check(entry);
+
+      expect(
+        (await auth.registry.find(entry.id))!.account.needsReauth,
+        isFalse,
+      );
+    });
+  });
 }

@@ -1,0 +1,13 @@
+{
+  "server": "2.7.0",
+  "request": "PUT /api/v1/user/settings/avatar/upload",
+  "sent": {
+    "file_name": "avatar.png",
+    "length": 868
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"message\":\"Avatar was uploaded successfully.\"}\n"
+}

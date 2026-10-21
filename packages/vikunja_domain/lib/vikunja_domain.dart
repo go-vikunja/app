@@ -1,7 +1,10 @@
 export 'src/account/account.dart';
+export 'src/account/avatar_provider.dart';
 export 'src/account/token_set.dart';
 export 'src/account/user.dart';
+export 'src/account/user_profile.dart';
 export 'src/account/user_settings.dart';
+export 'src/account/user_settings_changes.dart';
 export 'src/failure/vikunja_failure.dart';
 export 'src/kanban/bucket.dart';
 export 'src/kanban/bucket_placement.dart';

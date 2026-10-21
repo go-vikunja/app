@@ -244,6 +244,77 @@ void main() {
       expect(find.byType(Image), findsOneWidget);
     });
 
+    testWidgets('asks again once the avatar was evicted, keeping the old '
+        'picture meanwhile', (tester) async {
+      final responses = <Completer<AvatarImage>>[];
+      final cache = AvatarCache((username, size) {
+        final response = Completer<AvatarImage>();
+        responses.add(response);
+        return response.future;
+      });
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            activeAccountIdProvider.overrideWithValue('account'),
+            accountAvatarCacheProvider.overrideWith((ref, _) => cache),
+          ],
+          child: const MaterialApp(
+            home: Center(child: UserAvatar(user: anna, radius: 12)),
+          ),
+        ),
+      );
+      responses.single.complete(_image('image/png'));
+      await tester.pump();
+      expect(find.byType(Image), findsOneWidget);
+
+      cache.evict('anna');
+      await tester.pump();
+
+      expect(responses, hasLength(2));
+      expect(find.byType(Image), findsOneWidget);
+      responses.last.complete(_image('image/svg+xml'));
+      await tester.pump();
+      await tester.pump();
+      expect(find.byType(Image), findsNothing);
+      expect(find.byType(InitialsAvatar), findsOneWidget);
+    });
+
+    testWidgets("another account's server for its own user, in its colours", (
+      tester,
+    ) async {
+      final asked = <String>[];
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            activeAccountIdProvider.overrideWithValue('active'),
+            accountAvatarCacheProvider.overrideWith(
+              (ref, accountId) => AvatarCache((username, size) async {
+                asked.add(accountId);
+                return _image('image/svg+xml');
+              }),
+            ),
+          ],
+          child: const MaterialApp(
+            home: Center(
+              child: UserAvatar(
+                user: anna,
+                radius: 12,
+                accountId: 'other',
+                primary: true,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(asked, ['other']);
+      expect(
+        tester.widget<InitialsAvatar>(find.byType(InitialsAvatar)).primary,
+        isTrue,
+      );
+    });
+
     testWidgets('signed out, only the initials', (tester) async {
       var requests = 0;
       await pumpAvatar(

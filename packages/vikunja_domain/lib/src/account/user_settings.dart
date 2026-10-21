@@ -78,11 +78,59 @@ enum ColorSchema {
       values.where((schema) => schema.wireName == value).firstOrNull ?? auto;
 }
 
+/// A time of day in the server's settings: Go's `15:04` layout, so `9:00`
+/// and `09:00` are both valid and `09:00:00` is not.
+@immutable
+final class ClockTime {
+  const new(this.hour, this.minute)
+    : assert(hour >= 0 && hour < 24, 'hour'),
+      assert(minute >= 0 && minute < 60, 'minute');
+
+  final int hour;
+  final int minute;
+
+  static final _layout = RegExp(r'^(\d{1,2}):(\d{2})$');
+
+  static ClockTime? tryParse(Object? value) {
+    if (value is! String) return null;
+    final match = _layout.firstMatch(value);
+    if (match == null) return null;
+    final hour = int.parse(match[1]!);
+    final minute = int.parse(match[2]!);
+    if (hour > 23 || minute > 59) return null;
+    return ClockTime(hour, minute);
+  }
+
+  /// Zero-padded, as the web's time input sends it.
+  String get wireName =>
+      '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+
+  @override
+  bool operator ==(Object other) =>
+      other is ClockTime && other.hour == hour && other.minute == minute;
+
+  @override
+  int get hashCode => Object.hash(hour, minute);
+
+  @override
+  String toString() => 'ClockTime($wireName)';
+}
+
+const _unset = Object();
+
 /// The signed-in user's settings as the server stores them, read with the
-/// user (`GET /user`). Read-only until step 30.
+/// user (`GET /user`). Settings the app does not model, among them every
+/// other `frontend_settings` key, are never held here: a write starts from
+/// the server's own copy (`UserSettingsWritePort`).
 @immutable
 final class UserSettings {
   const new({
+    this.name = '',
+    this.emailRemindersEnabled = false,
+    this.discoverableByName = false,
+    this.discoverableByEmail = false,
+    this.overdueTasksRemindersEnabled = true,
+    this.overdueTasksRemindersTime = defaultOverdueTasksRemindersTime,
     this.defaultProjectId,
     this.weekStart = 0,
     this.timezone = '',
@@ -97,6 +145,21 @@ final class UserSettings {
     this.colorSchema = ColorSchema.auto,
     this.defaultViewKind,
   });
+
+  static const defaultOverdueTasksRemindersTime = ClockTime(9, 0);
+
+  /// The same as the user's top-level `name`; empty shows the username.
+  final String name;
+
+  /// Emails from the server, unlike the app's own notifications.
+  final bool emailRemindersEnabled;
+  final bool discoverableByName;
+  final bool discoverableByEmail;
+
+  /// A daily email listing the undone overdue tasks, at
+  /// [overdueTasksRemindersTime] in [timezone].
+  final bool overdueTasksRemindersEnabled;
+  final ClockTime overdueTasksRemindersTime;
 
   /// Null when unset (the server's 0).
   final int? defaultProjectId;
@@ -135,9 +198,69 @@ final class UserSettings {
   /// as medium.
   int get effectiveMinimumPriority => minimumPriority > 0 ? minimumPriority : 2;
 
+  /// [defaultProjectId], [filterIdUsedOnOverview], [dateDisplay],
+  /// [timeFormat] and [defaultViewKind] take null to unset them; leaving one
+  /// out keeps it.
+  UserSettings copyWith({
+    String? name,
+    bool? emailRemindersEnabled,
+    bool? discoverableByName,
+    bool? discoverableByEmail,
+    bool? overdueTasksRemindersEnabled,
+    ClockTime? overdueTasksRemindersTime,
+    Object? defaultProjectId = _unset,
+    int? weekStart,
+    String? timezone,
+    String? language,
+    QuickAddMagicMode? quickAddMagicMode,
+    List<Duration>? quickAddDefaultReminders,
+    Object? filterIdUsedOnOverview = _unset,
+    int? minimumPriority,
+    CommentSortOrder? commentSortOrder,
+    Object? dateDisplay = _unset,
+    Object? timeFormat = _unset,
+    ColorSchema? colorSchema,
+    Object? defaultViewKind = _unset,
+  }) => UserSettings(
+    name: name ?? this.name,
+    emailRemindersEnabled: emailRemindersEnabled ?? this.emailRemindersEnabled,
+    discoverableByName: discoverableByName ?? this.discoverableByName,
+    discoverableByEmail: discoverableByEmail ?? this.discoverableByEmail,
+    overdueTasksRemindersEnabled:
+        overdueTasksRemindersEnabled ?? this.overdueTasksRemindersEnabled,
+    overdueTasksRemindersTime:
+        overdueTasksRemindersTime ?? this.overdueTasksRemindersTime,
+    defaultProjectId: _or(defaultProjectId, this.defaultProjectId),
+    weekStart: weekStart ?? this.weekStart,
+    timezone: timezone ?? this.timezone,
+    language: language ?? this.language,
+    quickAddMagicMode: quickAddMagicMode ?? this.quickAddMagicMode,
+    quickAddDefaultReminders:
+        quickAddDefaultReminders ?? this.quickAddDefaultReminders,
+    filterIdUsedOnOverview: _or(
+      filterIdUsedOnOverview,
+      this.filterIdUsedOnOverview,
+    ),
+    minimumPriority: minimumPriority ?? this.minimumPriority,
+    commentSortOrder: commentSortOrder ?? this.commentSortOrder,
+    dateDisplay: _or(dateDisplay, this.dateDisplay),
+    timeFormat: _or(timeFormat, this.timeFormat),
+    colorSchema: colorSchema ?? this.colorSchema,
+    defaultViewKind: _or(defaultViewKind, this.defaultViewKind),
+  );
+
+  static T? _or<T>(Object? given, T? current) =>
+      identical(given, _unset) ? current : given as T?;
+
   @override
   bool operator ==(Object other) =>
       other is UserSettings &&
+      other.name == name &&
+      other.emailRemindersEnabled == emailRemindersEnabled &&
+      other.discoverableByName == discoverableByName &&
+      other.discoverableByEmail == discoverableByEmail &&
+      other.overdueTasksRemindersEnabled == overdueTasksRemindersEnabled &&
+      other.overdueTasksRemindersTime == overdueTasksRemindersTime &&
       other.defaultProjectId == defaultProjectId &&
       other.weekStart == weekStart &&
       other.timezone == timezone &&
@@ -156,7 +279,13 @@ final class UserSettings {
       other.defaultViewKind == defaultViewKind;
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
+    name,
+    emailRemindersEnabled,
+    discoverableByName,
+    discoverableByEmail,
+    overdueTasksRemindersEnabled,
+    overdueTasksRemindersTime,
     defaultProjectId,
     weekStart,
     timezone,
@@ -170,7 +299,7 @@ final class UserSettings {
     timeFormat,
     colorSchema,
     defaultViewKind,
-  );
+  ]);
 
   static bool _sameDurations(List<Duration> a, List<Duration> b) {
     if (a.length != b.length) return false;

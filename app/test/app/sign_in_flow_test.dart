@@ -63,6 +63,16 @@ final class _ServerAdapter implements HttpClientAdapter {
     final body = bytes == null || bytes.isEmpty
         ? null
         : jsonDecode(utf8.decode(bytes));
+    // The own avatar the account shows; [requests] is the session's log.
+    if (options.uri.path.startsWith('/api/v2/avatar/')) {
+      return ResponseBody.fromBytes(
+        utf8.encode('<svg xmlns="http://www.w3.org/2000/svg"/>'),
+        200,
+        headers: {
+          Headers.contentTypeHeader: ['image/svg+xml'],
+        },
+      );
+    }
     requests.add((options, body));
     final handler = routes['${options.method} ${options.uri}'];
     if (handler == null) {

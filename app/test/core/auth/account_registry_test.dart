@@ -195,6 +195,70 @@ void main() {
     expect(state.find('b2')?.account.needsReauth, isTrue);
   });
 
+  group('updateDisplayName', () {
+    test('stores the trimmed name, or the username for a blank one, and '
+        'announces it', () async {
+      await registry.upsert(_entry('a1', fullServer270()));
+      await registry.upsert(_entry('b2', oauthServer230(), username: 'bob'));
+      final states = <AccountRegistryState>[];
+      final subscription = registry.changes.listen(states.add);
+      addTearDown(subscription.cancel);
+
+      await registry.updateDisplayName('a1', '  Alice Renamed ');
+      await registry.updateDisplayName('b2', '   ');
+      await pumpEventQueue();
+
+      final stored = await AccountRegistry(preferences).load();
+      expect(stored.find('a1')?.account.displayName, 'Alice Renamed');
+      expect(stored.find('b2')?.account.displayName, 'bob');
+      expect(stored.activeAccountId, 'a1');
+      expect(states.last.find('a1')?.account.displayName, 'Alice Renamed');
+    });
+
+    test('an unchanged name or an unknown account writes nothing', () async {
+      await registry.upsert(_entry('a1', fullServer270()));
+      final states = <AccountRegistryState>[];
+      final subscription = registry.changes.listen(states.add);
+      addTearDown(subscription.cancel);
+
+      await registry.updateDisplayName('a1', 'Alice Example');
+      await registry.updateDisplayName('nope', 'Someone');
+      await pumpEventQueue();
+
+      expect(states, isEmpty);
+      expect(
+        (await registry.load()).find('a1')?.account.displayName,
+        'Alice Example',
+      );
+    });
+
+    test('a name another isolate stored is announced here once', () async {
+      await registry.upsert(_entry('a1', fullServer270()));
+      final background = AccountRegistry(preferences);
+      await background.updateDisplayName('a1', 'Alice Renamed');
+      final states = <AccountRegistryState>[];
+      final subscription = registry.changes.listen(states.add);
+      addTearDown(subscription.cancel);
+
+      await registry.updateDisplayName('a1', 'Alice Renamed');
+      await registry.updateDisplayName('a1', 'Alice Renamed');
+      await pumpEventQueue();
+
+      expect(states, hasLength(1));
+      expect(states.single.find('a1')?.account.displayName, 'Alice Renamed');
+    });
+
+    test('keeps the re-authentication flag', () async {
+      await registry.upsert(_entry('a1', fullServer270(), needsReauth: true));
+
+      await registry.updateDisplayName('a1', 'New');
+
+      final account = (await registry.load()).find('a1')!.account;
+      expect(account.displayName, 'New');
+      expect(account.needsReauth, isTrue);
+    });
+  });
+
   test('setActive ignores unknown ids', () async {
     await registry.upsert(_entry('a1', fullServer270()));
 

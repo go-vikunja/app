@@ -1,5 +1,4 @@
 import 'package:dio/dio.dart';
-import 'package:vikunja_api/src/auth/auth_interceptor.dart';
 import 'package:vikunja_api/src/dto/attachment_codec.dart';
 import 'package:vikunja_api/src/dto/bucket_codec.dart';
 import 'package:vikunja_api/src/dto/json_values.dart';
@@ -9,8 +8,8 @@ import 'package:vikunja_api/src/dto/saved_filter_codec.dart';
 import 'package:vikunja_api/src/dto/subscription_codec.dart';
 import 'package:vikunja_api/src/dto/task_codec.dart';
 import 'package:vikunja_api/src/errors/error_body.dart';
-import 'package:vikunja_api/src/errors/normalize_error.dart';
 import 'package:vikunja_api/src/write/write_ports.dart';
+import 'package:vikunja_api/src/write/write_transport.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 
 /// Writes over `/api/v2` or `/api/v1`, chosen by
@@ -20,9 +19,9 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 /// the task's own endpoints on both.
 final class WriteClient implements VikunjaWriteClient {
   new({required Dio dio, required ServerConnection connection})
-    : this._(_WriteTransport(dio, connection));
+    : this._(WriteTransport(dio, connection));
 
-  new _(_WriteTransport transport)
+  new _(WriteTransport transport)
     : tasks = _TasksWriteApi(transport),
       attachments = _AttachmentsWriteApi(transport),
       labels = _LabelsWriteApi(transport),
@@ -64,7 +63,7 @@ final class WriteClient implements VikunjaWriteClient {
 final class _AttachmentsWriteApi implements AttachmentsWritePort {
   new(this._transport);
 
-  final _WriteTransport _transport;
+  final WriteTransport _transport;
 
   @override
   Future<TaskAttachment> upload(
@@ -198,7 +197,7 @@ final class _AttachmentsWriteApi implements AttachmentsWritePort {
 final class _SavedFiltersApi implements SavedFiltersPort {
   new(this._transport);
 
-  final _WriteTransport _transport;
+  final WriteTransport _transport;
 
   @override
   Future<SavedFilter> read(int id) async =>
@@ -246,7 +245,7 @@ final class _SavedFiltersApi implements SavedFiltersPort {
 final class _ProjectsWriteApi implements ProjectsWritePort {
   new(this._transport);
 
-  final _WriteTransport _transport;
+  final WriteTransport _transport;
 
   @override
   Future<Project> move(
@@ -364,7 +363,7 @@ final class _ProjectsWriteApi implements ProjectsWritePort {
 final class _BucketsWriteApi implements BucketsWritePort {
   new(this._transport);
 
-  final _WriteTransport _transport;
+  final WriteTransport _transport;
 
   @override
   Future<Bucket> create(
@@ -421,7 +420,7 @@ final class _BucketsWriteApi implements BucketsWritePort {
 final class _ProjectViewsWriteApi implements ProjectViewsWritePort {
   new(this._transport);
 
-  final _WriteTransport _transport;
+  final WriteTransport _transport;
 
   @override
   Future<ProjectView> setBuckets(
@@ -494,7 +493,7 @@ final class _ProjectViewsWriteApi implements ProjectViewsWritePort {
 final class _SubscriptionsWriteApi implements SubscriptionsWritePort {
   new(this._transport);
 
-  final _WriteTransport _transport;
+  final WriteTransport _transport;
 
   @override
   Future<void> subscribe(SubscriptionEntity entity, int id) async {
@@ -533,7 +532,7 @@ final class _SubscriptionsWriteApi implements SubscriptionsWritePort {
 final class _NotificationsWriteApi implements NotificationsWritePort {
   new(this._transport);
 
-  final _WriteTransport _transport;
+  final WriteTransport _transport;
 
   @override
   Future<void> markRead(int id, {bool read = true}) async {
@@ -564,7 +563,7 @@ final class _NotificationsWriteApi implements NotificationsWritePort {
 final class _LabelsWriteApi implements LabelsWritePort {
   new(this._transport);
 
-  final _WriteTransport _transport;
+  final WriteTransport _transport;
 
   @override
   Future<Label> create(NewLabel label) async {
@@ -629,7 +628,7 @@ const _notSentBack = {
 final class _TasksWriteApi implements TasksWritePort {
   new(this._transport);
 
-  final _WriteTransport _transport;
+  final WriteTransport _transport;
 
   @override
   Future<Task> create(NewTask task) async {
@@ -1009,128 +1008,3 @@ Set<TaskRelationRef> _edgesOf(Task task) => {
     ],
   ),
 };
-
-final class _WriteTransport {
-  new(this._dio, ServerConnection connection)
-    : version = connection.preferredApiVersion,
-      maxFileSizeBytes = connection.info.maxFileSizeBytes,
-      _base = connection.apiBaseUri(connection.preferredApiVersion);
-
-  final Dio _dio;
-  final ApiVersion version;
-
-  /// The server's upload limit; null when `/info` names none it parses.
-  final int? maxFileSizeBytes;
-  final Uri _base;
-
-  String get createMethod => switch (version) {
-    ApiVersion.v2 => 'POST',
-    ApiVersion.v1 => 'PUT',
-  };
-
-  /// The verb of the kanban move and position writes, the reverse of
-  /// [createMethod].
-  String get updateMethod => switch (version) {
-    ApiVersion.v2 => 'PUT',
-    ApiVersion.v1 => 'POST',
-  };
-
-  Future<Response<Object?>> send(
-    String method,
-    String path, {
-    Map<String, Object?>? body,
-    String? contentType,
-    bool acceptNotModified = false,
-  }) async {
-    try {
-      return await _dio.requestUri<Object?>(
-        _base.replace(path: '${_base.path}$path'),
-        data: body,
-        options: Options(
-          method: method,
-          responseType: ResponseType.json,
-          contentType: contentType,
-          headers: {'Accept': 'application/json'},
-          validateStatus: acceptNotModified ? _okOrNotModified : null,
-        ),
-      );
-    } on DioException catch (error) {
-      if (error.type == DioExceptionType.cancel) rethrow;
-      throw normalizeError(error);
-    }
-  }
-
-  /// A multipart request whose files are read once, see
-  /// [AuthInterceptor.bodyReadOnceKey]. [timeout] bounds sending and,
-  /// again, the wait for the answer.
-  Future<Response<Object?>> sendForm(
-    String method,
-    String path,
-    FormData form, {
-    Duration? timeout,
-    CancelToken? cancel,
-  }) async {
-    try {
-      return await _dio.requestUri<Object?>(
-        _base.replace(path: '${_base.path}$path'),
-        data: form,
-        cancelToken: cancel,
-        options: Options(
-          method: method,
-          responseType: ResponseType.json,
-          headers: {'Accept': 'application/json'},
-          sendTimeout: timeout,
-          receiveTimeout: timeout,
-          extra: {AuthInterceptor.bodyReadOnceKey: true},
-        ),
-      );
-    } on DioException catch (error) {
-      if (error.type == DioExceptionType.cancel) rethrow;
-      throw normalizeError(error);
-    }
-  }
-
-  /// Writes [changes] to the object at [path]: a v2 merge-patch, read when
-  /// the server answers 304 for no change, or on v1 a read of the object
-  /// posted back whole with [changes] overlaid. The v1 update is a full
-  /// replace that clears or resets what it is not sent (a project's colour,
-  /// identifier, favourite and archive state, and its position, which
-  /// renumbers the siblings; a view's kind, which turns a board into a
-  /// list).
-  Future<Response<Object?>> patchOrReplace(
-    String path,
-    String what,
-    Map<String, Object?> changes,
-  ) async {
-    switch (version) {
-      case ApiVersion.v2:
-        final response = await send(
-          'PATCH',
-          path,
-          body: changes,
-          contentType: mergePatchContentType,
-          acceptNotModified: true,
-        );
-        if (response.statusCode != _notModified) return response;
-        return await send('GET', path);
-      case ApiVersion.v1:
-        final current = decode<Map<String, Object?>>(
-          await send('GET', path),
-          (json) => objectOf(json, what),
-        );
-        return await send('POST', path, body: {...current, ...changes});
-    }
-  }
-
-  T decode<T>(Response<Object?> response, T Function(Object?) parse) {
-    try {
-      return parse(response.data);
-    } on MalformedJson catch (error) {
-      throw UnexpectedResponse(response.statusCode, message: error.message);
-    }
-  }
-
-  static bool _okOrNotModified(int? status) =>
-      status != null &&
-      (status >= 200 && status < 300 || status == _notModified);
-}

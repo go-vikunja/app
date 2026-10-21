@@ -10,6 +10,8 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
+import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_page.dart';
+import 'package:vikunja_mobile/features/home/presentation/account_header.dart';
 import 'package:vikunja_mobile/features/home/presentation/account_tab.dart';
 import 'package:vikunja_mobile/features/home/presentation/reauth_banner.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_server_screen.dart';
@@ -65,7 +67,8 @@ void main() {
     await openTab(tester, tabLabel ?? en.tabAccount);
   }
 
-  /// The Accounts section pushes the sync section below the fold.
+  /// The Accounts section pushes the sync section below the fold; the
+  /// target ends up in the middle, clear of the tab bar.
   Future<void> scrollTo(WidgetTester tester, Finder finder) async {
     await tester.scrollUntilVisible(
       finder,
@@ -77,6 +80,8 @@ void main() {
           )
           .first,
     );
+    await tester.pump();
+    await Scrollable.ensureVisible(tester.element(finder), alignment: 0.5);
     await tester.pump();
   }
 
@@ -114,25 +119,60 @@ void main() {
   testWidgets('without a separate name the username is shown once', (
     tester,
   ) async {
+    final semantics = tester.ensureSemantics();
     await pumpHome(tester, displayName: 'alice');
 
     expect(find.text('alice'), findsOneWidget);
     expect(find.text(en.homeUsername('alice')), findsNothing);
     expect(find.text('A'), findsOneWidget);
+    expect(
+      tester.getSemantics(find.text('alice')),
+      isSemantics(label: 'alice', isHeader: true, isButton: true),
+    );
+    semantics.dispose();
   });
 
-  testWidgets('the name is a heading and the avatar is not announced', (
-    tester,
-  ) async {
+  testWidgets('the name labels the header button, a heading, and the avatar '
+      'is not announced', (tester) async {
     final semantics = tester.ensureSemantics();
     await pumpHome(tester);
 
     expect(
       tester.getSemantics(find.text('Alice Example')),
-      matchesSemantics(label: 'Alice Example', isHeader: true),
+      isSemantics(
+        label: 'Alice Example\n${en.homeUsername('alice')}',
+        isHeader: true,
+        isButton: true,
+        hasTapAction: true,
+      ),
     );
     expect(find.bySemanticsLabel('AE'), findsNothing);
     semantics.dispose();
+  });
+
+  testWidgets("the account's settings open from the header and their row; "
+      "the device's own sections are headed apart", (tester) async {
+    await pumpHome(tester);
+
+    expect(find.text(en.accountSettingsEntry), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(AccountHeader),
+        matching: find.byWidgetPredicate(
+          (widget) =>
+              widget is Semantics &&
+              (widget.properties.button ?? false) &&
+              widget.properties.hintOverrides?.onTapHint ==
+                  en.accountHeaderTapHint,
+        ),
+      ),
+      findsOneWidget,
+    );
+    await scrollTo(tester, find.text(en.onThisDeviceHeading));
+    expect(find.text(en.onThisDeviceSubtitle), findsOneWidget);
+    final heading = tester.getTopLeft(find.text(en.onThisDeviceHeading)).dy;
+    final notifications = find.text(en.notificationsHeading);
+    expect(tester.getTopLeft(notifications).dy, greaterThan(heading));
   });
 
   testWidgets('cancelling the sign-out dialog keeps the account', (
@@ -282,6 +322,50 @@ void main() {
       );
       expect(button.onPressed, isNull);
       expect(data.engine.fullResyncCalls, 0);
+    });
+
+    testWidgets('the account settings do not open while signing out', (
+      tester,
+    ) async {
+      final logout = Completer<void>();
+      auth.accountGateway.onLogout = (_) => logout.future;
+      await pumpHome(tester);
+
+      await tapSignOut(tester);
+      await tester.tap(
+        find.widgetWithText(TextButton, en.signOutDialogConfirm),
+      );
+      await tester.pump();
+      tester
+          .state<ScrollableState>(
+            find
+                .descendant(
+                  of: find.byType(AccountTab),
+                  matching: find.byType(Scrollable),
+                )
+                .first,
+          )
+          .position
+          .jumpTo(0);
+      await tester.pump();
+      await tester.tap(find.text('Alice Example'));
+      await tester.tap(find.text(en.accountSettingsEntry));
+      await tester.pump();
+
+      expect(find.byType(AccountSettingsPage), findsNothing);
+      expect(
+        find.descendant(
+          of: find.byType(AccountHeader),
+          matching: find.byWidgetPredicate(
+            (widget) =>
+                widget is Semantics && (widget.properties.button ?? false),
+          ),
+        ),
+        findsNothing,
+      );
+
+      logout.complete();
+      await tester.pumpAndSettle();
     });
 
     testWidgets('"Sync now" rests while signing out', (tester) async {

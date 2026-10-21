@@ -1,0 +1,12 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v1/user/settings/avatar",
+  "sent": {
+    "avatar_provider": "gravatar"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"message\":\"Avatar was changed successfully.\"}\n"
+}

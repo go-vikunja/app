@@ -1,0 +1,13 @@
+{
+  "server": "2.7.0",
+  "request": "PUT /api/v2/user/settings/avatar",
+  "sent": {
+    "file_name": "huge.png",
+    "length": 58400
+  },
+  "status": 400,
+  "headers": {
+    "content-type": "application/problem+json"
+  },
+  "body": "{\"$schema\":\"http://localhost:34527/api/v2/schemas/VikunjaErrorModel.json\",\"title\":\"Bad Request\",\"status\":400,\"detail\":\"Image dimensions 10000x6000 are invalid or exceed the maximum of 50000000 pixels.\",\"code\":4032}\n"
+}

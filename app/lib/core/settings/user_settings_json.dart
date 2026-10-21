@@ -6,6 +6,12 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 /// fails: a value this version cannot read is the defaults until the next
 /// sync writes it again.
 String encodeUserSettings(UserSettings settings) => jsonEncode({
+  'name': settings.name,
+  'email_reminders_enabled': settings.emailRemindersEnabled,
+  'discoverable_by_name': settings.discoverableByName,
+  'discoverable_by_email': settings.discoverableByEmail,
+  'overdue_tasks_reminders_enabled': settings.overdueTasksRemindersEnabled,
+  'overdue_tasks_reminders_time': settings.overdueTasksRemindersTime.wireName,
   'default_project_id': ?settings.defaultProjectId,
   'week_start': settings.weekStart,
   'timezone': settings.timezone,
@@ -32,6 +38,18 @@ UserSettings decodeUserSettings(String? stored) {
   }
   if (json is! Map<String, Object?>) return const UserSettings();
   return UserSettings(
+    name: switch (json['name']) {
+      final String name => name,
+      _ => '',
+    },
+    emailRemindersEnabled: json['email_reminders_enabled'] == true,
+    discoverableByName: json['discoverable_by_name'] == true,
+    discoverableByEmail: json['discoverable_by_email'] == true,
+    overdueTasksRemindersEnabled:
+        json['overdue_tasks_reminders_enabled'] != false,
+    overdueTasksRemindersTime:
+        ClockTime.tryParse(json['overdue_tasks_reminders_time']) ??
+        UserSettings.defaultOverdueTasksRemindersTime,
     defaultProjectId: switch (json['default_project_id']) {
       final int id when id > 0 => id,
       _ => null,

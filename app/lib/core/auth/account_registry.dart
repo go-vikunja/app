@@ -106,9 +106,12 @@ final class AccountRegistry {
 
   final PreferencesStore _store;
   final _changes = StreamController<AccountRegistryState>.broadcast();
+  AccountRegistryState? _announced;
   Future<void> _queue = Future.value();
 
-  /// Emits after every write made through this instance.
+  /// Emits after every write made through this instance, and when
+  /// [updateDisplayName] finds a name another isolate stored that this one
+  /// has not announced yet.
   Stream<AccountRegistryState> get changes => _changes.stream;
 
   Future<AccountRegistryState> load() =>
@@ -179,13 +182,71 @@ final class AccountRegistry {
     ),
   );
 
+  /// [name] as the server has it: a blank one shows the username, as at
+  /// sign-in. An account that already shows it is not written. Never
+  /// throws: the name is only shown, and the next sync tries again.
+  Future<void> updateDisplayName(String accountId, String name) async {
+    String? shownName(AccountRegistryState? state) =>
+        state?.find(accountId)?.account.displayName;
+    try {
+      await _update(
+        (state) => _withDisplayName(state, accountId, name),
+        // A background run may have stored the name already; this isolate's
+        // listeners still show the old one.
+        announceUnchanged: (stored) =>
+            shownName(stored) != shownName(_announced),
+      );
+    } on Object catch (error) {
+      _log.warning(
+        'Could not store the name of account $accountId: ${error.runtimeType}',
+      );
+    }
+  }
+
+  static AccountRegistryState? _withDisplayName(
+    AccountRegistryState state,
+    String accountId,
+    String name,
+  ) {
+    final entry = state.find(accountId);
+    if (entry == null) return null;
+    final displayName = User(
+      id: entry.account.userId,
+      username: entry.account.username,
+      name: name,
+    ).displayName;
+    if (entry.account.displayName == displayName) return null;
+    return AccountRegistryState(
+      accounts: [
+        for (final existing in state.accounts)
+          if (existing.id == accountId)
+            existing.withAccount(
+              existing.account.copyWith(displayName: displayName),
+            )
+          else
+            existing,
+      ],
+      activeAccountId: state.activeAccountId,
+      recentAccountIds: state.recentAccountIds,
+    );
+  }
+
   Future<void> dispose() => _changes.close();
 
+  /// A change that returns null leaves storage as it is, and announces the
+  /// stored state only when [announceUnchanged] says so.
   Future<AccountRegistryState> _update(
-    AccountRegistryState Function(AccountRegistryState state) change,
-  ) => _serialized(() async {
+    AccountRegistryState? Function(AccountRegistryState state) change, {
+    bool Function(AccountRegistryState stored)? announceUnchanged,
+  }) => _serialized(() async {
     final stored = await _read();
     final next = change(stored.state);
+    if (next == null) {
+      if (announceUnchanged?.call(stored.state) ?? false) {
+        _announce(stored.state);
+      }
+      return stored.state;
+    }
     if (stored.unreadableRegistry case final raw?) {
       await _store.setString(unreadableStorageKey, raw);
     }
@@ -210,9 +271,14 @@ final class AccountRegistry {
       ],
     );
     await _store.setString(storageKey, jsonEncode(json));
-    if (!_changes.isClosed) _changes.add(next);
+    _announce(next);
     return next;
   });
+
+  void _announce(AccountRegistryState state) {
+    _announced = state;
+    if (!_changes.isClosed) _changes.add(state);
+  }
 
   Future<T> _serialized<T>(Future<T> Function() action) {
     final result = _queue.then((_) => action());

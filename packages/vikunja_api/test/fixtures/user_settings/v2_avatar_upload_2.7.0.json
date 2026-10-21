@@ -1,0 +1,13 @@
+{
+  "server": "2.7.0",
+  "request": "PUT /api/v2/user/settings/avatar",
+  "sent": {
+    "file_name": "avatar.png",
+    "length": 868
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"$schema\":\"http://localhost:34527/api/v2/schemas/Message.json\",\"message\":\"Avatar was uploaded successfully.\"}\n"
+}

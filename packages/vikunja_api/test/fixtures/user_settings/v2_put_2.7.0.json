@@ -1,0 +1,35 @@
+{
+  "server": "2.7.0",
+  "request": "PUT /api/v2/user/settings/general",
+  "sent": {
+    "name": "Dora",
+    "email_reminders_enabled": true,
+    "discoverable_by_name": true,
+    "discoverable_by_email": false,
+    "overdue_tasks_reminders_enabled": true,
+    "overdue_tasks_reminders_time": "18:30",
+    "default_project_id": 2942,
+    "week_start": 1,
+    "language": "",
+    "timezone": "Europe/Berlin",
+    "frontend_settings": {
+      "color_schema": "dark",
+      "minimum_priority": 4,
+      "play_sound_when_done": false,
+      "rurana_unknown_key": {
+        "nested": [
+          1,
+          2
+        ]
+      },
+      "sidebar_width": 320,
+      "default_view": "kanban",
+      "time_format": "12h"
+    }
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"$schema\":\"http://localhost:34527/api/v2/schemas/UserActionMessageBody.json\",\"message\":\"The settings were updated successfully.\"}\n"
+}

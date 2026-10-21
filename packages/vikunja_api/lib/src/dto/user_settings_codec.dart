@@ -10,6 +10,18 @@ UserSettings parseUserSettings(Object? json) {
     _ => const <String, Object?>{},
   };
   return UserSettings(
+    name: switch (json['name']) {
+      final String name => name,
+      _ => '',
+    },
+    emailRemindersEnabled: json['email_reminders_enabled'] == true,
+    discoverableByName: json['discoverable_by_name'] == true,
+    discoverableByEmail: json['discoverable_by_email'] == true,
+    overdueTasksRemindersEnabled:
+        json['overdue_tasks_reminders_enabled'] != false,
+    overdueTasksRemindersTime:
+        ClockTime.tryParse(json['overdue_tasks_reminders_time']) ??
+        UserSettings.defaultOverdueTasksRemindersTime,
     defaultProjectId: switch (json['default_project_id']) {
       final int id when id > 0 => id,
       _ => null,

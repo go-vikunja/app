@@ -29,6 +29,12 @@ abstract interface class AccountGateway {
     AccessTokenSource tokens,
   );
 
+  /// The same `GET /user`, with the settings and the profile.
+  Future<UserWithProfile> currentUserWithProfile(
+    ServerConnection connection,
+    AccessTokenSource tokens,
+  );
+
   Future<void> logout(ServerConnection connection, AccessTokenSource tokens);
 }
 
@@ -81,6 +87,12 @@ final class ApiAccountGateway implements AccountGateway {
     ServerConnection connection,
     AccessTokenSource tokens,
   ) => _api(connection, tokens).currentUserWithSettings();
+
+  @override
+  Future<UserWithProfile> currentUserWithProfile(
+    ServerConnection connection,
+    AccessTokenSource tokens,
+  ) => _api(connection, tokens).currentUserWithProfile();
 
   @override
   Future<void> logout(ServerConnection connection, AccessTokenSource tokens) =>

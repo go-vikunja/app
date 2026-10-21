@@ -44,23 +44,43 @@ tz.Location deviceLocation() {
   return location;
 }
 
-tz.Location _matchingDeviceOffsets(DateTime now) {
+/// The names of the bundled zones (`Etc/` and names without a region left
+/// out) whose offsets equal the device's over the coming year, sorted;
+/// [deviceOffsetAt] stands in for the device in tests.
+List<String> zonesWithDeviceOffsets({
+  DateTime? now,
+  Duration Function(DateTime utc)? deviceOffsetAt,
+}) {
+  ensureTimeZones();
+  final start = (now ?? DateTime.now()).toUtc();
+  final offsetAt =
+      deviceOffsetAt ?? (instant) => instant.toLocal().timeZoneOffset;
   final samples = [
-    for (var week = 0; week <= 52; week++)
-      now.toUtc().add(Duration(days: 7 * week)),
+    for (var week = 0; week <= 52; week++) start.add(Duration(days: 7 * week)),
   ];
-  bool sameOffsets(tz.Location location) => samples.every(
-    (instant) =>
-        location.timeZone(instant.millisecondsSinceEpoch).offset ==
-        instant.toLocal().timeZoneOffset,
-  );
-  final candidates = [
+  final deviceOffsets = [for (final instant in samples) offsetAt(instant)];
+  bool sameOffsets(tz.Location location) {
+    for (final (index, instant) in samples.indexed) {
+      final offset = location.timeZone(instant.millisecondsSinceEpoch).offset;
+      if (offset != deviceOffsets[index]) return false;
+    }
+    return true;
+  }
+
+  return [
     for (final location in tz.timeZoneDatabase.locations.values)
       if (location.name.contains('/') &&
           !location.name.startsWith('Etc/') &&
           sameOffsets(location))
-        location,
-  ]..sort((a, b) => a.name.compareTo(b.name));
+        location.name,
+  ]..sort();
+}
+
+tz.Location _matchingDeviceOffsets(DateTime now) {
+  final candidates = [
+    for (final name in zonesWithDeviceOffsets(now: now))
+      tz.timeZoneDatabase.locations[name]!,
+  ];
   final abbreviation = now.timeZoneName;
   return candidates
           .where(

@@ -5,6 +5,7 @@ export 'src/auth/authorization_request.dart';
 export 'src/auth/jwt_claims.dart';
 export 'src/auth/oauth_client_config.dart';
 export 'src/auth/oauth_token_client.dart';
+export 'src/dto/user_profile_codec.dart' show parseUserProfile;
 export 'src/errors/normalize_error.dart';
 export 'src/negotiation/server_address.dart';
 export 'src/negotiation/server_connector.dart';

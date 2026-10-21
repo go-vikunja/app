@@ -1,0 +1,13 @@
+{
+  "server": "2.7.0",
+  "request": "PUT /api/v1/user/settings/avatar/upload",
+  "sent": {
+    "file_name": "avatar.txt",
+    "length": 13
+  },
+  "status": 400,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"message\":\"Uploaded file is no image.\"}\n"
+}

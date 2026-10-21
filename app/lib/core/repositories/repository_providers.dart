@@ -79,6 +79,13 @@ VikunjaWriteClient writeClient(Ref ref, String accountId) => createWriteClient(
   connection: _connectionOf(ref, accountId),
 );
 
+@riverpod
+UserSettingsWritePort userSettingsWritePort(Ref ref, String accountId) =>
+    createUserSettingsWritePort(
+      dio: ref.watch(accountDioProvider(accountId)),
+      connection: _connectionOf(ref, accountId),
+    );
+
 /// The registry hands out new connection instances on every write, so only
 /// the parts that choose the transport count as a change.
 ServerConnection _connectionOf(Ref ref, String accountId) {
@@ -226,20 +233,32 @@ SyncEngine syncEngine(Ref ref, String accountId) {
   if (perPage == null) throw StateError('Account $accountId is not registered');
   final gateway = ref.watch(accountGatewayProvider);
   final sessions = ref.watch(sessionManagersProvider);
+  final registry = ref.watch(accountRegistryProvider);
   final engine = DefaultSyncEngine(
     db: ref.watch(appDatabaseProvider(accountId)),
     client: ref.watch(readClientProvider(accountId)),
     perPage: perPage,
     headless: ref.watch(runsHeadlessProvider),
-    currentUser: () {
+    // The name and the avatar change on the web too.
+    currentUserWithProfile: () async {
       final entry = ref.read(accountsProvider).value?.find(accountId);
       if (entry == null) {
         throw StateError('Account $accountId is not registered');
       }
-      return gateway.currentUserWithSettings(
+      final current = await gateway.currentUserWithProfile(
         entry.connection,
         sessions.forAccount(accountId),
       );
+      final UserProfile(:username, :name, :updated) = current.profile;
+      if (updated != null &&
+          ref.mounted &&
+          ref.exists(accountAvatarCacheProvider(accountId))) {
+        ref
+            .read(accountAvatarCacheProvider(accountId))
+            .noteUpdated(username, updated);
+      }
+      await registry.updateDisplayName(accountId, name);
+      return current;
     },
   );
   ref.onDispose(() => unawaited(engine.dispose()));

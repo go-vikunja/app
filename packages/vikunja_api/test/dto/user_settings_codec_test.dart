@@ -28,6 +28,7 @@ void main() {
     expect(
       settings,
       const UserSettings(
+        emailRemindersEnabled: true,
         defaultProjectId: 6,
         weekStart: 1,
         timezone: 'Europe/Berlin',
@@ -40,6 +41,56 @@ void main() {
       ),
     );
     expect(settings.effectiveMinimumPriority, 3);
+  });
+
+  test('reads the account settings: name, emails, privacy and the overdue '
+      'summary', () {
+    final settings = parseUserSettings({
+      'name': 'Dora',
+      'email_reminders_enabled': true,
+      'discoverable_by_name': true,
+      'discoverable_by_email': true,
+      'overdue_tasks_reminders_enabled': false,
+      'overdue_tasks_reminders_time': '18:30',
+    });
+
+    expect(
+      settings,
+      const UserSettings(
+        name: 'Dora',
+        emailRemindersEnabled: true,
+        discoverableByName: true,
+        discoverableByEmail: true,
+        overdueTasksRemindersEnabled: false,
+        overdueTasksRemindersTime: ClockTime(18, 30),
+      ),
+    );
+  });
+
+  test("the server's own reminder time without a leading zero", () {
+    expect(
+      parseUserSettings({'overdue_tasks_reminders_time': '9:00'})
+          .overdueTasksRemindersTime,
+      const ClockTime(9, 0),
+    );
+  });
+
+  test('odd account settings fall back to those of a new user', () {
+    final settings = parseUserSettings({
+      'name': 7,
+      'email_reminders_enabled': 'yes',
+      'discoverable_by_name': 1,
+      'discoverable_by_email': null,
+      'overdue_tasks_reminders_enabled': 'no',
+      'overdue_tasks_reminders_time': '09:00:00',
+    });
+
+    expect(settings.name, '');
+    expect(settings.emailRemindersEnabled, isFalse);
+    expect(settings.discoverableByName, isFalse);
+    expect(settings.discoverableByEmail, isFalse);
+    expect(settings.overdueTasksRemindersEnabled, isTrue);
+    expect(settings.overdueTasksRemindersTime, const ClockTime(9, 0));
   });
 
   test('reads the display settings the web stores', () {

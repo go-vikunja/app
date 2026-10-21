@@ -1244,6 +1244,12 @@ abstract class AppLocalizations {
   /// **'The colours of your wallpaper instead of the app\'s blue'**
   String get appearanceSystemColorsSubtitle;
 
+  /// No description provided for @appearanceLightDarkHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Light or dark is your account\'s colour scheme, in Account settings.'**
+  String get appearanceLightDarkHint;
+
   /// No description provided for @projectChildCount.
   ///
   /// In en, this message translates to:
@@ -2861,7 +2867,7 @@ abstract class AppLocalizations {
   /// No description provided for @quickAddHelpMode.
   ///
   /// In en, this message translates to:
-  /// **'These are the {mode} prefixes, as set in your Vikunja settings on the web.'**
+  /// **'These are the {mode} prefixes, as set in your account settings.'**
   String quickAddHelpMode(String mode);
 
   /// No description provided for @taskEditAddLabel.
@@ -4209,7 +4215,7 @@ abstract class AppLocalizations {
   /// No description provided for @overviewFilterNotLoadedBody.
   ///
   /// In en, this message translates to:
-  /// **'Your Overview shows the saved filter “{title}”, picked on the web. Its tasks download with the next sync.'**
+  /// **'Your Overview shows the saved filter “{title}”, picked in your account settings. Its tasks download with the next sync.'**
   String overviewFilterNotLoadedBody(String title);
 
   /// No description provided for @overviewFilterEmptyBody.
@@ -6935,6 +6941,756 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No description'**
   String get syncProblemNoDescription;
+
+  /// No description provided for @accountSettingsEntry.
+  ///
+  /// In en, this message translates to:
+  /// **'Account settings'**
+  String get accountSettingsEntry;
+
+  /// No description provided for @accountSettingsEntrySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Name, avatar, colour scheme and preferences, saved on the server for all your devices'**
+  String get accountSettingsEntrySubtitle;
+
+  /// Screen readers say it after 'Double tap to' on the profile header.
+  ///
+  /// In en, this message translates to:
+  /// **'open the account settings'**
+  String get accountHeaderTapHint;
+
+  /// Heads the Account tab's settings that stay on the phone (notifications, colours).
+  ///
+  /// In en, this message translates to:
+  /// **'On this device'**
+  String get onThisDeviceHeading;
+
+  /// No description provided for @onThisDeviceSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'These settings stay on this device and are not saved to your account.'**
+  String get onThisDeviceSubtitle;
+
+  /// No description provided for @accountSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Account settings'**
+  String get accountSettingsTitle;
+
+  /// No description provided for @accountSettingsIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved to your account on {host}: they apply on the web and on all your devices.'**
+  String accountSettingsIntro(String host);
+
+  /// No description provided for @accountSettingsOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline: account settings can be changed once the server can be reached again.'**
+  String get accountSettingsOffline;
+
+  /// No description provided for @accountSettingsLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading account settings…'**
+  String get accountSettingsLoading;
+
+  /// Announced to screen readers after a setting was saved on the server.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved'**
+  String get accountSettingsSaved;
+
+  /// Screen readers' name for the progress bar while a change is sent to the server.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving'**
+  String get accountSettingsSaving;
+
+  /// No description provided for @accountSettingsProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile'**
+  String get accountSettingsProfile;
+
+  /// No description provided for @accountSettingsName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get accountSettingsName;
+
+  /// No description provided for @accountSettingsNameHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Shown instead of your username. Leave it empty to show @{username}.'**
+  String accountSettingsNameHelp(String username);
+
+  /// No description provided for @accountSettingsNameManaged.
+  ///
+  /// In en, this message translates to:
+  /// **'Your sign-in provider ({provider}) sets your name at every sign-in. Change it there.'**
+  String accountSettingsNameManaged(String provider);
+
+  /// No description provided for @accountSettingsNameSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save name'**
+  String get accountSettingsNameSave;
+
+  /// No description provided for @accountSettingsNameDiscardBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The name you typed has not been saved.'**
+  String get accountSettingsNameDiscardBody;
+
+  /// No description provided for @accountSettingsNameSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Name saved'**
+  String get accountSettingsNameSaved;
+
+  /// No description provided for @accountSettingsAvatar.
+  ///
+  /// In en, this message translates to:
+  /// **'Avatar'**
+  String get accountSettingsAvatar;
+
+  /// No description provided for @accountSettingsSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Password and email'**
+  String get accountSettingsSignIn;
+
+  /// No description provided for @accountSettingsWaitingForProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Available once the server has said how you sign in.'**
+  String get accountSettingsWaitingForProfile;
+
+  /// No description provided for @accountSettingsChangePassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Change password'**
+  String get accountSettingsChangePassword;
+
+  /// No description provided for @accountSettingsChangePasswordHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Opens the web in your browser. Afterwards, sign in here again; changes not sent yet are kept.'**
+  String get accountSettingsChangePasswordHint;
+
+  /// No description provided for @accountSettingsChangeEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Change email address'**
+  String get accountSettingsChangeEmail;
+
+  /// No description provided for @accountSettingsOpensWeb.
+  ///
+  /// In en, this message translates to:
+  /// **'Opens the web in your browser'**
+  String get accountSettingsOpensWeb;
+
+  /// No description provided for @accountSettingsPendingEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for confirmation of {email}'**
+  String accountSettingsPendingEmail(String email);
+
+  /// No description provided for @accountSettingsManagedBySignInNamed.
+  ///
+  /// In en, this message translates to:
+  /// **'Managed by your sign-in provider ({provider})'**
+  String accountSettingsManagedBySignInNamed(String provider);
+
+  /// No description provided for @accountSettingsWebNotOpened.
+  ///
+  /// In en, this message translates to:
+  /// **'The browser could not be opened.'**
+  String get accountSettingsWebNotOpened;
+
+  /// No description provided for @accountSettingsDefaults.
+  ///
+  /// In en, this message translates to:
+  /// **'Defaults'**
+  String get accountSettingsDefaults;
+
+  /// No description provided for @accountSettingsDefaultProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Default project'**
+  String get accountSettingsDefaultProject;
+
+  /// No description provided for @accountSettingsDefaultProjectNone.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get accountSettingsDefaultProjectNone;
+
+  /// No description provided for @accountSettingsDefaultProjectUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'A project not on this device'**
+  String get accountSettingsDefaultProjectUnknown;
+
+  /// No description provided for @accountSettingsDefaultProjectInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a project you can add tasks to that is not archived.'**
+  String get accountSettingsDefaultProjectInvalid;
+
+  /// No description provided for @accountSettingsDefaultView.
+  ///
+  /// In en, this message translates to:
+  /// **'Default view'**
+  String get accountSettingsDefaultView;
+
+  /// No description provided for @accountSettingsDefaultViewFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'First view'**
+  String get accountSettingsDefaultViewFirst;
+
+  /// No description provided for @accountSettingsQuickAddMagic.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick Add Magic'**
+  String get accountSettingsQuickAddMagic;
+
+  /// No description provided for @accountSettingsQuickAddMagicDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get accountSettingsQuickAddMagicDisabled;
+
+  /// No description provided for @accountSettingsQuickAddMagicVikunja.
+  ///
+  /// In en, this message translates to:
+  /// **'Vikunja'**
+  String get accountSettingsQuickAddMagicVikunja;
+
+  /// No description provided for @accountSettingsQuickAddMagicTodoist.
+  ///
+  /// In en, this message translates to:
+  /// **'Todoist'**
+  String get accountSettingsQuickAddMagicTodoist;
+
+  /// The lowest priority task rows show, the web's minimum visible task priority.
+  ///
+  /// In en, this message translates to:
+  /// **'Priorities shown from'**
+  String get accountSettingsMinimumPriority;
+
+  /// What the Overview tab lists: all open tasks or a saved filter.
+  ///
+  /// In en, this message translates to:
+  /// **'Overview shows'**
+  String get accountSettingsOverviewFilter;
+
+  /// No description provided for @accountSettingsOverviewFilterNone.
+  ///
+  /// In en, this message translates to:
+  /// **'All open tasks'**
+  String get accountSettingsOverviewFilterNone;
+
+  /// No description provided for @accountSettingsOverviewFilterUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'A saved filter not on this device'**
+  String get accountSettingsOverviewFilterUnknown;
+
+  /// No description provided for @accountSettingsWeekStart.
+  ///
+  /// In en, this message translates to:
+  /// **'First day of the week'**
+  String get accountSettingsWeekStart;
+
+  /// No description provided for @accountSettingsTimeAndLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Time and language'**
+  String get accountSettingsTimeAndLanguage;
+
+  /// No description provided for @accountSettingsTimezone.
+  ///
+  /// In en, this message translates to:
+  /// **'Time zone'**
+  String get accountSettingsTimezone;
+
+  /// No description provided for @accountSettingsTimezoneServerDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'The server\'s default'**
+  String get accountSettingsTimezoneServerDefault;
+
+  /// No description provided for @accountSettingsTimezoneHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'For saved filters, emails and reminders sent by the server. The app shows times in this device\'s zone.'**
+  String get accountSettingsTimezoneHelp;
+
+  /// No description provided for @accountSettingsTimezoneSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search time zones'**
+  String get accountSettingsTimezoneSearch;
+
+  /// No description provided for @accountSettingsTimezoneDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'This device'**
+  String get accountSettingsTimezoneDevice;
+
+  /// Heads the time zones whose clocks match this device's over the coming year.
+  ///
+  /// In en, this message translates to:
+  /// **'Same time as this device'**
+  String get accountSettingsTimezoneSameAsDevice;
+
+  /// No description provided for @accountSettingsTimezoneAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All time zones'**
+  String get accountSettingsTimezoneAll;
+
+  /// No description provided for @accountSettingsTimezoneInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'The server does not know the time zone {zone}. Choose another one.'**
+  String accountSettingsTimezoneInvalid(String zone);
+
+  /// No description provided for @accountSettingsLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get accountSettingsLanguage;
+
+  /// No description provided for @accountSettingsLanguageHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'For emails and the web. The app follows your device\'s language.'**
+  String get accountSettingsLanguageHelp;
+
+  /// No description provided for @accountSettingsLanguageNotSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Not set'**
+  String get accountSettingsLanguageNotSet;
+
+  /// No description provided for @accountSettingsLanguageSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search languages'**
+  String get accountSettingsLanguageSearch;
+
+  /// No description provided for @accountSettingsDateDisplay.
+  ///
+  /// In en, this message translates to:
+  /// **'Date format'**
+  String get accountSettingsDateDisplay;
+
+  /// No description provided for @accountSettingsDateDisplayDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'As on this device'**
+  String get accountSettingsDateDisplayDevice;
+
+  /// No description provided for @accountSettingsDateDisplayRelative.
+  ///
+  /// In en, this message translates to:
+  /// **'Relative, e.g. in 3 days'**
+  String get accountSettingsDateDisplayRelative;
+
+  /// No description provided for @accountSettingsDateMonthDayYearDashed.
+  ///
+  /// In en, this message translates to:
+  /// **'MM-DD-YYYY'**
+  String get accountSettingsDateMonthDayYearDashed;
+
+  /// No description provided for @accountSettingsDateDayMonthYearDashed.
+  ///
+  /// In en, this message translates to:
+  /// **'DD-MM-YYYY'**
+  String get accountSettingsDateDayMonthYearDashed;
+
+  /// No description provided for @accountSettingsDateYearMonthDayDashed.
+  ///
+  /// In en, this message translates to:
+  /// **'YYYY-MM-DD'**
+  String get accountSettingsDateYearMonthDayDashed;
+
+  /// No description provided for @accountSettingsDateMonthDayYearSlashed.
+  ///
+  /// In en, this message translates to:
+  /// **'MM/DD/YYYY'**
+  String get accountSettingsDateMonthDayYearSlashed;
+
+  /// No description provided for @accountSettingsDateDayMonthYearSlashed.
+  ///
+  /// In en, this message translates to:
+  /// **'DD/MM/YYYY'**
+  String get accountSettingsDateDayMonthYearSlashed;
+
+  /// No description provided for @accountSettingsDateYearMonthDaySlashed.
+  ///
+  /// In en, this message translates to:
+  /// **'YYYY/MM/DD'**
+  String get accountSettingsDateYearMonthDaySlashed;
+
+  /// No description provided for @accountSettingsDateExample.
+  ///
+  /// In en, this message translates to:
+  /// **'Example: {example}'**
+  String accountSettingsDateExample(String example);
+
+  /// No description provided for @accountSettingsTimeFormat.
+  ///
+  /// In en, this message translates to:
+  /// **'Time format'**
+  String get accountSettingsTimeFormat;
+
+  /// No description provided for @accountSettingsTimeFormatDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'As on this device'**
+  String get accountSettingsTimeFormatDevice;
+
+  /// No description provided for @accountSettingsTimeFormat12.
+  ///
+  /// In en, this message translates to:
+  /// **'12-hour'**
+  String get accountSettingsTimeFormat12;
+
+  /// No description provided for @accountSettingsTimeFormat24.
+  ///
+  /// In en, this message translates to:
+  /// **'24-hour'**
+  String get accountSettingsTimeFormat24;
+
+  /// No description provided for @accountSettingsEmailNotifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Email notifications'**
+  String get accountSettingsEmailNotifications;
+
+  /// No description provided for @accountSettingsEmailsOff.
+  ///
+  /// In en, this message translates to:
+  /// **'This server does not send reminder emails at the moment. The settings are kept for when it does.'**
+  String get accountSettingsEmailsOff;
+
+  /// No description provided for @accountSettingsEmailReminders.
+  ///
+  /// In en, this message translates to:
+  /// **'Task reminders by email'**
+  String get accountSettingsEmailReminders;
+
+  /// No description provided for @accountSettingsEmailRemindersSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'An email for each reminder, besides this device\'s notifications'**
+  String get accountSettingsEmailRemindersSubtitle;
+
+  /// No description provided for @accountSettingsOverdueReminders.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily overdue summary'**
+  String get accountSettingsOverdueReminders;
+
+  /// No description provided for @accountSettingsOverdueRemindersSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'An email listing your overdue tasks that are not done'**
+  String get accountSettingsOverdueRemindersSubtitle;
+
+  /// No description provided for @accountSettingsOverdueTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Time of the summary'**
+  String get accountSettingsOverdueTime;
+
+  /// No description provided for @accountSettingsOverdueTimeInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'The server refused this time.'**
+  String get accountSettingsOverdueTimeInvalid;
+
+  /// No description provided for @accountSettingsPrivacy.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy'**
+  String get accountSettingsPrivacy;
+
+  /// No description provided for @accountSettingsDiscoverableByName.
+  ///
+  /// In en, this message translates to:
+  /// **'Findable by name'**
+  String get accountSettingsDiscoverableByName;
+
+  /// No description provided for @accountSettingsDiscoverableByNameSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Others can add you to teams and projects by searching for your name'**
+  String get accountSettingsDiscoverableByNameSubtitle;
+
+  /// No description provided for @accountSettingsDiscoverableByEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Findable by email'**
+  String get accountSettingsDiscoverableByEmail;
+
+  /// No description provided for @accountSettingsDiscoverableByEmailSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Others can add you to teams and projects by searching for your full email address'**
+  String get accountSettingsDiscoverableByEmailSubtitle;
+
+  /// No description provided for @accountSettingsAppearance.
+  ///
+  /// In en, this message translates to:
+  /// **'Appearance'**
+  String get accountSettingsAppearance;
+
+  /// No description provided for @accountSettingsColorScheme.
+  ///
+  /// In en, this message translates to:
+  /// **'Colour scheme'**
+  String get accountSettingsColorScheme;
+
+  /// No description provided for @accountSettingsColorSchemeLight.
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get accountSettingsColorSchemeLight;
+
+  /// No description provided for @accountSettingsColorSchemeSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'System'**
+  String get accountSettingsColorSchemeSystem;
+
+  /// No description provided for @accountSettingsColorSchemeDark.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark'**
+  String get accountSettingsColorSchemeDark;
+
+  /// No description provided for @accountSettingsNothingFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing found'**
+  String get accountSettingsNothingFound;
+
+  /// No description provided for @accountSettingsNeedsConnection.
+  ///
+  /// In en, this message translates to:
+  /// **'Changing account settings needs a connection to the server.'**
+  String get accountSettingsNeedsConnection;
+
+  /// No description provided for @accountSettingsUnconfirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'The change could not be confirmed. Check it again once the connection is back.'**
+  String get accountSettingsUnconfirmed;
+
+  /// No description provided for @accountSettingsSignInAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in again to change account settings.'**
+  String get accountSettingsSignInAgain;
+
+  /// No description provided for @accountSettingsRefused.
+  ///
+  /// In en, this message translates to:
+  /// **'The server refused the change: {message}'**
+  String accountSettingsRefused(String message);
+
+  /// No description provided for @accountSettingsInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'The server refused this value.'**
+  String get accountSettingsInvalid;
+
+  /// No description provided for @accountSettingsFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The change could not be saved. Try again later.'**
+  String get accountSettingsFailed;
+
+  /// No description provided for @avatarTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Avatar'**
+  String get avatarTitle;
+
+  /// No description provided for @avatarCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'Your avatar'**
+  String get avatarCurrent;
+
+  /// No description provided for @avatarProviderDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get avatarProviderDefault;
+
+  /// No description provided for @avatarProviderDefaultSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'A plain picture'**
+  String get avatarProviderDefaultSubtitle;
+
+  /// No description provided for @avatarProviderInitials.
+  ///
+  /// In en, this message translates to:
+  /// **'Initials'**
+  String get avatarProviderInitials;
+
+  /// No description provided for @avatarProviderInitialsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your initials'**
+  String get avatarProviderInitialsSubtitle;
+
+  /// No description provided for @avatarProviderGravatar.
+  ///
+  /// In en, this message translates to:
+  /// **'Gravatar'**
+  String get avatarProviderGravatar;
+
+  /// No description provided for @avatarProviderGravatarSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The picture for your email address at gravatar.com'**
+  String get avatarProviderGravatarSubtitle;
+
+  /// No description provided for @avatarProviderMarble.
+  ///
+  /// In en, this message translates to:
+  /// **'Marble'**
+  String get avatarProviderMarble;
+
+  /// No description provided for @avatarProviderMarbleSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'A colourful pattern made from your username'**
+  String get avatarProviderMarbleSubtitle;
+
+  /// No description provided for @avatarProviderUpload.
+  ///
+  /// In en, this message translates to:
+  /// **'Your photo'**
+  String get avatarProviderUpload;
+
+  /// No description provided for @avatarProviderUploadSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'A photo from this device'**
+  String get avatarProviderUploadSubtitle;
+
+  /// No description provided for @avatarProviderUploadReplace.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose another photo'**
+  String get avatarProviderUploadReplace;
+
+  /// No description provided for @avatarProviderLdap.
+  ///
+  /// In en, this message translates to:
+  /// **'From your directory'**
+  String get avatarProviderLdap;
+
+  /// No description provided for @avatarProviderOpenId.
+  ///
+  /// In en, this message translates to:
+  /// **'From your sign-in provider'**
+  String get avatarProviderOpenId;
+
+  /// No description provided for @avatarAppShowsInitials.
+  ///
+  /// In en, this message translates to:
+  /// **'This app shows your initials for the default, initials and marble avatars; the web draws them.'**
+  String get avatarAppShowsInitials;
+
+  /// No description provided for @avatarManagedLdap.
+  ///
+  /// In en, this message translates to:
+  /// **'Your avatar comes from your organisation\'s directory (LDAP). Ask your IT team how to change it.'**
+  String get avatarManagedLdap;
+
+  /// No description provided for @avatarManagedOpenId.
+  ///
+  /// In en, this message translates to:
+  /// **'Your avatar comes from your sign-in provider ({provider}). Change it there.'**
+  String avatarManagedOpenId(String provider);
+
+  /// No description provided for @avatarChoosePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a photo'**
+  String get avatarChoosePhoto;
+
+  /// No description provided for @avatarTakePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Take a photo'**
+  String get avatarTakePhoto;
+
+  /// No description provided for @avatarChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Avatar changed'**
+  String get avatarChanged;
+
+  /// No description provided for @avatarUploaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo uploaded'**
+  String get avatarUploaded;
+
+  /// No description provided for @avatarCropTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your new avatar'**
+  String get avatarCropTitle;
+
+  /// No description provided for @avatarCropHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag to move the photo and pinch to zoom. The square becomes your avatar.'**
+  String get avatarCropHint;
+
+  /// No description provided for @avatarCropUpload.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload'**
+  String get avatarCropUpload;
+
+  /// No description provided for @avatarUploading.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploading…'**
+  String get avatarUploading;
+
+  /// No description provided for @avatarImageUnusable.
+  ///
+  /// In en, this message translates to:
+  /// **'This picture cannot be used. Choose a PNG or JPEG photo.'**
+  String get avatarImageUnusable;
+
+  /// No description provided for @avatarImageTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'This picture is too large for the server.'**
+  String get avatarImageTooLarge;
+
+  /// No description provided for @avatarPickFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The photos could not be opened.'**
+  String get avatarPickFailed;
 }
 
 class _AppLocalizationsDelegate

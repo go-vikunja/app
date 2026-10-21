@@ -251,4 +251,115 @@ void main() {
       );
     });
   });
+
+  group('currentUserWithProfile', () {
+    for (final (hasV2, url, fixtureName) in [
+      (true, '$_root/api/v2/user', 'user/v2_user_2.7.0.json'),
+      (false, '$_root/api/v1/user', 'user/v1_user_2.7.0.json'),
+    ]) {
+      test('reads user, profile and settings of $url in one request', () async {
+        final dio = fakeDio({url: fixture(fixtureName)});
+
+        final (:user, :profile, :settings) = await AccountApi(
+          dio,
+          _connection(hasV2: hasV2),
+        ).currentUserWithProfile();
+
+        expect(user, const User(id: 5, username: 'usrd7253b34'));
+        expect(
+          profile,
+          UserProfile(
+            id: 5,
+            username: 'usrd7253b34',
+            authProvider: 'local',
+            updated: DateTime.utc(2026, 10, 9, 8, 17, 58),
+          ),
+        );
+        expect(
+          settings,
+          const UserSettings(defaultProjectId: 6, timezone: 'GMT'),
+        );
+        expect(adapterOf(dio).requests, hasLength(1));
+      });
+    }
+
+    test('an external account with a pending email', () async {
+      final dio = fakeDio({
+        '$_root/api/v2/user': json({
+          'id': 9,
+          'username': 'dora',
+          'name': 'Dora Explorer',
+          'updated': '2026-10-20T21:56:15+02:00',
+          'is_local_user': false,
+          'auth_provider': 'Company SSO',
+          'pending_email': 'new@example.com',
+        }),
+      });
+
+      final (:profile, user: _, settings: _) = await AccountApi(
+        dio,
+        _connection(hasV2: true),
+      ).currentUserWithProfile();
+
+      expect(
+        profile,
+        UserProfile(
+          id: 9,
+          username: 'dora',
+          name: 'Dora Explorer',
+          isLocalUser: false,
+          authProvider: 'Company SSO',
+          pendingEmail: 'new@example.com',
+          updated: DateTime.utc(2026, 10, 20, 19, 56, 15),
+        ),
+      );
+    });
+
+    test('a body that is not a user is unexpected', () async {
+      final dio = fakeDio({
+        '$_root/api/v2/user': json({'username': 'no-id'}),
+      });
+
+      await expectLater(
+        AccountApi(dio, _connection(hasV2: true)).currentUserWithProfile(),
+        throwsA(isA<UnexpectedResponse>()),
+      );
+    });
+  });
+
+  group('parseUserProfile', () {
+    test('missing fields are those of a local account', () {
+      expect(
+        parseUserProfile({'id': 1, 'username': 'dora'}),
+        const UserProfile(id: 1, username: 'dora'),
+      );
+    });
+
+    test('odd values fall back', () {
+      expect(
+        parseUserProfile({
+          'id': 1,
+          'username': 'dora',
+          'name': null,
+          'is_local_user': 'false',
+          'auth_provider': 3,
+          'pending_email': '',
+          'updated': '0001-01-01T00:00:00Z',
+        }),
+        const UserProfile(id: 1, username: 'dora'),
+      );
+    });
+
+    test('null without an id and a username', () {
+      for (final json in <Object?>[
+        null,
+        'dora',
+        {'id': 1},
+        {'username': 'dora'},
+        {'id': '1', 'username': 'dora'},
+      ]) {
+        expect(parseUserProfile(json), isNull, reason: '$json');
+      }
+    });
+  });
 }

@@ -34,16 +34,21 @@ final class SessionCheck {
   final Duration _minInterval;
   final _lastChecked = <String, DateTime>{};
   final _running = <String>{};
+  final _refreshOnNextCheck = <String>{};
 
   /// Never throws.
   Future<void> check(RegisteredAccount entry) async {
     if (entry.account.needsReauth || _running.contains(entry.id)) return;
+    final refresh = _refreshOnNextCheck.remove(entry.id);
     final now = _clock();
     final last = _lastChecked[entry.id];
-    if (last != null && now.difference(last) < _minInterval) return;
+    if (!refresh && last != null && now.difference(last) < _minInterval) {
+      return;
+    }
     _lastChecked[entry.id] = now;
     _running.add(entry.id);
     try {
+      if (refresh) await _sessions.forAccount(entry.id).refreshNow();
       await _accountGateway.currentUser(
         entry.connection,
         _sessions.forAccount(entry.id),
@@ -58,6 +63,13 @@ final class SessionCheck {
       _running.remove(entry.id);
     }
   }
+
+  /// Before the user leaves for a page that can end the session, the web's
+  /// password page: the next [check] of the account (the app back in front)
+  /// runs at once and rotates the tokens, because the access token outlives
+  /// the session by up to ten minutes.
+  void refreshOnNextCheck(String accountId) =>
+      _refreshOnNextCheck.add(accountId);
 
   /// The server has just confirmed this session, e.g. at sign-in.
   void noteVerified(String accountId) => _lastChecked[accountId] = _clock();

@@ -1,0 +1,12 @@
+{
+  "server": "2.7.0",
+  "request": "PATCH /api/v2/user/settings/general",
+  "sent": {
+    "timezone": "Mars/Phobos"
+  },
+  "status": 400,
+  "headers": {
+    "content-type": "application/problem+json"
+  },
+  "body": "{\"$schema\":\"http://localhost/api/v2/schemas/VikunjaErrorModel.json\",\"title\":\"Bad Request\",\"status\":400,\"detail\":\"The timezone 'Mars/Phobos' is invalid. Please select a valid timezone from the list.\",\"code\":1025,\"i18n_params\":{\"timezone\":\"Mars/Phobos\"}}\n"
+}
