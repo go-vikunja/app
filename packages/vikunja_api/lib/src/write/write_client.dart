@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:vikunja_api/src/dto/attachment_codec.dart';
 import 'package:vikunja_api/src/dto/bucket_codec.dart';
+import 'package:vikunja_api/src/dto/comment_codec.dart';
 import 'package:vikunja_api/src/dto/json_values.dart';
 import 'package:vikunja_api/src/dto/label_codec.dart';
 import 'package:vikunja_api/src/dto/project_codec.dart';
@@ -24,6 +25,8 @@ final class WriteClient implements VikunjaWriteClient {
   new _(WriteTransport transport)
     : tasks = _TasksWriteApi(transport),
       attachments = _AttachmentsWriteApi(transport),
+      comments = _CommentsWriteApi(transport),
+      reactions = _ReactionsWriteApi(transport),
       labels = _LabelsWriteApi(transport),
       notifications = _NotificationsWriteApi(transport),
       subscriptions = _SubscriptionsWriteApi(transport),
@@ -37,6 +40,12 @@ final class WriteClient implements VikunjaWriteClient {
 
   @override
   final AttachmentsWritePort attachments;
+
+  @override
+  final CommentsWritePort comments;
+
+  @override
+  final ReactionsWritePort reactions;
 
   @override
   final LabelsWritePort labels;
@@ -240,6 +249,150 @@ final class _SavedFiltersApi implements SavedFiltersPort {
 
   SavedFilter _parse(Response<Object?> response) =>
       _transport.decode<SavedFilter>(response, parseSavedFilter);
+}
+
+final class _CommentsWriteApi implements CommentsWritePort {
+  new(this._transport);
+
+  final WriteTransport _transport;
+
+  @override
+  Future<TaskComment> create(int taskId, String html) async {
+    final Response<Object?> response;
+    try {
+      response = await _transport.send(
+        _transport.createMethod,
+        '/tasks/$taskId/comments',
+        body: {'comment': html},
+      );
+    } on ValidationFailed catch (failure) {
+      throw _withoutEcho(failure, html);
+    }
+    return _transport.decode<TaskComment>(response, parseTaskComment);
+  }
+
+  @override
+  Future<TaskComment> update(int taskId, int commentId, String html) async {
+    final path = _path(taskId, commentId);
+    // The v1 answer echoes the body with neither author nor `created`.
+    final before = _transport.version == ApiVersion.v1
+        ? await _read(path)
+        : null;
+    final body = {'comment': html};
+    final Response<Object?> response;
+    try {
+      response = before == null
+          ? await _transport.send(
+              'PATCH',
+              path,
+              body: body,
+              contentType: mergePatchContentType,
+              acceptNotModified: true,
+            )
+          : await _transport.send('POST', path, body: body);
+    } on ValidationFailed catch (failure) {
+      throw _withoutEcho(failure, html);
+    } on NotFound catch (failure) {
+      if (failure.code != _commentDoesNotExist || !await _exists(path)) {
+        rethrow;
+      }
+      throw _notApplied;
+    }
+    if (before == null) {
+      if (response.statusCode == _notModified) return await _read(path);
+      return _transport.decode<TaskComment>(response, parseTaskComment);
+    }
+    final echo = _transport.decode<TaskComment>(response, parseTaskComment);
+    return before.copyWith(
+      html: echo.html,
+      updated: echo.updated ?? before.updated,
+      reactions: const {},
+    );
+  }
+
+  @override
+  Future<void> delete(int taskId, int commentId) async {
+    final path = _path(taskId, commentId);
+    try {
+      await _transport.send('DELETE', path);
+    } on NotFound catch (failure) {
+      if (failure.code != _commentDoesNotExist) rethrow;
+      if (await _exists(path)) throw _notApplied;
+    }
+  }
+
+  Future<TaskComment> _read(String path) async =>
+      _transport.decode<TaskComment>(
+        await _transport.send('GET', path),
+        parseTaskComment,
+      );
+
+  Future<bool> _exists(String path) async {
+    try {
+      await _transport.send('GET', path);
+      return true;
+    } on NotFound catch (failure) {
+      if (failure.code != _commentDoesNotExist) rethrow;
+      return false;
+    }
+  }
+
+  static String _path(int taskId, int commentId) =>
+      '/tasks/$taskId/comments/$commentId';
+
+  static const _notApplied = ServerFailure(
+    404,
+    message: 'the server did not apply the comment write',
+  );
+
+  // v1 refuses a body above its limit with all of it in the reason
+  // (`<body> does not validate as dbtext`).
+  static ValidationFailed _withoutEcho(ValidationFailed failure, String html) =>
+      ValidationFailed(
+        fieldErrors: {
+          for (final MapEntry(key: field, value: messages)
+              in failure.fieldErrors.entries)
+            field: List.unmodifiable(
+              messages.where(
+                (message) => html.isEmpty || !message.contains(html),
+              ),
+            ),
+        },
+        code: failure.code,
+        message: failure.message,
+      );
+}
+
+final class _ReactionsWriteApi implements ReactionsWritePort {
+  new(this._transport);
+
+  final WriteTransport _transport;
+
+  @override
+  Future<void> add(ReactionEntity kind, int id, String value) async {
+    final length = value.runes.length;
+    if (length == 0 || length > maxReactionLength) {
+      throw ArgumentError.value(
+        length,
+        'value',
+        'A reaction is 1 to $maxReactionLength code points long',
+      );
+    }
+    await _transport.send(
+      _transport.createMethod,
+      '/${kind.wireName}/$id/reactions',
+      body: {'value': value},
+    );
+  }
+
+  @override
+  Future<void> remove(ReactionEntity kind, int id, String value) async {
+    await _transport.send(
+      'POST',
+      '/${kind.wireName}/$id/reactions/delete',
+      body: {'value': value},
+    );
+  }
 }
 
 final class _ProjectsWriteApi implements ProjectsWritePort {
@@ -580,6 +733,7 @@ const _notModified = 304;
 const _contentTooLarge = 413;
 const _taskDoesNotExist = 4002;
 const _attachmentDoesNotExist = 4011;
+const _commentDoesNotExist = 4015;
 const _fileTooLarge = 4012;
 const _uploadTooLarge = 4035;
 const _labelAlreadyOnTask = 8001;

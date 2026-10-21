@@ -1,0 +1,12 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v1/tasks/21/reactions/delete",
+  "sent": {
+    "value": "🚀"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"message\":\"Successfully deleted.\"}\n"
+}

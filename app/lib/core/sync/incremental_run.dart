@@ -267,6 +267,7 @@ final class IncrementalRun {
             filter: filter,
             sort: TaskFilters.byUpdatedThenId,
             perPage: _perPage,
+            expand: TaskFilters.commentState,
           ),
         ),
       );
@@ -342,6 +343,7 @@ final class IncrementalRun {
             filter: TaskFilters.after(lastId),
             sort: TaskFilters.byId,
             perPage: _perPage,
+            expand: TaskFilters.commentState,
           ),
         ),
       );
@@ -383,7 +385,11 @@ final class IncrementalRun {
         if (!_unchanged(local[task.id], task)) task,
     ];
     if (changed.isNotEmpty) {
-      await _db.tasksDao.upsertAll(changed, syncRunId: runId);
+      await _db.tasksDao.upsertAll(
+        changed,
+        syncRunId: runId,
+        withCommentState: true,
+      );
     }
   }
 

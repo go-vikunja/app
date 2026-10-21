@@ -367,6 +367,64 @@ abstract interface class AttachmentsWritePort {
   Future<void> delete(int taskId, int attachmentId);
 }
 
+/// A task's comments, in the web editor's HTML, which the server stores as
+/// sent. Writing needs project write permission (`Forbidden` for a read
+/// share) and is a `DomainError` code 3008 while the project is archived;
+/// changing or deleting a comment is for its author alone, `Forbidden` even
+/// for the project's owner. A task that does not exist is a `NotFound` code
+/// 4002, a comment that does not exist (or belongs to another task) code
+/// 4015; a server with comments switched off answers every route with a
+/// `NotFound` without a code.
+///
+/// The server reports any update or delete it could not apply as 4015, so
+/// before throwing that the comment is read again: when it is still there
+/// the write is a `ServerFailure` with status 404 and no code, worth
+/// repeating.
+abstract interface class CommentsWritePort {
+  /// v2 `POST`, v1 `PUT /tasks/{id}/comments` with `{comment}`; returns the
+  /// comment as stored. Not idempotent. An empty body is a
+  /// `ValidationFailed` code 2002; whitespace and `<p></p>` are not, so the
+  /// caller checks for them. A body above the server's limit (1 MiB, 65,000
+  /// bytes on MySQL) is a `ValidationFailed` code 2002 on v1 and an
+  /// `UnexpectedResponse` 413 on v2. Bumps the task's `updated` and marks
+  /// it unread for everyone else with access.
+  Future<TaskComment> create(int taskId, String html);
+
+  /// Replaces the comment's body and returns the comment with its author,
+  /// `created` and the new `updated`, without reactions (the server never
+  /// sends them for one comment): v2 a merge-patch, whose answer is the
+  /// stored comment; v1 a read of the comment followed by `POST` with
+  /// `{comment}`, whose answer has neither author nor `created`. Only users
+  /// mentioned for the first time are notified.
+  Future<TaskComment> update(int taskId, int commentId, String html);
+
+  /// `DELETE /tasks/{task}/comments/{id}`. A comment that is gone already
+  /// counts as deleted.
+  Future<void> delete(int taskId, int commentId);
+}
+
+/// The signed-in user's own reactions to a task or a comment (for a comment
+/// the id is the comment's, without its task). Both need write permission
+/// on the task (`Forbidden` for a read share and for link shares) and are a
+/// `DomainError` code 3008 while the project is archived; a task or comment
+/// that does not exist is a `NotFound` code 4002 or 4015. Reactions bump no
+/// `updated` and notify nobody. The value is sent as it is: the server
+/// compares the bytes.
+abstract interface class ReactionsWritePort {
+  /// v2 `POST`, v1 `PUT /{tasks|comments}/{id}/reactions` with `{value}`.
+  /// Adding a value the user reacted with already changes nothing. An empty
+  /// value or one longer than [maxReactionLength] code points is an
+  /// [ArgumentError] before any request (v1 would store a longer one).
+  Future<void> add(ReactionEntity kind, int id, String value);
+
+  /// `POST /{tasks|comments}/{id}/reactions/delete` with `{value}` on both
+  /// versions. Removing a value the user did not react with changes
+  /// nothing. v2 refuses a value longer than [maxReactionLength] code points
+  /// with a `ValidationFailed` without a code, so such a reaction, stored
+  /// through v1, can only be removed through v1.
+  Future<void> remove(ReactionEntity kind, int id, String value);
+}
+
 /// The settings and the profile as stored after a write, read back from
 /// `GET /user`: the write answers carry neither.
 typedef UserSettingsWriteResult = ({
@@ -430,6 +488,8 @@ abstract interface class UserSettingsWritePort {
 abstract interface class VikunjaWriteClient {
   TasksWritePort get tasks;
   AttachmentsWritePort get attachments;
+  CommentsWritePort get comments;
+  ReactionsWritePort get reactions;
   LabelsWritePort get labels;
   NotificationsWritePort get notifications;
   SubscriptionsWritePort get subscriptions;

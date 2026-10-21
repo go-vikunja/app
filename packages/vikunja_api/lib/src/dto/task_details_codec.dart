@@ -6,7 +6,8 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 
 /// The parts of a single task read with `expand=reactions`,
 /// `comment_count` and `is_unread` that the sync does not keep.
-/// `is_unread` is only ever `true` or absent.
+/// `is_unread` is only ever `true` or absent; only v2 sends
+/// `max_permission` in the body (v1 in the `x-max-permission` header).
 TaskDetails parseTaskDetails(Object? json) {
   final map = objectOf(json, 'task');
   final taskId = requireInt(map, 'id', 'task');
@@ -21,5 +22,6 @@ TaskDetails parseTaskDetails(Object? json) {
     commentCount: intOr(map, 'comment_count', 0),
     isUnread: map['is_unread'] == true,
     subscription: subscriptionOf(map),
+    maxPermission: Permission.fromValue(map['max_permission']),
   );
 }

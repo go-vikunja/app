@@ -70,7 +70,7 @@ class _InboxScreenState extends ConsumerState<InboxScreen>
       case ActivityKind.teamMemberAdded || ActivityKind.other:
         break;
       case _:
-        await _openTask(item.taskId);
+        await _openTask(item.taskId, commentId: item.commentId);
     }
   }
 
@@ -82,13 +82,16 @@ class _InboxScreenState extends ConsumerState<InboxScreen>
     }
   }
 
-  /// A task that is not on this device is read online.
-  Future<void> _openTask(int? taskId) async {
+  /// A task that is not on this device is read online; a comment's opens
+  /// at the comment.
+  Future<void> _openTask(int? taskId, {int? commentId}) async {
     if (taskId == null) {
       _showSnackBar(context.l10n.inboxTaskNotLocal);
       return;
     }
-    await ref.read(taskOpenerProvider).openInActiveAccount(TaskById(taskId));
+    await ref
+        .read(taskOpenerProvider)
+        .openInActiveAccount(TaskById(taskId), commentId: commentId);
   }
 
   /// The project's screen is in a tab: the pages over the shell go first,

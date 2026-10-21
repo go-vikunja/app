@@ -1,0 +1,12 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v2/comments/57/reactions",
+  "sent": {
+    "value": "🎉"
+  },
+  "status": 201,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"user\":null,\"value\":\"🎉\",\"created\":\"2026-10-21T14:09:23.971248449Z\"}\n"
+}

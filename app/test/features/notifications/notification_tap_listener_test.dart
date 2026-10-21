@@ -334,7 +334,7 @@ void main() {
   });
 
   group('activity', () {
-    ServerNotification comment({int id = 5, int taskId = 7}) =>
+    ServerNotification comment({int id = 5, int taskId = 7, int? commentId}) =>
         inboxNotification(
           id: id,
           name: 'task.comment',
@@ -342,6 +342,8 @@ void main() {
           payload: {
             'doer': payloadUser(id: 2, username: 'anna', name: 'Anna'),
             'task': payloadTask(id: taskId, title: 'Water the plants'),
+            if (commentId != null)
+              'comment': {'id': commentId, 'comment': '<p>Done</p>'},
           },
         );
 
@@ -361,6 +363,39 @@ void main() {
         find.descendant(of: sheet, matching: find.text('Water the plants')),
         findsOneWidget,
       );
+    });
+
+    testWidgets('a tap on a comment opens its task at the comment the '
+        'stored notification names', (tester) async {
+      data.activity.notifications = [comment(commentId: 12)];
+      await pumpSignedInApp(tester, sync: data, notifications: notifications);
+
+      notifications.taps.tap(
+        payload(accountId: activeAccountId(tester), key: 'activity:5'),
+      );
+      await tester.pumpAndSettle();
+
+      expect(data.activity.markedRead, [5]);
+      final shown = tester.widget<TaskDetailSheet>(sheet);
+      expect(shown.task.title, 'Water the plants');
+      expect(shown.commentId, 12);
+    });
+
+    testWidgets('a reminder tap and an activity this device no longer has '
+        'open the task without a comment', (tester) async {
+      await pumpSignedInApp(tester, sync: data, notifications: notifications);
+
+      notifications.taps.tap(
+        payload(accountId: activeAccountId(tester), key: 'activity:5'),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.widget<TaskDetailSheet>(sheet).commentId, isNull);
+      Navigator.of(tester.element(sheet)).pop();
+      await tester.pumpAndSettle();
+
+      notifications.taps.tap(payload(accountId: activeAccountId(tester)));
+      await tester.pumpAndSettle();
+      expect(tester.widget<TaskDetailSheet>(sheet).commentId, isNull);
     });
 
     testWidgets('a tap without a task marks it read and opens the inbox', (

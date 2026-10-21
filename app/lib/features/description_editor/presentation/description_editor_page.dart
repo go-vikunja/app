@@ -15,6 +15,7 @@ import 'package:vikunja_mobile/app/widgets/adaptive_dialog_action.dart';
 import 'package:vikunja_mobile/core/repositories/attachment_repository.dart';
 import 'package:vikunja_mobile/core/repositories/attachment_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/core/repositories/task_details_repository_providers.dart';
 import 'package:vikunja_mobile/features/attachments/application/attachment_picker.dart';
 import 'package:vikunja_mobile/features/attachments/presentation/attachment_messages.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
@@ -38,6 +39,7 @@ import 'package:vikunja_mobile/features/sync/application/offline_state.dart';
 import 'package:vikunja_mobile/features/tasks/application/account_context_providers.dart';
 import 'package:vikunja_mobile/features/tasks/application/task_providers.dart'
     show taskByIdProvider;
+import 'package:vikunja_mobile/features/tasks/presentation/details/comment_messages.dart';
 
 final _log = Logger('DescriptionEditor');
 
@@ -71,10 +73,11 @@ final class _ChangedOnWeb extends _Outcome {
 /// be mentioned in it.
 typedef _Subject = ({String description, int projectId});
 
-/// Edits a task's or a project's description in the bundled web editor.
-/// The editor starts from the description as it was when the page opened;
-/// Save writes only when the editor reports a change, and asks first when
-/// the description changed meanwhile. Pops with true once saved.
+/// Edits a task's or a project's description, or the user's own comment,
+/// in the bundled web editor. The editor starts from the description as it
+/// was when the page opened; Save writes only when the editor reports a
+/// change, and asks first when the description changed meanwhile. Pops
+/// with true once saved, with the stored `TaskComment` for a comment.
 ///
 /// The edit itself lives in the WebView, so the page keeps a copy of it a
 /// moment after each change: when the WebView's process ends, Reload goes
@@ -129,6 +132,9 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
   /// The description the edit started from: what Save compares the stored
   /// one with and sends as its base.
   String? _opened;
+
+  /// The comment as the server stored the edit.
+  TaskComment? _savedComment;
 
   /// What this page load started from when that is not [_opened]: the
   /// copy of an edit after the WebView stopped, or a draft. It counts as a
@@ -210,6 +216,10 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
         }
         return null;
       }),
+    CommentTarget(:final comment, :final projectId) => AsyncValue.data((
+      description: comment.html,
+      projectId: projectId,
+    )),
   };
 
   String? _storedDescription() => switch (widget.target) {
@@ -217,6 +227,7 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
       ref.read(taskByIdProvider(taskId)).value?.description,
     ProjectDescriptionTarget(:final projectId) =>
       ref.read(projectByIdProvider(projectId))?.description,
+    CommentTarget(:final comment) => comment.html,
   };
 
   void _stop() {
@@ -282,8 +293,10 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
             EditorInit(
               html: restored ?? opened,
               theme: theme,
-              placeholder: l10n.descriptionEditorPlaceholder,
-              label: l10n.descriptionEditorTitle,
+              placeholder: widget.target is CommentTarget
+                  ? l10n.commentComposerHint
+                  : l10n.descriptionEditorPlaceholder,
+              label: _title(l10n),
               imageLabel: l10n.descriptionEditorImage,
               locale: Localizations.localeOf(context).toLanguageTag(),
               links: links,
@@ -697,6 +710,23 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
             base: base,
           );
           if (current != null) return _ChangedOnWeb(current);
+        case CommentTarget(:final taskId, :final comment):
+          final repository = ref.read(taskDetailsRepositoryProvider);
+          if (repository == null) return const _Refused();
+          // The server would store whitespace; the web sends no empty edit.
+          if (parseRichText(
+            html,
+            apiRoot: Uri(),
+            taskLinkBases: const [],
+          ).isEmpty) {
+            _showMessage(l10n.commentEmptyRefused);
+            return const _Refused();
+          }
+          _savedComment = await repository.editComment(
+            taskId,
+            comment,
+            CommentDraft(html),
+          );
       }
       return const _Saved();
     } on Object catch (error) {
@@ -710,6 +740,7 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
             error,
             ProjectChange.edit,
           ),
+          CommentTarget() => commentFailureText(l10n, error, CommentWrite.save),
         });
       }
       return const _Refused();
@@ -718,7 +749,7 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
 
   void _close({required bool saved}) {
     setState(() => _closing = true);
-    GoRouter.of(context).pop(saved);
+    GoRouter.of(context).pop(saved ? _savedComment ?? true : false);
   }
 
   /// Null keeps editing: both other choices lose one of the two changes.
@@ -840,7 +871,7 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text(l10n.descriptionEditorTitle),
+          title: Text(_title(l10n)),
           actions: [
             TextButton(
               // The image goes in first.
@@ -875,6 +906,8 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
                     title: l10n.projectGoneTitle,
                     body: l10n.projectGoneBody,
                   ),
+                  // Never gone: the page holds the comment itself.
+                  CommentTarget() => const SizedBox.shrink(),
                 },
               )
             : LayoutBuilder(
@@ -955,6 +988,10 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
       ),
     );
   }
+
+  String _title(AppLocalizations l10n) => widget.target is CommentTarget
+      ? l10n.commentEditorTitle
+      : l10n.descriptionEditorTitle;
 
   /// About two lines of the page's text (16 px at line height 1.5) below
   /// its top padding.

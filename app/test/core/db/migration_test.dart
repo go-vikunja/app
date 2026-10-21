@@ -40,7 +40,7 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 3);
+    await verifier.migrateAndValidate(db, 8);
 
     final task = (await db.tasksDao.find(1))!;
     expect(task.title, 'Keep me');
@@ -97,7 +97,7 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 3);
+    await verifier.migrateAndValidate(db, 8);
 
     final op = (await db.outboxDao.all()).single;
     expect(op.id, 'op-1');
@@ -155,7 +155,7 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 4);
+    await verifier.migrateAndValidate(db, 8);
 
     final task = (await db.tasksDao.find(50))!;
     expect(task.title, 'Remind me');
@@ -213,7 +213,7 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 5);
+    await verifier.migrateAndValidate(db, 8);
 
     expect((await db.tasksDao.find(50))!.title, 'Remind me');
     final scheduled = (await db.scheduledNotificationsDao.all()).single;
@@ -283,7 +283,7 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 7);
+    await verifier.migrateAndValidate(db, 8);
 
     final parent = (await db.tasksDao.find(60))!;
     expect(parent.subtasks.map((task) => task.id), [61]);
@@ -340,7 +340,7 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 7);
+    await verifier.migrateAndValidate(db, 8);
 
     final snapshot = await db.listSnapshotsDao.load('view:70');
     expect(snapshot.positions, {61: 1, 60: 2});
@@ -362,6 +362,60 @@ void main() {
     expect(board.buckets.single.title, 'To-Do');
     expect(board.slots, {60: (bucketId: 11, position: 65536.0)});
     expect(board.loadedAt, DateTime.utc(2026, 10, 19, 12));
+  });
+
+  test('v7 → v8 keeps the tasks with their queued changes, adds the '
+      'comment count and the unread flag and makes the next run a full '
+      'one', () async {
+    final verifier = SchemaVerifier(GeneratedHelper());
+    final schema = await verifier.schemaAt(7);
+    schema.rawDatabase
+      ..execute(
+        'INSERT INTO projects (id, title, description, identifier, hex_color, '
+        'parent_project_id, is_archived, is_favorite, position, owner_id, '
+        'created, updated) '
+        "VALUES (7, 'Work', '', '', '', 0, 0, 0, 1.0, NULL, NULL, NULL)",
+      )
+      ..execute(
+        'INSERT INTO tasks (id, project_id, title, description, done, done_at, '
+        'due_date, start_date, end_date, priority, percent_done, hex_color, '
+        'identifier, "index", is_favorite, position, repeat_after, '
+        'repeat_mode, bucket_id, created_by_id, created, updated, '
+        'sync_run_id, pending_changes, pending_delete) '
+        "VALUES (60, 7, 'Talked about', '', 0, NULL, NULL, NULL, NULL, "
+        "0, 0.0, '', '-1', 1, 0, 0.0, 0, 0, 0, NULL, NULL, 1759000000000, "
+        "'run-1', ?, 0)",
+        [encodeTaskChanges(const TaskChanges(title: 'Talked about more'))],
+      )
+      ..execute(
+        'INSERT INTO sync_state (key, value) '
+        "VALUES ('last_synced_at', '2026-10-21T12:00:00.000Z'), "
+        "('last_full_sync_at', '2026-10-21T11:00:00.000Z')",
+      );
+    final db = AppDatabase(schema.newConnection());
+    addTearDown(db.close);
+
+    await verifier.migrateAndValidate(db, 8);
+
+    final task = (await db.tasksDao.find(60))!;
+    expect(task.title, 'Talked about');
+    expect(task.commentCount, 0);
+    expect(task.isUnread, isFalse);
+    expect(
+      (await db.tasksDao.findRow(60))!.pendingChanges,
+      encodeTaskChanges(const TaskChanges(title: 'Talked about more')),
+    );
+    final state = await db.syncStateDao.readAll();
+    expect(state[SyncStateKeys.lastSyncedAt], '2026-10-21T12:00:00.000Z');
+    expect(
+      state,
+      isNot(contains(SyncStateKeys.lastFullSyncAt)),
+      reason: 'the incremental run would not fill in the unchanged tasks',
+    );
+    await db.tasksDao.storeCommentState(60, commentCount: 3, isUnread: true);
+    final talked = (await db.tasksDao.find(60))!;
+    expect(talked.commentCount, 3);
+    expect(talked.isUnread, isTrue);
   });
 }
 

@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "GET /api/v1/tasks/21/comments/56",
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"id\":56,\"comment\":\"\\u003cp\\u003eHello \\u003cmention-user data-id=\\\"fixtureuser\\\" data-label=\\\"Fixture User\\\" data-mention-suggestion-char=\\\"@\\\"\\u003e\\u003c/mention-user\\u003e, from v1\\u003c/p\\u003e\",\"author\":{\"id\":22,\"name\":\"\",\"username\":\"fixtureuser\",\"created\":\"2026-10-21T14:09:05Z\",\"updated\":\"2026-10-21T14:09:05Z\"},\"reactions\":null,\"created\":\"2026-10-21T14:09:08Z\",\"updated\":\"2026-10-21T14:09:08Z\"}\n"
+}

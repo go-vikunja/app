@@ -1,0 +1,515 @@
+{
+ "meta": {
+  "about": "commentHtmlFromText vectors. Every html without editorFixedPoint false loads into the bundled editor (app/editor, TipTap 3.31.3 with the web's schema) and serializes back byte for byte; the mention, reply and link forms are the web's (sanitizer_oracle.json, Comments.vue startReplyTo, the 2.7.0 probe of step 27)."
+ },
+ "vectors": [
+  {
+   "id": "empty",
+   "text": "",
+   "html": "<p></p>",
+   "note": "the editor's empty document"
+  },
+  {
+   "id": "one-line",
+   "text": "hello",
+   "html": "<p>hello</p>"
+  },
+  {
+   "id": "lines-are-paragraphs",
+   "text": "a\nb",
+   "html": "<p>a</p><p>b</p>"
+  },
+  {
+   "id": "empty-line-is-empty-paragraph",
+   "text": "a\n\nb",
+   "html": "<p>a</p><p></p><p>b</p>"
+  },
+  {
+   "id": "blank-lines-around-dropped",
+   "text": "\n \n  a  \n\t\n",
+   "html": "<p>  a  </p>",
+   "note": "spaces inside the kept line stay"
+  },
+  {
+   "id": "crlf-and-cr",
+   "text": "a\r\nb\rc",
+   "html": "<p>a</p><p>b</p><p>c</p>"
+  },
+  {
+   "id": "whitespace-only",
+   "text": " \n\t ",
+   "html": "<p></p>"
+  },
+  {
+   "id": "escaped",
+   "text": "<b>&amp; \"'> <",
+   "html": "<p>&lt;b&gt;&amp;amp; \"'&gt;&nbsp;&lt;</p>"
+  },
+  {
+   "id": "tab-and-spaces-kept",
+   "text": "a\t b  c",
+   "html": "<p>a\t b  c</p>"
+  },
+  {
+   "id": "script-text",
+   "text": "<script>alert(1)</script>",
+   "html": "<p>&lt;script&gt;alert(1)&lt;/script&gt;</p>"
+  },
+  {
+   "id": "unicode",
+   "text": "Grüße 👍🏽 👨‍👩‍👧‍👦",
+   "html": "<p>Grüße 👍🏽 👨‍👩‍👧‍👦</p>"
+  },
+  {
+   "id": "mention-web-form",
+   "text": "hi @Jane Doe !",
+   "mentions": [
+    {
+     "start": 3,
+     "end": 12,
+     "username": "jdoe",
+     "label": "Jane Doe"
+    }
+   ],
+   "html": "<p>hi <mention-user data-id=\"jdoe\" data-label=\"Jane Doe\" data-mention-suggestion-char=\"@\"></mention-user> !</p>"
+  },
+  {
+   "id": "mention-without-label",
+   "text": "@jdoe",
+   "mentions": [
+    {
+     "start": 0,
+     "end": 5,
+     "username": "jdoe",
+     "label": ""
+    }
+   ],
+   "html": "<p><mention-user data-id=\"jdoe\" data-mention-suggestion-char=\"@\"></mention-user></p>",
+   "note": "as the oracle's mention-id-only"
+  },
+  {
+   "id": "mention-hostile-label",
+   "text": "@x",
+   "mentions": [
+    {
+     "start": 0,
+     "end": 2,
+     "username": "x",
+     "label": "<img src=x onerror=alert(1)>"
+    }
+   ],
+   "html": "<p><mention-user data-id=\"x\" data-label=\"<img src=x onerror=alert(1)>\" data-mention-suggestion-char=\"@\"></mention-user></p>",
+   "note": "as the oracle's mention-hostile-attrs"
+  },
+  {
+   "id": "mention-quotes-and-ampersands",
+   "text": "@q",
+   "mentions": [
+    {
+     "start": 0,
+     "end": 2,
+     "username": "a&b",
+     "label": "Say \"hi\" & go"
+    }
+   ],
+   "html": "<p><mention-user data-id=\"a&amp;b\" data-label=\"Say &quot;hi&quot; &amp; go\" data-mention-suggestion-char=\"@\"></mention-user></p>"
+  },
+  {
+   "id": "mention-at-start-and-end",
+   "text": "@Ann and @Bob",
+   "mentions": [
+    {
+     "start": 9,
+     "end": 13,
+     "username": "bob",
+     "label": "Bob"
+    },
+    {
+     "start": 0,
+     "end": 4,
+     "username": "ann",
+     "label": "Ann"
+    }
+   ],
+   "html": "<p><mention-user data-id=\"ann\" data-label=\"Ann\" data-mention-suggestion-char=\"@\"></mention-user> and <mention-user data-id=\"bob\" data-label=\"Bob\" data-mention-suggestion-char=\"@\"></mention-user></p>",
+   "note": "spans in any order"
+  },
+  {
+   "id": "mentions-adjacent",
+   "text": "@A@B",
+   "mentions": [
+    {
+     "start": 0,
+     "end": 2,
+     "username": "a",
+     "label": "A"
+    },
+    {
+     "start": 2,
+     "end": 4,
+     "username": "b",
+     "label": "B"
+    }
+   ],
+   "html": "<p><mention-user data-id=\"a\" data-label=\"A\" data-mention-suggestion-char=\"@\"></mention-user><mention-user data-id=\"b\" data-label=\"B\" data-mention-suggestion-char=\"@\"></mention-user></p>"
+  },
+  {
+   "id": "mention-on-second-line",
+   "text": "hi\n@Ann ok\n@Bob",
+   "mentions": [
+    {
+     "start": 3,
+     "end": 7,
+     "username": "ann",
+     "label": "Ann"
+    },
+    {
+     "start": 11,
+     "end": 15,
+     "username": "bob",
+     "label": "Bob"
+    }
+   ],
+   "html": "<p>hi</p><p><mention-user data-id=\"ann\" data-label=\"Ann\" data-mention-suggestion-char=\"@\"></mention-user> ok</p><p><mention-user data-id=\"bob\" data-label=\"Bob\" data-mention-suggestion-char=\"@\"></mention-user></p>"
+  },
+  {
+   "id": "mention-on-crlf-lines",
+   "text": "a\r\n@Ann",
+   "mentions": [
+    {
+     "start": 3,
+     "end": 7,
+     "username": "ann",
+     "label": "Ann"
+    }
+   ],
+   "html": "<p>a</p><p><mention-user data-id=\"ann\" data-label=\"Ann\" data-mention-suggestion-char=\"@\"></mention-user></p>"
+  },
+  {
+   "id": "mention-label-not-the-text",
+   "text": "ping @someone",
+   "mentions": [
+    {
+     "start": 5,
+     "end": 13,
+     "username": "jdoe",
+     "label": "Jane Doe"
+    }
+   ],
+   "html": "<p>ping <mention-user data-id=\"jdoe\" data-label=\"Jane Doe\" data-mention-suggestion-char=\"@\"></mention-user></p>",
+   "note": "the node carries the span's user and label, whatever the text says"
+  },
+  {
+   "id": "mention-only-line-kept-at-end",
+   "text": "hi\n@Ann",
+   "mentions": [
+    {
+     "start": 3,
+     "end": 7,
+     "username": "ann",
+     "label": "Ann"
+    }
+   ],
+   "html": "<p>hi</p><p><mention-user data-id=\"ann\" data-label=\"Ann\" data-mention-suggestion-char=\"@\"></mention-user></p>"
+  },
+  {
+   "id": "invalid-spans-stay-text",
+   "text": "ab\ncd @x",
+   "mentions": [
+    {
+     "start": 1,
+     "end": 4,
+     "username": "cross",
+     "label": "Cross"
+    },
+    {
+     "start": 6,
+     "end": 6,
+     "username": "empty",
+     "label": "E"
+    },
+    {
+     "start": 7,
+     "end": 6,
+     "username": "back",
+     "label": "B"
+    },
+    {
+     "start": 6,
+     "end": 9,
+     "username": "out",
+     "label": "O"
+    },
+    {
+     "start": -1,
+     "end": 1,
+     "username": "neg",
+     "label": "N"
+    },
+    {
+     "start": 6,
+     "end": 8,
+     "username": "",
+     "label": "No user"
+    }
+   ],
+   "html": "<p>ab</p><p>cd @x</p>",
+   "note": "crossing a line break, empty, backwards, beyond the text, before it, without a user"
+  },
+  {
+   "id": "overlapping-span-dropped",
+   "text": "@Ann Lee",
+   "mentions": [
+    {
+     "start": 0,
+     "end": 8,
+     "username": "ann",
+     "label": "Ann Lee"
+    },
+    {
+     "start": 5,
+     "end": 8,
+     "username": "lee",
+     "label": "Lee"
+    }
+   ],
+   "html": "<p><mention-user data-id=\"ann\" data-label=\"Ann Lee\" data-mention-suggestion-char=\"@\"></mention-user></p>"
+  },
+  {
+   "id": "mention-text-escaped-around",
+   "text": "<@A>",
+   "mentions": [
+    {
+     "start": 1,
+     "end": 3,
+     "username": "a",
+     "label": "A"
+    }
+   ],
+   "html": "<p>&lt;<mention-user data-id=\"a\" data-label=\"A\" data-mention-suggestion-char=\"@\"></mention-user>&gt;</p>"
+  },
+  {
+   "id": "link",
+   "text": "see https://example.com/a?b=c&d=e.",
+   "html": "<p>see <a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://example.com/a?b=c&amp;d=e\">https://example.com/a?b=c&amp;d=e</a>.</p>"
+  },
+  {
+   "id": "link-http-uppercase-scheme",
+   "text": "HTTP://Example.com/x",
+   "html": "<p><a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"HTTP://Example.com/x\">HTTP://Example.com/x</a></p>"
+  },
+  {
+   "id": "link-in-brackets",
+   "text": "(https://example.com/x) and https://en.wikipedia.org/wiki/Foo_(bar)!",
+   "html": "<p>(<a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://example.com/x\">https://example.com/x</a>) and <a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://en.wikipedia.org/wiki/Foo_(bar)\">https://en.wikipedia.org/wiki/Foo_(bar)</a>!</p>"
+  },
+  {
+   "id": "link-without-host-stays-text",
+   "text": "http:// and https://?",
+   "html": "<p>http:// and https://?</p>"
+  },
+  {
+   "id": "other-schemes-stay-text",
+   "text": "mailto:a@b.c ftp://x.y example.com",
+   "html": "<p>mailto:a@b.c ftp://x.y example.com</p>",
+   "note": "the web's autolink also takes bare domains; this does not"
+  },
+  {
+   "id": "link-next-to-mention",
+   "text": "@Ann https://example.com",
+   "mentions": [
+    {
+     "start": 0,
+     "end": 4,
+     "username": "ann",
+     "label": "Ann"
+    }
+   ],
+   "html": "<p><mention-user data-id=\"ann\" data-label=\"Ann\" data-mention-suggestion-char=\"@\"></mention-user> <a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://example.com\">https://example.com</a></p>"
+  },
+  {
+   "id": "link-ends-at-quote",
+   "text": "url \"https://example.com/a\"",
+   "html": "<p>url \"<a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://example.com/a\">https://example.com/a</a>\"</p>"
+  },
+  {
+   "id": "task-link",
+   "text": "https://vikunja.example.com/tasks/42",
+   "html": "<p><a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://vikunja.example.com/tasks/42\">https://vikunja.example.com/tasks/42</a></p>",
+   "note": "typed task addresses get the link mark's attributes in the web too"
+  },
+  {
+   "id": "reply-web-sample",
+   "text": "reply from B",
+   "reply": {
+    "id": 14,
+    "html": "<p>first by A (edited)</p>"
+   },
+   "html": "<blockquote data-comment-id=\"14\"><p>first by A (edited)</p></blockquote><p>reply from B</p>"
+  },
+  {
+   "id": "reply-without-text",
+   "text": "",
+   "reply": {
+    "id": 14,
+    "html": "<p>first by A (edited)</p>"
+   },
+   "html": "<blockquote data-comment-id=\"14\"><p>first by A (edited)</p></blockquote><p></p>",
+   "note": "the web's draft before typing"
+  },
+  {
+   "id": "reply-strips-mentions",
+   "text": "ok",
+   "reply": {
+    "id": 5,
+    "html": "<p>hi <mention-user data-id=\"jdoe\" data-label=\"Jane Doe\" data-mention-suggestion-char=\"@\"></mention-user> and <mention-user data-id=\"bob\" data-label=\"@@Bob\" data-mention-suggestion-char=\"@\"></mention-user> !</p>"
+   },
+   "html": "<blockquote data-comment-id=\"5\"><p>hi @Jane Doe and @Bob !</p></blockquote><p>ok</p>",
+   "note": "leading @ of a label removed"
+  },
+  {
+   "id": "reply-mention-without-label-uses-text",
+   "text": "",
+   "reply": {
+    "id": 27,
+    "html": "<p>Hey <mention-user data-id=\"u\" data-label=\"Name\">@Name</mention-user> and <mention-user data-id=\"x\"></mention-user></p>"
+   },
+   "html": "<blockquote data-comment-id=\"27\"><p>Hey @Name and </p></blockquote><p></p>",
+   "note": "the server's markdown form keeps its label; one with neither label nor text is dropped"
+  },
+  {
+   "id": "reply-mention-empty-label-dropped",
+   "text": "",
+   "reply": {
+    "id": 3,
+    "html": "<p>a <mention-user data-id=\"u\" data-label=\"\">@text</mention-user> b</p>"
+   },
+   "html": "<blockquote data-comment-id=\"3\"><p>a  b</p></blockquote><p></p>",
+   "note": "an empty data-label is not missing"
+  },
+  {
+   "id": "reply-mention-label-from-text",
+   "text": "",
+   "reply": {
+    "id": 3,
+    "html": "<p><mention-user data-id=\"j\"> @Jane </mention-user></p>"
+   },
+   "html": "<blockquote data-comment-id=\"3\"><p>@Jane</p></blockquote><p></p>"
+  },
+  {
+   "id": "reply-keeps-nested-reply",
+   "text": "and me",
+   "reply": {
+    "id": 8,
+    "html": "<blockquote data-comment-id=\"3\"><p>older</p></blockquote><p>mine</p>"
+   },
+   "html": "<blockquote data-comment-id=\"8\"><blockquote data-comment-id=\"3\"><p>older</p></blockquote><p>mine</p></blockquote><p>and me</p>",
+   "note": "the server notifies every quoted author"
+  },
+  {
+   "id": "reply-rich-parent",
+   "text": "",
+   "reply": {
+    "id": 2,
+    "html": "<p><strong>bold</strong> <a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://example.com\">x</a></p><ul><li><p>item</p></li></ul>"
+   },
+   "html": "<blockquote data-comment-id=\"2\"><p><strong>bold</strong> <a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://example.com\">x</a></p><ul><li><p>item</p></li></ul></blockquote><p></p>"
+  },
+  {
+   "id": "reply-plain-text-parent",
+   "text": "",
+   "reply": {
+    "id": 15,
+    "html": "plain text, no tags\nsecond line"
+   },
+   "html": "<blockquote data-comment-id=\"15\"><p>plain text, no tags<br>second line</p></blockquote><p></p>",
+   "note": "other clients' plain text, as the editor reads it"
+  },
+  {
+   "id": "reply-inline-parent",
+   "text": "",
+   "reply": {
+    "id": 4,
+    "html": "a &amp; <em>b</em>\r\nc"
+   },
+   "html": "<blockquote data-comment-id=\"4\"><p>a &amp; <em>b</em><br>c</p></blockquote><p></p>"
+  },
+  {
+   "id": "reply-empty-parent",
+   "text": "x",
+   "reply": {
+    "id": 9,
+    "html": ""
+   },
+   "html": "<blockquote data-comment-id=\"9\"><p></p></blockquote><p>x</p>"
+  },
+  {
+   "id": "reply-and-mention",
+   "text": "@Ann see above",
+   "mentions": [
+    {
+     "start": 0,
+     "end": 4,
+     "username": "ann",
+     "label": "Ann"
+    }
+   ],
+   "reply": {
+    "id": 1,
+    "html": "<p>q</p>"
+   },
+   "html": "<blockquote data-comment-id=\"1\"><p>q</p></blockquote><p><mention-user data-id=\"ann\" data-label=\"Ann\" data-mention-suggestion-char=\"@\"></mention-user> see above</p>"
+  },
+  {
+   "id": "reply-hostile-parent-filtered",
+   "text": "",
+   "reply": {
+    "id": 19,
+    "html": "<p>x</p><script>alert(1)</script><img src=\"x\" onerror=\"alert(1)\">"
+   },
+   "html": "<blockquote data-comment-id=\"19\"><p>x</p><img src=\"x\"></blockquote><p></p>",
+   "note": "what the web's editor keeps of the quote before it saves the reply"
+  },
+  {
+   "id": "reply-parent-filtered-to-schema",
+   "text": "",
+   "reply": {
+    "id": 20,
+    "html": "<p class=\"x\" style=\"color:red\" onclick=\"alert(1)\">a <a href=\"javascript:alert(1)\">js</a> <a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://example.com\" onclick=\"alert(1)\" class=\"c\">ok</a></p><iframe src=\"https://evil.example\"></iframe><img src=\"javascript:alert(1)\"><img src=\"data:image/png;base64,iVBORw0KGgo=\"><ul data-type=\"taskList\" onclick=\"alert(1)\"><li data-checked=\"true\" data-task-id=\"abcd1234\" data-type=\"taskItem\" style=\"x\"><label><input type=\"checkbox\" checked=\"checked\" autofocus onfocus=\"alert(1)\"><span></span></label><div><p>done</p></div></li></ul><blockquote data-comment-id=\"1 onmouseover=alert(1)\"><p>q</p></blockquote>"
+   },
+   "html": "<blockquote data-comment-id=\"20\"><p>a js <a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://example.com\">ok</a></p><ul data-type=\"taskList\"><li data-checked=\"true\" data-task-id=\"abcd1234\" data-type=\"taskItem\"><label><input type=\"checkbox\" checked=\"checked\"><span></span></label><div><p>done</p></div></li></ul><blockquote><p>q</p></blockquote></blockquote><p></p>",
+   "note": "attributes the schema does not read, links and images to addresses it refuses, and what embeds are left out"
+  },
+  {
+   "id": "reply-parent-unknown-elements",
+   "text": "",
+   "reply": {
+    "id": 21,
+    "html": "<section data-x=\"1\"><h2 id=\"t\">T</h2></section><font color=\"red\">f</font><mark>m</mark><svg onload=\"alert(1)\"><text>s</text></svg><textarea>t</textarea>"
+   },
+   "html": "<blockquote data-comment-id=\"21\"><div><h2>T</h2></div>fm</blockquote><p></p>",
+   "editorFixedPoint": false,
+   "note": "other blocks stay blocks as bare divs, which the editor reads as it reads the originals; other inline elements become their text"
+  },
+  {
+   "id": "reply-frameset-parent",
+   "text": "ok",
+   "reply": {
+    "id": 7,
+    "html": "<frameset><frame></frameset>"
+   },
+   "html": "<blockquote data-comment-id=\"7\"><p></p></blockquote><p>ok</p>",
+   "note": "the frameset replaces the body the web parses the quote in, which leaves nothing to quote"
+  },
+  {
+   "id": "reply-parent-closing-the-wrapper",
+   "text": "",
+   "reply": {
+    "id": 6,
+    "html": "<p>a</p></div><p>lost</p>"
+   },
+   "html": "<blockquote data-comment-id=\"6\"><p>a</p></blockquote><p></p>",
+   "note": "the web parses the quote inside a div; what follows a stray </div> is lost there too"
+  }
+ ]
+}

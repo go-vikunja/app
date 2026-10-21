@@ -25,6 +25,8 @@ TaskRow taskRow(Task task, {String? syncRunId}) => TaskRow(
   createdById: task.createdBy?.id,
   created: task.created,
   updated: task.updated,
+  commentCount: task.commentCount,
+  isUnread: task.isUnread,
   syncRunId: syncRunId,
   pendingDelete: false,
 );
@@ -65,8 +67,6 @@ List<TaskRelationRow> taskRelationRows(Task task) => [
       ),
 ];
 
-/// `commentCount` and `isUnread` only exist with an `expand` and are not
-/// stored.
 Task taskFromRow(
   TaskRow row, {
   User? createdBy,
@@ -101,6 +101,8 @@ Task taskFromRow(
   createdBy: createdBy,
   created: row.created,
   updated: row.updated,
+  commentCount: row.commentCount,
+  isUnread: row.isUnread,
 );
 
 TaskReminder reminderFromRow(TaskReminderRow row) => TaskReminder(

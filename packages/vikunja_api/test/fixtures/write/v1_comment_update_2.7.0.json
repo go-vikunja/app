@@ -1,0 +1,12 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v1/tasks/21/comments/56",
+  "sent": {
+    "comment": "<p>Edited on v1</p>"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"id\":56,\"comment\":\"\\u003cp\\u003eEdited on v1\\u003c/p\\u003e\",\"author\":null,\"reactions\":null,\"created\":\"0001-01-01T00:00:00Z\",\"updated\":\"2026-10-21T14:09:10.773171363Z\"}\n"
+}

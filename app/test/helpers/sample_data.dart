@@ -213,6 +213,8 @@ Task sampleTask({
   Map<TaskRelationKind, List<Task>> relatedTasks = const {},
   List<int> subtaskIds = const [],
   List<int> parentIds = const [],
+  int commentCount = 0,
+  bool isUnread = false,
 }) => Task(
   id: id,
   title: title,
@@ -238,6 +240,8 @@ Task sampleTask({
   created: created?.toUtc(),
   createdBy: createdBy,
   hexColor: hexColor,
+  commentCount: commentCount,
+  isUnread: isUnread,
   relatedTasks: {
     ...relatedTasks,
     if (subtaskIds.isNotEmpty)

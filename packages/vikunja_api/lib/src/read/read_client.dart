@@ -475,7 +475,14 @@ final class _TasksApi implements TasksPort {
         'expand': [for (final expand in _detailExpands) expand.wireName],
       },
     );
-    return _transport.decode<TaskDetails>(response, parseTaskDetails);
+    final details = _transport.decode<TaskDetails>(response, parseTaskDetails);
+    if (details.maxPermission != null) return details;
+    // v1 tells the permission of a single read in a header instead.
+    final header = response.headers.value('x-max-permission');
+    return switch (Permission.fromValue(int.tryParse(header ?? ''))) {
+      final permission? => details.copyWith(maxPermission: permission),
+      null => details,
+    };
   }
 
   static const List<TaskExpand> _detailExpands = [

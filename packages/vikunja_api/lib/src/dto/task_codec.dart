@@ -36,14 +36,8 @@ Task parseTask(Object? json) {
     createdBy: parseUser(map['created_by']),
     created: dateOf(map['created']),
     updated: dateOf(map['updated']),
-    commentCount: switch (map['comment_count']) {
-      final int count => count,
-      _ => null,
-    },
-    isUnread: switch (map['is_unread']) {
-      final bool unread => unread,
-      _ => null,
-    },
+    commentCount: intOr(map, 'comment_count', 0),
+    isUnread: map['is_unread'] == true,
   );
 }
 

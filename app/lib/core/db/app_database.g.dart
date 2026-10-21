@@ -2236,6 +2236,33 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRow> {
         type: DriftSqlType.int,
         requiredDuringInsert: false,
       ).withConverter<DateTime?>($TasksTable.$converterupdatedn);
+  static const VerificationMeta _commentCountMeta = const VerificationMeta(
+    'commentCount',
+  );
+  @override
+  late final GeneratedColumn<int> commentCount = GeneratedColumn<int>(
+    'comment_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _isUnreadMeta = const VerificationMeta(
+    'isUnread',
+  );
+  @override
+  late final GeneratedColumn<bool> isUnread = GeneratedColumn<bool>(
+    'is_unread',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_unread" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _syncRunIdMeta = const VerificationMeta(
     'syncRunId',
   );
@@ -2297,6 +2324,8 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRow> {
     createdById,
     created,
     updated,
+    commentCount,
+    isUnread,
     syncRunId,
     pendingChanges,
     pendingDelete,
@@ -2446,6 +2475,21 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRow> {
         ),
       );
     }
+    if (data.containsKey('comment_count')) {
+      context.handle(
+        _commentCountMeta,
+        commentCount.isAcceptableOrUnknown(
+          data['comment_count']!,
+          _commentCountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('is_unread')) {
+      context.handle(
+        _isUnreadMeta,
+        isUnread.isAcceptableOrUnknown(data['is_unread']!, _isUnreadMeta),
+      );
+    }
     if (data.containsKey('sync_run_id')) {
       context.handle(
         _syncRunIdMeta,
@@ -2579,6 +2623,14 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRow> {
           data['${effectivePrefix}updated'],
         ),
       ),
+      commentCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}comment_count'],
+      )!,
+      isUnread: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_unread'],
+      )!,
       syncRunId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}sync_run_id'],
@@ -2645,6 +2697,15 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
   final DateTime? created;
   final DateTime? updated;
 
+  /// From the sync's `expand=comment_count`; kept when a task arrives
+  /// without it (a write's answer, a task read on its own).
+  final int commentCount;
+
+  /// From the sync's `expand=is_unread`, cleared here on mark-read. A task
+  /// read on the web keeps it until the task changes: mark-read does not
+  /// bump `updated`.
+  final bool isUnread;
+
   /// The sync run that last returned this task; the finishing phase purges
   /// every task the run did not touch. Survives a restart, unlike a set of
   /// seen ids in memory.
@@ -2680,6 +2741,8 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
     this.createdById,
     this.created,
     this.updated,
+    required this.commentCount,
+    required this.isUnread,
     this.syncRunId,
     this.pendingChanges,
     required this.pendingDelete,
@@ -2735,6 +2798,8 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
         $TasksTable.$converterupdatedn.toSql(updated),
       );
     }
+    map['comment_count'] = Variable<int>(commentCount);
+    map['is_unread'] = Variable<bool>(isUnread);
     if (!nullToAbsent || syncRunId != null) {
       map['sync_run_id'] = Variable<String>(syncRunId);
     }
@@ -2783,6 +2848,8 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
       updated: updated == null && nullToAbsent
           ? const Value.absent()
           : Value(updated),
+      commentCount: Value(commentCount),
+      isUnread: Value(isUnread),
       syncRunId: syncRunId == null && nullToAbsent
           ? const Value.absent()
           : Value(syncRunId),
@@ -2821,6 +2888,8 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
       createdById: serializer.fromJson<int?>(json['createdById']),
       created: serializer.fromJson<DateTime?>(json['created']),
       updated: serializer.fromJson<DateTime?>(json['updated']),
+      commentCount: serializer.fromJson<int>(json['commentCount']),
+      isUnread: serializer.fromJson<bool>(json['isUnread']),
       syncRunId: serializer.fromJson<String?>(json['syncRunId']),
       pendingChanges: serializer.fromJson<String?>(json['pendingChanges']),
       pendingDelete: serializer.fromJson<bool>(json['pendingDelete']),
@@ -2852,6 +2921,8 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
       'createdById': serializer.toJson<int?>(createdById),
       'created': serializer.toJson<DateTime?>(created),
       'updated': serializer.toJson<DateTime?>(updated),
+      'commentCount': serializer.toJson<int>(commentCount),
+      'isUnread': serializer.toJson<bool>(isUnread),
       'syncRunId': serializer.toJson<String?>(syncRunId),
       'pendingChanges': serializer.toJson<String?>(pendingChanges),
       'pendingDelete': serializer.toJson<bool>(pendingDelete),
@@ -2881,6 +2952,8 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
     Value<int?> createdById = const Value.absent(),
     Value<DateTime?> created = const Value.absent(),
     Value<DateTime?> updated = const Value.absent(),
+    int? commentCount,
+    bool? isUnread,
     Value<String?> syncRunId = const Value.absent(),
     Value<String?> pendingChanges = const Value.absent(),
     bool? pendingDelete,
@@ -2907,6 +2980,8 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
     createdById: createdById.present ? createdById.value : this.createdById,
     created: created.present ? created.value : this.created,
     updated: updated.present ? updated.value : this.updated,
+    commentCount: commentCount ?? this.commentCount,
+    isUnread: isUnread ?? this.isUnread,
     syncRunId: syncRunId.present ? syncRunId.value : this.syncRunId,
     pendingChanges: pendingChanges.present
         ? pendingChanges.value
@@ -2951,6 +3026,10 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
           : this.createdById,
       created: data.created.present ? data.created.value : this.created,
       updated: data.updated.present ? data.updated.value : this.updated,
+      commentCount: data.commentCount.present
+          ? data.commentCount.value
+          : this.commentCount,
+      isUnread: data.isUnread.present ? data.isUnread.value : this.isUnread,
       syncRunId: data.syncRunId.present ? data.syncRunId.value : this.syncRunId,
       pendingChanges: data.pendingChanges.present
           ? data.pendingChanges.value
@@ -2986,6 +3065,8 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
           ..write('createdById: $createdById, ')
           ..write('created: $created, ')
           ..write('updated: $updated, ')
+          ..write('commentCount: $commentCount, ')
+          ..write('isUnread: $isUnread, ')
           ..write('syncRunId: $syncRunId, ')
           ..write('pendingChanges: $pendingChanges, ')
           ..write('pendingDelete: $pendingDelete')
@@ -3017,6 +3098,8 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
     createdById,
     created,
     updated,
+    commentCount,
+    isUnread,
     syncRunId,
     pendingChanges,
     pendingDelete,
@@ -3047,6 +3130,8 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
           other.createdById == this.createdById &&
           other.created == this.created &&
           other.updated == this.updated &&
+          other.commentCount == this.commentCount &&
+          other.isUnread == this.isUnread &&
           other.syncRunId == this.syncRunId &&
           other.pendingChanges == this.pendingChanges &&
           other.pendingDelete == this.pendingDelete);
@@ -3075,6 +3160,8 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
   final Value<int?> createdById;
   final Value<DateTime?> created;
   final Value<DateTime?> updated;
+  final Value<int> commentCount;
+  final Value<bool> isUnread;
   final Value<String?> syncRunId;
   final Value<String?> pendingChanges;
   final Value<bool> pendingDelete;
@@ -3101,6 +3188,8 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
     this.createdById = const Value.absent(),
     this.created = const Value.absent(),
     this.updated = const Value.absent(),
+    this.commentCount = const Value.absent(),
+    this.isUnread = const Value.absent(),
     this.syncRunId = const Value.absent(),
     this.pendingChanges = const Value.absent(),
     this.pendingDelete = const Value.absent(),
@@ -3128,6 +3217,8 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
     this.createdById = const Value.absent(),
     this.created = const Value.absent(),
     this.updated = const Value.absent(),
+    this.commentCount = const Value.absent(),
+    this.isUnread = const Value.absent(),
     this.syncRunId = const Value.absent(),
     this.pendingChanges = const Value.absent(),
     this.pendingDelete = const Value.absent(),
@@ -3168,6 +3259,8 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
     Expression<int>? createdById,
     Expression<int>? created,
     Expression<int>? updated,
+    Expression<int>? commentCount,
+    Expression<bool>? isUnread,
     Expression<String>? syncRunId,
     Expression<String>? pendingChanges,
     Expression<bool>? pendingDelete,
@@ -3195,6 +3288,8 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
       if (createdById != null) 'created_by_id': createdById,
       if (created != null) 'created': created,
       if (updated != null) 'updated': updated,
+      if (commentCount != null) 'comment_count': commentCount,
+      if (isUnread != null) 'is_unread': isUnread,
       if (syncRunId != null) 'sync_run_id': syncRunId,
       if (pendingChanges != null) 'pending_changes': pendingChanges,
       if (pendingDelete != null) 'pending_delete': pendingDelete,
@@ -3224,6 +3319,8 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
     Value<int?>? createdById,
     Value<DateTime?>? created,
     Value<DateTime?>? updated,
+    Value<int>? commentCount,
+    Value<bool>? isUnread,
     Value<String?>? syncRunId,
     Value<String?>? pendingChanges,
     Value<bool>? pendingDelete,
@@ -3251,6 +3348,8 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
       createdById: createdById ?? this.createdById,
       created: created ?? this.created,
       updated: updated ?? this.updated,
+      commentCount: commentCount ?? this.commentCount,
+      isUnread: isUnread ?? this.isUnread,
       syncRunId: syncRunId ?? this.syncRunId,
       pendingChanges: pendingChanges ?? this.pendingChanges,
       pendingDelete: pendingDelete ?? this.pendingDelete,
@@ -3338,6 +3437,12 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
         $TasksTable.$converterupdatedn.toSql(updated.value),
       );
     }
+    if (commentCount.present) {
+      map['comment_count'] = Variable<int>(commentCount.value);
+    }
+    if (isUnread.present) {
+      map['is_unread'] = Variable<bool>(isUnread.value);
+    }
     if (syncRunId.present) {
       map['sync_run_id'] = Variable<String>(syncRunId.value);
     }
@@ -3375,6 +3480,8 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
           ..write('createdById: $createdById, ')
           ..write('created: $created, ')
           ..write('updated: $updated, ')
+          ..write('commentCount: $commentCount, ')
+          ..write('isUnread: $isUnread, ')
           ..write('syncRunId: $syncRunId, ')
           ..write('pendingChanges: $pendingChanges, ')
           ..write('pendingDelete: $pendingDelete')
@@ -9574,6 +9681,8 @@ typedef $$TasksTableCreateCompanionBuilder = TasksCompanion Function({
   Value<int?> createdById,
   Value<DateTime?> created,
   Value<DateTime?> updated,
+  Value<int> commentCount,
+  Value<bool> isUnread,
   Value<String?> syncRunId,
   Value<String?> pendingChanges,
   Value<bool> pendingDelete,
@@ -9601,6 +9710,8 @@ typedef $$TasksTableUpdateCompanionBuilder = TasksCompanion Function({
   Value<int?> createdById,
   Value<DateTime?> created,
   Value<DateTime?> updated,
+  Value<int> commentCount,
+  Value<bool> isUnread,
   Value<String?> syncRunId,
   Value<String?> pendingChanges,
   Value<bool> pendingDelete,
@@ -9806,6 +9917,16 @@ class $$TasksTableFilterComposer extends Composer<_$AppDatabase, $TasksTable> {
         column: $table.updated,
         builder: (column) => ColumnWithTypeConverterFilters(column),
       );
+
+  ColumnFilters<int> get commentCount => $composableBuilder(
+    column: $table.commentCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isUnread => $composableBuilder(
+    column: $table.isUnread,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<String> get syncRunId => $composableBuilder(
     column: $table.syncRunId,
@@ -10042,6 +10163,16 @@ class $$TasksTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get commentCount => $composableBuilder(
+    column: $table.commentCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isUnread => $composableBuilder(
+    column: $table.isUnread,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get syncRunId => $composableBuilder(
     column: $table.syncRunId,
     builder: (column) => ColumnOrderings(column),
@@ -10146,6 +10277,14 @@ class $$TasksTableAnnotationComposer
 
   GeneratedColumnWithTypeConverter<DateTime?, int> get updated =>
       $composableBuilder(column: $table.updated, builder: (column) => column);
+
+  GeneratedColumn<int> get commentCount => $composableBuilder(
+    column: $table.commentCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isUnread =>
+      $composableBuilder(column: $table.isUnread, builder: (column) => column);
 
   GeneratedColumn<String> get syncRunId =>
       $composableBuilder(column: $table.syncRunId, builder: (column) => column);
@@ -10316,6 +10455,8 @@ class $$TasksTableTableManager
                 Value<int?> createdById = const Value.absent(),
                 Value<DateTime?> created = const Value.absent(),
                 Value<DateTime?> updated = const Value.absent(),
+                Value<int> commentCount = const Value.absent(),
+                Value<bool> isUnread = const Value.absent(),
                 Value<String?> syncRunId = const Value.absent(),
                 Value<String?> pendingChanges = const Value.absent(),
                 Value<bool> pendingDelete = const Value.absent(),
@@ -10342,6 +10483,8 @@ class $$TasksTableTableManager
                 createdById: createdById,
                 created: created,
                 updated: updated,
+                commentCount: commentCount,
+                isUnread: isUnread,
                 syncRunId: syncRunId,
                 pendingChanges: pendingChanges,
                 pendingDelete: pendingDelete,
@@ -10370,6 +10513,8 @@ class $$TasksTableTableManager
                 Value<int?> createdById = const Value.absent(),
                 Value<DateTime?> created = const Value.absent(),
                 Value<DateTime?> updated = const Value.absent(),
+                Value<int> commentCount = const Value.absent(),
+                Value<bool> isUnread = const Value.absent(),
                 Value<String?> syncRunId = const Value.absent(),
                 Value<String?> pendingChanges = const Value.absent(),
                 Value<bool> pendingDelete = const Value.absent(),
@@ -10396,6 +10541,8 @@ class $$TasksTableTableManager
                 createdById: createdById,
                 created: created,
                 updated: updated,
+                commentCount: commentCount,
+                isUnread: isUnread,
                 syncRunId: syncRunId,
                 pendingChanges: pendingChanges,
                 pendingDelete: pendingDelete,

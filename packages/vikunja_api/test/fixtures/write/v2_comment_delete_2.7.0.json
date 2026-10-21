@@ -1,0 +1,7 @@
+{
+  "server": "2.7.0",
+  "request": "DELETE /api/v2/tasks/21/comments/57",
+  "status": 204,
+  "headers": {},
+  "body": ""
+}

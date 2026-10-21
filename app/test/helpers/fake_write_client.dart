@@ -129,8 +129,11 @@ final class FakeWriteClient implements VikunjaWriteClient {
   /// `move view <view> project <project> to <position>`,
   /// `delete view <view> project <project>`, `read filter <id>`,
   /// `create filter <title>`, `update filter <id> <title>`,
-  /// `favorite filter <id> <bool>` and `delete filter <id>`, in
-  /// order; an update's moves and positions follow it.
+  /// `favorite filter <id> <bool>`, `delete filter <id>`,
+  /// `create comment <task>`, `update comment <task> <id>`,
+  /// `delete comment <task> <id>`, `react <tasks|comments> <id> <value>`
+  /// and `unreact <tasks|comments> <id> <value>`, in order; an update's
+  /// moves and positions follow it.
   final List<String> requests = [];
   final List<NewTask> creates = [];
   final List<(int, TaskChanges)> updates = [];
@@ -179,9 +182,32 @@ final class FakeWriteClient implements VikunjaWriteClient {
   @override
   late final FakeSavedFiltersPort savedFilters = FakeSavedFiltersPort(this);
 
+  /// Each task's comments as the server holds them, by task id, and the
+  /// id the next one gets. [commenter] is the signed-in user: the author
+  /// of new comments and the one who reacts.
+  final Map<int, List<TaskComment>> serverComments = {};
+  int nextCommentId = 700;
+  User commenter = const User(id: 1, username: 'me', name: 'Me');
+
+  /// The reactions of each task and comment, by kind and id.
+  final Map<(ReactionEntity, int), Reactions> serverReactions = {};
+
+  @override
+  late final FakeCommentsWritePort comments = FakeCommentsWritePort(this);
+
+  @override
+  late final FakeReactionsWritePort reactions = FakeReactionsWritePort(this);
+
   Future<void> _request(String description) async {
     requests.add(description);
     await beforeRequest?.call(description);
+  }
+
+  /// A comment bumps its task's `updated`, as on the server.
+  void _touch(int taskId) {
+    final task = serverTasks[taskId];
+    if (task == null) return;
+    serverTasks[taskId] = task.copyWith(updated: _clock().toUtc());
   }
 
   /// To-Do, Doing and Done for a new manual board, the first as its
@@ -550,6 +576,121 @@ final class FakeAttachmentsWritePort implements AttachmentsWritePort {
     _client.serverAttachments[taskId]?.removeWhere(
       (attachment) => attachment.id == attachmentId,
     );
+  }
+}
+
+/// Comments as the server keeps them: a create on a task the server does
+/// not hold fails with `NotFound` 4002; an update or delete of a comment
+/// [FakeWriteClient.commenter] did not write fails with `Forbidden`, an
+/// update of one that is gone with `NotFound` 4015, a delete of one that is
+/// gone passes. An update answers without reactions, like the real port.
+final class FakeCommentsWritePort implements CommentsWritePort {
+  new(this._client);
+
+  final FakeWriteClient _client;
+
+  @override
+  Future<TaskComment> create(int taskId, String html) async {
+    final description = 'create comment $taskId';
+    await _client._request(description);
+    if (!_client.serverTasks.containsKey(taskId)) {
+      throw const NotFound(code: 4002);
+    }
+    final now = _client._clock().toUtc();
+    final comment = TaskComment(
+      id: _client.nextCommentId++,
+      html: html,
+      author: _client.commenter,
+      created: now,
+      updated: now,
+    );
+    (_client.serverComments[taskId] ??= []).add(comment);
+    _client._touch(taskId);
+    await _client.afterRequest?.call(description);
+    return comment;
+  }
+
+  @override
+  Future<TaskComment> update(int taskId, int commentId, String html) async {
+    final description = 'update comment $taskId $commentId';
+    await _client._request(description);
+    final stored = _own(taskId, commentId);
+    if (stored == null) throw const NotFound(code: 4015);
+    final updated = stored.copyWith(
+      html: html,
+      updated: _client._clock().toUtc(),
+    );
+    final comments = _client.serverComments[taskId]!;
+    comments[comments.indexOf(stored)] = updated;
+    _client._touch(taskId);
+    await _client.afterRequest?.call(description);
+    return updated.copyWith(reactions: const {});
+  }
+
+  @override
+  Future<void> delete(int taskId, int commentId) async {
+    final description = 'delete comment $taskId $commentId';
+    await _client._request(description);
+    final stored = _own(taskId, commentId);
+    if (stored == null) return;
+    _client.serverComments[taskId]!.remove(stored);
+    _client.serverReactions.remove((ReactionEntity.comment, commentId));
+    _client._touch(taskId);
+    await _client.afterRequest?.call(description);
+  }
+
+  TaskComment? _own(int taskId, int commentId) {
+    final stored = _client.serverComments[taskId]
+        ?.where((comment) => comment.id == commentId)
+        .firstOrNull;
+    if (stored != null && stored.author.id != _client.commenter.id) {
+      throw const Forbidden();
+    }
+    return stored;
+  }
+}
+
+/// The reactions of [FakeWriteClient.commenter] in
+/// [FakeWriteClient.serverReactions]: adding a value twice and removing
+/// one that is not there change nothing; an added value outside 1 to 20
+/// code points is an `ArgumentError` before the request, like the real
+/// port.
+final class FakeReactionsWritePort implements ReactionsWritePort {
+  new(this._client);
+
+  final FakeWriteClient _client;
+
+  @override
+  Future<void> add(ReactionEntity kind, int id, String value) async {
+    final length = value.runes.length;
+    if (length == 0 || length > maxReactionLength) {
+      throw ArgumentError.value(value, 'value');
+    }
+    await _client._request('react ${kind.wireName} $id $value');
+    final reactions = _client.serverReactions[(kind, id)] ?? const {};
+    final users = reactions[value] ?? const <User>[];
+    if (users.any((user) => user.id == _client.commenter.id)) return;
+    _client.serverReactions[(kind, id)] = {
+      ...reactions,
+      value: [...users, _client.commenter],
+    };
+  }
+
+  @override
+  Future<void> remove(ReactionEntity kind, int id, String value) async {
+    await _client._request('unreact ${kind.wireName} $id $value');
+    final reactions = _client.serverReactions[(kind, id)] ?? const {};
+    final users = [
+      for (final user in reactions[value] ?? const <User>[])
+        if (user.id != _client.commenter.id) user,
+    ];
+    _client.serverReactions[(kind, id)] = {
+      for (final MapEntry(key: other, value: others) in reactions.entries)
+        if (other != value)
+          other: others
+        else if (users.isNotEmpty)
+          other: users,
+    };
   }
 }
 

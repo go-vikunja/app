@@ -7,6 +7,9 @@ abstract interface class ActivityRepository {
   /// Newest first.
   Stream<List<ServerNotification>> watchAll();
 
+  /// The stored notification, null when this device does not have it.
+  Future<ServerNotification?> find(int notificationId);
+
   /// The badge: the unread ones without the server's copies of reminders,
   /// which the phone has shown itself already.
   Stream<int> watchUnreadCount();

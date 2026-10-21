@@ -76,6 +76,8 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
           repeatMode: task.repeatMode.value,
           bucketId: 0,
           created: now.toUtc(),
+          commentCount: 0,
+          isUnread: false,
           pendingDelete: false,
         );
         await into(tasks).insert(row);

@@ -5678,4 +5678,162 @@ class AppLocalizationsDe extends AppLocalizations {
   String accountAppVersionWithoutBuild(String version) {
     return 'Rurana $version';
   }
+
+  @override
+  String get commentsHeading => 'Kommentare';
+
+  @override
+  String get commentsEmpty => 'Noch keine Kommentare';
+
+  @override
+  String get commentComposerHint => 'Schreib einen Kommentar …';
+
+  @override
+  String get commentSend => 'Kommentar senden';
+
+  @override
+  String get commentSending => 'Kommentar wird gesendet …';
+
+  @override
+  String get commentPosted => 'Kommentar gesendet';
+
+  @override
+  String get commentComposerOffline =>
+      'Braucht eine Verbindung. Was du geschrieben hast, bleibt hier.';
+
+  @override
+  String commentReplyingTo(String name) {
+    return 'Antwort an $name';
+  }
+
+  @override
+  String get commentReplyCancel => 'Nicht antworten';
+
+  @override
+  String commentOptions(String name) {
+    return 'Optionen für den Kommentar von $name';
+  }
+
+  @override
+  String get commentReply => 'Antworten';
+
+  @override
+  String get commentCopyLink => 'Link kopieren';
+
+  @override
+  String get commentLinkCopied => 'Link kopiert';
+
+  @override
+  String get commentEdit => 'Bearbeiten';
+
+  @override
+  String get commentDelete => 'Löschen';
+
+  @override
+  String get commentDeleteTitle => 'Diesen Kommentar löschen?';
+
+  @override
+  String get commentDeleteBody => 'Das kann nicht rückgängig gemacht werden.';
+
+  @override
+  String get commentDeleted => 'Kommentar gelöscht';
+
+  @override
+  String get commentSaved => 'Kommentar gespeichert';
+
+  @override
+  String get commentWorking => 'Änderung wird gespeichert …';
+
+  @override
+  String get commentEditorTitle => 'Kommentar bearbeiten';
+
+  @override
+  String get commentEmptyRefused => 'Ein Kommentar kann nicht leer sein';
+
+  @override
+  String get commentsArchivedNote =>
+      'Dieses Projekt ist archiviert, deshalb können seine Kommentare nicht geändert werden.';
+
+  @override
+  String get commentsReadOnlyNote => 'Du kannst diese Aufgabe nur lesen.';
+
+  @override
+  String get commentFailedNotAuthor =>
+      'Nur wer einen Kommentar geschrieben hat, kann ihn ändern.';
+
+  @override
+  String get commentFailedGone => 'Den Kommentar gibt es nicht mehr.';
+
+  @override
+  String get commentFailedNeedsConnection =>
+      'Dafür ist eine Verbindung zum Server nötig.';
+
+  @override
+  String get commentFailedTooLong => 'Dieser Kommentar ist zu lang.';
+
+  @override
+  String get commentFailedUnconfirmed =>
+      'Der Server hat nicht geantwortet. Schau in die Kommentare, bevor du nochmal sendest.';
+
+  @override
+  String get commentFailedSend =>
+      'Der Kommentar konnte nicht gesendet werden. Versuche es später erneut.';
+
+  @override
+  String get commentFailedSave =>
+      'Der Kommentar konnte nicht gespeichert werden. Versuche es später erneut.';
+
+  @override
+  String get commentFailedDelete =>
+      'Der Kommentar konnte nicht gelöscht werden. Versuche es später erneut.';
+
+  @override
+  String get reactionAdd => 'Reaktion hinzufügen';
+
+  @override
+  String get reactionOther => 'Anderes Emoji';
+
+  @override
+  String get reactionOtherHint => 'Emoji eingeben';
+
+  @override
+  String get reactionOtherAdd => 'Hinzufügen';
+
+  @override
+  String get reactionTooLong => 'Höchstens 20 Zeichen';
+
+  @override
+  String get reactionAddMine => 'deine Reaktion hinzufügen';
+
+  @override
+  String get reactionRemoveMine => 'deine Reaktion entfernen';
+
+  @override
+  String get reactionFailed =>
+      'Die Reaktion konnte nicht gespeichert werden. Versuche es später erneut.';
+
+  @override
+  String taskCommentCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Kommentare',
+      one: '1 Kommentar',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String taskCommentCountUnread(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Kommentare, ungelesen',
+      one: '1 Kommentar, ungelesen',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get commentReplyDropped => 'Keine Antwort mehr';
 }

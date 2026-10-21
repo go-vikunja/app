@@ -1293,4 +1293,107 @@ void main() {
       now.toIso8601String(),
     );
   });
+
+  group('comment count and unread flag', () {
+    Task talkedAbout(
+      int id, {
+      required int comments,
+      bool unread = false,
+      DateTime? updated,
+    }) {
+      final stored = client.allTasks.singleWhere((t) => t.id == id);
+      return stored.copyWith(
+        commentCount: comments,
+        isUnread: unread,
+        updated: updated ?? stored.updated,
+      );
+    }
+
+    void serve(Task changed) => client.allTasks = [
+      for (final t in client.allTasks)
+        if (t.id == changed.id) changed else t,
+    ];
+
+    Future<(int, bool)> stored(int id) async {
+      final row = (await db.tasksDao.find(id))!;
+      return (row.commentCount, row.isUnread);
+    }
+
+    test('the initial sync asks for both with every task page and stores '
+        'them, archived projects included', () async {
+      serve(talkedAbout(3, comments: 2, unread: true));
+      serve(talkedAbout(201, comments: 1));
+
+      await engine().ensureInitialSync();
+
+      expect(await stored(3), (2, true));
+      expect(await stored(201), (1, false));
+      expect(await stored(4), (0, false));
+      final pages = client.tasks.queries.where(
+        (q) => q.perPage != 1 && !q.sort.any((sort) => sort.descending),
+      );
+      expect(pages, isNotEmpty);
+      for (final query in pages) {
+        expect(query.expand, TaskFilters.commentState, reason: query.filter);
+      }
+    });
+
+    test("someone else's comment bumps the task: the refresh brings the "
+        'count and the dot', () async {
+      final sync = await synced();
+      serve(talkedAbout(3, comments: 1, unread: true, updated: edited));
+      touchProjects([1]);
+
+      await sync.refresh();
+
+      expect(await stored(3), (1, true));
+      final delta = client.tasks.queries.singleWhere(
+        (q) => q.filter?.startsWith('updated') ?? false,
+      );
+      expect(delta.expand, TaskFilters.commentState);
+    });
+
+    test('a task read on the web keeps its dot until it changes, unless it '
+        'lies in the overlap the refresh reads again', () async {
+      serve(talkedAbout(3, comments: 1, unread: true));
+      serve(talkedAbout(30, comments: 1, unread: true));
+      final sync = await synced();
+      serve(talkedAbout(3, comments: 1));
+      serve(talkedAbout(30, comments: 1));
+
+      await sync.refresh();
+
+      expect(await stored(3), (1, true), reason: 'mark read bumps nothing');
+      expect(await stored(30), (1, false));
+    });
+
+    test('a reconcile asks for both too and keeps a dot it sees', () async {
+      serve(talkedAbout(5, comments: 2, unread: true));
+      final sync = await synced();
+      client.allTasks.removeWhere((t) => t.id == 9);
+
+      await sync.refresh();
+
+      expect(await stored(5), (2, true));
+      final reconcile = client.tasks.queries.where(
+        (q) => q.filter?.startsWith('id >') ?? false,
+      );
+      expect(reconcile, isNotEmpty);
+      for (final query in reconcile) {
+        expect(query.expand, TaskFilters.commentState);
+      }
+    });
+
+    test('an update sent from here keeps them: its answer carries '
+        'neither', () async {
+      serve(talkedAbout(3, comments: 2, unread: true));
+      await engine().ensureInitialSync();
+
+      await db.tasksDao.upsertAll([
+        sampleTask(id: 3, title: 'Renamed here', updated: edited),
+      ]);
+
+      expect(await stored(3), (2, true));
+    });
+  });
 }

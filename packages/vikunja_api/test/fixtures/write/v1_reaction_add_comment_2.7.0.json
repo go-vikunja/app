@@ -1,0 +1,12 @@
+{
+  "server": "2.7.0",
+  "request": "PUT /api/v1/comments/56/reactions",
+  "sent": {
+    "value": "🎉"
+  },
+  "status": 201,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"user\":null,\"value\":\"🎉\",\"created\":\"2026-10-21T14:09:12.81451891Z\"}\n"
+}

@@ -32,6 +32,13 @@ void main() {
       find.descendant(of: find.byType(TaskDetailSheet), matching: matching);
 
   Future<void> openMenu(WidgetTester tester, String label) async {
+    // The comment field below the list leaves it less room in large text.
+    await tester.scrollUntilVisible(
+      inSheet(find.byTooltip(label)),
+      -200,
+      scrollable: inSheet(find.byType(Scrollable)).first,
+    );
+    await tester.pumpAndSettle();
     await tester.tap(inSheet(find.byTooltip(label)));
     await tester.pumpAndSettle();
   }

@@ -95,5 +95,7 @@ final class DescriptionDrafts {
   static String _targetKey(DescriptionTarget target) => switch (target) {
     TaskDescriptionTarget(:final taskId) => 'task:$taskId',
     ProjectDescriptionTarget(:final projectId) => 'project:$projectId',
+    CommentTarget(:final taskId, :final comment) =>
+      'comment:$taskId:${comment.id}',
   };
 }

@@ -4,6 +4,15 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 abstract final class TaskFilters {
   static const byId = [TaskSort(TaskSortField.id)];
 
+  /// What every request that stores tasks asks for, for the rows' comment
+  /// badge. A comment bumps the task's `updated`, so the delta sees new
+  /// ones; reading a task does not, so a read elsewhere waits for the next
+  /// change of the task or the daily full run.
+  static const Set<TaskExpand> commentState = {
+    TaskExpand.commentCount,
+    TaskExpand.isUnread,
+  };
+
   static const byUpdatedThenId = [
     TaskSort(TaskSortField.updated),
     TaskSort(TaskSortField.id),

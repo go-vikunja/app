@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:flutter/semantics.dart';
@@ -16,6 +17,7 @@ import 'package:vikunja_mobile/app/router/pushed_pages.dart';
 import 'package:vikunja_mobile/app/theme/app_theme.dart';
 import 'package:vikunja_mobile/app/theme/hex_color.dart';
 import 'package:vikunja_mobile/core/attachments/attachment_image_providers.dart';
+import 'package:vikunja_mobile/core/platform/copy_confirmation.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/subscription_repository.dart';
 import 'package:vikunja_mobile/core/repositories/subscription_repository_providers.dart';
@@ -23,28 +25,39 @@ import 'package:vikunja_mobile/core/repositories/task_details_repository.dart';
 import 'package:vikunja_mobile/core/repositories/task_details_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 import 'package:vikunja_mobile/core/settings/user_settings_providers.dart';
+import 'package:vikunja_mobile/core/storage/comment_drafts.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
+import 'package:vikunja_mobile/features/common/presentation/announce.dart';
 import 'package:vikunja_mobile/features/common/presentation/identifier_text.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/common/presentation/user_avatar.dart';
+import 'package:vikunja_mobile/features/description_editor/application/description_target.dart';
 import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
+import 'package:vikunja_mobile/features/sync/application/offline_state.dart';
 import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
+import 'package:vikunja_mobile/features/tasks/application/account_context_providers.dart';
+import 'package:vikunja_mobile/features/tasks/application/link_targets.dart';
+import 'package:vikunja_mobile/features/tasks/application/reaction_toggle.dart';
 import 'package:vikunja_mobile/features/tasks/application/relation_search.dart';
 import 'package:vikunja_mobile/features/tasks/application/task_identifier.dart';
 import 'package:vikunja_mobile/features/tasks/application/task_providers.dart'
     show taskByIdProvider;
 import 'package:vikunja_mobile/features/tasks/application/task_row_content.dart';
+import 'package:vikunja_mobile/features/tasks/application/task_write_access.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/confirm_dialog.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/delete_task_dialog.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/attachments_section.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/details/comment_composer.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/details/comment_messages.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/comments_controller.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/comments_section.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/detail_section_header.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/details_notice.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/project_breadcrumb.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/reaction_chips.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/details/reaction_picker.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/task_details_controller.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/task_metadata_line.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/favourite_button.dart';
@@ -67,11 +80,13 @@ final _log = Logger('TaskDetail');
 /// Shows what this device knows about [task] and, online, what only the
 /// server has (attachments, reactions, comments, whether the user follows
 /// it). [messengerBelow] is the messenger of the sheet this one opens over,
-/// see [TaskDetailSheet.messengerBelow].
+/// see [TaskDetailSheet.messengerBelow]; [commentId] is a comment to show,
+/// see [TaskDetailSheet.commentId].
 Future<void> showTaskDetail(
   BuildContext context, {
   required Task task,
   GlobalKey<ScaffoldMessengerState>? messengerBelow,
+  int? commentId,
 }) {
   switch (Theme.of(context).platform) {
     case TargetPlatform.iOS || TargetPlatform.macOS:
@@ -82,6 +97,7 @@ Future<void> showTaskDetail(
           task: task,
           scrollController: scrollController,
           messengerBelow: messengerBelow,
+          commentId: commentId,
         ),
       );
     case _:
@@ -94,19 +110,67 @@ Future<void> showTaskDetail(
         showDragHandle: true,
         // The page's colour, under the cards of the sections.
         backgroundColor: Theme.of(context).colorScheme.surface,
-        builder: (context) => DraggableScrollableSheet(
-          expand: false,
-          initialChildSize: 0.65,
-          minChildSize: 0.3,
-          maxChildSize: 0.95,
-          builder: (context, scrollController) => TaskDetailSheet(
-            task: task,
-            scrollController: scrollController,
-            messengerBelow: messengerBelow,
-          ),
+        builder: (context) => _DraggableTaskDetail(
+          task: task,
+          messengerBelow: messengerBelow,
+          commentId: commentId,
         ),
       );
   }
+}
+
+/// The Android sheet, which grows to its full height when the comment
+/// field gets the focus: at its first height the keyboard would leave the
+/// list next to no room.
+class _DraggableTaskDetail extends StatefulWidget {
+  const new({
+    required this.task,
+    required this.messengerBelow,
+    required this.commentId,
+  });
+
+  final Task task;
+  final GlobalKey<ScaffoldMessengerState>? messengerBelow;
+  final int? commentId;
+
+  @override
+  State<_DraggableTaskDetail> createState() => _DraggableTaskDetailState();
+}
+
+class _DraggableTaskDetailState extends State<_DraggableTaskDetail> {
+  static const _fullSize = 0.95;
+  final _sheet = DraggableScrollableController();
+
+  @override
+  void dispose() {
+    _sheet.dispose();
+    super.dispose();
+  }
+
+  void _expand() {
+    if (!_sheet.isAttached || _sheet.size >= _fullSize - 0.01) return;
+    _sheet.animateTo(
+      _fullSize,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => DraggableScrollableSheet(
+    controller: _sheet,
+    expand: false,
+    initialChildSize: 0.65,
+    minChildSize: 0.3,
+    maxChildSize: _fullSize,
+    builder: (context, scrollController) => TaskDetailSheet(
+      task: widget.task,
+      scrollController: scrollController,
+      messengerBelow: widget.messengerBelow,
+      commentId: widget.commentId,
+      expand: _expand,
+    ),
+  );
 }
 
 enum _SheetAction { duplicate, delete }
@@ -115,18 +179,31 @@ enum _SheetAction { duplicate, delete }
 /// the server's answer to it (a repeating task's next occurrence) and the
 /// id a queued create gets show; [task] itself is the fallback once the row
 /// is gone. Its project is watched too. What only the server has is read
-/// once on opening; offline the sheet says so in one line and shows the
-/// rest. Messages about what happens in the sheet show inside it.
+/// on opening and again, with the comments shown, whenever the task changes
+/// on the server; offline the sheet says so in one line and shows the
+/// rest. Comments are written in a field pinned below the list, which
+/// keeps an unsent one as a draft. Messages about what happens in the
+/// sheet show inside it.
 class TaskDetailSheet extends ConsumerStatefulWidget {
   const new({
     required this.task,
     required this.scrollController,
     this.messengerBelow,
+    this.commentId,
+    this.expand,
     super.key,
   });
 
   final Task task;
   final ScrollController scrollController;
+
+  /// A comment to show, e.g. the one a notification is about: the comments
+  /// load and the sheet scrolls to it, tinted for a moment, when it is on
+  /// the first page, else to the comments.
+  final int? commentId;
+
+  /// Grows the sheet to its full height; null where it always is.
+  final VoidCallback? expand;
 
   /// Where a message outlasting this sheet shows once it closes: the sheet
   /// it was opened over, which the screen's own messenger would sit behind.
@@ -153,15 +230,38 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
     read: (id, {required page, required newestFirst}) =>
         _detailsRepository().comments(id, page: page, newestFirst: newestFirst),
   );
+  late final _composer = CommentComposerController()
+    ..addListener(_composerChanged);
+  // Read up front: an unsent comment is kept also while the sheet goes.
+  late final CommentDrafts _drafts;
+  late final String? _account;
+  late final TaskWriteAccess _access;
+  final GlobalKey _commentsHeader = GlobalKey();
+  final _commentKeys = <int, GlobalKey>{};
+  final _busyComments = <int>{};
+  final _pendingTaskReactions = <String>{};
+  final _pendingCommentReactions = <int, Set<String>>{};
   bool _duplicating = false;
   bool _openingLinkedTask = false;
   CommentsState _commentsBefore = const CommentsState();
   StreamSubscription<TaskAttachment>? _uploaded;
+  StreamSubscription<DateTime>? _serverChanges;
+  late int? _commentToShow = widget.commentId;
+  int? _highlighted;
+  Timer? _highlightEnd;
+  Timer? _draftWrite;
+  CommentComposerDraft? _keptDraft;
+  bool _draftAsked = false;
+  bool _restoringDraft = false;
 
   @override
   void initState() {
     super.initState();
+    _drafts = ref.read(commentDraftsProvider);
+    _account = ref.read(activeAccountIdProvider);
+    _access = ref.read(taskWriteAccessProvider);
     _comments.addListener(_announceComments);
+    _details.addListener(_rememberAccess);
     // A queued upload that went through while the sheet is open shows
     // without a read; the server does not mark the task changed for it.
     ref.listenManual(taskRepositoryProvider, (_, repository) {
@@ -181,15 +281,27 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
       },
       fireImmediately: true,
     );
+    // A comment by anyone moves the task's `updated`, and the sync brings
+    // that here; reactions do not.
+    ref.listenManual(taskDetailsRepositoryProvider, (_, repository) {
+      unawaited(_serverChanges?.cancel());
+      _serverChanges = repository
+          ?.watchServerChanges(widget.task.id)
+          .listen((_) => _refreshFromServer());
+    }, fireImmediately: true);
     if (widget.task.id > 0) _loadDetails(widget.task.id);
   }
 
   @override
   void dispose() {
     unawaited(_uploaded?.cancel());
+    unawaited(_serverChanges?.cancel());
+    _highlightEnd?.cancel();
+    if (_draftWrite != null) unawaited(_keepDraft());
     _follow.dispose();
     _details.dispose();
     _comments.dispose();
+    _composer.dispose();
     super.dispose();
   }
 
@@ -211,6 +323,400 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
         pending: details.then((details) => details.subscription),
       ),
     );
+    unawaited(_restoreDraft(taskId));
+    if (_commentToShow case final commentId?) {
+      _commentToShow = null;
+      unawaited(
+        details.then((_) => _showComment(commentId), onError: (Object _) {}),
+      );
+    }
+  }
+
+  void _refreshFromServer() {
+    unawaited(_details.refresh());
+    unawaited(_comments.refreshLoaded());
+  }
+
+  TaskDetails? _loadedDetails() => switch (_details.value) {
+    TaskDetailsLoaded(:final details) => details,
+    _ => null,
+  };
+
+  void _rememberAccess() {
+    final account = _account;
+    final taskId = _details.id;
+    final details = _loadedDetails();
+    if (account == null || taskId == null || details == null) return;
+    _access.remember(account, taskId, writable: _writable(details));
+  }
+
+  // v1 servers do not say; the server refuses what the user may not do.
+  static bool _writable(TaskDetails details) =>
+      details.maxPermission?.canWrite ?? true;
+
+  /// Loads the comments and scrolls to [commentId], else to the comments.
+  Future<void> _showComment(int commentId) async {
+    widget.expand?.call();
+    await _comments.show();
+    // The section shows once the details are in this frame's build.
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+    final found = _comments.find(commentId) != null;
+    await _scrollTo(found ? _commentKey(commentId) : _commentsHeader);
+    if (!found || !mounted) return;
+    _highlightEnd?.cancel();
+    setState(() => _highlighted = commentId);
+    _highlightEnd = Timer(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _highlighted = null);
+    });
+  }
+
+  GlobalKey _commentKey(int commentId) =>
+      _commentKeys.putIfAbsent(commentId, GlobalKey.new);
+
+  /// The list builds its rows as they come near, so it moves on until the
+  /// row of [key] exists, from the top again once it reached the end.
+  Future<void> _scrollTo(GlobalKey key) async {
+    final scroll = widget.scrollController;
+    var fromTop = false;
+    for (var step = 0; step < 200 && key.currentContext == null; step++) {
+      if (!scroll.hasClients) return;
+      final position = scroll.position;
+      if (position.pixels >= position.maxScrollExtent) {
+        if (fromTop) break;
+        fromTop = true;
+        position.jumpTo(position.minScrollExtent);
+      } else {
+        position.jumpTo(
+          math.min(
+            position.pixels + position.viewportDimension * 0.8,
+            position.maxScrollExtent,
+          ),
+        );
+      }
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) return;
+    }
+    final row = key.currentContext;
+    if (row == null || !row.mounted) return;
+    await Scrollable.ensureVisible(
+      row,
+      alignment: 0.1,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  /// The task's unsent comment, unless something was typed meanwhile.
+  Future<void> _restoreDraft(int taskId) async {
+    final account = _account;
+    if (account == null || _draftAsked) return;
+    _draftAsked = true;
+    try {
+      final draft = await _drafts.read(account: account, taskId: taskId);
+      if (draft == null || !mounted || !_composer.isEmpty) return;
+      _keptDraft = draft;
+      _restoringDraft = true;
+      try {
+        _composer.restore(draft);
+      } finally {
+        _restoringDraft = false;
+      }
+    } on Object catch (error) {
+      _log.warning('Reading a comment draft failed: ${error.runtimeType}');
+    }
+  }
+
+  void _composerChanged() {
+    if (_restoringDraft) return;
+    _draftWrite?.cancel();
+    _draftWrite = Timer(const Duration(milliseconds: 500), () {
+      unawaited(_keepDraft());
+    });
+  }
+
+  Future<void> _keepDraft() async {
+    _draftWrite?.cancel();
+    _draftWrite = null;
+    final account = _account;
+    final taskId = _details.id;
+    if (account == null || taskId == null || taskId <= 0) return;
+    final draft = _composer.toDraft();
+    if (draft == _keptDraft || (draft.isEmpty && _keptDraft == null)) return;
+    _keptDraft = draft;
+    try {
+      await _drafts.save(draft, account: account, taskId: taskId);
+    } on Object catch (error) {
+      _log.warning('Keeping a comment draft failed: ${error.runtimeType}');
+    }
+  }
+
+  /// The sheet may close before the server answers: the draft goes all the
+  /// same, and what happened shows below.
+  Future<void> _sendComment(Task task) async {
+    final repository = ref.read(taskDetailsRepositoryProvider);
+    if (repository == null || _composer.isBlank || _composer.sending) return;
+    final l10n = context.l10n;
+    final account = _account;
+    final drafts = _drafts;
+    final below = widget.messengerBelow;
+    final screenMessenger = ScaffoldMessenger.maybeOf(context);
+    void showBelow(String text) => (below?.currentState ?? screenMessenger)
+        ?.showSnackBar(SnackBar(content: Text(text)));
+    final wasEmpty = _loadedDetails()?.commentCount == 0;
+    _composer.sending = true;
+    try {
+      final comment = await repository.addComment(
+        task.id,
+        CommentDraft(_composer.html()),
+      );
+      _draftWrite?.cancel();
+      _draftWrite = null;
+      // After any save of the text still queued, e.g. the closing sheet's.
+      if (account != null) {
+        unawaited(
+          drafts
+              .discard(account: account, taskId: task.id)
+              .catchError(
+                (Object error) => _log.warning(
+                  'Dropping a sent comment draft failed: ${error.runtimeType}',
+                ),
+              ),
+        );
+      }
+      if (!mounted) {
+        showBelow(l10n.commentPosted);
+        return;
+      }
+      _keptDraft = null;
+      _composer.clear();
+      _details.countComments(1);
+      await _comments.add(comment, wasEmpty: wasEmpty);
+      if (!mounted) return;
+      announce(context, l10n.commentPosted);
+      unawaited(_details.refresh());
+      if (_comments.find(comment.id) != null) {
+        await WidgetsBinding.instance.endOfFrame;
+        if (mounted) await _scrollTo(_commentKey(comment.id));
+      }
+    } on Object catch (error) {
+      _log.info('Sending a comment failed: ${error.runtimeType}');
+      final message = commentFailureText(l10n, error, CommentWrite.send);
+      if (mounted) {
+        _showMessage(message);
+      } else {
+        showBelow(message);
+      }
+    } finally {
+      if (mounted) _composer.sending = false;
+    }
+  }
+
+  /// The focus goes to the field, not the screen reader's, so it hears
+  /// what is set up there.
+  void _reply(TaskComment comment) {
+    _composer.replyTo(
+      ComposerReply(
+        commentId: comment.id,
+        html: comment.html,
+        authorName: comment.author.displayName,
+      ),
+    );
+    announce(
+      context,
+      context.l10n.commentReplyingTo(comment.author.displayName),
+    );
+    widget.expand?.call();
+  }
+
+  /// The web's permalink, which opens the task there at the comment.
+  /// Android 13 and later confirm a copy themselves.
+  Future<void> _copyLink(
+    Task task,
+    TaskComment comment,
+    AccountLinkBases bases,
+  ) async {
+    final l10n = context.l10n;
+    final systemConfirms = ref.read(systemConfirmsCopiesProvider.future);
+    final link = bases.relativeBase
+        .resolve('tasks/${task.id}')
+        .replace(fragment: 'comment-${comment.id}');
+    try {
+      await Clipboard.setData(ClipboardData(text: '$link'));
+    } on Object catch (error) {
+      _log.info('Copying a comment link failed: ${error.runtimeType}');
+      if (mounted) _showMessage(l10n.copyToClipboardFailed);
+      return;
+    }
+    final confirmed = await systemConfirms;
+    if (!mounted) return;
+    unawaited(HapticFeedback.selectionClick());
+    if (confirmed) {
+      announce(context, l10n.commentLinkCopied);
+    } else {
+      _showMessage(l10n.commentLinkCopied);
+    }
+  }
+
+  /// Before a full-screen editor opens: the field that had the focus would
+  /// get it back on return and the keyboard would cover what was edited.
+  /// Unfocusing the field itself also clears the sheet's focus history; a
+  /// menu that just closed hands the focus back in a microtask first.
+  Future<void> _dropFieldFocus() async {
+    await Future<void>.delayed(Duration.zero);
+    FocusManager.instance.primaryFocus?.unfocus();
+  }
+
+  /// In the full editor; it comes back with the comment as stored.
+  Future<void> _editComment(Task task, TaskComment comment) async {
+    final l10n = context.l10n;
+    await _dropFieldFocus();
+    if (!mounted) return;
+    final edited = await context.pushPage<Object>(
+      AppRoutes.commentEdit(task.id, comment.id),
+      extra: CommentTarget(
+        taskId: task.id,
+        projectId: task.projectId,
+        comment: comment,
+      ),
+    );
+    if (!mounted || edited is! TaskComment) return;
+    _comments.applyEdit(edited);
+    _showMessage(l10n.commentSaved);
+    unawaited(_details.refresh());
+  }
+
+  Future<void> _deleteComment(Task task, TaskComment comment) async {
+    final repository = ref.read(taskDetailsRepositoryProvider);
+    if (repository == null || _busyComments.contains(comment.id)) return;
+    final l10n = context.l10n;
+    final confirmed = await confirmAdaptive(
+      context,
+      title: l10n.commentDeleteTitle,
+      body: l10n.commentDeleteBody,
+      confirmLabel: l10n.commentDelete,
+      destructive: true,
+    );
+    if (!confirmed || !mounted) return;
+    setState(() => _busyComments.add(comment.id));
+    try {
+      await repository.deleteComment(task.id, comment.id);
+      if (!mounted) return;
+      _comments.remove(comment.id);
+      _details.countComments(-1);
+      _showMessage(l10n.commentDeleted);
+      unawaited(_details.refresh());
+    } on Object catch (error) {
+      _log.info('Deleting a comment failed: ${error.runtimeType}');
+      if (!mounted) return;
+      _showMessage(commentFailureText(l10n, error, CommentWrite.delete));
+      // The server answers a failed write as a missing comment too: what
+      // it has decides whether the comment stays.
+      if (error is NotFound ||
+          (error is ServerFailure && error.statusCode == 404)) {
+        unawaited(_comments.refreshLoaded());
+      }
+    } finally {
+      if (mounted) setState(() => _busyComments.remove(comment.id));
+    }
+  }
+
+  /// At once here, then on the server; undone here when that fails. The
+  /// controller showing it reads nothing from the server meanwhile.
+  Future<void> _react({
+    required ReactionEntity kind,
+    required int id,
+    required String value,
+    required bool add,
+    required Reactions? Function() current,
+    required void Function(Reactions reactions) apply,
+    required Future<void> Function(Future<void> Function() write) writing,
+    required Set<String> pending,
+  }) async {
+    final repository = ref.read(taskDetailsRepositoryProvider);
+    final me = ref.read(activeUserProvider);
+    final before = current();
+    if (repository == null ||
+        me == null ||
+        before == null ||
+        pending.contains(value)) {
+      return;
+    }
+    final l10n = context.l10n;
+    setState(() => pending.add(value));
+    try {
+      await writing(() async {
+        final optimistic = toggledReaction(before, value, me: me, add: add);
+        apply(optimistic);
+        try {
+          if (add) {
+            await repository.addReaction(kind, id, value);
+          } else {
+            await repository.removeReaction(kind, id, value);
+          }
+        } on Object catch (error) {
+          _log.info('Changing a reaction failed: ${error.runtimeType}');
+          // Back to where the user was, unless a read brought news meanwhile.
+          if (current() case final now?) {
+            apply(
+              reactionsEqual(now, optimistic)
+                  ? before
+                  : toggledReaction(now, value, me: me, add: !add),
+            );
+          }
+          if (mounted) {
+            _showMessage(commentFailureText(l10n, error, CommentWrite.react));
+          }
+        }
+      });
+    } finally {
+      if (mounted) setState(() => pending.remove(value));
+    }
+  }
+
+  Future<void> _reactToTask(Task task, String value, {bool? add}) async {
+    final reactions = _loadedDetails()?.reactions;
+    final me = ref.read(activeUserIdProvider);
+    if (reactions == null || me == null) return;
+    final mine = reactedWith(reactions, value, me);
+    if (add == true && mine) return;
+    await _react(
+      kind: ReactionEntity.task,
+      id: task.id,
+      value: value,
+      add: add ?? !mine,
+      current: () => _loadedDetails()?.reactions,
+      apply: _details.setReactions,
+      writing: _details.writing,
+      pending: _pendingTaskReactions,
+    );
+  }
+
+  Future<void> _reactToComment(
+    TaskComment comment,
+    String value, {
+    bool? add,
+  }) async {
+    final reactions = _comments.find(comment.id)?.reactions;
+    final me = ref.read(activeUserIdProvider);
+    if (reactions == null || me == null) return;
+    final mine = reactedWith(reactions, value, me);
+    if (add == true && mine) return;
+    await _react(
+      kind: ReactionEntity.comment,
+      id: comment.id,
+      value: value,
+      add: add ?? !mine,
+      current: () => _comments.find(comment.id)?.reactions,
+      apply: (reactions) => _comments.setReactions(comment.id, reactions),
+      writing: _comments.writing,
+      pending: _pendingCommentReactions.putIfAbsent(comment.id, () => {}),
+    );
+  }
+
+  Future<void> _pickReaction(Future<void> Function(String value) react) async {
+    final value = await pickReaction(context);
+    if (value != null && mounted) await react(value);
   }
 
   void _announceComments() {
@@ -329,6 +835,8 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
   /// edit was saved or not; the server's task does not say so.
   Future<void> _editDescription(Task task) async {
     final l10n = context.l10n;
+    await _dropFieldFocus();
+    if (!mounted) return;
     final saved = await context.pushPage<bool>(
       AppRoutes.taskDescription(task.id),
     );
@@ -511,14 +1019,22 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
     // below an archived parent; a task shown only from the server (a link
     // to one this device has not synced yet) has no row to queue on. The
     // same holds for its attachments.
-    final descriptionWriter =
-        repository != null &&
-            stored != null &&
-            !isArchivedInTree(task.projectId, {
-              for (final project in projects) project.id: project,
-            })
+    final archived = isArchivedInTree(task.projectId, {
+      for (final project in projects) project.id: project,
+    });
+    final descriptionWriter = repository != null && stored != null && !archived
         ? repository
         : null;
+    // Comments and reactions go to the server directly, so a task that is
+    // there is enough.
+    final onlineWrites =
+        ref.watch(taskDetailsRepositoryProvider) != null &&
+        task.id > 0 &&
+        !archived;
+    final commentsOffered = ref.watch(activeServerOffersCommentsProvider);
+    final offline = ref.watch(offlineProvider) != null;
+    final me = ref.watch(activeUserIdProvider);
+    final linkBases = ref.watch(activeLinkBasesProvider);
     String? otherProjectTitle(Task other) => other.projectId == task.projectId
         ? null
         : projectTitles[other.projectId];
@@ -652,7 +1168,60 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                 TaskDetailsLoaded(:final details) when task.id > 0 => details,
                 _ => null,
               };
-              return ListView(
+              // Until the details arrive, what an earlier read said.
+              final writable = details != null
+                  ? _writable(details)
+                  : switch (_account) {
+                      final account? => _access.writable(account, task.id),
+                      null => null,
+                    };
+              final readOnly = writable == false;
+              final mayWrite = onlineWrites && writable == true;
+              final canComment = mayWrite && commentsOffered;
+              // Shown disabled while the first read is under way, so that
+              // the list does not jump for the many who may write.
+              final composerWaiting =
+                  writable == null &&
+                  onlineWrites &&
+                  commentsOffered &&
+                  !offline &&
+                  _details.value is TaskDetailsLoading;
+              final commentsNote = commentsOffered && task.id > 0
+                  ? archived
+                        ? l10n.commentsArchivedNote
+                        : readOnly
+                        ? l10n.commentsReadOnlyNote
+                        : null
+                  : null;
+              final commentActions = CommentActions(
+                me: me,
+                offline: offline,
+                onCopyLink: linkBases == null || task.id <= 0
+                    ? null
+                    : (comment) =>
+                          unawaited(_copyLink(task, comment, linkBases)),
+                onReply: canComment ? _reply : null,
+                onEdit: canComment
+                    ? (comment) => unawaited(_editComment(task, comment))
+                    : null,
+                onDelete: canComment
+                    ? (comment) => unawaited(_deleteComment(task, comment))
+                    : null,
+                onToggleReaction: mayWrite
+                    ? (comment, value) =>
+                          unawaited(_reactToComment(comment, value))
+                    : null,
+                onAddReaction: mayWrite
+                    ? (comment) => unawaited(
+                        _pickReaction(
+                          (value) => _reactToComment(comment, value, add: true),
+                        ),
+                      )
+                    : null,
+                busy: _busyComments,
+                pendingReactions: _pendingCommentReactions,
+              );
+              final list = ListView(
                 controller: widget.scrollController,
                 // iOS has no other way to close the keyboard of the subtask
                 // field, which keeps it up for the next one.
@@ -812,6 +1381,26 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                       onEdit: repository == null ? null : () => _edit(task),
                     ),
                   ),
+                  if (details != null &&
+                      (details.reactions.isNotEmpty || mayWrite))
+                    _Inset(
+                      child: ReactionChips(
+                        reactions: details.reactions,
+                        offline: offline,
+                        onToggle: mayWrite
+                            ? (value) => unawaited(_reactToTask(task, value))
+                            : null,
+                        onAdd: mayWrite
+                            ? () => unawaited(
+                                _pickReaction(
+                                  (value) =>
+                                      _reactToTask(task, value, add: true),
+                                ),
+                              )
+                            : null,
+                        pending: _pendingTaskReactions,
+                      ),
+                    ),
                   const SizedBox(height: 12),
                   _Inset(
                     child: _DoneButton(
@@ -907,11 +1496,6 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                       ),
                     ],
                   ),
-                  if (details != null && details.reactions.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                      child: ReactionChips(reactions: details.reactions),
-                    ),
                   if (_details.value case TaskDetailsFailed(:final failure)
                       when task.id > 0)
                     Padding(
@@ -943,7 +1527,8 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                         ? null
                         : () => unawaited(_addRelation(repository, task)),
                   ),
-                  if (details != null && details.commentCount > 0)
+                  if (details != null &&
+                      (commentsOffered || details.commentCount > 0))
                     ...commentsSection(
                       count: details.commentCount,
                       state: _comments.value,
@@ -952,10 +1537,35 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                       onTaskLink: (taskId) =>
                           unawaited(_openLinkedTask(taskId)),
                       projectId: task.projectId,
+                      actions: commentActions,
+                      headerKey: _commentsHeader,
+                      keyOf: _commentKey,
+                      highlighted: _highlighted,
                     ),
+                  if (commentsNote != null)
+                    _Inset(child: _CommentsNote(text: commentsNote)),
                   const SizedBox(height: 16),
                   _Inset(child: TaskMetadataLine(task: task)),
                 ],
+              );
+              // The composer takes no more than the height above the
+              // keyboard, the list what it leaves.
+              return LayoutBuilder(
+                builder: (context, constraints) => Column(
+                  children: [
+                    Expanded(child: list),
+                    if (canComment || composerWaiting)
+                      CommentComposer(
+                        controller: _composer,
+                        projectId: task.projectId,
+                        offline: offline,
+                        enabled: canComment,
+                        maxHeight: constraints.maxHeight,
+                        onSend: () => unawaited(_sendComment(task)),
+                        onFocused: widget.expand,
+                      ),
+                  ],
+                ),
               );
             },
           ),
@@ -1110,6 +1720,37 @@ class _Description extends StatelessWidget {
           projectId: task.projectId,
           empty: empty,
         ),
+      ),
+    );
+  }
+}
+
+/// Why there is no comment field.
+class _CommentsNote extends StatelessWidget {
+  const new({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.lock_outline, size: 16, color: colors.onSurfaceVariant),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              text,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colors.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

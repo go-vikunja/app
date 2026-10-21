@@ -34,6 +34,10 @@ final class LocalActivityRepository implements ActivityRepository {
       _db.serverNotificationsDao.watchAll();
 
   @override
+  Future<ServerNotification?> find(int notificationId) =>
+      _db.serverNotificationsDao.find(notificationId);
+
+  @override
   Stream<int> watchUnreadCount() =>
       _db.serverNotificationsDao.watchUnreadCount().distinct();
 

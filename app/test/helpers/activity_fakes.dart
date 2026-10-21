@@ -43,6 +43,10 @@ final class FakeActivityRepository implements ActivityRepository {
   Stream<List<ServerNotification>> watchAll() =>
       _replaying(() => notifications);
 
+  @override
+  Future<ServerNotification?> find(int notificationId) async =>
+      _notifications.where((n) => n.id == notificationId).firstOrNull;
+
   /// Like the real one, without the server's reminders.
   @override
   Stream<int> watchUnreadCount() => _replaying(

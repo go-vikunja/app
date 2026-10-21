@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/features/tasks/application/link_targets.dart';
 
@@ -20,5 +21,32 @@ AccountLinkBases? activeLinkBases(Ref ref) => ref.watch(
 int? activeUserId(Ref ref) => ref.watch(
   accountsProvider.select(
     (accounts) => accounts.value?.activeAccount?.account.userId,
+  ),
+);
+
+/// The signed-in user of the active account as the server lists people,
+/// e.g. among those who reacted.
+@riverpod
+User? activeUser(Ref ref) => ref.watch(
+  accountsProvider.select((accounts) {
+    final account = accounts.value?.activeAccount?.account;
+    if (account == null) return null;
+    return User(
+      id: account.userId,
+      username: account.username,
+      name: account.displayName == account.username ? '' : account.displayName,
+    );
+  }),
+);
+
+/// Whether the active account's server has comments switched on.
+@riverpod
+bool activeServerOffersComments(Ref ref) => ref.watch(
+  accountsProvider.select(
+    (accounts) =>
+        accounts.value?.activeAccount?.connection.capabilities.has(
+          Capability.taskComments,
+        ) ??
+        false,
   ),
 );

@@ -8747,6 +8747,264 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Rurana {version}'**
   String accountAppVersionWithoutBuild(String version);
+
+  /// Heading of a task's comments while it has none.
+  ///
+  /// In en, this message translates to:
+  /// **'Comments'**
+  String get commentsHeading;
+
+  /// No description provided for @commentsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No comments yet'**
+  String get commentsEmpty;
+
+  /// No description provided for @commentComposerHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Write a comment…'**
+  String get commentComposerHint;
+
+  /// No description provided for @commentSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send comment'**
+  String get commentSend;
+
+  /// No description provided for @commentSending.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending the comment…'**
+  String get commentSending;
+
+  /// Read by screen readers once a comment written in the app is on the server.
+  ///
+  /// In en, this message translates to:
+  /// **'Comment sent'**
+  String get commentPosted;
+
+  /// No description provided for @commentComposerOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs a connection. What you wrote stays here.'**
+  String get commentComposerOffline;
+
+  /// No description provided for @commentReplyingTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Replying to {name}'**
+  String commentReplyingTo(String name);
+
+  /// Tooltip of the button that drops the quote above the comment field.
+  ///
+  /// In en, this message translates to:
+  /// **'Don\'t reply'**
+  String get commentReplyCancel;
+
+  /// No description provided for @commentOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Options for the comment by {name}'**
+  String commentOptions(String name);
+
+  /// No description provided for @commentReply.
+  ///
+  /// In en, this message translates to:
+  /// **'Reply'**
+  String get commentReply;
+
+  /// No description provided for @commentCopyLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy link'**
+  String get commentCopyLink;
+
+  /// No description provided for @commentLinkCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Link copied'**
+  String get commentLinkCopied;
+
+  /// No description provided for @commentEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get commentEdit;
+
+  /// No description provided for @commentDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get commentDelete;
+
+  /// No description provided for @commentDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this comment?'**
+  String get commentDeleteTitle;
+
+  /// No description provided for @commentDeleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This can\'t be undone.'**
+  String get commentDeleteBody;
+
+  /// No description provided for @commentDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Comment deleted'**
+  String get commentDeleted;
+
+  /// No description provided for @commentSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Comment saved'**
+  String get commentSaved;
+
+  /// Screen reader text of a comment while its edit or deletion is on the way.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving the change…'**
+  String get commentWorking;
+
+  /// No description provided for @commentEditorTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit comment'**
+  String get commentEditorTitle;
+
+  /// No description provided for @commentEmptyRefused.
+  ///
+  /// In en, this message translates to:
+  /// **'A comment can\'t be empty'**
+  String get commentEmptyRefused;
+
+  /// No description provided for @commentsArchivedNote.
+  ///
+  /// In en, this message translates to:
+  /// **'This project is archived, so its comments can\'t be changed.'**
+  String get commentsArchivedNote;
+
+  /// No description provided for @commentsReadOnlyNote.
+  ///
+  /// In en, this message translates to:
+  /// **'You can only read this task.'**
+  String get commentsReadOnlyNote;
+
+  /// No description provided for @commentFailedNotAuthor.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the author can change a comment.'**
+  String get commentFailedNotAuthor;
+
+  /// No description provided for @commentFailedGone.
+  ///
+  /// In en, this message translates to:
+  /// **'The comment no longer exists.'**
+  String get commentFailedGone;
+
+  /// No description provided for @commentFailedNeedsConnection.
+  ///
+  /// In en, this message translates to:
+  /// **'This needs a connection to the server.'**
+  String get commentFailedNeedsConnection;
+
+  /// No description provided for @commentFailedTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'This comment is too long.'**
+  String get commentFailedTooLong;
+
+  /// A comment write timed out: it may have arrived.
+  ///
+  /// In en, this message translates to:
+  /// **'The server didn\'t answer. Check the comments before sending again.'**
+  String get commentFailedUnconfirmed;
+
+  /// No description provided for @commentFailedSend.
+  ///
+  /// In en, this message translates to:
+  /// **'The comment couldn\'t be sent. Try again later.'**
+  String get commentFailedSend;
+
+  /// No description provided for @commentFailedSave.
+  ///
+  /// In en, this message translates to:
+  /// **'The comment couldn\'t be saved. Try again later.'**
+  String get commentFailedSave;
+
+  /// No description provided for @commentFailedDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'The comment couldn\'t be deleted. Try again later.'**
+  String get commentFailedDelete;
+
+  /// No description provided for @reactionAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add reaction'**
+  String get reactionAdd;
+
+  /// No description provided for @reactionOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Another emoji'**
+  String get reactionOther;
+
+  /// Hint in the field for any emoji in the add-reaction sheet; the system keyboard offers them.
+  ///
+  /// In en, this message translates to:
+  /// **'Type an emoji'**
+  String get reactionOtherHint;
+
+  /// No description provided for @reactionOtherAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get reactionOtherAdd;
+
+  /// No description provided for @reactionTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'At most 20 characters'**
+  String get reactionTooLong;
+
+  /// Screen reader hint for a tap on a reaction chip the user has not reacted with.
+  ///
+  /// In en, this message translates to:
+  /// **'add your reaction'**
+  String get reactionAddMine;
+
+  /// Screen reader hint for a tap on a reaction chip the user reacted with.
+  ///
+  /// In en, this message translates to:
+  /// **'remove your reaction'**
+  String get reactionRemoveMine;
+
+  /// No description provided for @reactionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The reaction couldn\'t be saved. Try again later.'**
+  String get reactionFailed;
+
+  /// Read by screen readers for a task row's comment count.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 comment} other{{count} comments}}'**
+  String taskCommentCount(int count);
+
+  /// Read by screen readers for a task row whose comments include one the user has not seen.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 comment, unread} other{{count} comments, unread}}'**
+  String taskCommentCountUnread(int count);
+
+  /// Announced to screen readers when the quote above the comment field is dropped.
+  ///
+  /// In en, this message translates to:
+  /// **'No longer replying'**
+  String get commentReplyDropped;
 }
 
 class _AppLocalizationsDelegate

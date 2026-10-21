@@ -536,6 +536,38 @@ void main() {
       });
     });
 
+    // The sync stores both: 0 and absent `is_unread` for a task without
+    // (unread) comments.
+    test('list items carry the comment count and the unread flag on both '
+        'versions', () async {
+      const query = TaskQuery(
+        expand: {TaskExpand.commentCount, TaskExpand.isUnread},
+      );
+      const params = 'expand=comment_count&expand=is_unread&page=1';
+      final tasks = [
+        _task(1, overrides: {'comment_count': 3, 'is_unread': true}),
+        _task(2, overrides: {'comment_count': 0}),
+      ];
+      final dio = fakeDio({
+        '$_v1/projects/5/views/9/tasks?$params': _v1List(tasks, totalPages: 1),
+        '$_v2/projects/5/views/9/tasks?$params': json(
+          _v2Page(tasks, totalPages: 1),
+        ),
+      });
+
+      for (final hasV2 in [false, true]) {
+        final page = await _client(
+          dio,
+          hasV2: hasV2,
+        ).tasks.listInView(5, 9, query);
+
+        expect(
+          [for (final task in page.items) (task.commentCount, task.isUnread)],
+          [(3, true), (0, false)],
+        );
+      }
+    });
+
     test('v1 sends the search as s', () async {
       final dio = fakeDio({
         '$_v1/tasks?s=milk&page=1': _v1List([], totalPages: 0),
@@ -608,8 +640,8 @@ void main() {
         expand: {TaskExpand.commentCount, TaskExpand.isUnread},
       );
 
-      expect(plain.commentCount, isNull);
-      expect(plain.isUnread, isNull);
+      expect(plain.commentCount, 0);
+      expect(plain.isUnread, isFalse);
       expect(expanded.commentCount, 3);
       expect(expanded.isUnread, isTrue);
     });

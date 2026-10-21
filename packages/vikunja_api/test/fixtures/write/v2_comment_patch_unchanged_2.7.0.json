@@ -1,0 +1,10 @@
+{
+  "server": "2.7.0",
+  "request": "PATCH /api/v2/tasks/21/comments/57",
+  "sent": {
+    "comment": "<p>Edited on v2</p>"
+  },
+  "status": 304,
+  "headers": {},
+  "body": ""
+}

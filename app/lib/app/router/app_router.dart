@@ -71,6 +71,11 @@ abstract final class AppRoutes {
   /// The description editor over the shell, from the detail sheet and the
   /// edit pages.
   static String taskDescription(int id) => '$home/tasks/$id/description';
+
+  /// The editor over the shell for an own comment, from the detail sheet;
+  /// the comment comes as the push's `extra`, a `CommentTarget`.
+  static String commentEdit(int taskId, int commentId) =>
+      '$home/tasks/$taskId/comments/$commentId/edit';
   static String projectDescription(int id) => '$home/project/$id/description';
 
   /// Full screen over the shell, from the project's menu; outside
@@ -148,6 +153,7 @@ GoRouter appRouter(Ref ref) {
   ref.onDispose(() => WidgetsBinding.instance.removeObserver(links));
 
   final rootNavigatorKey = GlobalKey<NavigatorState>();
+  final commentEdits = _CommentEdits();
   final router = GoRouter(
     navigatorKey: rootNavigatorKey,
     initialLocation: AppRoutes.splash,
@@ -230,6 +236,15 @@ GoRouter appRouter(Ref ref) {
           child: DescriptionEditorPage(
             target: TaskDescriptionTarget(_idParam(state)!),
           ),
+        ),
+      ),
+      GoRoute(
+        path: '${AppRoutes.home}/tasks/:id/comments/:commentId/edit',
+        parentNavigatorKey: rootNavigatorKey,
+        redirect: (context, state) =>
+            commentEdits.targetFor(state) == null ? AppRoutes.overview : null,
+        builder: (context, state) => AccountBoundScreen(
+          child: DescriptionEditorPage(target: commentEdits.targetFor(state)!),
         ),
       ),
       GoRoute(
@@ -505,4 +520,22 @@ String? _redirect({
     AppRoutes.serverOverview when !hasServer => AppRoutes.connect,
     _ => null,
   };
+}
+
+/// The comment an editor page was pushed with. go_router drops an `extra`
+/// it cannot store as JSON once the platform reports the route list back,
+/// as Android does when the app is opened again, and would then send the
+/// open editor to the Overview.
+final class _CommentEdits {
+  String? _location;
+  CommentTarget? _target;
+
+  CommentTarget? targetFor(GoRouterState state) {
+    if (state.extra case final CommentTarget target) {
+      _location = state.matchedLocation;
+      _target = target;
+      return target;
+    }
+    return state.matchedLocation == _location ? _target : null;
+  }
 }

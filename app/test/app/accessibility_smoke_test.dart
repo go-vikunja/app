@@ -55,6 +55,7 @@ import 'package:vikunja_mobile/features/share/presentation/share_sheet.dart';
 import 'package:vikunja_mobile/features/smart_lists/presentation/saved_filter_form_page.dart';
 import 'package:vikunja_mobile/features/sync/presentation/first_sync_screen.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/details/comment_composer.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/task_edit_page.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/assignee_picker.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/relations/add_relation_sheet.dart';
@@ -378,6 +379,121 @@ void main() {
       await tester.tap(photo);
       await tester.pumpAndSettle();
       expect(find.byTooltip(l10n.imageViewerClose), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('the comment field with a reply and suggestions, a '
+        "comment's menu, reactions and the add-reaction sheet at 200 % in "
+        'dark mode (${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      final l10n = lookupAppLocalizations(locale);
+      final data = richData();
+      const maxi = User(
+        id: 1,
+        username: 'maximiliane',
+        name: 'Maximiliane Musterfrau-Beispielhausen',
+      );
+      const me = User(id: 7, username: 'alice', name: 'Alice Example');
+      data.tasks.all = [
+        data.tasks.all.first.copyWith(commentCount: 2, isUnread: true),
+        ...data.tasks.all.skip(1),
+      ];
+      data.details
+        ..me = me
+        ..detailsByTask[1] = const TaskDetails(
+          commentCount: 2,
+          maxPermission: Permission.write,
+          reactions: {
+            '👍': [maxi, me],
+            'a-long-text-reaction': [maxi],
+          },
+        )
+        ..commentsByTask[1] = [
+          sampleComment(
+            id: 1,
+            author: maxi,
+            html: '<p>A first comment long enough to wrap onto lines</p>',
+            reactions: const {
+              '👀': [maxi],
+            },
+          ),
+          sampleComment(
+            id: 2,
+            author: me,
+            html: '<p>An own comment that can be edited and deleted</p>',
+          ),
+        ];
+      await pumpSignedInApp(
+        tester,
+        sync: data,
+        overrides: [
+          userRepositoryProvider.overrideWithValue(
+            FakeUserRepository(
+              projectUsers: {
+                1: [maxi],
+              },
+            ),
+          ),
+        ],
+      );
+
+      await tapRow(tester, 'Task 1 ');
+      expect(find.byType(CommentComposer), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      final sheetList = find
+          .descendant(
+            of: find.byType(TaskDetailSheet),
+            matching: find.byType(Scrollable),
+          )
+          .first;
+      await tester.scrollUntilVisible(
+        find.text(l10n.taskDetailShowComments),
+        200,
+        scrollable: sheetList,
+      );
+      await tester.drag(sheetList, const Offset(0, -100));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(l10n.taskDetailShowComments));
+      await tester.pumpAndSettle();
+      await scrollToEnd(tester, find.byType(TaskDetailSheet));
+      expect(tester.takeException(), isNull);
+
+      final ownMenu = find.byTooltip(l10n.commentOptions(me.name));
+      await tester.ensureVisible(ownMenu);
+      await tester.pumpAndSettle();
+      await tester.tap(ownMenu);
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.commentDelete), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.text(l10n.commentReply));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.commentReplyingTo(me.name)), findsOneWidget);
+
+      final field = find.descendant(
+        of: find.byType(CommentComposer),
+        matching: find.byType(TextField),
+      );
+      await tester.enterText(field, 'Danke @Maxi');
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
+      expect(find.byType(MentionBar), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.tap(
+        find.descendant(
+          of: find.byType(MentionBar),
+          matching: find.text(maxi.name),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      final addReaction = find.byTooltip(l10n.reactionAdd).first;
+      await tester.ensureVisible(addReaction);
+      await tester.pumpAndSettle();
+      await tester.tap(addReaction);
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.reactionOther), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
@@ -1329,6 +1445,119 @@ void main() {
           }
           expect(tester.takeException(), isNull);
           await close();
+        },
+        variant: const TargetPlatformVariant({
+          TargetPlatform.android,
+          TargetPlatform.iOS,
+        }),
+      );
+    }
+
+    // The comment field stays above the keyboard however little room that
+    // leaves: what is above the field scrolls and the list gives way.
+    for (final (name, size, keyboard, textScale) in const [
+      ('landscape', Size(740, 360), 200.0, 1.0),
+      ('portrait at 200 %', Size(360, 740), 300.0, 2.0),
+      ('small portrait at 200 %', Size(320, 640), 260.0, 2.0),
+    ]) {
+      testWidgets(
+        'the comment field replying, with suggestions and the keyboard up, '
+        '$name (${locale.languageCode})',
+        (tester) async {
+          usePhoneSurface(tester, logicalSize: size);
+          useLocale(tester, locale);
+          tester.platformDispatcher.textScaleFactorTestValue = textScale;
+          addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+          final l10n = lookupAppLocalizations(locale);
+          const maxi = User(
+            id: 1,
+            username: 'maximiliane',
+            name: 'Maximiliane Musterfrau-Beispielhausen',
+          );
+          final data = SyncFakes(now: DateTime(2026, 10, 10, 12));
+          data.projects.all = [sampleProject(id: 1, title: 'Work')];
+          data.tasks.all = [sampleTask(id: 1, title: 'Task 1')];
+          data.details
+            ..detailsByTask[1] = const TaskDetails(
+              commentCount: 1,
+              maxPermission: Permission.write,
+            )
+            ..commentsByTask[1] = [
+              sampleComment(
+                id: 1,
+                author: maxi,
+                html: '<p>A comment long enough to fill the reply quote</p>',
+              ),
+            ];
+          await pumpSignedInApp(
+            tester,
+            sync: data,
+            overrides: [
+              userRepositoryProvider.overrideWithValue(
+                FakeUserRepository(
+                  projectUsers: {
+                    1: [maxi],
+                  },
+                ),
+              ),
+            ],
+          );
+          unawaited(
+            showTaskDetail(
+              containerOf(tester)
+                  .read(appRouterProvider)
+                  .routerDelegate
+                  .navigatorKey
+                  .currentContext!,
+              task: data.tasks.find(1)!,
+            ),
+          );
+          await tester.pumpAndSettle();
+          final field = find.descendant(
+            of: find.byType(CommentComposer),
+            matching: find.byType(TextField),
+          );
+
+          Future<void> expectFieldAboveKeyboard() async {
+            await tester.pumpAndSettle();
+            expect(tester.takeException(), isNull);
+            expect(
+              tester.getRect(field).bottom,
+              lessThanOrEqualTo(size.height - keyboard + 0.5),
+            );
+          }
+
+          final sheetList = find
+              .descendant(
+                of: find.byType(TaskDetailSheet),
+                matching: find.byType(Scrollable),
+              )
+              .first;
+          await tester.scrollUntilVisible(
+            find.text(l10n.taskDetailShowComments),
+            100,
+            scrollable: sheetList,
+          );
+          await tester.pumpAndSettle();
+          await tester.tap(find.text(l10n.taskDetailShowComments));
+          await tester.pumpAndSettle();
+          final menu = find.byTooltip(l10n.commentOptions(maxi.name));
+          await tester.scrollUntilVisible(menu, 100, scrollable: sheetList);
+          await tester.pumpAndSettle();
+          await tester.tap(menu);
+          await tester.pumpAndSettle();
+          await tester.tap(find.text(l10n.commentReply));
+          await tester.pumpAndSettle();
+
+          tester.view.viewInsets = FakeViewPadding(bottom: keyboard * 3);
+          addTearDown(tester.view.resetViewInsets);
+          await expectFieldAboveKeyboard();
+          expect(find.text(l10n.commentReplyingTo(maxi.name)), findsOneWidget);
+
+          await tester.enterText(field, 'Hallo @Ma');
+          await tester.pump(const Duration(milliseconds: 400));
+          await expectFieldAboveKeyboard();
+          expect(find.byType(MentionBar), findsOneWidget);
         },
         variant: const TargetPlatformVariant({
           TargetPlatform.android,

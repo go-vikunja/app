@@ -12,6 +12,59 @@ void main() {
     expect(details.commentCount, 0);
     expect(details.isUnread, isFalse);
     expect(details.subscription, isNull);
+    expect(details.maxPermission, isNull);
+  });
+
+  group('copyWith', () {
+    const subscription = Subscription(
+      entity: SubscriptionEntity.task,
+      entityId: 4,
+    );
+    const details = TaskDetails(
+      attachments: [TaskAttachment(id: 1, taskId: 4, name: 'a')],
+      coverImageAttachmentId: 1,
+      reactions: {
+        '👍': [User(id: 2, username: 'b')],
+      },
+      commentCount: 3,
+      isUnread: true,
+      subscription: subscription,
+      maxPermission: Permission.write,
+    );
+
+    test('keeps every field that is left out', () {
+      final copy = details.copyWith();
+
+      expect(copy.attachments, details.attachments);
+      expect(copy.coverImageAttachmentId, 1);
+      expect(copy.reactions, details.reactions);
+      expect(copy.commentCount, 3);
+      expect(copy.isUnread, isTrue);
+      expect(copy.subscription, subscription);
+      expect(copy.maxPermission, Permission.write);
+    });
+
+    test('replaces each field', () {
+      expect(details.copyWith(attachments: const []).attachments, isEmpty);
+      expect(
+        details.copyWith(coverImageAttachmentId: 0).coverImageAttachmentId,
+        0,
+      );
+      expect(details.copyWith(reactions: const {}).reactions, isEmpty);
+      expect(details.copyWith(commentCount: 4).commentCount, 4);
+      expect(details.copyWith(isUnread: false).isUnread, isFalse);
+      expect(
+        details.copyWith(maxPermission: Permission.read).maxPermission,
+        Permission.read,
+      );
+    });
+
+    test('clears the subscription and the permission passed as null', () {
+      final copy = details.copyWith(subscription: null, maxPermission: null);
+
+      expect(copy.subscription, isNull);
+      expect(copy.maxPermission, isNull);
+    });
   });
 
   group('attachments', () {

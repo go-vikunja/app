@@ -1,0 +1,12 @@
+{
+  "server": "2.7.0",
+  "request": "PUT /api/v1/tasks/21/comments",
+  "sent": {
+    "comment": ""
+  },
+  "status": 412,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"code\":2002,\"message\":\"Invalid Data\",\"invalid_fields\":[\"comment: non zero value required\"]}\n"
+}

@@ -45,7 +45,8 @@ abstract interface class TasksPort {
   Future<Task> read(int id, {Set<TaskExpand> expand = const {}});
 
   /// What only a single read carries: `GET /tasks/{id}` with the repeated
-  /// `expand=reactions`, `comment_count` and `is_unread`.
+  /// `expand=reactions`, `comment_count` and `is_unread`, and the user's
+  /// permission (v2 `max_permission`, v1 the `x-max-permission` header).
   Future<TaskDetails> readDetails(int id);
 
   /// `GET /projects/{project}/tasks/by-index/{index}`: [project] is a

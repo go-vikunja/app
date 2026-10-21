@@ -13,26 +13,69 @@ import 'package:vikunja_mobile/core/repositories/task_resolver.dart';
 /// a read answers per task id (absent: nothing beyond the row,
 /// `TaskDetails()`), [commentsByTask] every comment of a task in any
 /// order, served sorted by `(created, id)` in pages of [commentsPerPage].
+///
+/// Writes change that state like the server: a new comment by [me] under
+/// [nextCommentId] at [clock], appended to the task's comments and counted
+/// in its details; an edit or delete of a comment by someone else fails
+/// with `Forbidden`, an edit of one that is gone with `NotFound` 4015, a
+/// delete of one that is gone passes; reactions by [me] go onto the task's
+/// details or the comment, a value already there or one not there changes
+/// nothing, and an added value outside 1 to 20 code points is an
+/// `ArgumentError` before the call is recorded.
+///
 /// Every call is recorded in [calls] (`details 3`, `comments 3 page 1
-/// oldest`, `comments 3 page 2 newest`, `markRead 3`) and every mark read
-/// in [markedRead]; [beforeCall] can hold one, and [detailsFailure],
-/// [commentsFailure] and [markReadFailure] (a `VikunjaFailure`, or
-/// `TaskNotSyncedYet`) are thrown instead while set.
+/// oldest`, `comments 3 page 2 newest`, `markRead 3`, `addComment 3`,
+/// `editComment 3 7`, `deleteComment 3 7`, `addReaction task 3 👍`,
+/// `removeReaction comment 7 👍`), every mark read in [markedRead] and
+/// every comment body sent in [sentHtml]; [beforeCall] can hold one, and
+/// [detailsFailure], [commentsFailure], [markReadFailure],
+/// [addCommentFailure], [editCommentFailure], [deleteCommentFailure] and
+/// [reactionFailure] (a `VikunjaFailure`, or `TaskNotSyncedYet`) are
+/// thrown instead while set, before anything changes. [serverChanged]
+/// is what [watchServerChanges] delivers for a task. [onRowChange] gets
+/// what the real repository changes on the synced row: the count and the
+/// flag a details read brings, the flag a mark read clears, the count a
+/// comment written or deleted moves.
 final class FakeTaskDetailsRepository implements TaskDetailsRepository {
+  new({DateTime Function()? clock})
+    : clock = clock ?? (() => DateTime.utc(2026, 10, 21, 12));
+
   final Map<int, TaskDetails> detailsByTask = {};
   final Map<int, List<TaskComment>> commentsByTask = {};
   int commentsPerPage = 50;
   final List<String> calls = [];
   final List<int> markedRead = [];
+  final List<String> sentHtml = [];
   Exception? detailsFailure;
   Exception? commentsFailure;
   Exception? markReadFailure;
+  Exception? addCommentFailure;
+  Exception? editCommentFailure;
+  Exception? deleteCommentFailure;
+  Exception? reactionFailure;
   Future<void> Function(String call)? beforeCall;
+
+  /// The signed-in user: the author of new comments and the one who reacts.
+  User me = const User(id: 1, username: 'me', name: 'Me');
+  int nextCommentId = 500;
+  DateTime Function() clock;
+
+  void Function(int taskId, Task Function(Task row) change)? onRowChange;
+
+  final _changes = <int, StreamController<DateTime>>{};
 
   @override
   Future<TaskDetails> details(int taskId) async {
     await _call('details $taskId', detailsFailure);
-    return detailsByTask[taskId] ?? const TaskDetails();
+    final details = detailsByTask[taskId] ?? const TaskDetails();
+    onRowChange?.call(
+      taskId,
+      (row) => row.copyWith(
+        commentCount: details.commentCount,
+        isUnread: details.isUnread,
+      ),
+    );
+    return details;
   }
 
   @override
@@ -70,8 +113,154 @@ final class FakeTaskDetailsRepository implements TaskDetailsRepository {
 
   @override
   Future<void> markRead(int taskId) async {
+    onRowChange?.call(taskId, (row) => row.copyWith(isUnread: false));
     await _call('markRead $taskId', markReadFailure);
     markedRead.add(taskId);
+  }
+
+  @override
+  Future<TaskComment> addComment(int taskId, CommentDraft draft) async {
+    await _call('addComment $taskId', addCommentFailure);
+    sentHtml.add(draft.html);
+    final now = clock().toUtc();
+    final comment = TaskComment(
+      id: nextCommentId++,
+      html: draft.html,
+      author: me,
+      created: now,
+      updated: now,
+    );
+    (commentsByTask[taskId] ??= []).add(comment);
+    _countComments(taskId, 1);
+    onRowChange?.call(
+      taskId,
+      (row) => row.copyWith(commentCount: row.commentCount + 1),
+    );
+    return comment;
+  }
+
+  @override
+  Future<TaskComment> editComment(
+    int taskId,
+    TaskComment comment,
+    CommentDraft draft,
+  ) async {
+    await _call('editComment $taskId ${comment.id}', editCommentFailure);
+    final stored = _ownComment(taskId, comment.id);
+    if (stored == null) throw const NotFound(code: 4015);
+    sentHtml.add(draft.html);
+    final edited = stored.copyWith(html: draft.html, updated: clock().toUtc());
+    _replaceComment(taskId, edited);
+    return edited;
+  }
+
+  @override
+  Future<void> deleteComment(int taskId, int commentId) async {
+    await _call('deleteComment $taskId $commentId', deleteCommentFailure);
+    if (_ownComment(taskId, commentId) == null) return;
+    commentsByTask[taskId]!.removeWhere((comment) => comment.id == commentId);
+    _countComments(taskId, -1);
+    onRowChange?.call(
+      taskId,
+      (row) => row.copyWith(
+        commentCount: row.commentCount > 0 ? row.commentCount - 1 : 0,
+      ),
+    );
+  }
+
+  @override
+  Future<void> addReaction(ReactionEntity kind, int id, String value) async {
+    final length = value.runes.length;
+    if (length == 0 || length > maxReactionLength) {
+      throw ArgumentError.value(value, 'value');
+    }
+    await _call('addReaction ${kind.name} $id $value', reactionFailure);
+    _react(kind, id, (reactions) {
+      final users = reactions[value] ?? const <User>[];
+      if (users.any((user) => user.id == me.id)) return reactions;
+      return {
+        ...reactions,
+        value: [...users, me],
+      };
+    });
+  }
+
+  @override
+  Future<void> removeReaction(ReactionEntity kind, int id, String value) async {
+    await _call('removeReaction ${kind.name} $id $value', reactionFailure);
+    _react(kind, id, (reactions) {
+      final users = [
+        for (final user in reactions[value] ?? const <User>[])
+          if (user.id != me.id) user,
+      ];
+      return {
+        for (final MapEntry(key: other, value: others) in reactions.entries)
+          if (other != value || users.isNotEmpty)
+            other: other == value ? users : others,
+      };
+    });
+  }
+
+  @override
+  Stream<DateTime> watchServerChanges(int taskId) => _changesOf(taskId).stream;
+
+  /// Delivers [updated] to the sheets watching [taskId], as a sync bringing
+  /// a newer row would.
+  void serverChanged(int taskId, DateTime updated) =>
+      _changesOf(taskId).add(updated.toUtc());
+
+  StreamController<DateTime> _changesOf(int taskId) =>
+      _changes.putIfAbsent(taskId, StreamController<DateTime>.broadcast);
+
+  /// The stored comment [commentId] of [taskId]; `Forbidden` when someone
+  /// else wrote it.
+  TaskComment? _ownComment(int taskId, int commentId) {
+    final stored = commentsByTask[taskId]
+        ?.where((comment) => comment.id == commentId)
+        .firstOrNull;
+    if (stored != null && stored.author.id != me.id) throw const Forbidden();
+    return stored;
+  }
+
+  void _replaceComment(int taskId, TaskComment comment) {
+    final comments = commentsByTask[taskId]!;
+    comments[comments.indexWhere((stored) => stored.id == comment.id)] =
+        comment;
+  }
+
+  void _countComments(int taskId, int delta) {
+    final details = detailsByTask[taskId];
+    if (details == null) return;
+    detailsByTask[taskId] = details.copyWith(
+      commentCount: (details.commentCount + delta).clamp(0, 1 << 31),
+    );
+  }
+
+  void _react(
+    ReactionEntity kind,
+    int id,
+    Reactions Function(Reactions reactions) change,
+  ) {
+    switch (kind) {
+      case ReactionEntity.task:
+        final details = detailsByTask[id] ?? const TaskDetails();
+        detailsByTask[id] = details.copyWith(
+          reactions: change(details.reactions),
+        );
+      case ReactionEntity.comment:
+        for (final MapEntry(key: taskId, value: comments)
+            in commentsByTask.entries) {
+          for (final comment in comments) {
+            if (comment.id != id) continue;
+            _replaceComment(
+              taskId,
+              comment.copyWith(reactions: change(comment.reactions)),
+            );
+            return;
+          }
+        }
+        throw const NotFound(code: 4015);
+    }
   }
 
   Future<void> _call(String call, Exception? failure) async {

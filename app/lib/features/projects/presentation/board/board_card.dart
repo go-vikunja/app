@@ -64,6 +64,8 @@ class BoardCard extends ConsumerWidget {
         DueBadge(text: due, tone: summary.dueTone),
       if (!summary.checklist.isEmpty)
         _ChecklistCount(statistics: summary.checklist, style: mutedSmall),
+      if (task.commentCount > 0)
+        CommentCount(count: task.commentCount, unread: task.isUnread),
       if (summary.described) metaIcon(Icons.notes),
       if (task.repeats) metaIcon(Icons.repeat),
       if (pending) metaIcon(Icons.cloud_off_outlined),

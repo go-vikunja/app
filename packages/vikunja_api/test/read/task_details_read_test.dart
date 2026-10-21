@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_api/vikunja_api.dart';
@@ -80,8 +82,51 @@ void main() {
           details.subscription,
           const Subscription(entity: SubscriptionEntity.task, entityId: 17),
         );
+        // v2 in the body, v1 in the `x-max-permission` header.
+        expect(details.maxPermission, Permission.admin);
         final request = adapterOf(dio).requests.single;
         expect(request.method, 'GET');
+      });
+
+      test('max_permission of a read and a write share, and an unknown '
+          'value', () async {
+        final dio = fakeDio({
+          for (final (id, permission) in [(1, 0), (2, 1), (3, 7), (4, '1')])
+            _detailsUrl(version, id): json(
+              taskJson(id, overrides: {'max_permission': permission}),
+            ),
+        });
+        final tasks = _tasks(dio, version);
+
+        expect((await tasks.readDetails(1)).maxPermission, Permission.read);
+        expect((await tasks.readDetails(2)).maxPermission, Permission.write);
+        expect((await tasks.readDetails(3)).maxPermission, isNull);
+        expect((await tasks.readDetails(4)).maxPermission, isNull);
+      });
+
+      test('the x-max-permission header where the body has none; the body '
+          'wins', () async {
+        FakeRoute withHeader(int id, String permission, {Object? body}) =>
+            (_) => ResponseBody.fromString(
+              jsonEncode(taskJson(id, overrides: {'max_permission': body})),
+              200,
+              headers: {
+                Headers.contentTypeHeader: ['application/json; charset=utf-8'],
+                'x-max-permission': [permission],
+              },
+            );
+        final dio = fakeDio({
+          _detailsUrl(version, 1): withHeader(1, '0'),
+          _detailsUrl(version, 2): withHeader(2, '1'),
+          _detailsUrl(version, 3): withHeader(3, 'admin'),
+          _detailsUrl(version, 4): withHeader(4, '0', body: 2),
+        });
+        final tasks = _tasks(dio, version);
+
+        expect((await tasks.readDetails(1)).maxPermission, Permission.read);
+        expect((await tasks.readDetails(2)).maxPermission, Permission.write);
+        expect((await tasks.readDetails(3)).maxPermission, isNull);
+        expect((await tasks.readDetails(4)).maxPermission, Permission.admin);
       });
 
       test('a plain task: nothing attached, nobody reacted, read, not '
@@ -108,6 +153,7 @@ void main() {
         expect(details.commentCount, 0);
         expect(details.isUnread, isFalse);
         expect(details.subscription, isNull);
+        expect(details.maxPermission, isNull);
       });
 
       test('odd values: a dangling cover, an empty reaction, an attachment '

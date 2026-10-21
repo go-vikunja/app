@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/features/description_editor/application/editor_protocol.dart';
 import 'package:vikunja_mobile/features/tasks/application/link_targets.dart';
 
@@ -20,6 +21,21 @@ final class ProjectDescriptionTarget extends DescriptionTarget {
   const new(this.projectId);
 
   final int projectId;
+}
+
+/// The user's own [comment] on a task in [projectId], whose people can be
+/// mentioned; saved online. The edit starts from the comment as the sheet
+/// showed it: only its author can change it, so nothing is compared.
+final class CommentTarget extends DescriptionTarget {
+  const new({
+    required this.taskId,
+    required this.projectId,
+    required this.comment,
+  });
+
+  final int taskId;
+  final int projectId;
+  final TaskComment comment;
 }
 
 /// Whether [edited], the editor's HTML of a description that opened as

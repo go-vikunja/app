@@ -8,7 +8,8 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 /// A server-like fake for the sync engine: projects (archived ones only
 /// with `includeArchived`, pseudo projects repeated on every page), labels,
 /// and tasks served from exactly the filters and sorts the engine sends,
-/// capped at [maxPerPage] like a real server. Every request is logged;
+/// capped at [maxPerPage] like a real server, their comment count and
+/// unread flag only when the request expands them. Every request is logged;
 /// [beforeRequest] can fail or hold a request.
 final class FakeSyncClient implements VikunjaReadClient {
   new({this.maxPerPage = 50, this.reportsTotal = true});
@@ -297,7 +298,7 @@ final class FakeTasksPort implements TasksPort {
   Future<Task> read(int id, {Set<TaskExpand> expand = const {}}) async {
     await _client._request('task $id');
     for (final task in _client.allTasks) {
-      if (task.id == id) return task;
+      if (task.id == id) return _expanded(task, expand);
     }
     throw const NotFound(code: 4002);
   }
@@ -379,8 +380,21 @@ final class FakeTasksPort implements TasksPort {
       // The server's final tie-breaker.
       return a.id.compareTo(b.id);
     });
-    return _client._page(matching, page: query.page, perPage: query.perPage);
+    return _client._page(
+      [for (final task in matching) _expanded(task, query.expand)],
+      page: query.page,
+      perPage: query.perPage,
+    );
   }
+
+  /// The comment count and the unread flag only with their expands, like
+  /// the server; the codec reads their absence as 0 and false.
+  static Task _expanded(Task task, Set<TaskExpand> expand) => task.copyWith(
+    commentCount: expand.contains(TaskExpand.commentCount)
+        ? task.commentCount
+        : 0,
+    isUnread: expand.contains(TaskExpand.isUnread) && task.isUnread,
+  );
 
   /// The filters the engine and the outbox sender send: `done = …`,
   /// `updated >= '…'`, `updated > '…'`, `created >= '…'` and `id > …`

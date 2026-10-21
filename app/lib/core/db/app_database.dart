@@ -66,7 +66,7 @@ final class AppDatabase extends _$AppDatabase {
   new(super.e);
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -102,6 +102,15 @@ final class AppDatabase extends _$AppDatabase {
         if (from == 6) {
           await m.addColumn(listSnapshotTasks, listSnapshotTasks.bucketId);
         }
+      }
+      if (from < 8) {
+        await m.addColumn(tasks, tasks.commentCount);
+        await m.addColumn(tasks, tasks.isUnread);
+        // The incremental run only sees tasks that change, so the next run
+        // is a full one that fills both in for every task.
+        await (delete(
+          syncState,
+        )..where((row) => row.key.equals('last_full_sync_at'))).go();
       }
     },
     beforeOpen: (_) => customStatement('PRAGMA foreign_keys = ON'),

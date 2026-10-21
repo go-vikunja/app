@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "DELETE /api/v1/tasks/21/comments/56",
+  "status": 404,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"code\":4015,\"message\":\"This task comment does not exist\"}\n"
+}

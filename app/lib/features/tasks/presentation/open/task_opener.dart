@@ -146,17 +146,19 @@ final class TaskOpener {
         (resolver) => resolver.resolve(reference),
       );
 
-  /// Shows [task] of the active account in a new detail sheet: the open
-  /// dialogs and sheets close, a tab other than the Overview goes back to
-  /// it, a page over the shell stays under the sheet.
-  Future<void> showTask(Task task) {
+  /// Shows [task] of the active account in a new detail sheet, at its
+  /// comment [commentId] when there is one: the open dialogs and sheets
+  /// close, a tab other than the Overview goes back to it, a page over the
+  /// shell stays under the sheet.
+  Future<void> showTask(Task task, {int? commentId}) {
     _ref.read(rootModalRoutesProvider).closeAll();
     final location = _router.routerDelegate.state.matchedLocation;
     if (AppRoutes.isTab(location) && location != AppRoutes.overview) {
       _router.go(AppRoutes.overview);
     }
     return showAfterFrame(
-      (context) => unawaited(showTaskDetail(context, task: task)),
+      (context) =>
+          unawaited(showTaskDetail(context, task: task, commentId: commentId)),
     );
   }
 
@@ -205,11 +207,14 @@ final class TaskOpener {
   }
 
   /// A task in the active account, e.g. from the inbox: resolved, then
-  /// shown, or the reason it cannot be.
-  Future<void> openInActiveAccount(TaskReference reference) async {
+  /// shown (at [commentId] when given), or the reason it cannot be.
+  Future<void> openInActiveAccount(
+    TaskReference reference, {
+    int? commentId,
+  }) async {
     final accountId = _ref.read(activeAccountIdProvider);
     if (accountId == null) return;
-    await _resolveAndShow(accountId, reference);
+    await _resolveAndShow(accountId, reference, commentId: commentId);
   }
 
   /// A link into a task. [TaskDeepLink.account] picks a signed-in account;
@@ -238,8 +243,9 @@ final class TaskOpener {
   /// Says so while the task is read online.
   Future<void> _resolveAndShow(
     String accountId,
-    TaskReference reference,
-  ) async {
+    TaskReference reference, {
+    int? commentId,
+  }) async {
     VoidCallback? closeOpening;
     final Task task;
     try {
@@ -263,7 +269,7 @@ final class TaskOpener {
     }
     closeOpening?.call();
     if (!isActive(accountId)) return;
-    await showTask(task);
+    await showTask(task, commentId: commentId);
   }
 
   /// Only the active account when it has the task, else the others that

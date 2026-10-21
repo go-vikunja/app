@@ -242,7 +242,7 @@ void main() {
 
   group('online details', () {
     testWidgets('one read on opening; attachments with their previews, sizes '
-        'and the cover; reactions under the description', (tester) async {
+        'and the cover; reactions under the title', (tester) async {
       final semantics = tester.ensureSemantics();
       data.details.detailsByTask[4] = TaskDetails(
         attachments: [
@@ -293,6 +293,11 @@ void main() {
           label: en.reactionBySeveral('Anna', 'Alice Example', '👍'),
           hasSelectedState: true,
           isSelected: true,
+          isButton: true,
+          hasEnabledState: true,
+          isEnabled: true,
+          hasTapAction: true,
+          onTapHint: en.reactionRemoveMine,
         ),
       );
       expect(
@@ -300,6 +305,11 @@ void main() {
         matchesSemantics(
           label: en.reactionByOne('Ben', '🎉'),
           hasSelectedState: true,
+          isButton: true,
+          hasEnabledState: true,
+          isEnabled: true,
+          hasTapAction: true,
+          onTapHint: en.reactionAddMine,
         ),
       );
       final colors = Theme.of(tester.element(sheet())).colorScheme;
@@ -519,12 +529,16 @@ void main() {
       ]);
     });
 
-    testWidgets('no comments, no section', (tester) async {
+    testWidgets('no comments: the section says so and reads nothing', (
+      tester,
+    ) async {
       data.details.detailsByTask[4] = const TaskDetails();
       await openDetail(tester, 4);
 
-      expect(inSheet(find.text(en.taskDetailComments(0))), findsNothing);
+      expect(inSheet(find.text(en.commentsHeading)), findsOneWidget);
+      expect(inSheet(find.text(en.commentsEmpty)), findsOneWidget);
       expect(inSheet(find.text(en.taskDetailShowComments)), findsNothing);
+      expect(data.details.calls, ['details 4']);
     });
 
     testWidgets('pages load on "Load more"', (tester) async {

@@ -1,0 +1,12 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v2/tasks/21/reactions",
+  "sent": {
+    "value": "👍"
+  },
+  "status": 201,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"user\":null,\"value\":\"👍\",\"created\":\"0001-01-01T00:00:00Z\"}\n"
+}

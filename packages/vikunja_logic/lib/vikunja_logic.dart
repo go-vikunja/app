@@ -22,6 +22,7 @@ export 'src/quick_add/quick_add_parser.dart';
 export 'src/security/device_description.dart';
 export 'src/text/checklist.dart';
 export 'src/text/checklist_toggle.dart';
+export 'src/text/comment_html.dart';
 export 'src/text/rich_text.dart';
 export 'src/time/date_range_preset.dart';
 export 'src/time/datemath.dart';

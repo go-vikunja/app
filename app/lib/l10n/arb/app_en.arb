@@ -4717,5 +4717,109 @@
         "example": "1.0.0"
       }
     }
+  },
+  "commentsHeading": "Comments",
+  "@commentsHeading": {
+    "description": "Heading of a task's comments while it has none."
+  },
+  "commentsEmpty": "No comments yet",
+  "commentComposerHint": "Write a comment…",
+  "commentSend": "Send comment",
+  "commentSending": "Sending the comment…",
+  "commentPosted": "Comment sent",
+  "@commentPosted": {
+    "description": "Read by screen readers once a comment written in the app is on the server."
+  },
+  "commentComposerOffline": "Needs a connection. What you wrote stays here.",
+  "commentReplyingTo": "Replying to {name}",
+  "@commentReplyingTo": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Anna"
+      }
+    }
+  },
+  "commentReplyCancel": "Don't reply",
+  "@commentReplyCancel": {
+    "description": "Tooltip of the button that drops the quote above the comment field."
+  },
+  "commentOptions": "Options for the comment by {name}",
+  "@commentOptions": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Anna"
+      }
+    }
+  },
+  "commentReply": "Reply",
+  "commentCopyLink": "Copy link",
+  "commentLinkCopied": "Link copied",
+  "commentEdit": "Edit",
+  "commentDelete": "Delete",
+  "commentDeleteTitle": "Delete this comment?",
+  "commentDeleteBody": "This can't be undone.",
+  "commentDeleted": "Comment deleted",
+  "commentSaved": "Comment saved",
+  "commentWorking": "Saving the change…",
+  "@commentWorking": {
+    "description": "Screen reader text of a comment while its edit or deletion is on the way."
+  },
+  "commentEditorTitle": "Edit comment",
+  "commentEmptyRefused": "A comment can't be empty",
+  "commentsArchivedNote": "This project is archived, so its comments can't be changed.",
+  "commentsReadOnlyNote": "You can only read this task.",
+  "commentFailedNotAuthor": "Only the author can change a comment.",
+  "commentFailedGone": "The comment no longer exists.",
+  "commentFailedNeedsConnection": "This needs a connection to the server.",
+  "commentFailedTooLong": "This comment is too long.",
+  "commentFailedUnconfirmed": "The server didn't answer. Check the comments before sending again.",
+  "@commentFailedUnconfirmed": {
+    "description": "A comment write timed out: it may have arrived."
+  },
+  "commentFailedSend": "The comment couldn't be sent. Try again later.",
+  "commentFailedSave": "The comment couldn't be saved. Try again later.",
+  "commentFailedDelete": "The comment couldn't be deleted. Try again later.",
+  "reactionAdd": "Add reaction",
+  "reactionOther": "Another emoji",
+  "reactionOtherHint": "Type an emoji",
+  "@reactionOtherHint": {
+    "description": "Hint in the field for any emoji in the add-reaction sheet; the system keyboard offers them."
+  },
+  "reactionOtherAdd": "Add",
+  "reactionTooLong": "At most 20 characters",
+  "reactionAddMine": "add your reaction",
+  "@reactionAddMine": {
+    "description": "Screen reader hint for a tap on a reaction chip the user has not reacted with."
+  },
+  "reactionRemoveMine": "remove your reaction",
+  "@reactionRemoveMine": {
+    "description": "Screen reader hint for a tap on a reaction chip the user reacted with."
+  },
+  "reactionFailed": "The reaction couldn't be saved. Try again later.",
+  "taskCommentCount": "{count, plural, =1{1 comment} other{{count} comments}}",
+  "@taskCommentCount": {
+    "description": "Read by screen readers for a task row's comment count.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "taskCommentCountUnread": "{count, plural, =1{1 comment, unread} other{{count} comments, unread}}",
+  "@taskCommentCountUnread": {
+    "description": "Read by screen readers for a task row whose comments include one the user has not seen.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "commentReplyDropped": "No longer replying",
+  "@commentReplyDropped": {
+    "description": "Announced to screen readers when the quote above the comment field is dropped."
   }
 }

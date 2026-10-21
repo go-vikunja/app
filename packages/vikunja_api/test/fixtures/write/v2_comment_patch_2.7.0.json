@@ -1,0 +1,12 @@
+{
+  "server": "2.7.0",
+  "request": "PATCH /api/v2/tasks/21/comments/57",
+  "sent": {
+    "comment": "<p>Edited on v2</p>"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"id\":57,\"comment\":\"<p>Edited on v2</p>\",\"author\":{\"id\":22,\"name\":\"\",\"username\":\"fixtureuser\",\"created\":\"2026-10-21T14:09:05Z\",\"updated\":\"2026-10-21T14:09:05Z\"},\"reactions\":null,\"created\":\"2026-10-21T14:09:18Z\",\"updated\":\"2026-10-21T14:09:20.915803745Z\"}\n"
+}

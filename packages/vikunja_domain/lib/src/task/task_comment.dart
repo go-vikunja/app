@@ -13,6 +13,11 @@ final class TaskComment {
     this.reactions = const {},
   });
 
+  /// How much later than [created] [updated] must be to count as an edit:
+  /// the server sets the two apart by a few nanoseconds and keeps whole
+  /// seconds, so a fresh comment can read a second apart.
+  static const editedAfter = Duration(seconds: 3);
+
   final int id;
 
   /// Untrusted rich text; render it through the sanitizer.
@@ -22,14 +27,32 @@ final class TaskComment {
   final DateTime? updated;
   final Reactions reactions;
 
-  /// The web's rule: both times are known and differ.
   bool get isEdited {
     final created = this.created;
     final updated = this.updated;
     return created != null &&
         updated != null &&
-        created.millisecondsSinceEpoch != updated.millisecondsSinceEpoch;
+        updated.difference(created) > editedAfter;
   }
+
+  static const _unset = Object();
+
+  /// This comment with the given fields replaced; [created] and [updated]
+  /// passed as null are cleared.
+  TaskComment copyWith({
+    String? html,
+    User? author,
+    Object? created = _unset,
+    Object? updated = _unset,
+    Reactions? reactions,
+  }) => TaskComment(
+    id: id,
+    html: html ?? this.html,
+    author: author ?? this.author,
+    created: identical(created, _unset) ? this.created : created as DateTime?,
+    updated: identical(updated, _unset) ? this.updated : updated as DateTime?,
+    reactions: reactions ?? this.reactions,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -38,10 +61,12 @@ final class TaskComment {
       other.html == html &&
       other.author == author &&
       other.created == created &&
-      other.updated == updated;
+      other.updated == updated &&
+      reactionsEqual(other.reactions, reactions);
 
   @override
-  int get hashCode => Object.hash(id, html, author, created, updated);
+  int get hashCode =>
+      Object.hash(id, html, author, created, updated, reactionsHash(reactions));
 
   @override
   String toString() => 'TaskComment($id)';

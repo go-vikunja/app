@@ -106,6 +106,10 @@ final class TaskSummary {
     if (described) l10n.taskHasDescription,
     if (task.repeats) l10n.taskRepeats,
     if (!checklist.isEmpty) ChecklistSummary.text(l10n, checklist),
+    if (task.commentCount > 0 && task.isUnread)
+      l10n.taskCommentCountUnread(task.commentCount)
+    else if (task.commentCount > 0)
+      l10n.taskCommentCount(task.commentCount),
     if (percent > 0) l10n.taskPercentDone(percent),
     if (pending) l10n.taskNotYetSynced,
   ].join('\n');

@@ -14,10 +14,47 @@ import 'package:vikunja_mobile/features/tasks/presentation/details/reaction_chip
 import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/rich_text/rich_html.dart';
 
+/// What the user may do with the comments; [onReply] and the reaction
+/// callbacks are null where the task can only be read, and [onEdit] and
+/// [onDelete] apply to the comments of [me] alone. [offline] shows what
+/// needs the server disabled.
+@immutable
+final class CommentActions {
+  const new({
+    required this.me,
+    required this.onCopyLink,
+    this.offline = false,
+    this.onReply,
+    this.onEdit,
+    this.onDelete,
+    this.onToggleReaction,
+    this.onAddReaction,
+    this.busy = const {},
+    this.pendingReactions = const {},
+  });
+
+  final int? me;
+  final bool offline;
+  final ValueChanged<TaskComment>? onCopyLink;
+  final ValueChanged<TaskComment>? onReply;
+  final ValueChanged<TaskComment>? onEdit;
+  final ValueChanged<TaskComment>? onDelete;
+  final void Function(TaskComment comment, String reaction)? onToggleReaction;
+  final ValueChanged<TaskComment>? onAddReaction;
+
+  /// Comments whose edit or deletion is on the way.
+  final Set<int> busy;
+
+  /// Per comment, the reactions waiting for the server.
+  final Map<int, Set<String>> pendingReactions;
+}
+
 /// The rows of the comments section, for the sheet's list to build lazily:
-/// the heading with the count, then "Show comments" until the first page
-/// arrives, then the order toggle, the comments, and "Load more" while
-/// pages remain. A button stays in place, disabled, while its page loads.
+/// the heading with the count, "No comments yet" for none, else "Show
+/// comments" until the first page arrives, then the order toggle, the
+/// comments, and "Load more" while pages remain. A button stays in place,
+/// disabled, while its page loads. [keyOf] gives a comment's row the key
+/// the sheet scrolls to it by; [highlighted] is tinted for a moment.
 List<Widget> commentsSection({
   required int count,
   required CommentsState state,
@@ -25,14 +62,25 @@ List<Widget> commentsSection({
   required ValueChanged<String> onLink,
   required ValueChanged<int> onTaskLink,
   required int projectId,
+  required CommentActions actions,
+  Key? headerKey,
+  Key Function(int commentId)? keyOf,
+  int? highlighted,
 }) {
   final authors = {
     for (final comment in state.comments) comment.id: comment.author,
   };
   final comments = state.comments;
   return [
-    _CommentsHeader(count: count, state: state, controller: controller),
-    if (!state.shown)
+    _CommentsHeader(
+      key: headerKey,
+      count: count,
+      state: state,
+      controller: controller,
+    ),
+    if (comments.isEmpty && count == 0 && !state.loading)
+      const _Inset(child: _NoComments())
+    else if (!state.shown)
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Align(
@@ -50,11 +98,14 @@ List<Widget> commentsSection({
           first: index == 0,
           last: index == comments.length - 1,
           child: CommentTile(
+            key: keyOf?.call(comment.id),
             comment: comment,
             onLink: onLink,
             onTaskLink: onTaskLink,
             projectId: projectId,
             replyAuthorOf: (id) => authors[id],
+            actions: actions,
+            highlighted: comment.id == highlighted,
           ),
         ),
       ),
@@ -119,6 +170,7 @@ class _CommentsHeader extends StatelessWidget {
     required this.count,
     required this.state,
     required this.controller,
+    super.key,
   });
 
   final int count;
@@ -129,8 +181,8 @@ class _CommentsHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     return DetailSectionHeader(
-      title: l10n.taskDetailComments(count),
-      trailing: state.shown
+      title: count > 0 ? l10n.taskDetailComments(count) : l10n.commentsHeading,
+      trailing: state.shown && state.comments.isNotEmpty
           ? Semantics(
               hint: l10n.commentsChangeOrder,
               child: TextButton.icon(
@@ -195,6 +247,24 @@ class _ButtonSpinner extends StatelessWidget {
   );
 }
 
+class _NoComments extends StatelessWidget {
+  const new();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+      child: Text(
+        context.l10n.commentsEmpty,
+        style: theme.textTheme.bodyMedium?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+    );
+  }
+}
+
 class _CommentsLoading extends StatelessWidget {
   const new();
 
@@ -224,8 +294,10 @@ class _CommentsLoading extends StatelessWidget {
   }
 }
 
+enum _CommentAction { reply, copyLink, edit, delete }
+
 /// A comment: the author's avatar and name, when it was written and
-/// whether it was edited, the text and its reactions.
+/// whether it was edited, its menu, the text and its reactions.
 class CommentTile extends ConsumerWidget {
   const new({
     required this.comment,
@@ -233,6 +305,8 @@ class CommentTile extends ConsumerWidget {
     required this.onTaskLink,
     required this.replyAuthorOf,
     this.projectId,
+    this.actions,
+    this.highlighted = false,
     super.key,
   });
 
@@ -241,6 +315,12 @@ class CommentTile extends ConsumerWidget {
   final ValueChanged<int> onTaskLink;
   final User? Function(int commentId) replyAuthorOf;
   final int? projectId;
+
+  /// Null shows the comment alone, without a menu or reactions to change.
+  final CommentActions? actions;
+
+  /// Tinted, for a comment a notification opened the task at.
+  final bool highlighted;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -263,59 +343,181 @@ class CommentTile extends ConsumerWidget {
       if (comment.isEdited && updated != null)
         l10n.commentEdited(spoken(updated)),
     ].join(', ');
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          UserAvatar(user: comment.author, radius: 16),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              spacing: 4,
-              children: [
-                MergeSemantics(
-                  child: Wrap(
-                    spacing: 6,
-                    crossAxisAlignment: WrapCrossAlignment.center,
+    final actions = this.actions;
+    final busy = actions?.busy.contains(comment.id) ?? false;
+    final own = actions != null && comment.author.id == actions.me;
+    final menu = [
+      if (actions?.onReply != null) _CommentAction.reply,
+      if (actions?.onCopyLink != null) _CommentAction.copyLink,
+      if (own && actions.onEdit != null) _CommentAction.edit,
+      if (own && actions.onDelete != null) _CommentAction.delete,
+    ];
+    final onToggle = actions?.onToggleReaction;
+    final onAdd = actions?.onAddReaction;
+    // The menu's 48 dp start at the tile's top, its icon on the line of
+    // the name; the rest keeps the inset.
+    final top = EdgeInsets.only(top: menu.isEmpty ? 0 : 12);
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      color: highlighted
+          ? colors.primaryContainer.withValues(alpha: 0.6)
+          : Colors.transparent,
+      padding: EdgeInsetsDirectional.fromSTEB(
+        16,
+        menu.isEmpty ? 12 : 0,
+        menu.isEmpty ? 16 : 4,
+        4,
+      ),
+      child: Semantics(
+        hint: busy ? l10n.commentWorking : null,
+        child: Opacity(
+          opacity: busy ? 0.5 : 1,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: top,
+                child: UserAvatar(user: comment.author, radius: 16),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Padding(
+                  padding: top,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    spacing: 4,
                     children: [
-                      Text(
-                        comment.author.displayName,
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
+                      MergeSemantics(
+                        child: Wrap(
+                          spacing: 6,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            Text(
+                              comment.author.displayName,
+                              style: theme.textTheme.labelLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            if (when.isNotEmpty)
+                              Semantics(
+                                label: whenLabel,
+                                excludeSemantics: true,
+                                child: Text(
+                                  when,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: colors.onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
-                      if (when.isNotEmpty)
-                        Semantics(
-                          label: whenLabel,
-                          excludeSemantics: true,
-                          child: Text(
-                            when,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: colors.onSurfaceVariant,
-                            ),
-                          ),
+                      SelectionArea(
+                        child: RichHtml(
+                          html: comment.html,
+                          onLink: onLink,
+                          onTaskLink: onTaskLink,
+                          projectId: projectId,
+                          replyAuthorOf: replyAuthorOf,
                         ),
+                      ),
+                      ReactionChips(
+                        reactions: comment.reactions,
+                        offline: actions?.offline ?? false,
+                        onToggle: onToggle == null || busy
+                            ? null
+                            : (reaction) => onToggle(comment, reaction),
+                        onAdd: onAdd == null || busy
+                            ? null
+                            : () => onAdd(comment),
+                        pending:
+                            actions?.pendingReactions[comment.id] ?? const {},
+                      ),
+                      if (comment.reactions.isEmpty && onAdd == null)
+                        const SizedBox(height: 8),
                     ],
                   ),
                 ),
-                SelectionArea(
-                  child: RichHtml(
-                    html: comment.html,
-                    onLink: onLink,
-                    onTaskLink: onTaskLink,
-                    projectId: projectId,
-                    replyAuthorOf: replyAuthorOf,
+              ),
+              if (menu.isNotEmpty)
+                _CommentMenu(
+                  comment: comment,
+                  items: menu,
+                  enabled: !busy,
+                  actions: actions!,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CommentMenu extends StatelessWidget {
+  const new({
+    required this.comment,
+    required this.items,
+    required this.enabled,
+    required this.actions,
+  });
+
+  final TaskComment comment;
+  final List<_CommentAction> items;
+  final bool enabled;
+  final CommentActions actions;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final colors = Theme.of(context).colorScheme;
+    return PopupMenuButton<_CommentAction>(
+      tooltip: l10n.commentOptions(comment.author.displayName),
+      enabled: enabled,
+      icon: const Icon(Icons.more_vert),
+      onSelected: (action) => switch (action) {
+        _CommentAction.reply => actions.onReply?.call(comment),
+        _CommentAction.copyLink => actions.onCopyLink?.call(comment),
+        _CommentAction.edit => actions.onEdit?.call(comment),
+        _CommentAction.delete => actions.onDelete?.call(comment),
+      },
+      itemBuilder: (context) => [
+        for (final action in items)
+          PopupMenuItem(
+            value: action,
+            enabled:
+                !actions.offline ||
+                action == _CommentAction.reply ||
+                action == _CommentAction.copyLink,
+            child: Row(
+              children: [
+                Icon(
+                  switch (action) {
+                    _CommentAction.reply => Icons.reply,
+                    _CommentAction.copyLink => Icons.link,
+                    _CommentAction.edit => Icons.edit_outlined,
+                    _CommentAction.delete => Icons.delete_outline,
+                  },
+                  color: action == _CommentAction.delete ? colors.error : null,
+                ),
+                const SizedBox(width: 12),
+                Flexible(
+                  child: Text(
+                    switch (action) {
+                      _CommentAction.reply => l10n.commentReply,
+                      _CommentAction.copyLink => l10n.commentCopyLink,
+                      _CommentAction.edit => l10n.commentEdit,
+                      _CommentAction.delete => l10n.commentDelete,
+                    },
+                    style: action == _CommentAction.delete
+                        ? TextStyle(color: colors.error)
+                        : null,
                   ),
                 ),
-                if (comment.reactions.isNotEmpty)
-                  ReactionChips(reactions: comment.reactions),
               ],
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 }

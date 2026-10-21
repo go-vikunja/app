@@ -1,0 +1,12 @@
+{
+  "server": "2.7.0",
+  "request": "PUT /api/v1/comments/999999999/reactions",
+  "sent": {
+    "value": "👍"
+  },
+  "status": 404,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"code\":4015,\"message\":\"This task comment does not exist\"}\n"
+}

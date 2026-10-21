@@ -68,8 +68,8 @@ final class Task {
     this.createdBy,
     this.created,
     this.updated,
-    this.commentCount,
-    this.isUnread,
+    this.commentCount = 0,
+    this.isUnread = false,
   });
 
   final int id;
@@ -114,9 +114,12 @@ final class Task {
   final DateTime? created;
   final DateTime? updated;
 
-  /// Only with the matching `expand`.
-  final int? commentCount;
-  final bool? isUnread;
+  /// Only with the matching `expand`; 0 and false without it.
+  final int commentCount;
+
+  /// A comment by someone else arrived since the user last marked the task
+  /// read.
+  final bool isUnread;
 
   /// The web rule: a server identifier of `-<index>` (project without an
   /// identifier prefix) or an empty one is shown as `#<index>`.
@@ -166,8 +169,8 @@ final class Task {
     Object? createdBy = _unset,
     Object? created = _unset,
     Object? updated = _unset,
-    Object? commentCount = _unset,
-    Object? isUnread = _unset,
+    int? commentCount,
+    bool? isUnread,
   }) => Task(
     id: id,
     title: title ?? this.title,
@@ -195,8 +198,8 @@ final class Task {
     createdBy: _or(createdBy, this.createdBy),
     created: _or(created, this.created),
     updated: _or(updated, this.updated),
-    commentCount: _or(commentCount, this.commentCount),
-    isUnread: _or(isUnread, this.isUnread),
+    commentCount: commentCount ?? this.commentCount,
+    isUnread: isUnread ?? this.isUnread,
   );
 
   static T? _or<T>(Object? given, T? current) =>
@@ -221,7 +224,9 @@ final class Task {
       other.index == index &&
       other.isFavorite == isFavorite &&
       other.position == position &&
-      other.updated == updated;
+      other.updated == updated &&
+      other.commentCount == commentCount &&
+      other.isUnread == isUnread;
 
   @override
   int get hashCode => Object.hash(

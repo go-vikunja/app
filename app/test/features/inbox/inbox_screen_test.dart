@@ -248,13 +248,12 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(data.activity.markedRead, [6]);
-      expect(
-        find.descendant(
-          of: find.byType(TaskDetailSheet),
-          matching: find.text('Water the plants'),
-        ),
-        findsOneWidget,
+      // At the comment, which may have scrolled the title out of the list.
+      final sheet = tester.widget<TaskDetailSheet>(
+        find.byType(TaskDetailSheet),
       );
+      expect(sheet.task.title, 'Water the plants');
+      expect(sheet.commentId, 1);
     });
 
     testWidgets('on a task that is not on this device reads it online', (
@@ -281,6 +280,10 @@ void main() {
           matching: find.text('Old chore'),
         ),
         findsOneWidget,
+      );
+      expect(
+        tester.widget<TaskDetailSheet>(find.byType(TaskDetailSheet)).commentId,
+        isNull,
       );
     });
 

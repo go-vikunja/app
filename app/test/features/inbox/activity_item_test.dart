@@ -42,6 +42,7 @@ void main() {
       expect(comment.projectId, 3);
       expect(comment.projectTitle, 'Garden');
       expect(comment.comment, 'Looks good to me');
+      expect(comment.commentId, 9);
     });
 
     test('a prefixed identifier as the server sent it', () {
@@ -78,6 +79,7 @@ void main() {
 
       expect(odd.kind, ActivityKind.other);
       expect(odd.doerName, isNull);
+      expect(odd.commentId, isNull);
       expect(odd.taskId, isNull);
       expect(odd.taskIdentifier, isNull);
       expect(odd.comment, isNull);

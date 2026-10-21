@@ -35,6 +35,15 @@ class Tasks extends Table {
   IntColumn get created => integer().map(const EpochMillis()).nullable()();
   IntColumn get updated => integer().map(const EpochMillis()).nullable()();
 
+  /// From the sync's `expand=comment_count`; kept when a task arrives
+  /// without it (a write's answer, a task read on its own).
+  IntColumn get commentCount => integer().withDefault(const Constant(0))();
+
+  /// From the sync's `expand=is_unread`, cleared here on mark-read. A task
+  /// read on the web keeps it until the task changes: mark-read does not
+  /// bump `updated`.
+  BoolColumn get isUnread => boolean().withDefault(const Constant(false))();
+
   /// The sync run that last returned this task; the finishing phase purges
   /// every task the run did not touch. Survives a restart, unlike a set of
   /// seen ids in memory.

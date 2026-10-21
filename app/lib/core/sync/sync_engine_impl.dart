@@ -725,6 +725,7 @@ final class DefaultSyncEngine implements SyncEngine {
           filter: '$filter && ${TaskFilters.after(current.lastId)}',
           sort: TaskFilters.byId,
           perPage: _perPage,
+          expand: TaskFilters.commentState,
         ),
       );
       _checkDisposed();
@@ -742,7 +743,11 @@ final class DefaultSyncEngine implements SyncEngine {
         }
         previousId = item.id;
       }
-      await _db.tasksDao.upsertAll(items, syncRunId: current.runId);
+      await _db.tasksDao.upsertAll(
+        items,
+        syncRunId: current.runId,
+        withCommentState: true,
+      );
       current = current.copyWith(
         lastId: previousId,
         done: current.done + items.length,

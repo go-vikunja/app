@@ -247,9 +247,10 @@ void main() {
       expect(back.createdBy, alice);
       expect(back.created, created);
       expect(back.updated, updated);
-      // Only present with an expand; never stored.
-      expect(back.commentCount, isNull);
-      expect(back.isUnread, isNull);
+      expect(row.commentCount, 3);
+      expect(row.isUnread, isTrue);
+      expect(back.commentCount, 3);
+      expect(back.isUnread, isTrue);
     });
 
     test('child rows carry the task id, ordinals and wire names', () {
@@ -282,6 +283,8 @@ void main() {
       expect(back.relatedTasks, isEmpty);
       expect(back.repeats, isFalse);
       expect(back.createdBy, isNull);
+      expect(back.commentCount, 0);
+      expect(back.isUnread, isFalse);
     });
   });
 }

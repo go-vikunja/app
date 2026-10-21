@@ -15,6 +15,7 @@ import 'package:vikunja_mobile/core/repositories/local/local_task_resolver.dart'
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_details_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_resolver_providers.dart';
+import 'package:vikunja_mobile/core/storage/comment_drafts.dart';
 
 import '../../helpers/auth_fakes.dart';
 import '../../helpers/fake_sync_client.dart';
@@ -155,5 +156,22 @@ void main() {
       container.read(accountAvatarCacheProvider(alice.id)),
       isNot(same(avatars)),
     );
+  });
+
+  test("signing out drops the account's unsent comments only", () async {
+    final alice = await auth.seedAccount(
+      fullServer270(),
+      tokens: issueTokens(issuedAt: noon),
+    );
+    await container.read(accountsProvider.future);
+    final drafts = container.read(commentDraftsProvider);
+    const draft = CommentComposerDraft(text: 'Half written');
+    await drafts.save(draft, account: alice.id, taskId: 3);
+    await drafts.save(draft, account: 'someone-else', taskId: 3);
+
+    await container.read(accountDataWiperProvider)(alice.id);
+
+    expect(await drafts.read(account: alice.id, taskId: 3), isNull);
+    expect(await drafts.read(account: 'someone-else', taskId: 3), draft);
   });
 }

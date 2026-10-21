@@ -5617,4 +5617,161 @@ class AppLocalizationsEn extends AppLocalizations {
   String accountAppVersionWithoutBuild(String version) {
     return 'Rurana $version';
   }
+
+  @override
+  String get commentsHeading => 'Comments';
+
+  @override
+  String get commentsEmpty => 'No comments yet';
+
+  @override
+  String get commentComposerHint => 'Write a comment…';
+
+  @override
+  String get commentSend => 'Send comment';
+
+  @override
+  String get commentSending => 'Sending the comment…';
+
+  @override
+  String get commentPosted => 'Comment sent';
+
+  @override
+  String get commentComposerOffline =>
+      'Needs a connection. What you wrote stays here.';
+
+  @override
+  String commentReplyingTo(String name) {
+    return 'Replying to $name';
+  }
+
+  @override
+  String get commentReplyCancel => 'Don\'t reply';
+
+  @override
+  String commentOptions(String name) {
+    return 'Options for the comment by $name';
+  }
+
+  @override
+  String get commentReply => 'Reply';
+
+  @override
+  String get commentCopyLink => 'Copy link';
+
+  @override
+  String get commentLinkCopied => 'Link copied';
+
+  @override
+  String get commentEdit => 'Edit';
+
+  @override
+  String get commentDelete => 'Delete';
+
+  @override
+  String get commentDeleteTitle => 'Delete this comment?';
+
+  @override
+  String get commentDeleteBody => 'This can\'t be undone.';
+
+  @override
+  String get commentDeleted => 'Comment deleted';
+
+  @override
+  String get commentSaved => 'Comment saved';
+
+  @override
+  String get commentWorking => 'Saving the change…';
+
+  @override
+  String get commentEditorTitle => 'Edit comment';
+
+  @override
+  String get commentEmptyRefused => 'A comment can\'t be empty';
+
+  @override
+  String get commentsArchivedNote =>
+      'This project is archived, so its comments can\'t be changed.';
+
+  @override
+  String get commentsReadOnlyNote => 'You can only read this task.';
+
+  @override
+  String get commentFailedNotAuthor => 'Only the author can change a comment.';
+
+  @override
+  String get commentFailedGone => 'The comment no longer exists.';
+
+  @override
+  String get commentFailedNeedsConnection =>
+      'This needs a connection to the server.';
+
+  @override
+  String get commentFailedTooLong => 'This comment is too long.';
+
+  @override
+  String get commentFailedUnconfirmed =>
+      'The server didn\'t answer. Check the comments before sending again.';
+
+  @override
+  String get commentFailedSend =>
+      'The comment couldn\'t be sent. Try again later.';
+
+  @override
+  String get commentFailedSave =>
+      'The comment couldn\'t be saved. Try again later.';
+
+  @override
+  String get commentFailedDelete =>
+      'The comment couldn\'t be deleted. Try again later.';
+
+  @override
+  String get reactionAdd => 'Add reaction';
+
+  @override
+  String get reactionOther => 'Another emoji';
+
+  @override
+  String get reactionOtherHint => 'Type an emoji';
+
+  @override
+  String get reactionOtherAdd => 'Add';
+
+  @override
+  String get reactionTooLong => 'At most 20 characters';
+
+  @override
+  String get reactionAddMine => 'add your reaction';
+
+  @override
+  String get reactionRemoveMine => 'remove your reaction';
+
+  @override
+  String get reactionFailed =>
+      'The reaction couldn\'t be saved. Try again later.';
+
+  @override
+  String taskCommentCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count comments',
+      one: '1 comment',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String taskCommentCountUnread(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count comments, unread',
+      one: '1 comment, unread',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get commentReplyDropped => 'No longer replying';
 }

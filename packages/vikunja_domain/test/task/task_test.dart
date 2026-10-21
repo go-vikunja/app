@@ -134,6 +134,20 @@ void main() {
     expect('${_task(identifier: '-4', index: 4)}', 'Task(1, #4, t)');
   });
 
+  group('comments', () {
+    test('none and read by default', () {
+      expect(_task().commentCount, 0);
+      expect(_task().isUnread, isFalse);
+    });
+
+    // Marking read changes neither `updated` nor anything else.
+    test('the count and the unread flag count for equality', () {
+      expect(_task(), _task());
+      expect(_task().copyWith(commentCount: 1), isNot(_task()));
+      expect(_task().copyWith(isUnread: true), isNot(_task()));
+    });
+  });
+
   _copyWithTests();
 }
 
@@ -170,6 +184,14 @@ void _copyWithTests() {
       expect(copy.repeatAfter, const Duration(days: 1));
       expect(copy.updated, monday);
       expect(copy.commentCount, 4);
+      expect(copy.isUnread, isFalse);
+    });
+
+    test('replaces the comment count and the unread flag', () {
+      final copy = task.copyWith(commentCount: 0, isUnread: true);
+
+      expect(copy.commentCount, 0);
+      expect(copy.isUnread, isTrue);
     });
 
     test('clears a nullable field passed as null', () {

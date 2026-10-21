@@ -35,7 +35,7 @@ RichDocument buildRichDocument(
 
 // Never visited: ProseMirror's ignored tags plus everything that embeds,
 // executes or asks for input.
-const _droppedTags = {
+const droppedTags = {
   'head',
   'noscript',
   'object',
@@ -63,7 +63,7 @@ const _droppedTags = {
   'textarea',
 };
 
-const _blockTags = {
+const blockTags = {
   'address',
   'article',
   'aside',
@@ -108,7 +108,7 @@ void _prepare(dom.Element body) {
   final pending = <(dom.Element, int)>[(body, 0)];
   while (pending.isNotEmpty) {
     final (element, depth) = pending.removeLast();
-    if (_droppedTags.contains(element.localName)) continue;
+    if (droppedTags.contains(element.localName)) continue;
     if (depth >= _maxDepth) {
       final text = _visibleText(element);
       element.nodes.clear();
@@ -134,7 +134,7 @@ String _visibleText(dom.Element root) {
     switch (node) {
       case dom.Text(:final data):
         text.write(data);
-      case dom.Element(:final localName) when !_droppedTags.contains(localName):
+      case dom.Element(:final localName) when !droppedTags.contains(localName):
         if (localName == 'br') text.write('\n');
         pending.addAll(node.nodes.reversed);
       default:
@@ -387,7 +387,7 @@ final class _ParseContext {
   void _addElement(dom.Element element, List<ParsedMark> marks) {
     final outerPreserve = _localPreserveWhitespace;
     final name = element.localName ?? '';
-    if (_droppedTags.contains(name)) return;
+    if (droppedTags.contains(name)) return;
     final style = _styleOf(element);
     if (name == 'pre' || (style['white-space']?.contains('pre') ?? false)) {
       _localPreserveWhitespace = true;
@@ -397,7 +397,7 @@ final class _ParseContext {
     if (rule == null) {
       var top = _top;
       var sync = false;
-      if (_blockTags.contains(name)) {
+      if (blockTags.contains(name)) {
         if (top.content.isNotEmpty &&
             top.content.first.kind.isInline &&
             _open > 0) {

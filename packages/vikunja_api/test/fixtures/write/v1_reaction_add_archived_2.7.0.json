@@ -1,0 +1,12 @@
+{
+  "server": "2.7.0",
+  "request": "PUT /api/v1/tasks/22/reactions",
+  "sent": {
+    "value": "👍"
+  },
+  "status": 412,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"code\":3008,\"message\":\"This project is archived. Editing or creating new tasks is not possible.\"}\n"
+}

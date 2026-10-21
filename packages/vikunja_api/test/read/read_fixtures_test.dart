@@ -223,8 +223,8 @@ void main() {
         expect(task.assignees, listed.assignees);
         expect(task.reminders, listed.reminders);
         expect(task.subtasks, listed.subtasks);
-        expect(task.commentCount, isNull);
-        expect(task.isUnread, isNull);
+        expect(task.commentCount, 0);
+        expect(task.isUnread, isFalse);
       });
     });
   }

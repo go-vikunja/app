@@ -1567,22 +1567,22 @@ String _$userRepositoryHash() => r'28da8498a99ef2100dbc72f90b776490a8e9c948';
 
 /// The last step of a sign-out: makes a background run in another isolate
 /// let go of the account, drops its avatars and attachment images from
-/// memory, cancels the account's notifications (scheduled
-/// and in the tray) and forgets their preferences and the background
-/// notes, stops its outbox sender and sync engine, closes its database and
-/// deletes the files: the database, the stored copies of queued uploads
-/// and the downloaded attachments.
+/// memory, cancels the account's notifications (scheduled and in the
+/// tray) and forgets their preferences, the background notes and the
+/// unsent comments, stops its outbox sender and sync engine, closes its
+/// database and deletes the files: the database, the stored copies of
+/// queued uploads and the downloaded attachments.
 
 @ProviderFor(accountDataWiper)
 final accountDataWiperProvider = AccountDataWiperProvider._();
 
 /// The last step of a sign-out: makes a background run in another isolate
 /// let go of the account, drops its avatars and attachment images from
-/// memory, cancels the account's notifications (scheduled
-/// and in the tray) and forgets their preferences and the background
-/// notes, stops its outbox sender and sync engine, closes its database and
-/// deletes the files: the database, the stored copies of queued uploads
-/// and the downloaded attachments.
+/// memory, cancels the account's notifications (scheduled and in the
+/// tray) and forgets their preferences, the background notes and the
+/// unsent comments, stops its outbox sender and sync engine, closes its
+/// database and deletes the files: the database, the stored copies of
+/// queued uploads and the downloaded attachments.
 
 final class AccountDataWiperProvider
     extends
@@ -1594,11 +1594,11 @@ final class AccountDataWiperProvider
     with $Provider<AccountDataWiper> {
   /// The last step of a sign-out: makes a background run in another isolate
   /// let go of the account, drops its avatars and attachment images from
-  /// memory, cancels the account's notifications (scheduled
-  /// and in the tray) and forgets their preferences and the background
-  /// notes, stops its outbox sender and sync engine, closes its database and
-  /// deletes the files: the database, the stored copies of queued uploads
-  /// and the downloaded attachments.
+  /// memory, cancels the account's notifications (scheduled and in the
+  /// tray) and forgets their preferences, the background notes and the
+  /// unsent comments, stops its outbox sender and sync engine, closes its
+  /// database and deletes the files: the database, the stored copies of
+  /// queued uploads and the downloaded attachments.
   AccountDataWiperProvider._()
     : super(
         from: null,
@@ -1632,4 +1632,4 @@ final class AccountDataWiperProvider
   }
 }
 
-String _$accountDataWiperHash() => r'e35e7c0de41341df9d1c5f0861cd3f64e421f463';
+String _$accountDataWiperHash() => r'8356814b1895112b4901055a7c7d7b2d0d1d6752';

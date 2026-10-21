@@ -1,0 +1,12 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v2/tasks/21/comments",
+  "sent": {
+    "comment": "<p>Hello <mention-user data-id=\"fixtureuser\" data-label=\"Fixture User\" data-mention-suggestion-char=\"@\"></mention-user>, from v2</p>"
+  },
+  "status": 201,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"id\":57,\"comment\":\"<p>Hello <mention-user data-id=\\\"fixtureuser\\\" data-label=\\\"Fixture User\\\" data-mention-suggestion-char=\\\"@\\\"></mention-user>, from v2</p>\",\"author\":{\"id\":22,\"name\":\"\",\"username\":\"fixtureuser\",\"created\":\"2026-10-21T14:09:05Z\",\"updated\":\"2026-10-21T14:09:05Z\"},\"reactions\":null,\"created\":\"2026-10-21T14:09:18.889331806Z\",\"updated\":\"2026-10-21T14:09:18.889332847Z\"}\n"
+}

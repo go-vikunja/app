@@ -473,4 +473,102 @@ void main() {
       expect(seen.last, isNull);
     });
   });
+
+  group('comment count and unread flag', () {
+    test('a sync takes them, any other upsert keeps the stored ones, a new '
+        'row starts without', () async {
+      await db.tasksDao.upsertAll(
+        [
+          sampleTask(
+            id: 1,
+            title: 'Talked about',
+            commentCount: 3,
+            isUnread: true,
+          ),
+        ],
+        syncRunId: 'run-1',
+        withCommentState: true,
+      );
+      expect((await db.tasksDao.find(1))!.commentCount, 3);
+      expect((await db.tasksDao.find(1))!.isUnread, isTrue);
+
+      // A write's answer or a task read on its own carries neither.
+      await db.tasksDao.upsertAll([
+        sampleTask(id: 1, title: 'Renamed'),
+        sampleTask(id: 2, title: 'Fresh'),
+      ]);
+      final renamed = (await db.tasksDao.find(1))!;
+      expect(renamed.title, 'Renamed');
+      expect(renamed.commentCount, 3);
+      expect(renamed.isUnread, isTrue);
+      final fresh = (await db.tasksDao.find(2))!;
+      expect(fresh.commentCount, 0);
+      expect(fresh.isUnread, isFalse);
+
+      await db.tasksDao.upsertAll(
+        [sampleTask(id: 1, title: 'Renamed', commentCount: 4)],
+        syncRunId: 'run-2',
+        withCommentState: true,
+      );
+      final read = (await db.tasksDao.find(1))!;
+      expect(read.commentCount, 4);
+      expect(read.isUnread, isFalse, reason: 'read on the web meanwhile');
+    });
+
+    test('a queued change keeps its fields while a sync brings the comment '
+        'state', () async {
+      await upsert([sampleTask(id: 1, title: 'Before')]);
+      await db.outboxDao.queueUpdate(
+        1,
+        const TaskChanges(title: 'Mine'),
+        now: monday,
+      );
+
+      await db.tasksDao.upsertAll(
+        [sampleTask(id: 1, title: 'Theirs', commentCount: 2, isUnread: true)],
+        syncRunId: 'run-2',
+        withCommentState: true,
+      );
+
+      final task = (await db.tasksDao.find(1))!;
+      expect(task.title, 'Mine');
+      expect(task.commentCount, 2);
+      expect(task.isUnread, isTrue);
+    });
+
+    test('stored on their own, written only when they differ', () async {
+      await upsert([sampleTask(id: 1, title: 'Talked about')]);
+      final seen = <Task?>[];
+      final subscription = db.tasksDao.watchTask(1).listen(seen.add);
+      addTearDown(subscription.cancel);
+      await pumpEventQueue();
+
+      await db.tasksDao.storeCommentState(1, commentCount: 2, isUnread: true);
+      await pumpEventQueue();
+      await db.tasksDao.storeCommentState(1, commentCount: 2, isUnread: true);
+      await db.tasksDao.storeCommentState(1, isUnread: true);
+      await db.tasksDao.storeCommentState(1);
+      await pumpEventQueue();
+      await db.tasksDao.storeCommentState(1, isUnread: false);
+      await pumpEventQueue();
+      await db.tasksDao.storeCommentState(99, commentCount: 1);
+
+      expect(seen.map((task) => (task!.commentCount, task.isUnread)), [
+        (0, false),
+        (2, true),
+        (2, false),
+      ]);
+    });
+
+    test('the count moves by a delta and never below 0', () async {
+      await upsert([sampleTask(id: 1, title: 'Talked about')]);
+
+      await db.tasksDao.addToCommentCount(1, 1);
+      await db.tasksDao.addToCommentCount(1, 1);
+      expect((await db.tasksDao.find(1))!.commentCount, 2);
+      await db.tasksDao.addToCommentCount(1, -3);
+      expect((await db.tasksDao.find(1))!.commentCount, 0);
+      await db.tasksDao.addToCommentCount(99, 1);
+    });
+  });
 }

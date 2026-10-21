@@ -1690,6 +1690,16 @@ final class AccountDataFakes {
     tasks = FakeTaskRepository(engine);
     projects.tasks = tasks;
     resolver = FakeTaskResolver(local: () => tasks.all);
+    details.onRowChange = (taskId, change) {
+      final row = tasks.all.where((task) => task.id == taskId).firstOrNull;
+      if (row == null) return;
+      final changed = change(row);
+      if (changed == row) return;
+      tasks.all = [
+        for (final task in tasks.all)
+          if (task.id == taskId) changed else task,
+      ];
+    };
     accountSettings.onStateChanged = (state) => settings = state.settings;
     accountSecurity = FakeAccountSecurityRepository(now: () => now);
   }

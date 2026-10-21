@@ -116,6 +116,12 @@ final class _FlakyWriteClient implements VikunjaWriteClient {
 
   @override
   SavedFiltersPort get savedFilters => _real.savedFilters;
+
+  @override
+  CommentsWritePort get comments => _real.comments;
+
+  @override
+  ReactionsWritePort get reactions => _real.reactions;
 }
 
 final class _FlakyTasks implements TasksWritePort {

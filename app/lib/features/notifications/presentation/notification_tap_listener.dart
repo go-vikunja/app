@@ -5,6 +5,7 @@ import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/router/pop_pages_over_shell.dart';
+import 'package:vikunja_mobile/core/activity/activity_item.dart';
 import 'package:vikunja_mobile/core/activity/activity_tray.dart';
 import 'package:vikunja_mobile/core/notifications/notification_actions.dart';
 import 'package:vikunja_mobile/core/repositories/activity_repository_providers.dart';
@@ -99,7 +100,9 @@ class _NotificationTapListenerState
       return;
     }
     final activityId = ActivityTray.activityIdOf(payload.key);
+    int? commentId;
     if (activityId != null) {
+      commentId = await _commentOf(payload.accountId, activityId);
       await _markActivityRead(payload.accountId, activityId);
       if (!mounted || !_opener.isActive(payload.accountId)) return;
       if (payload.taskId == 0) {
@@ -124,7 +127,22 @@ class _NotificationTapListenerState
       );
       return;
     }
-    await _opener.showTask(found);
+    await _opener.showTask(found, commentId: commentId);
+  }
+
+  /// The comment the stored notification names, which the payload does not
+  /// carry; null when there is none or it cannot be read.
+  Future<int?> _commentOf(String accountId, int activityId) async {
+    try {
+      final stored = await _opener.withAccount(
+        accountActivityRepositoryProvider(accountId),
+        (activity) => activity.find(activityId),
+      );
+      return stored == null ? null : commentIdOf(stored);
+    } on Object catch (error) {
+      _log.fine('Could not read the tapped notification: ${error.runtimeType}');
+      return null;
+    }
   }
 
   /// Read on the notification's account, which need not be active yet; a

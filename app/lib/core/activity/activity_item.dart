@@ -47,6 +47,7 @@ final class ActivityItem {
     this.targetName,
     this.targetIsMe = false,
     this.comment,
+    this.commentId,
   });
 
   /// [userId] is the account's own user, the "you" of an assignment or a
@@ -73,6 +74,7 @@ final class ActivityItem {
         final String html => _text(_oneLine(htmlToPlainText(html))),
         _ => null,
       },
+      commentId: commentIdOf(notification),
     );
   }
 
@@ -94,11 +96,20 @@ final class ActivityItem {
 
   /// Plain text, on one line.
   final String? comment;
+  final int? commentId;
 
   int get id => notification.id;
   bool get isRead => notification.isRead;
   DateTime get created => notification.created;
 }
+
+/// The comment the notification's payload names (a `task.comment` one
+/// does), else null.
+int? commentIdOf(ServerNotification notification) =>
+    switch (_map(notification.payload['comment'])?['id']) {
+      final int id when id > 0 => id,
+      _ => null,
+    };
 
 Map<String, Object?>? _map(Object? value) => switch (value) {
   final Map<String, Object?> map => map,

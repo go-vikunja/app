@@ -109,6 +109,71 @@ class DueBadge extends StatelessWidget {
   }
 }
 
+/// A task's comment count, in the primary colour with a dot on the icon
+/// while a comment by someone else is unread, as on the web.
+class CommentCount extends StatelessWidget {
+  const new({required this.count, required this.unread, super.key});
+
+  final int count;
+  final bool unread;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final color = unread ? colors.primary : colors.onSurfaceVariant;
+    return Semantics(
+      label: unread
+          ? l10n.taskCommentCountUnread(count)
+          : l10n.taskCommentCount(count),
+      excludeSemantics: true,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox.square(
+            dimension: 14,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Icon(Icons.chat_bubble_outline, size: 14, color: color),
+                if (unread)
+                  PositionedDirectional(
+                    top: -2,
+                    end: -3,
+                    child: Container(
+                      key: const ValueKey('unread-dot'),
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(
+                        color: colors.primary,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color:
+                              Material.maybeOf(context)?.color ??
+                              colors.surface,
+                          width: 1.5,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            '$count',
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: color,
+              fontWeight: unread ? FontWeight.w600 : null,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// A label as a small pill in its colour from the server, with black or
 /// white text as on the web, which keeps at least 4.5:1; without a
 /// colour in the secondary container colour.
