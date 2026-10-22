@@ -600,7 +600,107 @@ void main() {
         );
       }
     });
+
+    test('random documents: many taps give what tapping one by one gives', () {
+      final random = Random(53);
+      for (var round = 0; round < 300; round++) {
+        var html = _randomDocument(random);
+        if (random.nextInt(4) == 0) html = html.replaceFirst('"id1"', '"id0"');
+        final items = _items(html);
+        final toggles = [
+          for (var i = random.nextInt(13); i > 0; i--)
+            _randomToggle(random, items),
+        ];
+        const prefix = '<p>changed on the web</p>\r\n';
+
+        expect(
+          rebaseChecklistToggles(html, toggles),
+          _rebaseOneByOne(html, toggles),
+          reason: html,
+        );
+        expect(
+          rebaseChecklistToggles('$prefix$html', toggles),
+          _rebaseOneByOne('$prefix$html', toggles),
+          reason: html,
+        );
+      }
+    });
+
+    test('an item whose checkbox runs into the next one', () {
+      // The second item closes the first inside its label.
+      const cut =
+          '<li data-checked="false" data-task-id="a" data-type="taskItem">'
+          '<label><input type="checkbox">';
+      final html = _taskList([cut, _tipTapItem('b', id: 'b', checked: true)]);
+      const toggles = [
+        ChecklistToggle.byId('b', checked: false),
+        ChecklistToggle.byId('a', checked: true),
+      ];
+
+      final rebased = rebaseChecklistToggles(html, toggles);
+
+      expect(rebased, _rebaseOneByOne(html, toggles));
+      expect(_items(rebased).map((item) => item.checked), [true, false]);
+    });
+
+    test('many taps on a long checklist read it once', () {
+      final html = _taskList([
+        for (var i = 0; i < 6000; i++) _tipTapItem('item $i', id: 'i$i'),
+      ]);
+      final toggles = [
+        for (var i = 0; i < 100; i++)
+          ChecklistToggle.byId('i${i * 60}', checked: true),
+      ];
+      final watch = Stopwatch()..start();
+
+      final rebased = rebaseChecklistToggles(html, toggles);
+
+      expect(watch.elapsed, lessThan(const Duration(seconds: 2)));
+      expect(_items(rebased).where((item) => item.checked), hasLength(100));
+    });
   });
+}
+
+/// How `rebaseChecklistToggles` worked before it read the HTML only once:
+/// the item of each tap looked up again after every tap.
+String _rebaseOneByOne(String html, List<ChecklistToggle> toggles) {
+  var rebased = html;
+  for (final toggle in toggles) {
+    final items = _items(rebased);
+    final ordinal = toggle.ordinal;
+    final item = switch (toggle.itemId) {
+      final id? => items.where((item) => item.taskId == id).firstOrNull,
+      null
+          when ordinal! >= 0 &&
+              ordinal < items.length &&
+              checklistItemText(items[ordinal]) == toggle.text =>
+        items[ordinal],
+      null => null,
+    };
+    if (item == null) continue;
+    rebased = toggleTaskItem(rebased, item, checked: toggle.checked) ?? rebased;
+  }
+  return rebased;
+}
+
+ChecklistToggle _randomToggle(Random random, List<RichTaskItem> items) {
+  final checked = random.nextBool();
+  final ordinal = random.nextInt(items.length + 2);
+  final item = ordinal < items.length ? items[ordinal] : null;
+  return switch (random.nextInt(4)) {
+    0 => ChecklistToggle.byId(item?.taskId ?? 'gone', checked: checked),
+    1 => ChecklistToggle.byPosition(
+      ordinal: ordinal,
+      text: item == null ? 'x' : checklistItemText(item),
+      checked: checked,
+    ),
+    2 => ChecklistToggle.byPosition(
+      ordinal: ordinal,
+      text: 'changed',
+      checked: checked,
+    ),
+    _ => ChecklistToggle.byId('id${random.nextInt(20)}', checked: checked),
+  };
 }
 
 const _words = ['milk', 'eggs', '🍞 bread', 'tea\tcup', 'a<b', 'x&amp;y'];

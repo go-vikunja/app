@@ -1403,6 +1403,7 @@ ADR-lite. Each entry has a number, a status and the step that took it. A decisio
   - Below the budgets the result is package:html's own. The converter still flattens what is nested deeper than 96 elements to its text.
   - A numeric reference past 64 bits reads as U+FFFD, as package:html reads one past U+10FFFF.
   - The converter removes blank text nodes, moves lists nested in a list and joins adjacent text each in one pass; the composer trims the end of a web address in one pass.
+  - The outbox's checklist rebase parses the description once for all queued taps and applies them from the last item to the first. When an item's change could reach the next item, which only malformed HTML allows, it parses again after each tap as before.
 - **Rejected alternatives:**
   - **Modelling the tree builder on the raw text** (the first guard): it is never exact by construction, it was bypassed and it blanked too much.
   - **A fixed depth limit:** the cost is the depth walked per token, not the depth itself; a limit low enough to be cheap cut off mail threads.
@@ -1417,5 +1418,5 @@ ADR-lite. Each entry has a number, a status and the step that took it. A decisio
     - each budget at its edge, the stop outside an adoption agency's move, numeric references against package:html;
     - the truncated document with its checklist, its reply quote (a plain-text one keeping its paragraph) and preview;
     - 27 hostile inputs of up to 1 MB, through the parser and the reply quote, each under 3 s and truncated or not as expected; among them every bypass of the first guard and every path above;
-    - the address trimming against the former code;
+    - the address trimming and the checklist rebase against the former code, the rebase also with 100 taps on a 1 MB checklist;
     - a mutation check in which switching off any budget, hook or fix fails the tests.

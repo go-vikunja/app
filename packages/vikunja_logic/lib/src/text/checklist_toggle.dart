@@ -89,6 +89,37 @@ String rebaseChecklistToggles(
   String serverHtml,
   List<ChecklistToggle> toggles,
 ) {
+  // A tap neither moves, adds nor renames items, so one parse finds the
+  // items of all taps.
+  final items = _itemsOf(serverHtml);
+  final tapsByOffset = <int, (bool, List<bool>)>{};
+  for (final toggle in toggles) {
+    final item = _itemFor(toggle, items);
+    final offset = item?.sourceOffset;
+    if (item == null || offset == null) continue;
+    (tapsByOffset[offset] ??= (item.checked, [])).$2.add(toggle.checked);
+  }
+  final offsets = tapsByOffset.keys.toList()..sort();
+  for (var i = 1; i < offsets.length; i++) {
+    final (checked, _) = tapsByOffset[offsets[i - 1]]!;
+    if (_changedUntil(serverHtml, offsets[i - 1], checked) > offsets[i]) {
+      return _rebaseOneByOne(serverHtml, toggles);
+    }
+  }
+  // From the last item to the first, so that no change moves an offset
+  // still to come.
+  var html = serverHtml;
+  for (final offset in offsets.reversed) {
+    var (current, taps) = tapsByOffset[offset]!;
+    for (final checked in taps) {
+      html = _toggleAt(html, offset, current, checked: checked);
+      current = checked;
+    }
+  }
+  return html;
+}
+
+String _rebaseOneByOne(String serverHtml, List<ChecklistToggle> toggles) {
   var html = serverHtml;
   for (final toggle in toggles) {
     final item = _itemFor(toggle, _itemsOf(html));
@@ -97,6 +128,23 @@ String rebaseChecklistToggles(
     html = _toggleAt(html, offset, item.checked, checked: toggle.checked);
   }
   return html;
+}
+
+/// Where `_toggleAt` stops reading and changing [html] for the item whose
+/// `data-checked` stands at [offset].
+int _changedUntil(String html, int offset, bool current) {
+  final tagEnd = _startTagEnd(
+    html,
+    offset + _attributePrefix.length + '$current'.length + 1,
+  );
+  if (tagEnd == null) return html.length;
+  final after = tagEnd + 1;
+  return html.startsWith(_tipTapCheckbox, after)
+      ? after +
+            _tipTapCheckbox.length +
+            _checkedInput.length +
+            _checkboxRest.length
+      : after;
 }
 
 /// [item]'s own text, as `ChecklistToggle.text` keeps it: whitespace
