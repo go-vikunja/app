@@ -4,6 +4,7 @@
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vikunja_logic/src/text/bounded_html_parser.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 
 import 'rich_text_json.dart';
@@ -301,21 +302,41 @@ void main() {
       ]);
     });
 
-    test('deep nesting is cut short instead of overflowing the stack', () {
-      for (final (open, close) in [
-        ('<div>', '</div>'),
-        ('<blockquote>', '</blockquote>'),
-        ('<ul><li>', '</li></ul>'),
-        ('<b>', '</b>'),
-        ('<table><tr><td>', '</td></tr></table>'),
-      ]) {
-        final html = '${open * 5000}deep${close * 5000}<p>after</p>';
+    // Each pair of the open and close tags with how many elements the
+    // open tags make, tbody included.
+    const nestings = [
+      ('<div>', '</div>', 1),
+      ('<blockquote>', '</blockquote>', 1),
+      ('<ul><li>', '</li></ul>', 2),
+      ('<b>', '</b>', 1),
+      ('<table><tr><td>', '</td></tr></table>', 4),
+    ];
+
+    test('deep nesting is flattened to its text instead of overflowing the '
+        'stack', () {
+      for (final (open, close, elements) in nestings) {
+        final levels = (maxOpenElements - 2) ~/ elements;
+        final html = '${open * levels}deep${close * levels}<p>after</p>';
 
         final document = _parse(html);
 
-        expect(document.plainText, contains('deep'));
-        expect(document.plainText, endsWith('after'));
-        expect(_depth(document), lessThan(200));
+        expect(document.plainText, contains('deep'), reason: open);
+        expect(document.plainText, endsWith('after'), reason: open);
+        expect(_depth(document), lessThan(100), reason: open);
+      }
+    });
+
+    test('nesting deeper than the parser reads ends the document with an '
+        'ellipsis', () {
+      for (final (open, close, _) in nestings) {
+        final html = '<p>before</p>${open * 5000}deep${close * 5000}<p>after';
+
+        final document = _parse(html);
+
+        expect(document.plainText, startsWith('before'), reason: open);
+        expect(document.plainText, endsWith('\n…'), reason: open);
+        expect(document.plainText, isNot(contains('after')), reason: open);
+        expect(_depth(document), lessThan(100), reason: open);
       }
     });
 

@@ -1,7 +1,7 @@
 import 'package:html/dom.dart' as dom;
 import 'package:html/html_escape.dart';
-import 'package:html/parser.dart' as html_parser;
 import 'package:meta/meta.dart';
+import 'package:vikunja_logic/src/text/bounded_html_parser.dart';
 import 'package:vikunja_logic/src/text/rich_text.dart';
 import 'package:vikunja_logic/src/text/rich_text_parser.dart';
 
@@ -59,8 +59,9 @@ final class QuotedComment {
 /// far as the web's editor keeps it, in a `blockquote` carrying its id, its
 /// mentions turned into `@label` text so that quoting notifies nobody again
 /// (the server notifies the quoted author instead); plain text in it
-/// becomes a paragraph. Without text the reply ends in an empty paragraph,
-/// as the web's does.
+/// becomes a paragraph, and a comment the parser stops in (see
+/// [RichDocument.truncated]) is quoted up to there, then `…`. Without text
+/// the reply ends in an empty paragraph, as the web's does.
 ///
 /// Empty text without a reply is the editor's empty `<p></p>`.
 String commentHtmlFromText(
@@ -93,11 +94,15 @@ String commentHtmlFromText(
 /// quotes left out unless it holds nothing else, all on one line.
 String quotedTextOf(String html) {
   final document = parseRichText(html, apiRoot: Uri(), taskLinkBases: const []);
-  final own = _blockText(document.blocks, skipReplies: true);
+  final blocks = document.truncated
+      ? document.blocks.sublist(0, document.blocks.length - 1)
+      : document.blocks;
+  final own = _blockText(blocks, skipReplies: true);
   final text = own.trim().isEmpty
-      ? _blockText(document.blocks, skipReplies: false)
+      ? _blockText(blocks, skipReplies: false)
       : own;
-  return text.replaceAll(_whitespaceRun, ' ').trim();
+  final quoted = text.replaceAll(_whitespaceRun, ' ').trim();
+  return document.truncated ? '$quoted …'.trimLeft() : quoted;
 }
 
 final _whitespaceRun = RegExp(r'\s+');
@@ -188,20 +193,11 @@ void _writeLine(StringBuffer out, String text, _Line line) {
 // Only addresses with a scheme: the web's autolink also takes bare domains
 // by their top-level domain, which this does not try to match.
 final _webAddress = RegExp(r'https?://[^\s<>"]+', caseSensitive: false);
-final _trailingPunctuation = RegExp(r'''[.,;:!?'"]+$''');
 
 void _writeLinked(StringBuffer out, String text) {
   var start = 0;
   for (final match in _webAddress.allMatches(text)) {
-    var address = match[0]!.replaceFirst(_trailingPunctuation, '');
-    // A closing bracket after an address belongs to the sentence unless the
-    // address opened one.
-    while (address.endsWith(')') &&
-        ')'.allMatches(address).length > '('.allMatches(address).length) {
-      address = address
-          .substring(0, address.length - 1)
-          .replaceFirst(_trailingPunctuation, '');
-    }
+    final address = _withoutSentenceEnd(match[0]!);
     if (Uri.tryParse(address)?.host.isEmpty ?? true) continue;
     out
       ..write(_text(text.substring(start, match.start)))
@@ -215,6 +211,25 @@ void _writeLinked(StringBuffer out, String text) {
   out.write(_text(text.substring(start)));
 }
 
+// Trailing punctuation belongs to the sentence, and so does a closing
+// bracket that the address did not open.
+String _withoutSentenceEnd(String address) {
+  var unopened =
+      ')'.allMatches(address).length - '('.allMatches(address).length;
+  var end = address.length;
+  while (true) {
+    while (_sentencePunctuation.contains(address[end - 1])) {
+      end--;
+    }
+    if (address[end - 1] != ')' || unopened <= 0) break;
+    end--;
+    unopened--;
+  }
+  return address.substring(0, end);
+}
+
+const _sentencePunctuation = {'.', ',', ';', ':', '!', '?', "'", '"'};
+
 String _text(String text) => htmlSerializeEscape(text);
 
 String _attribute(String value) =>
@@ -227,13 +242,15 @@ String _attribute(String value) =>
 // nothing to quote. The web's editor then saves only what its schema
 // knows, so only that is copied.
 String _quoteBody(String html) {
-  final source = html_parser
-      .parse('<div>$html</div>')
-      .body
-      ?.children
-      .firstOrNull;
+  final (:document, :complete) = parseBoundedHtml('<div>$html</div>');
+  final source = document.body?.children.firstOrNull;
   final wrapper = dom.Element.tag('div');
   if (source != null) _copySchemaMarkup(source, wrapper);
+  if (complete) return _quotedMarkup(wrapper);
+  return '${wrapper.hasChildNodes() ? _quotedMarkup(wrapper) : ''}<p>…</p>';
+}
+
+String _quotedMarkup(dom.Element wrapper) {
   if (!wrapper.nodes.every(_isInline)) return wrapper.innerHtml;
   // Plain text, as other clients write it: the editor puts it into a
   // paragraph and turns its line breaks into hard breaks.

@@ -8,9 +8,13 @@ import 'package:vikunja_logic/src/text/rich_text_parser.dart';
 /// itself. The renderer decides what an image may load and what a tap does.
 @immutable
 final class RichDocument {
-  const new(this.blocks);
+  const new(this.blocks, {this.truncated = false});
 
   final List<RichBlock> blocks;
+
+  /// The parser stopped at one of its limits: the rest of the HTML was not
+  /// read, and the last block is a paragraph `…`.
+  final bool truncated;
 
   /// No visible content: no text other than whitespace, no image, mention,
   /// task link, rule, table or task item.
@@ -256,7 +260,10 @@ final class RichTaskLink extends RichInline {
 /// - `img` without a source, with a `data:` one, or with one that is
 ///   neither an attachment of this server nor an absolute http(s) URL is
 ///   dropped (the web shows the last kind as a broken image);
-/// - markup nested deeper than 96 elements is reduced to its text.
+/// - markup nested deeper than 96 elements is reduced to its text;
+/// - the parse stops where the HTML would make `package:html` work too
+///   long or create too much (`bounded_html_parser.dart`), and the document
+///   is then [RichDocument.truncated].
 ///
 /// Unlike the web: no link is created for a bare URL (the web's autolink
 /// runs once on load), and no empty paragraph is appended after a last

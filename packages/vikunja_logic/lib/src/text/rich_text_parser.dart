@@ -1,8 +1,8 @@
 import 'package:html/dom.dart' as dom;
-import 'package:html/parser.dart' as html_parser;
 import 'package:vikunja_logic/src/links/attachment_urls.dart';
 import 'package:vikunja_logic/src/links/task_links.dart';
 import 'package:vikunja_logic/src/links/url_text.dart';
+import 'package:vikunja_logic/src/text/bounded_html_parser.dart';
 import 'package:vikunja_logic/src/text/checklist.dart';
 import 'package:vikunja_logic/src/text/rich_text.dart';
 import 'package:vikunja_logic/src/text/rich_text_schema.dart';
@@ -25,12 +25,13 @@ RichDocument buildRichDocument(
   required List<Uri> taskLinkBases,
 }) {
   final source = '$_bodyPrefix$html</body>';
-  final body = html_parser.parse(source, generateSpans: true).body!;
+  final (:document, :complete) = parseBoundedHtml(source);
+  final body = document.body!;
   _prepare(body);
   final context = _ParseContext(
     _Rules(taskLinkBases: taskLinkBases, offsets: _SourceOffsets(html, source)),
   )..addAll(body, const []);
-  return _Converter(apiRoot).document(context.finish());
+  return _Converter(apiRoot).document(context.finish(), truncated: !complete);
 }
 
 // Never visited: ProseMirror's ignored tags plus everything that embeds,
@@ -115,13 +116,12 @@ void _prepare(dom.Element body) {
       if (text.isNotEmpty) element.append(dom.Text(text));
       continue;
     }
-    for (var i = element.nodes.length - 1; i >= 0; i--) {
-      final child = element.nodes[i];
-      if (child is dom.Text && _tipTapBlank.hasMatch(child.data)) {
-        child.remove();
-      } else if (child is dom.Element) {
-        pending.add((child, depth + 1));
-      }
+    _retainChildren(
+      element,
+      (child) => child is! dom.Text || !_tipTapBlank.hasMatch(child.data),
+    );
+    for (final child in element.children.reversed) {
+      pending.add((child, depth + 1));
     }
   }
 }
@@ -202,23 +202,18 @@ final class _Node {
 
   /// ProseMirror's `Fragment.from`: adjacent text with the same marks is
   /// one text node.
-  factory create(NodeKind kind, _Attrs attrs, List<_Node> content) {
-    final joined = <_Node>[];
-    for (final node in content) {
-      final previous = joined.lastOrNull;
-      if (previous != null &&
-          previous.kind == NodeKind.text &&
-          node.kind == NodeKind.text &&
-          _sameMarks(previous.marks, node.marks)) {
-        joined[joined.length - 1] = previous.withText(
-          previous.text + node.text,
-        );
-      } else {
-        joined.add(node);
-      }
-    }
-    return _Node(kind, attrs, joined);
-  }
+  factory create(NodeKind kind, _Attrs attrs, List<_Node> content) => _Node(
+    kind,
+    attrs,
+    _joinRuns(
+      content,
+      (first, next) =>
+          first.kind == NodeKind.text &&
+          next.kind == NodeKind.text &&
+          _sameMarks(first.marks, next.marks),
+      (run) => run.first.withText(run.map((node) => node.text).join()),
+    ),
+  );
 
   factory createAndFill(NodeKind kind) => _Node.create(kind, const _Attrs(), [
     for (final filler
@@ -238,6 +233,28 @@ final class _Node {
 
   _Node withText(String text) =>
       _Node(kind, attrs, content, text: text, marks: marks);
+}
+
+/// [items] with each run of neighbours that [joins] to the run's first item
+/// replaced by [join] of the run, joined once: joining them pairwise copies
+/// the growing text again for each.
+List<T> _joinRuns<T>(
+  List<T> items,
+  bool Function(T first, T next) joins,
+  T Function(List<T> run) join,
+) {
+  final joined = <T>[];
+  for (var start = 0; start < items.length;) {
+    var end = start + 1;
+    while (end < items.length && joins(items[start], items[end])) {
+      end++;
+    }
+    joined.add(
+      end == start + 1 ? items[start] : join(items.sublist(start, end)),
+    );
+    start = end;
+  }
+  return joined;
 }
 
 bool _sameMarks(List<ParsedMark> a, List<ParsedMark> b) {
@@ -599,19 +616,34 @@ final _boldWeight = RegExp(r'^(bold(er)?|[5-9]\d{2,})$');
 /// the list item before them.
 void _normalizeList(dom.Element list) {
   dom.Element? previousItem;
-  var i = 0;
-  while (i < list.nodes.length) {
-    final child = list.nodes[i];
-    if (child is dom.Element) {
-      final name = child.localName;
-      if ((name == 'ul' || name == 'ol') && previousItem != null) {
-        previousItem.append(child);
-        continue;
-      }
+  final moves = <(dom.Element, dom.Element)>[];
+  for (final child in list.nodes) {
+    if (child is! dom.Element) continue;
+    final name = child.localName;
+    if ((name == 'ul' || name == 'ol') && previousItem != null) {
+      moves.add((child, previousItem));
+    } else {
       previousItem = name == 'li' ? child : null;
     }
-    i++;
   }
+  if (moves.isEmpty) return;
+  final moved = Set<dom.Node>.identity()..addAll(moves.map((move) => move.$1));
+  _retainChildren(list, (child) => !moved.contains(child));
+  for (final (child, item) in moves) {
+    item.append(child);
+  }
+}
+
+/// Keeps the children of [parent] that [keep] accepts. package:html
+/// searches the children for each node that is removed on its own, also
+/// with `removeWhere`.
+void _retainChildren(dom.Node parent, bool Function(dom.Node child) keep) {
+  final nodes = parent.nodes;
+  final kept = nodes.where(keep).toList();
+  if (kept.length == nodes.length) return;
+  nodes
+    ..clear()
+    ..addAll(kept);
 }
 
 /// The declarations of the `style` attribute, names and values lower-cased
@@ -1037,8 +1069,14 @@ final class _Converter {
 
   /// At least one block, like ProseMirror's `block+`, also when every
   /// block was an image that is dropped here.
-  RichDocument document(_Node doc) {
+  RichDocument document(_Node doc, {required bool truncated}) {
     final blocks = _blocks(doc.content);
+    if (truncated) {
+      return RichDocument([
+        ...blocks,
+        const RichParagraph([RichTextRun('…')]),
+      ], truncated: true);
+    }
     return RichDocument(blocks.isEmpty ? const [RichParagraph([])] : blocks);
   }
 
@@ -1126,27 +1164,24 @@ final class _Converter {
     return RichImage(source, alt: attrs.alt, title: attrs.title);
   }
 
-  List<RichInline> _inlines(List<_Node> nodes) {
-    final inlines = <RichInline>[];
-    for (final node in nodes) {
-      final inline = _inline(node);
-      if (inline == null) continue;
-      final previous = inlines.lastOrNull;
-      if (inline is RichTextRun &&
-          previous is RichTextRun &&
-          previous.href == inline.href &&
-          _sameRichMarks(previous.marks, inline.marks)) {
-        inlines[inlines.length - 1] = RichTextRun(
-          previous.text + inline.text,
-          marks: previous.marks,
-          href: previous.href,
+  List<RichInline> _inlines(List<_Node> nodes) => List.unmodifiable(
+    _joinRuns(
+      [for (final node in nodes) ?_inline(node)],
+      (first, next) =>
+          first is RichTextRun &&
+          next is RichTextRun &&
+          first.href == next.href &&
+          _sameRichMarks(first.marks, next.marks),
+      (run) {
+        final first = run.first as RichTextRun;
+        return RichTextRun(
+          run.cast<RichTextRun>().map((inline) => inline.text).join(),
+          marks: first.marks,
+          href: first.href,
         );
-      } else {
-        inlines.add(inline);
-      }
-    }
-    return List.unmodifiable(inlines);
-  }
+      },
+    ),
+  );
 
   RichInline? _inline(_Node node) {
     final attrs = node.attrs;

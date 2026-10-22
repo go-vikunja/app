@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
@@ -64,21 +65,79 @@ void main() {
     }
   });
 
-  test('a quote nested thousands of elements deep', () {
-    const depth = 5000;
-    final html = [
-      '<div>' * depth,
-      '<mention-user data-id="a" data-label="Ann"></mention-user>',
-      '</div>' * depth,
-    ].join();
+  group('the end of a web address', () {
+    // The trimming before it was made linear.
+    String trimmed(String address) {
+      final punctuation = RegExp(r'''[.,;:!?'"]+$''');
+      var trimmed = address.replaceFirst(punctuation, '');
+      while (trimmed.endsWith(')') &&
+          ')'.allMatches(trimmed).length > '('.allMatches(trimmed).length) {
+        trimmed = trimmed
+            .substring(0, trimmed.length - 1)
+            .replaceFirst(punctuation, '');
+      }
+      return trimmed;
+    }
 
-    final quoted = commentHtmlFromText(
+    final link = RegExp('href="([^"]*)"');
+
+    test('leaves punctuation and unopened brackets to the sentence', () {
+      const tails = "a.,;:!?')(/";
+      final random = Random(3);
+      for (var i = 0; i < 5000; i++) {
+        final address = [
+          'https://a.example/x',
+          for (var j = random.nextInt(12); j > 0; j--)
+            tails[random.nextInt(tails.length)],
+        ].join();
+
+        final html = commentHtmlFromText('see $address now');
+
+        expect(link.firstMatch(html)![1], trimmed(address), reason: address);
+      }
+    });
+
+    test('is found in linear time', () {
+      for (final address in [
+        'https://example.com/${')' * 40000}',
+        'https://example.com/${'.' * 40000}a',
+        'https://example.com/${'(' * 20000}${')' * 40000}',
+      ]) {
+        final watch = Stopwatch()..start();
+
+        commentHtmlFromText(address);
+
+        expect(watch.elapsedMilliseconds, lessThan(500));
+      }
+    });
+  });
+
+  test('a quote nested thousands of elements deep', () {
+    String quote(int depth) => commentHtmlFromText(
       '',
-      reply: QuotedComment(id: 1, html: html),
+      reply: QuotedComment(
+        id: 1,
+        html: [
+          '<div>' * depth,
+          '<mention-user data-id="a" data-label="Ann"></mention-user>',
+          '</div>' * depth,
+        ].join(),
+      ),
     );
 
-    expect(quoted, contains('@Ann'));
-    expect(quoted, isNot(contains('mention-user')));
+    expect(quote(100), contains('@Ann'));
+    expect(quote(5000), contains('…'));
+    expect(quote(5000), isNot(contains('mention-user')));
+  });
+
+  test('a plain-text quote cut short keeps its paragraph and breaks', () {
+    final quoted = commentHtmlFromText(
+      '',
+      reply: QuotedComment(id: 1, html: 'a\nb${'<span>x' * 1100}'),
+    );
+
+    expect(quoted, startsWith('<blockquote data-comment-id="1"><p>a<br>b'));
+    expect(quoted, endsWith('</p><p>…</p></blockquote><p></p>'));
   });
 
   group('quotedTextOf', () {

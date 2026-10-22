@@ -1376,3 +1376,46 @@ ADR-lite. Each entry has a number, a status and the step that took it. A decisio
   - go_router drops a push's `extra` that is not JSON once Android reports the route list back; the comment editor's route therefore keeps the comment it was pushed with.
   - Not built: a formatting toolbar in the composer, images in comments, reactions for link-share guests (step 32), comment search.
   - Tests: the comment HTML vectors (each also loaded into the bundled editor and serialised back unchanged), the write ports on fixtures recorded from 2.7.0, the schema v8 migration and the sync's expands, the draft store, the controllers' refresh and write ordering, widget tests for the composer, replies, edits, deletes, reactions, counts and the unread dot, opening at a comment, the keyboard cases in the accessibility smoke test. Contract tests on 2.7.0 with two users: create, edit and delete as author, another user refused, reactions on a task and a comment, unread set and cleared, counts in a view list. Checked on the Android emulator: unread count and dot after another user's mention, the inbox opening the task at that comment, a reaction, a reply with a mention stored exactly as the web writes it (the other user notified as mentioned), an edit in the editor page and "edited", a delete, another user's new comment appearing in the open sheet, the dot gone after reading, and a draft typed offline kept across closing the sheet and sent once online.
+
+## D58: Server HTML parsed within budgets counted inside package:html; a document past one ends with an ellipsis
+
+*Accepted 2026-10-21, a hardening task after step 27. Bounds the parser of [D44](#d44-task-detail-complete-rich-text-from-an-own-parser-of-the-web-editors-schema-details-and-comments-online-on-demand-deep-links-on-the-app-scheme) and the reply quotes of [D57](#d57-comments-written-in-the-app-online-with-a-draft-kept-on-the-device-reactions-on-tasks-and-comments-comment-counts-and-the-unread-dot-on-rows).*
+
+- **Context:**
+  - Descriptions and comments are HTML that the server stores unchanged, hostile markup included. The app parses them on the UI isolate (the task sheet, comment previews and reply quotes, checklist taps, the description editor's check for an empty comment) and in the outbox's checklist rebase, which also runs in headless isolates.
+  - package:html 0.15.7 has several paths whose time grows with the square of the input. Measured on a laptop:
+    - Most tokens walk the stack of open elements: 50,000 nested `div`s took 30 s, 20,000 nested lists 20 s.
+    - Markup misplaced in a table goes before the table after a search through its siblings: 82 s for 950 KB.
+    - The adoption agency moves a block's children one by one, searching for each: 65 s for 1 MB.
+    - Formatting elements reopened before each text, or cloned by the adoption agency, multiply the elements and their attributes: 14 million elements came from 950 KB, 500 KB of attributes ran out of memory, and one long link reopened in every paragraph made a reply quote of gigabytes.
+    - Each formatting element is compared, attribute by attribute, with up to 256 earlier ones in the list of active formatting elements, and markers that table cells leave behind make that list grow, while the adoption agency searches it from the start: 2 s to 9 s per MB.
+    - A numeric character reference past 64 bits (`&#99999999999999999999;`) throws, so 26 bytes broke the task sheet for everyone.
+  - The converter added its own: removing TipTap's blank text nodes and moving nested lists one at a time (24 s and 13 s), and joining adjacent text pairwise (9 s). The composer trimmed the end of a web address in quadratic time (17 s for 40,000 dots).
+  - A first guard modelled the tree builder on the raw text and blanked tags past a depth. Two review rounds bypassed it (CDATA outside foreign content, cells outside a table, foreign content, its own blanking) and found it blanking legitimate markup. A fixed depth limit in its place cut off ordinary mail threads of 40 replies.
+- **Decision:**
+  - `parseBoundedHtml` (`vikunja_logic`) parses with package:html itself, through subclasses of its tokenizer and tree builder (implementation imports: the package offers no hooks). They count the real parser's work against budgets:
+    - the entries walked in the stack of open elements (once per token) and in the list of active formatting elements (per formatting element, times its attributes, and per round of the adoption agency): 2^24;
+    - the elements created, the reopened and cloned ones included: 2^18;
+    - the characters of their attributes, copies included: 2^24;
+    - the sibling positions searched to move nodes, for foster parenting and for the children the adoption agency actually moves: 2^28;
+    - at most 1,024 elements open at once, for package:html's recursive serialiser.
+  - The parse stops between tokens, before an element is inserted or before a round of the adoption agency, never while a node is out of the tree. Rich text shows what was parsed until there, then a paragraph `…`, and `RichDocument.truncated` is set; checklist items before the cut tick as before. A reply quotes such a comment up to the cut, then `…`, and its preview ends with ` …`.
+  - Below the budgets the result is package:html's own. The converter still flattens what is nested deeper than 96 elements to its text.
+  - A numeric reference past 64 bits reads as U+FFFD, as package:html reads one past U+10FFFF.
+  - The converter removes blank text nodes, moves lists nested in a list and joins adjacent text each in one pass; the composer trims the end of a web address in one pass.
+- **Rejected alternatives:**
+  - **Modelling the tree builder on the raw text** (the first guard): it is never exact by construction, it was bypassed and it blanked too much.
+  - **A fixed depth limit:** the cost is the depth walked per token, not the depth itself; a limit low enough to be cheap cut off mail threads.
+  - **Parsing in a background isolate with a time limit:** every synchronous caller would have to become asynchronous; it remains possible as an addition.
+  - **Keeping the rest of a document past a budget as plain text:** it needs a second pass that knows which content stays hidden, for documents that are hostile or broken.
+- **Consequences:**
+  - A document past a budget shows only its beginning in the app. The rest stays on the server and in the web, and its checklist items cannot be ticked in the app.
+  - An update of package:html can break the subclasses at compile time; the tests pin package:html's output below the budgets.
+  - Of 90 hostile and ordinary shapes of up to 1 MB, measured on a laptop, the slowest takes 1.0 s (end tags deep in the stack, through the parser as through the reply quote) and every other at most 0.7 s, against 0.13–0.48 s for 1 MB of plain paragraphs, breaks or list items.
+  - Tests:
+    - package:html's own output for every recorded description and comment and for deep, misnested and large documents of the real world (a mail thread of 60 replies, unclosed bold headings and fonts, a link, font or bold closed out of order, a link opened inside a link, a 1 MB editor document);
+    - each budget at its edge, the stop outside an adoption agency's move, numeric references against package:html;
+    - the truncated document with its checklist, its reply quote (a plain-text one keeping its paragraph) and preview;
+    - 27 hostile inputs of up to 1 MB, through the parser and the reply quote, each under 3 s and truncated or not as expected; among them every bypass of the first guard and every path above;
+    - the address trimming against the former code;
+    - a mutation check in which switching off any budget, hook or fix fails the tests.
