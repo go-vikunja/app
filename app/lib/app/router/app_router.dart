@@ -137,6 +137,20 @@ abstract final class AppRoutes {
   /// page over the shell; `/home/accounts/add` is not the Account tab.
   static bool isTab(String location) =>
       _tabs.any((tab) => location == tab || location.startsWith('$tab/'));
+
+  static final _closedToGuests = RegExp(
+    '^(?:(?:$accountSettings|$teams)(?:/.*)?|$inbox|'
+    '$labels(?:/new|/\\d+/edit|/\\d+/description)?|'
+    '$home/filters/(?:new|-?\\d+/edit)|'
+    '$home/project/-?\\d+/(?:edit|description|views|share))\$',
+  );
+
+  /// The pages a link-share guest has no use for: the server refuses what
+  /// they do for anyone who is not a user, or the share's project is its
+  /// owner's to rename, share or set up views for. A label's tasks stay
+  /// open.
+  static bool isClosedToGuests(String location) =>
+      _closedToGuests.hasMatch(location);
 }
 
 /// Observes the root navigator, whose dialogs and sheets an account switch
@@ -195,13 +209,18 @@ GoRouter appRouter(Ref ref) {
         return AppRoutes.splash;
       }
       final registry = ref.read(accountsProvider);
-      return _redirect(
+      final redirect = _redirect(
         location: state.matchedLocation,
         accounts: registry,
         syncStatus: _syncStatusOfActive(ref, registry),
         notificationsOnboarded: onboarded.value,
         hasServer: currentServer.value != null,
       );
+      if (redirect != null) return redirect;
+      final guest = registry.value?.activeAccount?.account.isLinkShare ?? false;
+      return guest && AppRoutes.isClosedToGuests(state.matchedLocation)
+          ? AppRoutes.overview
+          : null;
     },
     routes: [
       GoRoute(

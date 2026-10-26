@@ -5640,5 +5640,366 @@
   "projectTimelineShowUndated": "Show undated",
   "@projectTimelineShowUndated": {
     "description": "Filter chip above a Gantt view's timeline that adds the tasks without any date, as estimated bars from today. Phrased as an action like 'Show done'."
+  },
+  "overviewCreateAccount": "Create account",
+  "@overviewCreateAccount": {
+    "description": "Server overview button under Continue to sign-in; opens the browser sign-in, whose page offers registration."
+  },
+  "overviewCreateAccountHint": "On the sign-in page, choose Create account. You come back here afterwards.",
+  "@overviewCreateAccountHint": {
+    "description": "Shown before the browser sign-in opens for Create account. The label is the web login page's link (German web: Account erstellen)."
+  },
+  "overviewForgotPassword": "Forgot password?",
+  "@overviewForgotPassword": {
+    "description": "Server overview button; opens the web's password reset page in the browser."
+  },
+  "overviewRegistrationNeedsInvitation": "Registration needs an invitation.",
+  "@overviewRegistrationNeedsInvitation": {
+    "description": "Server overview note when public registration is off but the server has invite links."
+  },
+  "overviewSignInPageOffersBoth": "The sign-in page also lets you create an account and reset your password.",
+  "overviewSignInPageOffersRegistration": "The sign-in page also lets you create an account.",
+  "overviewSignInPageOffersPasswordReset": "The sign-in page also lets you reset your password.",
+  "overviewDemoNote": "This is a demo server. Its data may be deleted at any time.",
+  "@overviewDemoNote": {
+    "description": "Account tab, Server section, when the server reports demo mode."
+  },
+  "guestAccountSubtitle": "Guest · {host}",
+  "@guestAccountSubtitle": {
+    "description": "Second line of a link-share guest in the account list, the switcher and the Account tab's header.",
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "guestOpenLinkAgain": "Open the link again",
+  "@guestOpenLinkAgain": {
+    "description": "Badge of a guest access the server ended, and the action of its banner on the Account tab."
+  },
+  "guestReauthTitle": "Guest access ended",
+  "@guestReauthTitle": {
+    "description": "Title of the Account tab's banner when the server no longer accepts a link-share guest."
+  },
+  "guestReauthBody": "{host} ended this guest access. Open the shared link again to keep the project in sync: a link with a password asks for it, and a deleted link needs a new one from whoever shared it. Nothing on this device is lost.",
+  "@guestReauthBody": {
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "guestSwitcherButton": "Accounts, guest in {name} on {host}",
+  "@guestSwitcherButton": {
+    "description": "Screen reader label of the avatar button that opens the account switcher while a link-share guest is active.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Garden"
+      },
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "guestNotePermission": "Shared link: {permission}",
+  "@guestNotePermission": {
+    "description": "First line of the guest note on the Account tab; the permission is sharePermissionRead, sharePermissionWrite or sharePermissionAdmin.",
+    "placeholders": {
+      "permission": {
+        "type": "String",
+        "example": "Read only"
+      }
+    }
+  },
+  "guestNoteCanView": "You can view this project's tasks, comments and attachments.",
+  "guestNoteCanChange": "You can view and change this project's tasks, comment and add attachments.",
+  "guestNoteNeedsAccount": "Account settings, labels, teams, favourites, reactions and the server's notifications need an account of your own.",
+  "guestRemove": "Remove guest access",
+  "@guestRemove": {
+    "description": "The Account tab's sign-out button while a link-share guest is active."
+  },
+  "guestRemoveDialogTitle": "Remove guest access?",
+  "guestRemoveDialogBody": "Rurana will remove the guest access to {name} on {host} and delete its tasks saved on this device. You can open the shared link again at any time.",
+  "@guestRemoveDialogBody": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Garden"
+      },
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "guestRemoveDialogPendingChangesOpenLinkFirst": "{count, plural, =1{One change has not been sent to the server yet and will be lost; switch to this guest access, open the link again and tap Send now first to keep it.} other{{count} changes have not been sent to the server yet and will be lost; switch to this guest access, open the link again and tap Send now first to keep them.}}",
+  "@guestRemoveDialogPendingChangesOpenLinkFirst": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "guestRemoved": "Guest access to {name} removed",
+  "@guestRemoved": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Garden"
+      }
+    }
+  },
+  "guestOpenSharedLink": "Open a shared link",
+  "@guestOpenSharedLink": {
+    "description": "Connect screen: text button and sheet title to open a project someone shared as a link, as a guest"
+  },
+  "guestLinkExplanation": "Got a link to a project someone shared? Open it here as a guest, without an account of your own.",
+  "@guestLinkExplanation": {
+    "description": "Open a shared link sheet: what the sheet is for"
+  },
+  "guestLinkLabel": "Shared link",
+  "@guestLinkLabel": {
+    "description": "Open a shared link sheet: label of the link field"
+  },
+  "guestLinkHint": "https://vikunja.example.com/share/…/auth",
+  "@guestLinkHint": {
+    "description": "Open a shared link sheet: example of a shared link in the empty field"
+  },
+  "guestLinkPaste": "Paste",
+  "@guestLinkPaste": {
+    "description": "Open a shared link sheet: puts the clipboard's text into the field"
+  },
+  "guestLinkOpen": "Open",
+  "@guestLinkOpen": {
+    "description": "Open a shared link sheet and password sheet: opens the shared project"
+  },
+  "guestLinkInvalid": "This isn't a link to a shared project. Such a link ends in /share/…/auth.",
+  "@guestLinkInvalid": {
+    "description": "Open a shared link sheet: the text is neither a shared link nor an invitation"
+  },
+  "guestLinkClipboardEmpty": "There's no text on the clipboard.",
+  "@guestLinkClipboardEmpty": {
+    "description": "Open a shared link sheet: Paste found nothing to paste"
+  },
+  "guestConnectingTo": "Opening the shared link {link} …",
+  "@guestConnectingTo": {
+    "description": "Connect screen while a shared link is being opened; the link's secret is cut short",
+    "placeholders": {
+      "link": {
+        "type": "String",
+        "example": "https://vikunja.example.com/share/AbCd…/auth"
+      }
+    }
+  },
+  "guestPasswordTitle": "Password needed",
+  "@guestPasswordTitle": {
+    "description": "Password sheet title for a shared project protected by a password"
+  },
+  "guestPasswordBody": "This shared project is protected by a password. Enter the one you got with the link.",
+  "@guestPasswordBody": {
+    "description": "Password sheet: what to enter"
+  },
+  "guestPasswordLabel": "Password",
+  "@guestPasswordLabel": {
+    "description": "Password sheet: label of the password field"
+  },
+  "guestPasswordWrong": "Wrong password. Check it and try again.",
+  "@guestPasswordWrong": {
+    "description": "Password sheet: the server refused the password"
+  },
+  "guestPasswordNotStored": "Rurana doesn't save this password. If the link has to be opened again later, it asks for it again.",
+  "@guestPasswordNotStored": {
+    "description": "Password sheet: helper under the field"
+  },
+  "guestShareTitle": "Open the shared project?",
+  "@guestShareTitle": {
+    "description": "Sheet when another app shares a link to a shared project into Rurana"
+  },
+  "guestShareBody": "This is a link to a project on {host}. Open it as a guest, without an account of your own.",
+  "@guestShareBody": {
+    "description": "Shared link sheet: what opening the link does",
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "guestShareOpen": "Open as guest",
+  "@guestShareOpen": {
+    "description": "Shared link sheet: opens the shared project as a guest"
+  },
+  "guestShareNewTask": "Make it a new task instead",
+  "@guestShareNewTask": {
+    "description": "Shared link sheet, signed in: makes a task of the shared text as with any other share"
+  },
+  "guestLinkGoneTitle": "This link doesn't work",
+  "@guestLinkGoneTitle": {
+    "description": "Connect screen error title: the shared link is unknown or deleted"
+  },
+  "guestLinkGoneExplanation": "{host} doesn't accept this shared link. It was deleted or is incomplete, or the server no longer allows shared links.",
+  "@guestLinkGoneExplanation": {
+    "description": "Connect screen error: the shared link is unknown or deleted, or link sharing is off",
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "guestLinkGoneSuggestion": "Ask whoever shared the project for a new link.",
+  "@guestLinkGoneSuggestion": {
+    "description": "Connect screen error: what to do about a shared link that doesn't work"
+  },
+  "inviteConnectingTo": "Checking the invitation to {host} …",
+  "@inviteConnectingTo": {
+    "description": "Connect screen while an invitation link is checked",
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "inviteHeading": "Invitation to {host}",
+  "@inviteHeading": {
+    "description": "Connect screen: card title for a registration invitation an admin sent",
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "inviteTeams": "You'll join: {teams}",
+  "@inviteTeams": {
+    "description": "Invitation card: the teams the new account joins, comma separated",
+    "placeholders": {
+      "teams": {
+        "type": "String",
+        "example": "Design, Marketing"
+      }
+    }
+  },
+  "inviteNoEmailConfirmation": "Your account works right away, without confirming your email address.",
+  "@inviteNoEmailConfirmation": {
+    "description": "Invitation card: the invitation skips the email confirmation"
+  },
+  "inviteEmailConfirmation": "You may have to confirm your email address before you can sign in.",
+  "@inviteEmailConfirmation": {
+    "description": "Invitation card: the invitation does not skip the email confirmation"
+  },
+  "inviteSteps": "Create your account in the browser, then come back here and continue to sign-in.",
+  "@inviteSteps": {
+    "description": "Invitation card: the two steps"
+  },
+  "inviteCreateAccount": "Create account in the browser",
+  "@inviteCreateAccount": {
+    "description": "Invitation card: opens the invitation in the browser to register"
+  },
+  "inviteUnchecked": "This server can't check invitations from the app. Open the invitation in the browser to create your account.",
+  "@inviteUnchecked": {
+    "description": "Invitation card: the server is older than 2.7.0 or has no /api/v2"
+  },
+  "inviteCheckFailed": "The invitation couldn't be checked just now. You can still open it in the browser.",
+  "@inviteCheckFailed": {
+    "description": "Invitation card: checking the invitation failed for another reason"
+  },
+  "inviteInvalidTitle": "Invitation not valid",
+  "@inviteInvalidTitle": {
+    "description": "Connect screen error title: the invitation was refused"
+  },
+  "inviteInvalidExplanation": "This invitation is invalid, expired or used up.",
+  "@inviteInvalidExplanation": {
+    "description": "Connect screen error: the server answered 404 code 2005"
+  },
+  "inviteInvalidSuggestion": "Ask whoever invited you for a new link. With an account of your own, enter the server's address instead.",
+  "@inviteInvalidSuggestion": {
+    "description": "Connect screen error: what to do about an invitation that was refused"
+  },
+  "guestLabelPickerNote": "A shared link can't create labels; only the labels already used in this project can be added.",
+  "@guestLabelPickerNote": {
+    "description": "Under the label picker's search field for a link-share guest."
+  },
+  "guestSharingOffExplanation": "{host} doesn't allow opening projects through shared links.",
+  "@guestSharingOffExplanation": {
+    "description": "Connect screen error: the server has link sharing turned off",
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "guestSharingOffSuggestion": "Ask whoever shared the project to share it with an account of yours instead.",
+  "@guestSharingOffSuggestion": {
+    "description": "Connect screen error: what to do when the server has link sharing off"
+  },
+  "guestServerNeededTitle": "Which server is it?",
+  "@guestServerNeededTitle": {
+    "description": "Connect screen card: the shared link's address is not the Vikunja server itself"
+  },
+  "guestServerNeededExplanation": "The link points to {host}, but no Vikunja server answers there. The server may have an address of its own.",
+  "@guestServerNeededExplanation": {
+    "description": "Connect screen card: why the server's address is needed",
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "tasks.example.com"
+      }
+    }
+  },
+  "guestServerNeededSuggestion": "Enter the server's address above and tap Continue to open the link.",
+  "@guestServerNeededSuggestion": {
+    "description": "Connect screen card: what to do to open the shared link"
+  },
+  "guestAlreadyAdded": "This shared project was already on this device. Switched to it.",
+  "@guestAlreadyAdded": {
+    "description": "Snackbar after opening a shared link whose guest access was already on the device"
+  },
+  "guestAccessEndedNotificationTitle": "Guest access to {name} ended",
+  "@guestAccessEndedNotificationTitle": {
+    "description": "Title of the OS notification when the server ended a link-share guest's access; name is the share's name or the shared project's title.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Garden"
+      }
+    }
+  },
+  "guestAccessEndedNotificationBody": "{host} ended this guest access. Rurana can't sync the project until you open the shared link again.",
+  "@guestAccessEndedNotificationBody": {
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "tasks.example.com"
+      }
+    }
+  },
+  "guestDataFailureAccessEnded": "Your guest access on {host} has ended. Open the link again on the Account tab.",
+  "@guestDataFailureAccessEnded": {
+    "description": "A load or refresh of a link-share guest failed because the server ended its access.",
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "tasks.example.com"
+      }
+    }
+  },
+  "overviewGreetingMorningGuest": "Good morning",
+  "@overviewGreetingMorningGuest": {
+    "description": "Headline of the Overview before noon for a link-share guest, who has no name of its own."
+  },
+  "overviewGreetingAfternoonGuest": "Good afternoon",
+  "@overviewGreetingAfternoonGuest": {
+    "description": "Headline of the Overview from noon to 6 pm for a link-share guest."
+  },
+  "overviewGreetingEveningGuest": "Good evening",
+  "@overviewGreetingEveningGuest": {
+    "description": "Headline of the Overview from 6 pm to 5 am for a link-share guest."
   }
 }

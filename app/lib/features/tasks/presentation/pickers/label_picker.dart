@@ -11,9 +11,10 @@ import 'package:vikunja_mobile/features/tasks/application/label_providers.dart';
 import 'package:vikunja_mobile/features/tasks/application/label_search.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/picker_sheet.dart';
 
-/// Lets the user tick labels, and create one online; Done returns the
-/// ticked labels, in the order they were ticked after the [selected] ones.
-/// Null when dismissed, which keeps the previous selection.
+/// Lets the user tick labels, and create one online unless a link-share
+/// guest, whom the server refuses that; Done returns the ticked labels, in
+/// the order they were ticked after the [selected] ones. Null when
+/// dismissed, which keeps the previous selection.
 Future<List<Label>?> pickLabels(
   BuildContext context, {
   required List<Label> selected,
@@ -109,7 +110,9 @@ class _LabelPickerState extends ConsumerState<LabelPicker> {
   void _submit() {
     final known = _known(ref.read(allLabelsProvider).value);
     final query = _query.text;
-    final createTitle = labelTitleToCreate(known, query);
+    final createTitle = ref.read(activeAccountIsGuestProvider)
+        ? null
+        : labelTitleToCreate(known, query);
     final shown = filterLabels(known, query);
     if (createTitle != null) {
       unawaited(_create(createTitle));
@@ -128,7 +131,8 @@ class _LabelPickerState extends ConsumerState<LabelPicker> {
     final known = _known(stored.value);
     final query = _query.text;
     final shown = filterLabels(known, query);
-    final createTitle = labelTitleToCreate(known, query);
+    final guest = ref.watch(activeAccountIsGuestProvider);
+    final createTitle = guest ? null : labelTitleToCreate(known, query);
     final tooLong =
         createTitle != null && createTitle.runes.length > maxLabelTitleLength;
 
@@ -161,6 +165,14 @@ class _LabelPickerState extends ConsumerState<LabelPicker> {
                   onEditingComplete: _submit,
                 ),
               ),
+              if (guest)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                  child: Text(
+                    l10n.guestLabelPickerNote,
+                    style: TextStyle(color: colors.onSurfaceVariant),
+                  ),
+                ),
               if (createTitle != null)
                 _CreateRow(
                   title: createTitle,

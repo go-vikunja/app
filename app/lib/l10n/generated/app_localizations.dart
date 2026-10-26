@@ -10601,6 +10601,414 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Show undated'**
   String get projectTimelineShowUndated;
+
+  /// Server overview button under Continue to sign-in; opens the browser sign-in, whose page offers registration.
+  ///
+  /// In en, this message translates to:
+  /// **'Create account'**
+  String get overviewCreateAccount;
+
+  /// Shown before the browser sign-in opens for Create account. The label is the web login page's link (German web: Account erstellen).
+  ///
+  /// In en, this message translates to:
+  /// **'On the sign-in page, choose Create account. You come back here afterwards.'**
+  String get overviewCreateAccountHint;
+
+  /// Server overview button; opens the web's password reset page in the browser.
+  ///
+  /// In en, this message translates to:
+  /// **'Forgot password?'**
+  String get overviewForgotPassword;
+
+  /// Server overview note when public registration is off but the server has invite links.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration needs an invitation.'**
+  String get overviewRegistrationNeedsInvitation;
+
+  /// No description provided for @overviewSignInPageOffersBoth.
+  ///
+  /// In en, this message translates to:
+  /// **'The sign-in page also lets you create an account and reset your password.'**
+  String get overviewSignInPageOffersBoth;
+
+  /// No description provided for @overviewSignInPageOffersRegistration.
+  ///
+  /// In en, this message translates to:
+  /// **'The sign-in page also lets you create an account.'**
+  String get overviewSignInPageOffersRegistration;
+
+  /// No description provided for @overviewSignInPageOffersPasswordReset.
+  ///
+  /// In en, this message translates to:
+  /// **'The sign-in page also lets you reset your password.'**
+  String get overviewSignInPageOffersPasswordReset;
+
+  /// Account tab, Server section, when the server reports demo mode.
+  ///
+  /// In en, this message translates to:
+  /// **'This is a demo server. Its data may be deleted at any time.'**
+  String get overviewDemoNote;
+
+  /// Second line of a link-share guest in the account list, the switcher and the Account tab's header.
+  ///
+  /// In en, this message translates to:
+  /// **'Guest · {host}'**
+  String guestAccountSubtitle(String host);
+
+  /// Badge of a guest access the server ended, and the action of its banner on the Account tab.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the link again'**
+  String get guestOpenLinkAgain;
+
+  /// Title of the Account tab's banner when the server no longer accepts a link-share guest.
+  ///
+  /// In en, this message translates to:
+  /// **'Guest access ended'**
+  String get guestReauthTitle;
+
+  /// No description provided for @guestReauthBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{host} ended this guest access. Open the shared link again to keep the project in sync: a link with a password asks for it, and a deleted link needs a new one from whoever shared it. Nothing on this device is lost.'**
+  String guestReauthBody(String host);
+
+  /// Screen reader label of the avatar button that opens the account switcher while a link-share guest is active.
+  ///
+  /// In en, this message translates to:
+  /// **'Accounts, guest in {name} on {host}'**
+  String guestSwitcherButton(String name, String host);
+
+  /// First line of the guest note on the Account tab; the permission is sharePermissionRead, sharePermissionWrite or sharePermissionAdmin.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared link: {permission}'**
+  String guestNotePermission(String permission);
+
+  /// No description provided for @guestNoteCanView.
+  ///
+  /// In en, this message translates to:
+  /// **'You can view this project\'s tasks, comments and attachments.'**
+  String get guestNoteCanView;
+
+  /// No description provided for @guestNoteCanChange.
+  ///
+  /// In en, this message translates to:
+  /// **'You can view and change this project\'s tasks, comment and add attachments.'**
+  String get guestNoteCanChange;
+
+  /// No description provided for @guestNoteNeedsAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Account settings, labels, teams, favourites, reactions and the server\'s notifications need an account of your own.'**
+  String get guestNoteNeedsAccount;
+
+  /// The Account tab's sign-out button while a link-share guest is active.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove guest access'**
+  String get guestRemove;
+
+  /// No description provided for @guestRemoveDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove guest access?'**
+  String get guestRemoveDialogTitle;
+
+  /// No description provided for @guestRemoveDialogBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Rurana will remove the guest access to {name} on {host} and delete its tasks saved on this device. You can open the shared link again at any time.'**
+  String guestRemoveDialogBody(String name, String host);
+
+  /// No description provided for @guestRemoveDialogPendingChangesOpenLinkFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{One change has not been sent to the server yet and will be lost; switch to this guest access, open the link again and tap Send now first to keep it.} other{{count} changes have not been sent to the server yet and will be lost; switch to this guest access, open the link again and tap Send now first to keep them.}}'**
+  String guestRemoveDialogPendingChangesOpenLinkFirst(int count);
+
+  /// No description provided for @guestRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'Guest access to {name} removed'**
+  String guestRemoved(String name);
+
+  /// Connect screen: text button and sheet title to open a project someone shared as a link, as a guest
+  ///
+  /// In en, this message translates to:
+  /// **'Open a shared link'**
+  String get guestOpenSharedLink;
+
+  /// Open a shared link sheet: what the sheet is for
+  ///
+  /// In en, this message translates to:
+  /// **'Got a link to a project someone shared? Open it here as a guest, without an account of your own.'**
+  String get guestLinkExplanation;
+
+  /// Open a shared link sheet: label of the link field
+  ///
+  /// In en, this message translates to:
+  /// **'Shared link'**
+  String get guestLinkLabel;
+
+  /// Open a shared link sheet: example of a shared link in the empty field
+  ///
+  /// In en, this message translates to:
+  /// **'https://vikunja.example.com/share/…/auth'**
+  String get guestLinkHint;
+
+  /// Open a shared link sheet: puts the clipboard's text into the field
+  ///
+  /// In en, this message translates to:
+  /// **'Paste'**
+  String get guestLinkPaste;
+
+  /// Open a shared link sheet and password sheet: opens the shared project
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get guestLinkOpen;
+
+  /// Open a shared link sheet: the text is neither a shared link nor an invitation
+  ///
+  /// In en, this message translates to:
+  /// **'This isn\'t a link to a shared project. Such a link ends in /share/…/auth.'**
+  String get guestLinkInvalid;
+
+  /// Open a shared link sheet: Paste found nothing to paste
+  ///
+  /// In en, this message translates to:
+  /// **'There\'s no text on the clipboard.'**
+  String get guestLinkClipboardEmpty;
+
+  /// Connect screen while a shared link is being opened; the link's secret is cut short
+  ///
+  /// In en, this message translates to:
+  /// **'Opening the shared link {link} …'**
+  String guestConnectingTo(String link);
+
+  /// Password sheet title for a shared project protected by a password
+  ///
+  /// In en, this message translates to:
+  /// **'Password needed'**
+  String get guestPasswordTitle;
+
+  /// Password sheet: what to enter
+  ///
+  /// In en, this message translates to:
+  /// **'This shared project is protected by a password. Enter the one you got with the link.'**
+  String get guestPasswordBody;
+
+  /// Password sheet: label of the password field
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get guestPasswordLabel;
+
+  /// Password sheet: the server refused the password
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong password. Check it and try again.'**
+  String get guestPasswordWrong;
+
+  /// Password sheet: helper under the field
+  ///
+  /// In en, this message translates to:
+  /// **'Rurana doesn\'t save this password. If the link has to be opened again later, it asks for it again.'**
+  String get guestPasswordNotStored;
+
+  /// Sheet when another app shares a link to a shared project into Rurana
+  ///
+  /// In en, this message translates to:
+  /// **'Open the shared project?'**
+  String get guestShareTitle;
+
+  /// Shared link sheet: what opening the link does
+  ///
+  /// In en, this message translates to:
+  /// **'This is a link to a project on {host}. Open it as a guest, without an account of your own.'**
+  String guestShareBody(String host);
+
+  /// Shared link sheet: opens the shared project as a guest
+  ///
+  /// In en, this message translates to:
+  /// **'Open as guest'**
+  String get guestShareOpen;
+
+  /// Shared link sheet, signed in: makes a task of the shared text as with any other share
+  ///
+  /// In en, this message translates to:
+  /// **'Make it a new task instead'**
+  String get guestShareNewTask;
+
+  /// Connect screen error title: the shared link is unknown or deleted
+  ///
+  /// In en, this message translates to:
+  /// **'This link doesn\'t work'**
+  String get guestLinkGoneTitle;
+
+  /// Connect screen error: the shared link is unknown or deleted, or link sharing is off
+  ///
+  /// In en, this message translates to:
+  /// **'{host} doesn\'t accept this shared link. It was deleted or is incomplete, or the server no longer allows shared links.'**
+  String guestLinkGoneExplanation(String host);
+
+  /// Connect screen error: what to do about a shared link that doesn't work
+  ///
+  /// In en, this message translates to:
+  /// **'Ask whoever shared the project for a new link.'**
+  String get guestLinkGoneSuggestion;
+
+  /// Connect screen while an invitation link is checked
+  ///
+  /// In en, this message translates to:
+  /// **'Checking the invitation to {host} …'**
+  String inviteConnectingTo(String host);
+
+  /// Connect screen: card title for a registration invitation an admin sent
+  ///
+  /// In en, this message translates to:
+  /// **'Invitation to {host}'**
+  String inviteHeading(String host);
+
+  /// Invitation card: the teams the new account joins, comma separated
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ll join: {teams}'**
+  String inviteTeams(String teams);
+
+  /// Invitation card: the invitation skips the email confirmation
+  ///
+  /// In en, this message translates to:
+  /// **'Your account works right away, without confirming your email address.'**
+  String get inviteNoEmailConfirmation;
+
+  /// Invitation card: the invitation does not skip the email confirmation
+  ///
+  /// In en, this message translates to:
+  /// **'You may have to confirm your email address before you can sign in.'**
+  String get inviteEmailConfirmation;
+
+  /// Invitation card: the two steps
+  ///
+  /// In en, this message translates to:
+  /// **'Create your account in the browser, then come back here and continue to sign-in.'**
+  String get inviteSteps;
+
+  /// Invitation card: opens the invitation in the browser to register
+  ///
+  /// In en, this message translates to:
+  /// **'Create account in the browser'**
+  String get inviteCreateAccount;
+
+  /// Invitation card: the server is older than 2.7.0 or has no /api/v2
+  ///
+  /// In en, this message translates to:
+  /// **'This server can\'t check invitations from the app. Open the invitation in the browser to create your account.'**
+  String get inviteUnchecked;
+
+  /// Invitation card: checking the invitation failed for another reason
+  ///
+  /// In en, this message translates to:
+  /// **'The invitation couldn\'t be checked just now. You can still open it in the browser.'**
+  String get inviteCheckFailed;
+
+  /// Connect screen error title: the invitation was refused
+  ///
+  /// In en, this message translates to:
+  /// **'Invitation not valid'**
+  String get inviteInvalidTitle;
+
+  /// Connect screen error: the server answered 404 code 2005
+  ///
+  /// In en, this message translates to:
+  /// **'This invitation is invalid, expired or used up.'**
+  String get inviteInvalidExplanation;
+
+  /// Connect screen error: what to do about an invitation that was refused
+  ///
+  /// In en, this message translates to:
+  /// **'Ask whoever invited you for a new link. With an account of your own, enter the server\'s address instead.'**
+  String get inviteInvalidSuggestion;
+
+  /// Under the label picker's search field for a link-share guest.
+  ///
+  /// In en, this message translates to:
+  /// **'A shared link can\'t create labels; only the labels already used in this project can be added.'**
+  String get guestLabelPickerNote;
+
+  /// Connect screen error: the server has link sharing turned off
+  ///
+  /// In en, this message translates to:
+  /// **'{host} doesn\'t allow opening projects through shared links.'**
+  String guestSharingOffExplanation(String host);
+
+  /// Connect screen error: what to do when the server has link sharing off
+  ///
+  /// In en, this message translates to:
+  /// **'Ask whoever shared the project to share it with an account of yours instead.'**
+  String get guestSharingOffSuggestion;
+
+  /// Connect screen card: the shared link's address is not the Vikunja server itself
+  ///
+  /// In en, this message translates to:
+  /// **'Which server is it?'**
+  String get guestServerNeededTitle;
+
+  /// Connect screen card: why the server's address is needed
+  ///
+  /// In en, this message translates to:
+  /// **'The link points to {host}, but no Vikunja server answers there. The server may have an address of its own.'**
+  String guestServerNeededExplanation(String host);
+
+  /// Connect screen card: what to do to open the shared link
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the server\'s address above and tap Continue to open the link.'**
+  String get guestServerNeededSuggestion;
+
+  /// Snackbar after opening a shared link whose guest access was already on the device
+  ///
+  /// In en, this message translates to:
+  /// **'This shared project was already on this device. Switched to it.'**
+  String get guestAlreadyAdded;
+
+  /// Title of the OS notification when the server ended a link-share guest's access; name is the share's name or the shared project's title.
+  ///
+  /// In en, this message translates to:
+  /// **'Guest access to {name} ended'**
+  String guestAccessEndedNotificationTitle(String name);
+
+  /// No description provided for @guestAccessEndedNotificationBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{host} ended this guest access. Rurana can\'t sync the project until you open the shared link again.'**
+  String guestAccessEndedNotificationBody(String host);
+
+  /// A load or refresh of a link-share guest failed because the server ended its access.
+  ///
+  /// In en, this message translates to:
+  /// **'Your guest access on {host} has ended. Open the link again on the Account tab.'**
+  String guestDataFailureAccessEnded(String host);
+
+  /// Headline of the Overview before noon for a link-share guest, who has no name of its own.
+  ///
+  /// In en, this message translates to:
+  /// **'Good morning'**
+  String get overviewGreetingMorningGuest;
+
+  /// Headline of the Overview from noon to 6 pm for a link-share guest.
+  ///
+  /// In en, this message translates to:
+  /// **'Good afternoon'**
+  String get overviewGreetingAfternoonGuest;
+
+  /// Headline of the Overview from 6 pm to 5 am for a link-share guest.
+  ///
+  /// In en, this message translates to:
+  /// **'Good evening'**
+  String get overviewGreetingEveningGuest;
 }
 
 class _AppLocalizationsDelegate

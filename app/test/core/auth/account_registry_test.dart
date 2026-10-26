@@ -29,6 +29,25 @@ RegisteredAccount _entry(
   connection: connection,
 );
 
+RegisteredAccount _guest(
+  String id,
+  ServerConnection connection, {
+  String? shareName = 'Helper',
+  bool needsReauth = false,
+}) => RegisteredAccount(
+  account: Account.linkShare(
+    id: id,
+    serverRoot: connection.rootUri,
+    shareId: 84,
+    projectId: 1378,
+    shareName: shareName,
+    displayName: 'Garden',
+    addedAt: DateTime.utc(2026, 10, 26, 9),
+    needsReauth: needsReauth,
+  ),
+  connection: connection,
+);
+
 /// Connections in the app always come from a parsed /info document.
 ServerConnection _fromFixture(
   String root,
@@ -570,6 +589,124 @@ void main() {
         '{not json',
       );
       expect((await registry.load()).accounts, hasLength(1));
+    });
+  });
+
+  group('link-share guests', () {
+    Map<String, Object?> storedEntry(String id) =>
+        ((jsonDecode(preferences.values[AccountRegistry.storageKey]!)
+                    as Map<String, Object?>)['accounts']!
+                as List<Object?>)
+            .cast<Map<String, Object?>>()
+            .singleWhere((entry) => entry['id'] == id);
+
+    test('a guest round-trips with its share and next to users', () async {
+      final guest = _guest('g1', fullServer270(), needsReauth: true);
+      final unnamed = _guest('g2', fullServer270(), shareName: null);
+      await registry.upsert(_entry('a1', fullServer270()));
+      await registry.upsert(guest, activate: true);
+      await registry.upsert(unnamed);
+
+      final restored = await AccountRegistry(preferences).load();
+
+      expect(restored.activeAccountId, 'g1');
+      expect(restored.find('g1')?.account, guest.account);
+      expect(restored.find('g2')?.account, unnamed.account);
+      expect(restored.find('a1')?.account.isLinkShare, isFalse);
+      final account = restored.find('g1')!.account;
+      expect(account.kind, AccountKind.linkShare);
+      expect(account.userId, -84);
+      expect(account.username, 'link-share-84');
+      expect(account.projectId, 1378);
+    });
+
+    test('a guest is stored without a user id, so a build before guests '
+        'cannot take it for a user', () async {
+      await registry.upsert(_guest('g1', fullServer270()));
+
+      final entry = storedEntry('g1');
+
+      expect(entry.keys, {
+        'id',
+        'server_root',
+        'kind',
+        'link_share_id',
+        'project_id',
+        'share_name',
+        'display_name',
+        'added_at',
+        'needs_reauth',
+        'connection',
+      });
+      expect(entry['kind'], 'link_share');
+      expect(entry['link_share_id'], 84);
+      // What a build before step 32 does with every entry.
+      expect(() => entry['user_id']! as int, throwsA(isA<TypeError>()));
+    });
+
+    test(
+      'an entry of a kind this version does not know is kept as it is',
+      () async {
+        await registry.upsert(_entry('a1', fullServer270()));
+        await registry.upsert(_guest('g1', fullServer270()));
+        final json = jsonDecode(
+          preferences.values[AccountRegistry.storageKey]!,
+        ) as Map<String, Object?>;
+        final future = {...storedEntry('g1'), 'id': 'f1', 'kind': 'robot'};
+        (json['accounts']! as List<Object?>).add(future);
+        preferences.values[AccountRegistry.storageKey] = jsonEncode(json);
+
+        await registry.markNeedsReauth('a1');
+
+        expect((await registry.load()).accounts.map((entry) => entry.id), [
+          'a1',
+          'g1',
+        ]);
+        expect(storedEntry('f1'), future);
+      },
+    );
+
+    test("the server's name never replaces a guest's own", () async {
+      await registry.upsert(_guest('g1', fullServer270()));
+
+      await registry.updateDisplayName('g1', 'Helper (Link Share)');
+
+      expect((await registry.find('g1'))?.account.displayName, 'Garden');
+    });
+
+    test("an unnamed guest follows its project's title, a named one keeps "
+        'its name', () async {
+      await registry.upsert(_guest('g1', fullServer270(), shareName: null));
+      await registry.upsert(_guest('g2', fullServer270()));
+      await registry.upsert(_entry('a1', fullServer270()));
+      final announced = <AccountRegistryState>[];
+      final subscription = registry.changes.listen(announced.add);
+      addTearDown(subscription.cancel);
+
+      await registry.updateGuestTitle('g1', ' Garden 2026 ');
+      await registry.updateGuestTitle('g1', 'Garden 2026');
+      await registry.updateGuestTitle('g1', '  ');
+      await registry.updateGuestTitle('g2', 'Garden 2026');
+      await registry.updateGuestTitle('a1', 'Garden 2026');
+      await pumpEventQueue();
+
+      final restored = await AccountRegistry(preferences).load();
+      expect(restored.find('g1')?.account.displayName, 'Garden 2026');
+      expect(restored.find('g2')?.account.displayName, 'Garden');
+      expect(restored.find('a1')?.account.displayName, 'Alice Example');
+      expect(announced, hasLength(1));
+    });
+
+    test('marking a guest for re-authentication keeps its share', () async {
+      final guest = _guest('g1', fullServer270());
+      await registry.upsert(guest);
+
+      await registry.markNeedsReauth('g1');
+
+      expect(
+        (await registry.find('g1'))?.account,
+        guest.account.copyWith(needsReauth: true),
+      );
     });
   });
 }

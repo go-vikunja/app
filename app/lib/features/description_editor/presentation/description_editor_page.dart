@@ -602,7 +602,10 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
   }
 
   Future<List<User>> _searchPeople(String query) async {
-    if (!_projectPeople) return filterUsers(await _knownPeople(), query);
+    // The server's user search refuses a link-share guest.
+    if (!_projectPeople || ref.read(activeAccountIsGuestProvider)) {
+      return filterUsers(await _knownPeople(), query);
+    }
     final users = ref.read(userRepositoryProvider);
     final projectId = _projectId;
     if (users == null || projectId == null) {

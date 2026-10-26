@@ -1,6 +1,8 @@
 import 'package:logging/logging.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_gateways.dart';
+import 'package:vikunja_mobile/core/auth/link_share_session.dart';
+import 'package:vikunja_mobile/core/auth/link_share_store.dart';
 import 'package:vikunja_mobile/core/auth/server_clock_offsets.dart';
 import 'package:vikunja_mobile/core/auth/session_manager.dart';
 import 'package:vikunja_mobile/core/auth/token_store.dart';
@@ -13,13 +15,16 @@ final _log = Logger('SignOut');
 typedef AccountDataWiper = Future<void> Function(String accountId);
 
 /// Ends the server session if it can, then forgets the account on this
-/// device. Signing out never fails because the server is unreachable.
+/// device. Signing out never fails because the server is unreachable. A
+/// link-share guest has no session on the server to end.
 final class SignOut {
   new({
     required this._registry,
     required this._tokenStore,
+    required this._linkShareStore,
     required this._clockOffsets,
     required this._sessions,
+    required this._linkShares,
     required this._accountGateway,
     required this._wipeAccountData,
     this._logoutTimeout = const Duration(seconds: 15),
@@ -27,15 +32,19 @@ final class SignOut {
 
   final AccountRegistry _registry;
   final TokenStore _tokenStore;
+  final LinkShareStore _linkShareStore;
   final ServerClockOffsets _clockOffsets;
   final SessionManagers _sessions;
+  final LinkShareSessions _linkShares;
   final AccountGateway _accountGateway;
   final AccountDataWiper _wipeAccountData;
   final Duration _logoutTimeout;
 
   Future<void> call(String accountId) async {
     final entry = await _registry.find(accountId);
-    if (entry != null && !entry.account.needsReauth) {
+    if (entry != null &&
+        !entry.account.needsReauth &&
+        !entry.account.isLinkShare) {
       try {
         // The session manager refreshes first if the access token is about
         // to expire, because logout needs a valid one.
@@ -52,7 +61,9 @@ final class SignOut {
     // Retire first: from then on nothing in this isolate writes the tokens
     // that are wiped next.
     await _sessions.retire(accountId);
+    await _linkShares.retire(accountId);
     await _tokenStore.delete(accountId);
+    await _linkShareStore.delete(accountId);
     try {
       await _clockOffsets.delete(accountId);
     } on Object catch (error) {

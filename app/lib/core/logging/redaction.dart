@@ -1,14 +1,25 @@
 const redactedPlaceholder = '[redacted]';
 
 /// Scheme, host, port and path only: query strings, fragments and user info
-/// can carry tokens or credentials.
+/// can carry tokens or credentials, and so can a link share's path.
 String describeUriForLog(Uri uri) {
   if (!uri.hasScheme || uri.host.isEmpty) {
-    return redactSecrets(uri.path.isEmpty ? '<relative>' : uri.path);
+    return redactSecrets(
+      uri.path.isEmpty ? '<relative>' : _withoutShareHashes(uri.path),
+    );
   }
   final port = uri.hasPort ? ':${uri.port}' : '';
-  return '${uri.scheme}://${uri.host}$port${uri.path}';
+  return '${uri.scheme}://${uri.host}$port${_withoutShareHashes(uri.path)}';
 }
+
+// `share/<hash>/auth` (the web's link) and `shares/<hash>/auth` (the API);
+// a numeric segment is a share's id, as in `projects/1/shares/2`.
+final _shareHash = RegExp(r'(^|/)(shares?)/(?!\d+(?:/|$))[^/]+');
+
+String _withoutShareHashes(String path) => path.replaceAllMapped(
+  _shareHash,
+  (m) => '${m[1]}${m[2]}/$redactedPlaceholder',
+);
 
 final _redactions = <(RegExp, String Function(Match))>[
   (
@@ -36,7 +47,7 @@ final _redactions = <(RegExp, String Function(Match))>[
     RegExp(
       '"(password|old_password|new_password|token|access_token|refresh_token|'
       'id_token|code|code_verifier|client_secret|secret|totp_passcode|'
-      r'passcode|state)"\s*:\s*"[^"]*"',
+      r'passcode|state|hash)"\s*:\s*"[^"]*"',
       caseSensitive: false,
     ),
     (m) => '"${m[1]}":"$redactedPlaceholder"',

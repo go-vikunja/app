@@ -33,6 +33,8 @@ Future<void> _syncActiveAccount(Ref ref) async {
   final active = ref.read(accountsProvider).value?.activeAccount;
   if (active == null || active.account.needsReauth) return;
   await ref.read(activityNoticesProvider).sessionRestored(active.id);
+  // The server keeps no activity for a guest.
+  if (active.account.isLinkShare) return;
   await ref.read(activityRepositoryProvider)?.refresh();
 }
 
@@ -48,6 +50,7 @@ Future<void> _syncInactiveAccounts(Ref ref) async {
     try {
       // A session that ends again after this sign-in notifies again.
       await ref.read(activityNoticesProvider).sessionRestored(entry.id);
+      if (entry.account.isLinkShare) continue;
       final db = ref.read(appDatabaseProvider(entry.id));
       final synced = await db.syncStateDao.readAll();
       if (synced[SyncStateKeys.lastSyncedAt] == null) continue;

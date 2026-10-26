@@ -63,4 +63,4 @@ final class QuickAddServiceProvider
   }
 }
 
-String _$quickAddServiceHash() => r'dcb479ed978e20f798ad39bf48e65e841a94709f';
+String _$quickAddServiceHash() => r'21b5d5e486c1a340d80f37ffc1309b3f7ea57f8e';

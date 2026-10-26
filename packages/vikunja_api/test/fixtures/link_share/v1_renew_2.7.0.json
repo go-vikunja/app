@@ -1,0 +1,19 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v1/user/token",
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"token\":\"eyJ_placeholder_not_a_jwt\"}\n",
+  "token_claims": {
+    "exp": 1793297846,
+    "hash": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "iat": 1793038646,
+    "id": 87,
+    "permission": 0,
+    "project_id": 1384,
+    "sharedByID": 445,
+    "type": 2
+  }
+}

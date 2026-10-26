@@ -45,6 +45,21 @@ void main() {
     }, 'too large 4012');
   });
 
+  test('a gone link share ends the session with its own reason', () {
+    const failure = LinkShareGone(code: 13003, message: 'token invalid');
+
+    expect(failure, isA<SessionEnded>());
+    expect(failure.reason, SessionEndReason.linkShareGone);
+    expect(failure.code, 13003);
+    expect(const LinkShareGone().code, isNull);
+    expect('$failure', 'LinkShareGone(code: 13003)');
+    expect(switch (failure as VikunjaFailure) {
+      LinkShareGone() => 'link gone',
+      SessionEnded() => 'session',
+      _ => 'other',
+    }, 'link gone');
+  });
+
   test('toString never includes the server message', () {
     const message = 'secret detail';
     final failures = <VikunjaFailure>[
@@ -73,6 +88,7 @@ void main() {
       const ServerFailure(500, message: message),
       const DomainError(400, code: 4029, message: message),
       const FileTooLarge(code: 4035, message: message),
+      const LinkShareGone(code: 13003, message: message),
       const DescriptionConflict(),
       const UnexpectedResponse(418, message: message),
     ];

@@ -466,7 +466,7 @@ final class AccountsProvider
   Accounts create() => Accounts();
 }
 
-String _$accountsHash() => r'd261a60aa68429ae9f8523bb5ec85fff30d37ddf';
+String _$accountsHash() => r'cd2b370de7b5672f822fe75ec3ab060676975963';
 
 /// The registry as this isolate last read or wrote it.
 

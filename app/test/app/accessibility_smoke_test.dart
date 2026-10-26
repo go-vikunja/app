@@ -35,8 +35,12 @@ import 'package:vikunja_mobile/features/description_editor/presentation/editor_t
 import 'package:vikunja_mobile/features/description_editor/presentation/mention_bar.dart';
 import 'package:vikunja_mobile/features/filters/presentation/filter_field.dart';
 import 'package:vikunja_mobile/features/home/presentation/description_conflict_sheet.dart';
+import 'package:vikunja_mobile/features/home/presentation/guest_note.dart';
 import 'package:vikunja_mobile/features/home/presentation/reauth_banner.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connection_error_card.dart';
+import 'package:vikunja_mobile/features/onboarding/presentation/connect/invite_card.dart';
+import 'package:vikunja_mobile/features/onboarding/presentation/guest/share_password_sheet.dart';
+import 'package:vikunja_mobile/features/onboarding/presentation/guest/shared_link_sheet.dart';
 import 'package:vikunja_mobile/features/projects/presentation/board/board_column.dart';
 import 'package:vikunja_mobile/features/projects/presentation/board/new_column_tile.dart';
 import 'package:vikunja_mobile/features/projects/presentation/board/project_board.dart';
@@ -52,6 +56,7 @@ import 'package:vikunja_mobile/features/quick_add/application/quick_add_plan.dar
 import 'package:vikunja_mobile/features/quick_add/application/quick_add_service_provider.dart';
 import 'package:vikunja_mobile/features/quick_add/presentation/magic_suggestions.dart';
 import 'package:vikunja_mobile/features/quick_add/presentation/quick_add_help_sheet.dart';
+import 'package:vikunja_mobile/features/share/presentation/open_shared_link_sheet.dart';
 import 'package:vikunja_mobile/features/share/presentation/share_sheet.dart';
 import 'package:vikunja_mobile/features/sharing/presentation/link_qr_sheet.dart';
 import 'package:vikunja_mobile/features/sharing/presentation/link_share_form_sheet.dart';
@@ -81,6 +86,9 @@ import '../helpers/auth_fakes.dart';
 import '../helpers/editor_bridge_fakes.dart';
 import '../helpers/fake_quick_add_service.dart';
 import '../helpers/fakes.dart';
+import '../helpers/guest_app.dart';
+import '../helpers/guest_entry_fakes.dart';
+import '../helpers/guest_fakes.dart';
 import '../helpers/label_user_fakes.dart';
 import '../helpers/pump_app.dart';
 import '../helpers/sample_data.dart';
@@ -3181,6 +3189,33 @@ void main() {
       await tester.pumpAndSettle();
     });
 
+    testWidgets('account tab with the server notices at 200 % in dark mode '
+        '(${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      final l10n = lookupAppLocalizations(locale);
+      final auth = AuthFakes();
+      await auth.seedAccount(
+        fullServer270(demoMode: true),
+        tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
+      );
+      await pumpVikunjaApp(tester, auth: auth, sync: richData());
+      await openTab(tester, l10n.tabAccount);
+
+      await tester.scrollUntilVisible(
+        find.text(l10n.overviewDemoNote),
+        100,
+        scrollable: find
+            .descendant(
+              of: find.byType(ListView),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      expect(find.text(l10n.motdHeading, skipOffstage: false), findsOneWidget);
+      await scrollToEnd(tester, find.byType(ListView));
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('account tab with a scheduled deletion at 200 % in dark mode '
         '(${locale.languageCode})', (tester) async {
       useWorstCase(tester, locale);
@@ -3492,6 +3527,133 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    const longHost = 'https://a-rather-long-host.example.org/';
+
+    testWidgets('connect screen with an invitation at 200 % in dark mode '
+        '(${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      final invites = FakeInviteLinksPort()
+        ..onCheck = (_) async => InvitePreview(
+          name: 'Autumn helpers of the community garden',
+          teams: const [
+            InviteTeam(id: 1, name: 'Design and illustration'),
+            InviteTeam(id: 2, name: 'Garden volunteers'),
+          ],
+        );
+      await pumpVikunjaApp(
+        tester,
+        connector: FakeServerConnector.succeeding(
+          fullServer270(root: longHost),
+        ),
+        overrides: guestEntryOverrides(invites: invites),
+      );
+
+      await tester.enterText(
+        find.byType(TextFormField),
+        inviteLink(base: longHost),
+      );
+      await tester.testTextInput.receiveAction(TextInputAction.go);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(InviteCard), findsOneWidget);
+      await scrollToEnd(tester, find.byType(SingleChildScrollView).first);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a shared link asking for its server, the link sheet with an '
+        'error and the password sheet with a wrong password at 200 % in dark '
+        'mode (${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      final strings = lookupAppLocalizations(locale);
+      final auth = AuthFakes();
+      auth.linkShareGateway.serve(
+        issueLinkShareToken(issuedAt: DateTime.now().toUtc()),
+        password: 'tomato',
+      );
+      await pumpVikunjaApp(
+        tester,
+        auth: auth,
+        connector: FakeServerConnector(
+          (input) async => input.startsWith('api.')
+              ? fullServer270(root: 'https://api.$longHost')
+              : throw NotAVikunjaServer(Uri.parse(longHost), statusCode: 200),
+        ),
+        overrides: guestEntryOverrides(),
+      );
+      Future<void> submit(String text) async {
+        await tester.enterText(find.byType(TextFormField), text);
+        await tester.testTextInput.receiveAction(TextInputAction.go);
+        await tester.pumpAndSettle();
+      }
+
+      await submit(shareLink(base: longHost));
+      expect(find.text(strings.guestServerNeededTitle), findsOneWidget);
+      await scrollToEnd(tester, find.byType(SingleChildScrollView).first);
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(find.text(strings.guestOpenSharedLink));
+      await tester.pumpAndSettle();
+      final linkSheet = find.byType(SharedLinkSheet);
+      await tester.enterText(
+        find.descendant(of: linkSheet, matching: find.byType(TextField)),
+        'https://a-rather-long-host.example.org/projects/3',
+      );
+      await tester.pump();
+      final openLinkSheet = find.descendant(
+        of: linkSheet,
+        matching: find.text(strings.guestLinkOpen),
+      );
+      await tester.ensureVisible(openLinkSheet);
+      await tester.pumpAndSettle();
+      await tester.tap(openLinkSheet);
+      await tester.pumpAndSettle();
+      expect(find.text(strings.guestLinkInvalid), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      Navigator.of(tester.element(linkSheet)).pop();
+      await tester.pumpAndSettle();
+
+      await submit('api.a-rather-long-host.example.org');
+      final passwordSheet = find.byType(SharePasswordSheet);
+      expect(passwordSheet, findsOneWidget);
+      await tester.enterText(
+        find.descendant(of: passwordSheet, matching: find.byType(TextField)),
+        'potato',
+      );
+      await tester.pump();
+      final openPasswordSheet = find.descendant(
+        of: passwordSheet,
+        matching: find.text(strings.guestLinkOpen),
+      );
+      await tester.ensureVisible(openPasswordSheet);
+      await tester.pumpAndSettle();
+      await tester.tap(openPasswordSheet);
+      await tester.pumpAndSettle();
+      expect(find.text(strings.guestPasswordWrong), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets("another app's shared project link at 200 % in dark mode "
+        '(${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      final data = richData();
+      data.shareSource.push(IncomingShare(text: shareLink(base: longHost)));
+      final auth = AuthFakes();
+      await auth.seedAccount(
+        fullServer270(),
+        tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
+      );
+      await pumpVikunjaApp(
+        tester,
+        auth: auth,
+        sync: data,
+        overrides: guestEntryOverrides(),
+      );
+
+      expect(find.byType(OpenSharedLinkSheet), findsOneWidget);
+      await scrollToEnd(tester, find.byType(OpenSharedLinkSheet));
+      expect(tester.takeException(), isNull);
+    });
+
     final l10n = lookupAppLocalizations(locale);
     for (final (name, connection, primaryAction) in [
       ('full', fullServer270(), l10n.continueToSignIn),
@@ -3523,6 +3685,10 @@ void main() {
       ('full', fullServer270(demoMode: true)),
       ('insecure', insecureServer()),
       ('unsupported', legacyServer100()),
+      (
+        'invitation-only',
+        accountPagesServer270(registration: false, invites: true),
+      ),
     ]) {
       testWidgets('$name overview at 200 % in dark mode '
           '(${locale.languageCode})', (tester) async {
@@ -3534,6 +3700,21 @@ void main() {
       });
     }
 
+    testWidgets('the Create account explanation at 200 % in dark mode '
+        '(${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      await pumpServerOverview(tester, accountPagesServer270());
+
+      await scrollToEnd(tester, find.byType(ListView));
+      await tester.tap(
+        find.widgetWithText(TextButton, l10n.overviewCreateAccount),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text(l10n.overviewCreateAccountHint), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('overview with a sign-in failure at 200 % in dark mode '
         '(${locale.languageCode})', (tester) async {
       useWorstCase(tester, locale);
@@ -3542,6 +3723,8 @@ void main() {
           throw const RateLimited(retryAfter: Duration(minutes: 3));
       await pumpServerOverview(tester, fullServer270(), auth: auth);
 
+      // With text this large the actions scroll with the content.
+      await scrollToEnd(tester, find.byType(ListView));
       await tester.tap(find.byType(FilledButton));
       await tester.pumpAndSettle();
 
@@ -3654,6 +3837,102 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text(l10n.removeAccountDialogTitle), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    Future<void> pumpLongGuest(
+      WidgetTester tester, {
+      AuthFakes? auth,
+      bool needsReauth = false,
+    }) async {
+      final fakes = auth ?? AuthFakes();
+      final data = richData();
+      data.projects.all = [
+        ...data.projects.all,
+        guestProject(permission: Permission.write),
+      ];
+      await fakes.seedGuest(
+        fullServer270(root: 'https://a-rather-long-host.example.org/vikunja'),
+        token: issueLinkShareToken(issuedAt: DateTime.now().toUtc()),
+        shareName: 'Autumn helpers of the community garden',
+        needsReauth: needsReauth,
+      );
+      await pumpVikunjaApp(
+        tester,
+        auth: fakes,
+        sync: data,
+        overrides: guestEntryOverrides(),
+      );
+    }
+
+    testWidgets('a guest account tab with its note, an ended guest access and '
+        'a link that no longer works at 200 % in dark mode '
+        '(${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      final auth = AuthFakes();
+      auth.linkShareGateway.onAuthenticate = (_, _) async =>
+          throw const LinkShareGone(code: 3006);
+      await pumpLongGuest(tester, auth: auth, needsReauth: true);
+      await openTab(tester, l10n.tabAccount);
+
+      final openAgain = find.widgetWithText(
+        FilledButton,
+        l10n.guestOpenLinkAgain,
+      );
+      await tester.ensureVisible(openAgain);
+      await tester.pumpAndSettle();
+      await tester.tap(openAgain);
+      await tester.pumpAndSettle();
+
+      expect(find.text(l10n.guestLinkGoneTitle), findsOneWidget);
+      // The list builds lazily: the note comes once the banner and the
+      // error above it have scrolled away.
+      await tester.scrollUntilVisible(
+        find.byType(GuestNote),
+        100,
+        scrollable: find
+            .descendant(
+              of: find.byType(ListView),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      await scrollToEnd(tester, find.byType(ListView));
+      expect(find.text(l10n.guestRemove), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('removing a guest access at 200 % in dark mode '
+        '(${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      await pumpLongGuest(tester);
+      await openTab(tester, l10n.tabAccount);
+
+      await scrollToEnd(tester, find.byType(ListView));
+      await tester.tap(find.byType(OutlinedButton));
+      await tester.pumpAndSettle();
+
+      expect(find.text(l10n.guestRemoveDialogTitle), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('account switcher with a guest whose access ended at 200 % '
+        'in dark mode (${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      final accounts = await longAccounts();
+      await accounts.auth.seedGuest(
+        fullServer270(root: 'https://a-rather-long-host.example.org/vikunja'),
+        token: issueLinkShareToken(issuedAt: DateTime.now().toUtc()),
+        shareName: 'Autumn helpers of the community garden',
+        needsReauth: true,
+        activate: false,
+      );
+      await accounts.pump(tester);
+
+      await openSwitcher(tester);
+      await scrollToEnd(tester, switcherSheet);
+
+      expect(inSheet(find.text(l10n.guestOpenLinkAgain)), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 

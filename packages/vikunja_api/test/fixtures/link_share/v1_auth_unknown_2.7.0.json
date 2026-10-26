@@ -1,0 +1,10 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v1/shares/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/auth",
+  "sent": {},
+  "status": 404,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"code\":3006,\"message\":\"The project share does not exist.\"}\n"
+}

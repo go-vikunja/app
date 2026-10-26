@@ -29,12 +29,19 @@ class DataFailureCard extends ConsumerWidget {
         (accounts) => accounts.value?.activeAccount?.connection.rootUri,
       ),
     );
+    final guest = ref.watch(
+      accountsProvider.select(
+        (accounts) =>
+            accounts.value?.activeAccount?.account.isLinkShare ?? false,
+      ),
+    );
     final message = describeDataFailure(
       l10n,
       error,
       serverRoot: serverRoot ?? Uri(),
       platform: theme.platform,
       stale: stale,
+      guest: guest,
     );
     return StatusCard(
       icon: stale ? Icons.cloud_off_outlined : Icons.error_outline,

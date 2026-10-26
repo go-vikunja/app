@@ -119,14 +119,15 @@ class NotificationsSection extends ConsumerWidget {
           onChanged: (value) =>
               unawaited(_write(ref, preferences.copyWith(dueDates: value))),
         ),
-        SwitchListTile.adaptive(
-          secondary: const Icon(Icons.forum_outlined),
-          title: Text(l10n.notificationsActivity),
-          subtitle: Text(l10n.notificationsActivitySubtitle),
-          value: preferences.activity,
-          onChanged: (value) =>
-              unawaited(_write(ref, preferences.copyWith(activity: value))),
-        ),
+        if (!entry.account.isLinkShare)
+          SwitchListTile.adaptive(
+            secondary: const Icon(Icons.forum_outlined),
+            title: Text(l10n.notificationsActivity),
+            subtitle: Text(l10n.notificationsActivitySubtitle),
+            value: preferences.activity,
+            onChanged: (value) =>
+                unawaited(_write(ref, preferences.copyWith(activity: value))),
+          ),
         if (capabilities case final capabilities? when !granted)
           _StatusLine(
             icon: Icons.notifications_off_outlined,

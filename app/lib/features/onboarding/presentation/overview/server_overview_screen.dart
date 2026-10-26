@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,8 +8,10 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/features/common/presentation/external_link.dart';
 import 'package:vikunja_mobile/features/onboarding/application/browser_sign_in_method.dart';
 import 'package:vikunja_mobile/features/onboarding/application/current_server.dart';
+import 'package:vikunja_mobile/features/onboarding/application/web_auth_pages.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connection_error_card.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/overview/legal_links.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/overview/motd_card.dart';
@@ -19,6 +22,7 @@ import 'package:vikunja_mobile/features/onboarding/presentation/overview/sign_in
 import 'package:vikunja_mobile/features/onboarding/presentation/overview/support_status_card.dart';
 import 'package:vikunja_mobile/features/session/application/sign_in_controller.dart';
 import 'package:vikunja_mobile/features/session/presentation/sign_in_failure_message.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/confirm_dialog.dart';
 
 class ServerOverviewScreen extends ConsumerStatefulWidget {
   const new({this.adding = false, super.key});
@@ -82,6 +86,23 @@ class _ServerOverviewScreenState extends ConsumerState<ServerOverviewScreen> {
     unawaited(ref.read(signInControllerProvider.notifier).signIn(connection));
   }
 
+  // The web's login page links to its registration form and comes back
+  // here once the account exists.
+  Future<void> _createAccount(ServerConnection connection) async {
+    final l10n = context.l10n;
+    final confirmed = await confirmAdaptive(
+      context,
+      title: l10n.overviewCreateAccount,
+      body: l10n.overviewCreateAccountHint,
+      confirmLabel: l10n.continueToSignIn,
+    );
+    if (confirmed && mounted) _signIn(connection);
+  }
+
+  void _openPasswordReset(ServerConnection connection) => unawaited(
+    openExternalOrSay(context, ref, passwordResetPageUri(connection)),
+  );
+
   @override
   Widget build(BuildContext context) {
     ref.listen(signInControllerProvider, _onSignInChanged);
@@ -97,16 +118,27 @@ class _ServerOverviewScreenState extends ConsumerState<ServerOverviewScreen> {
     final signInMethod = browserSignInMethodFor(connection);
     final motd = connection.info.motd.trim();
     final legal = connection.info.legal;
-    // On short screens (landscape phones) a pinned bar would leave only a
-    // strip for the content, so the actions scroll with it instead.
+    // On short screens (landscape phones), or with text so large that the
+    // buttons grow as tall, a pinned bar would leave only a strip for the
+    // content, so the actions scroll with it instead.
+    final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
     final pinActions =
-        MediaQuery.sizeOf(context).height >= _shortViewportHeight;
+        MediaQuery.sizeOf(context).height >=
+        _shortViewportHeight * math.max(1, textScale);
     final actions = OverviewActions(
       canSignIn: signInMethod != null,
       isSigningIn: isSigningIn,
       onContinue: () => _signIn(connection),
       onUseDifferentServer: () =>
           widget.adding ? context.pop() : context.go(AppRoutes.connect),
+      onCreateAccount: signInMethod?.offersRegistration ?? false
+          ? () => unawaited(_createAccount(connection))
+          : null,
+      onForgotPassword: signInMethod?.offersPasswordReset ?? false
+          ? () => _openPasswordReset(connection)
+          : null,
+      registrationNeedsInvitation:
+          signInMethod?.registrationNeedsInvitation ?? false,
     );
 
     // Once the browser has returned, the code is being exchanged and the

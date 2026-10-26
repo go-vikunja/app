@@ -12,8 +12,8 @@ part of 'realtime_connection_providers.dart';
 /// scheduler: replaced on an account switch; gone in a background
 /// container, while nobody is signed in, before the account's first sync,
 /// while its session needs a new sign-in, during a sign-out and on a server
-/// without websockets; closed while the app is not in front or nothing
-/// listens (the shell does).
+/// without websockets, and for a link-share guest; closed while the app is
+/// not in front or nothing listens (the shell does).
 
 @ProviderFor(realtimeConnection)
 final realtimeConnectionProvider = RealtimeConnectionProvider._();
@@ -22,8 +22,8 @@ final realtimeConnectionProvider = RealtimeConnectionProvider._();
 /// scheduler: replaced on an account switch; gone in a background
 /// container, while nobody is signed in, before the account's first sync,
 /// while its session needs a new sign-in, during a sign-out and on a server
-/// without websockets; closed while the app is not in front or nothing
-/// listens (the shell does).
+/// without websockets, and for a link-share guest; closed while the app is
+/// not in front or nothing listens (the shell does).
 
 final class RealtimeConnectionProvider
     extends
@@ -37,8 +37,8 @@ final class RealtimeConnectionProvider
   /// scheduler: replaced on an account switch; gone in a background
   /// container, while nobody is signed in, before the account's first sync,
   /// while its session needs a new sign-in, during a sign-out and on a server
-  /// without websockets; closed while the app is not in front or nothing
-  /// listens (the shell does).
+  /// without websockets, and for a link-share guest; closed while the app is
+  /// not in front or nothing listens (the shell does).
   RealtimeConnectionProvider._()
     : super(
         from: null,
@@ -74,4 +74,4 @@ final class RealtimeConnectionProvider
 }
 
 String _$realtimeConnectionHash() =>
-    r'8a9807c39dee1c19a2f4bb483754f16581bacb45';
+    r'd84e7b709e365a8e48556e068d285bbf9300c10a';

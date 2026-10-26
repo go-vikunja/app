@@ -31,3 +31,33 @@ String fakeJwt({
     'c2lnbmF0dXJl',
   ].join('.');
 }
+
+/// An unsigned JWT with [payload] as its claims.
+String unsignedJwt(Map<String, Object?> payload) => [
+  _segment({'alg': 'HS256', 'typ': 'JWT'}),
+  _segment(payload),
+  'c2lnbmF0dXJl',
+].join('.');
+
+/// An unsigned link share JWT (`type` 2) with Vikunja's claim layout.
+String fakeLinkShareJwt({
+  int id = 84,
+  int projectId = 1378,
+  int permission = 1,
+  int sharedById = 443,
+  DateTime? issuedAt,
+  DateTime? expiresAt,
+}) {
+  final iat = issuedAt ?? DateTime.utc(2026, 10, 26, 17);
+  final exp = expiresAt ?? iat.add(const Duration(hours: 72));
+  return unsignedJwt({
+    'exp': exp.millisecondsSinceEpoch ~/ 1000,
+    'hash': 'x' * 40,
+    'iat': iat.millisecondsSinceEpoch ~/ 1000,
+    'id': id,
+    'permission': permission,
+    'project_id': projectId,
+    'sharedByID': sharedById,
+    'type': 2,
+  });
+}

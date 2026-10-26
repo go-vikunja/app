@@ -1,15 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/features/accounts/application/account_switcher.dart';
-import 'package:vikunja_mobile/features/common/presentation/user_avatar.dart';
-import 'package:vikunja_mobile/features/onboarding/presentation/server_address_display.dart';
+import 'package:vikunja_mobile/features/accounts/presentation/account_identity.dart';
 
 /// One account in the switcher or the Accounts section: avatar, name,
-/// `@username · host`, and badges for a session that ended and for changes
-/// not sent yet. The [current] account is marked instead of [trailing].
+/// `@username · host` (a guest's link, share name and `Guest · host`), and
+/// badges for a session that ended and for changes not sent yet. The
+/// [current] account is marked instead of [trailing].
 class AccountTile extends ConsumerWidget {
   const new({
     required this.entry,
@@ -36,8 +35,12 @@ class AccountTile extends ConsumerWidget {
     final badges = [
       if (account.needsReauth)
         _Badge(
-          label: l10n.accountBadgeSignInAgain,
-          icon: Icons.lock_clock_outlined,
+          label: account.isLinkShare
+              ? l10n.guestOpenLinkAgain
+              : l10n.accountBadgeSignInAgain,
+          icon: account.isLinkShare
+              ? Icons.link_off
+              : Icons.lock_clock_outlined,
           background: colors.tertiaryContainer,
           foreground: colors.onTertiaryContainer,
         ),
@@ -57,27 +60,13 @@ class AccountTile extends ConsumerWidget {
       selected: current,
       onTap: onTap,
       contentPadding: contentPadding,
-      leading: UserAvatar(
-        user: User(
-          id: account.userId,
-          username: account.username,
-          name: account.displayName,
-        ),
-        radius: 20,
-        accountId: entry.id,
-        primary: true,
-      ),
-      title: Text(account.displayName),
+      leading: AccountAvatar(entry: entry, radius: 20),
+      title: Text(accountTitle(account)),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            l10n.accountSubtitle(
-              account.username,
-              displayHost(entry.connection.rootUri),
-            ),
-          ),
+          Text(accountSubtitleOf(l10n, entry)),
           if (badges.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 6),

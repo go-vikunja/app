@@ -1,5 +1,6 @@
 import 'package:logging/logging.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
+import 'package:vikunja_mobile/core/auth/link_share_store.dart';
 import 'package:vikunja_mobile/core/auth/token_store.dart';
 
 final _log = Logger('AccountsWithoutTokens');
@@ -7,17 +8,21 @@ final _log = Logger('AccountsWithoutTokens');
 /// The registry and secure storage are written separately, so a crash between
 /// the writes, or a backup restore without the Keychain/Keystore, leaves an
 /// account without tokens. It is marked `needsReauth` like an account whose
-/// session ended, so it keeps its local data and offers "Sign in again".
+/// session ended, so it keeps its local data and offers "Sign in again". A
+/// guest counts as signed in while its link's hash is stored.
 Future<AccountRegistryState> flagAccountsWithoutTokens(
   AccountRegistry registry,
   TokenStore tokenStore,
+  LinkShareStore linkShareStore,
 ) async {
   var state = await registry.load();
   for (final entry in state.accounts) {
     if (entry.account.needsReauth) continue;
-    final StoredTokens? tokens;
+    final Object? secrets;
     try {
-      tokens = await tokenStore.read(entry.id);
+      secrets = entry.account.isLinkShare
+          ? await linkShareStore.read(entry.id)
+          : await tokenStore.read(entry.id);
     } on Object catch (error) {
       // Unreadable is not missing: the Keychain refuses reads before the
       // first unlock, and the session manager handles a real loss on use.
@@ -27,7 +32,7 @@ Future<AccountRegistryState> flagAccountsWithoutTokens(
       );
       continue;
     }
-    if (tokens != null) continue;
+    if (secrets != null) continue;
     _log.warning('Account ${entry.id} has no tokens, it needs a new sign-in');
     state = await registry.markNeedsReauth(entry.id);
   }

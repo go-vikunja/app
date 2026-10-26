@@ -7,10 +7,12 @@ class ServerAddressField extends StatelessWidget {
     required this.enabled,
     required this.onSubmitted,
     required this.onChanged,
+    this.focusNode,
     super.key,
   });
 
   final TextEditingController controller;
+  final FocusNode? focusNode;
   final bool enabled;
   final VoidCallback onSubmitted;
   final ValueChanged<String> onChanged;
@@ -22,6 +24,7 @@ class ServerAddressField extends StatelessWidget {
       valueListenable: controller,
       builder: (context, value, _) => TextFormField(
         controller: controller,
+        focusNode: focusNode,
         enabled: enabled,
         keyboardType: TextInputType.url,
         textInputAction: TextInputAction.go,

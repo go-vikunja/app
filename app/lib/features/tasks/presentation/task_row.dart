@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/features/common/presentation/avatar_stack.dart';
 import 'package:vikunja_mobile/features/common/presentation/identifier_text.dart';
 import 'package:vikunja_mobile/features/projects/application/project_access.dart';
@@ -119,6 +120,8 @@ class TaskRow extends ConsumerWidget {
       projectAccessProvider(task.projectId)
           .select((access) => !access.canChangeTasks),
     );
+    // The server ignores a link-share guest's favourites.
+    final guest = ref.watch(activeAccountIsGuestProvider);
     final identifier = summary.identifier;
     final identifierLeads = identifierBeforeTitle && identifier != null;
     final mutedSmall = theme.textTheme.bodySmall?.copyWith(
@@ -298,10 +301,11 @@ class TaskRow extends ConsumerWidget {
                       ),
                       child: avatars,
                     ),
-                  FavouriteButton(
-                    isFavorite: task.isFavorite,
-                    onChanged: readOnly ? null : onFavoriteChanged,
-                  ),
+                  if (!guest)
+                    FavouriteButton(
+                      isFavorite: task.isFavorite,
+                      onChanged: readOnly ? null : onFavoriteChanged,
+                    ),
                 ],
               );
             },

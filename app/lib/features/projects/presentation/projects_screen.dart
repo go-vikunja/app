@@ -105,6 +105,8 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
       ),
     );
     final openTaskCounts = ref.watch(openTaskCountsProvider);
+    // A link-share guest has its one project and no saved filters.
+    final guest = ref.watch(activeAccountIsGuestProvider);
     // The tree would otherwise show expanded for a moment, then collapse,
     // and be pushed down by the sections above it and its rows' counts as
     // they arrive.
@@ -118,11 +120,12 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
         title: Text(l10n.tabProjects),
         actions: [
           const SearchButton(),
-          IconButton(
-            onPressed: _createProject,
-            tooltip: l10n.projectNew,
-            icon: const Icon(Icons.add),
-          ),
+          if (!guest)
+            IconButton(
+              onPressed: _createProject,
+              tooltip: l10n.projectNew,
+              icon: const Icon(Icons.add),
+            ),
           // Refresh is in the menu, where it leaves the title room on a
           // narrow phone; pulling the list refreshes too.
           PopupMenuButton<_Action>(
@@ -140,10 +143,11 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
                 enabled: !refreshing,
                 child: Text(l10n.refresh),
               ),
-              PopupMenuItem(
-                value: _Action.newSavedFilter,
-                child: Text(l10n.savedFilterNew),
-              ),
+              if (!guest)
+                PopupMenuItem(
+                  value: _Action.newSavedFilter,
+                  child: Text(l10n.savedFilterNew),
+                ),
               CheckedPopupMenuItem(
                 value: _Action.toggleArchived,
                 checked: preferences.showArchived,
@@ -166,8 +170,8 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
           openTaskCounts: openTaskCounts.value ?? const {},
           notice: notice,
           onOpen: _open,
-          onCreate: _createProject,
-          onCreateSavedFilter: _createSavedFilter,
+          onCreate: guest ? null : _createProject,
+          onCreateSavedFilter: guest ? null : _createSavedFilter,
           onToggle: (projectId) => _toggle(preferences, projectId),
           onExpand: _expand,
         ),
@@ -259,8 +263,8 @@ class _Sections extends ConsumerStatefulWidget {
   final Map<int, int> openTaskCounts;
   final Widget? notice;
   final ValueChanged<int> onOpen;
-  final VoidCallback onCreate;
-  final VoidCallback onCreateSavedFilter;
+  final VoidCallback? onCreate;
+  final VoidCallback? onCreateSavedFilter;
   final ValueChanged<int> onToggle;
   final ValueChanged<int> onExpand;
 
@@ -730,22 +734,24 @@ class _SectionsState extends ConsumerState<_Sections> {
               title: l10n.projectsEmptyTitle,
               body: l10n.projectsEmptyBody,
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: FilledButton.icon(
-                onPressed: widget.onCreate,
-                icon: const Icon(Icons.add),
-                label: Text(l10n.projectNew),
+            if (widget.onCreate case final onCreate?)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: FilledButton.icon(
+                  onPressed: onCreate,
+                  icon: const Icon(Icons.add),
+                  label: Text(l10n.projectNew),
+                ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(32, 8, 32, 32),
-              child: OutlinedButton.icon(
-                onPressed: widget.onCreateSavedFilter,
-                icon: const Icon(Icons.filter_list),
-                label: Text(l10n.savedFilterNew),
+            if (widget.onCreateSavedFilter case final onCreateSavedFilter?)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(32, 8, 32, 32),
+                child: OutlinedButton.icon(
+                  onPressed: onCreateSavedFilter,
+                  icon: const Icon(Icons.filter_list),
+                  label: Text(l10n.savedFilterNew),
+                ),
               ),
-            ),
           ],
         ),
       );
@@ -783,7 +789,8 @@ class _SectionsState extends ConsumerState<_Sections> {
     ];
     final filterRows = [
       for (final filter in savedFilters) filterRow(filter, 'filter'),
-      _NewSavedFilterRow(onTap: widget.onCreateSavedFilter),
+      if (widget.onCreateSavedFilter case final onCreateSavedFilter?)
+        _NewSavedFilterRow(onTap: onCreateSavedFilter),
     ];
     final heldRows = {
       ..._subtreeRows(_held),

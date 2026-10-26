@@ -13,6 +13,7 @@ import 'package:vikunja_mobile/features/session/application/sign_out_controller.
 import 'package:vikunja_mobile/features/sync/application/realtime_connection_providers.dart';
 
 import '../../helpers/auth_fakes.dart';
+import '../../helpers/guest_fakes.dart';
 import '../../helpers/pump_app.dart';
 import '../../helpers/server_connections.dart';
 import '../../helpers/sync_fakes.dart';
@@ -111,6 +112,22 @@ void main() {
 
   group('no socket', () {
     testWidgets('while nobody is signed in', (tester) async {
+      final container = containerWith();
+
+      final shell = await listen(tester, container);
+
+      expect(shell.read(), isNull);
+      expect(sync.realtime.connectCalls, 0);
+      container.dispose();
+    });
+
+    testWidgets('for a link-share guest, whose token the socket refuses', (
+      tester,
+    ) async {
+      await auth.seedGuest(
+        fullServer270(),
+        token: issueLinkShareToken(issuedAt: DateTime.now().toUtc()),
+      );
       final container = containerWith();
 
       final shell = await listen(tester, container);

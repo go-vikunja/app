@@ -11,6 +11,7 @@ import 'package:vikunja_mobile/core/sync/sync_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/account_actions.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
+import 'package:vikunja_mobile/features/home/presentation/guest_reauth_banner.dart';
 import 'package:vikunja_mobile/features/home/presentation/reauth_banner.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_header.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connection_error_card.dart';
@@ -114,9 +115,11 @@ class _FirstSyncScreenState extends ConsumerState<FirstSyncScreen> {
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 32),
-                    if (sessionEnded) ...[
-                      // The Account tab's flow, because there is no Account
-                      // tab before the first sync.
+                    // The Account tab's flow, because there is no Account
+                    // tab before the first sync.
+                    if (sessionEnded && entry.account.isLinkShare)
+                      GuestReauthBanner(entry: entry)
+                    else if (sessionEnded) ...[
                       ReauthBanner(
                         serverRoot: entry.connection.rootUri,
                         isSigningIn: signIn is SignInInProgress,

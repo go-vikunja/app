@@ -3,10 +3,12 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
+import 'package:vikunja_mobile/core/auth/link_share_session.dart';
 import 'package:vikunja_mobile/core/auth/session_manager.dart';
 import 'package:vikunja_mobile/features/session/application/session_check.dart';
 
 import '../../helpers/auth_fakes.dart';
+import '../../helpers/guest_fakes.dart';
 import '../../helpers/server_connections.dart';
 
 const _alice = User(id: 7, username: 'alice', name: 'Alice Example');
@@ -30,6 +32,13 @@ void main() {
     );
     check = SessionCheck(
       sessions: sessions,
+      linkShares: LinkShareSessions(
+        store: auth.linkShareStore,
+        gateway: auth.linkShareGateway,
+        connectionFor: (id) async => (await auth.registry.find(id))?.connection,
+        markNeedsReauth: auth.registry.markNeedsReauth,
+        clock: () => now,
+      ),
       accountGateway: auth.accountGateway,
       clock: () => now,
     );
@@ -224,5 +233,69 @@ void main() {
         isFalse,
       );
     });
+  });
+
+  group('a guest', () {
+    const pseudoUser = User(
+      id: -84,
+      username: 'link-share-84',
+      name: 'Link Share',
+    );
+
+    Future<bool> needsReauth(String accountId) async =>
+        (await auth.registry.find(accountId))!.account.needsReauth;
+
+    test('renews its token when due and reads its pseudo user, never through '
+        'a session manager', () async {
+      final old = issueLinkShareToken(
+        issuedAt: now.subtract(const Duration(hours: 40)),
+      );
+      final guest = await auth.seedGuest(fullServer270(), token: old);
+      final fresh = issueLinkShareToken(issuedAt: now);
+      auth.linkShareGateway.onRenew = (_) async => fresh;
+      auth.accountGateway.onCurrentUser = (_) async => pseudoUser;
+
+      await check.check(guest);
+
+      expect(auth.linkShareGateway.renewedTokens, [old.jwt]);
+      expect(auth.accountGateway.currentUserTokens, [fresh.jwt]);
+      expect(auth.tokenGateway.refreshedTokens, isEmpty);
+      expect(await needsReauth(guest.id), isFalse);
+    });
+
+    for (final (version, failure) in [
+      ('v1', const LinkShareGone(code: 13003) as VikunjaFailure),
+      ('v2', const UnexpectedResponse(401)),
+    ]) {
+      test('whose share is gone ($version) needs the link again', () async {
+        final guest = await auth.seedGuest(
+          fullServer270(),
+          token: issueLinkShareToken(issuedAt: now),
+        );
+        auth.accountGateway.onCurrentUser = (_) async => throw failure;
+
+        await check.check(guest);
+        await pumpEventQueue();
+
+        expect(await needsReauth(guest.id), isTrue);
+      });
+    }
+
+    test(
+      'is not ended by a refusal that is about the guest being no user',
+      () async {
+        final guest = await auth.seedGuest(
+          fullServer270(),
+          token: issueLinkShareToken(issuedAt: now),
+        );
+        auth.accountGateway.onCurrentUser = (_) async =>
+            throw const DomainError(401, code: 1027);
+
+        await check.check(guest);
+        await pumpEventQueue();
+
+        expect(await needsReauth(guest.id), isFalse);
+      },
+    );
   });
 }

@@ -26,6 +26,10 @@ final class FakeSyncClient implements VikunjaReadClient {
   /// Projects the user lost access to since the list: their task requests
   /// answer 403 with Vikunja's code 7003, like the 2.7.0 server.
   final Set<int> forbiddenProjects = {};
+
+  /// The permission only a single project read answers, as for a link-share
+  /// guest, whose list says null.
+  final Map<int, Permission> singleReadPermissions = {};
   List<Label> allLabels = [];
   List<Task> allTasks = [];
   User? currentUser;
@@ -177,7 +181,13 @@ final class FakeProjectsPort implements ProjectsPort {
   @override
   Future<Project> read(int id) async {
     await _client._request('project $id');
-    return _client.allProjects.firstWhere((project) => project.id == id);
+    final project = _client.allProjects.firstWhere(
+      (project) => project.id == id,
+    );
+    return switch (_client.singleReadPermissions[id]) {
+      final permission? => project.copyWith(maxPermission: permission),
+      null => project,
+    };
   }
 }
 

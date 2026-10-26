@@ -5,12 +5,14 @@ import 'package:vikunja_mobile/features/onboarding/presentation/connect/failure_
 import 'package:vikunja_mobile/features/onboarding/presentation/server_address_display.dart';
 
 /// Explains a failed read. [stale] is true when older data stays on screen.
+/// A [guest] opens its link again instead of signing in.
 FailureMessage describeDataFailure(
   AppLocalizations l10n,
   Object error, {
   required Uri serverRoot,
   required TargetPlatform platform,
   required bool stale,
+  bool guest = false,
 }) {
   final host = displayHost(serverRoot);
   final title = stale
@@ -38,9 +40,12 @@ FailureMessage describeDataFailure(
           ? l10n.failureTlsSuggestionIos
           : l10n.failureTlsSuggestion,
     ),
-    SessionEnded() ||
-    TokenRejected() ||
-    RefreshRaceLost() => message(l10n.dataFailureSessionEnded(host), null),
+    SessionEnded() || TokenRejected() || RefreshRaceLost() => message(
+      guest
+          ? l10n.guestDataFailureAccessEnded(host)
+          : l10n.dataFailureSessionEnded(host),
+      null,
+    ),
     Forbidden() => message(l10n.dataFailureForbidden(host), null),
     NotFound() => message(l10n.dataFailureNotFound(host), null),
     RateLimited() => message(

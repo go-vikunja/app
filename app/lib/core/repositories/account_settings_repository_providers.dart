@@ -1,4 +1,5 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/auth/deleted_account.dart';
 import 'package:vikunja_mobile/core/avatar/avatar_providers.dart';
@@ -27,6 +28,8 @@ AccountSettingsRepository accountSettingsRepositoryFor(
       if (entry == null) {
         throw StateError('Account $accountId is not registered');
       }
+      // What the server answers a guest; it has no session manager either.
+      if (entry.account.isLinkShare) throw const Forbidden(code: 1023);
       final session = sessions.forAccount(accountId);
       return await endingSessionOfDeletedAccount(
         session,

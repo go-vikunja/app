@@ -122,7 +122,9 @@ void main() {
       isNull,
     );
 
-    await tester.tap(find.widgetWithText(TextButton, en.connectCancel));
+    final cancel = find.widgetWithText(TextButton, en.connectCancel);
+    await tester.ensureVisible(cancel);
+    await tester.tap(cancel);
     await tester.pump();
 
     expect(connector.cancelTokens.single?.isCancelled, isTrue);

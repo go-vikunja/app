@@ -62,6 +62,7 @@ void main() {
     List<User> known = const [alice, dora, dirk],
     UserSettings settings = const UserSettings(),
     DateTime? at,
+    bool guest = false,
   }) => LocalQuickAddService(
     snapshot: QuickAddSnapshot(
       projects: projects ?? [inbox, garage, work, archived, shadow],
@@ -73,6 +74,7 @@ void main() {
     labels: labels,
     users: users,
     now: () => at ?? now,
+    guest: guest,
     grammar: fakeGrammar,
     random: ZeroRandom(),
   );
@@ -733,6 +735,25 @@ void main() {
 
         expect(result.unresolvedAssignees, ['bob']);
         expect(labels.created.map((label) => label.title), ['neu']);
+      });
+
+      test('a link-share guest, whom the server refuses both, matches people '
+          'only among the known ones and creates no label', () async {
+        final result = await service(guest: true)
+            .submit('a @alice @bob *neu *wichtig');
+
+        expect(users.searches, isEmpty);
+        expect(labels.created, isEmpty);
+        expect(tasks.creates.single.title, 'a @bob');
+        expect(tasks.updates.single, (
+          -1,
+          const TaskChanges(
+            labels: IdSetChange(added: {10}),
+            assignees: IdSetChange(added: {20}),
+          ),
+        ));
+        expect(result.unresolvedAssignees, ['bob']);
+        expect(result.labelsNotCreated, ['neu']);
       });
 
       test('a line of nothing but a person keeps the name as the title and '

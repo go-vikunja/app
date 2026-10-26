@@ -34,6 +34,9 @@ final class QuickAddSnapshot {
 }
 
 /// Quick add over a [QuickAddSnapshot]; a new snapshot means a new service.
+/// A link-share guest neither searches users nor creates labels, which
+/// the server refuses it: its `@name` is matched against the people this
+/// device knows, and its new labels are reported as not created.
 final class LocalQuickAddService implements QuickAddService {
   new({
     required this._snapshot,
@@ -41,6 +44,7 @@ final class LocalQuickAddService implements QuickAddService {
     required this._labels,
     required this._users,
     required this._now,
+    this._guest = false,
     this._grammar = const QuickAddGrammar(),
     Random? random,
   }) : _random = random ?? Random();
@@ -56,6 +60,7 @@ final class LocalQuickAddService implements QuickAddService {
   final LabelRepository _labels;
   final UserRepository _users;
   final DateTime Function() _now;
+  final bool _guest;
   final QuickAddGrammar _grammar;
   final Random _random;
 
@@ -177,6 +182,7 @@ final class LocalQuickAddService implements QuickAddService {
       users: _users,
       labels: _labels,
       random: _random,
+      online: !_guest,
     );
     final ready = [
       for (final plan in plans) await _resolveAssignees(plan, submission),
@@ -444,14 +450,19 @@ bool _containsIgnoringCase(List<String> values, String value) {
 
 /// The network part of one submit. The first `NetworkFailure` means the
 /// device is offline: later searches and label creates are skipped instead
-/// of each waiting for its own timeout.
+/// of each waiting for its own timeout. A guest's submit skips them all.
 final class _Submission {
-  new({required this._users, required this._labels, required this._random});
+  new({
+    required this._users,
+    required this._labels,
+    required this._random,
+    required bool online,
+  }) : _reachable = online;
 
   final UserRepository _users;
   final LabelRepository _labels;
   final Random _random;
-  var _reachable = true;
+  bool _reachable;
   final _searches = <(int, String), User?>{};
   final _created = <String, Label>{};
   final List<String> labelsNotCreated = [];

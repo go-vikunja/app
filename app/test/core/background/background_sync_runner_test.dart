@@ -5,9 +5,11 @@ import 'package:drift/drift.dart' show driftRuntimeOptions;
 import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/auth/link_share_providers.dart';
 import 'package:vikunja_mobile/core/background/background_run_log.dart';
 import 'package:vikunja_mobile/core/background/background_runner_channel.dart';
 import 'package:vikunja_mobile/core/background/background_sync_runner.dart';
@@ -23,6 +25,7 @@ import '../../helpers/auth_fakes.dart';
 import '../../helpers/fake_sync_client.dart';
 import '../../helpers/fake_timers.dart';
 import '../../helpers/fake_write_client.dart';
+import '../../helpers/guest_fakes.dart';
 import '../../helpers/notification_fakes.dart';
 import '../../helpers/sample_data.dart';
 import '../../helpers/server_connections.dart';
@@ -493,4 +496,126 @@ void main() {
       expect(gateway.activities, isEmpty);
     },
   );
+
+  group('a link-share guest', () {
+    Future<RegisteredAccount> guestSignedIn({DateTime? syncedAt}) async {
+      final entry = await auth.seedGuest(
+        fullServer270(root: 'https://shared.example.org'),
+        token: issueLinkShareToken(issuedAt: now),
+      );
+      await databases
+          .putIfAbsent(entry.id, () => AppDatabase(NativeDatabase.memory()))
+          .syncStateDao
+          .write({
+            SyncStateKeys.lastSyncedAt: syncedAt?.toIso8601String(),
+            SyncStateKeys.activitySyncedAt: monday.toIso8601String(),
+          });
+      return entry;
+    }
+
+    test('is synced, drained and reconciled, without the activity the server '
+        'refuses it, and the run completes', () async {
+      final guest = await guestSignedIn(syncedAt: monday);
+      final user = await signedIn(1, syncedAt: monday);
+      final db = databases[guest.id]!;
+      await db.projectsDao.upsertAll([
+        sampleProject(id: 1378, title: 'Garden'),
+      ]);
+      await db.tasksDao.upsertAll([
+        sampleTask(id: 1, title: 'Water', projectId: 1378),
+      ], syncRunId: 'run');
+      await db.outboxDao.queueUpdate(
+        1,
+        const TaskChanges(done: true),
+        now: monday,
+      );
+      writeOf(guest.id).serverTasks[1] = sampleTask(id: 1, title: 'Water');
+      readOf(guest.id).serverNotifications = [sampleNotification(id: 3)];
+      readOf(user.id).serverNotifications = [sampleNotification(id: 4)];
+      now = monday.add(const Duration(minutes: 30));
+
+      expect(await runner().run(), BackgroundRunOutcome.completed);
+
+      expect(engineOf(guest.id).refreshCalls, greaterThanOrEqualTo(1));
+      expect(writeOf(guest.id).requests, ['update 1']);
+      expect(readOf(guest.id).requests, isNot(contains(startsWith('notif'))));
+      expect(readOf(user.id).requests, contains('notifications 1'));
+      expect(await BackgroundRunLog(auth.preferences).lastRunAt(guest.id), now);
+    });
+
+    test(
+      'whose share is gone is marked and noticed like an ended session',
+      () async {
+        final guest = await guestSignedIn(syncedAt: monday);
+        engineOf(guest.id).onRefresh = () async {
+          container
+              .read(linkShareSessionsProvider)
+              .forAccount(guest.id)
+              .noteGone(const LinkShareGone(code: 13003));
+          throw const LinkShareGone(code: 13003);
+        };
+
+        expect(await runner().run(), BackgroundRunOutcome.partial);
+
+        expect(
+          (await AccountRegistry(auth.preferences).find(guest.id))!
+              .account
+              .needsReauth,
+          isTrue,
+        );
+        expect(
+          gateway.activities.single.payload,
+          contains('session:${guest.id}'),
+        );
+      },
+    );
+
+    test('at the deadline, an authentication on its way gets the grace to '
+        'store its token', () async {
+      final guest = await guestSignedIn(syncedAt: monday);
+      final answer = Completer<LinkShareAuth>();
+      auth.linkShareGateway.onAuthenticate = (_, _) => answer.future;
+      // The stored token expired days ago by the device's clock.
+      engineOf(guest.id).onRefresh = () async {
+        await container
+            .read(linkShareSessionsProvider)
+            .forAccount(guest.id)
+            .validAccessToken();
+      };
+
+      final run = runner().run();
+      var finished = false;
+      unawaited(run.then((_) => finished = true));
+      await pumpEventQueue();
+      expect(auth.linkShareGateway.authentications, hasLength(1));
+      timers.fireNext();
+      await pumpEventQueue();
+      expect(finished, isFalse);
+      final fresh = issueLinkShareToken(issuedAt: DateTime.now().toUtc());
+      answer.complete(linkShareAuthFor(fresh));
+
+      expect(await run, BackgroundRunOutcome.deadline);
+      expect((await auth.linkShareStore.read(guest.id))?.token, fresh.jwt);
+    });
+
+    test('a sign-out elsewhere retires its session too', () async {
+      final guest = await guestSignedIn(syncedAt: monday);
+      final gate = Completer<void>();
+      engineOf(guest.id).onRefresh = () => gate.future;
+      final sessions = container.read(linkShareSessionsProvider);
+
+      final run = runner().run();
+      await pumpEventQueue();
+      BackgroundRunnerChannel.release(guest.id);
+      await pumpEventQueue();
+      gate.complete();
+      await run;
+
+      await expectLater(
+        sessions.forAccount(guest.id).validAccessToken(),
+        throwsA(isA<SessionEnded>()),
+      );
+      expect(auth.linkShareGateway.authentications, isEmpty);
+    });
+  });
 }

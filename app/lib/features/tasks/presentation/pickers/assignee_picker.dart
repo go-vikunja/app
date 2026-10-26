@@ -10,8 +10,9 @@ import 'package:vikunja_mobile/features/tasks/application/people_search.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/picker_sheet.dart';
 
 /// Lets the user tick the people of [projectId] to assign, found on the
-/// server or, without a connection, among the people this device knows.
-/// Done returns the ticked people; null when dismissed.
+/// server or, without a connection, among the people this device knows; a
+/// link-share guest, whom the server's user search refuses, always picks
+/// among those. Done returns the ticked people; null when dismissed.
 Future<List<User>?> pickAssignees(
   BuildContext context, {
   required int projectId,
@@ -49,7 +50,7 @@ class _AssigneePickerState extends ConsumerState<AssigneePicker> {
   late final List<User> _selected = [...widget.selected];
   Timer? _debounce;
   int _latestSearch = 0;
-  bool _searching = true;
+  late bool _searching = !ref.read(activeAccountIsGuestProvider);
 
   /// The server's answer to [_answeredQuery].
   List<User> _found = const [];
@@ -94,6 +95,7 @@ class _AssigneePickerState extends ConsumerState<AssigneePicker> {
   }
 
   Future<void> _search(String query) async {
+    if (ref.read(activeAccountIsGuestProvider)) return;
     final search = ++_latestSearch;
     final repository = ref.read(userRepositoryProvider);
     if (!_searching) setState(() => _searching = true);

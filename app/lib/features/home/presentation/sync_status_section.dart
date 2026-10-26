@@ -108,6 +108,7 @@ class SyncStatusSection extends ConsumerWidget {
                       serverRoot: entry.connection.rootUri,
                       platform: theme.platform,
                       stale: lastSyncedAt != null,
+                      guest: entry.account.isLinkShare,
                     ).explanation,
                     style: secondary,
                   ),

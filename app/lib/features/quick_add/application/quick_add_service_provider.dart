@@ -35,5 +35,6 @@ QuickAddService? quickAddService(Ref ref) {
     labels: labels,
     users: users,
     now: ref.watch(clockProvider),
+    guest: ref.watch(activeAccountIsGuestProvider),
   );
 }

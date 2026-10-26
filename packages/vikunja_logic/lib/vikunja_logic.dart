@@ -13,6 +13,7 @@ export 'src/gantt/gantt_range.dart';
 export 'src/kanban/board.dart';
 export 'src/kanban/item_position.dart';
 export 'src/links/attachment_urls.dart';
+export 'src/links/incoming_links.dart';
 export 'src/links/link_share_url.dart';
 export 'src/links/task_links.dart';
 export 'src/links/task_reference.dart';

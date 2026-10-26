@@ -87,8 +87,8 @@ void main() {
       expect(currentServer(), isNull);
     });
 
-    test('accepting confirms the server', () {
-      controller().acceptInsecureConnection();
+    test('accepting confirms the server', () async {
+      await controller().acceptInsecureConnection();
 
       expect(state(), isA<ConnectServerConnected>());
       expect(currentServer(), same(connection));
@@ -160,16 +160,16 @@ void main() {
   });
 
   test('consent and cancel do nothing outside their state', () async {
+    await controller().acceptInsecureConnection();
     controller()
-      ..acceptInsecureConnection()
       ..declineInsecureConnection()
       ..cancel();
     expect(states, [isA<ConnectServerIdle>()]);
 
     connector.handler = (_) async => oauthServer230();
     await controller().connect('vikunja.example.com');
+    await controller().acceptInsecureConnection();
     controller()
-      ..acceptInsecureConnection()
       ..declineInsecureConnection()
       ..cancel();
     expect(state(), isA<ConnectServerConnected>());

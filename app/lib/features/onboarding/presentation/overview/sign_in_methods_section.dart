@@ -12,6 +12,15 @@ class SignInMethodsSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final providers = method.openIdProviderNames;
+    final accountPages = switch ((
+      method.offersRegistration,
+      method.offersPasswordReset,
+    )) {
+      (true, true) => l10n.overviewSignInPageOffersBoth,
+      (true, false) => l10n.overviewSignInPageOffersRegistration,
+      (false, true) => l10n.overviewSignInPageOffersPasswordReset,
+      (false, false) => null,
+    };
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -21,10 +30,21 @@ class SignInMethodsSection extends StatelessWidget {
           child: ListTile(
             leading: const Icon(Icons.open_in_browser),
             title: Text(l10n.signInBrowserTitle),
-            subtitle: Text(
-              providers.isEmpty
-                  ? l10n.signInBrowserSubtitle
-                  : l10n.signInBrowserProvidersSubtitle(providers.join(', ')),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  providers.isEmpty
+                      ? l10n.signInBrowserSubtitle
+                      : l10n.signInBrowserProvidersSubtitle(
+                          providers.join(', '),
+                        ),
+                ),
+                if (accountPages != null) ...[
+                  const SizedBox(height: 4),
+                  Text(accountPages),
+                ],
+              ],
             ),
           ),
         ),

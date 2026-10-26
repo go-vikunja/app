@@ -14,10 +14,10 @@ import 'package:vikunja_mobile/core/settings/user_settings_providers.dart';
 import 'package:vikunja_mobile/core/share/share_intent_source.dart';
 import 'package:vikunja_mobile/core/share/share_providers.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
+import 'package:vikunja_mobile/features/accounts/presentation/account_identity.dart';
 import 'package:vikunja_mobile/features/attachments/application/queue_attachments.dart';
 import 'package:vikunja_mobile/features/attachments/presentation/attachment_messages.dart';
 import 'package:vikunja_mobile/features/common/presentation/file_size_text.dart';
-import 'package:vikunja_mobile/features/onboarding/presentation/server_address_display.dart';
 import 'package:vikunja_mobile/features/overview/application/open_tasks_provider.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/share/application/share_files.dart';
@@ -362,10 +362,7 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
                 children: [
                   if (account != null)
                     Text(
-                      l10n.accountSubtitle(
-                        account.account.username,
-                        displayHost(account.connection.rootUri),
-                      ),
+                      accountSubtitleOf(l10n, account),
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: colors.onSurfaceVariant,
                       ),

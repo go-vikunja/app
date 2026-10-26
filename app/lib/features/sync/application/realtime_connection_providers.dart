@@ -20,8 +20,8 @@ part 'realtime_connection_providers.g.dart';
 /// scheduler: replaced on an account switch; gone in a background
 /// container, while nobody is signed in, before the account's first sync,
 /// while its session needs a new sign-in, during a sign-out and on a server
-/// without websockets; closed while the app is not in front or nothing
-/// listens (the shell does).
+/// without websockets, and for a link-share guest; closed while the app is
+/// not in front or nothing listens (the shell does).
 @Riverpod(keepAlive: true)
 RealtimeConnection? realtimeConnection(Ref ref) {
   if (ref.watch(runsHeadlessProvider)) return null;
@@ -33,6 +33,8 @@ RealtimeConnection? realtimeConnection(Ref ref) {
     ),
   );
   if (needsReauth ?? true) return null;
+  // The server's socket takes user tokens only.
+  if (ref.watch(accountIsGuestProvider(accountId))) return null;
   // The change disposes the connection at once, before the logout request:
   // the server closes the session's sockets when the logout ends the
   // session, and that close must not reach the session manager.

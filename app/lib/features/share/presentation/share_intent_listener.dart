@@ -4,11 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/share/share_intent_source.dart';
 import 'package:vikunja_mobile/core/share/share_providers.dart';
+import 'package:vikunja_mobile/features/onboarding/application/connect_server_controller.dart';
+import 'package:vikunja_mobile/features/share/presentation/open_shared_link_sheet.dart';
 import 'package:vikunja_mobile/features/share/presentation/share_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/open/account_picker.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/open/task_opener.dart';
@@ -19,9 +22,11 @@ final _log = Logger('ShareIntent');
 /// and the ones that arrive while it runs: once the app is past the splash
 /// and the first sync, with several accounts the user picks one first (a
 /// switch follows), then the share sheet opens over the current screen.
-/// Signed out it says so. Whatever happens, the share is cleared at the
-/// end, which deletes the inbox copies that did not move into uploads. A
-/// newer share replaces one still being handled. Nothing shared is logged.
+/// Signed out it says so. A shared project's link is offered to open as a
+/// guest and an admin's invite goes to its check, signed in or out, both on
+/// the connect screen. Whatever happens, the share is cleared at the end,
+/// which deletes the inbox copies that did not move into uploads. A newer
+/// share replaces one still being handled. Nothing shared is logged.
 class ShareIntentListener extends ConsumerStatefulWidget {
   const new({required this.child, super.key});
 
@@ -116,6 +121,8 @@ class _ShareIntentListenerState extends ConsumerState<ShareIntentListener> {
       await _clear(generation);
       return;
     }
+    if (await _openedAsLink(share, generation, signedIn: signedIn)) return;
+    if (!current()) return;
     if (!signedIn) {
       await _opener.showMessage((l10n) => l10n.shareSignedOut);
       await _clear(generation);
@@ -164,6 +171,62 @@ class _ShareIntentListenerState extends ConsumerState<ShareIntentListener> {
     if (!current()) return;
     await _clear(generation);
     if (outcome != null) await _announce(outcome);
+  }
+
+  /// True when [share] was a project's link or an invite and is done with;
+  /// false to treat it as any other share.
+  Future<bool> _openedAsLink(
+    IncomingShare share,
+    int generation, {
+    required bool signedIn,
+  }) async {
+    if (share.files.isNotEmpty) return false;
+    final text = [?share.text, ?share.subject].join('\n');
+    final String address;
+    if (parseLinkShareUrl(text) case final link?) {
+      final choice = Completer<SharedLinkChoice?>();
+      await _opener.showAfterFrame(
+        (context) => choice.complete(
+          askToOpenSharedLink(context, link: link, offerNewTask: signedIn),
+        ),
+      );
+      if (!choice.isCompleted) choice.complete(null);
+      final chosen = await choice.future;
+      if (!mounted || generation != _generation) return true;
+      if (chosen == SharedLinkChoice.newTask) return false;
+      if (chosen == null) {
+        await _clear(generation);
+        return true;
+      }
+      address = link.url.toString();
+    } else if (parseInviteLink(text) case final invite?) {
+      address = inviteUrl(invite).toString();
+    } else {
+      return false;
+    }
+    await _clear(generation);
+    await _connect(address, signedIn: signedIn);
+    return true;
+  }
+
+  /// Opens [address] on the connect screen, for another account when
+  /// [signedIn].
+  Future<void> _connect(String address, {required bool signedIn}) async {
+    ref.read(rootModalRoutesProvider).closeAll();
+    final location = _router.routerDelegate.state.matchedLocation;
+    if (!signedIn) {
+      if (location != AppRoutes.connect) _router.go(AppRoutes.connect);
+    } else if (location == AppRoutes.addAccountServer) {
+      _router.pop();
+    } else if (location != AppRoutes.addAccount) {
+      unawaited(_router.push(AppRoutes.addAccount));
+    }
+    // The screen owns the controller; it listens from its first frame on.
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+    unawaited(
+      ref.read(connectServerControllerProvider.notifier).connect(address),
+    );
   }
 
   Future<void> _announce(ShareOutcome outcome) =>

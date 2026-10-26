@@ -148,6 +148,7 @@ class _UpcomingScreenState extends ConsumerState<UpcomingScreen>
         ref.watch(pendingTaskIdsProvider).unwrapPrevious().value ?? const {};
     final unread =
         ref.watch(unreadActivityCountProvider).unwrapPrevious().value ?? 0;
+    final guest = ref.watch(activeAccountIsGuestProvider);
     final range = preferences.range(now);
     final name = rangeName(l10n, preferences);
     final dates = rangeDates(context, range, now);
@@ -183,10 +184,11 @@ class _UpcomingScreenState extends ConsumerState<UpcomingScreen>
                 enabled: !refreshing,
                 child: Text(l10n.refresh),
               ),
-              PopupMenuItem(
-                value: _Action.inbox,
-                child: Text(l10n.inboxButton(unread)),
-              ),
+              if (!guest)
+                PopupMenuItem(
+                  value: _Action.inbox,
+                  child: Text(l10n.inboxButton(unread)),
+                ),
               const PopupMenuDivider(),
               CheckedPopupMenuItem(
                 value: _Action.toggleOverdue,

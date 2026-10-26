@@ -47,6 +47,9 @@ enum SessionEndReason {
 
   /// 1040: the account is locked.
   accountLocked,
+
+  /// A guest's link share is gone, see [LinkShareGone].
+  linkShareGone,
 }
 
 /// The server-side session is gone; only a new sign-in helps. Local data is
@@ -58,6 +61,20 @@ final class SessionEnded extends VikunjaFailure {
 
   @override
   String toString() => 'SessionEnded($reason)';
+}
+
+/// The link share behind a guest's token no longer works: deleted on its
+/// own or with its project (v1 400 code 13003 on any request, v2 401
+/// without a code), or unknown to the share endpoints (404 code 3006), or
+/// link sharing is off (their routes answer 404 without a code). Only a new
+/// link helps; a password cannot. Never a 401 code 11, which is an expired
+/// token ([TokenRejected]).
+final class LinkShareGone extends SessionEnded {
+  const new({super.code, super.message})
+    : super(SessionEndReason.linkShareGone);
+
+  @override
+  String toString() => 'LinkShareGone(code: $code)';
 }
 
 /// 16004: another refresh with the same token won the rotation race. The

@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v1/user/token",
+  "status": 400,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"message\":\"User tokens cannot be renewed via this endpoint. Use POST /user/token/refresh with a refresh token.\"}\n"
+}

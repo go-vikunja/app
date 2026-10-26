@@ -2,15 +2,14 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/features/accounts/presentation/account_identity.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/account_switcher_sheet.dart';
-import 'package:vikunja_mobile/features/common/presentation/user_avatar.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/server_address_display.dart';
 
-/// The active account's avatar at the end of an app bar; opens the
-/// account switcher.
+/// The active account's avatar (a guest's link) at the end of an app bar;
+/// opens the account switcher.
 class AccountSwitcherButton extends ConsumerWidget {
   const new({super.key});
 
@@ -22,29 +21,21 @@ class AccountSwitcherButton extends ConsumerWidget {
     if (entry == null) return const SizedBox.shrink();
 
     final l10n = context.l10n;
+    final name = accountTitle(entry.account);
+    final host = displayHost(entry.connection.rootUri);
     void open() => unawaited(showAccountSwitcher(context));
     return Semantics(
       container: true,
       button: true,
-      label: l10n.accountSwitcherButton(
-        entry.account.displayName,
-        displayHost(entry.connection.rootUri),
-      ),
+      label: entry.account.isLinkShare
+          ? l10n.guestSwitcherButton(name, host)
+          : l10n.accountSwitcherButton(name, host),
       onTap: open,
       excludeSemantics: true,
       child: IconButton(
         onPressed: open,
         tooltip: l10n.accountsHeading,
-        icon: UserAvatar(
-          user: User(
-            id: entry.account.userId,
-            username: entry.account.username,
-            name: entry.account.displayName,
-          ),
-          radius: 15,
-          accountId: entry.id,
-          primary: true,
-        ),
+        icon: AccountAvatar(entry: entry, radius: 15),
       ),
     );
   }

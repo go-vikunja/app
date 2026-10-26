@@ -12,6 +12,7 @@ import 'package:vikunja_mobile/core/storage/comment_drafts.dart';
 import 'package:vikunja_mobile/features/common/presentation/announce.dart';
 import 'package:vikunja_mobile/features/description_editor/application/mention_suggestions.dart';
 import 'package:vikunja_mobile/features/description_editor/presentation/mention_bar.dart';
+import 'package:vikunja_mobile/features/tasks/application/people_search.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/comment_text_controller.dart';
 
 /// The comment a reply quotes.
@@ -237,12 +238,16 @@ class _CommentComposerState extends ConsumerState<CommentComposer> {
     if (_mentions.value.active) _mentions.end();
   }
 
-  Future<List<User>> _searchPeople(String query) {
+  Future<List<User>> _searchPeople(String query) async {
+    // The server's user search refuses a link-share guest.
+    if (ref.read(activeAccountIsGuestProvider)) {
+      return filterUsers(await _knownPeople(), query);
+    }
     final users = ref.read(userRepositoryProvider);
     if (users == null) {
-      return Future.error(const NetworkFailure(NetworkProblem.unreachable));
+      throw const NetworkFailure(NetworkProblem.unreachable);
     }
-    return users.searchAssignees(widget.projectId, query);
+    return await users.searchAssignees(widget.projectId, query);
   }
 
   Future<List<User>> _knownPeople() async =>

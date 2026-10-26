@@ -8,13 +8,15 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/account_switcher_button.dart';
 import 'package:vikunja_mobile/features/common/presentation/search_pill.dart';
 import 'package:vikunja_mobile/features/inbox/presentation/inbox_button.dart';
 
 /// The top of the Overview in place of an app bar: the search bar with the
 /// account button, then the date, a greeting, how many tasks are left for
-/// today ([tasksLeft], left out while unknown) and the inbox's bell.
+/// today ([tasksLeft], left out while unknown) and the inbox's bell, which
+/// a link-share guest has not.
 class OverviewHeader extends StatelessWidget {
   const new({
     required this.now,
@@ -70,11 +72,17 @@ class _Greeting extends ConsumerWidget {
           ),
         ) ??
         '';
+    // A guest has no name of its own, and the server keeps no
+    // notifications for it.
+    final guest = ref.watch(activeAccountIsGuestProvider);
     final local = now.toLocal();
-    final greeting = switch (local.hour) {
-      >= 5 && < 12 => l10n.overviewGreetingMorning(name),
-      >= 12 && < 18 => l10n.overviewGreetingAfternoon(name),
-      _ => l10n.overviewGreetingEvening(name),
+    final greeting = switch ((local.hour, guest)) {
+      (>= 5 && < 12, true) => l10n.overviewGreetingMorningGuest,
+      (>= 12 && < 18, true) => l10n.overviewGreetingAfternoonGuest,
+      (_, true) => l10n.overviewGreetingEveningGuest,
+      (>= 5 && < 12, false) => l10n.overviewGreetingMorning(name),
+      (>= 12 && < 18, false) => l10n.overviewGreetingAfternoon(name),
+      (_, false) => l10n.overviewGreetingEvening(name),
     };
     final tasksLeft = this.tasksLeft;
     final onRefresh = this.onRefresh;
@@ -118,7 +126,7 @@ class _Greeting extends ConsumerWidget {
               ),
             ),
           ),
-          const InboxButton(),
+          if (!guest) const InboxButton(),
         ],
       ),
     );

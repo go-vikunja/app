@@ -1,17 +1,21 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/auth/link_share_session.dart';
 import 'package:vikunja_mobile/core/auth/session_manager.dart';
 import 'package:vikunja_mobile/core/auth/sign_out.dart';
 
 import '../../helpers/auth_fakes.dart';
+import '../../helpers/guest_fakes.dart';
 import '../../helpers/server_connections.dart';
 
 void main() {
   late DateTime now;
   late AuthFakes fakes;
   late SessionManagers sessions;
+  late LinkShareSessions linkShares;
   late SignOut signOut;
   late List<String> wiped;
   late Future<void> Function(String accountId) wipeAccountData;
@@ -30,11 +34,20 @@ void main() {
       clock: () => now,
       sleep: (_) async {},
     );
+    linkShares = LinkShareSessions(
+      store: fakes.linkShareStore,
+      gateway: fakes.linkShareGateway,
+      connectionFor: (id) async => (await fakes.registry.find(id))?.connection,
+      markNeedsReauth: fakes.registry.markNeedsReauth,
+      clock: () => now,
+    );
     signOut = SignOut(
       registry: fakes.registry,
       tokenStore: fakes.tokenStore,
+      linkShareStore: fakes.linkShareStore,
       clockOffsets: fakes.clockOffsets,
       sessions: sessions,
+      linkShares: linkShares,
       accountGateway: fakes.accountGateway,
       wipeAccountData: (accountId) => wipeAccountData(accountId),
       logoutTimeout: const Duration(milliseconds: 50),
@@ -236,5 +249,54 @@ void main() {
     await signOut(alice.id);
 
     expect(await fakes.clockOffsets.read(alice.id), isNull);
+  });
+
+  group('guests', () {
+    test(
+      'skip the server and delete their hash and token, nothing else',
+      () async {
+        final alice = await fakes.seedAccount(
+          fullServer270(),
+          tokens: issueTokens(issuedAt: now),
+        );
+        final guest = await fakes.seedGuest(
+          fullServer270(),
+          token: issueLinkShareToken(issuedAt: now),
+        );
+
+        await signOut(guest.id);
+
+        expect(fakes.accountGateway.logoutTokens, isEmpty);
+        expect(await fakes.linkShareStore.read(guest.id), isNull);
+        expect(await fakes.tokenStore.read(alice.id), isNotNull);
+        expect(
+          fakes.secureStore.values.keys,
+          everyElement(startsWith('account.${alice.id}.')),
+        );
+        expect((await fakes.registry.load()).accounts.map((e) => e.id), [
+          alice.id,
+        ]);
+        expect(wiped, [guest.id]);
+      },
+    );
+
+    test('a renewal in flight writes no token back', () async {
+      final old = issueLinkShareToken(
+        issuedAt: now.subtract(const Duration(hours: 40)),
+      );
+      final guest = await fakes.seedGuest(fullServer270(), token: old);
+      final renewal = Completer<LinkShareToken>();
+      fakes.linkShareGateway.onRenew = (_) => renewal.future;
+      final request = linkShares.forAccount(guest.id).validAccessToken();
+      await pumpEventQueue();
+
+      await signOut(guest.id);
+      renewal.complete(issueLinkShareToken(issuedAt: now));
+      await expectLater(request, throwsA(isA<SessionEnded>()));
+      await pumpEventQueue();
+
+      expect(fakes.linkShareGateway.renewedTokens, [old.jwt]);
+      expect(fakes.secureStore.values, isEmpty);
+    });
   });
 }

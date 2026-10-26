@@ -1,0 +1,19 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v2/user/token",
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"$schema\":\"http://localhost:34527/api/v2/schemas/RenewTokenBodyBody.json\",\"token\":\"eyJ_placeholder_not_a_jwt\"}\n",
+  "token_claims": {
+    "exp": 1793297848,
+    "hash": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "iat": 1793038648,
+    "id": 87,
+    "permission": 0,
+    "project_id": 1384,
+    "sharedByID": 445,
+    "type": 2
+  }
+}

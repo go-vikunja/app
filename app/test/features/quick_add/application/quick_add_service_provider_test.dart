@@ -51,10 +51,12 @@ void main() {
 
   ProviderContainer containerWith({
     bool signedIn = true,
+    bool guest = false,
     UserSettings settings = const UserSettings(),
   }) {
     final container = ProviderContainer(
       overrides: [
+        activeAccountIsGuestProvider.overrideWithValue(guest),
         ...repositories(
           projects: signedIn ? projects : null,
           tasks: signedIn ? tasks : null,
@@ -146,6 +148,7 @@ void main() {
     final engine = FakeSyncEngine(clock: () => now);
     final other = sampleProject(id: 30, title: 'Other');
     container.updateOverrides([
+      activeAccountIsGuestProvider.overrideWithValue(false),
       ...repositories(
         projects: FakeProjectRepository(engine)..all = [other],
         tasks: FakeTaskRepository(engine),
@@ -166,6 +169,19 @@ void main() {
     expect(switched.unmatchedProject, 'garage');
     expect(switched.project, other);
     expect(switched.newLabels, ['wichtig']);
+  });
+
+  test("a link-share guest's submit neither searches people nor creates "
+      'labels', () async {
+    final container = containerWith(guest: true);
+
+    final result = await (await serviceOf(container))
+        .submit('Buy milk @ben *errand', fallbackProjectId: 3);
+
+    expect(users.searches, isEmpty);
+    expect(labels.created, isEmpty);
+    expect(result.unresolvedAssignees, ['ben']);
+    expect(result.labelsNotCreated, ['errand']);
   });
 
   test('submit creates through the task repository', () async {

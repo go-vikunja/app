@@ -1,0 +1,19 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v2/shares/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/auth",
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"$schema\":\"http://localhost:34527/api/v2/schemas/LinkShareToken.json\",\"token\":\"eyJ_placeholder_not_a_jwt\",\"id\":87,\"hash\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\"name\":\"Fixture guest\",\"permission\":0,\"sharing_type\":1,\"password\":\"\",\"shared_by\":null,\"created\":\"2026-10-26T18:16:16Z\",\"updated\":\"2026-10-26T18:16:16Z\",\"project_id\":1384}\n",
+  "token_claims": {
+    "exp": 1793297818,
+    "hash": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "iat": 1793038618,
+    "id": 87,
+    "permission": 0,
+    "project_id": 1384,
+    "sharedByID": 445,
+    "type": 2
+  }
+}

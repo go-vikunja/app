@@ -72,6 +72,9 @@ VikunjaFailure failureFromResponse(Response<Object?> response) {
       return SessionEnded(reason, code: code, message: message);
     }
     if (code == _refreshRaceLost) return RefreshRaceLost(message: message);
+    if (code == _linkShareTokenInvalid) {
+      return LinkShareGone(code: code, message: message);
+    }
     if (status == 412 && _accountStatusReasons[code] != null) {
       return SessionEnded(
         _accountStatusReasons[code]!,
@@ -101,6 +104,9 @@ VikunjaFailure failureFromResponse(Response<Object?> response) {
 
 const _invalidToken = 11;
 const _refreshRaceLost = 16004;
+// v1's answer to a guest whose share is gone; v2 answers 401 without a
+// code, which only LinkShareGoneInterceptor can tell from a user's 401.
+const _linkShareTokenInvalid = 13003;
 
 const Map<int, OAuthProblem> _oauthProblems = {
   17001: OAuthProblem.clientMismatch,

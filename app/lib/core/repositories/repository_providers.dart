@@ -17,6 +17,8 @@ import 'package:vikunja_mobile/core/attachments/upload_files.dart';
 import 'package:vikunja_mobile/core/attachments/upload_policy.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/auth/deleted_account.dart';
+import 'package:vikunja_mobile/core/auth/link_share_providers.dart';
+import 'package:vikunja_mobile/core/auth/link_share_session.dart';
 import 'package:vikunja_mobile/core/auth/session_manager.dart';
 import 'package:vikunja_mobile/core/auth/sign_out.dart';
 import 'package:vikunja_mobile/core/avatar/avatar_providers.dart';
@@ -40,6 +42,7 @@ import 'package:vikunja_mobile/core/repositories/project_repository.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 import 'package:vikunja_mobile/core/repositories/user_repository.dart';
 import 'package:vikunja_mobile/core/storage/comment_drafts.dart';
+import 'package:vikunja_mobile/core/sync/guest_read_client.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine_impl.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
@@ -54,26 +57,68 @@ String? activeAccountId(Ref ref) => ref.watch(
   accountsProvider.select((accounts) => accounts.value?.activeAccountId),
 );
 
+/// Whether the active account is a link-share guest, which sees one
+/// project and none of what needs a user.
+@Riverpod(keepAlive: true)
+bool activeAccountIsGuest(Ref ref) => ref.watch(
+  accountsProvider.select(
+    (accounts) => accounts.value?.activeAccount?.account.isLinkShare ?? false,
+  ),
+);
+
+@riverpod
+bool accountIsGuest(Ref ref, String accountId) => ref.watch(
+  accountsProvider.select(
+    (accounts) => accounts.value?.find(accountId)?.account.isLinkShare ?? false,
+  ),
+);
+
 /// The authenticated client of one account, shared by its read and write
 /// clients. Kept alive by the sync engine and the outbox sender that use
 /// it, so it goes with them on sign-out.
 @riverpod
 Dio accountDio(Ref ref, String accountId) {
+  final linkShares = _sharedProjectOf(ref, accountId) == null
+      ? null
+      : ref.watch(linkShareSessionsProvider);
   final dio = createAuthenticatedDio(
     base: ref.watch(dioProvider),
     connection: _connectionOf(ref, accountId),
-    tokens: AccountTokens(ref.watch(sessionManagersProvider), accountId),
-    interceptors: [if (kDebugMode) RequestLogInterceptor()],
+    tokens: AccountTokens(
+      ref.watch(sessionManagersProvider),
+      accountId,
+      linkShares: linkShares,
+    ),
+    interceptors: [
+      if (linkShares != null)
+        LinkShareGoneInterceptor(
+          onGone: (failure) =>
+              linkShares.forAccount(accountId).noteGone(failure),
+        ),
+      if (kDebugMode) RequestLogInterceptor(),
+    ],
   );
   ref.onDispose(dio.close);
   return dio;
 }
 
 @riverpod
-VikunjaReadClient readClient(Ref ref, String accountId) => createReadClient(
-  dio: ref.watch(accountDioProvider(accountId)),
-  connection: _connectionOf(ref, accountId),
-);
+VikunjaReadClient readClient(Ref ref, String accountId) {
+  final client = createReadClient(
+    dio: ref.watch(accountDioProvider(accountId)),
+    connection: _connectionOf(ref, accountId),
+  );
+  final registry = ref.watch(accountRegistryProvider);
+  return switch (_sharedProjectOf(ref, accountId)) {
+    final projectId? => GuestReadClient(
+      client,
+      sharedProjectId: projectId,
+      onSharedProjectTitle: (title) =>
+          registry.updateGuestTitle(accountId, title),
+    ),
+    null => client,
+  };
+}
 
 @riverpod
 VikunjaWriteClient writeClient(Ref ref, String accountId) => createWriteClient(
@@ -122,21 +167,33 @@ ServerConnection _connectionOf(Ref ref, String accountId) {
   return ref.read(accountsProvider).value!.find(accountId)!.connection;
 }
 
-/// Looks the session manager up on every request: a new sign-in replaces
-/// the manager, and a client built before it must use the new session.
+/// A guest's shared project, null for a user. Neither changes for an
+/// account id.
+int? _sharedProjectOf(Ref ref, String accountId) => ref.watch(
+  accountsProvider.select(
+    (accounts) => accounts.value?.find(accountId)?.account.projectId,
+  ),
+);
+
+/// Looks the session up on every request: a new sign-in replaces it, and a
+/// client built before it must use the new session. A guest's session
+/// comes from the link shares, a user's from the session managers.
 final class AccountTokens implements AccessTokenSource {
-  const new(this._sessions, this._accountId);
+  const new(this._sessions, this._accountId, {this._linkShares});
 
   final SessionManagers _sessions;
   final String _accountId;
+  final LinkShareSessions? _linkShares;
+
+  AccessTokenSource get _session =>
+      _linkShares?.forAccount(_accountId) ?? _sessions.forAccount(_accountId);
 
   @override
-  Future<String> validAccessToken() =>
-      _sessions.forAccount(_accountId).validAccessToken();
+  Future<String> validAccessToken() => _session.validAccessToken();
 
   @override
   Future<String?> refreshAfterRejection(String rejectedToken) =>
-      _sessions.forAccount(_accountId).refreshAfterRejection(rejectedToken);
+      _session.refreshAfterRejection(rejectedToken);
 }
 
 (Uri, String)? _transportKey(ServerConnection? connection) {
@@ -256,33 +313,38 @@ SyncEngine syncEngine(Ref ref, String accountId) {
   final gateway = ref.watch(accountGatewayProvider);
   final sessions = ref.watch(sessionManagersProvider);
   final registry = ref.watch(accountRegistryProvider);
+  final isGuest = _sharedProjectOf(ref, accountId) != null;
   final engine = DefaultSyncEngine(
     db: ref.watch(appDatabaseProvider(accountId)),
     client: ref.watch(readClientProvider(accountId)),
     perPage: perPage,
     headless: ref.watch(runsHeadlessProvider),
-    // The name and the avatar change on the web too.
-    currentUserWithProfile: () async {
-      final entry = ref.read(accountsProvider).value?.find(accountId);
-      if (entry == null) {
-        throw StateError('Account $accountId is not registered');
-      }
-      final session = sessions.forAccount(accountId);
-      final current = await endingSessionOfDeletedAccount(
-        session,
-        () => gateway.currentUserWithProfile(entry.connection, session),
-      );
-      final UserProfile(:username, :name, :updated) = current.profile;
-      if (updated != null &&
-          ref.mounted &&
-          ref.exists(accountAvatarCacheProvider(accountId))) {
-        ref
-            .read(accountAvatarCacheProvider(accountId))
-            .noteUpdated(username, updated);
-      }
-      await registry.updateDisplayName(accountId, name);
-      return current;
-    },
+    // The name and the avatar change on the web too. A guest is a pseudo
+    // user "Link Share" without settings, which older servers may not even
+    // answer, and keeps the name it was given.
+    currentUserWithProfile: isGuest
+        ? null
+        : () async {
+            final entry = ref.read(accountsProvider).value?.find(accountId);
+            if (entry == null) {
+              throw StateError('Account $accountId is not registered');
+            }
+            final session = sessions.forAccount(accountId);
+            final current = await endingSessionOfDeletedAccount(
+              session,
+              () => gateway.currentUserWithProfile(entry.connection, session),
+            );
+            final UserProfile(:username, :name, :updated) = current.profile;
+            if (updated != null &&
+                ref.mounted &&
+                ref.exists(accountAvatarCacheProvider(accountId))) {
+              ref
+                  .read(accountAvatarCacheProvider(accountId))
+                  .noteUpdated(username, updated);
+            }
+            await registry.updateDisplayName(accountId, name);
+            return current;
+          },
   );
   ref.onDispose(() => unawaited(engine.dispose()));
   return engine;

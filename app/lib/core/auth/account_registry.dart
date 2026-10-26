@@ -110,8 +110,8 @@ final class AccountRegistry {
   Future<void> _queue = Future.value();
 
   /// Emits after every write made through this instance, and when
-  /// [updateDisplayName] finds a name another isolate stored that this one
-  /// has not announced yet.
+  /// [updateDisplayName] or [updateGuestTitle] finds a name another isolate
+  /// stored that this one has not announced yet.
   Stream<AccountRegistryState> get changes => _changes.stream;
 
   Future<AccountRegistryState> load() =>
@@ -185,12 +185,27 @@ final class AccountRegistry {
   /// [name] as the server has it: a blank one shows the username, as at
   /// sign-in. An account that already shows it is not written. Never
   /// throws: the name is only shown, and the next sync tries again.
-  Future<void> updateDisplayName(String accountId, String name) async {
+  Future<void> updateDisplayName(String accountId, String name) => _storeName(
+    accountId,
+    (state) => _withDisplayName(state, accountId, name),
+  );
+
+  /// A guest whose share has no name goes by its project's [title], which
+  /// the owner may change; like [updateDisplayName] otherwise.
+  Future<void> updateGuestTitle(String accountId, String title) => _storeName(
+    accountId,
+    (state) => _withGuestTitle(state, accountId, title),
+  );
+
+  Future<void> _storeName(
+    String accountId,
+    AccountRegistryState? Function(AccountRegistryState state) change,
+  ) async {
     String? shownName(AccountRegistryState? state) =>
         state?.find(accountId)?.account.displayName;
     try {
       await _update(
-        (state) => _withDisplayName(state, accountId, name),
+        change,
         // A background run may have stored the name already; this isolate's
         // listeners still show the old one.
         announceUnchanged: (stored) =>
@@ -203,33 +218,57 @@ final class AccountRegistry {
     }
   }
 
+  static AccountRegistryState? _withGuestTitle(
+    AccountRegistryState state,
+    String accountId,
+    String title,
+  ) {
+    final account = state.find(accountId)?.account;
+    final trimmed = title.trim();
+    if (account == null ||
+        !account.isLinkShare ||
+        (account.shareName?.trim() ?? '') != '' ||
+        trimmed.isEmpty ||
+        account.displayName == trimmed) {
+      return null;
+    }
+    return _withAccount(state, account.copyWith(displayName: trimmed));
+  }
+
   static AccountRegistryState? _withDisplayName(
     AccountRegistryState state,
     String accountId,
     String name,
   ) {
     final entry = state.find(accountId);
-    if (entry == null) return null;
+    // The server names a guest "Link Share"; the app keeps its own name.
+    if (entry == null || entry.account.isLinkShare) return null;
     final displayName = User(
       id: entry.account.userId,
       username: entry.account.username,
       name: name,
     ).displayName;
     if (entry.account.displayName == displayName) return null;
-    return AccountRegistryState(
-      accounts: [
-        for (final existing in state.accounts)
-          if (existing.id == accountId)
-            existing.withAccount(
-              existing.account.copyWith(displayName: displayName),
-            )
-          else
-            existing,
-      ],
-      activeAccountId: state.activeAccountId,
-      recentAccountIds: state.recentAccountIds,
+    return _withAccount(
+      state,
+      entry.account.copyWith(displayName: displayName),
     );
   }
+
+  static AccountRegistryState _withAccount(
+    AccountRegistryState state,
+    Account account,
+  ) => AccountRegistryState(
+    accounts: [
+      for (final existing in state.accounts)
+        if (existing.id == account.id)
+          existing.withAccount(account)
+        else
+          existing,
+    ],
+    activeAccountId: state.activeAccountId,
+    recentAccountIds: state.recentAccountIds,
+  );
 
   Future<void> dispose() => _changes.close();
 
@@ -393,14 +432,26 @@ _StoredRegistry _decodeRegistry(Object? json) {
   );
 }
 
+const _linkShareKind = 'link_share';
+
 Map<String, Object?> _encodeAccount(RegisteredAccount entry) {
   final account = entry.account;
   final connection = entry.connection;
   return {
     'id': account.id,
     'server_root': account.serverRoot.toString(),
-    'user_id': account.userId,
-    'username': account.username,
+    // A guest has no `user_id`, so a build before guests fails to read the
+    // entry and keeps it as it is, instead of taking it for a user whose
+    // tokens are gone.
+    if (account.isLinkShare) ...{
+      'kind': _linkShareKind,
+      'link_share_id': account.linkShareId,
+      'project_id': account.projectId,
+      'share_name': account.shareName,
+    } else ...{
+      'user_id': account.userId,
+      'username': account.username,
+    },
     'display_name': account.displayName,
     'added_at': account.addedAt.toUtc().toIso8601String(),
     'needs_reauth': account.needsReauth,
@@ -426,16 +477,34 @@ RegisteredAccount _decodeAccount(Object? json) {
     throw const FormatException('Stored connection has no API version');
   }
   final info = parseServerInfo(connection['info']! as Map<String, Object?>);
+  final id = map['id']! as String;
+  final serverRoot = Uri.parse(map['server_root']! as String);
+  final displayName = map['display_name']! as String;
+  final addedAt = DateTime.parse(map['added_at']! as String);
+  final needsReauth = map['needs_reauth'] == true;
   return RegisteredAccount(
-    account: Account(
-      id: map['id']! as String,
-      serverRoot: Uri.parse(map['server_root']! as String),
-      userId: map['user_id']! as int,
-      username: map['username']! as String,
-      displayName: map['display_name']! as String,
-      addedAt: DateTime.parse(map['added_at']! as String),
-      needsReauth: map['needs_reauth'] == true,
-    ),
+    account: switch (map['kind']) {
+      null => Account(
+        id: id,
+        serverRoot: serverRoot,
+        userId: map['user_id']! as int,
+        username: map['username']! as String,
+        displayName: displayName,
+        addedAt: addedAt,
+        needsReauth: needsReauth,
+      ),
+      _linkShareKind => Account.linkShare(
+        id: id,
+        serverRoot: serverRoot,
+        shareId: map['link_share_id']! as int,
+        projectId: map['project_id']! as int,
+        shareName: map['share_name'] as String?,
+        displayName: displayName,
+        addedAt: addedAt,
+        needsReauth: needsReauth,
+      ),
+      final kind => throw FormatException('Unknown account kind $kind'),
+    },
     connection: ServerConnection(
       rootUri: Uri.parse(connection['root_uri']! as String),
       apiVersions: Set.unmodifiable(apiVersions),

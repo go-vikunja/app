@@ -146,7 +146,9 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
   @override
   void initState() {
     super.initState();
-    if (_followable) unawaited(_follow.load(widget.projectId));
+    if (_followable && !ref.read(activeAccountIsGuestProvider)) {
+      unawaited(_follow.load(widget.projectId));
+    }
     unawaited(_loadRememberedView());
   }
 
@@ -512,6 +514,10 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
     final offline = ref.watch(offlineProvider) != null;
     final archived = isArchivedInTree(widget.projectId, projectsById);
     final access = ref.watch(projectAccessProvider(widget.projectId));
+    // The server ignores a guest's favourites and refuses its
+    // subscriptions; the project is the owner's to rename, archive, copy,
+    // share, set up views for or delete, whatever the share's permission.
+    final guest = ref.watch(activeAccountIsGuestProvider);
     final defaultProjectId = ref.watch(
       userSettingsProvider.select(
         (settings) => settings.value?.defaultProjectId,
@@ -610,7 +616,11 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
       appBar: AppBar(
         title: Text(project?.displayTitle(l10n) ?? l10n.projectUnknownTitle),
         actions: [
-          if (project != null && _followable && !archived && access.canEdit)
+          if (project != null &&
+              _followable &&
+              !archived &&
+              access.canEdit &&
+              !guest)
             IconButton(
               onPressed: managingProject
                   ? null
@@ -639,28 +649,32 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
             PopupMenuButton<_Action>(
               tooltip: l10n.moreActions,
               onSelected: (action) => _onAction(action, project: project),
-              itemBuilder: (context) => [
-                // For whoever cannot pull the list, a screen reader among
-                // them.
-                projectMenuItem(
-                  _Action.refresh,
-                  icon: Icons.refresh,
-                  label: l10n.refresh,
-                  enabled: !refreshing,
-                ),
-                if (_followable) const PopupMenuDivider(),
-                ..._projectItems(
+              itemBuilder: (context) {
+                final projectItems = _projectItems(
                   context,
                   project: project,
                   access: access,
+                  guest: guest,
                   archived: archived,
                   parentArchived:
                       project != null &&
                       project.parentProjectId != 0 &&
                       isArchivedInTree(project.parentProjectId, projectsById),
                   isDefault: project?.id == defaultProjectId,
-                ),
-              ],
+                );
+                return [
+                  // For whoever cannot pull the list, a screen reader among
+                  // them.
+                  projectMenuItem(
+                    _Action.refresh,
+                    icon: Icons.refresh,
+                    label: l10n.refresh,
+                    enabled: !refreshing,
+                  ),
+                  if (projectItems.isNotEmpty) const PopupMenuDivider(),
+                  ...projectItems,
+                ];
+              },
             ),
         ],
         bottom: ProjectAppBarBottom(
@@ -874,21 +888,22 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
   /// in groups, without what [access] does not allow; an archived project
   /// only offers to unarchive it, which waits for its archived parent.
   /// Like the web, the user's default project cannot be archived and offers
-  /// no Delete.
+  /// no Delete. A [guest] gets none of them: the project is its owner's.
   List<PopupMenuEntry<_Action>> _projectItems(
     BuildContext context, {
     required Project? project,
     required ProjectAccess access,
+    required bool guest,
     required bool archived,
     required bool parentArchived,
     required bool isDefault,
   }) {
     if (!_followable) return const [];
     final l10n = context.l10n;
-    if (project == null) return [_followItem(l10n)];
+    if (project == null) return [if (!guest) _followItem(l10n)];
     if (archived) {
       return [
-        if (access.canArchive)
+        if (access.canArchive && !guest)
           projectMenuItem(
             _Action.unarchive,
             icon: Icons.unarchive_outlined,
@@ -896,30 +911,31 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
             enabled: !parentArchived,
             hint: parentArchived ? l10n.projectUnarchiveParentFirst : null,
           ),
-        _followItem(l10n),
+        if (!guest) _followItem(l10n),
       ];
     }
     final groups = <List<PopupMenuEntry<_Action>>>[
       [
-        if (access.canEdit)
+        if (access.canEdit && !guest)
           projectMenuItem(
             _Action.edit,
             icon: Icons.edit_outlined,
             label: l10n.projectEdit,
           ),
-        if (access.canManageViews)
+        if (access.canManageViews && !guest)
           projectMenuItem(
             _Action.views,
             icon: Icons.view_agenda_outlined,
             label: l10n.projectViews,
           ),
-        projectMenuItem(
-          _Action.share,
-          icon: Icons.share_outlined,
-          label: l10n.shareMenuItem,
-        ),
+        if (!guest)
+          projectMenuItem(
+            _Action.share,
+            icon: Icons.share_outlined,
+            label: l10n.shareMenuItem,
+          ),
         // The server takes a favourite as a change of the project.
-        if (access.canEdit)
+        if (access.canEdit && !guest)
           projectMenuItem(
             _Action.favourite,
             icon: project.isFavorite ? Icons.star : Icons.star_outline,
@@ -927,16 +943,16 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
                 ? l10n.projectRemoveFromFavourites
                 : l10n.projectAddToFavourites,
           ),
-        _followItem(l10n),
+        if (!guest) _followItem(l10n),
       ],
       [
-        if (access.canCreateChild)
+        if (access.canCreateChild && !guest)
           projectMenuItem(
             _Action.newSubproject,
             icon: Icons.create_new_folder_outlined,
             label: l10n.projectNewSubproject,
           ),
-        if (access.canDuplicate)
+        if (access.canDuplicate && !guest)
           projectMenuItem(
             _Action.duplicate,
             icon: Icons.content_copy_outlined,
@@ -944,7 +960,7 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
           ),
       ],
       [
-        if (access.canArchive)
+        if (access.canArchive && !guest)
           projectMenuItem(
             _Action.archive,
             icon: Icons.archive_outlined,
@@ -952,7 +968,7 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
             enabled: !isDefault,
             hint: isDefault ? l10n.projectArchiveDefaultHint : null,
           ),
-        if (!isDefault && access.canDelete)
+        if (!isDefault && access.canDelete && !guest)
           projectMenuItem(
             _Action.delete,
             icon: Icons.delete_outline,

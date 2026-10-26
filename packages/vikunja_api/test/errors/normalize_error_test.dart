@@ -230,6 +230,18 @@ void main() {
       });
     }
 
+    test("v1's 400 code 13003 means a guest's link is gone", () async {
+      expect(
+        await _failureFor(
+          capturedFixture('link_share/v1_projects_share_gone_2.7.0'),
+        ),
+        isA<LinkShareGone>()
+            .having((f) => f.code, 'code', 13003)
+            .having((f) => f.reason, 'reason', SessionEndReason.linkShareGone)
+            .having((f) => f.message, 'message', isNotEmpty),
+      );
+    });
+
     test('401 code 16004 lost the rotation race', () async {
       expect(
         await _failureFor(

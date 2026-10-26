@@ -543,6 +543,34 @@ void main() {
       );
     });
 
+    test('tells a guest to open the link again, by its name and never its '
+        'made-up username', () async {
+      Account guest({String? shareName}) => Account.linkShare(
+        id: 'g${shareName ?? ''}',
+        serverRoot: Uri.parse('https://tasks.example.com'),
+        shareId: 84,
+        projectId: 1378,
+        shareName: shareName,
+        displayName: 'Garden',
+        addedAt: DateTime.utc(2026, 10),
+      );
+
+      await notifier.sessionEnded(guest());
+      await notifier.sessionEnded(guest(shareName: 'Helper'));
+
+      expect(gateway.activities.map((a) => a.title), [
+        en.guestAccessEndedNotificationTitle('Garden'),
+        en.guestAccessEndedNotificationTitle('Helper'),
+      ]);
+      expect(
+        gateway.activities.first.body,
+        en.guestAccessEndedNotificationBody('tasks.example.com'),
+      );
+      for (final notice in gateway.activities) {
+        expect('${notice.title} ${notice.body}', isNot(contains('link-share')));
+      }
+    });
+
     test('waits for the permission without remembering anything', () async {
       gateway.current = const NotificationCapabilities(
         permission: NotificationPermission.denied,

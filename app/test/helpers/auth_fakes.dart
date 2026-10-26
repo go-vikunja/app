@@ -7,6 +7,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_gateways.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/auth/link_share_providers.dart';
 import 'package:vikunja_mobile/core/auth/oauth_client.dart';
 import 'package:vikunja_mobile/core/auth/server_clock_offsets.dart';
 import 'package:vikunja_mobile/core/auth/token_store.dart';
@@ -14,6 +15,8 @@ import 'package:vikunja_mobile/core/auth/web_authenticator.dart';
 import 'package:vikunja_mobile/core/storage/preferences_store.dart';
 import 'package:vikunja_mobile/core/storage/secure_store.dart';
 import 'package:vikunja_mobile/features/notifications/application/notifications_onboarding.dart';
+
+import 'guest_fakes.dart';
 
 final class MemorySecureStore implements SecureStore {
   final Map<String, String> values = {};
@@ -253,6 +256,7 @@ final class AuthFakes {
   final webAuthenticator = FakeWebAuthenticator();
   final tokenGateway = FakeTokenGateway();
   final accountGateway = FakeAccountGateway();
+  final linkShareGateway = FakeLinkShareGateway();
 
   late final tokenStore = TokenStore(secureStore);
   late final registry = AccountRegistry(preferences);
@@ -264,6 +268,7 @@ final class AuthFakes {
     webAuthenticatorProvider.overrideWithValue(webAuthenticator),
     tokenGatewayProvider.overrideWithValue(tokenGateway),
     accountGatewayProvider.overrideWithValue(accountGateway),
+    linkShareGatewayProvider.overrideWithValue(linkShareGateway),
   ];
 
   /// A server that signs in [user] and answers GET /user for it.

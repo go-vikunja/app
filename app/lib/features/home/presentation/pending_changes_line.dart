@@ -41,6 +41,7 @@ class _PendingChangesLineState extends ConsumerState<PendingChangesLine> {
         serverRoot: widget.entry.connection.rootUri,
         platform: Theme.of(context).platform,
         stale: true,
+        guest: widget.entry.account.isLinkShare,
       );
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()

@@ -5,18 +5,26 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/app/widgets/status_card.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/links/external_link_opener.dart';
 import 'package:vikunja_mobile/features/onboarding/application/connect_server_controller.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_button.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_header.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connection_error_card.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/failure_message.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/insecure_connection_dialog.dart';
+import 'package:vikunja_mobile/features/onboarding/presentation/connect/invite_card.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/known_servers.dart';
+import 'package:vikunja_mobile/features/onboarding/presentation/connect/link_failure_message.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/server_address_field.dart';
+import 'package:vikunja_mobile/features/onboarding/presentation/guest/share_password_sheet.dart';
+import 'package:vikunja_mobile/features/onboarding/presentation/guest/shared_link_sheet.dart';
+import 'package:vikunja_mobile/features/onboarding/presentation/server_address_display.dart';
 import 'package:vikunja_mobile/features/session/application/sign_in_controller.dart';
 
 class ConnectServerScreen extends ConsumerStatefulWidget {
@@ -36,6 +44,7 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
   final _formKey = GlobalKey<FormState>();
   final GlobalKey _errorKey = GlobalKey();
   final _address = TextEditingController();
+  final _addressFocus = FocusNode();
 
   ConnectServerController get _controller =>
       ref.read(connectServerControllerProvider.notifier);
@@ -56,18 +65,23 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
   @override
   void dispose() {
     _address.dispose();
+    _addressFocus.dispose();
     super.dispose();
   }
 
-  void _submit() {
+  /// The address field, Continue and the known servers also answer
+  /// "Which server is it?" for a shared link; the demo never does.
+  void _submit({bool forPendingShare = true}) {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     FocusManager.instance.primaryFocus?.unfocus();
-    unawaited(_controller.connect(_address.text));
+    unawaited(
+      _controller.connect(_address.text, forPendingShare: forPendingShare),
+    );
   }
 
   void _tryDemo() {
     _address.text = publicDemoAddress;
-    _submit();
+    _submit(forPendingShare: false);
   }
 
   void _useKnownServer(Uri server) {
@@ -75,15 +89,38 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
     _submit();
   }
 
+  Future<void> _openSharedLink() async {
+    final link = await askForSharedLink(context);
+    if (link == null || !mounted) return;
+    FocusManager.instance.primaryFocus?.unfocus();
+    unawaited(_controller.connect(link));
+  }
+
+  Future<void> _openInvite(ParsedInviteLink invite) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final l10n = context.l10n;
+    final opened = await ref
+        .read(externalLinkOpenerProvider)
+        .open(inviteUrl(invite));
+    if (!opened) {
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(l10n.legalOpenFailed)));
+    }
+  }
+
   void _onAddressChanged(String _) {
-    if (ref.read(connectServerControllerProvider) is ConnectServerFailed) {
+    if (ref.read(connectServerControllerProvider)
+        case ConnectServerFailed() ||
+            ConnectServerLinkFailed() ||
+            ConnectServerInviteFound()) {
       _controller.reset();
     }
   }
 
   void _onStateChanged(ConnectServerState? previous, ConnectServerState next) {
     switch (next) {
-      case ConnectServerFailed():
+      case ConnectServerFailed() || ConnectServerLinkFailed():
         unawaited(HapticFeedback.heavyImpact());
       case ConnectServerAwaitingInsecureConsent(:final connection):
         unawaited(_askForInsecureConsent(connection));
@@ -91,9 +128,47 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
         unawaited(context.push(AppRoutes.addAccountServer));
       case ConnectServerConnected():
         context.go(AppRoutes.serverOverview);
-      case ConnectServerIdle() || ConnectServerConnecting():
+      case ConnectServerShareNeedsServer():
+        unawaited(HapticFeedback.heavyImpact());
+        // The field holds the link, which is not the server's address.
+        if (parseLinkShareUrl(_address.text) != null) _address.clear();
+        // Once the field is enabled again; a disabled one takes no focus.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _addressFocus.requestFocus();
+        });
+      case ConnectServerSharePasswordNeeded()
+          when previous is! ConnectServerSharePasswordNeeded:
+        unawaited(_askForSharePassword());
+      case ConnectServerGuestSignedIn(:final isNewAccount):
+        // After the password sheet has closed.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _enterAsGuest(isNewAccount: isNewAccount);
+        });
+      case ConnectServerIdle() ||
+          ConnectServerConnecting() ||
+          ConnectServerInviteFound() ||
+          ConnectServerSharePasswordNeeded():
         break;
     }
+  }
+
+  Future<void> _askForSharePassword() async {
+    final outcome = await askForSharePassword(
+      context,
+      submit: _controller.submitSharePassword,
+    );
+    if (outcome == null && mounted) _controller.reset();
+  }
+
+  void _enterAsGuest({required bool isNewAccount}) {
+    if (!isNewAccount) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(context.l10n.guestAlreadyAdded)));
+    }
+    // The router sends a guest that has not synced yet on to its first
+    // sync, and the landing then opens the shared project.
+    context.go(AppRoutes.home);
   }
 
   // Runs once AnimatedSize has grown, because before that the scroll extent
@@ -114,7 +189,7 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
     );
     if (!mounted) return;
     if (accepted) {
-      _controller.acceptInsecureConnection();
+      unawaited(_controller.acceptInsecureConnection());
     } else {
       _controller.declineInsecureConnection();
     }
@@ -156,6 +231,7 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
                     const SizedBox(height: 32),
                     ServerAddressField(
                       controller: _address,
+                      focusNode: _addressFocus,
                       enabled: !isConnecting,
                       onSubmitted: _submit,
                       onChanged: _onAddressChanged,
@@ -186,21 +262,78 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
                               ),
                             ),
                           ),
+                        ConnectServerLinkFailed(
+                          :final error,
+                          :final serverRoot,
+                        ) =>
+                          Padding(
+                            padding: const EdgeInsets.only(top: 16),
+                            child: ConnectionErrorCard(
+                              key: _errorKey,
+                              message: describeLinkFailure(
+                                l10n,
+                                error,
+                                serverRoot: serverRoot,
+                                platform: theme.platform,
+                              ),
+                            ),
+                          ),
+                        ConnectServerShareNeedsServer(:final linkBase) =>
+                          Padding(
+                            padding: const EdgeInsets.only(top: 16),
+                            child: StatusCard(
+                              key: _errorKey,
+                              icon: Icons.help_outline,
+                              title: l10n.guestServerNeededTitle,
+                              body: l10n.guestServerNeededExplanation(
+                                displayHost(linkBase),
+                              ),
+                              footnote: l10n.guestServerNeededSuggestion,
+                              background: theme.colorScheme.secondaryContainer,
+                              foreground:
+                                  theme.colorScheme.onSecondaryContainer,
+                              liveRegion: true,
+                              action: TextButton(
+                                onPressed: _controller.reset,
+                                child: Text(l10n.cancel),
+                              ),
+                            ),
+                          ),
+                        ConnectServerInviteFound(
+                          :final connection,
+                          :final invite,
+                          :final check,
+                          :final preview,
+                        ) =>
+                          Padding(
+                            padding: const EdgeInsets.only(top: 16),
+                            child: InviteCard(
+                              key: _errorKey,
+                              serverRoot: connection.rootUri,
+                              check: check,
+                              preview: preview,
+                              onCreateAccount: () =>
+                                  unawaited(_openInvite(invite)),
+                              onContinue: _controller.continueToSignIn,
+                            ),
+                          ),
                         _ => const SizedBox(width: double.infinity),
                       },
                     ),
-                    const SizedBox(height: 24),
-                    ConnectButton(
-                      isConnecting: isConnecting,
-                      onContinue: _submit,
-                    ),
-                    if (state case ConnectServerConnecting(:final input))
+                    if (state is! ConnectServerInviteFound) ...[
+                      const SizedBox(height: 24),
+                      ConnectButton(
+                        isConnecting: isConnecting,
+                        onContinue: _submit,
+                      ),
+                    ],
+                    if (state case final ConnectServerConnecting connecting)
                       Padding(
                         padding: const EdgeInsets.only(top: 12),
                         child: Semantics(
                           liveRegion: true,
                           child: Text(
-                            l10n.connectConnectingTo(input.trim()),
+                            _connectingText(l10n, connecting),
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color: theme.colorScheme.onSurfaceVariant,
                             ),
@@ -212,6 +345,16 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
                     TextButton(
                       onPressed: isConnecting ? null : _tryDemo,
                       child: Text(l10n.connectTryDemo),
+                    ),
+                    TextButton.icon(
+                      onPressed: isConnecting
+                          ? null
+                          : () => unawaited(_openSharedLink()),
+                      icon: const Icon(Icons.link),
+                      label: Text(
+                        l10n.guestOpenSharedLink,
+                        textAlign: TextAlign.center,
+                      ),
                     ),
                     // Below the other buttons, so a double tap on either of
                     // them cannot land on it once connecting starts.
@@ -230,3 +373,14 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
     );
   }
 }
+
+String _connectingText(
+  AppLocalizations l10n,
+  ConnectServerConnecting connecting,
+) => switch (connecting.target) {
+  ConnectTarget.sharedLink => l10n.guestConnectingTo(connecting.input),
+  ConnectTarget.invite => l10n.inviteConnectingTo(
+    displayHost(Uri.parse(connecting.input)),
+  ),
+  ConnectTarget.server => l10n.connectConnectingTo(connecting.input.trim()),
+};

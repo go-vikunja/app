@@ -6816,4 +6816,277 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get projectTimelineShowUndated => 'Undatierte zeigen';
+
+  @override
+  String get overviewCreateAccount => 'Konto erstellen';
+
+  @override
+  String get overviewCreateAccountHint =>
+      'Wähle auf der Anmeldeseite „Account erstellen“. Danach kommst du hierher zurück.';
+
+  @override
+  String get overviewForgotPassword => 'Passwort vergessen?';
+
+  @override
+  String get overviewRegistrationNeedsInvitation =>
+      'Zum Registrieren brauchst du eine Einladung.';
+
+  @override
+  String get overviewSignInPageOffersBoth =>
+      'Auf der Anmeldeseite kannst du auch ein Konto erstellen und dein Passwort zurücksetzen.';
+
+  @override
+  String get overviewSignInPageOffersRegistration =>
+      'Auf der Anmeldeseite kannst du auch ein Konto erstellen.';
+
+  @override
+  String get overviewSignInPageOffersPasswordReset =>
+      'Auf der Anmeldeseite kannst du auch dein Passwort zurücksetzen.';
+
+  @override
+  String get overviewDemoNote =>
+      'Das ist ein Demo-Server. Die Daten darauf können jederzeit gelöscht werden.';
+
+  @override
+  String guestAccountSubtitle(String host) {
+    return 'Gast · $host';
+  }
+
+  @override
+  String get guestOpenLinkAgain => 'Link erneut öffnen';
+
+  @override
+  String get guestReauthTitle => 'Gastzugang beendet';
+
+  @override
+  String guestReauthBody(String host) {
+    return '$host hat diesen Gastzugang beendet. Öffne den geteilten Link erneut, damit das Projekt synchron bleibt: Ein Link mit Passwort fragt danach, und für einen gelöschten Link brauchst du einen neuen von der Person, die ihn geteilt hat. Auf diesem Gerät geht nichts verloren.';
+  }
+
+  @override
+  String guestSwitcherButton(String name, String host) {
+    return 'Konten, Gast in $name auf $host';
+  }
+
+  @override
+  String guestNotePermission(String permission) {
+    return 'Geteilter Link: $permission';
+  }
+
+  @override
+  String get guestNoteCanView =>
+      'Du kannst die Aufgaben, Kommentare und Anhänge dieses Projekts ansehen.';
+
+  @override
+  String get guestNoteCanChange =>
+      'Du kannst die Aufgaben dieses Projekts ansehen und ändern, kommentieren und Anhänge hinzufügen.';
+
+  @override
+  String get guestNoteNeedsAccount =>
+      'Kontoeinstellungen, Labels, Teams, Favoriten, Reaktionen und die Benachrichtigungen des Servers brauchen ein eigenes Konto.';
+
+  @override
+  String get guestRemove => 'Gastzugang entfernen';
+
+  @override
+  String get guestRemoveDialogTitle => 'Gastzugang entfernen?';
+
+  @override
+  String guestRemoveDialogBody(String name, String host) {
+    return 'Rurana entfernt den Gastzugang zu $name auf $host und löscht die auf diesem Gerät gespeicherten Aufgaben. Du kannst den geteilten Link jederzeit wieder öffnen.';
+  }
+
+  @override
+  String guestRemoveDialogPendingChangesOpenLinkFirst(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count Änderungen wurden noch nicht an den Server gesendet und gehen verloren; wechsle vorher zu diesem Gastzugang, öffne den Link erneut und tippe auf „Jetzt senden“, um sie zu behalten.',
+      one: 'Eine Änderung wurde noch nicht an den Server gesendet und geht verloren; wechsle vorher zu diesem Gastzugang, öffne den Link erneut und tippe auf „Jetzt senden“, um sie zu behalten.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String guestRemoved(String name) {
+    return 'Gastzugang zu $name entfernt';
+  }
+
+  @override
+  String get guestOpenSharedLink => 'Geteilten Link öffnen';
+
+  @override
+  String get guestLinkExplanation =>
+      'Du hast einen Link zu einem geteilten Projekt bekommen? Öffne ihn hier als Gast, ohne eigenes Konto.';
+
+  @override
+  String get guestLinkLabel => 'Geteilter Link';
+
+  @override
+  String get guestLinkHint => 'https://vikunja.example.com/share/…/auth';
+
+  @override
+  String get guestLinkPaste => 'Einfügen';
+
+  @override
+  String get guestLinkOpen => 'Öffnen';
+
+  @override
+  String get guestLinkInvalid =>
+      'Das ist kein Link zu einem geteilten Projekt. So ein Link endet auf /share/…/auth.';
+
+  @override
+  String get guestLinkClipboardEmpty => 'In der Zwischenablage ist kein Text.';
+
+  @override
+  String guestConnectingTo(String link) {
+    return 'Öffne den geteilten Link $link …';
+  }
+
+  @override
+  String get guestPasswordTitle => 'Passwort nötig';
+
+  @override
+  String get guestPasswordBody =>
+      'Dieses geteilte Projekt ist mit einem Passwort geschützt. Gib das Passwort ein, das du mit dem Link bekommen hast.';
+
+  @override
+  String get guestPasswordLabel => 'Passwort';
+
+  @override
+  String get guestPasswordWrong =>
+      'Falsches Passwort. Prüf es und versuch es noch einmal.';
+
+  @override
+  String get guestPasswordNotStored =>
+      'Rurana speichert dieses Passwort nicht. Muss der Link später erneut geöffnet werden, fragt Rurana wieder danach.';
+
+  @override
+  String get guestShareTitle => 'Geteiltes Projekt öffnen?';
+
+  @override
+  String guestShareBody(String host) {
+    return 'Das ist ein Link zu einem Projekt auf $host. Öffne es als Gast, ohne eigenes Konto.';
+  }
+
+  @override
+  String get guestShareOpen => 'Als Gast öffnen';
+
+  @override
+  String get guestShareNewTask => 'Stattdessen als neue Aufgabe anlegen';
+
+  @override
+  String get guestLinkGoneTitle => 'Dieser Link funktioniert nicht';
+
+  @override
+  String guestLinkGoneExplanation(String host) {
+    return '$host nimmt diesen geteilten Link nicht an. Er wurde gelöscht oder ist unvollständig, oder der Server erlaubt keine geteilten Links mehr.';
+  }
+
+  @override
+  String get guestLinkGoneSuggestion =>
+      'Bitte die Person, die das Projekt geteilt hat, um einen neuen Link.';
+
+  @override
+  String inviteConnectingTo(String host) {
+    return 'Prüfe die Einladung zu $host …';
+  }
+
+  @override
+  String inviteHeading(String host) {
+    return 'Einladung zu $host';
+  }
+
+  @override
+  String inviteTeams(String teams) {
+    return 'Du trittst bei: $teams';
+  }
+
+  @override
+  String get inviteNoEmailConfirmation =>
+      'Dein Konto funktioniert sofort, ohne dass du deine E-Mail-Adresse bestätigst.';
+
+  @override
+  String get inviteEmailConfirmation =>
+      'Eventuell musst du deine E-Mail-Adresse bestätigen, bevor du dich anmelden kannst.';
+
+  @override
+  String get inviteSteps =>
+      'Erstelle dein Konto im Browser, komm dann hierher zurück und melde dich an.';
+
+  @override
+  String get inviteCreateAccount => 'Konto im Browser erstellen';
+
+  @override
+  String get inviteUnchecked =>
+      'Dieser Server kann Einladungen nicht aus der App prüfen. Öffne die Einladung im Browser, um dein Konto zu erstellen.';
+
+  @override
+  String get inviteCheckFailed =>
+      'Die Einladung konnte gerade nicht geprüft werden. Du kannst sie trotzdem im Browser öffnen.';
+
+  @override
+  String get inviteInvalidTitle => 'Einladung nicht gültig';
+
+  @override
+  String get inviteInvalidExplanation =>
+      'Diese Einladung ist ungültig, abgelaufen oder aufgebraucht.';
+
+  @override
+  String get inviteInvalidSuggestion =>
+      'Bitte die Person, die dich eingeladen hat, um einen neuen Link. Mit einem eigenen Konto gib stattdessen die Adresse des Servers ein.';
+
+  @override
+  String get guestLabelPickerNote =>
+      'Mit einem geteilten Link kannst du keine Labels erstellen; nur die Labels, die in diesem Projekt schon verwendet werden, lassen sich hinzufügen.';
+
+  @override
+  String guestSharingOffExplanation(String host) {
+    return '$host erlaubt nicht, Projekte über geteilte Links zu öffnen.';
+  }
+
+  @override
+  String get guestSharingOffSuggestion =>
+      'Bitte die Person, die das Projekt geteilt hat, es stattdessen mit einem Konto von dir zu teilen.';
+
+  @override
+  String get guestServerNeededTitle => 'Welcher Server ist es?';
+
+  @override
+  String guestServerNeededExplanation(String host) {
+    return 'Der Link zeigt auf $host, aber dort antwortet kein Vikunja-Server. Der Server hat vielleicht eine eigene Adresse.';
+  }
+
+  @override
+  String get guestServerNeededSuggestion =>
+      'Gib oben die Adresse des Servers ein und tippe auf Weiter, um den Link zu öffnen.';
+
+  @override
+  String get guestAlreadyAdded =>
+      'Dieses geteilte Projekt war schon auf diesem Gerät. Zu ihm gewechselt.';
+
+  @override
+  String guestAccessEndedNotificationTitle(String name) {
+    return 'Gastzugang zu $name beendet';
+  }
+
+  @override
+  String guestAccessEndedNotificationBody(String host) {
+    return '$host hat diesen Gastzugang beendet. Rurana kann das Projekt erst wieder synchronisieren, wenn du den geteilten Link erneut öffnest.';
+  }
+
+  @override
+  String guestDataFailureAccessEnded(String host) {
+    return 'Dein Gastzugang auf $host ist beendet. Öffne den Link im Tab „Konto“ erneut.';
+  }
+
+  @override
+  String get overviewGreetingMorningGuest => 'Guten Morgen';
+
+  @override
+  String get overviewGreetingAfternoonGuest => 'Guten Tag';
+
+  @override
+  String get overviewGreetingEveningGuest => 'Guten Abend';
 }

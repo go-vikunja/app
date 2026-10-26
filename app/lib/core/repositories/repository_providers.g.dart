@@ -50,6 +50,132 @@ final class ActiveAccountIdProvider
 
 String _$activeAccountIdHash() => r'07a5feac1a80c62c1728f98bba9dcebb1446c138';
 
+/// Whether the active account is a link-share guest, which sees one
+/// project and none of what needs a user.
+
+@ProviderFor(activeAccountIsGuest)
+final activeAccountIsGuestProvider = ActiveAccountIsGuestProvider._();
+
+/// Whether the active account is a link-share guest, which sees one
+/// project and none of what needs a user.
+
+final class ActiveAccountIsGuestProvider
+    extends $FunctionalProvider<bool, bool, bool>
+    with $Provider<bool> {
+  /// Whether the active account is a link-share guest, which sees one
+  /// project and none of what needs a user.
+  ActiveAccountIsGuestProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'activeAccountIsGuestProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$activeAccountIsGuestHash();
+
+  @$internal
+  @override
+  $ProviderElement<bool> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  bool create(Ref ref) {
+    return activeAccountIsGuest(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(bool value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<bool>(value),
+    );
+  }
+}
+
+String _$activeAccountIsGuestHash() =>
+    r'686341394d55e92531e71ee058d822a9972e39b7';
+
+@ProviderFor(accountIsGuest)
+final accountIsGuestProvider = AccountIsGuestFamily._();
+
+final class AccountIsGuestProvider extends $FunctionalProvider<bool, bool, bool>
+    with $Provider<bool> {
+  AccountIsGuestProvider._({
+    required AccountIsGuestFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'accountIsGuestProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$accountIsGuestHash();
+
+  @override
+  String toString() {
+    return r'accountIsGuestProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $ProviderElement<bool> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  bool create(Ref ref) {
+    final argument = this.argument as String;
+    return accountIsGuest(ref, argument);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(bool value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<bool>(value),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is AccountIsGuestProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$accountIsGuestHash() => r'764688f0db8f5813982c4b5e6bbbd7c134bff9a5';
+
+final class AccountIsGuestFamily extends $Family
+    with $FunctionalFamilyOverride<bool, String> {
+  AccountIsGuestFamily._()
+    : super(
+        retry: null,
+        name: r'accountIsGuestProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  AccountIsGuestProvider call(String accountId) =>
+      AccountIsGuestProvider._(argument: accountId, from: this);
+
+  @override
+  String toString() => r'accountIsGuestProvider';
+}
+
 /// The authenticated client of one account, shared by its read and write
 /// clients. Kept alive by the sync engine and the outbox sender that use
 /// it, so it goes with them on sign-out.
@@ -117,7 +243,7 @@ final class AccountDioProvider extends $FunctionalProvider<Dio, Dio, Dio>
   }
 }
 
-String _$accountDioHash() => r'f1bef9762bc3c2291cc847f0765500ddcdecf9ee';
+String _$accountDioHash() => r'd36a61c98b874f43bd96511f6a501f1d3a7c3e8e';
 
 /// The authenticated client of one account, shared by its read and write
 /// clients. Kept alive by the sync engine and the outbox sender that use
@@ -208,7 +334,7 @@ final class ReadClientProvider
   }
 }
 
-String _$readClientHash() => r'b352d1dea82ff78308ca11d599871e7b6ae001b7';
+String _$readClientHash() => r'7097ffdc6f881435a03fe76d7f6e80dcd576c57e';
 
 final class ReadClientFamily extends $Family
     with $FunctionalFamilyOverride<VikunjaReadClient, String> {
@@ -1076,7 +1202,7 @@ final class SyncEngineProvider
   }
 }
 
-String _$syncEngineHash() => r'dfdc871c3b94be95cbfeb08aabb74cd2ff02b2ba';
+String _$syncEngineHash() => r'fe01c6aeb6654b057374b242635a39b6693fb278';
 
 /// One account's sync engine; disposed with its database on sign-out.
 

@@ -1041,6 +1041,9 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
     final commentsOffered = ref.watch(activeServerOffersCommentsProvider);
     final offline = ref.watch(offlineProvider) != null;
     final me = ref.watch(activeUserIdProvider);
+    // The server refuses a link-share guest's reactions and subscriptions
+    // and ignores its favourites.
+    final guest = ref.watch(activeAccountIsGuestProvider);
     final linkBases = ref.watch(activeLinkBasesProvider);
     String? otherProjectTitle(Task other) => other.projectId == task.projectId
         ? null
@@ -1202,6 +1205,7 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                       null => false,
                     };
               final mayWrite = onlineWrites && writable == true;
+              final mayReact = mayWrite && !guest;
               final canComment = mayWrite && commentsOffered;
               // Shown disabled while the first read is under way, so that
               // the list does not jump for the many who may write.
@@ -1232,11 +1236,11 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                 onDelete: canComment
                     ? (comment) => unawaited(_deleteComment(task, comment))
                     : null,
-                onToggleReaction: mayWrite
+                onToggleReaction: mayReact
                     ? (comment, value) =>
                           unawaited(_reactToComment(comment, value))
                     : null,
-                onAddReaction: mayWrite
+                onAddReaction: mayReact
                     ? (comment) => unawaited(
                         _pickReaction(
                           (value) => _reactToComment(comment, value, add: true),
@@ -1288,26 +1292,30 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                             tooltip: l10n.taskEdit,
                             icon: const Icon(Icons.edit_outlined),
                           ),
-                        ValueListenableBuilder(
-                          valueListenable: _follow,
-                          builder: (context, state, _) => FollowButton(
-                            state: task.id < 0 ? const FollowUnknown() : state,
-                            onPressed: () =>
-                                unawaited(_toggleFollow(task, projectTitles)),
+                        if (!guest) ...[
+                          ValueListenableBuilder(
+                            valueListenable: _follow,
+                            builder: (context, state, _) => FollowButton(
+                              state: task.id < 0
+                                  ? const FollowUnknown()
+                                  : state,
+                              onPressed: () =>
+                                  unawaited(_toggleFollow(task, projectTitles)),
+                            ),
                           ),
-                        ),
-                        FavouriteButton(
-                          isFavorite: task.isFavorite,
-                          onChanged: changer == null
-                              ? null
-                              : (favorite) => unawaited(
-                                  writeTaskFavorite(
-                                    changer,
-                                    task,
-                                    favorite: favorite,
+                          FavouriteButton(
+                            isFavorite: task.isFavorite,
+                            onChanged: changer == null
+                                ? null
+                                : (favorite) => unawaited(
+                                    writeTaskFavorite(
+                                      changer,
+                                      task,
+                                      favorite: favorite,
+                                    ),
                                   ),
-                                ),
-                        ),
+                          ),
+                        ],
                         if (!readOnly)
                           PopupMenuButton<_SheetAction>(
                             tooltip: l10n.moreActions,
@@ -1409,15 +1417,15 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                     ),
                   ),
                   if (details != null &&
-                      (details.reactions.isNotEmpty || mayWrite))
+                      (details.reactions.isNotEmpty || mayReact))
                     _Inset(
                       child: ReactionChips(
                         reactions: details.reactions,
                         offline: offline,
-                        onToggle: mayWrite
+                        onToggle: mayReact
                             ? (value) => unawaited(_reactToTask(task, value))
                             : null,
-                        onAdd: mayWrite
+                        onAdd: mayReact
                             ? () => unawaited(
                                 _pickReaction(
                                   (value) =>

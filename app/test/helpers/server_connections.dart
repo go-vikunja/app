@@ -11,9 +11,13 @@ ServerInfo _info({
   bool totp = true,
   bool demoMode = false,
   LegalLinks legal = const LegalLinks(),
+  bool localAuth = true,
+  bool registration = true,
+  Uri? frontendUrl,
 }) => ServerInfo(
   version: ServerVersion.tryParse(version),
   rawVersion: version,
+  frontendUrl: frontendUrl,
   motd: motd,
   linkSharingEnabled: true,
   maxFileSize: '20MB',
@@ -24,8 +28,8 @@ ServerInfo _info({
   legal: legal,
   caldavEnabled: true,
   auth: AuthMethods(
-    localEnabled: true,
-    registrationEnabled: true,
+    localEnabled: localAuth,
+    registrationEnabled: localAuth && registration,
     ldapEnabled: ldap,
     openIdConnectEnabled: openIdProviders.isNotEmpty,
     openIdProviders: openIdProviders,
@@ -88,6 +92,30 @@ ServerConnection fullServer270({
       imprintUrl: Uri.parse('https://example.org/imprint'),
       privacyPolicyUrl: Uri.parse('javascript:alert(1)'),
     ),
+  ),
+  {ApiVersion.v1, ApiVersion.v2},
+);
+
+/// A 2.7 server with local accounts (single sign-on only without
+/// [localAuth]), open [registration], invite links when [invites] and the
+/// web at [frontendUrl] when given.
+ServerConnection accountPagesServer270({
+  String root = 'https://tasks.example.org/vikunja',
+  bool localAuth = true,
+  bool registration = true,
+  bool invites = false,
+  Uri? frontendUrl,
+}) => _connect(
+  root,
+  _info(
+    version: 'v2.7.0',
+    localAuth: localAuth,
+    registration: registration,
+    frontendUrl: frontendUrl,
+    proFeatures: {if (invites) 'user_invites'},
+    openIdProviders: localAuth
+        ? const []
+        : const [OpenIdProvider(name: 'Keycloak', key: 'keycloak')],
   ),
   {ApiVersion.v1, ApiVersion.v2},
 );

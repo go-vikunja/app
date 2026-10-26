@@ -8,6 +8,7 @@ import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/features/accounts/application/account_switcher.dart';
+import 'package:vikunja_mobile/features/accounts/presentation/account_identity.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/remove_account_dialog.dart';
 import 'package:vikunja_mobile/features/session/application/sign_out_controller.dart';
 
@@ -21,7 +22,7 @@ Future<void> switchToAccount(
   RegisteredAccount entry,
 ) async {
   final messenger = ScaffoldMessenger.of(context);
-  final message = context.l10n.accountSwitchedTo(entry.account.displayName);
+  final message = context.l10n.accountSwitchedTo(accountTitle(entry.account));
   if (!await ref.read(accountSwitcherProvider).switchTo(entry.id)) return;
   messenger
     ..hideCurrentSnackBar()
@@ -59,7 +60,11 @@ Future<void> removeAccount(
   );
   if (!confirmed || !context.mounted) return;
   final messenger = ScaffoldMessenger.of(context);
-  final message = context.l10n.accountSignedOutOf(entry.account.displayName);
+  final l10n = context.l10n;
+  final name = accountTitle(entry.account);
+  final message = entry.account.isLinkShare
+      ? l10n.guestRemoved(name)
+      : l10n.accountSignedOutOf(name);
   await ref.read(signOutControllerProvider.notifier).signOut(entry.id);
   if (others.isEmpty) return;
   messenger

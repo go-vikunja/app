@@ -115,6 +115,7 @@ class _ProblemCardState extends ConsumerState<_ProblemCard> {
       serverRoot: widget.serverRoot,
       platform: Theme.of(context).platform,
       stale: true,
+      guest: ref.read(activeAccountIsGuestProvider),
     );
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()

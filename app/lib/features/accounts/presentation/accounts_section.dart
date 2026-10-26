@@ -7,6 +7,7 @@ import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/features/accounts/application/account_switcher.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/account_actions.dart';
+import 'package:vikunja_mobile/features/accounts/presentation/account_identity.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/account_tile.dart';
 import 'package:vikunja_mobile/features/common/presentation/settings_section.dart';
 
@@ -72,7 +73,7 @@ class _AccountMenu extends ConsumerWidget {
     final unsent =
         ref.watch(accountPendingChangesProvider(entry.id)).value ?? 0;
     return PopupMenuButton<_AccountAction>(
-      tooltip: l10n.accountMoreActions(entry.account.displayName),
+      tooltip: l10n.accountMoreActions(accountTitle(entry.account)),
       enabled: enabled,
       onSelected: (action) => switch (action) {
         _AccountAction.remove => unawaited(

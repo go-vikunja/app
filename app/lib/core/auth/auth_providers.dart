@@ -6,6 +6,7 @@ import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/accounts_without_tokens.dart';
 import 'package:vikunja_mobile/core/auth/auth_gateways.dart';
 import 'package:vikunja_mobile/core/auth/browser_sign_in.dart';
+import 'package:vikunja_mobile/core/auth/link_share_providers.dart';
 import 'package:vikunja_mobile/core/auth/previous_install.dart';
 import 'package:vikunja_mobile/core/auth/server_clock_offsets.dart';
 import 'package:vikunja_mobile/core/auth/session_manager.dart';
@@ -80,6 +81,7 @@ class Accounts extends _$Accounts {
   Future<AccountRegistryState> build() async {
     final registry = ref.watch(accountRegistryProvider);
     final tokenStore = ref.watch(tokenStoreProvider);
+    final linkShareStore = ref.watch(linkShareStoreProvider);
     final preferences = ref.watch(preferencesStoreProvider);
     final secureStore = ref.watch(secureStoreProvider);
     final subscription = registry.changes.listen(
@@ -95,7 +97,11 @@ class Accounts extends _$Accounts {
     // depends on the active account, which flagging never changes. Its
     // writes reach this provider through registry.changes.
     unawaited(
-      flagAccountsWithoutTokens(registry, tokenStore).then<void>(
+      flagAccountsWithoutTokens(
+        registry,
+        tokenStore,
+        linkShareStore,
+      ).then<void>(
         (_) {},
         onError: (Object error) =>
             _log.warning('Could not check stored tokens: ${error.runtimeType}'),

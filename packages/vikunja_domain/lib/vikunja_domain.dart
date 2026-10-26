@@ -1,5 +1,6 @@
 export 'src/account/account.dart';
 export 'src/account/avatar_provider.dart';
+export 'src/account/invite_preview.dart';
 export 'src/account/token_set.dart';
 export 'src/account/user.dart';
 export 'src/account/user_profile.dart';

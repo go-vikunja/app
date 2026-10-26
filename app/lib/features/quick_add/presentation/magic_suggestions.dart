@@ -85,6 +85,8 @@ class _MagicSuggestionsState extends ConsumerState<MagicSuggestions> {
   }
 
   Future<void> _search(int projectId, String query) async {
+    // The server's user search refuses a link-share guest.
+    if (ref.read(activeAccountIsGuestProvider)) return;
     final search = ++_latestSearch;
     final repository = ref.read(userRepositoryProvider);
     if (repository == null) return;

@@ -26,6 +26,42 @@ void main() {
       expect(describeUriForLog(Uri.parse('/info?token=x')), '/info');
       expect(describeUriForLog(Uri()), '<relative>');
     });
+
+    test("hides a link share's hash in the web's link and the API", () {
+      final hash = 'aB3dE' * 8;
+
+      expect(
+        describeUriForLog(
+          Uri.parse('https://example.com/vikunja/share/$hash/auth?view=3'),
+        ),
+        'https://example.com/vikunja/share/[redacted]/auth',
+      );
+      expect(
+        describeUriForLog(
+          Uri.parse('https://example.com/api/v1/shares/$hash/auth'),
+        ),
+        'https://example.com/api/v1/shares/[redacted]/auth',
+      );
+      expect(
+        describeUriForLog(Uri.parse('/shares/short/auth')),
+        '/shares/[redacted]/auth',
+      );
+    });
+
+    test("keeps a share's numeric id and the share lists", () {
+      expect(
+        describeUriForLog(
+          Uri.parse('https://example.com/api/v2/projects/4/shares/12'),
+        ),
+        'https://example.com/api/v2/projects/4/shares/12',
+      );
+      expect(
+        describeUriForLog(
+          Uri.parse('https://example.com/api/v2/projects/4/shares'),
+        ),
+        'https://example.com/api/v2/projects/4/shares',
+      );
+    });
   });
 
   group('redactSecrets', () {
@@ -66,6 +102,13 @@ void main() {
       expect(
         redactSecrets('{"refresh_token" : "abc", "totp_passcode":"123456"}'),
         '{"refresh_token":"[redacted]", "totp_passcode":"[redacted]"}',
+      );
+    });
+
+    test("redacts a link share's hash in an auth answer", () {
+      expect(
+        redactSecrets('{"id":83,"hash":"abc","project_id":5}'),
+        '{"id":83,"hash":"[redacted]","project_id":5}',
       );
     });
 

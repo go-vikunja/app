@@ -2,10 +2,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/accounts_without_tokens.dart';
+import 'package:vikunja_mobile/core/auth/link_share_store.dart';
 import 'package:vikunja_mobile/core/auth/token_store.dart';
 import 'package:vikunja_mobile/core/storage/secure_store.dart';
 
 import '../../helpers/auth_fakes.dart';
+import '../../helpers/guest_fakes.dart';
 import '../../helpers/server_connections.dart';
 
 final class _LockedSecureStore implements SecureStore {
@@ -49,6 +51,7 @@ void main() {
     final state = await flagAccountsWithoutTokens(
       auth.registry,
       auth.tokenStore,
+      auth.linkShareStore,
     );
 
     expect(state.find(orphan.id)!.account.needsReauth, isTrue);
@@ -65,7 +68,11 @@ void main() {
     );
     auth.secureStore.values.remove(TokenStore.refreshTokenKey(entry.id));
 
-    await flagAccountsWithoutTokens(auth.registry, auth.tokenStore);
+    await flagAccountsWithoutTokens(
+      auth.registry,
+      auth.tokenStore,
+      auth.linkShareStore,
+    );
 
     expect(await needsReauth(entry.id), isTrue);
   });
@@ -76,7 +83,11 @@ void main() {
     final subscription = auth.registry.changes.listen(writes.add);
     addTearDown(subscription.cancel);
 
-    await flagAccountsWithoutTokens(auth.registry, auth.tokenStore);
+    await flagAccountsWithoutTokens(
+      auth.registry,
+      auth.tokenStore,
+      auth.linkShareStore,
+    );
     await pumpEventQueue();
 
     expect(writes, isEmpty);
@@ -91,8 +102,66 @@ void main() {
     await flagAccountsWithoutTokens(
       auth.registry,
       TokenStore(_LockedSecureStore()),
+      LinkShareStore(_LockedSecureStore()),
     );
 
     expect(await needsReauth(entry.id), isFalse);
+  });
+
+  group('guests', () {
+    test(
+      'a guest counts while its hash is stored, a token alone does not',
+      () async {
+        final withToken = await auth.seedGuest(
+          fullServer270(),
+          token: issueLinkShareToken(issuedAt: now),
+        );
+        final hashOnly = await auth.seedGuest(
+          fullServer270(),
+          token: null,
+          shareId: 85,
+        );
+        final lost = await auth.seedGuest(
+          fullServer270(),
+          token: issueLinkShareToken(issuedAt: now, shareId: 86),
+          shareId: 86,
+        );
+        auth.secureStore.values.remove(LinkShareStore.hashKey(lost.id));
+
+        await flagAccountsWithoutTokens(
+          auth.registry,
+          auth.tokenStore,
+          auth.linkShareStore,
+        );
+
+        expect(await needsReauth(withToken.id), isFalse);
+        expect(await needsReauth(hashOnly.id), isFalse);
+        expect(await needsReauth(lost.id), isTrue);
+      },
+    );
+
+    test("a guest is never checked against a user's tokens, nor a user "
+        "against a guest's secrets", () async {
+      final guest = await auth.seedGuest(
+        fullServer270(),
+        token: issueLinkShareToken(issuedAt: now),
+      );
+      final user = await auth.seedAccount(
+        fullServer270(),
+        tokens: issueTokens(issuedAt: now),
+        activate: false,
+      );
+      await auth.secureStore.write(LinkShareStore.hashKey(user.id), 'x');
+      await auth.tokenStore.delete(user.id);
+
+      await flagAccountsWithoutTokens(
+        auth.registry,
+        auth.tokenStore,
+        auth.linkShareStore,
+      );
+
+      expect(await needsReauth(guest.id), isFalse);
+      expect(await needsReauth(user.id), isTrue);
+    });
   });
 }

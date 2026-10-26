@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/auth/link_share_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_page.dart';
@@ -645,6 +646,7 @@ void main() {
     Override checkingEveryTime() => sessionCheckProvider.overrideWith(
       (ref) => SessionCheck(
         sessions: ref.watch(sessionManagersProvider),
+        linkShares: ref.watch(linkShareSessionsProvider),
         accountGateway: ref.watch(accountGatewayProvider),
         minInterval: Duration.zero,
       ),

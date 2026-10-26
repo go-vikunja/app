@@ -3,6 +3,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/activity/activity_item.dart';
 import 'package:vikunja_mobile/core/activity/activity_notification_texts.dart';
 import 'package:vikunja_mobile/core/activity/activity_tray.dart';
+import 'package:vikunja_mobile/core/auth/account_title.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/notifications/notification_actions.dart';
 import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
@@ -129,16 +130,21 @@ final class ActivityNotifier {
 
   /// The account's session ended: one notification per ended session.
   /// Nothing when the OS does not let the app notify; a later call tries
-  /// again.
+  /// again. A guest has no sign-in to do, and its username is made up.
   Future<void> sessionEnded(Account account) async {
     final key = sessionEndedKey(account.id);
     if (await _store.getString(key) != null) return;
     if (!await _permitted()) return;
     final payloadKey = ActivityTray.sessionKey(account.id);
+    final host = _host(account.serverRoot);
     await _gateway.showActivity(
       osId: notificationOsIdFor(account.id, payloadKey),
-      title: _l10n.sessionEndedNotificationTitle(_host(account.serverRoot)),
-      body: _l10n.sessionEndedNotificationBody(account.username),
+      title: account.isLinkShare
+          ? _l10n.guestAccessEndedNotificationTitle(accountTitle(account))
+          : _l10n.sessionEndedNotificationTitle(host),
+      body: account.isLinkShare
+          ? _l10n.guestAccessEndedNotificationBody(host)
+          : _l10n.sessionEndedNotificationBody(account.username),
       payload: NotificationPayload(
         accountId: account.id,
         taskId: 0,

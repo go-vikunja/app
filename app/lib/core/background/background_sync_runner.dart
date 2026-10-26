@@ -6,6 +6,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/activity/activity_providers.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/auth/link_share_providers.dart';
 import 'package:vikunja_mobile/core/background/background_providers.dart';
 import 'package:vikunja_mobile/core/background/background_run_log.dart';
 import 'package:vikunja_mobile/core/background/background_runner_channel.dart';
@@ -158,10 +159,10 @@ final class BackgroundSyncRunner {
   /// A refresh whose answer is dropped ends the session (D26).
   Future<void> _settle(ProviderContainer container) async {
     try {
-      await container
-          .read(sessionManagersProvider)
-          .settle()
-          .timeout(settleGrace);
+      await Future.wait([
+        container.read(sessionManagersProvider).settle(),
+        container.read(linkShareSessionsProvider).settle(),
+      ]).timeout(settleGrace);
     } on Object catch (error) {
       _log.info('A token refresh was still on its way: ${error.runtimeType}');
     }
@@ -215,6 +216,7 @@ final class _Run {
     unawaited(() async {
       try {
         await container.read(sessionManagersProvider).retire(accountId);
+        await container.read(linkShareSessionsProvider).retire(accountId);
         await container.read(openDatabasesProvider).close(accountId);
       } on Object catch (error) {
         _log.fine('Releasing account $accountId: ${error.runtimeType}');
@@ -323,7 +325,8 @@ final class _Run {
       );
       if (synced != _Step.sessionEnded && synced != _Step.unreachable) {
         final drained = await _network(account, 'drain', _drain);
-        if (drained != _Step.unreachable) {
+        // The server keeps no activity for a guest and answers 403.
+        if (drained != _Step.unreachable && !account.isLinkShare) {
           await _network(account, 'activity', (_) async {
             final fresh = await container
                 .read(activitySyncProvider(account.id))

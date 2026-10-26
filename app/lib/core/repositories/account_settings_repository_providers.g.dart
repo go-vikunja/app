@@ -75,7 +75,7 @@ final class AccountSettingsRepositoryForProvider
 }
 
 String _$accountSettingsRepositoryForHash() =>
-    r'b1d37dc1fc1a01dfb1ddf9362d78ca9fda452cd7';
+    r'52661b8ba5a2f42ea7b1fac08b1b6c695fcec3ad';
 
 final class AccountSettingsRepositoryForFamily extends $Family
     with $FunctionalFamilyOverride<AccountSettingsRepository, String> {

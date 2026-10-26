@@ -1,12 +1,12 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
-import 'package:vikunja_mobile/features/common/presentation/user_avatar.dart';
+import 'package:vikunja_mobile/features/accounts/presentation/account_identity.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/server_address_display.dart';
 
 /// The signed-in account: its avatar, name, username and server, and Edit;
-/// the whole row opens the account's settings.
+/// the whole row opens the account's settings. A link-share guest has no
+/// settings: its link, name and `Guest · host` only.
 class AccountHeader extends StatelessWidget {
   const new({required this.entry, required this.onOpenSettings, super.key});
 
@@ -22,16 +22,19 @@ class AccountHeader extends StatelessWidget {
     final colors = theme.colorScheme;
     final account = entry.account;
     final host = displayHost(entry.connection.rootUri);
+    final avatar = AccountAvatar(entry: entry, radius: 28);
 
     final texts = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Semantics(
           header: true,
-          child: Text(account.displayName, style: theme.textTheme.titleLarge),
+          child: Text(accountTitle(account), style: theme.textTheme.titleLarge),
         ),
         Text(
-          account.displayName == account.username
+          account.isLinkShare
+              ? l10n.guestAccountSubtitle(host)
+              : account.displayName == account.username
               ? host
               : l10n.accountSubtitle(account.username, host),
           style: theme.textTheme.bodyMedium?.copyWith(
@@ -40,6 +43,18 @@ class AccountHeader extends StatelessWidget {
         ),
       ],
     );
+    if (account.isLinkShare) {
+      return Padding(
+        padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 16),
+        child: Row(
+          children: [
+            avatar,
+            const SizedBox(width: 16),
+            Expanded(child: texts),
+          ],
+        ),
+      );
+    }
     final edit = ExcludeSemantics(
       child: OutlinedButton(
         onPressed: onOpenSettings,
@@ -64,16 +79,7 @@ class AccountHeader extends StatelessWidget {
                   ? CrossAxisAlignment.start
                   : CrossAxisAlignment.center,
               children: [
-                UserAvatar(
-                  user: User(
-                    id: account.userId,
-                    username: account.username,
-                    name: account.displayName,
-                  ),
-                  radius: 28,
-                  accountId: entry.id,
-                  primary: true,
-                ),
+                avatar,
                 const SizedBox(width: 16),
                 Expanded(
                   child: largeText

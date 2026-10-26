@@ -17,9 +17,12 @@ import 'package:vikunja_mobile/features/common/presentation/settings_section.dar
 import 'package:vikunja_mobile/features/home/application/app_version.dart';
 import 'package:vikunja_mobile/features/home/presentation/account_header.dart';
 import 'package:vikunja_mobile/features/home/presentation/appearance_section.dart';
+import 'package:vikunja_mobile/features/home/presentation/guest_note.dart';
+import 'package:vikunja_mobile/features/home/presentation/guest_reauth_banner.dart';
 import 'package:vikunja_mobile/features/home/presentation/organise_section.dart';
 import 'package:vikunja_mobile/features/home/presentation/pending_changes_line.dart';
 import 'package:vikunja_mobile/features/home/presentation/reauth_banner.dart';
+import 'package:vikunja_mobile/features/home/presentation/server_notices.dart';
 import 'package:vikunja_mobile/features/home/presentation/sync_problems_section.dart';
 import 'package:vikunja_mobile/features/home/presentation/sync_status_section.dart';
 import 'package:vikunja_mobile/features/notifications/presentation/notifications_section.dart';
@@ -34,7 +37,9 @@ import 'package:vikunja_mobile/features/sync/presentation/sync_progress_bar.dart
 /// a session that needs a new sign-in, the account's labels and teams, the
 /// other accounts, the server with the sync state and the changes still
 /// waiting for it, what is set on this device only (notifications,
-/// colours), sign-out and the app's version.
+/// colours), sign-out and the app's version. A link-share guest gets a
+/// note on what it may do instead of the settings and the labels and
+/// teams.
 class AccountTab extends ConsumerWidget {
   const new({super.key});
 
@@ -66,16 +71,21 @@ class AccountTab extends ConsumerWidget {
     final isSigningIn = signIn is SignInInProgress;
     final signingOut = ref.watch(signOutControllerProvider);
     final busy = signingOut || isSigningIn;
-    final deletionScheduledAt = ref.watch(
-      accountSettingsProvider.select(
-        (state) => state.value?.profile?.deletionScheduledAt,
-      ),
-    );
+    final guest = entry.account.isLinkShare;
+    // A guest has no profile on the server, so nothing to delete either.
+    final deletionScheduledAt = guest
+        ? null
+        : ref.watch(
+            accountSettingsProvider.select(
+              (state) => state.value?.profile?.deletionScheduledAt,
+            ),
+          );
     final connection = entry.connection;
     final serverVersion =
         connection.info.version?.display ?? connection.info.rawVersion;
     final signOutLabel = switch ((signingOut, accounts.accounts.length > 1)) {
       (true, _) => l10n.homeSigningOut,
+      _ when guest => l10n.guestRemove,
       (false, true) => l10n.homeSignOutOfThisAccount,
       (false, false) => l10n.homeSignOut,
     };
@@ -96,15 +106,17 @@ class AccountTab extends ConsumerWidget {
             if (entry.account.needsReauth && !signingOut)
               Padding(
                 padding: bannerPadding,
-                child: ReauthBanner(
-                  serverRoot: connection.rootUri,
-                  isSigningIn: isSigningIn,
-                  onSignInAgain: () => unawaited(
-                    ref
-                        .read(signInControllerProvider.notifier)
-                        .signInAgain(entry),
-                  ),
-                ),
+                child: guest
+                    ? GuestReauthBanner(entry: entry)
+                    : ReauthBanner(
+                        serverRoot: connection.rootUri,
+                        isSigningIn: isSigningIn,
+                        onSignInAgain: () => unawaited(
+                          ref
+                              .read(signInControllerProvider.notifier)
+                              .signInAgain(entry),
+                        ),
+                      ),
               ),
             if (signIn case SignInFailed(:final error, :final serverRoot))
               Padding(
@@ -122,8 +134,12 @@ class AccountTab extends ConsumerWidget {
             // again on the server.
             AccountHeader(
               entry: entry,
-              onOpenSettings: busy ? null : () => _openSettings(context),
+              onOpenSettings: busy || guest
+                  ? null
+                  : () => _openSettings(context),
             ),
+            if (entry.account.projectId case final projectId? when guest)
+              GuestNote(projectId: projectId),
             if (deletionScheduledAt != null)
               DeletionScheduledNote(
                 scheduledAt: deletionScheduledAt,
@@ -139,16 +155,17 @@ class AccountTab extends ConsumerWidget {
                   ),
                 ),
               ),
-            ListTile(
-              leading: const Icon(Icons.manage_accounts_outlined),
-              title: Text(l10n.accountSettingsEntry),
-              subtitle: Text(l10n.accountSettingsEntrySubtitle),
-              trailing: const Icon(Icons.chevron_right),
-              enabled: !busy,
-              onTap: () => _openSettings(context),
-            ),
+            if (!guest)
+              ListTile(
+                leading: const Icon(Icons.manage_accounts_outlined),
+                title: Text(l10n.accountSettingsEntry),
+                subtitle: Text(l10n.accountSettingsEntrySubtitle),
+                trailing: const Icon(Icons.chevron_right),
+                enabled: !busy,
+                onTap: () => _openSettings(context),
+              ),
             const SizedBox(height: 8),
-            OrganiseSection(busy: busy),
+            if (!guest) OrganiseSection(busy: busy),
             AccountsSection(busy: busy),
             SettingsSection(
               title: l10n.accountServerHeading,
@@ -158,6 +175,7 @@ class AccountTab extends ConsumerWidget {
                     leading: const Icon(Icons.dns_outlined),
                     title: Text(l10n.overviewVikunjaVersion(serverVersion)),
                   ),
+                ServerNotices(info: connection.info),
                 SyncStatusSection(entry: entry, signingOut: signingOut),
                 PendingChangesLine(
                   entry: entry,
