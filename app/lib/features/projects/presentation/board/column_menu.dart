@@ -14,8 +14,9 @@ enum ColumnAction {
 
 /// A column's options in the web's order, in groups. Move left and right
 /// show only where the column can go; Delete is disabled, saying why, for
-/// the last column. While [saving], a progress indicator stands in for the
-/// button.
+/// the last column. The done and default column change the view, which
+/// needs admin rights, so they show only with [canChangeView]. While
+/// [saving], a progress indicator stands in for the button.
 class ColumnMenuButton extends StatelessWidget {
   const new({
     required this.bucket,
@@ -25,6 +26,7 @@ class ColumnMenuButton extends StatelessWidget {
     required this.canMoveRight,
     required this.canDelete,
     required this.onSelected,
+    this.canChangeView = true,
     this.saving = false,
     this.enabled = true,
     super.key,
@@ -37,6 +39,7 @@ class ColumnMenuButton extends StatelessWidget {
   final bool canMoveRight;
   final bool canDelete;
   final ValueChanged<ColumnAction> onSelected;
+  final bool canChangeView;
   final bool saving;
 
   /// False while another column change is on its way.
@@ -75,23 +78,25 @@ class ColumnMenuButton extends StatelessWidget {
             limit > 0 ? '$limit' : l10n.boardColumnLimitNotSet,
           ),
         ),
-        const PopupMenuDivider(),
-        CheckedPopupMenuItem(
-          value: ColumnAction.done,
-          checked: isDone,
-          child: _TitleAndHint(
-            title: l10n.boardDoneColumn,
-            hint: l10n.boardDoneColumnHintExtended,
+        if (canChangeView) ...[
+          const PopupMenuDivider(),
+          CheckedPopupMenuItem(
+            value: ColumnAction.done,
+            checked: isDone,
+            child: _TitleAndHint(
+              title: l10n.boardDoneColumn,
+              hint: l10n.boardDoneColumnHintExtended,
+            ),
           ),
-        ),
-        CheckedPopupMenuItem(
-          value: ColumnAction.defaultColumn,
-          checked: isDefault,
-          child: _TitleAndHint(
-            title: l10n.boardDefaultColumn,
-            hint: l10n.boardDefaultColumnHint,
+          CheckedPopupMenuItem(
+            value: ColumnAction.defaultColumn,
+            checked: isDefault,
+            child: _TitleAndHint(
+              title: l10n.boardDefaultColumn,
+              hint: l10n.boardDefaultColumnHint,
+            ),
           ),
-        ),
+        ],
         if (canMoveLeft || canMoveRight) const PopupMenuDivider(),
         if (canMoveLeft)
           _item(

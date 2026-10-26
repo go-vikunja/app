@@ -70,10 +70,15 @@ void main() {
     ProjectView? view,
     List<Bucket>? columns,
     Map<int, ({int bucketId, double position})> cards = snapshot,
+    Permission? permission,
   }) {
     final shown = view ?? kanban;
     data.projects.all = [
-      sampleProject(id: 1, title: 'Work', views: [listView, shown]),
+      sampleProject(
+        id: 1,
+        title: 'Work',
+        views: [listView, shown],
+      ).copyWith(maxPermission: permission),
     ];
     data.tasks.setBoard(
       shown,
@@ -279,6 +284,23 @@ void main() {
         (menuItem(tester, ColumnAction.done) as CheckedPopupMenuItem).checked,
         isTrue,
       );
+    });
+
+    testWidgets('with write but no admin rights it offers no done or default '
+        'column, which change the view', (tester) async {
+      storeBoard(permission: Permission.write);
+      await pumpBoard(tester);
+
+      await openMenuOf(tester, 'Doing');
+      expect(menuItems(tester), [
+        ColumnAction.rename,
+        ColumnAction.limit,
+        ColumnAction.moveLeft,
+        ColumnAction.moveRight,
+        ColumnAction.delete,
+      ]);
+      expect(find.text(en.boardDoneColumn), findsNothing);
+      expect(find.text(en.boardDefaultColumn), findsNothing);
     });
 
     testWidgets('a limit shows in the menu', (tester) async {

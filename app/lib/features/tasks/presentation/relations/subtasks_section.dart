@@ -10,12 +10,14 @@ import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
 
 /// The subtasks with their done controls, and a field that adds one; the
 /// field stays focused for the next. Without [onAdd] (no account) the
-/// field is left out and the controls only show.
+/// field is left out and the controls only show, as they do for a subtask
+/// that [isReadOnly] says the user may not change.
 class SubtasksSection extends StatefulWidget {
   const new({
     required this.subtasks,
     required this.onOpen,
     this.onDoneChanged,
+    this.isReadOnly,
     this.onRemove,
     this.onAdd,
     this.projectTitleOf,
@@ -25,6 +27,7 @@ class SubtasksSection extends StatefulWidget {
   final List<Task> subtasks;
   final ValueChanged<Task> onOpen;
   final void Function(Task subtask, {required bool done})? onDoneChanged;
+  final bool Function(Task subtask)? isReadOnly;
   final ValueChanged<Task>? onRemove;
 
   /// True when the subtask was added; it reports a failure itself.
@@ -69,12 +72,23 @@ class _SubtasksSectionState extends State<SubtasksSection> {
     _focus.requestFocus();
   }
 
+  Widget _doneControl(Task subtask) {
+    final onDoneChanged = widget.onDoneChanged;
+    final readOnly = widget.isReadOnly?.call(subtask) ?? false;
+    return TaskDoneControl(
+      done: subtask.done,
+      onChanged: onDoneChanged == null || readOnly
+          ? null
+          : (done) => onDoneChanged(subtask, done: done),
+      readOnly: readOnly,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final subtasks = widget.subtasks;
     final done = subtasks.where((task) => task.done).length;
-    final onDoneChanged = widget.onDoneChanged;
     final onRemove = widget.onRemove;
     final canAdd = !_adding && _title.text.trim().isNotEmpty;
     return Column(
@@ -94,12 +108,7 @@ class _SubtasksSectionState extends State<SubtasksSection> {
                   key: ValueKey(subtask.id),
                   task: subtask,
                   projectTitle: widget.projectTitleOf?.call(subtask),
-                  leading: TaskDoneControl(
-                    done: subtask.done,
-                    onChanged: onDoneChanged == null
-                        ? null
-                        : (done) => onDoneChanged(subtask, done: done),
-                  ),
+                  leading: _doneControl(subtask),
                   onOpen: () => widget.onOpen(subtask),
                   onRemove: onRemove == null ? null : () => onRemove(subtask),
                 ),

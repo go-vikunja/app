@@ -1,0 +1,10 @@
+{
+  "server": "2.7.0",
+  "request": "GET /api/v1/labels/108",
+  "status": 200,
+  "headers": {
+    "content-type": "application/json",
+    "x-max-permission": "2"
+  },
+  "body": "{\"id\":108,\"title\":\"Odd colour\",\"description\":\"\\u003cp\\u003eKept\\u003c/p\\u003e\",\"hex_color\":\"ABC\",\"created_by\":{\"id\":145,\"name\":\"\",\"username\":\"fixtureowner\",\"created\":\"2026-10-26T11:16:56Z\",\"updated\":\"2026-10-26T11:16:56Z\"},\"created\":\"2026-10-26T11:16:58Z\",\"updated\":\"2026-10-26T11:16:58Z\"}\n"
+}

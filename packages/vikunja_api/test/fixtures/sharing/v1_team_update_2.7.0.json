@@ -1,0 +1,14 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v1/teams/9",
+  "sent": {
+    "name": "Fixture team one",
+    "description": "<p>First, edited</p>",
+    "is_public": false
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"id\":9,\"name\":\"Fixture team one\",\"description\":\"\\u003cp\\u003eFirst, edited\\u003c/p\\u003e\",\"external_id\":\"\",\"created_by\":{\"id\":145,\"name\":\"\",\"username\":\"fixtureowner\",\"created\":\"2026-10-26T11:16:56Z\",\"updated\":\"2026-10-26T11:16:56Z\"},\"members\":[{\"id\":145,\"name\":\"\",\"username\":\"fixtureowner\",\"created\":\"2026-10-26T11:16:56Z\",\"updated\":\"2026-10-26T11:16:56Z\",\"admin\":true},{\"id\":146,\"name\":\"\",\"username\":\"fixturemember\",\"created\":\"2026-10-26T11:16:57Z\",\"updated\":\"2026-10-26T11:16:57Z\",\"admin\":false}],\"created\":\"2026-10-26T11:17:05Z\",\"updated\":\"2026-10-26T11:17:16Z\",\"is_public\":false}\n"
+}

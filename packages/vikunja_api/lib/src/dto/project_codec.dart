@@ -2,7 +2,11 @@ import 'package:vikunja_api/src/dto/json_values.dart';
 import 'package:vikunja_api/src/dto/user_codec.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 
-Project parseProject(Object? json) {
+/// `max_permission` comes computed only in lists with `expand=permissions`
+/// and in v2 single reads; [maxPermission], the v1 `x-max-permission`
+/// header of a single read, wins over the body, which servers before 2.6
+/// fill with 0 when nothing computed it. Null stays null: never read-only.
+Project parseProject(Object? json, {Permission? maxPermission}) {
   final map = objectOf(json, 'project');
   return Project(
     id: requireInt(map, 'id', 'project'),
@@ -20,6 +24,7 @@ Project parseProject(Object? json) {
     ),
     created: dateOf(map['created']),
     updated: dateOf(map['updated']),
+    maxPermission: maxPermission ?? Permission.fromValue(map['max_permission']),
   );
 }
 

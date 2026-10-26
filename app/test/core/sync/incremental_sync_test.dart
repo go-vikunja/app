@@ -133,7 +133,7 @@ void main() {
             parent: p.parentProjectId,
             archived: archived ?? p.isArchived,
             updated: updated ?? edited,
-          ),
+          ).copyWith(maxPermission: p.maxPermission),
     ];
   }
 
@@ -1292,6 +1292,92 @@ void main() {
       (await state())[SyncStateKeys.lastFullSyncAt],
       now.toIso8601String(),
     );
+  });
+
+  group('the permission on each project', () {
+    void permit(Map<int, Permission?> permissions) => client.allProjects = [
+      for (final p in client.allProjects)
+        if (permissions.containsKey(p.id))
+          p.copyWith(maxPermission: permissions[p.id])
+        else
+          p,
+    ];
+
+    Future<Map<int, Permission?>> stored() async => {
+      for (final p in await db.projectsDao.loadAll()) p.id: p.maxPermission,
+    };
+
+    setUp(
+      () => permit({
+        1: Permission.admin,
+        2: Permission.write,
+        3: Permission.read,
+        4: null,
+      }),
+    );
+
+    test('the initial sync stores it, an unknown one as unknown', () async {
+      await engine().ensureInitialSync();
+
+      expect(await stored(), {
+        1: Permission.admin,
+        2: Permission.write,
+        3: Permission.read,
+        4: null,
+      });
+    });
+
+    test('a refresh stores a change that moved nothing else, also in a '
+        "child whose parent's share changed", () async {
+      final sync = await synced();
+      var projectLoads = 0;
+      final subscription = db.projectsDao.watchAll().listen(
+        (_) => projectLoads++,
+      );
+      addTearDown(subscription.cancel);
+      while (projectLoads < 1) {
+        await pumpEventQueue();
+      }
+      permit({2: Permission.read, 4: Permission.write});
+
+      await sync.refresh();
+      await pumpEventQueue(times: 50);
+
+      expect(client.requests, quietRun);
+      expect(await stored(), {
+        1: Permission.admin,
+        2: Permission.read,
+        3: Permission.read,
+        4: Permission.write,
+      });
+      expect(projectLoads, 2, reason: 'one write for both');
+      final home = (await db.projectsDao.loadProject(2))!;
+      expect(home.updated, base);
+    });
+
+    test('a project no longer shared goes with its tasks', () async {
+      final sync = await synced();
+      replaceProject(2, remove: true);
+      client.allTasks.removeWhere((t) => t.projectId == 2);
+
+      await sync.refresh();
+
+      expect(await stored(), {
+        1: Permission.admin,
+        3: Permission.read,
+        4: null,
+      });
+      expect(await db.tasksDao.find(10), isNull);
+    });
+
+    test('a full resync stores it too', () async {
+      final sync = await synced();
+      permit({1: Permission.read});
+
+      await sync.fullResync();
+
+      expect((await stored())[1], Permission.read);
+    });
   });
 
   group('comment count and unread flag', () {

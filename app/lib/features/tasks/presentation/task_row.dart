@@ -8,6 +8,7 @@ import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/features/common/presentation/avatar_stack.dart';
 import 'package:vikunja_mobile/features/common/presentation/identifier_text.dart';
+import 'package:vikunja_mobile/features/projects/application/project_access.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/favourite_button.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_meta.dart';
@@ -18,8 +19,8 @@ import 'package:vikunja_mobile/features/tasks/presentation/task_summary.dart';
 /// title and one wrapping line of what else the task has (one semantics
 /// node that reads it all, with [actions] for screen readers, and opens
 /// the detail sheet), the assignees and the favourite star. The controls
-/// are indicators only without their callbacks. Full-bleed or in a
-/// section card alike.
+/// are indicators only without their callbacks; the checkbox also in a
+/// project the user may only read. Full-bleed or in a section card alike.
 class TaskRow extends ConsumerWidget {
   const new({
     required this.task,
@@ -106,6 +107,10 @@ class TaskRow extends ConsumerWidget {
       minimumPriority: minimumPriority,
       formatter: MomentFormatter.watch(context, ref),
       projectTitle: projectTitle,
+    );
+    final readOnly = ref.watch(
+      projectAccessProvider(task.projectId)
+          .select((access) => !access.canChangeTasks),
     );
     final identifier = summary.identifier;
     final identifierLeads = identifierBeforeTitle && identifier != null;
@@ -196,7 +201,11 @@ class TaskRow extends ConsumerWidget {
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  TaskDoneControl(done: task.done, onChanged: onDoneChanged),
+                  TaskDoneControl(
+                    done: task.done,
+                    onChanged: readOnly ? null : onDoneChanged,
+                    readOnly: readOnly,
+                  ),
                   const SizedBox(width: 4),
                   Expanded(
                     child: Padding(
@@ -255,7 +264,7 @@ class TaskRow extends ConsumerWidget {
                     ),
                   FavouriteButton(
                     isFavorite: task.isFavorite,
-                    onChanged: onFavoriteChanged,
+                    onChanged: readOnly ? null : onFavoriteChanged,
                   ),
                 ],
               );
@@ -292,12 +301,18 @@ class _ChecklistCount extends StatelessWidget {
 }
 
 /// The square done checkbox of a task row; an indicator only without
-/// [onChanged].
+/// [onChanged], which [readOnly] says.
 class TaskDoneControl extends StatelessWidget {
-  const new({required this.done, required this.onChanged, super.key});
+  const new({
+    required this.done,
+    required this.onChanged,
+    this.readOnly = false,
+    super.key,
+  });
 
   final bool done;
   final ValueChanged<bool>? onChanged;
+  final bool readOnly;
 
   @override
   Widget build(BuildContext context) {
@@ -306,7 +321,11 @@ class TaskDoneControl extends StatelessWidget {
     // One node of its own: a checkbox alone would melt into the row's.
     return MergeSemantics(
       child: Tooltip(
-        message: done ? l10n.taskMarkNotDone : l10n.taskMarkDone,
+        message: readOnly
+            ? l10n.shareTaskReadOnly
+            : done
+            ? l10n.taskMarkNotDone
+            : l10n.taskMarkDone,
         child: Checkbox(
           value: done,
           onChanged: onChanged == null

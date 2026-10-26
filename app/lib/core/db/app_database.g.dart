@@ -139,6 +139,17 @@ class $ProjectsTable extends Projects
         type: DriftSqlType.int,
         requiredDuringInsert: false,
       ).withConverter<DateTime?>($ProjectsTable.$converterupdatedn);
+  static const VerificationMeta _maxPermissionMeta = const VerificationMeta(
+    'maxPermission',
+  );
+  @override
+  late final GeneratedColumn<int> maxPermission = GeneratedColumn<int>(
+    'max_permission',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -153,6 +164,7 @@ class $ProjectsTable extends Projects
     ownerId,
     created,
     updated,
+    maxPermission,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -245,6 +257,15 @@ class $ProjectsTable extends Projects
         ownerId.isAcceptableOrUnknown(data['owner_id']!, _ownerIdMeta),
       );
     }
+    if (data.containsKey('max_permission')) {
+      context.handle(
+        _maxPermissionMeta,
+        maxPermission.isAcceptableOrUnknown(
+          data['max_permission']!,
+          _maxPermissionMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -306,6 +327,10 @@ class $ProjectsTable extends Projects
           data['${effectivePrefix}updated'],
         ),
       ),
+      maxPermission: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}max_permission'],
+      ),
     );
   }
 
@@ -335,6 +360,9 @@ class ProjectRow extends DataClass implements Insertable<ProjectRow> {
   final int? ownerId;
   final DateTime? created;
   final DateTime? updated;
+
+  /// `Permission.value` of the signed-in user, null while not known.
+  final int? maxPermission;
   const ProjectRow({
     required this.id,
     required this.title,
@@ -348,6 +376,7 @@ class ProjectRow extends DataClass implements Insertable<ProjectRow> {
     this.ownerId,
     this.created,
     this.updated,
+    this.maxPermission,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -374,6 +403,9 @@ class ProjectRow extends DataClass implements Insertable<ProjectRow> {
         $ProjectsTable.$converterupdatedn.toSql(updated),
       );
     }
+    if (!nullToAbsent || maxPermission != null) {
+      map['max_permission'] = Variable<int>(maxPermission);
+    }
     return map;
   }
 
@@ -397,6 +429,9 @@ class ProjectRow extends DataClass implements Insertable<ProjectRow> {
       updated: updated == null && nullToAbsent
           ? const Value.absent()
           : Value(updated),
+      maxPermission: maxPermission == null && nullToAbsent
+          ? const Value.absent()
+          : Value(maxPermission),
     );
   }
 
@@ -418,6 +453,7 @@ class ProjectRow extends DataClass implements Insertable<ProjectRow> {
       ownerId: serializer.fromJson<int?>(json['ownerId']),
       created: serializer.fromJson<DateTime?>(json['created']),
       updated: serializer.fromJson<DateTime?>(json['updated']),
+      maxPermission: serializer.fromJson<int?>(json['maxPermission']),
     );
   }
   @override
@@ -436,6 +472,7 @@ class ProjectRow extends DataClass implements Insertable<ProjectRow> {
       'ownerId': serializer.toJson<int?>(ownerId),
       'created': serializer.toJson<DateTime?>(created),
       'updated': serializer.toJson<DateTime?>(updated),
+      'maxPermission': serializer.toJson<int?>(maxPermission),
     };
   }
 
@@ -452,6 +489,7 @@ class ProjectRow extends DataClass implements Insertable<ProjectRow> {
     Value<int?> ownerId = const Value.absent(),
     Value<DateTime?> created = const Value.absent(),
     Value<DateTime?> updated = const Value.absent(),
+    Value<int?> maxPermission = const Value.absent(),
   }) => ProjectRow(
     id: id ?? this.id,
     title: title ?? this.title,
@@ -465,6 +503,9 @@ class ProjectRow extends DataClass implements Insertable<ProjectRow> {
     ownerId: ownerId.present ? ownerId.value : this.ownerId,
     created: created.present ? created.value : this.created,
     updated: updated.present ? updated.value : this.updated,
+    maxPermission: maxPermission.present
+        ? maxPermission.value
+        : this.maxPermission,
   );
   ProjectRow copyWithCompanion(ProjectsCompanion data) {
     return ProjectRow(
@@ -490,6 +531,9 @@ class ProjectRow extends DataClass implements Insertable<ProjectRow> {
       ownerId: data.ownerId.present ? data.ownerId.value : this.ownerId,
       created: data.created.present ? data.created.value : this.created,
       updated: data.updated.present ? data.updated.value : this.updated,
+      maxPermission: data.maxPermission.present
+          ? data.maxPermission.value
+          : this.maxPermission,
     );
   }
 
@@ -507,7 +551,8 @@ class ProjectRow extends DataClass implements Insertable<ProjectRow> {
           ..write('position: $position, ')
           ..write('ownerId: $ownerId, ')
           ..write('created: $created, ')
-          ..write('updated: $updated')
+          ..write('updated: $updated, ')
+          ..write('maxPermission: $maxPermission')
           ..write(')'))
         .toString();
   }
@@ -526,6 +571,7 @@ class ProjectRow extends DataClass implements Insertable<ProjectRow> {
     ownerId,
     created,
     updated,
+    maxPermission,
   );
   @override
   bool operator ==(Object other) =>
@@ -542,7 +588,8 @@ class ProjectRow extends DataClass implements Insertable<ProjectRow> {
           other.position == this.position &&
           other.ownerId == this.ownerId &&
           other.created == this.created &&
-          other.updated == this.updated);
+          other.updated == this.updated &&
+          other.maxPermission == this.maxPermission);
 }
 
 class ProjectsCompanion extends UpdateCompanion<ProjectRow> {
@@ -558,6 +605,7 @@ class ProjectsCompanion extends UpdateCompanion<ProjectRow> {
   final Value<int?> ownerId;
   final Value<DateTime?> created;
   final Value<DateTime?> updated;
+  final Value<int?> maxPermission;
   const ProjectsCompanion({
     this.id = const Value.absent(),
     this.title = const Value.absent(),
@@ -571,6 +619,7 @@ class ProjectsCompanion extends UpdateCompanion<ProjectRow> {
     this.ownerId = const Value.absent(),
     this.created = const Value.absent(),
     this.updated = const Value.absent(),
+    this.maxPermission = const Value.absent(),
   });
   ProjectsCompanion.insert({
     this.id = const Value.absent(),
@@ -585,6 +634,7 @@ class ProjectsCompanion extends UpdateCompanion<ProjectRow> {
     this.ownerId = const Value.absent(),
     this.created = const Value.absent(),
     this.updated = const Value.absent(),
+    this.maxPermission = const Value.absent(),
   }) : title = Value(title),
        description = Value(description),
        identifier = Value(identifier),
@@ -606,6 +656,7 @@ class ProjectsCompanion extends UpdateCompanion<ProjectRow> {
     Expression<int>? ownerId,
     Expression<int>? created,
     Expression<int>? updated,
+    Expression<int>? maxPermission,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -620,6 +671,7 @@ class ProjectsCompanion extends UpdateCompanion<ProjectRow> {
       if (ownerId != null) 'owner_id': ownerId,
       if (created != null) 'created': created,
       if (updated != null) 'updated': updated,
+      if (maxPermission != null) 'max_permission': maxPermission,
     });
   }
 
@@ -636,6 +688,7 @@ class ProjectsCompanion extends UpdateCompanion<ProjectRow> {
     Value<int?>? ownerId,
     Value<DateTime?>? created,
     Value<DateTime?>? updated,
+    Value<int?>? maxPermission,
   }) {
     return ProjectsCompanion(
       id: id ?? this.id,
@@ -650,6 +703,7 @@ class ProjectsCompanion extends UpdateCompanion<ProjectRow> {
       ownerId: ownerId ?? this.ownerId,
       created: created ?? this.created,
       updated: updated ?? this.updated,
+      maxPermission: maxPermission ?? this.maxPermission,
     );
   }
 
@@ -696,6 +750,9 @@ class ProjectsCompanion extends UpdateCompanion<ProjectRow> {
         $ProjectsTable.$converterupdatedn.toSql(updated.value),
       );
     }
+    if (maxPermission.present) {
+      map['max_permission'] = Variable<int>(maxPermission.value);
+    }
     return map;
   }
 
@@ -713,7 +770,8 @@ class ProjectsCompanion extends UpdateCompanion<ProjectRow> {
           ..write('position: $position, ')
           ..write('ownerId: $ownerId, ')
           ..write('created: $created, ')
-          ..write('updated: $updated')
+          ..write('updated: $updated, ')
+          ..write('maxPermission: $maxPermission')
           ..write(')'))
         .toString();
   }
@@ -8263,6 +8321,7 @@ typedef $$ProjectsTableCreateCompanionBuilder = ProjectsCompanion Function({
   Value<int?> ownerId,
   Value<DateTime?> created,
   Value<DateTime?> updated,
+  Value<int?> maxPermission,
 });
 typedef $$ProjectsTableUpdateCompanionBuilder = ProjectsCompanion Function({
   Value<int> id,
@@ -8277,6 +8336,7 @@ typedef $$ProjectsTableUpdateCompanionBuilder = ProjectsCompanion Function({
   Value<int?> ownerId,
   Value<DateTime?> created,
   Value<DateTime?> updated,
+  Value<int?> maxPermission,
 });
 
 final class $$ProjectsTableReferences
@@ -8373,6 +8433,11 @@ class $$ProjectsTableFilterComposer
         builder: (column) => ColumnWithTypeConverterFilters(column),
       );
 
+  ColumnFilters<int> get maxPermission => $composableBuilder(
+    column: $table.maxPermission,
+    builder: (column) => ColumnFilters(column),
+  );
+
   Expression<bool> projectViewsRefs(
     Expression<bool> Function($$ProjectViewsTableFilterComposer f) f,
   ) {
@@ -8467,6 +8532,11 @@ class $$ProjectsTableOrderingComposer
     column: $table.updated,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get maxPermission => $composableBuilder(
+    column: $table.maxPermission,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$ProjectsTableAnnotationComposer
@@ -8523,6 +8593,11 @@ class $$ProjectsTableAnnotationComposer
 
   GeneratedColumnWithTypeConverter<DateTime?, int> get updated =>
       $composableBuilder(column: $table.updated, builder: (column) => column);
+
+  GeneratedColumn<int> get maxPermission => $composableBuilder(
+    column: $table.maxPermission,
+    builder: (column) => column,
+  );
 
   Expression<T> projectViewsRefs<T extends Object>(
     Expression<T> Function($$ProjectViewsTableAnnotationComposer a) f,
@@ -8590,6 +8665,7 @@ class $$ProjectsTableTableManager
                 Value<int?> ownerId = const Value.absent(),
                 Value<DateTime?> created = const Value.absent(),
                 Value<DateTime?> updated = const Value.absent(),
+                Value<int?> maxPermission = const Value.absent(),
               }) => ProjectsCompanion(
                 id: id,
                 title: title,
@@ -8603,6 +8679,7 @@ class $$ProjectsTableTableManager
                 ownerId: ownerId,
                 created: created,
                 updated: updated,
+                maxPermission: maxPermission,
               ),
           createCompanionCallback:
               ({
@@ -8618,6 +8695,7 @@ class $$ProjectsTableTableManager
                 Value<int?> ownerId = const Value.absent(),
                 Value<DateTime?> created = const Value.absent(),
                 Value<DateTime?> updated = const Value.absent(),
+                Value<int?> maxPermission = const Value.absent(),
               }) => ProjectsCompanion.insert(
                 id: id,
                 title: title,
@@ -8631,6 +8709,7 @@ class $$ProjectsTableTableManager
                 ownerId: ownerId,
                 created: created,
                 updated: updated,
+                maxPermission: maxPermission,
               ),
           withReferenceMapper: (p0) => p0
               .map(

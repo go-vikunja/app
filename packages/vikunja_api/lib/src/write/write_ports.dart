@@ -95,9 +95,30 @@ abstract interface class TasksWritePort {
   Future<void> markRead(int id);
 }
 
+/// Changing or deleting a label is for its creator alone: anyone else is
+/// `Forbidden` without a code. A label that is gone, or that the user can
+/// no longer see, is a `NotFound` code 8002.
 abstract interface class LabelsWritePort {
   /// v2 `POST /labels`, v1 `PUT /labels`.
   Future<Label> create(NewLabel label);
+
+  /// Writes only what [changes] set and returns the label as stored: v2 a
+  /// merge-patch (an unchanged label answers 304 and is read), v1 a read
+  /// posted back whole with [changes] overlaid, keeping a colour or
+  /// description another client wrote that this one does not parse. A
+  /// title the server refuses (above 250 code points, v2 an empty one) is a
+  /// `ValidationFailed`; v1 stores an empty title, so callers check it.
+  /// The tasks carrying the label show the change at once, without a bump
+  /// of their `updated`. The server refuses a label that is gone like
+  /// someone else's (the read both writes start with is a 403), so after a
+  /// `Forbidden` the port looks the id up in the label list: absent, it is
+  /// the `NotFound`. Empty changes are a read.
+  Future<Label> update(int id, LabelChanges changes);
+
+  /// `DELETE /labels/{id}`; from 2.7.0 the server also takes it off every
+  /// task, without a bump of their `updated`. One that is gone already
+  /// (404 code 8002) counts as deleted.
+  Future<void> delete(int id);
 }
 
 abstract interface class NotificationsWritePort {
@@ -215,6 +236,8 @@ abstract interface class ProjectViewsWritePort {
   Future<void> delete(int projectId, int viewId);
 }
 
+/// The projects these answer carry no [Project.maxPermission]: write
+/// answers never have it computed (servers before 2.6 send 0 for that).
 abstract interface class ProjectsWritePort {
   /// Puts the project at [position] under [parentProjectId] (0 for the top
   /// level) and returns it as stored; every other field stays. A position

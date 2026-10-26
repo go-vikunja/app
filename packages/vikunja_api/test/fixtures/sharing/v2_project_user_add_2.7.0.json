@@ -1,0 +1,13 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v2/projects/418/users",
+  "sent": {
+    "username": "fixtureguest",
+    "permission": 1
+  },
+  "status": 201,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"id\":38,\"username\":\"fixtureguest\",\"permission\":1,\"created\":\"2026-10-26T11:17:18.689002293Z\",\"updated\":\"2026-10-26T11:17:18.689009042Z\"}\n"
+}

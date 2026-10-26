@@ -1,0 +1,13 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v2/projects/418/teams",
+  "sent": {
+    "team_id": 10,
+    "permission": 0
+  },
+  "status": 409,
+  "headers": {
+    "content-type": "application/problem+json"
+  },
+  "body": "{\"$schema\":\"http://localhost:34527/api/v2/schemas/VikunjaErrorModel.json\",\"title\":\"Conflict\",\"status\":409,\"detail\":\"This team already has access.\",\"code\":6004}\n"
+}

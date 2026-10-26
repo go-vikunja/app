@@ -1,0 +1,11 @@
+{
+  "server": "2.7.0",
+  "request": "GET /api/v1/projects/418/users?page=1&per_page=1",
+  "status": 200,
+  "headers": {
+    "content-type": "application/json",
+    "x-pagination-total-pages": "2",
+    "x-pagination-result-count": "1"
+  },
+  "body": "[{\"id\":146,\"name\":\"\",\"username\":\"fixturemember\",\"created\":\"2026-10-26T11:16:57Z\",\"updated\":\"2026-10-26T11:16:57Z\",\"permission\":1}]\n"
+}

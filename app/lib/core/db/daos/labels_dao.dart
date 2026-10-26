@@ -54,9 +54,17 @@ final class LabelsDao extends DatabaseAccessor<AppDatabase>
       ..addColumns([labels.id])
       ..where(labels.id.isNotIn(ids));
     final gone = await query.map((row) => row.read(labels.id)!).get();
-    if (gone.isEmpty) return 0;
-    await (delete(labels)..where((l) => l.id.isIn(gone))).go();
-    await attachedDatabase.outboxDao.forgetLabels(gone.toSet());
+    await _removeAll(gone.toSet());
     return gone.length;
   });
+
+  /// Removes the label, from every task through the foreign key and from
+  /// the queued edits, as [purgeNotIn] does.
+  Future<void> remove(int id) => transaction(() => _removeAll({id}));
+
+  Future<void> _removeAll(Set<int> ids) async {
+    if (ids.isEmpty) return;
+    await (delete(labels)..where((l) => l.id.isIn(ids))).go();
+    await attachedDatabase.outboxDao.forgetLabels(ids);
+  }
 }

@@ -150,6 +150,13 @@ final class RetryingLabelsWrites implements LabelsWritePort {
   @override
   Future<Label> create(NewLabel label) =>
       despiteWriteRaces(() => _labels.create(label));
+
+  @override
+  Future<Label> update(int id, LabelChanges changes) =>
+      despiteWriteRaces(() => _labels.update(id, changes));
+
+  @override
+  Future<void> delete(int id) => despiteWriteRaces(() => _labels.delete(id));
 }
 
 final class RetryingBucketsWrites implements BucketsWritePort {

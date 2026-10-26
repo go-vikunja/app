@@ -11,6 +11,7 @@ import 'package:vikunja_mobile/core/attachments/attachment_image_providers.dart'
 import 'package:vikunja_mobile/core/attachments/pending_upload.dart';
 import 'package:vikunja_mobile/core/db/account_database_files.dart';
 import 'package:vikunja_mobile/core/files/file_actions_providers.dart';
+import 'package:vikunja_mobile/core/files/link_share_actions.dart';
 import 'package:vikunja_mobile/core/outbox/pending_task_ids_source.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/platform/secure_display.dart';
@@ -24,6 +25,7 @@ import 'package:vikunja_mobile/core/repositories/bucket_repository_providers.dar
 import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences_providers.dart';
 import 'package:vikunja_mobile/core/repositories/project_repository.dart';
+import 'package:vikunja_mobile/core/repositories/project_sharing_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/project_view_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/saved_filter_repository_providers.dart';
@@ -33,6 +35,7 @@ import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 import 'package:vikunja_mobile/core/repositories/task_resolver_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_search_providers.dart';
+import 'package:vikunja_mobile/core/repositories/team_repository_providers.dart';
 import 'package:vikunja_mobile/core/settings/user_settings_providers.dart';
 import 'package:vikunja_mobile/core/share/share_providers.dart';
 import 'package:vikunja_mobile/core/sync/saved_filters.dart';
@@ -46,6 +49,7 @@ import 'account_settings_fakes.dart';
 import 'activity_fakes.dart';
 import 'attachment_fakes.dart';
 import 'bucket_fakes.dart';
+import 'label_user_fakes.dart';
 import 'list_preferences_fakes.dart';
 import 'project_view_fakes.dart';
 import 'realtime_fakes.dart';
@@ -54,6 +58,7 @@ import 'saved_filter_fakes.dart';
 import 'subscription_fakes.dart';
 import 'task_details_fakes.dart';
 import 'task_edits.dart';
+import 'team_sharing_fakes.dart';
 
 /// Replays [current] to every subscriber when it has one, then forwards
 /// [updates].
@@ -1702,6 +1707,8 @@ final class AccountDataFakes {
     };
     accountSettings.onStateChanged = (state) => settings = state.settings;
     accountSecurity = FakeAccountSecurityRepository(now: () => now);
+    teams = FakeTeamRepository(sync: engine, now: () => now);
+    sharing = FakeProjectSharingRepository(sync: engine, now: () => now);
   }
 
   late final FakeSyncEngine engine;
@@ -1737,6 +1744,22 @@ final class AccountDataFakes {
   /// settings pages, at the fakes' `now`.
   late final FakeAccountSecurityRepository accountSecurity;
 
+  /// The teams on the server, whose leave and delete ask [engine] for a
+  /// quiet run.
+  late final FakeTeamRepository teams;
+
+  /// The projects' shares on the server; a change to the user's own access
+  /// asks [engine] for a quiet run.
+  late final FakeProjectSharingRepository sharing;
+
+  /// The stored labels; a test that overrides `labelRepositoryProvider`
+  /// itself does not use them.
+  final labels = FakeLabelRepository();
+
+  /// The people search; a test that overrides `userRepositoryProvider`
+  /// itself does not use it.
+  final users = FakeUserRepository();
+
   /// What `userSettingsProvider` reports while the account is active.
   UserSettings get settings => _settings;
 
@@ -1768,9 +1791,13 @@ final class SyncFakes {
   final shareSource = FakeShareIntentSource();
   final fileActions = FakeFileActions();
 
-  /// What a one-time secret view copied, and whether it hid the screen.
+  /// What a one-time secret view or a link share copied, and whether it hid
+  /// the screen.
   final clipboard = FakeSensitiveClipboard();
   final secureDisplay = FakeSecureDisplay();
+
+  /// The links handed to the share sheet.
+  final linkShares = FakeLinkShareActions();
 
   /// Refuses every upgrade, so no screen test opens a socket or waits on
   /// one; a test of the realtime path lets it accept.
@@ -1800,6 +1827,10 @@ final class SyncFakes {
   FakeAttachmentImages get attachmentImages => shared.attachmentImages;
   FakeAttachmentRepository get attachments => shared.attachments;
   FakeAccountSecurityRepository get accountSecurity => shared.accountSecurity;
+  FakeTeamRepository get teams => shared.teams;
+  FakeProjectSharingRepository get sharing => shared.sharing;
+  FakeLabelRepository get labels => shared.labels;
+  FakeUserRepository get users => shared.users;
 
   AccountDataFakes forAccount(String accountId) =>
       accounts[accountId] ?? shared;
@@ -1875,6 +1906,19 @@ final class SyncFakes {
     accountSecurityRepositoryForProvider.overrideWith(
       (ref, accountId) => forAccount(accountId).accountSecurity,
     ),
+    teamRepositoryForProvider.overrideWith(
+      (ref, accountId) => forAccount(accountId).teams,
+    ),
+    projectSharingRepositoryForProvider.overrideWith(
+      (ref, accountId) => forAccount(accountId).sharing,
+    ),
+    accountLabelRepositoryProvider.overrideWith(
+      (ref, accountId) => forAccount(accountId).labels,
+    ),
+    accountUserRepositoryProvider.overrideWith(
+      (ref, accountId) => forAccount(accountId).users,
+    ),
+    linkShareActionsProvider.overrideWithValue(linkShares),
     sensitiveClipboardProvider.overrideWithValue(clipboard),
     secureDisplayProvider.overrideWithValue(secureDisplay),
     // The real one opens the account's database; every list reads it.

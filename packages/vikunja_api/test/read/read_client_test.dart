@@ -151,7 +151,7 @@ void main() {
   group('projects', () {
     test('v2 list parses the envelope', () async {
       final dio = fakeDio({
-        '$_v2/projects?page=1': json(
+        '$_v2/projects?page=1&expand=permissions': json(
           _v2Page([_project(1), _project(2)], totalPages: 2, total: 3),
         ),
       });
@@ -178,7 +178,7 @@ void main() {
       'v1 list parses the pagination headers and reports no total',
       () async {
         final dio = fakeDio({
-          '$_v1/projects?page=2&per_page=100': _v1List([
+          '$_v1/projects?page=2&per_page=100&expand=permissions': _v1List([
             _project(3),
           ], totalPages: 2),
         });
@@ -200,7 +200,9 @@ void main() {
 
     test('v1 list without a page size uses the server default', () async {
       final dio = fakeDio({
-        '$_v1/projects?page=1': _v1List([_project(1)], totalPages: 1),
+        '$_v1/projects?page=1&expand=permissions': _v1List([
+          _project(1),
+        ], totalPages: 1),
       });
 
       final page = await _client(
@@ -214,7 +216,7 @@ void main() {
 
     test('v1 list without the total-pages header is a single page', () async {
       final dio = fakeDio({
-        '$_v1/projects?page=1': _v1List([_project(1)]),
+        '$_v1/projects?page=1&expand=permissions': _v1List([_project(1)]),
       });
 
       final page = await _client(dio, hasV2: false).projects.list();
@@ -224,7 +226,9 @@ void main() {
     });
 
     test('v1 empty list', () async {
-      final dio = fakeDio({'$_v1/projects?page=1': _v1List([], totalPages: 0)});
+      final dio = fakeDio({
+        '$_v1/projects?page=1&expand=permissions': _v1List([], totalPages: 0),
+      });
 
       final page = await _client(dio, hasV2: false).projects.list();
 
@@ -234,8 +238,14 @@ void main() {
     });
 
     for (final (hasV2, url) in [
-      (true, '$_v2/projects?is_archived=true&q=foo+bar&page=1&per_page=10'),
-      (false, '$_v1/projects?is_archived=true&s=foo+bar&page=1&per_page=10'),
+      (
+        true,
+        '$_v2/projects?is_archived=true&q=foo+bar&page=1&per_page=10&expand=permissions',
+      ),
+      (
+        false,
+        '$_v1/projects?is_archived=true&s=foo+bar&page=1&per_page=10&expand=permissions',
+      ),
     ]) {
       test('archived and search parameters: $url', () async {
         final dio = fakeDio({
@@ -263,8 +273,16 @@ void main() {
             ? json(_v2Page(items, page: number, totalPages: 2, total: 3))
             : _v1List(items, totalPages: 2);
         final dio = fakeDio({
-          '$base/projects?page=1': page([_project(1), favorites, filter], 1),
-          '$base/projects?page=2': page([_project(2), favorites, filter], 2),
+          '$base/projects?page=1&expand=permissions': page([
+            _project(1),
+            favorites,
+            filter,
+          ], 1),
+          '$base/projects?page=2&expand=permissions': page([
+            _project(2),
+            favorites,
+            filter,
+          ], 2),
         });
 
         final projects = await _client(dio, hasV2: hasV2).projects.listAll();
@@ -273,15 +291,15 @@ void main() {
         expect(projects.where((p) => p.isPseudo).length, 2);
         expect(projects.singleWhere((p) => p.id == -2).savedFilterId, 1);
         expect(adapterOf(dio).requestedUrls, [
-          '$base/projects?page=1',
-          '$base/projects?page=2',
+          '$base/projects?page=1&expand=permissions',
+          '$base/projects?page=2&expand=permissions',
         ]);
       });
     }
 
     test('listAll passes includeArchived on', () async {
       final dio = fakeDio({
-        '$_v2/projects?is_archived=true&page=1': json(
+        '$_v2/projects?is_archived=true&page=1&expand=permissions': json(
           _v2Page([_project(1)], totalPages: 1),
         ),
       });
@@ -290,7 +308,7 @@ void main() {
 
       expect(
         adapterOf(dio).requestedUrls.single,
-        endsWith('is_archived=true&page=1'),
+        endsWith('is_archived=true&page=1&expand=permissions'),
       );
     });
 
@@ -370,7 +388,7 @@ void main() {
 
     test('a list item without id fails the page', () async {
       final dio = fakeDio({
-        '$_v2/projects?page=1': json(
+        '$_v2/projects?page=1&expand=permissions': json(
           _v2Page([
             _project(1),
             {'title': 'no id'},
@@ -386,7 +404,7 @@ void main() {
 
     test('a v2 list without the envelope is unexpected', () async {
       final dio = fakeDio({
-        '$_v2/projects?page=1': json([_project(1)]),
+        '$_v2/projects?page=1&expand=permissions': json([_project(1)]),
       });
 
       await expectLater(
@@ -403,7 +421,9 @@ void main() {
 
     test('a v1 list that is not an array is unexpected', () async {
       final dio = fakeDio({
-        '$_v1/projects?page=1': json(_v2Page([_project(1)], totalPages: 1)),
+        '$_v1/projects?page=1&expand=permissions': json(
+          _v2Page([_project(1)], totalPages: 1),
+        ),
       });
 
       await expectLater(
@@ -416,7 +436,9 @@ void main() {
       final dio = fakeDio({
         '$_v1/projects/99999999': errorFixture('v1_404_project_2.7.0'),
         '$_v1/projects/5': errorFixture('v1_403_project_2.7.0'),
-        '$_v1/projects?page=1': errorFixture('v1_401_code11_missing_2.7.0'),
+        '$_v1/projects?page=1&expand=permissions': errorFixture(
+          'v1_401_code11_missing_2.7.0',
+        ),
       });
       final projects = _client(dio, hasV2: false).projects;
 

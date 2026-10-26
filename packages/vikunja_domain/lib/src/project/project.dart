@@ -1,5 +1,6 @@
 import 'package:meta/meta.dart';
 import 'package:vikunja_domain/src/account/user.dart';
+import 'package:vikunja_domain/src/project/permission.dart';
 import 'package:vikunja_domain/src/project/project_view.dart';
 
 @immutable
@@ -18,6 +19,7 @@ final class Project {
     this.views = const [],
     this.created,
     this.updated,
+    this.maxPermission,
   });
 
   /// The Favorites pseudo project; it only appears in the project list.
@@ -45,6 +47,12 @@ final class Project {
   final DateTime? created;
   final DateTime? updated;
 
+  /// What the user may do here, from the server's `max_permission`; null
+  /// when the server did not compute it (a list without
+  /// `expand=permissions`) or the project was stored before it was read.
+  /// Null must never be taken for read-only.
+  final Permission? maxPermission;
+
   bool get isTopLevel => parentProjectId == 0;
 
   /// Negative ids are pseudo projects: Favorites and saved filters.
@@ -54,6 +62,43 @@ final class Project {
 
   /// Saved filter `n` is listed as project `-n - 1`.
   int? get savedFilterId => id < favoritesId ? -id - 1 : null;
+
+  static const _unset = Object();
+
+  /// This project with the given fields replaced; [owner], [created],
+  /// [updated] and [maxPermission] passed as null are cleared.
+  Project copyWith({
+    String? title,
+    String? description,
+    String? identifier,
+    String? hexColor,
+    int? parentProjectId,
+    bool? isArchived,
+    bool? isFavorite,
+    double? position,
+    Object? owner = _unset,
+    List<ProjectView>? views,
+    Object? created = _unset,
+    Object? updated = _unset,
+    Object? maxPermission = _unset,
+  }) => Project(
+    id: id,
+    title: title ?? this.title,
+    description: description ?? this.description,
+    identifier: identifier ?? this.identifier,
+    hexColor: hexColor ?? this.hexColor,
+    parentProjectId: parentProjectId ?? this.parentProjectId,
+    isArchived: isArchived ?? this.isArchived,
+    isFavorite: isFavorite ?? this.isFavorite,
+    position: position ?? this.position,
+    owner: identical(owner, _unset) ? this.owner : owner as User?,
+    views: views ?? this.views,
+    created: identical(created, _unset) ? this.created : created as DateTime?,
+    updated: identical(updated, _unset) ? this.updated : updated as DateTime?,
+    maxPermission: identical(maxPermission, _unset)
+        ? this.maxPermission
+        : maxPermission as Permission?,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -67,7 +112,8 @@ final class Project {
       other.isArchived == isArchived &&
       other.isFavorite == isFavorite &&
       other.position == position &&
-      other.updated == updated;
+      other.updated == updated &&
+      other.maxPermission == maxPermission;
 
   @override
   int get hashCode => Object.hash(
@@ -81,6 +127,7 @@ final class Project {
     isFavorite,
     position,
     updated,
+    maxPermission,
   );
 
   @override

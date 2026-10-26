@@ -1,0 +1,13 @@
+{
+  "server": "2.7.0",
+  "request": "PATCH /api/v2/labels/107",
+  "sent": {
+    "title": "Renamed label",
+    "hex_color": "1973ff"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"id\":107,\"title\":\"Renamed label\",\"description\":\"<p>Old</p>\",\"hex_color\":\"1973ff\",\"created_by\":{\"id\":145,\"name\":\"\",\"username\":\"fixtureowner\",\"created\":\"2026-10-26T11:16:56Z\",\"updated\":\"2026-10-26T11:16:56Z\"},\"created\":\"2026-10-26T11:16:57Z\",\"updated\":\"2026-10-26T11:16:59Z\"}\n"
+}

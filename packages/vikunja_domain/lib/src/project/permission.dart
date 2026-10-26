@@ -11,6 +11,8 @@ enum Permission {
 
   bool get canWrite => value >= write.value;
 
+  bool get isAdmin => this == admin;
+
   static Permission? fromValue(Object? value) =>
       values.where((permission) => permission.value == value).firstOrNull;
 }

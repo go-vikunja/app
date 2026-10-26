@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "DELETE /api/v1/teams/11/members/fixturemember",
+  "status": 412,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"code\":6010,\"message\":\"Users cannot be removed from an external team.\"}\n"
+}

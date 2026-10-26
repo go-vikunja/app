@@ -1,0 +1,12 @@
+{
+  "server": "2.7.0",
+  "request": "PATCH /api/v2/labels/107",
+  "sent": {
+    "title": "Hijacked"
+  },
+  "status": 403,
+  "headers": {
+    "content-type": "application/problem+json"
+  },
+  "body": "{\"$schema\":\"http://localhost/api/v2/schemas/VikunjaErrorModel.json\",\"title\":\"Forbidden\",\"status\":403,\"detail\":\"You don't have the permission to see this\"}\n"
+}

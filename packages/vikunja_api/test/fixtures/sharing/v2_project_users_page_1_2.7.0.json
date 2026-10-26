@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "GET /api/v2/projects/418/users?page=1&per_page=1",
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"$schema\":\"http://localhost:34527/api/v2/schemas/PaginatedUserWithPermission.json\",\"items\":[{\"id\":146,\"name\":\"\",\"username\":\"fixturemember\",\"created\":\"2026-10-26T11:16:57Z\",\"updated\":\"2026-10-26T11:16:57Z\",\"permission\":1}],\"total\":2,\"page\":1,\"per_page\":1,\"total_pages\":2}\n"
+}

@@ -19,4 +19,10 @@ void main() {
     expect(Permission.write.canWrite, isTrue);
     expect(Permission.admin.canWrite, isTrue);
   });
+
+  test('only admin is admin', () {
+    expect(Permission.admin.isAdmin, isTrue);
+    expect(Permission.write.isAdmin, isFalse);
+    expect(Permission.read.isAdmin, isFalse);
+  });
 }

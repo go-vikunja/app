@@ -16,6 +16,7 @@ ProjectRow projectRow(Project project) => ProjectRow(
   ownerId: project.owner?.id,
   created: project.created,
   updated: project.updated,
+  maxPermission: project.maxPermission?.value,
 );
 
 ProjectViewRow projectViewRow(ProjectView view) => ProjectViewRow(
@@ -48,6 +49,7 @@ Project projectFromRow(
   views: List.unmodifiable(views.map(projectViewFromRow).nonNulls),
   created: row.created,
   updated: row.updated,
+  maxPermission: Permission.fromValue(row.maxPermission),
 );
 
 /// Null for a view kind this build does not know, like the codec does.

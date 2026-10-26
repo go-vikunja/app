@@ -52,6 +52,12 @@ import 'package:vikunja_mobile/features/quick_add/application/quick_add_service_
 import 'package:vikunja_mobile/features/quick_add/presentation/magic_suggestions.dart';
 import 'package:vikunja_mobile/features/quick_add/presentation/quick_add_help_sheet.dart';
 import 'package:vikunja_mobile/features/share/presentation/share_sheet.dart';
+import 'package:vikunja_mobile/features/sharing/presentation/link_qr_sheet.dart';
+import 'package:vikunja_mobile/features/sharing/presentation/link_share_form_sheet.dart';
+import 'package:vikunja_mobile/features/sharing/presentation/link_share_sheet.dart';
+import 'package:vikunja_mobile/features/sharing/presentation/person_search_sheet.dart';
+import 'package:vikunja_mobile/features/sharing/presentation/project_share_page.dart';
+import 'package:vikunja_mobile/features/sharing/presentation/qr_code_view.dart';
 import 'package:vikunja_mobile/features/smart_lists/presentation/saved_filter_form_page.dart';
 import 'package:vikunja_mobile/features/sync/presentation/first_sync_screen.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
@@ -80,6 +86,7 @@ import '../helpers/sample_data.dart';
 import '../helpers/server_connections.dart';
 import '../helpers/sync_fakes.dart';
 import '../helpers/task_details_fakes.dart';
+import '../helpers/team_sharing_fakes.dart';
 
 // Layout overflows are reported as test failures, so reaching the end of each
 // scenario without an exception is the assertion.
@@ -1041,6 +1048,179 @@ void main() {
       expect(find.text(l10n.syncProblemCompareTitle), findsOneWidget);
       await scrollToEnd(tester, find.byType(DescriptionConflictSheet));
       expect(find.text(l10n.syncProblemKeepMine), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('share page with people, teams and links, its sheets, the '
+        'QR code and a confirmation at 200 % in dark mode '
+        '(${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      final l10n = lookupAppLocalizations(locale);
+      const longName = User(
+        id: 3,
+        username: 'konstantin',
+        name: 'Konstantin Langername-Mustermann',
+      );
+      final data = richData();
+      data.projects.all = [
+        for (final project in data.projects.all)
+          if (project.id == 1)
+            copyProject(
+              project,
+              views: defaultViews(1, firstViewId: 10),
+            ).copyWith(maxPermission: Permission.admin)
+          else
+            project,
+      ];
+      data.sharing
+        ..people = [longName]
+        ..projects[1] = FakeProjectShares(
+          users: const [
+            ProjectUserShare(user: longName, permission: Permission.write),
+            ProjectUserShare(
+              user: User(id: 7, username: 'alice', name: 'Alice'),
+              permission: Permission.admin,
+            ),
+          ],
+          teams: const [
+            ProjectTeamShare(
+              teamId: 30,
+              teamName: 'A team with a name long enough to wrap',
+              memberCount: 12,
+              permission: Permission.write,
+            ),
+            ProjectTeamShare(teamId: 99, permission: Permission.read),
+          ],
+          links: [
+            LinkShare(
+              id: 5,
+              hash: fakeLinkShareHash(5),
+              permission: Permission.admin,
+              name: 'A link for the whole extended family',
+              passwordProtected: true,
+              sharedBy: longName,
+            ),
+          ],
+        );
+      data.users.everyone = [
+        const User(id: 4, username: 'kim', name: 'Kim Kowalski-Schmidt'),
+      ];
+      data.teams.teams = [
+        Team(
+          id: 31,
+          name: 'Another team whose name goes on and on',
+          isPublic: true,
+          members: const [
+            TeamMember(
+              user: User(id: 7, username: 'alice', name: 'Alice'),
+            ),
+          ],
+        ),
+      ];
+      await pumpSignedInApp(tester, sync: data);
+      final router = containerOf(tester).read(appRouterProvider)
+        ..go(AppRoutes.project(1));
+      await tester.pumpAndSettle();
+      unawaited(router.push(AppRoutes.projectShare(1)));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ProjectSharePage), findsOneWidget);
+      await scrollToEnd(tester, find.byType(ProjectSharePage));
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(find.text(l10n.linkShareCreate));
+      await tester.pumpAndSettle();
+      expect(find.byType(LinkShareFormSheet), findsOneWidget);
+      await scrollToEnd(tester, find.byType(LinkShareFormSheet));
+      expect(tester.takeException(), isNull);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      final link = find.text('A link for the whole extended family');
+      await tester.ensureVisible(link);
+      await tester.pumpAndSettle();
+      await tester.tap(link);
+      await tester.pumpAndSettle();
+      expect(find.byType(LinkShareSheet), findsOneWidget);
+      await scrollToEnd(tester, find.byType(LinkShareSheet));
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.text(l10n.linkShareQr));
+      await tester.pumpAndSettle();
+      expect(find.byType(QrCodeView), findsOneWidget);
+      await scrollToEnd(tester, find.byType(LinkQrSheet));
+      expect(tester.takeException(), isNull);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      await tester.drag(find.byType(ProjectSharePage), const Offset(0, 3000));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Konstantin Langername-Mustermann'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text(l10n.shareAccessFor('Konstantin Langername-Mustermann')),
+        findsOneWidget,
+      );
+      await scrollToEnd(tester, find.byType(DraggableScrollableSheet));
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.text(l10n.shareRemove));
+      await tester.pumpAndSettle();
+      expect(find.byType(Dialog), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.tap(
+        find.descendant(
+          of: find.byType(Dialog),
+          matching: find.text(l10n.cancel),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final addPerson = find.text(l10n.shareAddPerson);
+      await tester.ensureVisible(addPerson);
+      await tester.pumpAndSettle();
+      await tester.tap(addPerson);
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'kim');
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
+      expect(find.text('Kim Kowalski-Schmidt'), findsOneWidget);
+      await scrollToEnd(tester, find.byType(PersonSearchSheet));
+      expect(tester.takeException(), isNull);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      final addTeam = find.text(l10n.shareAddTeam);
+      await tester.ensureVisible(addTeam);
+      await tester.pumpAndSettle();
+      await tester.tap(addTeam);
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Another team whose name goes on and on'),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a project the user may only read, its menu and a task at '
+        '200 % in dark mode (${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      final l10n = lookupAppLocalizations(locale);
+      final data = richData();
+      data.projects.all = [
+        for (final project in data.projects.all)
+          project.copyWith(maxPermission: Permission.read),
+      ];
+      await pumpSignedInApp(tester, sync: data);
+      containerOf(tester).read(appRouterProvider).go(AppRoutes.project(1));
+      await tester.pumpAndSettle();
+
+      expect(find.text(l10n.shareReadOnlyProjectNote), findsOneWidget);
+      await scrollToEnd(tester, find.byType(CustomScrollView).first);
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.byTooltip(l10n.moreActions).first);
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.shareMenuItem), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 

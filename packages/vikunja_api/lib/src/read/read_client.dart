@@ -357,6 +357,28 @@ final class _UsersApi implements UsersPort {
     };
     return List.unmodifiable(objectListOf(items).map(parseUser).nonNulls);
   }
+
+  @override
+  Future<List<User>> searchUsers(String query) async {
+    final search = query.trim();
+    if (search.isEmpty) return const [];
+    final version = _transport.version;
+    final response = await _transport.get(
+      '/users',
+      query: {searchParameterName(version): search},
+    );
+    // v2 wraps every match in one page envelope; v1 sends a bare array, or
+    // null when nothing matches.
+    final items = switch ((version, response.data)) {
+      (ApiVersion.v2, {'items': final List<Object?>? items}) => items,
+      (ApiVersion.v1, final List<Object?>? items) => items,
+      _ => throw UnexpectedResponse(
+        response.statusCode,
+        message: 'not a user list',
+      ),
+    };
+    return List.unmodifiable(objectListOf(items).map(parseOtherUser).nonNulls);
+  }
 }
 
 final class _ProjectsApi implements ProjectsPort {
@@ -379,6 +401,8 @@ final class _ProjectsApi implements ProjectsPort {
           searchParameterName(_transport.version): search,
         'page': page,
         'per_page': ?perPage,
+        // Without it every max_permission is null (0 before 2.5/2.6).
+        'expand': 'permissions',
       },
     );
     return _transport.page(
@@ -399,7 +423,13 @@ final class _ProjectsApi implements ProjectsPort {
   @override
   Future<Project> read(int id) async {
     final response = await _transport.get('/projects/$id');
-    return _transport.decode<Project>(response, parseProject);
+    final header = Permission.fromValue(
+      int.tryParse(response.headers.value('x-max-permission') ?? ''),
+    );
+    return _transport.decode<Project>(
+      response,
+      (json) => parseProject(json, maxPermission: header),
+    );
   }
 }
 
@@ -410,6 +440,9 @@ final class _LabelsApi implements LabelsPort {
 
   @override
   Future<Page<Label>> list({int page = 1, int? perPage, String? search}) async {
+    if (search != null && _isIdLookup(search)) {
+      return await _matchingLocally(search, page: page, perPage: perPage);
+    }
     final response = await _transport.get(
       '/labels',
       query: {
@@ -432,6 +465,43 @@ final class _LabelsApi implements LabelsPort {
     (page) => list(page: page),
     idOf: (label) => label.id,
   );
+
+  // The server takes a search with a comma-separated part that is a
+  // number for a list of ids, so a label titled "2026" is never found by
+  // its title.
+  static bool _isIdLookup(String search) => search
+      .trim()
+      .split(',')
+      .any(
+        (part) => _signedDigits.hasMatch(part) && int.tryParse(part) != null,
+      );
+
+  static final _signedDigits = RegExp(r'^[+-]?[0-9]+$');
+
+  /// The server's text search (title or description, ignoring case) over
+  /// every label, as one page.
+  Future<Page<Label>> _matchingLocally(
+    String search, {
+    required int page,
+    required int? perPage,
+  }) async {
+    final needle = search.trim().toLowerCase();
+    final matches = page != 1
+        ? const <Label>[]
+        : [
+            for (final label in await listAll())
+              if (label.title.toLowerCase().contains(needle) ||
+                  label.description.toLowerCase().contains(needle))
+                label,
+          ];
+    return Page(
+      items: List.unmodifiable(matches),
+      page: page,
+      perPage: perPage ?? matches.length,
+      totalPages: 1,
+      total: matches.length,
+    );
+  }
 }
 
 final class _TasksApi implements TasksPort {

@@ -178,6 +178,13 @@ abstract interface class UsersPort {
   /// `GET /projects/{id}/users/search?q=`, v1
   /// `GET /projects/{id}/projectusers?s=`. One page, never paged.
   Future<List<User>> searchProjectUsers(int projectId, {String query = ''});
+
+  /// Anyone on the server, to share with or add to a team: v2 `GET
+  /// /users?q=`, v1 `GET /users?s=`, one answer, never paged. Matches the
+  /// exact username in any case; a name (substring) or the exact email only
+  /// of users who allow it; parts separated by `,` each. Never with emails.
+  /// A blank [query] is an empty list without a request.
+  Future<List<User>> searchUsers(String query);
 }
 
 abstract interface class NotificationsPort {

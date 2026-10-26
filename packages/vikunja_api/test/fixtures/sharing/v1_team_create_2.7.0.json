@@ -1,0 +1,13 @@
+{
+  "server": "2.7.0",
+  "request": "PUT /api/v1/teams",
+  "sent": {
+    "name": "Fixture team one",
+    "description": "<p>First</p>"
+  },
+  "status": 201,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"id\":9,\"name\":\"Fixture team one\",\"description\":\"\\u003cp\\u003eFirst\\u003c/p\\u003e\",\"external_id\":\"\",\"created_by\":{\"id\":145,\"name\":\"\",\"username\":\"fixtureowner\",\"created\":\"0001-01-01T00:00:00Z\",\"updated\":\"0001-01-01T00:00:00Z\"},\"members\":null,\"created\":\"2026-10-26T11:17:05.749605911Z\",\"updated\":\"2026-10-26T11:17:05.749618828Z\",\"is_public\":false}\n"
+}

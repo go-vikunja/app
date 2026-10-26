@@ -1,0 +1,24 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v1/labels/108",
+  "sent": {
+    "id": 108,
+    "title": "Still odd",
+    "description": "<p>Kept</p>",
+    "hex_color": "ABC",
+    "created_by": {
+      "id": 145,
+      "name": "",
+      "username": "fixtureowner",
+      "created": "2026-10-26T11:16:56Z",
+      "updated": "2026-10-26T11:16:56Z"
+    },
+    "created": "2026-10-26T11:16:58Z",
+    "updated": "2026-10-26T11:16:58Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"id\":108,\"title\":\"Still odd\",\"description\":\"\\u003cp\\u003eKept\\u003c/p\\u003e\",\"hex_color\":\"ABC\",\"created_by\":{\"id\":145,\"name\":\"\",\"username\":\"fixtureowner\",\"created\":\"2026-10-26T11:16:56Z\",\"updated\":\"2026-10-26T11:16:56Z\"},\"created\":\"2026-10-26T11:16:58Z\",\"updated\":\"2026-10-26T11:17:01Z\"}\n"
+}

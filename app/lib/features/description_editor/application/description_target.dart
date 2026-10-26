@@ -23,6 +23,24 @@ final class ProjectDescriptionTarget extends DescriptionTarget {
   final int projectId;
 }
 
+/// One of the user's own labels, saved online like its other fields. Only
+/// its creator can change it, so nothing is compared.
+final class LabelDescriptionTarget extends DescriptionTarget {
+  const new(this.labelId);
+
+  final int labelId;
+}
+
+/// A team's description, which the device does not store: the edit starts
+/// from [description] as the team page read it and is saved online. Only
+/// team admins edit it, and nothing is compared, as on the web.
+final class TeamDescriptionTarget extends DescriptionTarget {
+  const new({required this.teamId, required this.description});
+
+  final int teamId;
+  final String description;
+}
+
 /// The user's own [comment] on a task in [projectId], whose people can be
 /// mentioned; saved online. The edit starts from the comment as the sheet
 /// showed it: only its author can change it, so nothing is compared.

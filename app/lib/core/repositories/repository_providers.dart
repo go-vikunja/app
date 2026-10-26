@@ -95,6 +95,19 @@ AccountSecurityPort accountSecurityPort(Ref ref, String accountId) =>
       connection: _connectionOf(ref, accountId),
     );
 
+@riverpod
+TeamsPort teamsPort(Ref ref, String accountId) => createTeamsPort(
+  dio: ref.watch(accountDioProvider(accountId)),
+  connection: _connectionOf(ref, accountId),
+);
+
+@riverpod
+ProjectSharingPort projectSharingPort(Ref ref, String accountId) =>
+    createProjectSharingPort(
+      dio: ref.watch(accountDioProvider(accountId)),
+      connection: _connectionOf(ref, accountId),
+    );
+
 /// The registry hands out new connection instances on every write, so only
 /// the parts that choose the transport count as a change.
 ServerConnection _connectionOf(Ref ref, String accountId) {
@@ -392,6 +405,7 @@ LabelRepository accountLabelRepository(Ref ref, String accountId) {
     ref.watch(appDatabaseProvider(accountId)),
     ref.watch(writeClientProvider(accountId)),
     ref.watch(readClientProvider(accountId)),
+    sync: ref.watch(syncEngineProvider(accountId)),
   );
   ref.onDispose(repository.dispose);
   return repository;

@@ -5,17 +5,19 @@ import 'package:vikunja_mobile/features/projects/application/project_list_model.
 
 /// The web's rule for putting a list's tasks in order by hand: a project's
 /// list view (not the stand-in for a project without one), sorted
-/// manually, the project not archived.
+/// manually, the project not archived and [writable] for the user.
 bool listIsReorderable({
   required int projectId,
   required ProjectView? view,
   required TaskListSort sort,
   required bool archived,
+  bool writable = true,
 }) =>
     projectId > 0 &&
     view?.kind == ProjectViewKind.list &&
     sort == TaskListSort.manual &&
-    !archived;
+    !archived &&
+    writable;
 
 /// A top-level row with the rows nested under it, which move with it, and
 /// its position in the view.

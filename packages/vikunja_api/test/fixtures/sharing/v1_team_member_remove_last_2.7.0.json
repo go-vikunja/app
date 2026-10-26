@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "DELETE /api/v1/teams/9/members/fixtureowner",
+  "status": 400,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"code\":6006,\"message\":\"You cannot delete the last member of a team.\"}\n"
+}

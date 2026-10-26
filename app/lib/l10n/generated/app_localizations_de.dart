@@ -5836,4 +5836,839 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get commentReplyDropped => 'Keine Antwort mehr';
+
+  @override
+  String get shareMenuItem => 'Teilen';
+
+  @override
+  String sharePageTitle(String project) {
+    return '$project teilen';
+  }
+
+  @override
+  String get sharePageLoading => 'Zugriffe werden geladen …';
+
+  @override
+  String get sharePeopleSection => 'Personen';
+
+  @override
+  String get shareTeamsSection => 'Teams';
+
+  @override
+  String get shareLinksSection => 'Links';
+
+  @override
+  String get sharePeopleEmpty => 'Noch mit niemandem geteilt';
+
+  @override
+  String get shareTeamsEmpty => 'Noch mit keinem Team geteilt';
+
+  @override
+  String get shareLinksEmpty => 'Noch keine Links';
+
+  @override
+  String get shareLinksIntro =>
+      'Wer einen Link hat, kann dieses Projekt ohne Konto öffnen, mit der Berechtigung des Links.';
+
+  @override
+  String shareUserIsYou(String name) {
+    return '$name (du)';
+  }
+
+  @override
+  String get sharePermissionRead => 'Nur lesen';
+
+  @override
+  String get sharePermissionWrite => 'Lesen & schreiben';
+
+  @override
+  String get sharePermissionAdmin => 'Admin';
+
+  @override
+  String get shareAddPerson => 'Person hinzufügen';
+
+  @override
+  String get shareAddTeam => 'Team hinzufügen';
+
+  @override
+  String get shareHiddenTeam => 'Verborgenes Team';
+
+  @override
+  String shareTeamMemberCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Mitglieder',
+      one: '1 Mitglied',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get shareReadOnlyNote =>
+      'Nur Projekt-Admins können ändern, wer Zugriff hat';
+
+  @override
+  String shareAccessFor(String name) {
+    return 'Zugriff für $name';
+  }
+
+  @override
+  String sharePermissionFor(String name) {
+    return 'Berechtigung für $name';
+  }
+
+  @override
+  String get shareRemove => 'Entfernen';
+
+  @override
+  String shareRemoveTitle(String name) {
+    return '$name entfernen?';
+  }
+
+  @override
+  String shareRemovePersonBody(String name) {
+    return '$name verliert sofort den Zugriff auf dieses Projekt und die Projekte darunter.';
+  }
+
+  @override
+  String get shareRemoveSelfBody =>
+      'Du verlierst sofort den Zugriff auf dieses Projekt und die Projekte darunter, wenn du ihn nicht auf anderem Weg hast.';
+
+  @override
+  String shareRemoveTeamBody(String name) {
+    return 'Die Mitglieder von $name verlieren sofort den Zugriff auf dieses Projekt und die Projekte darunter, wenn sie ihn nicht auf anderem Weg haben.';
+  }
+
+  @override
+  String get shareCleanupOthersIntro =>
+      'In den Projekten, die sie nicht mehr erreichen, löscht der Server außerdem:';
+
+  @override
+  String get shareCleanupOthersAssignments => 'ihre Aufgabenzuweisungen';
+
+  @override
+  String get shareCleanupOthersSubscriptions =>
+      'ihre Abonnements von Aufgaben und Projekten';
+
+  @override
+  String get shareCleanupOthersWebhooks => 'Webhooks, die sie erstellt haben';
+
+  @override
+  String get shareCleanupSelfIntro =>
+      'In den Projekten, die du nicht mehr erreichst, löscht der Server außerdem:';
+
+  @override
+  String get shareCleanupSelfAssignments => 'deine Aufgabenzuweisungen';
+
+  @override
+  String get shareCleanupSelfSubscriptions =>
+      'deine Abonnements von Aufgaben und Projekten';
+
+  @override
+  String get shareCleanupSelfWebhooks => 'Webhooks, die du erstellt hast';
+
+  @override
+  String shareAdded(String name) {
+    return '$name hat jetzt Zugriff';
+  }
+
+  @override
+  String sharePermissionChanged(String name) {
+    return 'Zugriff für $name geändert';
+  }
+
+  @override
+  String shareRemoved(String name) {
+    return '$name entfernt';
+  }
+
+  @override
+  String get shareSaving => 'Wird gespeichert …';
+
+  @override
+  String get sharePeopleSearchField => 'Benutzername, Name oder E-Mail';
+
+  @override
+  String get sharePeopleSearchHint =>
+      'Suche nach dem genauen Benutzernamen, oder nach Name oder E-Mail, wenn die Person es erlaubt';
+
+  @override
+  String get sharePeopleSearching => 'Suche läuft …';
+
+  @override
+  String get sharePeopleNoResults =>
+      'Niemand gefunden, der hinzugefügt werden kann';
+
+  @override
+  String get sharePeopleSearchOffline =>
+      'Die Suche nach Personen braucht eine Verbindung.';
+
+  @override
+  String get sharePeopleSearchFailed =>
+      'Die Suche hat nicht geklappt. Versuch es noch einmal.';
+
+  @override
+  String get shareTeamsFilter => 'Teams filtern';
+
+  @override
+  String get shareTeamsLoading => 'Teams werden geladen …';
+
+  @override
+  String get shareTeamsNoneToAdd =>
+      'Kein weiteres Team zum Hinzufügen. Du kannst die Teams hinzufügen, in denen du Mitglied bist.';
+
+  @override
+  String get shareTeamsNoneToAddPublic =>
+      'Kein weiteres Team zum Hinzufügen. Du kannst die Teams hinzufügen, in denen du Mitglied bist, und öffentliche Teams.';
+
+  @override
+  String get shareTeamPublic => 'Öffentlich';
+
+  @override
+  String get linkShareUnnamed => 'Link ohne Namen';
+
+  @override
+  String get linkSharePasswordProtected => 'Passwortgeschützt';
+
+  @override
+  String linkShareCreatedBy(String name) {
+    return 'Erstellt von $name';
+  }
+
+  @override
+  String get linkShareShare => 'Teilen';
+
+  @override
+  String get linkShareCopy => 'Link kopieren';
+
+  @override
+  String get linkShareCopied => 'Link kopiert';
+
+  @override
+  String get linkShareQr => 'QR-Code';
+
+  @override
+  String linkShareView(String view) {
+    return 'Öffnet $view';
+  }
+
+  @override
+  String get linkShareViewTitle => 'Der Link öffnet';
+
+  @override
+  String get linkShareDelete => 'Löschen';
+
+  @override
+  String linkShareDeleteTitle(String name) {
+    return 'Den Link „$name“ löschen?';
+  }
+
+  @override
+  String get linkShareDeleteUnnamedTitle => 'Diesen Link löschen?';
+
+  @override
+  String get linkShareDeleteBody =>
+      'Wer diesen Link nutzt, verliert sofort den Zugriff. Das lässt sich nicht rückgängig machen.';
+
+  @override
+  String get linkShareDeleted => 'Link gelöscht';
+
+  @override
+  String linkShareSubject(String project) {
+    return 'Link zu $project';
+  }
+
+  @override
+  String get linkShareCreate => 'Link erstellen';
+
+  @override
+  String get linkShareFormTitle => 'Neuer Link';
+
+  @override
+  String get linkShareFormPermission => 'Berechtigung';
+
+  @override
+  String get linkShareFormName => 'Name (optional)';
+
+  @override
+  String get linkShareFormNameHelper =>
+      'Änderungen über den Link erscheinen mit diesem Namen';
+
+  @override
+  String get linkShareFormPassword => 'Passwort (optional)';
+
+  @override
+  String get linkShareFormPasswordHelper =>
+      'Wer den Link öffnet, muss es eingeben';
+
+  @override
+  String get linkShareFormShowPassword => 'Passwort zeigen';
+
+  @override
+  String get linkShareFormHidePassword => 'Passwort verbergen';
+
+  @override
+  String get linkShareFormSubmit => 'Erstellen';
+
+  @override
+  String get linkShareCreated => 'Link erstellt';
+
+  @override
+  String get linkShareCreatedBody =>
+      'Teile ihn mit den Personen, die dieses Projekt öffnen sollen.';
+
+  @override
+  String get linkShareQrSemantics => 'QR-Code für den Link';
+
+  @override
+  String get linkShareQrTooLong => 'Dieser Link ist zu lang für einen QR-Code';
+
+  @override
+  String get linkShareQrHint =>
+      'Scanne ihn mit der Kamera eines Handys, um das Projekt zu öffnen.';
+
+  @override
+  String get shareFailureOffline => 'Dafür braucht es eine Verbindung.';
+
+  @override
+  String get shareFailureUnconfirmed =>
+      'Der Server hat nicht rechtzeitig geantwortet. Prüf die Liste, bevor du es noch einmal versuchst.';
+
+  @override
+  String get shareFailureForbidden =>
+      'Nur Projekt-Admins können ändern, wer Zugriff hat.';
+
+  @override
+  String get shareFailureAlreadyShared =>
+      'Diese Person hat schon Zugriff oder ihr gehört das Projekt.';
+
+  @override
+  String get shareFailureUnknownUser =>
+      'Es gibt niemanden mit diesem Benutzernamen.';
+
+  @override
+  String get shareFailureGone => 'Dieser Zugriff wurde schon entfernt.';
+
+  @override
+  String get shareFailureTeamAlreadyShared => 'Dieses Team hat schon Zugriff.';
+
+  @override
+  String get shareFailureUnknownTeam => 'Dieses Team gibt es nicht mehr.';
+
+  @override
+  String get shareFailureLinkSharingOff =>
+      'Linkfreigaben sind auf diesem Server ausgeschaltet.';
+
+  @override
+  String get shareFailureInvalid => 'Der Server hat das nicht angenommen.';
+
+  @override
+  String get shareFailureGeneric =>
+      'Das hat nicht geklappt. Versuch es noch einmal.';
+
+  @override
+  String get shareReadOnlyProjectNote =>
+      'Nur lesen: Du kannst dieses Projekt sehen, aber nicht ändern.';
+
+  @override
+  String get shareTaskReadOnly => 'Nur lesen';
+
+  @override
+  String get accountOrganiseHeading => 'Organisieren';
+
+  @override
+  String get accountLabelsEntry => 'Labels';
+
+  @override
+  String get accountTeamsEntry => 'Teams';
+
+  @override
+  String labelsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Labels',
+      one: '1 Label',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get labelsTitle => 'Labels';
+
+  @override
+  String get labelsLoading => 'Labels werden geladen …';
+
+  @override
+  String get labelsOwnSection => 'Deine Labels';
+
+  @override
+  String get labelsOthersSection => 'Von anderen';
+
+  @override
+  String labelsCreatedBy(String name) {
+    return 'Von $name';
+  }
+
+  @override
+  String labelsOptionsFor(String label) {
+    return 'Optionen für $label';
+  }
+
+  @override
+  String get labelsEdit => 'Bearbeiten';
+
+  @override
+  String get labelsDelete => 'Löschen';
+
+  @override
+  String get labelsSearch => 'Labels suchen';
+
+  @override
+  String labelsSearchEmpty(String query) {
+    return 'Kein Label passt zu „$query“.';
+  }
+
+  @override
+  String get labelsNew => 'Neues Label';
+
+  @override
+  String get labelsNewOffline =>
+      'Ein Label anzulegen braucht eine Verbindung zum Server.';
+
+  @override
+  String get labelsEmptyTitle => 'Noch keine Labels';
+
+  @override
+  String get labelsEmptyBody =>
+      'Labels markieren Aufgaben über alle Projekte hinweg. Leg hier eins an oder beim Bearbeiten einer Aufgabe.';
+
+  @override
+  String labelsShowTasks(String title) {
+    return 'Aufgaben mit dem Label $title zeigen';
+  }
+
+  @override
+  String labelsDeleteTitle(String title) {
+    return 'Label „$title“ löschen?';
+  }
+
+  @override
+  String get labelsDeleteBody =>
+      'Es wird von jeder Aufgabe entfernt, die es hat. Das lässt sich nicht rückgängig machen.';
+
+  @override
+  String get labelsDeleted => 'Label gelöscht';
+
+  @override
+  String get labelsEditTitle => 'Label bearbeiten';
+
+  @override
+  String get labelsTitleLabel => 'Titel';
+
+  @override
+  String get labelsTitleRequired => 'Bitte gib einen Titel an.';
+
+  @override
+  String labelsTitleRemaining(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Noch $count Zeichen',
+      one: 'Noch 1 Zeichen',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get labelsColour => 'Farbe';
+
+  @override
+  String get labelsCustomColour => 'Eigene Farbe';
+
+  @override
+  String get labelsCustomColourHelper => 'Sechs Hex-Ziffern, etwa 1973ff';
+
+  @override
+  String get labelsCustomColourInvalid =>
+      'Gib drei oder sechs Hex-Ziffern ein.';
+
+  @override
+  String get labelsDescription => 'Beschreibung';
+
+  @override
+  String get labelsNoDescription => 'Keine Beschreibung';
+
+  @override
+  String get labelsEditDescription => 'Beschreibung bearbeiten';
+
+  @override
+  String get labelsAddDescription => 'Beschreibung hinzufügen';
+
+  @override
+  String get labelsDescriptionAfterCreate =>
+      'Eine Beschreibung kannst du hinzufügen, sobald es das Label gibt.';
+
+  @override
+  String get labelsDescriptionCreatorOnly =>
+      'Nur wer dieses Label angelegt hat, kann es ändern.';
+
+  @override
+  String get labelsCreate => 'Anlegen';
+
+  @override
+  String get labelsSave => 'Speichern';
+
+  @override
+  String get labelsSaving => 'Wird gespeichert …';
+
+  @override
+  String get labelsCreated => 'Label angelegt';
+
+  @override
+  String get labelsSaved => 'Label gespeichert';
+
+  @override
+  String get labelsDiscardBody =>
+      'Deine Änderungen an diesem Label gehen verloren.';
+
+  @override
+  String get labelsGoneTitle => 'Dieses Label gibt es nicht mehr';
+
+  @override
+  String get labelsGoneBody =>
+      'Vielleicht wurde es gelöscht, hier oder im Web.';
+
+  @override
+  String get labelsNeedsConnection =>
+      'Ein Label zu ändern braucht eine Verbindung zum Server.';
+
+  @override
+  String get labelsUnconfirmed =>
+      'Die Änderung ließ sich nicht bestätigen. Prüf deine Verbindung und zieh nach unten, um neu zu laden.';
+
+  @override
+  String get labelsNotCreator =>
+      'Nur wer dieses Label angelegt hat, kann es ändern.';
+
+  @override
+  String get labelsGone => 'Dieses Label gibt es nicht mehr.';
+
+  @override
+  String get labelsInvalid =>
+      'Der Server hat dieses Label nicht angenommen. Prüf Titel und Farbe.';
+
+  @override
+  String labelsRefused(String message) {
+    return 'Der Server hat abgelehnt: $message';
+  }
+
+  @override
+  String get labelsFailed => 'Das Label ließ sich nicht ändern.';
+
+  @override
+  String get teamsTitle => 'Teams';
+
+  @override
+  String get teamsLoading => 'Teams werden geladen …';
+
+  @override
+  String get teamsEmptyTitle => 'Noch keine Teams';
+
+  @override
+  String get teamsEmptyBody =>
+      'Mit einem Team teilst du Projekte mit mehreren Personen auf einmal.';
+
+  @override
+  String get teamsNew => 'Neues Team';
+
+  @override
+  String get teamsNewOffline =>
+      'Ein Team anzulegen braucht eine Verbindung zum Server.';
+
+  @override
+  String teamMemberCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Mitglieder',
+      one: '1 Mitglied',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get teamAdminBadge => 'Admin';
+
+  @override
+  String get teamPublicBadge => 'Öffentlich';
+
+  @override
+  String teamManagedBy(String provider) {
+    return 'Verwaltet von $provider';
+  }
+
+  @override
+  String get teamManagedExternally => 'Extern verwaltet';
+
+  @override
+  String get teamNewTitle => 'Neues Team';
+
+  @override
+  String get teamNameLabel => 'Name';
+
+  @override
+  String get teamNameRequired => 'Bitte gib einen Namen an.';
+
+  @override
+  String get teamPublicLabel => 'Öffentliches Team';
+
+  @override
+  String get teamPublicHelp =>
+      'Alle auf diesem Server können es finden und Projekte mit ihm teilen.';
+
+  @override
+  String get teamCreate => 'Anlegen';
+
+  @override
+  String get teamCreating => 'Team wird angelegt …';
+
+  @override
+  String get teamCreated => 'Team angelegt';
+
+  @override
+  String get teamLoading => 'Team wird geladen …';
+
+  @override
+  String get teamGoneTitle => 'Dieses Team ist nicht verfügbar';
+
+  @override
+  String get teamGoneBody =>
+      'Vielleicht wurde es gelöscht, oder du bist kein Mitglied mehr.';
+
+  @override
+  String get teamEdit => 'Team bearbeiten';
+
+  @override
+  String get teamEditDescription => 'Beschreibung bearbeiten';
+
+  @override
+  String get teamAddDescription => 'Beschreibung hinzufügen';
+
+  @override
+  String get teamSave => 'Speichern';
+
+  @override
+  String get teamSaving => 'Wird gespeichert …';
+
+  @override
+  String get teamSaved => 'Team gespeichert';
+
+  @override
+  String teamExternalNote(String provider) {
+    return 'Dieses Team wird von $provider verwaltet. Die Mitglieder ändern sich dort.';
+  }
+
+  @override
+  String get teamExternalNoteGeneric =>
+      'Dieses Team wird von der Anmeldung deiner Organisation verwaltet. Die Mitglieder ändern sich dort.';
+
+  @override
+  String get teamMembersSection => 'Mitglieder';
+
+  @override
+  String teamMemberYou(String name) {
+    return '$name (du)';
+  }
+
+  @override
+  String get teamRoleAdmin => 'Admin';
+
+  @override
+  String get teamRoleMember => 'Mitglied';
+
+  @override
+  String teamMemberOptionsFor(String name) {
+    return 'Optionen für $name';
+  }
+
+  @override
+  String get teamMakeAdmin => 'Zum Admin machen';
+
+  @override
+  String get teamMakeMember => 'Zum Mitglied machen';
+
+  @override
+  String get teamRemoveMember => 'Aus dem Team entfernen';
+
+  @override
+  String teamMadeAdmin(String name) {
+    return '$name ist jetzt Admin';
+  }
+
+  @override
+  String teamMadeMember(String name) {
+    return '$name ist jetzt Mitglied';
+  }
+
+  @override
+  String get teamAddMember => 'Mitglied hinzufügen';
+
+  @override
+  String teamMemberAdded(String name) {
+    return '$name zum Team hinzugefügt';
+  }
+
+  @override
+  String teamMemberRemoved(String name) {
+    return '$name aus dem Team entfernt';
+  }
+
+  @override
+  String teamRemoveTitle(String name) {
+    return '$name aus dem Team entfernen?';
+  }
+
+  @override
+  String teamRemoveBody(String name) {
+    return '$name verliert den Zugriff auf alle Projekte, die mit diesem Team geteilt sind.';
+  }
+
+  @override
+  String get teamRemoveConfirm => 'Entfernen';
+
+  @override
+  String get teamLeave => 'Team verlassen';
+
+  @override
+  String teamLeaveTitle(String team) {
+    return '„$team“ verlassen?';
+  }
+
+  @override
+  String get teamLeaveBody =>
+      'Du verlierst den Zugriff auf alle Projekte, die mit diesem Team geteilt sind. Ein Team-Admin müsste dich wieder hinzufügen.';
+
+  @override
+  String get teamLeaveConfirm => 'Verlassen';
+
+  @override
+  String get teamLeft => 'Du hast das Team verlassen';
+
+  @override
+  String get teamOnlyAdminTitle => 'Mach zuerst jemand anderen zum Admin';
+
+  @override
+  String get teamOnlyAdminBody =>
+      'Außer dir ist niemand Admin in diesem Team. Ohne Admin könnte niemand es mehr ändern.';
+
+  @override
+  String get teamLastMemberTitle => 'Du bist das letzte Mitglied';
+
+  @override
+  String get teamLastMemberBody =>
+      'Das letzte Mitglied kann ein Team nicht verlassen. Stattdessen das Team löschen?';
+
+  @override
+  String get teamDelete => 'Team löschen';
+
+  @override
+  String teamDeleteTitle(String team) {
+    return '„$team“ löschen?';
+  }
+
+  @override
+  String get teamDeleteBody =>
+      'Alle Mitglieder verlieren den Zugriff auf alle Projekte, die mit diesem Team geteilt sind. Das lässt sich nicht rückgängig machen.';
+
+  @override
+  String get teamDeleted => 'Team gelöscht';
+
+  @override
+  String get teamAddMemberOffline =>
+      'Mitglieder hinzuzufügen braucht eine Verbindung zum Server.';
+
+  @override
+  String get teamNeedsConnection =>
+      'Ein Team zu ändern braucht eine Verbindung zum Server.';
+
+  @override
+  String get teamUnconfirmed =>
+      'Die Änderung ließ sich nicht bestätigen. Prüf deine Verbindung und zieh nach unten, um neu zu laden.';
+
+  @override
+  String get teamForbidden => 'Das dürfen nur Team-Admins.';
+
+  @override
+  String get teamAlreadyMember => 'Diese Person ist schon Mitglied des Teams.';
+
+  @override
+  String get teamLastMemberRefused =>
+      'Das letzte Mitglied kann ein Team nicht verlassen. Lösch stattdessen das Team.';
+
+  @override
+  String get teamExternalRefused =>
+      'Aus einem Team, das von der Anmeldung deiner Organisation verwaltet wird, können keine Mitglieder entfernt werden.';
+
+  @override
+  String get teamUnknownUser => 'Diese Person gibt es auf diesem Server nicht.';
+
+  @override
+  String get teamNotMember => 'Diese Person ist nicht mehr im Team.';
+
+  @override
+  String get teamInvalid =>
+      'Der Server hat das nicht angenommen. Ein Name braucht 1 bis 250 Zeichen.';
+
+  @override
+  String get teamGone =>
+      'Dieses Team gibt es nicht mehr, oder du bist nicht mehr dabei.';
+
+  @override
+  String teamRefused(String message) {
+    return 'Der Server hat abgelehnt: $message';
+  }
+
+  @override
+  String get teamFailed => 'Das hat nicht geklappt. Versuch es noch mal.';
+
+  @override
+  String get teamOk => 'OK';
+
+  @override
+  String get shareLowerOwnAccessTitle => 'Deine eigenen Rechte senken?';
+
+  @override
+  String get shareLowerOwnAccessAdminBody =>
+      'Danach kannst du womöglich nicht mehr ändern, wer Zugriff auf dieses Projekt hat, und es auch nicht selbst rückgängig machen.';
+
+  @override
+  String get shareLowerOwnAccessWriteBody =>
+      'Danach kannst du dieses Projekt und seine Aufgaben womöglich nicht mehr ändern.';
+
+  @override
+  String get shareLowerOwnAccessConfirm => 'Rechte senken';
+
+  @override
+  String get shareRemovedSelf => 'Du hast dich entfernt';
+
+  @override
+  String get shareNoAccessTitle =>
+      'Du hast keinen Zugriff mehr auf dieses Projekt';
+
+  @override
+  String get shareNoAccessBody =>
+      'Es ist von diesem Gerät verschwunden. Jemand mit Zugriff kann es wieder mit dir teilen.';
+
+  @override
+  String get shareChangeAccessHint => 'Zugriff ändern';
+
+  @override
+  String get linkShareRowHint => 'Link teilen, kopieren oder löschen';
+
+  @override
+  String linkShareShareNamed(String name) {
+    return '$name teilen';
+  }
 }

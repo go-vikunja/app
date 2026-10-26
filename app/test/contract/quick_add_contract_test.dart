@@ -120,6 +120,18 @@ final class _SwitchableLabels implements LabelsWritePort {
     _client._check();
     return _client._real.labels.create(label);
   }
+
+  @override
+  Future<Label> update(int id, LabelChanges changes) {
+    _client._check();
+    return _client._real.labels.update(id, changes);
+  }
+
+  @override
+  Future<void> delete(int id) {
+    _client._check();
+    return _client._real.labels.delete(id);
+  }
 }
 
 /// The user search behind the same switch.
@@ -133,6 +145,12 @@ final class _SwitchableUsers implements UserRepository {
   Future<List<User>> searchAssignees(int projectId, String query) {
     _writes._check();
     return _real.searchAssignees(projectId, query);
+  }
+
+  @override
+  Future<List<User>> search(String query) {
+    _writes._check();
+    return _real.search(query);
   }
 
   @override

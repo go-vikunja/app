@@ -29,8 +29,8 @@ enum _Action { markAllRead }
 
 /// The server's notifications for the active account as this device holds
 /// them, newest first by day; a tap marks one read and opens its task
-/// (read online when it is not on this device) or its project when that is
-/// on this device.
+/// (read online when it is not on this device), its project when that is
+/// on this device, or the team the user was added to.
 class InboxScreen extends ConsumerStatefulWidget {
   const new({super.key});
 
@@ -66,8 +66,11 @@ class _InboxScreenState extends ConsumerState<InboxScreen>
         await _openProject(item.projectId);
       case ActivityKind.taskDeleted:
         _showSnackBar(context.l10n.inboxTaskWasDeleted);
-      // No team screen yet; the row itself is all there is.
-      case ActivityKind.teamMemberAdded || ActivityKind.other:
+      case ActivityKind.teamMemberAdded:
+        if (item.teamId case final teamId?) {
+          unawaited(GoRouter.of(context).push(AppRoutes.team(teamId)));
+        }
+      case ActivityKind.other:
         break;
       case _:
         await _openTask(item.taskId, commentId: item.commentId);

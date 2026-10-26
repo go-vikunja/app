@@ -119,6 +119,19 @@ final class RelatedTaskMissing extends NotFound {
   String toString() => 'RelatedTaskMissing($otherTaskId)';
 }
 
+/// The user named in a team member write is not in the team. The server
+/// answers an admin toggle for a non-member with a 200 and an empty member,
+/// changing nothing; it has no code for this.
+final class TeamMemberMissing extends NotFound {
+  const new({super.message}) : super();
+
+  @override
+  bool get routeAbsent => false;
+
+  @override
+  String toString() => 'TeamMemberMissing';
+}
+
 /// v1 412 with `invalid_fields`, v2 422 with `errors[]`.
 final class ValidationFailed extends VikunjaFailure {
   const new({this.fieldErrors = const {}, super.code, super.message});

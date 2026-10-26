@@ -54,6 +54,7 @@ class ProjectBoard extends ConsumerStatefulWidget {
     required this.view,
     required this.source,
     required this.readOnly,
+    required this.canChangeView,
     required this.offline,
     required this.now,
     required this.minimumPriority,
@@ -70,6 +71,10 @@ class ProjectBoard extends ConsumerStatefulWidget {
   /// A filter-mode board or an archived project's: nothing moves, adds or
   /// changes its columns.
   final bool readOnly;
+
+  /// Admin rights: choosing the done and the default column changes the
+  /// view itself.
+  final bool canChangeView;
 
   /// Further pages then load only when asked for.
   final bool offline;
@@ -713,6 +718,7 @@ class _ProjectBoardState extends ConsumerState<ProjectBoard> {
       canMoveLeft: _canMove(bucketId, index - 1),
       canMoveRight: _canMove(bucketId, index + 1),
       canDelete: _columns.length > 1,
+      canChangeView: widget.canChangeView,
       saving: change != null && change.bucketId == bucketId,
       enabled: change == null,
       onSelected: (action) => _onColumnAction(column, action),

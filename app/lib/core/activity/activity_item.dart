@@ -43,6 +43,7 @@ final class ActivityItem {
     this.taskTitle,
     this.projectId,
     this.projectTitle,
+    this.teamId,
     this.teamName,
     this.targetName,
     this.targetIsMe = false,
@@ -57,6 +58,7 @@ final class ActivityItem {
     final task = _map(payload['task']);
     final project = _map(payload['project']);
     final target = _map(payload['assignee']) ?? _map(payload['member']);
+    final team = _map(payload['team']);
     final targetId = target?['id'];
     return ActivityItem(
       notification: notification,
@@ -67,7 +69,11 @@ final class ActivityItem {
       taskTitle: _text(task?['title']),
       projectId: notification.projectId,
       projectTitle: _text(project?['title']),
-      teamName: _text(_map(payload['team'])?['name']),
+      teamId: switch (team?['id']) {
+        final int id when id > 0 => id,
+        _ => null,
+      },
+      teamName: _text(team?['name']),
       targetName: _userName(target),
       targetIsMe: targetId is int && targetId == userId,
       comment: switch (_map(payload['comment'])?['comment']) {
@@ -88,6 +94,7 @@ final class ActivityItem {
   final String? taskTitle;
   final int? projectId;
   final String? projectTitle;
+  final int? teamId;
   final String? teamName;
 
   /// The assignee of an assignment, the member of a team membership.

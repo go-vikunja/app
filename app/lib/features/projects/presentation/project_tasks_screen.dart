@@ -23,6 +23,7 @@ import 'package:vikunja_mobile/features/common/presentation/option_sheet.dart';
 import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
 import 'package:vikunja_mobile/features/projects/application/board_moves.dart';
 import 'package:vikunja_mobile/features/projects/application/list_moves.dart';
+import 'package:vikunja_mobile/features/projects/application/project_access.dart';
 import 'package:vikunja_mobile/features/projects/application/project_list_model.dart';
 import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
@@ -44,6 +45,7 @@ enum _Action {
   refresh,
   edit,
   views,
+  share,
   duplicate,
   archive,
   unarchive,
@@ -69,8 +71,9 @@ typedef _Shown = ({
 /// device can evaluate it and the server's last answer where it cannot; a
 /// kanban view is a board as of its last download with this device's
 /// changes on top. An archived project says so and offers no new task, as
-/// the server refuses changes to it. The menu manages the project as the
-/// web's does; a project that disappears once seen says it is gone.
+/// the server refuses changes to it; a project the user may only read says
+/// that and offers nothing it would refuse. The menu manages the project
+/// as the web's does; a project that disappears once seen says it is gone.
 class ProjectTasksScreen extends ConsumerStatefulWidget {
   const new({required this.projectId, super.key});
 
@@ -414,6 +417,7 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
         ref.watch(pendingTaskIdsProvider).unwrapPrevious().value ?? const {};
     final offline = ref.watch(offlineProvider) != null;
     final archived = isArchivedInTree(widget.projectId, projectsById);
+    final access = ref.watch(projectAccessProvider(widget.projectId));
     final defaultProjectId = ref.watch(
       userSettingsProvider.select(
         (settings) => settings.value?.defaultProjectId,
@@ -473,13 +477,19 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
         downloadFailure != null && downloadFailure is! NetworkFailure;
     final archivedNote = archived
         ? ListNote(icon: Icons.archive_outlined, text: l10n.projectArchivedNote)
+        : access.isReadOnly && _followable
+        ? ListNote(
+            icon: Icons.visibility_outlined,
+            text: l10n.shareReadOnlyProjectNote,
+          )
         : null;
+    final addsTasks = !archived && access.canAddTasks;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(project?.displayTitle(l10n) ?? l10n.projectUnknownTitle),
         actions: [
-          if (project != null && _followable && !archived)
+          if (project != null && _followable && !archived && access.canEdit)
             IconButton(
               onPressed: managingProject
                   ? null
@@ -521,6 +531,7 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
                 ..._projectItems(
                   context,
                   project: project,
+                  access: access,
                   archived: archived,
                   parentArchived:
                       project != null &&
@@ -537,7 +548,7 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
           tabs: tabs,
         ),
       ),
-      floatingActionButton: archived
+      floatingActionButton: !addsTasks
           ? null
           : FloatingActionButton.extended(
               onPressed: () => unawaited(
@@ -565,13 +576,15 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
               view: boardView,
               source: value,
               archived: archived,
+              writable: access.canReorderOrBoard,
+              canChangeView: access.canManageViews,
               offline: offlineOrUnreachable,
               downloadFailed: downloadFailed,
               notes: [?notice, ?archivedNote],
               now: now,
               minimumPriority: minimumPriority,
               pendingIds: pendingIds,
-              bottomPadding: archived ? 0 : _fabRoom,
+              bottomPadding: addsTasks ? _fabRoom : 0,
             );
           }
           final list = value as ProjectListSource;
@@ -593,6 +606,7 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
                     view: shownView,
                     sort: shownPreferences.sort,
                     archived: archived,
+                    writable: access.canReorderOrBoard,
                   )
               ? shownView
               : null;
@@ -667,6 +681,8 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
         editProject(project);
       case _Action.views:
         openProjectViews(project);
+      case _Action.share:
+        openProjectShare(project);
       case _Action.duplicate:
         unawaited(duplicateProject(project));
       case _Action.archive:
@@ -685,12 +701,14 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
   }
 
   /// The web's project menu, for what the app offers, Follow among them,
-  /// in groups; an archived project only offers to unarchive it, which
-  /// waits for its archived parent. Like the web, the user's default
-  /// project cannot be archived and offers no Delete.
+  /// in groups, without what [access] does not allow; an archived project
+  /// only offers to unarchive it, which waits for its archived parent.
+  /// Like the web, the user's default project cannot be archived and offers
+  /// no Delete.
   List<PopupMenuEntry<_Action>> _projectItems(
     BuildContext context, {
     required Project? project,
+    required ProjectAccess access,
     required bool archived,
     required bool parentArchived,
     required bool isDefault,
@@ -700,61 +718,85 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
     if (project == null) return [_followItem(l10n)];
     if (archived) {
       return [
-        projectMenuItem(
-          _Action.unarchive,
-          icon: Icons.unarchive_outlined,
-          label: l10n.projectUnarchive,
-          enabled: !parentArchived,
-          hint: parentArchived ? l10n.projectUnarchiveParentFirst : null,
-        ),
+        if (access.canArchive)
+          projectMenuItem(
+            _Action.unarchive,
+            icon: Icons.unarchive_outlined,
+            label: l10n.projectUnarchive,
+            enabled: !parentArchived,
+            hint: parentArchived ? l10n.projectUnarchiveParentFirst : null,
+          ),
         _followItem(l10n),
       ];
     }
-    return [
-      projectMenuItem(
-        _Action.edit,
-        icon: Icons.edit_outlined,
-        label: l10n.projectEdit,
-      ),
-      projectMenuItem(
-        _Action.views,
-        icon: Icons.view_agenda_outlined,
-        label: l10n.projectViews,
-      ),
-      projectMenuItem(
-        _Action.favourite,
-        icon: project.isFavorite ? Icons.star : Icons.star_outline,
-        label: project.isFavorite
-            ? l10n.projectRemoveFromFavourites
-            : l10n.projectAddToFavourites,
-      ),
-      _followItem(l10n),
-      const PopupMenuDivider(),
-      projectMenuItem(
-        _Action.newSubproject,
-        icon: Icons.create_new_folder_outlined,
-        label: l10n.projectNewSubproject,
-      ),
-      projectMenuItem(
-        _Action.duplicate,
-        icon: Icons.content_copy_outlined,
-        label: l10n.projectDuplicate,
-      ),
-      const PopupMenuDivider(),
-      projectMenuItem(
-        _Action.archive,
-        icon: Icons.archive_outlined,
-        label: l10n.projectArchive,
-        enabled: !isDefault,
-        hint: isDefault ? l10n.projectArchiveDefaultHint : null,
-      ),
-      if (!isDefault)
+    final groups = <List<PopupMenuEntry<_Action>>>[
+      [
+        if (access.canEdit)
+          projectMenuItem(
+            _Action.edit,
+            icon: Icons.edit_outlined,
+            label: l10n.projectEdit,
+          ),
+        if (access.canManageViews)
+          projectMenuItem(
+            _Action.views,
+            icon: Icons.view_agenda_outlined,
+            label: l10n.projectViews,
+          ),
         projectMenuItem(
-          _Action.delete,
-          icon: Icons.delete_outline,
-          label: l10n.projectDelete,
-          color: Theme.of(context).colorScheme.error,
+          _Action.share,
+          icon: Icons.share_outlined,
+          label: l10n.shareMenuItem,
         ),
+        // The server takes a favourite as a change of the project.
+        if (access.canEdit)
+          projectMenuItem(
+            _Action.favourite,
+            icon: project.isFavorite ? Icons.star : Icons.star_outline,
+            label: project.isFavorite
+                ? l10n.projectRemoveFromFavourites
+                : l10n.projectAddToFavourites,
+          ),
+        _followItem(l10n),
+      ],
+      [
+        if (access.canCreateChild)
+          projectMenuItem(
+            _Action.newSubproject,
+            icon: Icons.create_new_folder_outlined,
+            label: l10n.projectNewSubproject,
+          ),
+        if (access.canDuplicate)
+          projectMenuItem(
+            _Action.duplicate,
+            icon: Icons.content_copy_outlined,
+            label: l10n.projectDuplicate,
+          ),
+      ],
+      [
+        if (access.canArchive)
+          projectMenuItem(
+            _Action.archive,
+            icon: Icons.archive_outlined,
+            label: l10n.projectArchive,
+            enabled: !isDefault,
+            hint: isDefault ? l10n.projectArchiveDefaultHint : null,
+          ),
+        if (!isDefault && access.canDelete)
+          projectMenuItem(
+            _Action.delete,
+            icon: Icons.delete_outline,
+            label: l10n.projectDelete,
+            color: Theme.of(context).colorScheme.error,
+          ),
+      ],
+    ];
+    return [
+      for (final (index, group)
+          in groups.where((g) => g.isNotEmpty).indexed) ...[
+        if (index > 0) PopupMenuDivider(key: ValueKey(index)),
+        ...group,
+      ],
     ];
   }
 
@@ -799,6 +841,8 @@ class _BoardBody extends StatelessWidget {
     required this.view,
     required this.source,
     required this.archived,
+    required this.writable,
+    required this.canChangeView,
     required this.offline,
     required this.downloadFailed,
     required this.notes,
@@ -812,6 +856,12 @@ class _BoardBody extends StatelessWidget {
   final ProjectView view;
   final BoardSource source;
   final bool archived;
+
+  /// The user may change the board: move cards, manage columns.
+  final bool writable;
+
+  /// The user may also choose the done and the default column.
+  final bool canChangeView;
 
   /// The device is offline, as far as the last sync or download knows.
   final bool offline;
@@ -874,7 +924,8 @@ class _BoardBody extends StatelessWidget {
       projectId: projectId,
       view: view,
       source: source,
-      readOnly: boardIsReadOnly(view, archived: archived),
+      readOnly: boardIsReadOnly(view, archived: archived, writable: writable),
+      canChangeView: canChangeView,
       offline: offline,
       now: now,
       minimumPriority: minimumPriority,

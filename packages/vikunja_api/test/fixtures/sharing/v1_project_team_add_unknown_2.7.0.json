@@ -1,0 +1,13 @@
+{
+  "server": "2.7.0",
+  "request": "PUT /api/v1/projects/418/teams",
+  "sent": {
+    "team_id": 99999999,
+    "permission": 0
+  },
+  "status": 404,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"code\":6002,\"message\":\"This team does not exist.\"}\n"
+}

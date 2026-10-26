@@ -13,6 +13,9 @@ final class Label {
     this.updated,
   });
 
+  /// The server's limit in code points; titles above it are refused.
+  static const maxTitleLength = 250;
+
   final int id;
   final String title;
   final String description;

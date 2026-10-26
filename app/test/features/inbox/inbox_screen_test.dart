@@ -14,6 +14,7 @@ import 'package:vikunja_mobile/features/inbox/presentation/inbox_screen.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_tasks_screen.dart';
 import 'package:vikunja_mobile/features/sync/presentation/offline_notice.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
+import 'package:vikunja_mobile/features/teams/presentation/team_page.dart';
 
 import '../../helpers/label_user_fakes.dart';
 import '../../helpers/pump_app.dart';
@@ -403,7 +404,46 @@ void main() {
       expect(find.text(en.inboxProjectNotLocal), findsOneWidget);
     });
 
-    testWidgets('on a team membership only marks it read', (tester) async {
+    testWidgets("on a team membership marks it read and opens the team's "
+        'page', (tester) async {
+      const alice = User(id: 7, username: 'alice', name: 'Alice Example');
+      data.teams
+        ..me = alice
+        ..teams = [
+          Team(
+            id: 1,
+            name: 'Family',
+            members: const [TeamMember(user: alice)],
+          ),
+        ];
+      await openInbox(tester);
+
+      await tester.tap(
+        inInbox(find.text(en.inboxAddedYouToTeam('Anna Example', 'Family'))),
+      );
+      await tester.pumpAndSettle();
+
+      expect(data.activity.markedRead, [3]);
+      expect(location(tester), AppRoutes.team(1));
+      expect(find.byType(TeamPage), findsOneWidget);
+      expect(data.teams.calls, ['read 1']);
+    });
+
+    testWidgets('on a team membership that names no team only marks it read', (
+      tester,
+    ) async {
+      data.activity.notifications = [
+        inboxNotification(
+          id: 3,
+          name: 'team.member.added',
+          created: DateTime(2026, 10, 12, 8),
+          payload: {
+            'doer': anna,
+            'member': me,
+            'team': {'name': 'Family'},
+          },
+        ),
+      ];
       await openInbox(tester);
 
       await tester.tap(

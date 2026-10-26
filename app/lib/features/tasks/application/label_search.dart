@@ -2,8 +2,8 @@ import 'dart:math';
 
 import 'package:vikunja_domain/vikunja_domain.dart';
 
-/// The server's limit for a label title.
-const maxLabelTitleLength = 250;
+/// The server's limit for a label title, in code points.
+const int maxLabelTitleLength = Label.maxTitleLength;
 
 /// The colours the web picks from at random for a new label.
 const newLabelColors = [

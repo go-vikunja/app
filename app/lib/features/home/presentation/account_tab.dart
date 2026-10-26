@@ -17,6 +17,7 @@ import 'package:vikunja_mobile/features/common/presentation/settings_section.dar
 import 'package:vikunja_mobile/features/home/application/app_version.dart';
 import 'package:vikunja_mobile/features/home/presentation/account_header.dart';
 import 'package:vikunja_mobile/features/home/presentation/appearance_section.dart';
+import 'package:vikunja_mobile/features/home/presentation/organise_section.dart';
 import 'package:vikunja_mobile/features/home/presentation/pending_changes_line.dart';
 import 'package:vikunja_mobile/features/home/presentation/reauth_banner.dart';
 import 'package:vikunja_mobile/features/home/presentation/sync_problems_section.dart';
@@ -30,9 +31,10 @@ import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
 import 'package:vikunja_mobile/features/sync/presentation/sync_progress_bar.dart';
 
 /// Who is signed in with the way to the account's settings on the server,
-/// a session that needs a new sign-in, the other accounts, the server with
-/// the sync state and the changes still waiting for it, what is set on this
-/// device only (notifications, colours), sign-out and the app's version.
+/// a session that needs a new sign-in, the account's labels and teams, the
+/// other accounts, the server with the sync state and the changes still
+/// waiting for it, what is set on this device only (notifications,
+/// colours), sign-out and the app's version.
 class AccountTab extends ConsumerWidget {
   const new({super.key});
 
@@ -146,6 +148,7 @@ class AccountTab extends ConsumerWidget {
               onTap: () => _openSettings(context),
             ),
             const SizedBox(height: 8),
+            OrganiseSection(busy: busy),
             AccountsSection(busy: busy),
             SettingsSection(
               title: l10n.accountServerHeading,

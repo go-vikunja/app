@@ -1,0 +1,13 @@
+{
+  "server": "2.7.0",
+  "request": "PUT /api/v1/teams/9/members",
+  "sent": {
+    "username": "fixturemember",
+    "admin": false
+  },
+  "status": 409,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"code\":6005,\"message\":\"This user is already a member of that team.\"}\n"
+}

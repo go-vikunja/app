@@ -9,6 +9,7 @@ import 'package:vikunja_api/src/dto/saved_filter_codec.dart';
 import 'package:vikunja_api/src/dto/subscription_codec.dart';
 import 'package:vikunja_api/src/dto/task_codec.dart';
 import 'package:vikunja_api/src/errors/error_body.dart';
+import 'package:vikunja_api/src/read/task_query_params.dart';
 import 'package:vikunja_api/src/write/write_ports.dart';
 import 'package:vikunja_api/src/write/write_transport.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
@@ -505,12 +506,18 @@ final class _ProjectsWriteApi implements ProjectsWritePort {
     );
     return _transport.decode<Project>(
       response,
-      (json) => parseProject(objectOf(json, 'duplicate')['duplicated_project']),
+      (json) =>
+          parseProject(objectOf(json, 'duplicate')['duplicated_project'])
+              .copyWith(maxPermission: null),
     );
   }
 
-  Project _parse(Response<Object?> response) =>
-      _transport.decode<Project>(response, parseProject);
+  // The answers to writes never carry a computed permission: null from 2.6,
+  // 0 (which would read as read-only) before.
+  Project _parse(Response<Object?> response) => _transport.decode<Project>(
+    response,
+    (json) => parseProject(json).copyWith(maxPermission: null),
+  );
 }
 
 final class _BucketsWriteApi implements BucketsWritePort {
@@ -727,6 +734,50 @@ final class _LabelsWriteApi implements LabelsWritePort {
     );
     return _transport.decode<Label>(response, parseLabel);
   }
+
+  @override
+  Future<Label> update(int id, LabelChanges changes) async {
+    final path = '/labels/$id';
+    final body = encodeLabelChanges(changes);
+    try {
+      if (body.isEmpty) return _parse(await _transport.send('GET', path));
+      return _parse(await _transport.patchOrReplace(path, 'label', body));
+    } on Forbidden catch (failure) {
+      // The read in front of both writes refuses a deleted label like
+      // someone else's; the id search of the list tells them apart.
+      if (failure.code != null || await _isListed(id)) rethrow;
+      throw NotFound(code: _labelDoesNotExist, message: failure.message);
+    }
+  }
+
+  Future<bool> _isListed(int id) async {
+    final response = await _transport.send(
+      'GET',
+      '/labels',
+      query: {searchParameterName(_transport.version): '$id'},
+    );
+    final labels = _transport.decode<List<Map<String, Object?>>>(
+      response,
+      (json) => switch (json) {
+        {'items': final List<Object?>? items} => objectListOf(items),
+        final List<Object?>? items => objectListOf(items),
+        _ => throw const MalformedJson('not a label list'),
+      },
+    );
+    return labels.any((label) => label['id'] == id);
+  }
+
+  @override
+  Future<void> delete(int id) async {
+    try {
+      await _transport.send('DELETE', '/labels/$id');
+    } on NotFound catch (failure) {
+      if (failure.code != _labelDoesNotExist) rethrow;
+    }
+  }
+
+  Label _parse(Response<Object?> response) =>
+      _transport.decode<Label>(response, parseLabel);
 }
 
 const _notModified = 304;
@@ -737,6 +788,7 @@ const _commentDoesNotExist = 4015;
 const _fileTooLarge = 4012;
 const _uploadTooLarge = 4035;
 const _labelAlreadyOnTask = 8001;
+const _labelDoesNotExist = 8002;
 const _userAlreadyAssigned = 4021;
 const _relationAlreadyExists = 4008;
 const _relationDoesNotExist = 4009;

@@ -40,6 +40,9 @@ dependencies:
   package_info_plus: ^10.2.2
   path: ^1.9.1
   path_provider: ^2.1.6
+  # QR codes for link shares (step 28, D60): pure Dart, BSD-3-Clause, only
+  # depends on meta.
+  qr: ^4.0.0
   quick_actions: ^1.1.1
   riverpod_annotation: ^4.0.7
   share_plus: ^13.3.1

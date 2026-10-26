@@ -16,6 +16,7 @@ import 'package:vikunja_mobile/core/repositories/attachment_repository.dart';
 import 'package:vikunja_mobile/core/repositories/attachment_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_details_repository_providers.dart';
+import 'package:vikunja_mobile/core/repositories/team_repository_providers.dart';
 import 'package:vikunja_mobile/features/attachments/application/attachment_picker.dart';
 import 'package:vikunja_mobile/features/attachments/presentation/attachment_messages.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
@@ -32,14 +33,18 @@ import 'package:vikunja_mobile/features/description_editor/presentation/editor_t
 import 'package:vikunja_mobile/features/description_editor/presentation/link_sheet.dart';
 import 'package:vikunja_mobile/features/description_editor/presentation/mention_bar.dart';
 import 'package:vikunja_mobile/features/description_editor/presentation/webview_editor_bridge.dart';
+import 'package:vikunja_mobile/features/labels/presentation/label_change_failure.dart';
 import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/projects/presentation/manage/project_change_failure.dart';
 import 'package:vikunja_mobile/features/sync/application/offline_state.dart';
 import 'package:vikunja_mobile/features/tasks/application/account_context_providers.dart';
+import 'package:vikunja_mobile/features/tasks/application/label_providers.dart';
+import 'package:vikunja_mobile/features/tasks/application/people_search.dart';
 import 'package:vikunja_mobile/features/tasks/application/task_providers.dart'
     show taskByIdProvider;
 import 'package:vikunja_mobile/features/tasks/presentation/details/comment_messages.dart';
+import 'package:vikunja_mobile/features/teams/presentation/team_failure.dart';
 
 final _log = Logger('DescriptionEditor');
 
@@ -70,14 +75,15 @@ final class _ChangedOnWeb extends _Outcome {
 }
 
 /// The description as it is stored now and the project whose people can
-/// be mentioned in it.
-typedef _Subject = ({String description, int projectId});
+/// be mentioned in it; without one, the people this device knows.
+typedef _Subject = ({String description, int? projectId});
 
-/// Edits a task's or a project's description, or the user's own comment,
-/// in the bundled web editor. The editor starts from the description as it
-/// was when the page opened; Save writes only when the editor reports a
-/// change, and asks first when the description changed meanwhile. Pops
-/// with true once saved, with the stored `TaskComment` for a comment.
+/// Edits a task's, project's, label's or team's description, or the user's
+/// own comment, in the bundled web editor. The editor starts from the
+/// description as it was when the page opened; Save writes only when the
+/// editor reports a change, and for a task or project asks first when the
+/// description changed meanwhile. Pops with true once saved, with the
+/// stored `TaskComment` for a comment.
 ///
 /// The edit itself lives in the WebView, so the page keeps a copy of it a
 /// moment after each change: when the WebView's process ends, Reload goes
@@ -216,6 +222,19 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
         }
         return null;
       }),
+    LabelDescriptionTarget(:final labelId) =>
+      ref.watch(allLabelsProvider).whenData((labels) {
+        for (final label in labels) {
+          if (label.id == labelId) {
+            return (description: label.description, projectId: null);
+          }
+        }
+        return null;
+      }),
+    TeamDescriptionTarget(:final description) => AsyncValue.data((
+      description: description,
+      projectId: null,
+    )),
     CommentTarget(:final comment, :final projectId) => AsyncValue.data((
       description: comment.html,
       projectId: projectId,
@@ -227,7 +246,14 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
       ref.read(taskByIdProvider(taskId)).value?.description,
     ProjectDescriptionTarget(:final projectId) =>
       ref.read(projectByIdProvider(projectId))?.description,
+    // Only their creator or a team admin changes these; nothing to compare.
+    LabelDescriptionTarget() || TeamDescriptionTarget() => null,
     CommentTarget(:final comment) => comment.html,
+  };
+
+  bool get _projectPeople => switch (widget.target) {
+    LabelDescriptionTarget() || TeamDescriptionTarget() => false,
+    _ => true,
   };
 
   void _stop() {
@@ -575,13 +601,14 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
     }
   }
 
-  Future<List<User>> _searchPeople(String query) {
+  Future<List<User>> _searchPeople(String query) async {
+    if (!_projectPeople) return filterUsers(await _knownPeople(), query);
     final users = ref.read(userRepositoryProvider);
     final projectId = _projectId;
     if (users == null || projectId == null) {
-      return Future.error(const NetworkFailure(NetworkProblem.unreachable));
+      throw const NetworkFailure(NetworkProblem.unreachable);
     }
-    return users.searchAssignees(projectId, query);
+    return await users.searchAssignees(projectId, query);
   }
 
   Future<List<User>> _knownPeople() async =>
@@ -710,6 +737,14 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
             base: base,
           );
           if (current != null) return _ChangedOnWeb(current);
+        case LabelDescriptionTarget(:final labelId):
+          final repository = ref.read(labelRepositoryProvider);
+          if (repository == null) return const _Refused();
+          await repository.update(labelId, LabelChanges(description: html));
+        case TeamDescriptionTarget(:final teamId):
+          final repository = ref.read(teamRepositoryProvider);
+          if (repository == null) return const _Refused();
+          await repository.update(teamId, TeamChanges(description: html));
         case CommentTarget(:final taskId, :final comment):
           final repository = ref.read(taskDetailsRepositoryProvider);
           if (repository == null) return const _Refused();
@@ -739,6 +774,16 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
             l10n,
             error,
             ProjectChange.edit,
+          ),
+          LabelDescriptionTarget() => labelChangeFailureText(
+            l10n,
+            error,
+            LabelChange.edit,
+          ),
+          TeamDescriptionTarget() => teamFailureText(
+            l10n,
+            error,
+            TeamChange.edit,
           ),
           CommentTarget() => commentFailureText(l10n, error, CommentWrite.save),
         });
@@ -906,7 +951,13 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
                     title: l10n.projectGoneTitle,
                     body: l10n.projectGoneBody,
                   ),
-                  // Never gone: the page holds the comment itself.
+                  LabelDescriptionTarget() => EmptyState(
+                    icon: Icons.label_off_outlined,
+                    title: l10n.labelsGoneTitle,
+                    body: l10n.labelsGoneBody,
+                  ),
+                  // Never gone: the page holds the comment or team's text.
+                  TeamDescriptionTarget() ||
                   CommentTarget() => const SizedBox.shrink(),
                 },
               )

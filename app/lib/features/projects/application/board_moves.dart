@@ -2,9 +2,16 @@ import 'package:flutter/foundation.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 
-/// The web's rule: cards move only on a manual board the user may change.
-bool boardIsReadOnly(ProjectView view, {required bool archived}) =>
-    archived || view.bucketConfigurationMode == BucketConfigurationMode.filter;
+/// The web's rule: cards move only on a manual board the user may change,
+/// in a project not archived and [writable] for the user.
+bool boardIsReadOnly(
+  ProjectView view, {
+  required bool archived,
+  bool writable = true,
+}) =>
+    archived ||
+    !writable ||
+    view.bucketConfigurationMode == BucketConfigurationMode.filter;
 
 /// A column at its limit takes no more cards, except its own.
 bool columnIsFull(BoardColumn column) =>

@@ -22,3 +22,11 @@ Map<String, Object?> encodeNewLabel(NewLabel label) => {
     'hex_color': hexColor,
   if (label.description.isNotEmpty) 'description': label.description,
 };
+
+/// Only the set fields, the colour without `#`; an empty colour clears it.
+Map<String, Object?> encodeLabelChanges(LabelChanges changes) => {
+  'title': ?changes.title,
+  'description': ?changes.description,
+  if (changes.hexColor case final hexColor?)
+    'hex_color': hexColorWire(hexColor),
+};

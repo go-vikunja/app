@@ -1,0 +1,13 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v2/teams/10/members",
+  "sent": {
+    "username": "fixturemember",
+    "admin": false
+  },
+  "status": 409,
+  "headers": {
+    "content-type": "application/problem+json"
+  },
+  "body": "{\"$schema\":\"http://localhost:34527/api/v2/schemas/VikunjaErrorModel.json\",\"title\":\"Conflict\",\"status\":409,\"detail\":\"This user is already a member of that team.\",\"code\":6005}\n"
+}

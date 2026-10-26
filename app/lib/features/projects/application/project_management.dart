@@ -1,4 +1,5 @@
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/features/projects/application/project_access.dart';
 import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 
 /// [projectId] and every project below it, archived ones included: what
@@ -18,8 +19,8 @@ Set<int> projectSubtreeIds(int projectId, List<Project> projects) {
 }
 
 /// The projects that can hold a new or moved project, as the tree shows
-/// them: neither archived (the server refuses them) nor [movedProjectId]
-/// and its subprojects (a cycle).
+/// them: neither archived nor only readable for the user (the server
+/// refuses both) nor [movedProjectId] and its subprojects (a cycle).
 List<ProjectTreeRow> parentCandidates(
   List<Project> projects, {
   int? movedProjectId,
@@ -29,7 +30,10 @@ List<ProjectTreeRow> parentCandidates(
       : projectSubtreeIds(movedProjectId, projects);
   return [
     for (final row in flattenProjectTree(
-      buildProjectTree(projects),
+      buildProjectTree([
+        for (final project in projects)
+          if (ProjectAccess.of(project).canCreateChild) project,
+      ]),
       collapsedIds: const {},
     ))
       if (!excluded.contains(row.node.project.id)) row,

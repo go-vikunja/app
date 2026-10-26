@@ -80,6 +80,9 @@ mixin ProjectManagementActions<W extends ConsumerStatefulWidget>
   void openProjectViews(Project project) =>
       unawaited(GoRouter.of(context).push(AppRoutes.projectViews(project.id)));
 
+  void openProjectShare(Project project) =>
+      unawaited(GoRouter.of(context).push(AppRoutes.projectShare(project.id)));
+
   Future<void> duplicateProject(Project project) =>
       duplicateProjectAndOpen(context, project: project);
 

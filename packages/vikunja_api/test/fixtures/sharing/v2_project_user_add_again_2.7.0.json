@@ -1,0 +1,13 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v2/projects/418/users",
+  "sent": {
+    "username": "fixturemember",
+    "permission": 0
+  },
+  "status": 409,
+  "headers": {
+    "content-type": "application/problem+json"
+  },
+  "body": "{\"$schema\":\"http://localhost:34527/api/v2/schemas/VikunjaErrorModel.json\",\"title\":\"Conflict\",\"status\":409,\"detail\":\"This user already has access to this project.\",\"code\":7002}\n"
+}

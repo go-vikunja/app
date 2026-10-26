@@ -479,6 +479,167 @@ final class AccountSecurityPortFamily extends $Family
   String toString() => r'accountSecurityPortProvider';
 }
 
+@ProviderFor(teamsPort)
+final teamsPortProvider = TeamsPortFamily._();
+
+final class TeamsPortProvider
+    extends $FunctionalProvider<TeamsPort, TeamsPort, TeamsPort>
+    with $Provider<TeamsPort> {
+  TeamsPortProvider._({
+    required TeamsPortFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'teamsPortProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$teamsPortHash();
+
+  @override
+  String toString() {
+    return r'teamsPortProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $ProviderElement<TeamsPort> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  TeamsPort create(Ref ref) {
+    final argument = this.argument as String;
+    return teamsPort(ref, argument);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(TeamsPort value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<TeamsPort>(value),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is TeamsPortProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$teamsPortHash() => r'7197dc19ec85071f382747f47e48e4e56b1e3bb0';
+
+final class TeamsPortFamily extends $Family
+    with $FunctionalFamilyOverride<TeamsPort, String> {
+  TeamsPortFamily._()
+    : super(
+        retry: null,
+        name: r'teamsPortProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  TeamsPortProvider call(String accountId) =>
+      TeamsPortProvider._(argument: accountId, from: this);
+
+  @override
+  String toString() => r'teamsPortProvider';
+}
+
+@ProviderFor(projectSharingPort)
+final projectSharingPortProvider = ProjectSharingPortFamily._();
+
+final class ProjectSharingPortProvider
+    extends
+        $FunctionalProvider<
+          ProjectSharingPort,
+          ProjectSharingPort,
+          ProjectSharingPort
+        >
+    with $Provider<ProjectSharingPort> {
+  ProjectSharingPortProvider._({
+    required ProjectSharingPortFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'projectSharingPortProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$projectSharingPortHash();
+
+  @override
+  String toString() {
+    return r'projectSharingPortProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $ProviderElement<ProjectSharingPort> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  ProjectSharingPort create(Ref ref) {
+    final argument = this.argument as String;
+    return projectSharingPort(ref, argument);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(ProjectSharingPort value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<ProjectSharingPort>(value),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is ProjectSharingPortProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$projectSharingPortHash() =>
+    r'8d564ee956f4587eeac0f1b93f19a669b08facd1';
+
+final class ProjectSharingPortFamily extends $Family
+    with $FunctionalFamilyOverride<ProjectSharingPort, String> {
+  ProjectSharingPortFamily._()
+    : super(
+        retry: null,
+        name: r'projectSharingPortProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  ProjectSharingPortProvider call(String accountId) =>
+      ProjectSharingPortProvider._(argument: accountId, from: this);
+
+  @override
+  String toString() => r'projectSharingPortProvider';
+}
+
 @ProviderFor(accountDatabaseFiles)
 final accountDatabaseFilesProvider = AccountDatabaseFilesProvider._();
 
@@ -1282,7 +1443,7 @@ final class AccountLabelRepositoryProvider
 }
 
 String _$accountLabelRepositoryHash() =>
-    r'036fd0b3b3fdf00f3e40287a9d09d9036c73a6cd';
+    r'a4d33e5e8085a84ccec355e5053a055fd97b6e1a';
 
 final class AccountLabelRepositoryFamily extends $Family
     with $FunctionalFamilyOverride<LabelRepository, String> {

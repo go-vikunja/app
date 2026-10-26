@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "GET /api/v2/teams/11",
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"$schema\":\"http://localhost:34527/api/v2/schemas/TeamReadBody.json\",\"id\":11,\"name\":\"Fixture group (Keycloak)\",\"description\":\"\",\"external_id\":\"fixture-oidc-group\",\"created_by\":{\"id\":145,\"name\":\"\",\"username\":\"fixtureowner\",\"created\":\"2026-10-26T11:16:56Z\",\"updated\":\"2026-10-26T11:16:56Z\"},\"members\":[{\"id\":145,\"name\":\"\",\"username\":\"fixtureowner\",\"created\":\"2026-10-26T11:16:56Z\",\"updated\":\"2026-10-26T11:16:56Z\",\"admin\":true},{\"id\":146,\"name\":\"\",\"username\":\"fixturemember\",\"created\":\"2026-10-26T11:16:57Z\",\"updated\":\"2026-10-26T11:16:57Z\",\"admin\":false}],\"created\":\"2026-10-26T11:17:43Z\",\"updated\":\"2026-10-26T11:17:43Z\",\"is_public\":false,\"max_permission\":2}\n"
+}

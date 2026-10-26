@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
@@ -99,7 +100,26 @@ void main() {
       views: views,
       created: created,
       updated: updated,
+      maxPermission: Permission.write,
     );
+
+    test('an unknown permission stays unknown', () {
+      final unknown = project.copyWith(maxPermission: null);
+
+      expect(projectRow(unknown).maxPermission, isNull);
+      expect(
+        projectFromRow(projectRow(unknown), views: const []).maxPermission,
+        isNull,
+      );
+      expect(
+        projectFromRow(
+          projectRow(unknown).copyWith(maxPermission: const Value(7)),
+          views: const [],
+        ).maxPermission,
+        isNull,
+        reason: 'a value this build does not know',
+      );
+    });
 
     test('round trip with views, filter and owner', () {
       final row = projectRow(project);
@@ -113,6 +133,8 @@ void main() {
       expect(back.owner, alice);
       expect(back.created, created);
       expect(back.updated, updated);
+      expect(back.maxPermission, Permission.write);
+      expect(row.maxPermission, 1);
       expect(back.views, views);
       final list = back.views.first;
       expect(list.title, 'List');

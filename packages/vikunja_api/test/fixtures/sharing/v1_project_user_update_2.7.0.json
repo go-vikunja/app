@@ -1,0 +1,12 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v1/projects/418/users/fixturemember",
+  "sent": {
+    "permission": 1
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"id\":0,\"username\":\"fixturemember\",\"permission\":1,\"created\":\"0001-01-01T00:00:00Z\",\"updated\":\"2026-10-26T11:17:23.285954597Z\"}\n"
+}

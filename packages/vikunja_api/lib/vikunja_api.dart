@@ -17,6 +17,8 @@ export 'src/realtime/io_realtime_connector.dart';
 export 'src/realtime/realtime_message.dart';
 export 'src/realtime/realtime_socket.dart';
 export 'src/realtime/realtime_uri.dart';
+export 'src/sharing/project_sharing_port.dart';
+export 'src/teams/teams_port.dart';
 export 'src/transport/authenticated_dio.dart';
 export 'src/transport/retry_interceptor.dart';
 export 'src/write/write_ports.dart';

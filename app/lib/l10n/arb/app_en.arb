@@ -4821,5 +4821,626 @@
   "commentReplyDropped": "No longer replying",
   "@commentReplyDropped": {
     "description": "Announced to screen readers when the quote above the comment field is dropped."
+  },
+  "shareMenuItem": "Share",
+  "@shareMenuItem": {
+    "description": "Project menu item that opens the project's sharing page."
+  },
+  "sharePageTitle": "Share {project}",
+  "@sharePageTitle": {
+    "description": "Title of a project's sharing page.",
+    "placeholders": {
+      "project": {
+        "type": "String",
+        "example": "Work"
+      }
+    }
+  },
+  "sharePageLoading": "Loading who has access…",
+  "sharePeopleSection": "People",
+  "@sharePeopleSection": {
+    "description": "Section of the users a project is shared with."
+  },
+  "shareTeamsSection": "Teams",
+  "@shareTeamsSection": {
+    "description": "Section of the teams a project is shared with."
+  },
+  "shareLinksSection": "Links",
+  "@shareLinksSection": {
+    "description": "Section of a project's link shares."
+  },
+  "sharePeopleEmpty": "Not shared with anyone yet",
+  "shareTeamsEmpty": "Not shared with any team yet",
+  "shareLinksEmpty": "No links yet",
+  "shareLinksIntro": "Anyone with a link can open this project without an account, with the link's permission.",
+  "shareUserIsYou": "{name} (you)",
+  "@shareUserIsYou": {
+    "description": "The signed-in user's own row in a share list.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Kim"
+      }
+    }
+  },
+  "sharePermissionRead": "Read only",
+  "@sharePermissionRead": {
+    "description": "Share permission 0."
+  },
+  "sharePermissionWrite": "Read & write",
+  "@sharePermissionWrite": {
+    "description": "Share permission 1."
+  },
+  "sharePermissionAdmin": "Admin",
+  "@sharePermissionAdmin": {
+    "description": "Share permission 2."
+  },
+  "shareAddPerson": "Add person",
+  "shareAddTeam": "Add team",
+  "shareHiddenTeam": "Hidden team",
+  "@shareHiddenTeam": {
+    "description": "A team share whose name the server hides because the user is not in the team."
+  },
+  "shareTeamMemberCount": "{count, plural, =1{1 member} other{{count} members}}",
+  "@shareTeamMemberCount": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "shareReadOnlyNote": "Only project admins can change who has access",
+  "shareAccessFor": "Access for {name}",
+  "@shareAccessFor": {
+    "description": "Title of the sheet that changes or removes a share.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Kim"
+      }
+    }
+  },
+  "sharePermissionFor": "Permission for {name}",
+  "@sharePermissionFor": {
+    "description": "Title of the permission choice when adding a person or team.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Kim"
+      }
+    }
+  },
+  "shareRemove": "Remove",
+  "shareRemoveTitle": "Remove {name}?",
+  "@shareRemoveTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Kim"
+      }
+    }
+  },
+  "shareRemovePersonBody": "{name} loses access to this project and the projects under it at once.",
+  "@shareRemovePersonBody": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Kim"
+      }
+    }
+  },
+  "shareRemoveSelfBody": "You lose access to this project and the projects under it at once, unless you have it in another way.",
+  "shareRemoveTeamBody": "The members of {name} lose access to this project and the projects under it at once, unless they have it in another way.",
+  "@shareRemoveTeamBody": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Design"
+      }
+    }
+  },
+  "shareCleanupOthersIntro": "In the projects they can no longer reach, the server also deletes:",
+  "shareCleanupOthersAssignments": "their task assignments",
+  "shareCleanupOthersSubscriptions": "their subscriptions to tasks and projects",
+  "shareCleanupOthersWebhooks": "webhooks they created",
+  "shareCleanupSelfIntro": "In the projects you can no longer reach, the server also deletes:",
+  "shareCleanupSelfAssignments": "your task assignments",
+  "shareCleanupSelfSubscriptions": "your subscriptions to tasks and projects",
+  "shareCleanupSelfWebhooks": "webhooks you created",
+  "shareAdded": "{name} has access now",
+  "@shareAdded": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Kim"
+      }
+    }
+  },
+  "sharePermissionChanged": "Access for {name} changed",
+  "@sharePermissionChanged": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Kim"
+      }
+    }
+  },
+  "shareRemoved": "{name} removed",
+  "@shareRemoved": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Kim"
+      }
+    }
+  },
+  "shareSaving": "Saving…",
+  "sharePeopleSearchField": "Username, name or email",
+  "sharePeopleSearchHint": "Search by exact username, or by name or email if the person allows it",
+  "sharePeopleSearching": "Searching…",
+  "sharePeopleNoResults": "Nobody found who could be added",
+  "sharePeopleSearchOffline": "Searching for people needs a connection.",
+  "sharePeopleSearchFailed": "Searching did not work. Try again.",
+  "shareTeamsFilter": "Filter teams",
+  "shareTeamsLoading": "Loading teams…",
+  "shareTeamsNoneToAdd": "No other team to add. You can add the teams you are a member of.",
+  "shareTeamsNoneToAddPublic": "No other team to add. You can add the teams you are a member of and public teams.",
+  "shareTeamPublic": "Public",
+  "linkShareUnnamed": "Link without a name",
+  "linkSharePasswordProtected": "Password protected",
+  "linkShareCreatedBy": "Created by {name}",
+  "@linkShareCreatedBy": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Kim"
+      }
+    }
+  },
+  "linkShareShare": "Share",
+  "linkShareCopy": "Copy link",
+  "linkShareCopied": "Link copied",
+  "linkShareQr": "QR code",
+  "linkShareView": "Opens {view}",
+  "@linkShareView": {
+    "description": "The project view a link share opens; tapping it picks another.",
+    "placeholders": {
+      "view": {
+        "type": "String",
+        "example": "Kanban"
+      }
+    }
+  },
+  "linkShareViewTitle": "The link opens",
+  "linkShareDelete": "Delete",
+  "linkShareDeleteTitle": "Delete the link “{name}”?",
+  "@linkShareDeleteTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Family"
+      }
+    }
+  },
+  "linkShareDeleteUnnamedTitle": "Delete this link?",
+  "linkShareDeleteBody": "Anyone using this link loses access at once. This can't be undone.",
+  "linkShareDeleted": "Link deleted",
+  "linkShareSubject": "Link to {project}",
+  "@linkShareSubject": {
+    "description": "Subject of a shared link, e.g. in an email.",
+    "placeholders": {
+      "project": {
+        "type": "String",
+        "example": "Work"
+      }
+    }
+  },
+  "linkShareCreate": "Create link",
+  "linkShareFormTitle": "New link",
+  "linkShareFormPermission": "Permission",
+  "linkShareFormName": "Name (optional)",
+  "linkShareFormNameHelper": "Changes made through the link show this name",
+  "linkShareFormPassword": "Password (optional)",
+  "linkShareFormPasswordHelper": "Whoever opens the link has to enter it",
+  "linkShareFormShowPassword": "Show password",
+  "linkShareFormHidePassword": "Hide password",
+  "linkShareFormSubmit": "Create",
+  "linkShareCreated": "Link created",
+  "linkShareCreatedBody": "Share it with the people who should open this project.",
+  "linkShareQrSemantics": "QR code for the link",
+  "linkShareQrTooLong": "This link is too long for a QR code",
+  "linkShareQrHint": "Scan it with a phone's camera to open the project.",
+  "shareFailureOffline": "This needs a connection.",
+  "shareFailureUnconfirmed": "The server did not answer in time. Check the list before trying again.",
+  "shareFailureForbidden": "Only project admins can change who has access.",
+  "shareFailureAlreadyShared": "This person already has access or owns the project.",
+  "shareFailureUnknownUser": "There is no user with this username.",
+  "shareFailureGone": "This access was already removed.",
+  "shareFailureTeamAlreadyShared": "This team already has access.",
+  "shareFailureUnknownTeam": "This team no longer exists.",
+  "shareFailureLinkSharingOff": "Link sharing is turned off on this server.",
+  "shareFailureInvalid": "The server did not accept this.",
+  "shareFailureGeneric": "That did not work. Try again.",
+  "shareReadOnlyProjectNote": "Read only: you can see this project but not change it.",
+  "shareTaskReadOnly": "Read only",
+  "@shareTaskReadOnly": {
+    "description": "Spoken for a task's done checkbox in a project the user may only read."
+  },
+  "accountOrganiseHeading": "Organise",
+  "@accountOrganiseHeading": {
+    "description": "Account tab section with the labels and teams pages."
+  },
+  "accountLabelsEntry": "Labels",
+  "accountTeamsEntry": "Teams",
+  "labelsCount": "{count, plural, =1{1 label} other{{count} labels}}",
+  "@labelsCount": {
+    "description": "How many labels are on this device, read out for the count next to the Labels entry.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "12"
+      }
+    }
+  },
+  "labelsTitle": "Labels",
+  "@labelsTitle": {
+    "description": "Title of the labels page."
+  },
+  "labelsLoading": "Loading labels…",
+  "labelsOwnSection": "Your labels",
+  "@labelsOwnSection": {
+    "description": "Section of the labels the user created."
+  },
+  "labelsOthersSection": "From others",
+  "@labelsOthersSection": {
+    "description": "Section of other people's labels the user sees on shared tasks."
+  },
+  "labelsCreatedBy": "By {name}",
+  "@labelsCreatedBy": {
+    "description": "Who created another person's label.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Kim"
+      }
+    }
+  },
+  "labelsOptionsFor": "Options for {label}",
+  "@labelsOptionsFor": {
+    "placeholders": {
+      "label": {
+        "type": "String",
+        "example": "Urgent"
+      }
+    }
+  },
+  "labelsEdit": "Edit",
+  "labelsDelete": "Delete",
+  "labelsSearch": "Search labels",
+  "labelsSearchEmpty": "No label matches “{query}”.",
+  "@labelsSearchEmpty": {
+    "placeholders": {
+      "query": {
+        "type": "String",
+        "example": "urg"
+      }
+    }
+  },
+  "labelsNew": "New label",
+  "labelsNewOffline": "Creating a label needs a connection to the server.",
+  "labelsEmptyTitle": "No labels yet",
+  "labelsEmptyBody": "Labels mark tasks across all projects. Create one here or while editing a task.",
+  "labelsShowTasks": "Show tasks with label {title}",
+  "@labelsShowTasks": {
+    "description": "Screen reader hint of a label that opens its tasks.",
+    "placeholders": {
+      "title": {
+        "type": "String",
+        "example": "Urgent"
+      }
+    }
+  },
+  "labelsDeleteTitle": "Delete label “{title}”?",
+  "@labelsDeleteTitle": {
+    "placeholders": {
+      "title": {
+        "type": "String",
+        "example": "Urgent"
+      }
+    }
+  },
+  "labelsDeleteBody": "It is removed from every task that has it. This can't be undone.",
+  "labelsDeleted": "Label deleted",
+  "labelsEditTitle": "Edit label",
+  "labelsTitleLabel": "Title",
+  "labelsTitleRequired": "Please specify a title.",
+  "labelsTitleRemaining": "{count, plural, =1{1 character left} other{{count} characters left}}",
+  "@labelsTitleRemaining": {
+    "description": "Read out with the counter of a label title near its limit.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "12"
+      }
+    }
+  },
+  "labelsColour": "Colour",
+  "labelsCustomColour": "Custom colour",
+  "labelsCustomColourHelper": "Six hex digits, like 1973ff",
+  "labelsCustomColourInvalid": "Enter three or six hex digits.",
+  "labelsDescription": "Description",
+  "labelsNoDescription": "No description",
+  "labelsEditDescription": "Edit description",
+  "labelsAddDescription": "Add description",
+  "labelsDescriptionAfterCreate": "You can add a description once the label exists.",
+  "labelsDescriptionCreatorOnly": "Only the person who created this label can change it.",
+  "labelsCreate": "Create",
+  "labelsSave": "Save",
+  "labelsSaving": "Saving…",
+  "labelsCreated": "Label created",
+  "labelsSaved": "Label saved",
+  "labelsDiscardBody": "Your edits to this label will be lost.",
+  "labelsGoneTitle": "This label no longer exists",
+  "labelsGoneBody": "It may have been deleted, here or on the web.",
+  "labelsNeedsConnection": "Changing a label needs a connection to the server.",
+  "labelsUnconfirmed": "Couldn't confirm the change. Check your connection and pull down to refresh.",
+  "labelsNotCreator": "Only the person who created this label can change it.",
+  "labelsGone": "This label no longer exists.",
+  "labelsInvalid": "The server did not accept this label. Check its title and colour.",
+  "labelsRefused": "The server refused: {message}",
+  "@labelsRefused": {
+    "placeholders": {
+      "message": {
+        "type": "String",
+        "example": "Forbidden"
+      }
+    }
+  },
+  "labelsFailed": "The label could not be changed.",
+  "teamsTitle": "Teams",
+  "@teamsTitle": {
+    "description": "Title of the teams page."
+  },
+  "teamsLoading": "Loading teams…",
+  "teamsEmptyTitle": "No teams yet",
+  "teamsEmptyBody": "With a team you share projects with several people at once.",
+  "teamsNew": "New team",
+  "teamsNewOffline": "Creating a team needs a connection to the server.",
+  "teamMemberCount": "{count, plural, =1{1 member} other{{count} members}}",
+  "@teamMemberCount": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "teamAdminBadge": "Admin",
+  "@teamAdminBadge": {
+    "description": "Chip on a team the user administers."
+  },
+  "teamPublicBadge": "Public",
+  "@teamPublicBadge": {
+    "description": "Chip on a public team."
+  },
+  "teamManagedBy": "Managed by {provider}",
+  "@teamManagedBy": {
+    "description": "Chip on a team synced from a sign-in provider.",
+    "placeholders": {
+      "provider": {
+        "type": "String",
+        "example": "Authentik"
+      }
+    }
+  },
+  "teamManagedExternally": "Managed externally",
+  "@teamManagedExternally": {
+    "description": "Chip on a team synced from a sign-in provider whose name is unknown."
+  },
+  "teamNewTitle": "New team",
+  "teamNameLabel": "Name",
+  "teamNameRequired": "Please specify a name.",
+  "teamPublicLabel": "Public team",
+  "teamPublicHelp": "Everyone on this server can find it and share projects with it.",
+  "teamCreate": "Create",
+  "teamCreating": "Creating the team…",
+  "teamCreated": "Team created",
+  "teamLoading": "Loading the team…",
+  "teamGoneTitle": "This team is not available",
+  "teamGoneBody": "It may have been deleted, or you are no longer a member.",
+  "teamEdit": "Edit team",
+  "teamEditDescription": "Edit description",
+  "teamAddDescription": "Add description",
+  "teamSave": "Save",
+  "teamSaving": "Saving…",
+  "teamSaved": "Team saved",
+  "teamExternalNote": "This team is managed by {provider}. Its members change there.",
+  "@teamExternalNote": {
+    "placeholders": {
+      "provider": {
+        "type": "String",
+        "example": "Authentik"
+      }
+    }
+  },
+  "teamExternalNoteGeneric": "This team is managed by your organisation's sign-in. Its members change there.",
+  "teamMembersSection": "Members",
+  "teamMemberYou": "{name} (you)",
+  "@teamMemberYou": {
+    "description": "The signed-in user's own row among a team's members.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Kim"
+      }
+    }
+  },
+  "teamRoleAdmin": "Admin",
+  "teamRoleMember": "Member",
+  "teamMemberOptionsFor": "Options for {name}",
+  "@teamMemberOptionsFor": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Kim"
+      }
+    }
+  },
+  "teamMakeAdmin": "Make admin",
+  "teamMakeMember": "Make member",
+  "teamRemoveMember": "Remove from team",
+  "teamMadeAdmin": "{name} is an admin now",
+  "@teamMadeAdmin": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Kim"
+      }
+    }
+  },
+  "teamMadeMember": "{name} is a member now",
+  "@teamMadeMember": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Kim"
+      }
+    }
+  },
+  "teamAddMember": "Add member",
+  "teamMemberAdded": "{name} added to the team",
+  "@teamMemberAdded": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Kim"
+      }
+    }
+  },
+  "teamMemberRemoved": "{name} removed from the team",
+  "@teamMemberRemoved": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Kim"
+      }
+    }
+  },
+  "teamRemoveTitle": "Remove {name} from the team?",
+  "@teamRemoveTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Kim"
+      }
+    }
+  },
+  "teamRemoveBody": "{name} loses access to every project shared with this team.",
+  "@teamRemoveBody": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Kim"
+      }
+    }
+  },
+  "teamRemoveConfirm": "Remove",
+  "teamLeave": "Leave team",
+  "teamLeaveTitle": "Leave “{team}”?",
+  "@teamLeaveTitle": {
+    "placeholders": {
+      "team": {
+        "type": "String",
+        "example": "Design"
+      }
+    }
+  },
+  "teamLeaveBody": "You lose access to every project shared with this team. A team admin would have to add you again.",
+  "teamLeaveConfirm": "Leave",
+  "teamLeft": "You left the team",
+  "teamOnlyAdminTitle": "Make someone else admin first",
+  "teamOnlyAdminBody": "Nobody but you is an admin of this team. Without an admin, nobody could change it any more.",
+  "teamLastMemberTitle": "You are the last member",
+  "teamLastMemberBody": "The last member can't leave a team. Delete the team instead?",
+  "teamDelete": "Delete team",
+  "teamDeleteTitle": "Delete “{team}”?",
+  "@teamDeleteTitle": {
+    "placeholders": {
+      "team": {
+        "type": "String",
+        "example": "Design"
+      }
+    }
+  },
+  "teamDeleteBody": "All members lose access to every project shared with this team. This can't be undone.",
+  "teamDeleted": "Team deleted",
+  "teamAddMemberOffline": "Adding members needs a connection to the server.",
+  "teamNeedsConnection": "Changing a team needs a connection to the server.",
+  "teamUnconfirmed": "Couldn't confirm the change. Check your connection and pull down to refresh.",
+  "teamForbidden": "Only team admins can do this.",
+  "teamAlreadyMember": "This person is already a member of the team.",
+  "teamLastMemberRefused": "The last member can't leave a team. Delete the team instead.",
+  "teamExternalRefused": "Members can't be removed from a team managed by your organisation's sign-in.",
+  "teamUnknownUser": "There is no such user on this server.",
+  "teamNotMember": "This person is no longer in the team.",
+  "teamInvalid": "The server did not accept this. A name needs 1 to 250 characters.",
+  "teamGone": "This team no longer exists, or you are no longer in it.",
+  "teamRefused": "The server refused: {message}",
+  "@teamRefused": {
+    "placeholders": {
+      "message": {
+        "type": "String",
+        "example": "Forbidden"
+      }
+    }
+  },
+  "teamFailed": "That didn't work. Try again.",
+  "teamOk": "OK",
+  "shareLowerOwnAccessTitle": "Lower your own access?",
+  "@shareLowerOwnAccessTitle": {
+    "description": "Confirmation title when admins choose a lower permission on their own share row."
+  },
+  "shareLowerOwnAccessAdminBody": "You may no longer be able to change who has access to this project, nor undo this yourself.",
+  "@shareLowerOwnAccessAdminBody": {
+    "description": "Body of the confirmation when users lower their own share from admin."
+  },
+  "shareLowerOwnAccessWriteBody": "You may no longer be able to change this project or its tasks.",
+  "@shareLowerOwnAccessWriteBody": {
+    "description": "Body of the confirmation when users lower their own share from read & write to read only."
+  },
+  "shareLowerOwnAccessConfirm": "Lower access",
+  "@shareLowerOwnAccessConfirm": {
+    "description": "Confirm button of the dialog that lowers the user's own share."
+  },
+  "shareRemovedSelf": "You removed yourself",
+  "@shareRemovedSelf": {
+    "description": "Snackbar after users removed their own share of a project."
+  },
+  "shareNoAccessTitle": "You no longer have access to this project",
+  "@shareNoAccessTitle": {
+    "description": "Share page title text once the project is gone from the device after users removed their own share."
+  },
+  "shareNoAccessBody": "It is gone from this device. Someone with access can share it with you again.",
+  "@shareNoAccessBody": {
+    "description": "Body below shareNoAccessTitle."
+  },
+  "shareChangeAccessHint": "change access",
+  "@shareChangeAccessHint": {
+    "description": "Screen readers say it after 'Double tap to' on a person or team row of the share page that admins can change."
+  },
+  "linkShareRowHint": "share, copy or delete the link",
+  "@linkShareRowHint": {
+    "description": "Screen readers say it after 'Double tap to' on a link row of the share page."
+  },
+  "linkShareShareNamed": "Share {name}",
+  "@linkShareShareNamed": {
+    "description": "Tooltip and screen reader label of a link row's share button; name is the link's name or 'Link without a name'.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Family"
+      }
+    }
   }
 }

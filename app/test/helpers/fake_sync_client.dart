@@ -108,6 +108,9 @@ final class FakeSyncClient implements VikunjaReadClient {
   /// The users with access per project, for the assignee search.
   final Map<int, List<User>> projectUsers = {};
 
+  /// Everyone on the server, for the global user search.
+  List<User> allUsers = [];
+
   Future<void> _request(String description) async {
     requests.add(description);
     await beforeRequest?.call(description);
@@ -602,6 +605,21 @@ final class FakeUsersPort implements UsersPort {
     return [
       for (final user in _client.projectUsers[projectId] ?? const <User>[])
         if (user.username.toLowerCase().contains(needle) ||
+            user.name.toLowerCase().contains(needle))
+          user,
+    ];
+  }
+
+  /// Matches the exact username in any case or a part of the name, as the
+  /// server does for people who allow it; a blank query without a request.
+  @override
+  Future<List<User>> searchUsers(String query) async {
+    final needle = query.trim().toLowerCase();
+    if (needle.isEmpty) return const [];
+    await _client._request('search users $needle');
+    return [
+      for (final user in _client.allUsers)
+        if (user.username.toLowerCase() == needle ||
             user.name.toLowerCase().contains(needle))
           user,
     ];

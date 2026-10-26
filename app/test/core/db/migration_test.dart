@@ -40,7 +40,7 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 8);
+    await verifier.migrateAndValidate(db, 9);
 
     final task = (await db.tasksDao.find(1))!;
     expect(task.title, 'Keep me');
@@ -56,6 +56,7 @@ void main() {
     expect(row.pendingChanges, isNull);
     expect(row.pendingDelete, isFalse);
     expect((await db.projectsDao.loadAll()).single.title, 'Work');
+    expect((await db.projectsDao.loadAll()).single.maxPermission, isNull);
     expect(
       (await db.syncStateDao.readAll())['last_synced_at'],
       '2026-10-10T12:00:00.000Z',
@@ -97,7 +98,7 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 8);
+    await verifier.migrateAndValidate(db, 9);
 
     final op = (await db.outboxDao.all()).single;
     expect(op.id, 'op-1');
@@ -155,7 +156,7 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 8);
+    await verifier.migrateAndValidate(db, 9);
 
     final task = (await db.tasksDao.find(50))!;
     expect(task.title, 'Remind me');
@@ -213,7 +214,7 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 8);
+    await verifier.migrateAndValidate(db, 9);
 
     expect((await db.tasksDao.find(50))!.title, 'Remind me');
     final scheduled = (await db.scheduledNotificationsDao.all()).single;
@@ -283,7 +284,7 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 8);
+    await verifier.migrateAndValidate(db, 9);
 
     final parent = (await db.tasksDao.find(60))!;
     expect(parent.subtasks.map((task) => task.id), [61]);
@@ -340,7 +341,7 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 8);
+    await verifier.migrateAndValidate(db, 9);
 
     final snapshot = await db.listSnapshotsDao.load('view:70');
     expect(snapshot.positions, {61: 1, 60: 2});
@@ -395,7 +396,7 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 8);
+    await verifier.migrateAndValidate(db, 9);
 
     final task = (await db.tasksDao.find(60))!;
     expect(task.title, 'Talked about');
@@ -416,6 +417,57 @@ void main() {
     final talked = (await db.tasksDao.find(60))!;
     expect(talked.commentCount, 3);
     expect(talked.isUnread, isTrue);
+  });
+  test('v8 → v9 keeps the projects with their views, adds the permission '
+      'unknown and makes the next run a full one', () async {
+    final verifier = SchemaVerifier(GeneratedHelper());
+    final schema = await verifier.schemaAt(8);
+    schema.rawDatabase
+      ..execute(
+        'INSERT INTO users (id, username, name) '
+        "VALUES (3, 'owner', 'Owner')",
+      )
+      ..execute(
+        'INSERT INTO projects (id, title, description, identifier, hex_color, '
+        'parent_project_id, is_archived, is_favorite, position, owner_id, '
+        'created, updated) '
+        "VALUES (7, 'Shared', '<p>Ours</p>', 'SHR', '1973ff', 0, 0, 1, 2.0, "
+        '3, 1759000000000, 1760000000000)',
+      )
+      ..execute(
+        'INSERT INTO project_views (id, project_id, title, kind, position, '
+        'filter_json, bucket_configuration_mode, default_bucket_id, '
+        'done_bucket_id) '
+        "VALUES (71, 7, 'List', 'list', 100.0, NULL, 'none', 0, 0)",
+      )
+      ..execute(
+        'INSERT INTO sync_state (key, value) '
+        "VALUES ('last_synced_at', '2026-10-26T12:00:00.000Z'), "
+        "('last_full_sync_at', '2026-10-26T11:00:00.000Z')",
+      );
+    final db = AppDatabase(schema.newConnection());
+    addTearDown(db.close);
+
+    await verifier.migrateAndValidate(db, 9);
+
+    final project = (await db.projectsDao.loadProject(7))!;
+    expect(project.title, 'Shared');
+    expect(project.description, '<p>Ours</p>');
+    expect(project.identifier, 'SHR');
+    expect(project.isFavorite, isTrue);
+    expect(project.owner?.username, 'owner');
+    expect(project.views.single.title, 'List');
+    expect(project.maxPermission, isNull, reason: 'unknown, not read only');
+    final state = await db.syncStateDao.readAll();
+    expect(state[SyncStateKeys.lastSyncedAt], '2026-10-26T12:00:00.000Z');
+    expect(state, isNot(contains(SyncStateKeys.lastFullSyncAt)));
+    await db.projectsDao.upsertAll([
+      project.copyWith(maxPermission: Permission.read),
+    ]);
+    expect(
+      (await db.projectsDao.loadProject(7))!.maxPermission,
+      Permission.read,
+    );
   });
 }
 

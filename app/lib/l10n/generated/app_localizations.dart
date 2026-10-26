@@ -9005,6 +9005,1362 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No longer replying'**
   String get commentReplyDropped;
+
+  /// Project menu item that opens the project's sharing page.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get shareMenuItem;
+
+  /// Title of a project's sharing page.
+  ///
+  /// In en, this message translates to:
+  /// **'Share {project}'**
+  String sharePageTitle(String project);
+
+  /// No description provided for @sharePageLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading who has access…'**
+  String get sharePageLoading;
+
+  /// Section of the users a project is shared with.
+  ///
+  /// In en, this message translates to:
+  /// **'People'**
+  String get sharePeopleSection;
+
+  /// Section of the teams a project is shared with.
+  ///
+  /// In en, this message translates to:
+  /// **'Teams'**
+  String get shareTeamsSection;
+
+  /// Section of a project's link shares.
+  ///
+  /// In en, this message translates to:
+  /// **'Links'**
+  String get shareLinksSection;
+
+  /// No description provided for @sharePeopleEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Not shared with anyone yet'**
+  String get sharePeopleEmpty;
+
+  /// No description provided for @shareTeamsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Not shared with any team yet'**
+  String get shareTeamsEmpty;
+
+  /// No description provided for @shareLinksEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No links yet'**
+  String get shareLinksEmpty;
+
+  /// No description provided for @shareLinksIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Anyone with a link can open this project without an account, with the link\'s permission.'**
+  String get shareLinksIntro;
+
+  /// The signed-in user's own row in a share list.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} (you)'**
+  String shareUserIsYou(String name);
+
+  /// Share permission 0.
+  ///
+  /// In en, this message translates to:
+  /// **'Read only'**
+  String get sharePermissionRead;
+
+  /// Share permission 1.
+  ///
+  /// In en, this message translates to:
+  /// **'Read & write'**
+  String get sharePermissionWrite;
+
+  /// Share permission 2.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin'**
+  String get sharePermissionAdmin;
+
+  /// No description provided for @shareAddPerson.
+  ///
+  /// In en, this message translates to:
+  /// **'Add person'**
+  String get shareAddPerson;
+
+  /// No description provided for @shareAddTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'Add team'**
+  String get shareAddTeam;
+
+  /// A team share whose name the server hides because the user is not in the team.
+  ///
+  /// In en, this message translates to:
+  /// **'Hidden team'**
+  String get shareHiddenTeam;
+
+  /// No description provided for @shareTeamMemberCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 member} other{{count} members}}'**
+  String shareTeamMemberCount(int count);
+
+  /// No description provided for @shareReadOnlyNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Only project admins can change who has access'**
+  String get shareReadOnlyNote;
+
+  /// Title of the sheet that changes or removes a share.
+  ///
+  /// In en, this message translates to:
+  /// **'Access for {name}'**
+  String shareAccessFor(String name);
+
+  /// Title of the permission choice when adding a person or team.
+  ///
+  /// In en, this message translates to:
+  /// **'Permission for {name}'**
+  String sharePermissionFor(String name);
+
+  /// No description provided for @shareRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get shareRemove;
+
+  /// No description provided for @shareRemoveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {name}?'**
+  String shareRemoveTitle(String name);
+
+  /// No description provided for @shareRemovePersonBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} loses access to this project and the projects under it at once.'**
+  String shareRemovePersonBody(String name);
+
+  /// No description provided for @shareRemoveSelfBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You lose access to this project and the projects under it at once, unless you have it in another way.'**
+  String get shareRemoveSelfBody;
+
+  /// No description provided for @shareRemoveTeamBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The members of {name} lose access to this project and the projects under it at once, unless they have it in another way.'**
+  String shareRemoveTeamBody(String name);
+
+  /// No description provided for @shareCleanupOthersIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'In the projects they can no longer reach, the server also deletes:'**
+  String get shareCleanupOthersIntro;
+
+  /// No description provided for @shareCleanupOthersAssignments.
+  ///
+  /// In en, this message translates to:
+  /// **'their task assignments'**
+  String get shareCleanupOthersAssignments;
+
+  /// No description provided for @shareCleanupOthersSubscriptions.
+  ///
+  /// In en, this message translates to:
+  /// **'their subscriptions to tasks and projects'**
+  String get shareCleanupOthersSubscriptions;
+
+  /// No description provided for @shareCleanupOthersWebhooks.
+  ///
+  /// In en, this message translates to:
+  /// **'webhooks they created'**
+  String get shareCleanupOthersWebhooks;
+
+  /// No description provided for @shareCleanupSelfIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'In the projects you can no longer reach, the server also deletes:'**
+  String get shareCleanupSelfIntro;
+
+  /// No description provided for @shareCleanupSelfAssignments.
+  ///
+  /// In en, this message translates to:
+  /// **'your task assignments'**
+  String get shareCleanupSelfAssignments;
+
+  /// No description provided for @shareCleanupSelfSubscriptions.
+  ///
+  /// In en, this message translates to:
+  /// **'your subscriptions to tasks and projects'**
+  String get shareCleanupSelfSubscriptions;
+
+  /// No description provided for @shareCleanupSelfWebhooks.
+  ///
+  /// In en, this message translates to:
+  /// **'webhooks you created'**
+  String get shareCleanupSelfWebhooks;
+
+  /// No description provided for @shareAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} has access now'**
+  String shareAdded(String name);
+
+  /// No description provided for @sharePermissionChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Access for {name} changed'**
+  String sharePermissionChanged(String name);
+
+  /// No description provided for @shareRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} removed'**
+  String shareRemoved(String name);
+
+  /// No description provided for @shareSaving.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving…'**
+  String get shareSaving;
+
+  /// No description provided for @sharePeopleSearchField.
+  ///
+  /// In en, this message translates to:
+  /// **'Username, name or email'**
+  String get sharePeopleSearchField;
+
+  /// No description provided for @sharePeopleSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search by exact username, or by name or email if the person allows it'**
+  String get sharePeopleSearchHint;
+
+  /// No description provided for @sharePeopleSearching.
+  ///
+  /// In en, this message translates to:
+  /// **'Searching…'**
+  String get sharePeopleSearching;
+
+  /// No description provided for @sharePeopleNoResults.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody found who could be added'**
+  String get sharePeopleNoResults;
+
+  /// No description provided for @sharePeopleSearchOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Searching for people needs a connection.'**
+  String get sharePeopleSearchOffline;
+
+  /// No description provided for @sharePeopleSearchFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Searching did not work. Try again.'**
+  String get sharePeopleSearchFailed;
+
+  /// No description provided for @shareTeamsFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter teams'**
+  String get shareTeamsFilter;
+
+  /// No description provided for @shareTeamsLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading teams…'**
+  String get shareTeamsLoading;
+
+  /// No description provided for @shareTeamsNoneToAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'No other team to add. You can add the teams you are a member of.'**
+  String get shareTeamsNoneToAdd;
+
+  /// No description provided for @shareTeamsNoneToAddPublic.
+  ///
+  /// In en, this message translates to:
+  /// **'No other team to add. You can add the teams you are a member of and public teams.'**
+  String get shareTeamsNoneToAddPublic;
+
+  /// No description provided for @shareTeamPublic.
+  ///
+  /// In en, this message translates to:
+  /// **'Public'**
+  String get shareTeamPublic;
+
+  /// No description provided for @linkShareUnnamed.
+  ///
+  /// In en, this message translates to:
+  /// **'Link without a name'**
+  String get linkShareUnnamed;
+
+  /// No description provided for @linkSharePasswordProtected.
+  ///
+  /// In en, this message translates to:
+  /// **'Password protected'**
+  String get linkSharePasswordProtected;
+
+  /// No description provided for @linkShareCreatedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Created by {name}'**
+  String linkShareCreatedBy(String name);
+
+  /// No description provided for @linkShareShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get linkShareShare;
+
+  /// No description provided for @linkShareCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy link'**
+  String get linkShareCopy;
+
+  /// No description provided for @linkShareCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Link copied'**
+  String get linkShareCopied;
+
+  /// No description provided for @linkShareQr.
+  ///
+  /// In en, this message translates to:
+  /// **'QR code'**
+  String get linkShareQr;
+
+  /// The project view a link share opens; tapping it picks another.
+  ///
+  /// In en, this message translates to:
+  /// **'Opens {view}'**
+  String linkShareView(String view);
+
+  /// No description provided for @linkShareViewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The link opens'**
+  String get linkShareViewTitle;
+
+  /// No description provided for @linkShareDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get linkShareDelete;
+
+  /// No description provided for @linkShareDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete the link “{name}”?'**
+  String linkShareDeleteTitle(String name);
+
+  /// No description provided for @linkShareDeleteUnnamedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this link?'**
+  String get linkShareDeleteUnnamedTitle;
+
+  /// No description provided for @linkShareDeleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Anyone using this link loses access at once. This can\'t be undone.'**
+  String get linkShareDeleteBody;
+
+  /// No description provided for @linkShareDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Link deleted'**
+  String get linkShareDeleted;
+
+  /// Subject of a shared link, e.g. in an email.
+  ///
+  /// In en, this message translates to:
+  /// **'Link to {project}'**
+  String linkShareSubject(String project);
+
+  /// No description provided for @linkShareCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Create link'**
+  String get linkShareCreate;
+
+  /// No description provided for @linkShareFormTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New link'**
+  String get linkShareFormTitle;
+
+  /// No description provided for @linkShareFormPermission.
+  ///
+  /// In en, this message translates to:
+  /// **'Permission'**
+  String get linkShareFormPermission;
+
+  /// No description provided for @linkShareFormName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name (optional)'**
+  String get linkShareFormName;
+
+  /// No description provided for @linkShareFormNameHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes made through the link show this name'**
+  String get linkShareFormNameHelper;
+
+  /// No description provided for @linkShareFormPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Password (optional)'**
+  String get linkShareFormPassword;
+
+  /// No description provided for @linkShareFormPasswordHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Whoever opens the link has to enter it'**
+  String get linkShareFormPasswordHelper;
+
+  /// No description provided for @linkShareFormShowPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Show password'**
+  String get linkShareFormShowPassword;
+
+  /// No description provided for @linkShareFormHidePassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide password'**
+  String get linkShareFormHidePassword;
+
+  /// No description provided for @linkShareFormSubmit.
+  ///
+  /// In en, this message translates to:
+  /// **'Create'**
+  String get linkShareFormSubmit;
+
+  /// No description provided for @linkShareCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Link created'**
+  String get linkShareCreated;
+
+  /// No description provided for @linkShareCreatedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Share it with the people who should open this project.'**
+  String get linkShareCreatedBody;
+
+  /// No description provided for @linkShareQrSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'QR code for the link'**
+  String get linkShareQrSemantics;
+
+  /// No description provided for @linkShareQrTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'This link is too long for a QR code'**
+  String get linkShareQrTooLong;
+
+  /// No description provided for @linkShareQrHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan it with a phone\'s camera to open the project.'**
+  String get linkShareQrHint;
+
+  /// No description provided for @shareFailureOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'This needs a connection.'**
+  String get shareFailureOffline;
+
+  /// No description provided for @shareFailureUnconfirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'The server did not answer in time. Check the list before trying again.'**
+  String get shareFailureUnconfirmed;
+
+  /// No description provided for @shareFailureForbidden.
+  ///
+  /// In en, this message translates to:
+  /// **'Only project admins can change who has access.'**
+  String get shareFailureForbidden;
+
+  /// No description provided for @shareFailureAlreadyShared.
+  ///
+  /// In en, this message translates to:
+  /// **'This person already has access or owns the project.'**
+  String get shareFailureAlreadyShared;
+
+  /// No description provided for @shareFailureUnknownUser.
+  ///
+  /// In en, this message translates to:
+  /// **'There is no user with this username.'**
+  String get shareFailureUnknownUser;
+
+  /// No description provided for @shareFailureGone.
+  ///
+  /// In en, this message translates to:
+  /// **'This access was already removed.'**
+  String get shareFailureGone;
+
+  /// No description provided for @shareFailureTeamAlreadyShared.
+  ///
+  /// In en, this message translates to:
+  /// **'This team already has access.'**
+  String get shareFailureTeamAlreadyShared;
+
+  /// No description provided for @shareFailureUnknownTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'This team no longer exists.'**
+  String get shareFailureUnknownTeam;
+
+  /// No description provided for @shareFailureLinkSharingOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Link sharing is turned off on this server.'**
+  String get shareFailureLinkSharingOff;
+
+  /// No description provided for @shareFailureInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'The server did not accept this.'**
+  String get shareFailureInvalid;
+
+  /// No description provided for @shareFailureGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'That did not work. Try again.'**
+  String get shareFailureGeneric;
+
+  /// No description provided for @shareReadOnlyProjectNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Read only: you can see this project but not change it.'**
+  String get shareReadOnlyProjectNote;
+
+  /// Spoken for a task's done checkbox in a project the user may only read.
+  ///
+  /// In en, this message translates to:
+  /// **'Read only'**
+  String get shareTaskReadOnly;
+
+  /// Account tab section with the labels and teams pages.
+  ///
+  /// In en, this message translates to:
+  /// **'Organise'**
+  String get accountOrganiseHeading;
+
+  /// No description provided for @accountLabelsEntry.
+  ///
+  /// In en, this message translates to:
+  /// **'Labels'**
+  String get accountLabelsEntry;
+
+  /// No description provided for @accountTeamsEntry.
+  ///
+  /// In en, this message translates to:
+  /// **'Teams'**
+  String get accountTeamsEntry;
+
+  /// How many labels are on this device, read out for the count next to the Labels entry.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 label} other{{count} labels}}'**
+  String labelsCount(int count);
+
+  /// Title of the labels page.
+  ///
+  /// In en, this message translates to:
+  /// **'Labels'**
+  String get labelsTitle;
+
+  /// No description provided for @labelsLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading labels…'**
+  String get labelsLoading;
+
+  /// Section of the labels the user created.
+  ///
+  /// In en, this message translates to:
+  /// **'Your labels'**
+  String get labelsOwnSection;
+
+  /// Section of other people's labels the user sees on shared tasks.
+  ///
+  /// In en, this message translates to:
+  /// **'From others'**
+  String get labelsOthersSection;
+
+  /// Who created another person's label.
+  ///
+  /// In en, this message translates to:
+  /// **'By {name}'**
+  String labelsCreatedBy(String name);
+
+  /// No description provided for @labelsOptionsFor.
+  ///
+  /// In en, this message translates to:
+  /// **'Options for {label}'**
+  String labelsOptionsFor(String label);
+
+  /// No description provided for @labelsEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get labelsEdit;
+
+  /// No description provided for @labelsDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get labelsDelete;
+
+  /// No description provided for @labelsSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search labels'**
+  String get labelsSearch;
+
+  /// No description provided for @labelsSearchEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No label matches “{query}”.'**
+  String labelsSearchEmpty(String query);
+
+  /// No description provided for @labelsNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New label'**
+  String get labelsNew;
+
+  /// No description provided for @labelsNewOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Creating a label needs a connection to the server.'**
+  String get labelsNewOffline;
+
+  /// No description provided for @labelsEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No labels yet'**
+  String get labelsEmptyTitle;
+
+  /// No description provided for @labelsEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Labels mark tasks across all projects. Create one here or while editing a task.'**
+  String get labelsEmptyBody;
+
+  /// Screen reader hint of a label that opens its tasks.
+  ///
+  /// In en, this message translates to:
+  /// **'Show tasks with label {title}'**
+  String labelsShowTasks(String title);
+
+  /// No description provided for @labelsDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete label “{title}”?'**
+  String labelsDeleteTitle(String title);
+
+  /// No description provided for @labelsDeleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'It is removed from every task that has it. This can\'t be undone.'**
+  String get labelsDeleteBody;
+
+  /// No description provided for @labelsDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Label deleted'**
+  String get labelsDeleted;
+
+  /// No description provided for @labelsEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit label'**
+  String get labelsEditTitle;
+
+  /// No description provided for @labelsTitleLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get labelsTitleLabel;
+
+  /// No description provided for @labelsTitleRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please specify a title.'**
+  String get labelsTitleRequired;
+
+  /// Read out with the counter of a label title near its limit.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 character left} other{{count} characters left}}'**
+  String labelsTitleRemaining(int count);
+
+  /// No description provided for @labelsColour.
+  ///
+  /// In en, this message translates to:
+  /// **'Colour'**
+  String get labelsColour;
+
+  /// No description provided for @labelsCustomColour.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom colour'**
+  String get labelsCustomColour;
+
+  /// No description provided for @labelsCustomColourHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Six hex digits, like 1973ff'**
+  String get labelsCustomColourHelper;
+
+  /// No description provided for @labelsCustomColourInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter three or six hex digits.'**
+  String get labelsCustomColourInvalid;
+
+  /// No description provided for @labelsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get labelsDescription;
+
+  /// No description provided for @labelsNoDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'No description'**
+  String get labelsNoDescription;
+
+  /// No description provided for @labelsEditDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit description'**
+  String get labelsEditDescription;
+
+  /// No description provided for @labelsAddDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Add description'**
+  String get labelsAddDescription;
+
+  /// No description provided for @labelsDescriptionAfterCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'You can add a description once the label exists.'**
+  String get labelsDescriptionAfterCreate;
+
+  /// No description provided for @labelsDescriptionCreatorOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the person who created this label can change it.'**
+  String get labelsDescriptionCreatorOnly;
+
+  /// No description provided for @labelsCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Create'**
+  String get labelsCreate;
+
+  /// No description provided for @labelsSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get labelsSave;
+
+  /// No description provided for @labelsSaving.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving…'**
+  String get labelsSaving;
+
+  /// No description provided for @labelsCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Label created'**
+  String get labelsCreated;
+
+  /// No description provided for @labelsSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Label saved'**
+  String get labelsSaved;
+
+  /// No description provided for @labelsDiscardBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your edits to this label will be lost.'**
+  String get labelsDiscardBody;
+
+  /// No description provided for @labelsGoneTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'This label no longer exists'**
+  String get labelsGoneTitle;
+
+  /// No description provided for @labelsGoneBody.
+  ///
+  /// In en, this message translates to:
+  /// **'It may have been deleted, here or on the web.'**
+  String get labelsGoneBody;
+
+  /// No description provided for @labelsNeedsConnection.
+  ///
+  /// In en, this message translates to:
+  /// **'Changing a label needs a connection to the server.'**
+  String get labelsNeedsConnection;
+
+  /// No description provided for @labelsUnconfirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t confirm the change. Check your connection and pull down to refresh.'**
+  String get labelsUnconfirmed;
+
+  /// No description provided for @labelsNotCreator.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the person who created this label can change it.'**
+  String get labelsNotCreator;
+
+  /// No description provided for @labelsGone.
+  ///
+  /// In en, this message translates to:
+  /// **'This label no longer exists.'**
+  String get labelsGone;
+
+  /// No description provided for @labelsInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'The server did not accept this label. Check its title and colour.'**
+  String get labelsInvalid;
+
+  /// No description provided for @labelsRefused.
+  ///
+  /// In en, this message translates to:
+  /// **'The server refused: {message}'**
+  String labelsRefused(String message);
+
+  /// No description provided for @labelsFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The label could not be changed.'**
+  String get labelsFailed;
+
+  /// Title of the teams page.
+  ///
+  /// In en, this message translates to:
+  /// **'Teams'**
+  String get teamsTitle;
+
+  /// No description provided for @teamsLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading teams…'**
+  String get teamsLoading;
+
+  /// No description provided for @teamsEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No teams yet'**
+  String get teamsEmptyTitle;
+
+  /// No description provided for @teamsEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'With a team you share projects with several people at once.'**
+  String get teamsEmptyBody;
+
+  /// No description provided for @teamsNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New team'**
+  String get teamsNew;
+
+  /// No description provided for @teamsNewOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Creating a team needs a connection to the server.'**
+  String get teamsNewOffline;
+
+  /// No description provided for @teamMemberCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 member} other{{count} members}}'**
+  String teamMemberCount(int count);
+
+  /// Chip on a team the user administers.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin'**
+  String get teamAdminBadge;
+
+  /// Chip on a public team.
+  ///
+  /// In en, this message translates to:
+  /// **'Public'**
+  String get teamPublicBadge;
+
+  /// Chip on a team synced from a sign-in provider.
+  ///
+  /// In en, this message translates to:
+  /// **'Managed by {provider}'**
+  String teamManagedBy(String provider);
+
+  /// Chip on a team synced from a sign-in provider whose name is unknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Managed externally'**
+  String get teamManagedExternally;
+
+  /// No description provided for @teamNewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New team'**
+  String get teamNewTitle;
+
+  /// No description provided for @teamNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get teamNameLabel;
+
+  /// No description provided for @teamNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please specify a name.'**
+  String get teamNameRequired;
+
+  /// No description provided for @teamPublicLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Public team'**
+  String get teamPublicLabel;
+
+  /// No description provided for @teamPublicHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Everyone on this server can find it and share projects with it.'**
+  String get teamPublicHelp;
+
+  /// No description provided for @teamCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Create'**
+  String get teamCreate;
+
+  /// No description provided for @teamCreating.
+  ///
+  /// In en, this message translates to:
+  /// **'Creating the team…'**
+  String get teamCreating;
+
+  /// No description provided for @teamCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Team created'**
+  String get teamCreated;
+
+  /// No description provided for @teamLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading the team…'**
+  String get teamLoading;
+
+  /// No description provided for @teamGoneTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'This team is not available'**
+  String get teamGoneTitle;
+
+  /// No description provided for @teamGoneBody.
+  ///
+  /// In en, this message translates to:
+  /// **'It may have been deleted, or you are no longer a member.'**
+  String get teamGoneBody;
+
+  /// No description provided for @teamEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit team'**
+  String get teamEdit;
+
+  /// No description provided for @teamEditDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit description'**
+  String get teamEditDescription;
+
+  /// No description provided for @teamAddDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Add description'**
+  String get teamAddDescription;
+
+  /// No description provided for @teamSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get teamSave;
+
+  /// No description provided for @teamSaving.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving…'**
+  String get teamSaving;
+
+  /// No description provided for @teamSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Team saved'**
+  String get teamSaved;
+
+  /// No description provided for @teamExternalNote.
+  ///
+  /// In en, this message translates to:
+  /// **'This team is managed by {provider}. Its members change there.'**
+  String teamExternalNote(String provider);
+
+  /// No description provided for @teamExternalNoteGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'This team is managed by your organisation\'s sign-in. Its members change there.'**
+  String get teamExternalNoteGeneric;
+
+  /// No description provided for @teamMembersSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Members'**
+  String get teamMembersSection;
+
+  /// The signed-in user's own row among a team's members.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} (you)'**
+  String teamMemberYou(String name);
+
+  /// No description provided for @teamRoleAdmin.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin'**
+  String get teamRoleAdmin;
+
+  /// No description provided for @teamRoleMember.
+  ///
+  /// In en, this message translates to:
+  /// **'Member'**
+  String get teamRoleMember;
+
+  /// No description provided for @teamMemberOptionsFor.
+  ///
+  /// In en, this message translates to:
+  /// **'Options for {name}'**
+  String teamMemberOptionsFor(String name);
+
+  /// No description provided for @teamMakeAdmin.
+  ///
+  /// In en, this message translates to:
+  /// **'Make admin'**
+  String get teamMakeAdmin;
+
+  /// No description provided for @teamMakeMember.
+  ///
+  /// In en, this message translates to:
+  /// **'Make member'**
+  String get teamMakeMember;
+
+  /// No description provided for @teamRemoveMember.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from team'**
+  String get teamRemoveMember;
+
+  /// No description provided for @teamMadeAdmin.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is an admin now'**
+  String teamMadeAdmin(String name);
+
+  /// No description provided for @teamMadeMember.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is a member now'**
+  String teamMadeMember(String name);
+
+  /// No description provided for @teamAddMember.
+  ///
+  /// In en, this message translates to:
+  /// **'Add member'**
+  String get teamAddMember;
+
+  /// No description provided for @teamMemberAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} added to the team'**
+  String teamMemberAdded(String name);
+
+  /// No description provided for @teamMemberRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} removed from the team'**
+  String teamMemberRemoved(String name);
+
+  /// No description provided for @teamRemoveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {name} from the team?'**
+  String teamRemoveTitle(String name);
+
+  /// No description provided for @teamRemoveBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} loses access to every project shared with this team.'**
+  String teamRemoveBody(String name);
+
+  /// No description provided for @teamRemoveConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get teamRemoveConfirm;
+
+  /// No description provided for @teamLeave.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave team'**
+  String get teamLeave;
+
+  /// No description provided for @teamLeaveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave “{team}”?'**
+  String teamLeaveTitle(String team);
+
+  /// No description provided for @teamLeaveBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You lose access to every project shared with this team. A team admin would have to add you again.'**
+  String get teamLeaveBody;
+
+  /// No description provided for @teamLeaveConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave'**
+  String get teamLeaveConfirm;
+
+  /// No description provided for @teamLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'You left the team'**
+  String get teamLeft;
+
+  /// No description provided for @teamOnlyAdminTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Make someone else admin first'**
+  String get teamOnlyAdminTitle;
+
+  /// No description provided for @teamOnlyAdminBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody but you is an admin of this team. Without an admin, nobody could change it any more.'**
+  String get teamOnlyAdminBody;
+
+  /// No description provided for @teamLastMemberTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'You are the last member'**
+  String get teamLastMemberTitle;
+
+  /// No description provided for @teamLastMemberBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The last member can\'t leave a team. Delete the team instead?'**
+  String get teamLastMemberBody;
+
+  /// No description provided for @teamDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete team'**
+  String get teamDelete;
+
+  /// No description provided for @teamDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete “{team}”?'**
+  String teamDeleteTitle(String team);
+
+  /// No description provided for @teamDeleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'All members lose access to every project shared with this team. This can\'t be undone.'**
+  String get teamDeleteBody;
+
+  /// No description provided for @teamDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Team deleted'**
+  String get teamDeleted;
+
+  /// No description provided for @teamAddMemberOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Adding members needs a connection to the server.'**
+  String get teamAddMemberOffline;
+
+  /// No description provided for @teamNeedsConnection.
+  ///
+  /// In en, this message translates to:
+  /// **'Changing a team needs a connection to the server.'**
+  String get teamNeedsConnection;
+
+  /// No description provided for @teamUnconfirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t confirm the change. Check your connection and pull down to refresh.'**
+  String get teamUnconfirmed;
+
+  /// No description provided for @teamForbidden.
+  ///
+  /// In en, this message translates to:
+  /// **'Only team admins can do this.'**
+  String get teamForbidden;
+
+  /// No description provided for @teamAlreadyMember.
+  ///
+  /// In en, this message translates to:
+  /// **'This person is already a member of the team.'**
+  String get teamAlreadyMember;
+
+  /// No description provided for @teamLastMemberRefused.
+  ///
+  /// In en, this message translates to:
+  /// **'The last member can\'t leave a team. Delete the team instead.'**
+  String get teamLastMemberRefused;
+
+  /// No description provided for @teamExternalRefused.
+  ///
+  /// In en, this message translates to:
+  /// **'Members can\'t be removed from a team managed by your organisation\'s sign-in.'**
+  String get teamExternalRefused;
+
+  /// No description provided for @teamUnknownUser.
+  ///
+  /// In en, this message translates to:
+  /// **'There is no such user on this server.'**
+  String get teamUnknownUser;
+
+  /// No description provided for @teamNotMember.
+  ///
+  /// In en, this message translates to:
+  /// **'This person is no longer in the team.'**
+  String get teamNotMember;
+
+  /// No description provided for @teamInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'The server did not accept this. A name needs 1 to 250 characters.'**
+  String get teamInvalid;
+
+  /// No description provided for @teamGone.
+  ///
+  /// In en, this message translates to:
+  /// **'This team no longer exists, or you are no longer in it.'**
+  String get teamGone;
+
+  /// No description provided for @teamRefused.
+  ///
+  /// In en, this message translates to:
+  /// **'The server refused: {message}'**
+  String teamRefused(String message);
+
+  /// No description provided for @teamFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'That didn\'t work. Try again.'**
+  String get teamFailed;
+
+  /// No description provided for @teamOk.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get teamOk;
+
+  /// Confirmation title when admins choose a lower permission on their own share row.
+  ///
+  /// In en, this message translates to:
+  /// **'Lower your own access?'**
+  String get shareLowerOwnAccessTitle;
+
+  /// Body of the confirmation when users lower their own share from admin.
+  ///
+  /// In en, this message translates to:
+  /// **'You may no longer be able to change who has access to this project, nor undo this yourself.'**
+  String get shareLowerOwnAccessAdminBody;
+
+  /// Body of the confirmation when users lower their own share from read & write to read only.
+  ///
+  /// In en, this message translates to:
+  /// **'You may no longer be able to change this project or its tasks.'**
+  String get shareLowerOwnAccessWriteBody;
+
+  /// Confirm button of the dialog that lowers the user's own share.
+  ///
+  /// In en, this message translates to:
+  /// **'Lower access'**
+  String get shareLowerOwnAccessConfirm;
+
+  /// Snackbar after users removed their own share of a project.
+  ///
+  /// In en, this message translates to:
+  /// **'You removed yourself'**
+  String get shareRemovedSelf;
+
+  /// Share page title text once the project is gone from the device after users removed their own share.
+  ///
+  /// In en, this message translates to:
+  /// **'You no longer have access to this project'**
+  String get shareNoAccessTitle;
+
+  /// Body below shareNoAccessTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'It is gone from this device. Someone with access can share it with you again.'**
+  String get shareNoAccessBody;
+
+  /// Screen readers say it after 'Double tap to' on a person or team row of the share page that admins can change.
+  ///
+  /// In en, this message translates to:
+  /// **'change access'**
+  String get shareChangeAccessHint;
+
+  /// Screen readers say it after 'Double tap to' on a link row of the share page.
+  ///
+  /// In en, this message translates to:
+  /// **'share, copy or delete the link'**
+  String get linkShareRowHint;
+
+  /// Tooltip and screen reader label of a link row's share button; name is the link's name or 'Link without a name'.
+  ///
+  /// In en, this message translates to:
+  /// **'Share {name}'**
+  String linkShareShareNamed(String name);
 }
 
 class _AppLocalizationsDelegate

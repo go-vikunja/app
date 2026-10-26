@@ -59,6 +59,24 @@ void main() {
       expect(created.taskIdentifier, 'HOME-12');
     });
 
+    test('the team of a membership, which the team page opens by id', () {
+      final added = item('team.member.added', {
+        'doer': anna,
+        'member': me,
+        'team': {'id': 12, 'name': 'Gardeners'},
+      });
+
+      expect(added.teamId, 12);
+      expect(added.teamName, 'Gardeners');
+      expect(item('team.member.added', {'member': me}).teamId, isNull);
+      expect(
+        item('team.member.added', {
+          'team': {'id': 0, 'name': 'Gardeners'},
+        }).teamId,
+        isNull,
+      );
+    });
+
     test('the username for a user without a name', () {
       expect(item('task.created', {'doer': ben}).doerName, 'ben');
     });

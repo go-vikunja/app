@@ -1,0 +1,13 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v2/teams",
+  "sent": {
+    "name": "Fixture team two",
+    "is_public": false
+  },
+  "status": 201,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"id\":10,\"name\":\"Fixture team two\",\"description\":\"\",\"external_id\":\"\",\"created_by\":{\"id\":145,\"name\":\"\",\"username\":\"fixtureowner\",\"created\":\"0001-01-01T00:00:00Z\",\"updated\":\"0001-01-01T00:00:00Z\"},\"members\":null,\"created\":\"2026-10-26T11:17:06.26041417Z\",\"updated\":\"2026-10-26T11:17:06.260426752Z\",\"is_public\":false}\n"
+}

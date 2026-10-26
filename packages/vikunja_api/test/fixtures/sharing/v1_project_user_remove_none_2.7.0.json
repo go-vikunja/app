@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "DELETE /api/v1/projects/418/users/fixtureguest",
+  "status": 403,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"code\":7003,\"message\":\"This user does not have access to the project.\"}\n"
+}

@@ -1,11 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/outbox/task_changes_json.dart';
+import 'package:vikunja_mobile/core/repositories/label_repository.dart';
 import 'package:vikunja_mobile/core/repositories/local/local_label_repository.dart';
 import 'package:vikunja_mobile/core/repositories/local/local_user_repository.dart';
 
 import '../../helpers/fake_sync_client.dart';
 import '../../helpers/fake_write_client.dart';
+import '../../helpers/recording_sync_engine.dart';
 import '../../helpers/sample_data.dart';
 import '../../helpers/test_database.dart';
 
@@ -18,12 +21,20 @@ void main() {
     final now = DateTime.utc(2026, 10, 11, 12);
     late FakeWriteClient write;
     late FakeSyncClient read;
+    late RecordingSyncEngine sync;
     late LocalLabelRepository repository;
 
     setUp(() async {
       write = FakeWriteClient(clock: () => now);
       read = FakeSyncClient();
-      repository = LocalLabelRepository(db, write, read, now: () => now);
+      sync = RecordingSyncEngine();
+      repository = LocalLabelRepository(
+        db,
+        write,
+        read,
+        sync: sync,
+        now: () => now,
+      );
       addTearDown(repository.dispose);
       await db.labelsDao.upsertAll([
         sampleLabel(id: 1, title: 'urgent'),
@@ -219,6 +230,207 @@ void main() {
       expect(read.requests, ['labels page 1 search errand']);
       expect(write.requests, ['create label errand']);
     });
+
+    group('update', () {
+      const me = User(id: 5, username: 'me');
+
+      setUp(() async {
+        const mine = Label(
+          id: 3,
+          title: 'errand',
+          description: '<p>Outside</p>',
+          hexColor: 'ffbe0b',
+          createdBy: me,
+        );
+        await db.labelsDao.upsertAll([mine]);
+        write.serverLabels[3] = mine;
+      });
+
+      test('sends only the changes, stores the answer at once and syncs '
+          'after it', () async {
+        final changed = await repository.update(
+          3,
+          const LabelChanges(title: 'errands', hexColor: ''),
+        );
+
+        expect(write.requests, [
+          'update label 3 LabelChanges(title, hexColor)',
+        ]);
+        expect(changed.title, 'errands');
+        expect(changed.hexColor, '');
+        expect(changed.description, '<p>Outside</p>');
+        final stored = (await db.labelsDao.loadAll()).singleWhere(
+          (label) => label.id == 3,
+        );
+        expect(stored, changed);
+        expect(stored.createdBy, me);
+        expect(sync.refreshAfterWriteCalls, 1);
+      });
+
+      test('keeps the stored creator when the answer has none', () async {
+        write.serverLabels[3] = const Label(id: 3, title: 'errand');
+
+        await repository.update(3, const LabelChanges(title: 'errands'));
+
+        final stored = (await db.labelsDao.loadAll()).singleWhere(
+          (label) => label.id == 3,
+        );
+        expect(stored.title, 'errands');
+        expect(stored.createdBy, me);
+      });
+
+      test('refuses a blank or too long title before any request', () async {
+        for (final title in ['', '   ', 'x' * 251]) {
+          await expectLater(
+            repository.update(3, LabelChanges(title: title)),
+            throwsArgumentError,
+          );
+        }
+        expect(
+          (await repository.update(3, LabelChanges(title: 'ä' * 250))).title,
+          'ä' * 250,
+        );
+        expect(write.requests, hasLength(1));
+      });
+
+      test("another user's label is refused and nothing changes", () async {
+        write.labels.othersLabels.add(3);
+
+        await expectLater(
+          repository.update(3, const LabelChanges(title: 'mine now')),
+          throwsA(isA<Forbidden>()),
+        );
+
+        expect(
+          (await db.labelsDao.loadAll()).map((label) => label.title),
+          containsAll(['errand', 'urgent', 'Home']),
+        );
+        expect(sync.refreshAfterWriteCalls, 0);
+      });
+
+      test('a failure changes nothing here', () async {
+        write.beforeRequest = (_) =>
+            throw const NetworkFailure(NetworkProblem.unreachable);
+
+        await expectLater(
+          repository.update(3, const LabelChanges(title: 'errands')),
+          throwsA(isA<NetworkFailure>()),
+        );
+
+        expect(
+          (await db.labelsDao.loadAll()).map((label) => label.title),
+          contains('errand'),
+        );
+        expect(sync.refreshAfterWriteCalls, 0);
+      });
+
+      test('a label gone on the server goes here too', () async {
+        write.serverLabels.remove(3);
+
+        await expectLater(
+          repository.update(3, const LabelChanges(title: 'errands')),
+          throwsA(isA<NotFound>().having((f) => f.code, 'code', 8002)),
+        );
+
+        expect(
+          (await db.labelsDao.loadAll()).map((label) => label.id),
+          isNot(contains(3)),
+        );
+        expect(sync.refreshAfterWriteCalls, 1);
+      });
+    });
+
+    group('delete', () {
+      setUp(() async {
+        await db.projectsDao.upsertAll([const Project(id: 1, title: 'Inbox')]);
+        write.serverLabels[1] = sampleLabel(id: 1, title: 'urgent');
+        await db.tasksDao.upsertAll([
+          sampleTask(
+            id: 10,
+            title: 'Call',
+            labels: [
+              sampleLabel(id: 1, title: 'urgent'),
+              sampleLabel(id: 2, title: 'Home'),
+            ],
+          ),
+        ]);
+      });
+
+      test('removes the label from every task and the queued edits, and '
+          'syncs after it', () async {
+        await db.outboxDao.queueUpdate(
+          10,
+          const TaskChanges(
+            title: 'Call back',
+            labels: IdSetChange(removed: {1}),
+          ),
+          now: now,
+        );
+
+        await repository.delete(1);
+
+        expect(write.requests, ['delete label 1']);
+        expect(write.serverLabels, isNot(contains(1)));
+        expect((await db.labelsDao.loadAll()).map((label) => label.id), [2]);
+        expect((await db.tasksDao.find(10))!.labels.map((label) => label.id), [
+          2,
+        ]);
+        final op = (await db.outboxDao.all()).single;
+        expect(
+          decodeTaskChanges(op.payload),
+          const TaskChanges(title: 'Call back'),
+        );
+        expect(sync.refreshAfterWriteCalls, 1);
+      });
+
+      test('a label gone already is deleted here as well', () async {
+        write.serverLabels.remove(1);
+
+        await repository.delete(1);
+
+        expect((await db.labelsDao.loadAll()).map((label) => label.id), [2]);
+      });
+
+      test("another user's label is refused and stays", () async {
+        write.labels.othersLabels.add(1);
+
+        await expectLater(repository.delete(1), throwsA(isA<Forbidden>()));
+
+        expect((await db.tasksDao.find(10))!.labels.map((label) => label.id), [
+          1,
+          2,
+        ]);
+        expect(sync.refreshAfterWriteCalls, 0);
+      });
+
+      test('a failed sync after it is quiet', () async {
+        sync.error = const NetworkFailure(NetworkProblem.unreachable);
+
+        await repository.delete(1);
+        await pumpEventQueue();
+
+        expect(sync.refreshAfterWriteCalls, 1);
+      });
+    });
+
+    test("a label is its creator's own", () {
+      const me = User(id: 5, username: 'me');
+      const other = User(id: 6, username: 'other');
+
+      expect(
+        isOwnLabel(const Label(id: 1, title: 'a', createdBy: me), 5),
+        isTrue,
+      );
+      expect(
+        isOwnLabel(const Label(id: 1, title: 'a', createdBy: other), 5),
+        isFalse,
+      );
+      expect(isOwnLabel(const Label(id: 1, title: 'a'), 5), isFalse);
+      expect(
+        isOwnLabel(const Label(id: 1, title: 'a', createdBy: me), null),
+        isFalse,
+      );
+    });
   });
 
   group('LocalUserRepository', () {
@@ -257,6 +469,22 @@ void main() {
       );
 
       expect(await repository.knownUsers(), [ben]);
+    });
+
+    test('the global search asks the server with the trimmed query and '
+        'remembers what it found', () async {
+      read.allUsers = [ana, ben];
+
+      expect(await repository.search(' BEN '), [ben]);
+      expect(read.requests, ['search users ben']);
+      expect(await repository.knownUsers(), [ben]);
+    });
+
+    test('a blank global search finds nobody without a request', () async {
+      read.allUsers = [ana, ben];
+
+      expect(await repository.search('  '), isEmpty);
+      expect(read.requests, isEmpty);
     });
 
     test('the known users stream follows searches and syncs', () async {

@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "GET /api/v1/users?s=nobody-at-all",
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "null\n"
+}

@@ -718,6 +718,54 @@ final class FakeLabelsWritePort implements LabelsWritePort {
     await _client.afterRequest?.call(description);
     return created;
   }
+
+  /// Labels of other users: changing or deleting one is `Forbidden`, as on
+  /// the server.
+  final Set<int> othersLabels = {};
+
+  /// Applies what [changes] set to the label in
+  /// [FakeWriteClient.serverLabels]; one it does not hold is a `NotFound`
+  /// code 8002.
+  @override
+  Future<Label> update(int id, LabelChanges changes) async {
+    final description = 'update label $id $changes';
+    await _client._request(description);
+    if (othersLabels.contains(id)) throw const Forbidden();
+    final current = _client.serverLabels[id];
+    if (current == null) throw const NotFound(code: 8002);
+    final updated = Label(
+      id: id,
+      title: changes.title ?? current.title,
+      description: changes.description ?? current.description,
+      hexColor: changes.hexColor ?? current.hexColor,
+      createdBy: current.createdBy,
+      created: current.created,
+      updated: _client._clock().toUtc(),
+    );
+    _client.serverLabels[id] = updated;
+    await _client.afterRequest?.call(description);
+    return updated;
+  }
+
+  /// One that is gone already counts as deleted.
+  @override
+  Future<void> delete(int id) async {
+    final description = 'delete label $id';
+    await _client._request(description);
+    if (othersLabels.contains(id)) throw const Forbidden();
+    _client.serverLabels.remove(id);
+    for (final task in [..._client.serverTasks.values]) {
+      if (task.labels.any((label) => label.id == id)) {
+        _client.serverTasks[task.id] = task.copyWith(
+          labels: [
+            for (final label in task.labels)
+              if (label.id != id) label,
+          ],
+        );
+      }
+    }
+    await _client.afterRequest?.call(description);
+  }
 }
 
 final class FakeNotificationsWritePort implements NotificationsWritePort {

@@ -1,0 +1,7 @@
+{
+  "server": "2.7.0",
+  "request": "DELETE /api/v2/teams/10/members/fixturemember",
+  "status": 204,
+  "headers": {},
+  "body": ""
+}

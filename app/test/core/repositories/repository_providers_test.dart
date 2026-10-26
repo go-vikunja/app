@@ -4,8 +4,10 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/auth/sign_out_providers.dart';
 import 'package:vikunja_mobile/core/repositories/bucket_repository_providers.dart';
+import 'package:vikunja_mobile/core/repositories/project_sharing_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/subscription_repository_providers.dart';
+import 'package:vikunja_mobile/core/repositories/team_repository_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/overview/application/open_tasks_provider.dart';
@@ -44,6 +46,8 @@ void main() {
     expect(container.read(userRepositoryProvider), isNull);
     expect(container.read(subscriptionRepositoryProvider), isNull);
     expect(container.read(bucketRepositoryProvider), isNull);
+    expect(container.read(teamRepositoryProvider), isNull);
+    expect(container.read(projectSharingRepositoryProvider), isNull);
     final projects = container.listen(projectsProvider, (_, _) {});
     expect(projects.read(), const AsyncLoading<List<Project>>());
     final status = container.listen(syncStatusProvider, (_, _) {});
@@ -104,6 +108,18 @@ void main() {
       expect(
         container.read(bucketRepositoryProvider),
         same(dataFor(bob.id).buckets),
+      );
+      expect(
+        container.read(teamRepositoryProvider),
+        same(dataFor(bob.id).teams),
+      );
+      expect(
+        container.read(projectSharingRepositoryProvider),
+        same(dataFor(bob.id).sharing),
+      );
+      expect(
+        container.read(labelRepositoryProvider),
+        same(dataFor(bob.id).labels),
       );
       // The old account's data must not linger while the new one loads.
       expect(

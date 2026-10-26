@@ -3,22 +3,28 @@ import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/theme/hex_color.dart';
 import 'package:vikunja_mobile/features/tasks/application/task_draft.dart';
 
-/// The web picker's six defaults, "no colour", and the task's own colour
-/// when it is none of those. [value] and the callback carry six hex digits
-/// without `#`, or an empty string.
+/// The web picker's six defaults (or another [palette]), "no colour", and
+/// the task's own colour when it is none of those. [value] and the callback
+/// carry six hex digits without `#`, or an empty string.
 class ColorRow extends StatelessWidget {
-  const new({required this.value, required this.onChanged, super.key});
+  const new({
+    required this.value,
+    required this.onChanged,
+    this.palette = defaultTaskColors,
+    super.key,
+  });
 
   final String value;
   final ValueChanged<String> onChanged;
+  final List<String> palette;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final colors = Theme.of(context).colorScheme;
     final choices = [
-      ...defaultTaskColors,
-      if (value.isNotEmpty && !defaultTaskColors.contains(value)) value,
+      ...palette,
+      if (value.isNotEmpty && !palette.contains(value)) value,
     ];
     return Wrap(
       spacing: 8,

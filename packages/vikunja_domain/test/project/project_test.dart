@@ -95,4 +95,63 @@ void main() {
       isNot(const Project(id: 1, title: 'q')),
     );
   });
+
+  group('max permission', () {
+    const shared = Project(
+      id: 7,
+      title: 'Shared',
+      maxPermission: Permission.read,
+    );
+
+    test('a changed permission makes another project', () {
+      expect(shared.copyWith(maxPermission: Permission.write), isNot(shared));
+      expect(
+        shared.copyWith(maxPermission: Permission.write).hashCode,
+        isNot(shared.hashCode),
+      );
+      expect(shared.copyWith(), shared);
+    });
+
+    test('copyWith clears it with null and keeps it when left out', () {
+      expect(shared.copyWith(maxPermission: null).maxPermission, isNull);
+      expect(shared.copyWith(title: 'Renamed').maxPermission, Permission.read);
+      expect(shared.copyWith(title: 'Renamed').title, 'Renamed');
+    });
+
+    test('copyWith keeps and replaces every other field', () {
+      final full = Project(
+        id: 3,
+        title: 'Full',
+        description: '<p>d</p>',
+        identifier: 'FU',
+        hexColor: '1973ff',
+        parentProjectId: 2,
+        isArchived: true,
+        isFavorite: true,
+        position: 4.5,
+        owner: const User(id: 1, username: 'owner'),
+        views: const [
+          ProjectView(
+            id: 9,
+            projectId: 3,
+            title: 'List',
+            kind: ProjectViewKind.list,
+          ),
+        ],
+        created: DateTime.utc(2026),
+        updated: DateTime.utc(2026, 2),
+        maxPermission: Permission.admin,
+      );
+
+      final copy = full.copyWith();
+
+      expect(copy, full);
+      expect(copy.owner, full.owner);
+      expect(copy.views, full.views);
+      expect(copy.created, full.created);
+      expect(full.copyWith(owner: null).owner, isNull);
+      expect(full.copyWith(updated: null).updated, isNull);
+      expect(full.copyWith(parentProjectId: 0).isTopLevel, isTrue);
+    });
+  });
 }

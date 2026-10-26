@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v1/teams/9/members/fixturemember/admin",
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"id\":19,\"username\":\"fixturemember\",\"admin\":true,\"created\":\"2026-10-26T11:17:07Z\"}\n"
+}

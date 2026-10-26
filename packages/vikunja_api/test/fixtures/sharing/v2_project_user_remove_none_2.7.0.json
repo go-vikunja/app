@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "DELETE /api/v2/projects/418/users/fixtureguest",
+  "status": 403,
+  "headers": {
+    "content-type": "application/problem+json"
+  },
+  "body": "{\"$schema\":\"http://localhost:34527/api/v2/schemas/VikunjaErrorModel.json\",\"title\":\"Forbidden\",\"status\":403,\"detail\":\"This user does not have access to the project.\",\"code\":7003}\n"
+}

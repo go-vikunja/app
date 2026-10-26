@@ -1,0 +1,13 @@
+{
+  "server": "2.7.0",
+  "request": "PUT /api/v1/projects/418/users",
+  "sent": {
+    "username": "fixturemember",
+    "permission": 0
+  },
+  "status": 409,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"code\":7002,\"message\":\"This user already has access to this project.\"}\n"
+}

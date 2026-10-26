@@ -101,4 +101,13 @@ void main() {
 
     expect(describe(const RateLimited()), 'rate');
   });
+
+  test('a missing team member is a not found of an existing route', () {
+    const failure = TeamMemberMissing();
+
+    expect(failure, isA<NotFound>());
+    expect(failure.routeAbsent, isFalse);
+    expect(failure.code, isNull);
+    expect(failure.toString(), 'TeamMemberMissing');
+  });
 }

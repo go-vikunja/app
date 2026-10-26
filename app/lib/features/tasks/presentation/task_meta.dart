@@ -176,11 +176,13 @@ class CommentCount extends StatelessWidget {
 
 /// A label as a small pill in its colour from the server, with black or
 /// white text as on the web, which keeps at least 4.5:1; without a
-/// colour in the secondary container colour.
+/// colour in the secondary container colour. With [onTap] it is a button
+/// that shows the label's tasks, with a tap target of the minimum height.
 class LabelPill extends StatelessWidget {
-  const new({required this.label, super.key});
+  const new({required this.label, this.onTap, super.key});
 
   final Label label;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -190,7 +192,7 @@ class LabelPill extends StatelessWidget {
     final (fill, foreground) = background == null
         ? (colors.secondaryContainer, colors.onSecondaryContainer)
         : (background, contrastingTextColor(background));
-    return DecoratedBox(
+    final pill = DecoratedBox(
       decoration: BoxDecoration(
         color: fill,
         borderRadius: BorderRadius.circular(4),
@@ -203,6 +205,25 @@ class LabelPill extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: theme.textTheme.labelSmall?.copyWith(color: foreground),
           semanticsLabel: context.l10n.labelSemantics(label.title),
+        ),
+      ),
+    );
+    final onTap = this.onTap;
+    if (onTap == null) return pill;
+    return Semantics(
+      container: true,
+      button: true,
+      label: context.l10n.labelsShowTasks(label.title),
+      excludeSemantics: true,
+      onTap: onTap,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(4),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            minHeight: kMinInteractiveDimension,
+          ),
+          child: Align(widthFactor: 1, child: pill),
         ),
       ),
     );

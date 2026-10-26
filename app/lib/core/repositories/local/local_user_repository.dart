@@ -21,6 +21,13 @@ final class LocalUserRepository implements UserRepository {
   }
 
   @override
+  Future<List<User>> search(String query) async {
+    final found = await _read.users.searchUsers(query.trim());
+    await _db.usersDao.upsertAll(found);
+    return found;
+  }
+
+  @override
   Future<List<User>> knownUsers() => _db.usersDao.loadAll();
 
   @override

@@ -18,6 +18,9 @@ class Projects extends Table {
   IntColumn get created => integer().map(const EpochMillis()).nullable()();
   IntColumn get updated => integer().map(const EpochMillis()).nullable()();
 
+  /// `Permission.value` of the signed-in user, null while not known.
+  IntColumn get maxPermission => integer().nullable()();
+
   @override
   Set<Column<Object>> get primaryKey => {id};
 }

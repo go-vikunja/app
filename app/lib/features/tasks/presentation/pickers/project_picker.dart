@@ -8,15 +8,15 @@ import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 import 'package:vikunja_mobile/features/tasks/application/default_project.dart';
 
 /// Lets the user pick one of [projects] (the tree without archived and
-/// pseudo projects), indented by depth; null when dismissed. A sheet on
-/// every platform: an action sheet would centre the titles and lose the
-/// tree, and grow with every project.
+/// pseudo projects and those the user may only read), indented by depth;
+/// null when dismissed. A sheet on every platform: an action sheet would
+/// centre the titles and lose the tree, and grow with every project.
 Future<Project?> pickProject(
   BuildContext context, {
   required List<Project> projects,
   required int? selectedId,
 }) {
-  final rows = selectableProjects(projects);
+  final rows = selectableProjects(writableProjects(projects));
   switch (Theme.of(context).platform) {
     case TargetPlatform.iOS || TargetPlatform.macOS:
       return showCupertinoSheet<Project>(

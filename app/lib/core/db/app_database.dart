@@ -66,7 +66,7 @@ final class AppDatabase extends _$AppDatabase {
   new(super.e);
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -108,6 +108,13 @@ final class AppDatabase extends _$AppDatabase {
         await m.addColumn(tasks, tasks.isUnread);
         // The incremental run only sees tasks that change, so the next run
         // is a full one that fills both in for every task.
+        await (delete(
+          syncState,
+        )..where((row) => row.key.equals('last_full_sync_at'))).go();
+      }
+      if (from < 9) {
+        await m.addColumn(projects, projects.maxPermission);
+        // The next run is a full one, which writes every project with it.
         await (delete(
           syncState,
         )..where((row) => row.key.equals('last_full_sync_at'))).go();

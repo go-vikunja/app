@@ -1,0 +1,11 @@
+{
+  "server": "2.7.0",
+  "request": "GET /api/v1/projects/418/shares?page=1&per_page=2",
+  "status": 200,
+  "headers": {
+    "content-type": "application/json",
+    "x-pagination-total-pages": "2",
+    "x-pagination-result-count": "2"
+  },
+  "body": "[{\"id\":18,\"hash\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\"name\":\"Fixture read link\",\"permission\":0,\"sharing_type\":1,\"password\":\"\",\"shared_by\":{\"id\":145,\"name\":\"\",\"username\":\"fixtureowner\",\"email\":\"fixtureowner@example.invalid\",\"created\":\"2026-10-26T11:16:56Z\",\"updated\":\"2026-10-26T11:16:56Z\"},\"created\":\"2026-10-26T11:17:30Z\",\"updated\":\"2026-10-26T11:17:30Z\"},{\"id\":19,\"hash\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\"name\":\"Fixture team link\",\"permission\":1,\"sharing_type\":2,\"password\":\"\",\"shared_by\":{\"id\":145,\"name\":\"\",\"username\":\"fixtureowner\",\"email\":\"fixtureowner@example.invalid\",\"created\":\"2026-10-26T11:16:56Z\",\"updated\":\"2026-10-26T11:16:56Z\"},\"created\":\"2026-10-26T11:17:31Z\",\"updated\":\"2026-10-26T11:17:31Z\"}]\n"
+}

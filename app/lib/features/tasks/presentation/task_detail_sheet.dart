@@ -33,6 +33,7 @@ import 'package:vikunja_mobile/features/common/presentation/identifier_text.dart
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/common/presentation/user_avatar.dart';
 import 'package:vikunja_mobile/features/description_editor/application/description_target.dart';
+import 'package:vikunja_mobile/features/projects/application/project_access.dart';
 import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/sync/application/offline_state.dart';
@@ -345,9 +346,11 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
   void _rememberAccess() {
     final account = _account;
     final taskId = _details.id;
-    final details = _loadedDetails();
-    if (account == null || taskId == null || details == null) return;
-    _access.remember(account, taskId, writable: _writable(details));
+    // Only what the server said: an unknown one must not hide the
+    // permission the sync stored for the project.
+    final writable = _loadedDetails()?.maxPermission?.canWrite;
+    if (account == null || taskId == null || writable == null) return;
+    _access.remember(account, taskId, writable: writable);
   }
 
   // v1 servers do not say; the server refuses what the user may not do.
@@ -929,6 +932,10 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
     router.go(AppRoutes.project(project.id));
   }
 
+  /// The label's open tasks over the sheet, which going back brings back.
+  void _openLabel(Label label) =>
+      unawaited(context.pushPage<void>(AppRoutes.labelTasks(label.id)));
+
   /// Works offline: the subtask and its relation are queued, the create
   /// first. True once the subtask exists, also when its relation could not
   /// be queued: adding it again would make a second one.
@@ -1011,17 +1018,17 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
       if (id != null && id > 0 && _details.id != id) _loadDetails(id);
     });
     final project = ref.watch(projectByIdProvider(task.projectId));
+    final projectAccess = ref.watch(projectAccessProvider(task.projectId));
     final projects = ref.watch(projectsProvider).value ?? const <Project>[];
     final projectTitles = {
       for (final project in projects) project.id: project.displayTitle(l10n),
     };
+    final projectsById = {for (final project in projects) project.id: project};
     // The server refuses every task write in an archived project, also
     // below an archived parent; a task shown only from the server (a link
     // to one this device has not synced yet) has no row to queue on. The
     // same holds for its attachments.
-    final archived = isArchivedInTree(task.projectId, {
-      for (final project in projects) project.id: project,
-    });
+    final archived = isArchivedInTree(task.projectId, projectsById);
     final descriptionWriter = repository != null && stored != null && !archived
         ? repository
         : null;
@@ -1130,13 +1137,13 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
         _Attribute(
           icon: Icons.label_outline,
           label: l10n.taskDetailLabels,
+          merge: false,
           value: (alignment) => Wrap(
             alignment: alignment,
             spacing: 6,
-            runSpacing: 6,
             children: [
               for (final label in rowLabels(task.labels))
-                LabelPill(label: label),
+                LabelPill(label: label, onTap: () => _openLabel(label)),
             ],
           ),
         ),
@@ -1168,14 +1175,32 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                 TaskDetailsLoaded(:final details) when task.id > 0 => details,
                 _ => null,
               };
-              // Until the details arrive, what an earlier read said.
-              final writable = details != null
-                  ? _writable(details)
-                  : switch (_account) {
-                      final account? => _access.writable(account, task.id),
-                      null => null,
-                    };
+              // Until the details arrive (or when they leave it open), the
+              // permission the last sync stored for the project, which
+              // follows changes on the web; an earlier read in this run of
+              // the app only where the server stores none.
+              final writable =
+                  details?.maxPermission?.canWrite ??
+                  (projectAccess.isKnown ? projectAccess.canWrite : null) ??
+                  switch (_account) {
+                    final account? => _access.writable(account, task.id),
+                    null => null,
+                  } ??
+                  (details == null ? null : _writable(details));
               final readOnly = writable == false;
+              // Every task write in a read-only project would end as a
+              // sync problem.
+              final changer = readOnly ? null : repository;
+              // A subtask may live in another project.
+              bool subtaskReadOnly(Task subtask) =>
+                  subtask.projectId == task.projectId
+                  ? readOnly
+                  : switch (projectsById[subtask.projectId]) {
+                      final project? => !ProjectAccess.of(
+                        project,
+                      ).canChangeTasks,
+                      null => false,
+                    };
               final mayWrite = onlineWrites && writable == true;
               final canComment = mayWrite && commentsOffered;
               // Shown disabled while the first read is under way, so that
@@ -1255,13 +1280,14 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                                 )
                               : const SizedBox.shrink(),
                         ),
-                        IconButton(
-                          onPressed: repository == null
-                              ? null
-                              : () => _edit(task),
-                          tooltip: l10n.taskEdit,
-                          icon: const Icon(Icons.edit_outlined),
-                        ),
+                        if (!readOnly)
+                          IconButton(
+                            onPressed: repository == null
+                                ? null
+                                : () => _edit(task),
+                            tooltip: l10n.taskEdit,
+                            icon: const Icon(Icons.edit_outlined),
+                          ),
                         ValueListenableBuilder(
                           valueListenable: _follow,
                           builder: (context, state, _) => FollowButton(
@@ -1272,60 +1298,61 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                         ),
                         FavouriteButton(
                           isFavorite: task.isFavorite,
-                          onChanged: repository == null
+                          onChanged: changer == null
                               ? null
                               : (favorite) => unawaited(
                                   writeTaskFavorite(
-                                    repository,
+                                    changer,
                                     task,
                                     favorite: favorite,
                                   ),
                                 ),
                         ),
-                        PopupMenuButton<_SheetAction>(
-                          tooltip: l10n.moreActions,
-                          enabled: repository != null,
-                          onSelected: (action) => switch (action) {
-                            _SheetAction.duplicate => unawaited(
-                              _duplicate(repository!, task),
-                            ),
-                            _SheetAction.delete => unawaited(
-                              _delete(repository!, task),
-                            ),
-                          },
-                          itemBuilder: (context) => [
-                            PopupMenuItem(
-                              value: _SheetAction.duplicate,
-                              enabled: !_duplicating,
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.content_copy_outlined),
-                                  const SizedBox(width: 12),
-                                  Flexible(child: Text(l10n.taskDuplicate)),
-                                ],
+                        if (!readOnly)
+                          PopupMenuButton<_SheetAction>(
+                            tooltip: l10n.moreActions,
+                            enabled: repository != null,
+                            onSelected: (action) => switch (action) {
+                              _SheetAction.duplicate => unawaited(
+                                _duplicate(repository!, task),
                               ),
-                            ),
-                            const PopupMenuDivider(),
-                            PopupMenuItem(
-                              value: _SheetAction.delete,
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.delete_outline,
-                                    color: colors.error,
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Flexible(
-                                    child: Text(
-                                      l10n.taskDelete,
-                                      style: TextStyle(color: colors.error),
+                              _SheetAction.delete => unawaited(
+                                _delete(repository!, task),
+                              ),
+                            },
+                            itemBuilder: (context) => [
+                              PopupMenuItem(
+                                value: _SheetAction.duplicate,
+                                enabled: !_duplicating,
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.content_copy_outlined),
+                                    const SizedBox(width: 12),
+                                    Flexible(child: Text(l10n.taskDuplicate)),
+                                  ],
+                                ),
+                              ),
+                              const PopupMenuDivider(),
+                              PopupMenuItem(
+                                value: _SheetAction.delete,
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.delete_outline,
+                                      color: colors.error,
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(width: 12),
+                                    Flexible(
+                                      child: Text(
+                                        l10n.taskDelete,
+                                        style: TextStyle(color: colors.error),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
+                            ],
+                          ),
                         IconButton(
                           onPressed: () => Navigator.of(context).pop(),
                           tooltip: l10n.taskDetailClose,
@@ -1378,7 +1405,7 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                   _Inset(
                     child: _Title(
                       task: task,
-                      onEdit: repository == null ? null : () => _edit(task),
+                      onEdit: changer == null ? null : () => _edit(task),
                     ),
                   ),
                   if (details != null &&
@@ -1402,16 +1429,21 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                       ),
                     ),
                   const SizedBox(height: 12),
-                  _Inset(
-                    child: _DoneButton(
-                      done: task.done,
-                      onPressed: repository == null
-                          ? null
-                          : () => unawaited(
-                              writeTaskDone(repository, task, done: !task.done),
-                            ),
+                  if (!readOnly)
+                    _Inset(
+                      child: _DoneButton(
+                        done: task.done,
+                        onPressed: repository == null
+                            ? null
+                            : () => unawaited(
+                                writeTaskDone(
+                                  repository,
+                                  task,
+                                  done: !task.done,
+                                ),
+                              ),
+                      ),
                     ),
-                  ),
                   if (attributes.isNotEmpty) ...[
                     const SizedBox(height: 20),
                     SectionCard(children: attributes),
@@ -1421,18 +1453,18 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                       parents: inCreationOrder(task.parentTasks),
                       projectTitleOf: otherProjectTitle,
                       onOpen: _open,
-                      onRemove: repository == null
+                      onRemove: changer == null
                           ? null
                           : (parent) => unawaited(
                               _removeRelation(
-                                repository,
+                                changer,
                                 task,
                                 TaskRelationKind.parentTask,
                                 parent,
                               ),
                             ),
                     ),
-                  if (task.subtasks.isNotEmpty || repository != null)
+                  if (task.subtasks.isNotEmpty || changer != null)
                     SubtasksSection(
                       // Keeps the typed title and the focus when rows above
                       // come or go, such as the pending note.
@@ -1445,19 +1477,20 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                           : (subtask, {required done}) => unawaited(
                               writeTaskDone(repository, subtask, done: done),
                             ),
-                      onRemove: repository == null
+                      isReadOnly: subtaskReadOnly,
+                      onRemove: changer == null
                           ? null
                           : (subtask) => unawaited(
                               _removeRelation(
-                                repository,
+                                changer,
                                 task,
                                 TaskRelationKind.subtask,
                                 subtask,
                               ),
                             ),
-                      onAdd: repository == null
+                      onAdd: changer == null
                           ? null
-                          : (title) => _addSubtask(repository, task, title),
+                          : (title) => _addSubtask(changer, task, title),
                     ),
                   DetailSectionHeader(
                     title: l10n.taskDetailDescription,
@@ -1465,7 +1498,9 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                         ? ChecklistSummary(statistics: checklist, style: null)
                         : null,
                     actions: [
-                      if (descriptionWriter != null && hasDescription(task))
+                      if (descriptionWriter != null &&
+                          !readOnly &&
+                          hasDescription(task))
                         IconButton(
                           onPressed: () => unawaited(_editDescription(task)),
                           tooltip: l10n.taskDetailEditDescription,
@@ -1480,10 +1515,10 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                         onLink: _openLink,
                         onTaskLink: (taskId) =>
                             unawaited(_openLinkedTask(taskId)),
-                        onAdd: descriptionWriter == null
+                        onAdd: descriptionWriter == null || readOnly
                             ? null
                             : () => unawaited(_editDescription(task)),
-                        onToggleTaskItem: descriptionWriter == null
+                        onToggleTaskItem: descriptionWriter == null || readOnly
                             ? null
                             : (html, item) => unawaited(
                                 _toggleChecklistItem(
@@ -1511,21 +1546,21 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                     task: task,
                     details: details,
                     controller: _details,
-                    writable: descriptionWriter != null,
+                    writable: descriptionWriter != null && !readOnly,
                     onMessage: _showMessage,
                   ),
                   RelatedTasksSection(
                     task: task,
                     projectTitleOf: otherProjectTitle,
                     onOpen: _open,
-                    onRemove: repository == null
+                    onRemove: changer == null
                         ? null
                         : (kind, other) => unawaited(
-                            _removeRelation(repository, task, kind, other),
+                            _removeRelation(changer, task, kind, other),
                           ),
-                    onAdd: repository == null
+                    onAdd: changer == null
                         ? null
-                        : () => unawaited(_addRelation(repository, task)),
+                        : () => unawaited(_addRelation(changer, task)),
                   ),
                   if (details != null &&
                       (commentsOffered || details.commentCount > 0))
@@ -1826,7 +1861,12 @@ class _PendingNote extends StatelessWidget {
 /// two do not fit side by side, as at a large text size. [value] gets the
 /// alignment of the side it is on.
 class _Attribute extends StatelessWidget {
-  const new({required this.icon, required this.label, required this.value});
+  const new({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.merge = true,
+  });
 
   factory text({
     required IconData icon,
@@ -1851,6 +1891,10 @@ class _Attribute extends StatelessWidget {
   final String label;
   final Widget Function(WrapAlignment alignment) value;
 
+  /// False when [value] holds buttons, each of which a screen reader must
+  /// reach on its own.
+  final bool merge;
+
   static const _labelWidth = 96.0;
   static const _minValueWidth = 120.0;
 
@@ -1866,57 +1910,56 @@ class _Attribute extends StatelessWidget {
       ),
     );
     final glyph = Icon(icon, size: 20, color: colors.onSurfaceVariant);
-    return MergeSemantics(
-      child: DefaultTextStyle.merge(
-        style: theme.textTheme.bodyMedium,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 40),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final sideBySide =
-                    constraints.maxWidth - 20 - 16 - labelWidth - 16 >=
-                    _minValueWidth;
-                if (!sideBySide) {
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(top: 2),
-                        child: glyph,
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          spacing: 4,
-                          children: [name, value(WrapAlignment.start)],
-                        ),
-                      ),
-                    ],
-                  );
-                }
+    final row = DefaultTextStyle.merge(
+      style: theme.textTheme.bodyMedium,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 40),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final sideBySide =
+                  constraints.maxWidth - 20 - 16 - labelWidth - 16 >=
+                  _minValueWidth;
+              if (!sideBySide) {
                 return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    glyph,
-                    const SizedBox(width: 16),
-                    SizedBox(width: labelWidth, child: name),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: glyph,
+                    ),
                     const SizedBox(width: 16),
                     Expanded(
-                      child: Align(
-                        alignment: AlignmentDirectional.centerEnd,
-                        child: value(WrapAlignment.end),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        spacing: 4,
+                        children: [name, value(WrapAlignment.start)],
                       ),
                     ),
                   ],
                 );
-              },
-            ),
+              }
+              return Row(
+                children: [
+                  glyph,
+                  const SizedBox(width: 16),
+                  SizedBox(width: labelWidth, child: name),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Align(
+                      alignment: AlignmentDirectional.centerEnd,
+                      child: value(WrapAlignment.end),
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ),
     );
+    return merge ? MergeSemantics(child: row) : row;
   }
 }
 

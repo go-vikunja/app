@@ -20,7 +20,7 @@ Future<_Reads> _read(ApiVersion version) async {
   final base = '$testServerRoot/api/${version.pathSegment}';
   final prefix = 'read/${version.pathSegment}';
   final dio = fakeDio({
-    '$base/projects?page=1&per_page=2': capturedFixture(
+    '$base/projects?page=1&per_page=2&expand=permissions': capturedFixture(
       '${prefix}_projects_page_2.7.0',
     ),
     '$base/projects/19': capturedFixture('${prefix}_project_with_views_2.7.0'),

@@ -295,6 +295,7 @@ void main() {
       final run = Completer<void>();
       data.engine.onRefresh = () => run.future;
       await pumpHome(tester);
+      await scrollTo(tester, find.text(en.accountSyncNow));
 
       expect(find.text(en.accountLastSynced('1 minute ago')), findsOneWidget);
       expect(data.engine.refreshCalls, 0);
@@ -334,6 +335,7 @@ void main() {
       final run = Completer<void>();
       data.engine.onFullResync = () => run.future;
       await pumpHome(tester);
+      await scrollTo(tester, find.text(en.accountFullResync));
 
       await tester.tap(find.text(en.accountFullResync));
       await tester.pump();
@@ -485,6 +487,7 @@ void main() {
       );
       data.engine.onRefresh = () async => throw const ServerFailure(502);
       await pumpHome(tester);
+      await scrollTo(tester, find.text(en.accountSyncFailed));
 
       bool inLiveRegion(Finder finder) {
         for (

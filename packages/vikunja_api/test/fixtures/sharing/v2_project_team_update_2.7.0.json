@@ -1,0 +1,12 @@
+{
+  "server": "2.7.0",
+  "request": "PUT /api/v2/projects/418/teams/10",
+  "sent": {
+    "permission": 1
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"id\":0,\"team_id\":10,\"permission\":1,\"created\":\"0001-01-01T00:00:00Z\",\"updated\":\"2026-10-26T11:17:29.945311364Z\"}\n"
+}

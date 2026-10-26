@@ -1,0 +1,14 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v2/projects/418/shares",
+  "sent": {
+    "permission": 1,
+    "name": "Fixture team link",
+    "password": "<password>"
+  },
+  "status": 201,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"id\":19,\"hash\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\"name\":\"Fixture team link\",\"permission\":1,\"sharing_type\":2,\"password\":\"\",\"shared_by\":{\"id\":145,\"name\":\"\",\"username\":\"fixtureowner\",\"created\":\"0001-01-01T00:00:00Z\",\"updated\":\"0001-01-01T00:00:00Z\"},\"created\":\"2026-10-26T11:17:31.132181251Z\",\"updated\":\"2026-10-26T11:17:31.132186001Z\"}\n"
+}

@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "DELETE /api/v1/projects/418/teams/10",
+  "status": 403,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"code\":6007,\"message\":\"This team does not have access to the project.\"}\n"
+}

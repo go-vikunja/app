@@ -1,0 +1,9 @@
+{
+  "server": "2.7.0",
+  "request": "GET /api/v1/users?s=FIXTUREMEMBER",
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "[{\"id\":146,\"name\":\"\",\"username\":\"fixturemember\",\"created\":\"2026-10-26T11:16:57Z\",\"updated\":\"2026-10-26T11:16:57Z\"}]\n"
+}

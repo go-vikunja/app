@@ -1,0 +1,12 @@
+{
+  "server": "2.7.0",
+  "request": "POST /api/v1/projects/418/users/fixtureguest",
+  "sent": {
+    "permission": 2
+  },
+  "status": 403,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"code\":0,\"message\":\"Forbidden\"}\n"
+}

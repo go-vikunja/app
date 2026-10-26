@@ -150,6 +150,7 @@ Future<void> main(List<String> args) async {
           'content-type',
           'x-pagination-total-pages',
           'x-pagination-result-count',
+          'x-max-permission',
         ])
           header: ?response.headers.value(header),
       };

@@ -24,6 +24,8 @@ import 'package:vikunja_mobile/features/description_editor/presentation/descript
 import 'package:vikunja_mobile/features/home/presentation/account_tab.dart';
 import 'package:vikunja_mobile/features/home/presentation/home_shell.dart';
 import 'package:vikunja_mobile/features/inbox/presentation/inbox_screen.dart';
+import 'package:vikunja_mobile/features/labels/presentation/label_form_page.dart';
+import 'package:vikunja_mobile/features/labels/presentation/labels_page.dart';
 import 'package:vikunja_mobile/features/notifications/application/notifications_onboarding.dart';
 import 'package:vikunja_mobile/features/notifications/presentation/notification_setup_screen.dart';
 import 'package:vikunja_mobile/features/onboarding/application/current_server.dart';
@@ -35,12 +37,15 @@ import 'package:vikunja_mobile/features/projects/presentation/manage/project_vie
 import 'package:vikunja_mobile/features/projects/presentation/project_tasks_screen.dart';
 import 'package:vikunja_mobile/features/projects/presentation/projects_screen.dart';
 import 'package:vikunja_mobile/features/search/presentation/search_page.dart';
+import 'package:vikunja_mobile/features/sharing/presentation/project_share_page.dart';
 import 'package:vikunja_mobile/features/smart_lists/presentation/label_tasks_screen.dart';
 import 'package:vikunja_mobile/features/smart_lists/presentation/saved_filter_form_page.dart';
 import 'package:vikunja_mobile/features/smart_lists/presentation/smart_list_screen.dart';
 import 'package:vikunja_mobile/features/sync/application/sync_status_queries.dart';
 import 'package:vikunja_mobile/features/sync/presentation/first_sync_screen.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/task_edit_page.dart';
+import 'package:vikunja_mobile/features/teams/presentation/team_page.dart';
+import 'package:vikunja_mobile/features/teams/presentation/teams_page.dart';
 import 'package:vikunja_mobile/features/upcoming/presentation/upcoming_screen.dart';
 
 part 'app_router.g.dart';
@@ -82,6 +87,7 @@ abstract final class AppRoutes {
   /// [projects], which would count them as the tab.
   static String projectEdit(int id) => '$home/project/$id/edit';
   static String projectViews(int id) => '$home/project/$id/views';
+  static String projectShare(int id) => '$home/project/$id/share';
 
   /// The server's notifications, over the shell from the Overview's bell.
   static const inbox = '$home/inbox';
@@ -89,7 +95,21 @@ abstract final class AppRoutes {
   /// Over the shell, from the search button of the Overview, Upcoming and
   /// Projects; a label found there opens [labelTasks] over it.
   static const search = '$home/search';
-  static String labelTasks(int labelId) => '$home/labels/$labelId';
+
+  /// Over the shell, from the Account tab; a label opens [labelTasks],
+  /// which the search and the task sheet's label pills open too.
+  static const labels = '$home/labels';
+  static const labelNew = '$labels/new';
+  static String labelTasks(int labelId) => '$labels/$labelId';
+  static String labelEdit(int labelId) => '$labels/$labelId/edit';
+  static String labelDescription(int labelId) => '$labels/$labelId/description';
+
+  /// Over the shell, from the Account tab; a team's page also from the
+  /// inbox. Its description editor comes with the team's text as the
+  /// push's `extra`, a `TeamDescriptionTarget`: teams are not stored.
+  static const teams = '$home/teams';
+  static String team(int teamId) => '$teams/$teamId';
+  static String teamDescription(int teamId) => '$teams/$teamId/description';
 
   /// Over the shell, from the Projects tab and a saved filter's menu.
   static const savedFilterNew = '$home/filters/new';
@@ -153,7 +173,8 @@ GoRouter appRouter(Ref ref) {
   ref.onDispose(() => WidgetsBinding.instance.removeObserver(links));
 
   final rootNavigatorKey = GlobalKey<NavigatorState>();
-  final commentEdits = _CommentEdits();
+  final commentEdits = _PushedTargets<CommentTarget>();
+  final teamDescriptions = _PushedTargets<TeamDescriptionTarget>();
   final router = GoRouter(
     navigatorKey: rootNavigatorKey,
     initialLocation: AppRoutes.splash,
@@ -277,6 +298,15 @@ GoRouter appRouter(Ref ref) {
         ),
       ),
       GoRoute(
+        path: '${AppRoutes.home}/project/:id/share',
+        parentNavigatorKey: rootNavigatorKey,
+        redirect: (context, state) =>
+            _idParam(state) == null ? AppRoutes.projects : null,
+        builder: (context, state) => AccountBoundScreen(
+          child: ProjectSharePage(projectId: _idParam(state)!),
+        ),
+      ),
+      GoRoute(
         path: AppRoutes.inbox,
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) =>
@@ -289,13 +319,81 @@ GoRouter appRouter(Ref ref) {
             const AccountBoundScreen(child: SearchPage()),
       ),
       GoRoute(
-        path: '${AppRoutes.home}/labels/:id',
+        path: AppRoutes.labels,
         parentNavigatorKey: rootNavigatorKey,
-        redirect: (context, state) =>
-            _idParam(state) == null ? AppRoutes.search : null,
-        builder: (context, state) => AccountBoundScreen(
-          child: LabelTasksScreen(labelId: _idParam(state)!),
-        ),
+        builder: (context, state) =>
+            const AccountBoundScreen(child: LabelsPage()),
+        routes: [
+          // Before ':id', which would take it for an id.
+          GoRoute(
+            path: 'new',
+            parentNavigatorKey: rootNavigatorKey,
+            builder: (context, state) =>
+                const AccountBoundScreen(child: LabelFormPage()),
+          ),
+          GoRoute(
+            path: ':id',
+            parentNavigatorKey: rootNavigatorKey,
+            redirect: (context, state) =>
+                _idParam(state) == null ? AppRoutes.labels : null,
+            builder: (context, state) => AccountBoundScreen(
+              child: LabelTasksScreen(labelId: _idParam(state)!),
+            ),
+            routes: [
+              GoRoute(
+                path: 'edit',
+                parentNavigatorKey: rootNavigatorKey,
+                builder: (context, state) => AccountBoundScreen(
+                  child: LabelFormPage(labelId: _idParam(state)),
+                ),
+              ),
+              GoRoute(
+                path: 'description',
+                parentNavigatorKey: rootNavigatorKey,
+                builder: (context, state) => AccountBoundScreen(
+                  child: DescriptionEditorPage(
+                    target: LabelDescriptionTarget(_idParam(state)!),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+      GoRoute(
+        path: AppRoutes.teams,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) =>
+            const AccountBoundScreen(child: TeamsPage()),
+        routes: [
+          GoRoute(
+            path: ':id',
+            parentNavigatorKey: rootNavigatorKey,
+            redirect: (context, state) =>
+                _idParam(state) == null ? AppRoutes.teams : null,
+            builder: (context, state) => AccountBoundScreen(
+              child: TeamPage(
+                key: ValueKey(_idParam(state)),
+                teamId: _idParam(state)!,
+              ),
+            ),
+            routes: [
+              GoRoute(
+                path: 'description',
+                parentNavigatorKey: rootNavigatorKey,
+                redirect: (context, state) =>
+                    teamDescriptions.targetFor(state) == null
+                    ? AppRoutes.team(_idParam(state)!)
+                    : null,
+                builder: (context, state) => AccountBoundScreen(
+                  child: DescriptionEditorPage(
+                    target: teamDescriptions.targetFor(state)!,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
       GoRoute(
         path: AppRoutes.savedFilterNew,
@@ -522,16 +620,16 @@ String? _redirect({
   };
 }
 
-/// The comment an editor page was pushed with. go_router drops an `extra`
-/// it cannot store as JSON once the platform reports the route list back,
-/// as Android does when the app is opened again, and would then send the
-/// open editor to the Overview.
-final class _CommentEdits {
+/// The comment or team an editor page was pushed with. go_router drops an
+/// `extra` it cannot store as JSON once the platform reports the route list
+/// back, as Android does when the app is opened again, and would then send
+/// the open editor away.
+final class _PushedTargets<T extends DescriptionTarget> {
   String? _location;
-  CommentTarget? _target;
+  T? _target;
 
-  CommentTarget? targetFor(GoRouterState state) {
-    if (state.extra case final CommentTarget target) {
+  T? targetFor(GoRouterState state) {
+    if (state.extra case final T target) {
       _location = state.matchedLocation;
       _target = target;
       return target;
