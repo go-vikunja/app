@@ -5,6 +5,7 @@ import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/filters/local_filters.dart';
 import 'package:vikunja_mobile/core/repositories/local/local_list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/project_view_repository.dart';
 import 'package:vikunja_mobile/core/sync/list_downloads.dart';
@@ -16,9 +17,10 @@ const _projectDoesNotExist = 3001;
 const _viewDoesNotExist = 3014;
 
 /// View changes straight to the server, written into the stored project
-/// once answered. A sync then runs quietly, and a created or edited list or
-/// board is downloaded after it: its stored tasks were picked by the old
-/// filter or kind, or there are none yet.
+/// once answered. A sync then runs quietly, and a created or edited view
+/// that has a download (`downloadsSnapshot`, a board) is downloaded after
+/// it: its stored tasks were picked by the old filter or kind, or there are
+/// none yet.
 final class LocalProjectViewRepository implements ProjectViewRepository {
   new(
     this._db,
@@ -140,27 +142,24 @@ final class LocalProjectViewRepository implements ProjectViewRepository {
     }
     if (view == null) return;
     try {
-      switch (view.kind) {
-        case ProjectViewKind.list:
-          await downloadViewSnapshot(
-            db: _db,
-            client: _read,
-            perPage: _perPage,
-            projectId: view.projectId,
-            viewId: view.id,
-            now: _now,
-          );
-        case ProjectViewKind.kanban:
-          await downloadBoard(
-            db: _db,
-            client: _read,
-            perPage: _perPage,
-            projectId: view.projectId,
-            viewId: view.id,
-            now: _now,
-          );
-        case ProjectViewKind.gantt || ProjectViewKind.table:
-          return;
+      if (view.kind == ProjectViewKind.kanban) {
+        await downloadBoard(
+          db: _db,
+          client: _read,
+          perPage: _perPage,
+          projectId: view.projectId,
+          viewId: view.id,
+          now: _now,
+        );
+      } else if (downloadsSnapshot(view)) {
+        await downloadViewSnapshot(
+          db: _db,
+          client: _read,
+          perPage: _perPage,
+          projectId: view.projectId,
+          viewId: view.id,
+          now: _now,
+        );
       }
     } on Object catch (error) {
       _log.fine(

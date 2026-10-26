@@ -240,7 +240,14 @@ class _ProjectListBodyState extends State<ProjectListBody> {
     if (model.isEmpty) {
       return CenteredScrollView(
         header: widget.header,
-        child: _emptyState(l10n),
+        child: ViewEmptyState(
+          kind: widget.kind,
+          source: widget.source,
+          view: widget.view,
+          showDone: widget.preferences.showDone,
+          offline: widget.offline,
+          downloadFailed: widget.downloadFailed,
+        ),
       );
     }
     final reorderable = widget.onReorder != null && model.rows.isNotEmpty;
@@ -430,23 +437,49 @@ class _ProjectListBodyState extends State<ProjectListBody> {
       actions: actions,
     );
   }
+}
 
-  Widget _emptyState(AppLocalizations l10n) {
-    final filter = describeViewFilter(widget.view?.filter);
-    final source = widget.source;
+/// Why a list or table view shows no task: by its filter, and for one the
+/// device cannot evaluate, whether it was downloaded.
+class ViewEmptyState extends StatelessWidget {
+  const new({
+    required this.kind,
+    required this.source,
+    required this.view,
+    required this.showDone,
+    required this.offline,
+    required this.downloadFailed,
+    super.key,
+  });
+
+  final ViewFilterKind kind;
+  final ProjectListSource source;
+  final ProjectView? view;
+  final bool showDone;
+
+  /// The device is offline, as far as the last sync or download knows.
+  final bool offline;
+
+  /// The view's download failed for a reason other than the connection.
+  final bool downloadFailed;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final filter = describeViewFilter(view?.filter);
     final loaded = source.snapshot.loadedAt != null;
-    return switch (widget.kind) {
+    return switch (kind) {
       ViewFilterKind.other when source.matchingIds != null => EmptyState(
         icon: Icons.filter_alt_outlined,
         title: l10n.projectViewEmptyTitle,
         body: l10n.projectViewEmptyMatchingBody,
       ),
-      ViewFilterKind.other when !loaded && widget.offline => EmptyState(
+      ViewFilterKind.other when !loaded && offline => EmptyState(
         icon: Icons.cloud_download_outlined,
         title: l10n.projectViewNotLoadedTitle,
         body: l10n.projectViewNotLoadedBody(filter),
       ),
-      ViewFilterKind.other when !loaded && widget.downloadFailed => EmptyState(
+      ViewFilterKind.other when !loaded && downloadFailed => EmptyState(
         icon: Icons.cloud_off_outlined,
         title: l10n.projectViewDownloadFailedTitle,
         body: l10n.projectViewDownloadFailedBody(filter),
@@ -467,7 +500,7 @@ class _ProjectListBodyState extends State<ProjectListBody> {
         body: l10n.projectTasksEmptyDoneBody,
       ),
       ViewFilterKind.openOnly
-          when !widget.preferences.showDone &&
+          when !showDone &&
               (source.projectTasks.isNotEmpty || source.omitsDoneTasks) =>
         EmptyState(
           icon: Icons.task_alt,

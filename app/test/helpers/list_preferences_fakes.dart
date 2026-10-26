@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
+import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
 
 /// [ListPreferences] in memory, with streams that replay the current value
@@ -9,9 +11,10 @@ final class FakeListPreferences implements ListPreferences {
   final Map<int, int> lastViews = {};
   UpcomingPreferences upcoming = const UpcomingPreferences();
   ProjectTreePreferences projectTree = const ProjectTreePreferences();
+  Set<TableColumn> tableColumns = TableColumn.defaults;
 
   /// Every save, in order: `view <listKey>`, `remember <projectId> <viewId>`,
-  /// `upcoming` or `projectTree`.
+  /// `upcoming`, `projectTree` or `tableColumns`.
   final List<String> saves = [];
 
   final _changes = StreamController<void>.broadcast();
@@ -58,13 +61,15 @@ final class FakeListPreferences implements ListPreferences {
     _changes.add(null);
   }
 
-  Stream<T> _watch<T>(T Function() current) {
+  Stream<T> _watch<T>(T Function() current, {bool Function(T a, T b)? equals}) {
     late StreamController<T> controller;
     StreamSubscription<void>? subscription;
     T? last;
+    var emitted = false;
     void emit() {
       final value = current();
-      if (value == last) return;
+      if (emitted && (equals?.call(value, last as T) ?? value == last)) return;
+      emitted = true;
       last = value;
       controller.add(value);
     }
@@ -93,6 +98,23 @@ final class FakeListPreferences implements ListPreferences {
   /// Sets [projectTree] for every watcher without recording a save.
   void setProjectTree(ProjectTreePreferences preferences) {
     projectTree = preferences;
+    _changes.add(null);
+  }
+
+  @override
+  Stream<Set<TableColumn>> watchTableColumns() =>
+      _watch(() => tableColumns, equals: setEquals);
+
+  @override
+  Future<void> saveTableColumns(Set<TableColumn> columns) async {
+    saves.add('tableColumns');
+    tableColumns = columns.isEmpty ? TableColumn.defaults : {...columns};
+    _changes.add(null);
+  }
+
+  /// Sets [tableColumns] for every watcher without recording a save.
+  void setTableColumns(Set<TableColumn> columns) {
+    tableColumns = columns;
     _changes.add(null);
   }
 }

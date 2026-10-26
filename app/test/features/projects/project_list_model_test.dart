@@ -348,12 +348,39 @@ void main() {
           kind: ProjectViewKind.kanban,
         ),
         sampleListView(id: 11, projectId: 1),
+        const ProjectView(
+          id: 13,
+          projectId: 1,
+          title: 'Gantt',
+          kind: ProjectViewKind.gantt,
+          position: 200,
+        ),
+        const ProjectView(
+          id: 14,
+          projectId: 1,
+          title: 'Table',
+          kind: ProjectViewKind.table,
+          position: 200,
+        ),
       ],
     );
 
-    test('list and kanban views, by position', () {
-      expect(shownViewsOf(project).map((view) => view.id), [10, 11, 12]);
+    test('every kind, by position then id', () {
+      expect(shownViewsOf(project).map((view) => view.id), [
+        10,
+        11,
+        13,
+        14,
+        12,
+      ]);
       expect(shownViewsOf(null), isEmpty);
+    });
+
+    test('every kind is shown', () {
+      expect(
+        ProjectViewKind.values.where(isShownInApp),
+        ProjectViewKind.values,
+      );
     });
 
     test('the remembered view while it exists, else the first', () {

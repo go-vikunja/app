@@ -87,7 +87,7 @@ void main() {
     });
   });
 
-  group('the app shows list and kanban views', () {
+  group('the app shows every kind of view', () {
     final project = Project(
       id: 1,
       title: 'Work',
@@ -101,16 +101,16 @@ void main() {
     );
     final shownViews = shownViewsOf(project);
 
-    test('in position order, without Gantt and Table', () {
-      expect(shownViews.map((view) => view.id), [10, 11, 13]);
+    test('in position order, Gantt and Table included', () {
+      expect(shownViews.map((view) => view.id), [10, 11, 12, 13, 14]);
     });
 
     for (final (kind, opened) in [
       (null, 10),
       (ProjectViewKind.list, 11),
       (ProjectViewKind.kanban, 10),
-      (ProjectViewKind.gantt, 10),
-      (ProjectViewKind.table, 10),
+      (ProjectViewKind.gantt, 14),
+      (ProjectViewKind.table, 12),
     ]) {
       test('default ${kind?.wireName ?? 'first'} opens view $opened, the '
           'remembered one while it is shown', () {
@@ -123,7 +123,7 @@ void main() {
           13,
         );
         expect(
-          resolveViewId(shownViews, remembered: 12, defaultKind: kind),
+          resolveViewId(shownViews, remembered: 99, defaultKind: kind),
           opened,
         );
       });

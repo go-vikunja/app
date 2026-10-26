@@ -249,6 +249,137 @@ final class ProjectListSourceFamily extends $Family
   String toString() => r'projectListSourceProvider';
 }
 
+/// A Gantt view's tasks for [range], as the web's timeline asks for them:
+/// `matchingIds` holds what the view's tasks endpoint answers to the web's
+/// range filter with [withoutDates] as include-nulls; the project's done
+/// tasks come along only where they match. Stays loading while no account
+/// is signed in.
+
+@ProviderFor(timelineSource)
+final timelineSourceProvider = TimelineSourceFamily._();
+
+/// A Gantt view's tasks for [range], as the web's timeline asks for them:
+/// `matchingIds` holds what the view's tasks endpoint answers to the web's
+/// range filter with [withoutDates] as include-nulls; the project's done
+/// tasks come along only where they match. Stays loading while no account
+/// is signed in.
+
+final class TimelineSourceProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<ProjectListSource>,
+          ProjectListSource,
+          Stream<ProjectListSource>
+        >
+    with
+        $FutureModifier<ProjectListSource>,
+        $StreamProvider<ProjectListSource> {
+  /// A Gantt view's tasks for [range], as the web's timeline asks for them:
+  /// `matchingIds` holds what the view's tasks endpoint answers to the web's
+  /// range filter with [withoutDates] as include-nulls; the project's done
+  /// tasks come along only where they match. Stays loading while no account
+  /// is signed in.
+  TimelineSourceProvider._({
+    required TimelineSourceFamily super.from,
+    required (int, {int viewId, GanttRange range, bool withoutDates})
+    super.argument,
+  }) : super(
+         retry: null,
+         name: r'timelineSourceProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$timelineSourceHash();
+
+  @override
+  String toString() {
+    return r'timelineSourceProvider'
+        ''
+        '$argument';
+  }
+
+  @$internal
+  @override
+  $StreamProviderElement<ProjectListSource> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<ProjectListSource> create(Ref ref) {
+    final argument =
+        this.argument
+            as (int, {int viewId, GanttRange range, bool withoutDates});
+    return timelineSource(
+      ref,
+      argument.$1,
+      viewId: argument.viewId,
+      range: argument.range,
+      withoutDates: argument.withoutDates,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is TimelineSourceProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$timelineSourceHash() => r'48975ed471e500cdf220c6573e4ec9f77ffe7ad2';
+
+/// A Gantt view's tasks for [range], as the web's timeline asks for them:
+/// `matchingIds` holds what the view's tasks endpoint answers to the web's
+/// range filter with [withoutDates] as include-nulls; the project's done
+/// tasks come along only where they match. Stays loading while no account
+/// is signed in.
+
+final class TimelineSourceFamily extends $Family
+    with
+        $FunctionalFamilyOverride<
+          Stream<ProjectListSource>,
+          (int, {int viewId, GanttRange range, bool withoutDates})
+        > {
+  TimelineSourceFamily._()
+    : super(
+        retry: null,
+        name: r'timelineSourceProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// A Gantt view's tasks for [range], as the web's timeline asks for them:
+  /// `matchingIds` holds what the view's tasks endpoint answers to the web's
+  /// range filter with [withoutDates] as include-nulls; the project's done
+  /// tasks come along only where they match. Stays loading while no account
+  /// is signed in.
+
+  TimelineSourceProvider call(
+    int projectId, {
+    required int viewId,
+    required GanttRange range,
+    required bool withoutDates,
+  }) => TimelineSourceProvider._(
+    argument: (
+      projectId,
+      viewId: viewId,
+      range: range,
+      withoutDates: withoutDates,
+    ),
+    from: this,
+  );
+
+  @override
+  String toString() => r'timelineSourceProvider';
+}
+
 /// Stays loading while no account is signed in.
 
 @ProviderFor(boardSource)
@@ -544,6 +675,53 @@ final class ViewPreferencesFamily extends $Family
   @override
   String toString() => r'viewPreferencesProvider';
 }
+
+/// The columns of every table view; the defaults while nobody is signed
+/// in.
+
+@ProviderFor(tableColumns)
+final tableColumnsProvider = TableColumnsProvider._();
+
+/// The columns of every table view; the defaults while nobody is signed
+/// in.
+
+final class TableColumnsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<Set<TableColumn>>,
+          Set<TableColumn>,
+          Stream<Set<TableColumn>>
+        >
+    with $FutureModifier<Set<TableColumn>>, $StreamProvider<Set<TableColumn>> {
+  /// The columns of every table view; the defaults while nobody is signed
+  /// in.
+  TableColumnsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'tableColumnsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$tableColumnsHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<Set<TableColumn>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<Set<TableColumn>> create(Ref ref) {
+    return tableColumns(ref);
+  }
+}
+
+String _$tableColumnsHash() => r'150e1b402ea4150f2772f5e07c1c42ac34fa551a';
 
 /// What the Projects tab shows of the tree; the defaults while nobody is
 /// signed in.

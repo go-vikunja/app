@@ -1,8 +1,10 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/theme/app_theme.dart';
 import 'package:vikunja_mobile/app/theme/hex_color.dart';
+import 'package:vikunja_mobile/features/common/presentation/user_avatar.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_formatting.dart';
 
 /// A priority as a flag and its name: urgent and up in the error colour,
@@ -49,6 +51,183 @@ class PriorityFlag extends StatelessWidget {
         text,
         style: theme.textTheme.labelMedium?.copyWith(color: textColor),
         semanticsLabel: l10n.prioritySemantics(text),
+      ),
+    );
+  }
+}
+
+/// A priority as the web's table shows it, every value, Unset too: low
+/// ones in the primary colour, medium in amber, high and up in the error
+/// colour with a circled exclamation mark.
+class TablePriorityLabel extends StatelessWidget {
+  const new({required this.priority, super.key});
+
+  final TaskPriority priority;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final (
+      IconData icon,
+      Color iconColor,
+      Color textColor,
+    ) = switch (priority.value) {
+      >= 3 => (Icons.error_outline, colors.error, colors.error),
+      2 => (
+        Icons.priority_high,
+        HighlightColors.of(context).highlight,
+        colors.tertiary,
+      ),
+      _ => (Icons.priority_high, colors.primary, colors.primary),
+    };
+    final text = priorityLabel(l10n, priority);
+    return _MetaItem(
+      icon: icon,
+      iconColor: iconColor,
+      child: Text(
+        text,
+        style: theme.textTheme.labelMedium?.copyWith(color: textColor),
+        semanticsLabel: l10n.prioritySemantics(text),
+      ),
+    );
+  }
+}
+
+/// A table column's icon in the columns sheet; a row's dates lead with
+/// theirs.
+IconData tableColumnIcon(TableColumn column) => switch (column) {
+  TableColumn.taskIndex => Icons.tag,
+  TableColumn.done => Icons.check_circle_outline,
+  TableColumn.project => Icons.folder_outlined,
+  TableColumn.title => Icons.title,
+  TableColumn.priority => Icons.priority_high,
+  TableColumn.labels => Icons.label_outline,
+  TableColumn.assignees => Icons.people_outline,
+  TableColumn.commentCount => Icons.chat_bubble_outline,
+  TableColumn.dueDate => Icons.calendar_today_outlined,
+  TableColumn.startDate => Icons.play_arrow_outlined,
+  TableColumn.endDate => Icons.stop_outlined,
+  TableColumn.percentDone => Icons.donut_large,
+  TableColumn.doneAt => Icons.task_alt,
+  TableColumn.created => Icons.add_circle_outline,
+  TableColumn.updated => Icons.update,
+  TableColumn.createdBy => Icons.person_outline,
+};
+
+/// One of a table row's dates after the icon of its column, muted like
+/// the web table's cells, an overdue due date too.
+class TableDateItem extends StatelessWidget {
+  const new({required this.column, required this.text, super.key});
+
+  final TableColumn column;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = theme.colorScheme.onSurfaceVariant;
+    return _MetaItem(
+      icon: tableColumnIcon(column),
+      iconColor: color,
+      child: Text(
+        text,
+        style: theme.textTheme.labelMedium?.copyWith(color: color),
+      ),
+    );
+  }
+}
+
+/// A task's percent done as a ring and the whole percent, for a table
+/// row.
+class PercentDoneItem extends StatelessWidget {
+  const new({required this.percent, super.key});
+
+  /// 0 to 100.
+  final int percent;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox.square(
+          dimension: 12,
+          child: CircularProgressIndicator(
+            value: percent.clamp(0, 100) / 100,
+            strokeWidth: 2,
+            backgroundColor: colors.outlineVariant,
+            color: colors.primary,
+          ),
+        ),
+        const SizedBox(width: 4),
+        Flexible(
+          child: Text(
+            context.l10n.projectTableCellPercent(percent),
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: colors.onSurfaceVariant,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Who created a task: a small avatar and the name, for a table row.
+class CreatedByItem extends StatelessWidget {
+  const new({required this.user, super.key});
+
+  final User user;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        UserAvatar(user: user, radius: 8),
+        const SizedBox(width: 4),
+        Flexible(
+          child: Text(
+            user.displayName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// "Done" in a small pill, for a done task where a card or a table row
+/// says so.
+class DoneBadge extends StatelessWidget {
+  const new({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colors.primaryContainer,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+        child: Text(
+          context.l10n.taskDoneSemantics,
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: colors.onPrimaryContainer,
+          ),
+        ),
       ),
     );
   }

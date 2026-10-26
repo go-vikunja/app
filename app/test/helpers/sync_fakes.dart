@@ -12,6 +12,8 @@ import 'package:vikunja_mobile/core/attachments/pending_upload.dart';
 import 'package:vikunja_mobile/core/db/account_database_files.dart';
 import 'package:vikunja_mobile/core/files/file_actions_providers.dart';
 import 'package:vikunja_mobile/core/files/link_share_actions.dart';
+import 'package:vikunja_mobile/core/filters/filter_zone.dart';
+import 'package:vikunja_mobile/core/filters/local_filters.dart';
 import 'package:vikunja_mobile/core/outbox/pending_task_ids_source.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/platform/secure_display.dart';
@@ -693,18 +695,32 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
     _notify();
   }
 
+  /// The views whose filter the device cannot evaluate: under a request
+  /// their matching tasks are those of the snapshot that the request's
+  /// filter matches, as in the database.
+  final Set<int> snapshotOnlyViews = {};
+
+  /// The zone a request's filter is evaluated in, like the user's timezone
+  /// setting: empty for the device's.
+  String requestTimezone = '';
+
   /// Like the database: without [includeDone], the done tasks the view's
-  /// download lacks stay out, unless the view's filter matches them.
+  /// download lacks stay out, unless the view's filter matches them. A
+  /// [request] is evaluated here with the real engine over the project's
+  /// tasks, narrowed by the view's [viewMatches] where set.
   ProjectListSource projectList(
     int projectId, {
     required int viewId,
     bool includeDone = true,
+    ViewFilter? request,
   }) {
     final byId = {for (final task in _all) task.id: task};
     final snapshot =
         _snapshots[listKeyFor(projectId: projectId, viewId: viewId)] ??
         const ListSnapshot();
-    final matches = _viewMatches[viewId];
+    final matches = request == null
+        ? _viewMatches[viewId]
+        : _requestMatches(projectId, viewId, request, snapshot);
     bool loaded(Task task) =>
         includeDone ||
         !task.done ||
@@ -742,6 +758,29 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
                 if (matches.contains(task.id)) task.id,
             },
     );
+  }
+
+  Set<int> _requestMatches(
+    int projectId,
+    int viewId,
+    ViewFilter request,
+    ListSnapshot snapshot,
+  ) {
+    final compiled = LocalFilter.compile(
+      request,
+      location: locationForFilters([requestTimezone]),
+      now: DateTime.now(),
+    );
+    final viewMatches = snapshotOnlyViews.contains(viewId)
+        ? snapshot.taskIds.toSet()
+        : _viewMatches[viewId];
+    return {
+      for (final task in _all)
+        if (task.projectId == projectId &&
+            (viewMatches?.contains(task.id) ?? true) &&
+            (compiled?.matches(FilterableTask.fromTask(task)) ?? false))
+          task.id,
+    };
   }
 
   final Map<int, Map<int, double>> _queuedPositions = {};
@@ -787,21 +826,36 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
   /// Every `watchProjectList` as `(projectId, viewId, includeDone)`.
   final List<(int, int, bool)> projectListWatches = [];
 
+  /// The request of every `watchProjectList`, in order (null: none).
+  final List<ViewFilter?> projectListRequests = [];
+
   /// The error `watchProjectList` fails with, by view id.
   final Map<int, Object> projectListErrors = {};
+
+  /// While it holds for a request, `watchProjectList` with that request
+  /// stays loading, like a slow query.
+  bool Function(ViewFilter? request)? holdsProjectList;
 
   @override
   Stream<ProjectListSource> watchProjectList(
     int projectId, {
     required int viewId,
     bool includeDone = true,
+    ViewFilter? request,
   }) {
     projectListWatches.add((projectId, viewId, includeDone));
+    projectListRequests.add(request);
     if (projectListErrors[viewId] case final error?) {
       return Stream.error(error);
     }
+    if (holdsProjectList?.call(request) ?? false) return const Stream.empty();
     return _replaying(() => _all, _changes.stream).map(
-      (_) => projectList(projectId, viewId: viewId, includeDone: includeDone),
+      (_) => projectList(
+        projectId,
+        viewId: viewId,
+        includeDone: includeDone,
+        request: request,
+      ),
     );
   }
 

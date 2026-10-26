@@ -118,6 +118,29 @@ void main() {
     ]);
   });
 
+  test('a new table or Gantt view is downloaded only when the device '
+      'cannot evaluate its filter', () async {
+    for (final (kind, filter, downloaded) in [
+      (ProjectViewKind.table, null, false),
+      (ProjectViewKind.gantt, const ViewFilter(filter: 'done = false'), false),
+      (ProjectViewKind.gantt, const ViewFilter(filter: 'priority = abc'), true),
+      (ProjectViewKind.table, const ViewFilter(filter: 'bucket_id = 3'), true),
+    ]) {
+      read.requests.clear();
+      final id = await repository.createView(
+        1,
+        ViewDraft(title: kind.wireName, kind: kind, filter: filter),
+      );
+      await pumpEventQueue();
+
+      expect(
+        read.requests.where((request) => request.contains('view $id tasks')),
+        downloaded ? hasLength(1) : isEmpty,
+        reason: '${kind.wireName} ${filter?.filter}',
+      );
+    }
+  });
+
   test('a move puts the view between its new neighbours', () async {
     await repository.moveView(1, 12, toIndex: 0);
 

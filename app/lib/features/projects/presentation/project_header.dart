@@ -265,3 +265,58 @@ class ProjectListControls extends StatelessWidget {
     );
   }
 }
+
+/// Above a table view's rows: whether its done tasks show, where the view
+/// leaves that to the user, its sort and the columns its rows show; in one
+/// row that scrolls sideways when the chips do not fit.
+class ProjectTableControls extends StatelessWidget {
+  const new({
+    required this.sortLabel,
+    required this.onSort,
+    required this.onColumns,
+    this.showDone = false,
+    this.onShowDoneChanged,
+    super.key,
+  });
+
+  final String sortLabel;
+  final VoidCallback onSort;
+  final VoidCallback onColumns;
+  final bool showDone;
+
+  /// Null hides the chip, for a view whose filter decides.
+  final VoidCallback? onShowDoneChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final onShowDoneChanged = this.onShowDoneChanged;
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      // Scrolled, the chips run to the screen's edges.
+      clipBehavior: Clip.none,
+      child: Row(
+        spacing: 8,
+        children: [
+          if (onShowDoneChanged != null)
+            FilterChip(
+              label: Text(l10n.projectShowDoneChip),
+              selected: showDone,
+              onSelected: (_) => onShowDoneChanged(),
+            ),
+          ActionChip(
+            avatar: const Icon(Icons.sort),
+            label: Text(sortLabel),
+            tooltip: l10n.projectSortCurrent(sortLabel),
+            onPressed: onSort,
+          ),
+          ActionChip(
+            avatar: const Icon(Icons.view_column_outlined),
+            label: Text(l10n.projectTableColumns),
+            onPressed: onColumns,
+          ),
+        ],
+      ),
+    );
+  }
+}

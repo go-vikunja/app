@@ -33,15 +33,24 @@ abstract interface class TaskRepository {
   /// view's last download has them or its filter matches them (as subtasks
   /// they still come along), for a view that would not show them: a
   /// long-lived project holds far more done tasks than open ones.
+  ///
+  /// A [request] (a timeline's range) is what a client sends the view's
+  /// tasks endpoint: `matchingIds` then holds the tasks the server would
+  /// answer, the request's filter ANDed with the view's with include-nulls
+  /// if either asks, and is never null; where the device cannot evaluate
+  /// the view's filter, the tasks of the view's last download that the
+  /// request's filter matches.
   Stream<ProjectListSource> watchProjectList(
     int projectId, {
     required int viewId,
     bool includeDone = true,
+    ViewFilter? request,
   });
 
-  /// Runs the sync and downloads the view's tasks and their positions.
-  /// Throws the `VikunjaFailure` of the download; a [viewId] of 0 only
-  /// syncs.
+  /// Runs the sync and downloads the view's tasks and their positions,
+  /// for a table or Gantt view only when the device cannot evaluate its
+  /// filter. Throws the `VikunjaFailure` of the download; a [viewId] of 0
+  /// only syncs.
   Future<void> refreshProjectList(int projectId, {required int viewId});
 
   /// What a kanban view's board is built from, with its filter evaluated

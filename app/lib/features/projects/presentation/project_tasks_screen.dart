@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/core/filters/local_filters.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
@@ -16,6 +17,7 @@ import 'package:vikunja_mobile/core/settings/user_settings_providers.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
+import 'package:vikunja_mobile/core/time/today_provider.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_note.dart';
@@ -27,11 +29,16 @@ import 'package:vikunja_mobile/features/projects/application/project_access.dart
 import 'package:vikunja_mobile/features/projects/application/project_list_model.dart';
 import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
+import 'package:vikunja_mobile/features/projects/application/table_model.dart';
 import 'package:vikunja_mobile/features/projects/presentation/board/project_board.dart';
 import 'package:vikunja_mobile/features/projects/presentation/manage/project_actions.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_header.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_list_body.dart';
+import 'package:vikunja_mobile/features/projects/presentation/project_table_body.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_view_labels.dart';
+import 'package:vikunja_mobile/features/projects/presentation/table_columns_sheet.dart';
+import 'package:vikunja_mobile/features/projects/presentation/timeline/project_timeline_body.dart';
+import 'package:vikunja_mobile/features/projects/presentation/timeline/timeline_controls.dart';
 import 'package:vikunja_mobile/features/sync/application/offline_state.dart';
 import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
 import 'package:vikunja_mobile/features/tasks/application/minimum_priority_provider.dart';
@@ -66,14 +73,18 @@ typedef _Shown = ({
   ViewPreferences preferences,
 });
 
-/// A project's list and kanban views from the local database. A list view
-/// has the web's subtask nesting and sort, the view's own filter where the
-/// device can evaluate it and the server's last answer where it cannot; a
-/// kanban view is a board as of its last download with this device's
-/// changes on top. An archived project says so and offers no new task, as
-/// the server refuses changes to it; a project the user may only read says
-/// that and offers nothing it would refuse. The menu manages the project
-/// as the web's does; a project that disappears once seen says it is gone.
+/// A project's views from the local database, each kind with its own
+/// controls and body. A list view has the web's subtask nesting and sort,
+/// the view's own filter where the device can evaluate it and the server's
+/// last answer where it cannot; a table view lists the same tasks flat with
+/// the chosen columns and the web table's sort; a Gantt view is a timeline
+/// of the tasks in its range; a kanban view is a board as of its last
+/// download with this device's changes on top. Table and Gantt views
+/// download nothing unless the device cannot evaluate their filter. An
+/// archived project says so and offers no new task, as the server refuses
+/// changes to it; a project the user may only read says that and offers
+/// nothing it would refuse. The menu manages the project as the web's
+/// does; a project that disappears once seen says it is gone.
 class ProjectTasksScreen extends ConsumerStatefulWidget {
   const new({required this.projectId, super.key});
 
@@ -113,7 +124,7 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
   int? _rememberedViewId;
   int? _chosenViewId;
   var _viewId = 0;
-  var _showsBoard = false;
+  ProjectViewKind _viewKind = ProjectViewKind.list;
   int? _queuedIn;
   Set<int> _queuedIds = const {};
   Timer? _afterQueued;
@@ -129,6 +140,8 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
   /// Saved filters show as projects with ids below zero; nobody follows
   /// them.
   bool get _followable => widget.projectId > 0;
+
+  bool get _showsBoard => _viewKind == ProjectViewKind.kanban;
 
   @override
   void initState() {
@@ -198,12 +211,17 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
       loadedAt == null ||
       ref.read(clockProvider)().difference(loadedAt) >= _staleAfter;
 
+  /// Only for a view that has a download: a list view's snapshot, a
+  /// board, or a table or Gantt view whose filter the device cannot
+  /// evaluate.
   void _refreshWhenStale(
-    int viewId,
+    ProjectView? view,
     DateTime? loadedAt, {
     required bool board,
   }) {
-    if (viewId == 0 || !_quietlyRefreshed.add(viewId)) return;
+    final viewId = view?.id ?? 0;
+    if (viewId == 0 || !(board || downloadsSnapshot(view!))) return;
+    if (!_quietlyRefreshed.add(viewId)) return;
     if (!_isStale(loadedAt)) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) unawaited(_refreshQuietly(viewId, board: board));
@@ -281,6 +299,53 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
   void _savePreferences(String listKey, ViewPreferences preferences) =>
       unawaited(
         ref.read(listPreferencesProvider)?.saveView(listKey, preferences),
+      );
+
+  Future<void> _chooseTableSort(
+    String listKey,
+    ViewPreferences current, {
+    required Set<TableColumn> columns,
+    required Set<TableColumn> storedColumns,
+  }) async {
+    final l10n = context.l10n;
+    final applied = current.tableSort.forColumns(columns);
+    final sort = await showOptionSheet<TableSort>(
+      context,
+      title: l10n.projectSort,
+      options: [
+        for (final sort in tableSortsInMenuOrder)
+          SheetOption(
+            value: sort,
+            label: sort.isDefault
+                ? l10n.projectTableSortDefault
+                : tableSortLabel(l10n, sort),
+            selected: sort == applied,
+          ),
+      ],
+    );
+    if (sort == null || !mounted) return;
+    _savePreferences(listKey, current.copyWith(tableSort: sort));
+    // Only a shown column sorts the table, so the chosen one shows.
+    if (sort.forColumns(columns) != sort) {
+      final column = TableColumn.values.firstWhere(
+        (column) => column.sortField == sort.field,
+      );
+      unawaited(
+        ref.read(listPreferencesProvider)?.saveTableColumns({
+          ...storedColumns,
+          column,
+        }),
+      );
+    }
+  }
+
+  Future<void> _chooseTableColumns(Set<TableColumn> current) =>
+      showTableColumnsSheet(
+        context,
+        columns: current,
+        onChanged: (columns) => unawaited(
+          ref.read(listPreferencesProvider)?.saveTableColumns(columns),
+        ),
       );
 
   Future<void> _chooseSort(String listKey, ViewPreferences current) async {
@@ -376,7 +441,8 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
       ),
     );
     final view = views.where((view) => view.id == viewId).firstOrNull;
-    final board = _showsBoard = view?.kind == ProjectViewKind.kanban;
+    final viewKind = _viewKind = view?.kind ?? ProjectViewKind.list;
+    final board = viewKind == ProjectViewKind.kanban;
     final kind = view == null
         ? ViewFilterKind.openOnly
         : classifyViewFilter(view.filter);
@@ -385,30 +451,58 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
         ? const AsyncData(ViewPreferences())
         : ref.watch(viewPreferencesProvider(listKey));
     final preferences = preferencesValue.value ?? const ViewPreferences();
+    final columnsValue = viewKind == ProjectViewKind.table
+        ? ref.watch(tableColumnsProvider)
+        : const AsyncData(TableColumn.defaults);
+    final storedColumns = columnsValue.value ?? TableColumn.defaults;
+    // Every row shows its title, whatever the stored choice says.
+    final columns = {...storedColumns, TableColumn.title};
     final AsyncValue<Object> source;
-    if (board) {
-      final boardSource = boardSourceProvider(widget.projectId, viewId);
-      ref.listen(
-        boardSource,
-        (_, next) =>
-            _followQueued(viewId, next.value?.queued.keys.toSet(), board: true),
-      );
-      source = ref.watch(boardSource);
-    } else {
-      final listSource = projectListSourceProvider(
-        widget.projectId,
-        viewId: viewId,
-        includeDone: showsDoneTasks(kind, preferences),
-      );
-      ref.listen(
-        listSource,
-        (_, next) => _followQueued(
-          viewId,
-          next.value?.queuedPositions.keys.toSet(),
-          board: false,
-        ),
-      );
-      source = ref.watch(listSource);
+    switch (viewKind) {
+      case ProjectViewKind.kanban:
+        final boardSource = boardSourceProvider(widget.projectId, viewId);
+        ref.listen(
+          boardSource,
+          (_, next) => _followQueued(
+            viewId,
+            next.value?.queued.keys.toSet(),
+            board: true,
+          ),
+        );
+        source = ref.watch(boardSource);
+      case ProjectViewKind.gantt:
+        final timeline = preferences.timeline;
+        source = ref.watch(
+          timelineSourceProvider(
+            widget.projectId,
+            viewId: viewId,
+            range: timeline.range(ref.watch(todayProvider)),
+            withoutDates: timeline.withoutDates,
+          ),
+        );
+      case ProjectViewKind.table:
+        source = ref.watch(
+          projectListSourceProvider(
+            widget.projectId,
+            viewId: viewId,
+            includeDone: showsDoneTasks(kind, preferences),
+          ),
+        );
+      case ProjectViewKind.list:
+        final listSource = projectListSourceProvider(
+          widget.projectId,
+          viewId: viewId,
+          includeDone: showsDoneTasks(kind, preferences),
+        );
+        ref.listen(
+          listSource,
+          (_, next) => _followQueued(
+            viewId,
+            next.value?.queuedPositions.keys.toSet(),
+            board: false,
+          ),
+        );
+        source = ref.watch(listSource);
     }
     final repository = ref.watch(taskRepositoryProvider);
     final now = ref.watch(clockTickProvider);
@@ -427,7 +521,8 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
     final ready =
         _rememberedLoaded &&
         !(projects.isLoading && !projects.hasValue) &&
-        !(preferencesValue.isLoading && !preferencesValue.hasValue);
+        !(preferencesValue.isLoading && !preferencesValue.hasValue) &&
+        !(columnsValue.isLoading && !columnsValue.hasValue);
     final current = ready ? source : const AsyncLoading<Object>();
     final lastShown = _lastShown;
     final AsyncValue<Object> shownData;
@@ -445,7 +540,7 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
           view: view,
           preferences: preferences,
         );
-        _refreshWhenStale(viewId, _loadedAtOf(value), board: board);
+        _refreshWhenStale(view, _loadedAtOf(value), board: board);
         shownData = current;
       default:
         shownData = current;
@@ -457,17 +552,43 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
             onSelected: _selectView,
           )
         : null;
-    final listControls = board
-        ? null
-        : ProjectListControls(
-            key: _controlsKey,
-            sort: preferences.sort,
-            onSort: () => unawaited(_chooseSort(listKey, preferences)),
-            showDone: preferences.showDone,
-            onShowDoneChanged: kind == ViewFilterKind.openOnly
-                ? () => _toggleShowDone(listKey, preferences)
-                : null,
-          );
+    final onShowDoneChanged = kind == ViewFilterKind.openOnly
+        ? () => _toggleShowDone(listKey, preferences)
+        : null;
+    final listControls = switch (viewKind) {
+      ProjectViewKind.list => ProjectListControls(
+        key: _controlsKey,
+        sort: preferences.sort,
+        onSort: () => unawaited(_chooseSort(listKey, preferences)),
+        showDone: preferences.showDone,
+        onShowDoneChanged: onShowDoneChanged,
+      ),
+      ProjectViewKind.table => ProjectTableControls(
+        key: _controlsKey,
+        sortLabel: tableSortLabel(
+          l10n,
+          preferences.tableSort.forColumns(columns),
+        ),
+        onSort: () => unawaited(
+          _chooseTableSort(
+            listKey,
+            preferences,
+            columns: columns,
+            storedColumns: storedColumns,
+          ),
+        ),
+        onColumns: () => unawaited(_chooseTableColumns(columns)),
+        showDone: preferences.showDone,
+        onShowDoneChanged: onShowDoneChanged,
+      ),
+      ProjectViewKind.gantt => ProjectTimelineControls(
+        key: _controlsKey,
+        viewId: viewId,
+        listKey: listKey,
+        preferences: preferences,
+      ),
+      ProjectViewKind.kanban => null,
+    };
     final progress = _followable && ProjectAppBarBottom.showsProgressIn(context)
         ? ref.watch(projectProgressProvider(widget.projectId)).value
         : null;
@@ -561,8 +682,9 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
         shownData,
         loadingLabel: l10n.projectTasksLoading,
         header: listControls,
-        // A board's columns scroll inside its horizontal scroll.
-        notificationPredicate: board
+        // A board's columns and a timeline's rows scroll inside a
+        // horizontal scroll.
+        notificationPredicate: board || viewKind == ProjectViewKind.gantt
             ? (notification) => notification.metrics.axis == Axis.vertical
             : defaultScrollNotificationPredicate,
         builder: (value, notice) {
@@ -591,13 +713,80 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
           final shownKind = shown?.kind ?? kind;
           final shownPreferences = shown?.preferences ?? preferences;
           final leaving = leavingTasksIn(list.tasksById);
+          final loadedAt = list.snapshot.loadedAt;
+          final filterNotice =
+              shownKind == ViewFilterKind.other &&
+                  list.matchingIds == null &&
+                  loadedAt != null
+              ? ListNote(
+                  icon: Icons.filter_alt_outlined,
+                  text: l10n.projectViewFilterNotice(
+                    describeViewFilter(shownView?.filter),
+                    formatRelativeTime(
+                      l10n,
+                      // The tick may lag behind a download just finished.
+                      loadedAt.isAfter(now) ? now : loadedAt,
+                      now: now,
+                    ),
+                  ),
+                )
+              : null;
+          final header = stackedNotes([
+            ?listControls,
+            ?notice,
+            ?archivedNote,
+            ?filterNotice,
+          ]);
+          switch (shownView?.kind) {
+            case ProjectViewKind.table:
+              final sort = shownPreferences.tableSort.forColumns(columns);
+              return ProjectTableBody(
+                projectId: widget.projectId,
+                projectsById: projectsById,
+                rows: buildTableRows(
+                  list,
+                  kind: shownKind,
+                  showDone: shownPreferences.showDone,
+                  compare: (a, b) => compareTasksForTable(a, b, sort),
+                  leaving: leaving,
+                ),
+                columns: columns,
+                source: list,
+                kind: shownKind,
+                view: shownView,
+                showDone: shownPreferences.showDone,
+                offline: offlineOrUnreachable,
+                downloadFailed: downloadFailed,
+                header: header,
+                now: now,
+                minimumPriority: minimumPriority,
+                pendingIds: pendingIds,
+                onDoneChanged: (task, {required done}) =>
+                    unawaited(setTaskDone(task, done: done)),
+                onFavoriteChanged: (task, {required favorite}) =>
+                    unawaited(setTaskFavorite(task, favorite: favorite)),
+              );
+            case ProjectViewKind.gantt:
+              return ProjectTimelineBody(
+                // Collapsed rows belong to one view.
+                key: ValueKey(shownView!.id),
+                view: shownView,
+                source: list,
+                preferences: shownPreferences,
+                offline: offlineOrUnreachable,
+                downloadFailed: downloadFailed,
+                header: header,
+                bottomPadding: addsTasks ? _fabRoom : 0,
+              );
+            case ProjectViewKind.list || ProjectViewKind.kanban || null:
+              break;
+          }
           final model = buildProjectListModel(
             list,
             kind: shownKind,
             preferences: shownPreferences,
             leaving: leaving,
           );
-          final loadedAt = list.snapshot.loadedAt;
           // Before its first download the view's order is made up.
           final reorderView =
               loadedAt != null &&
@@ -620,26 +809,7 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
             preferences: shownPreferences,
             offline: offlineOrUnreachable,
             downloadFailed: downloadFailed,
-            header: stackedNotes([
-              ?listControls,
-              ?notice,
-              ?archivedNote,
-              if (shownKind == ViewFilterKind.other &&
-                  list.matchingIds == null &&
-                  loadedAt != null)
-                ListNote(
-                  icon: Icons.filter_alt_outlined,
-                  text: l10n.projectViewFilterNotice(
-                    describeViewFilter(shownView?.filter),
-                    formatRelativeTime(
-                      l10n,
-                      // The tick may lag behind a download just finished.
-                      loadedAt.isAfter(now) ? now : loadedAt,
-                      now: now,
-                    ),
-                  ),
-                ),
-            ]),
+            header: header,
             now: now,
             minimumPriority: minimumPriority,
             pendingIds: pendingIds,

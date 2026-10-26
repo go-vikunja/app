@@ -5994,12 +5994,6 @@ abstract class AppLocalizations {
   /// **'The change couldn\'t be saved.'**
   String get projectChangeFailed;
 
-  /// No description provided for @projectViewsIntro.
-  ///
-  /// In en, this message translates to:
-  /// **'The views of {project}, in the order the app and the web show them. Table and Gantt views show on the web only for now.'**
-  String projectViewsIntro(String project);
-
   /// No description provided for @projectViewNew.
   ///
   /// In en, this message translates to:
@@ -6065,12 +6059,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Kind'**
   String get projectViewKindLabel;
-
-  /// A view kind the app does not show yet (Table, Gantt).
-  ///
-  /// In en, this message translates to:
-  /// **'{kind} – shown on the web only for now'**
-  String projectViewKindWebOnly(String kind);
 
   /// No description provided for @projectViewShowDone.
   ///
@@ -10361,6 +10349,258 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Share {name}'**
   String linkShareShareNamed(String name);
+
+  /// Title of the timeline's date range sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Date range'**
+  String get projectTimelineRangeTitle;
+
+  /// Tooltip and screen reader label of the timeline's range chip.
+  ///
+  /// In en, this message translates to:
+  /// **'Date range: {dates}'**
+  String projectTimelineRangeCurrent(String dates);
+
+  /// The timeline's default range in its range sheet, which follows today.
+  ///
+  /// In en, this message translates to:
+  /// **'Default (15 days back, 55 ahead)'**
+  String get projectTimelineRangeDefault;
+
+  /// Opens the date pickers for a custom timeline range.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom range…'**
+  String get projectTimelineRangeCustom;
+
+  /// In the timeline's range sheet, shown when the range, the tasks without dates or the zoom differ from the defaults: sets all three back.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset to defaults'**
+  String get projectTimelineReset;
+
+  /// Widens the timeline's days.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom in'**
+  String get projectTimelineZoomIn;
+
+  /// Narrows the timeline's days.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom out'**
+  String get projectTimelineZoomOut;
+
+  /// Scrolls the timeline to today.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to today'**
+  String get projectTimelineGoToToday;
+
+  /// Read by screen readers for a timeline bar: its first and last day.
+  ///
+  /// In en, this message translates to:
+  /// **'{from} to {to}'**
+  String projectTimelineSpanSemantics(String from, String to);
+
+  /// Read by screen readers for a timeline bar of a task with a start date only.
+  ///
+  /// In en, this message translates to:
+  /// **'starts {date}, open end'**
+  String projectTimelineStartOnlySemantics(String date);
+
+  /// Read by screen readers for a timeline bar of a task with an end date and no start date.
+  ///
+  /// In en, this message translates to:
+  /// **'ends {date}, open start'**
+  String projectTimelineEndOnlySemantics(String date);
+
+  /// Read by screen readers for a timeline bar of a task with a due date and no start or end date.
+  ///
+  /// In en, this message translates to:
+  /// **'due {date}, open start'**
+  String projectTimelineDueOnlySemantics(String date);
+
+  /// Read by screen readers for a timeline bar of a task without dates, drawn from today for a week.
+  ///
+  /// In en, this message translates to:
+  /// **'no dates, estimated'**
+  String get projectTimelineEstimatedSemantics;
+
+  /// Read by screen readers for a timeline bar of a task without dates of its own, drawn over its subtasks' dates.
+  ///
+  /// In en, this message translates to:
+  /// **'dates from its subtasks'**
+  String get projectTimelineDerivedSemantics;
+
+  /// Tooltip and screen reader action of a collapsed timeline row.
+  ///
+  /// In en, this message translates to:
+  /// **'Show subtasks of {title}'**
+  String projectTimelineExpand(String title);
+
+  /// Tooltip and screen reader action of an expanded timeline row.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide subtasks of {title}'**
+  String projectTimelineCollapse(String title);
+
+  /// Empty timeline: no task in its date range.
+  ///
+  /// In en, this message translates to:
+  /// **'No tasks between {from} and {to}'**
+  String projectTimelineEmptyTitle(String from, String to);
+
+  /// Below the empty timeline's title while tasks without dates are hidden.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose another date range or show tasks without dates.'**
+  String get projectTimelineEmptyBody;
+
+  /// Below the empty timeline's title while tasks without dates are shown.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose another date range.'**
+  String get projectTimelineEmptyRangeBody;
+
+  /// A table view's button and sheet that pick what each row shows.
+  ///
+  /// In en, this message translates to:
+  /// **'Columns'**
+  String get projectTableColumns;
+
+  /// No description provided for @projectTableColumnsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose what each row shows. The choice applies to every table view.'**
+  String get projectTableColumnsHint;
+
+  /// Resets the table's columns to the web's six.
+  ///
+  /// In en, this message translates to:
+  /// **'Default columns'**
+  String get projectTableColumnsReset;
+
+  /// Below the Title column, which cannot be turned off.
+  ///
+  /// In en, this message translates to:
+  /// **'Every row shows it'**
+  String get projectTableColumnTitleAlways;
+
+  /// The table column of a task's number or identifier, # on the web.
+  ///
+  /// In en, this message translates to:
+  /// **'Number'**
+  String get projectTableColumnNumber;
+
+  /// The table column of a task's comment count.
+  ///
+  /// In en, this message translates to:
+  /// **'Comments'**
+  String get projectTableColumnComments;
+
+  /// No description provided for @projectTableColumnDoneAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Done at'**
+  String get projectTableColumnDoneAt;
+
+  /// No description provided for @projectTableColumnCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Created'**
+  String get projectTableColumnCreated;
+
+  /// No description provided for @projectTableColumnUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Updated'**
+  String get projectTableColumnUpdated;
+
+  /// No description provided for @projectTableColumnCreatedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Created by'**
+  String get projectTableColumnCreatedBy;
+
+  /// The table's default sort, by number, highest first.
+  ///
+  /// In en, this message translates to:
+  /// **'Default (Highest number first)'**
+  String get projectTableSortDefault;
+
+  /// No description provided for @projectTableSortNumberDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Number (Highest first)'**
+  String get projectTableSortNumberDesc;
+
+  /// No description provided for @projectTableSortNumberAsc.
+  ///
+  /// In en, this message translates to:
+  /// **'Number (Lowest first)'**
+  String get projectTableSortNumberAsc;
+
+  /// No description provided for @projectTableSortDoneAsc.
+  ///
+  /// In en, this message translates to:
+  /// **'Done (Open first)'**
+  String get projectTableSortDoneAsc;
+
+  /// No description provided for @projectTableSortDoneDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Done (Done first)'**
+  String get projectTableSortDoneDesc;
+
+  /// No description provided for @projectTableSortDoneAtDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Done at (Newest first)'**
+  String get projectTableSortDoneAtDesc;
+
+  /// No description provided for @projectTableSortDoneAtAsc.
+  ///
+  /// In en, this message translates to:
+  /// **'Done at (Oldest first)'**
+  String get projectTableSortDoneAtAsc;
+
+  /// No description provided for @projectTableStartsSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Starts {when}'**
+  String projectTableStartsSemantics(String when);
+
+  /// No description provided for @projectTableEndsSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Ends {when}'**
+  String projectTableEndsSemantics(String when);
+
+  /// No description provided for @projectTableCreatedBySemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Created by {name}'**
+  String projectTableCreatedBySemantics(String name);
+
+  /// A task's percent done in a table row, rounded to a whole percent.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent}%'**
+  String projectTableCellPercent(int percent);
+
+  /// No description provided for @projectViewsIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'The views of {project}, in the order the app and the web show them.'**
+  String projectViewsIntro(String project);
+
+  /// Filter chip above a Gantt view's timeline that adds the tasks without any date, as estimated bars from today. Phrased as an action like 'Show done'.
+  ///
+  /// In en, this message translates to:
+  /// **'Show undated'**
+  String get projectTimelineShowUndated;
 }
 
 class _AppLocalizationsDelegate

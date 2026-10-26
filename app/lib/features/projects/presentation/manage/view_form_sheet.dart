@@ -169,7 +169,7 @@ class _ViewFormSheetState extends ConsumerState<ViewFormSheet> {
         for (final kind in ProjectViewKind.values)
           SheetOption(
             value: kind,
-            label: viewKindOptionLabel(l10n, kind),
+            label: viewKindLabel(l10n, kind),
             selected: kind == _kind,
           ),
       ],
@@ -314,7 +314,7 @@ class _ViewFormSheetState extends ConsumerState<ViewFormSheet> {
                 color: colors.onSurfaceVariant,
               ),
               title: Text(l10n.projectViewKindLabel),
-              subtitle: Text(viewKindOptionLabel(l10n, _kind)),
+              subtitle: Text(viewKindLabel(l10n, _kind)),
               trailing: const Icon(Icons.arrow_drop_down),
               onTap: () => unawaited(_chooseKind()),
             ),

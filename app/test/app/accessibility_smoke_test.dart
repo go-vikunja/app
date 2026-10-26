@@ -47,6 +47,7 @@ import 'package:vikunja_mobile/features/projects/presentation/manage/project_vie
 import 'package:vikunja_mobile/features/projects/presentation/manage/view_form_sheet.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_row.dart';
 import 'package:vikunja_mobile/features/projects/presentation/reorder_slot.dart';
+import 'package:vikunja_mobile/features/projects/presentation/timeline/timeline_chart.dart';
 import 'package:vikunja_mobile/features/quick_add/application/quick_add_plan.dart';
 import 'package:vikunja_mobile/features/quick_add/application/quick_add_service_provider.dart';
 import 'package:vikunja_mobile/features/quick_add/presentation/magic_suggestions.dart';
@@ -2550,6 +2551,237 @@ void main() {
       await tester.tap(filtered);
       await tester.pumpAndSettle();
       await jumpToEnd();
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a table view with every column, its sort and columns sheets '
+        'and the view tabs at 200 % in dark mode '
+        '(${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      final now = DateTime.now();
+      final data = richData();
+      data.projects.all = [
+        sampleProject(
+          id: 1,
+          title: 'Work with a very long project title',
+          hexColor: '1973ff',
+          views: [
+            ...defaultViews(1, firstViewId: 11),
+            sampleListView(
+              id: 15,
+              projectId: 1,
+              title: 'Open tasks',
+              kind: ProjectViewKind.table,
+              position: 500,
+            ),
+          ],
+        ),
+      ];
+      data.tasks.all = [
+        for (final task in data.tasks.all)
+          task.copyWith(
+            startDate: now.subtract(const Duration(days: 20)),
+            endDate: now.add(const Duration(days: 40)),
+            created: now.subtract(const Duration(days: 400)),
+            updated: now.subtract(const Duration(days: 300)),
+            createdBy: const User(
+              id: 2,
+              username: 'bartholomew',
+              name: 'Bartholomew Beispielmann-Langname',
+            ),
+            commentCount: 128,
+            isUnread: true,
+            percentDone: 0.666,
+          ),
+        sampleTask(
+          id: 7,
+          title: 'A done task with a long title that needs to wrap',
+          done: true,
+          doneAt: now.subtract(const Duration(hours: 5)),
+          identifier: 'LONGIDENT-7',
+        ),
+      ];
+      data.listPreferences
+        ..lastViews[1] = 13
+        ..setTableColumns(TableColumn.values.toSet());
+      await pumpSignedInApp(tester, sync: data);
+      final l10n = lookupAppLocalizations(locale);
+
+      containerOf(tester).read(appRouterProvider).go(AppRoutes.project(1));
+      await tester.pumpAndSettle();
+      await scrollToEnd(tester, find.byType(CustomScrollView));
+      expect(tester.takeException(), isNull);
+
+      Future<void> showChip(Finder chip) async {
+        tester
+            .state<ScrollableState>(
+              find
+                  .descendant(
+                    of: find.byType(CustomScrollView),
+                    matching: find.byType(Scrollable),
+                  )
+                  .first,
+            )
+            .position
+            .jumpTo(0);
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(chip);
+        await tester.pumpAndSettle();
+        // At this size a chip is wider than the screen; its icon leads, and
+        // the tap lands on the chip around it.
+        await tester.tap(chip, warnIfMissed: false);
+        await tester.pumpAndSettle();
+      }
+
+      await showChip(find.byIcon(Icons.sort));
+      await scrollToEnd(tester, find.byType(ListView).last);
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.text(l10n.sortUpdatedAsc));
+      await tester.pumpAndSettle();
+
+      await showChip(find.byIcon(Icons.view_column_outlined));
+      await scrollToEnd(tester, find.byType(ListView).last);
+      expect(tester.takeException(), isNull);
+      await tester.tap(
+        find.descendant(
+          of: find.byType(BottomSheet),
+          matching: find.text(l10n.projectTableColumnsReset),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      // At this size the sheet covers the screen.
+      Navigator.of(tester.element(find.byType(BottomSheet))).pop();
+      await tester.pumpAndSettle();
+
+      final openTable = find.widgetWithText(Tab, 'Open tasks');
+      await tester.ensureVisible(openTable);
+      await tester.pumpAndSettle();
+      await tester.tap(openTable);
+      await tester.pumpAndSettle();
+      await scrollToEnd(tester, find.byType(CustomScrollView));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a timeline with every kind of bar, a collapsed parent and '
+        'its range sheet at 200 % in dark mode '
+        '(${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day, 10);
+      final data = richData();
+      data.projects.all = [
+        sampleProject(
+          id: 1,
+          title: 'Work with a very long project title',
+          hexColor: '1973ff',
+          views: defaultViews(1, firstViewId: 11),
+        ),
+      ];
+      data.tasks.all = [
+        ...data.tasks.all,
+        sampleTask(
+          id: 7,
+          title: 'A parent task whose title is far too long for its bar',
+          start: today.subtract(const Duration(days: 3)),
+          end: today.add(const Duration(days: 12)),
+          subtaskIds: [8],
+          relatedTasks: {
+            TaskRelationKind.blocking: [sampleTask(id: 9, title: '')],
+          },
+        ),
+        sampleTask(
+          id: 8,
+          title: 'A subtask that starts and never ends',
+          start: today.add(const Duration(days: 1)),
+          parentIds: [7],
+        ),
+        sampleTask(
+          id: 9,
+          title: 'Done and struck through',
+          start: today.add(const Duration(days: 13)),
+          end: today.add(const Duration(days: 15)),
+          done: true,
+          doneAt: today,
+        ),
+        sampleTask(id: 10, title: 'Without any dates at all'),
+      ];
+      data.listPreferences
+        ..lastViews[1] = 12
+        ..setView(
+          'view:12',
+          const ViewPreferences(
+            timeline: TimelinePreferences(withoutDates: true),
+          ),
+        );
+      await pumpSignedInApp(tester, sync: data);
+      final l10n = lookupAppLocalizations(locale);
+
+      containerOf(tester).read(appRouterProvider).go(AppRoutes.project(1));
+      await tester.pumpAndSettle();
+      expect(find.byType(TimelineChart), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+
+      final chart = find.byType(TimelineChart);
+      final scrollables = find.descendant(
+        of: chart,
+        matching: find.byType(Scrollable),
+      );
+      final sideways = tester.state<ScrollableState>(scrollables.first);
+      final rows = tester.state<ScrollableState>(scrollables.last);
+      for (final position in [rows.position, sideways.position]) {
+        for (var i = 0; i < 40 && position.extentAfter > 0; i++) {
+          position.jumpTo(
+            (position.pixels + 300).clamp(0, position.maxScrollExtent),
+          );
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
+        }
+        expect(position.extentAfter, 0);
+      }
+      await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+
+      final collapse = find.byTooltip(
+        l10n.projectTimelineCollapse(
+          'A parent task whose title is far too long for its bar',
+        ),
+      );
+      rows.position.jumpTo(0);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(collapse);
+      await tester.pumpAndSettle();
+      await tester.tap(collapse);
+      await tester.pumpAndSettle();
+      expect(find.text('A subtask that starts and never ends'), findsNothing);
+      expect(tester.takeException(), isNull);
+
+      final controls = tester.state<ScrollableState>(
+        find
+            .descendant(
+              of: find.byType(CustomScrollView),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      controls.position.jumpTo(0);
+      await tester.pumpAndSettle();
+      final range = find.byIcon(Icons.date_range);
+      await tester.ensureVisible(range);
+      await tester.pumpAndSettle();
+      // At this size the chip is wider than the screen; its icon leads.
+      await tester.tap(range, warnIfMissed: false);
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.projectTimelineRangeTitle), findsOneWidget);
+      await scrollToEnd(tester, find.byType(ListView).last);
+      expect(tester.takeException(), isNull);
+      expect(find.text(l10n.projectTimelineReset), findsOneWidget);
+      await tester.tap(find.text(l10n.projectTimelineReset));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Without any dates at all', findRichText: true),
+        findsNothing,
+      );
       expect(tester.takeException(), isNull);
     });
 

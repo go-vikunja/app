@@ -10,16 +10,6 @@ String viewKindLabel(AppLocalizations l10n, ProjectViewKind kind) =>
       ProjectViewKind.kanban => l10n.projectViewKanban,
     };
 
-/// Whether the app shows views of [kind]; the others are kept for the web.
-bool isShownInApp(ProjectViewKind kind) =>
-    kind == ProjectViewKind.list || kind == ProjectViewKind.kanban;
-
-/// The kind, and for one the app does not show yet, that it does not.
-String viewKindOptionLabel(AppLocalizations l10n, ProjectViewKind kind) =>
-    isShownInApp(kind)
-    ? viewKindLabel(l10n, kind)
-    : l10n.projectViewKindWebOnly(viewKindLabel(l10n, kind));
-
 IconData viewKindIcon(ProjectViewKind kind) => switch (kind) {
   ProjectViewKind.list => Icons.view_list_outlined,
   ProjectViewKind.gantt => Icons.view_timeline_outlined,

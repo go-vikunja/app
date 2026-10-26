@@ -178,7 +178,8 @@ final class ProjectListSource {
   /// evaluated here with the server's rules (the project's tasks only,
   /// archived project included). Null when the view has neither, and when
   /// the device cannot evaluate them (the engine refuses the filter, or it
-  /// names `bucket_id`): the [snapshot] decides then.
+  /// names `bucket_id`): the [snapshot] decides then. Under a request
+  /// filter (`TaskRepository.watchProjectList`) never null.
   final Set<int>? matchingIds;
 }
 

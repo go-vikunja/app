@@ -12,7 +12,12 @@ import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
 /// the server's rules: the filter text through the engine with the
 /// include-nulls flag, and the search as the server applies a view's `s`.
 final class LocalFilter {
-  const new _(this._filter, this._search, {required this.onlyOpenTasks});
+  const new _(
+    this._filter,
+    this._search, {
+    required this.onlyOpenTasks,
+    this._also,
+  });
 
   /// Null when the device cannot evaluate [filter]: the engine refuses its
   /// text, or the text names `bucket_id`, which needs a board's download.
@@ -42,6 +47,56 @@ final class LocalFilter {
     );
   }
 
+  /// What the server's tasks endpoint evaluates when a request with
+  /// [request] (filter and include-nulls) meets the [own] filter of a view
+  /// or, with [savedFilter], of a saved filter (`task_collection.go`): the
+  /// texts ANDed as `(request) && (own)` with include-nulls if either asks,
+  /// and the view's search. A saved filter whose own include-nulls is off
+  /// keeps it off for its own conditions when the request turns it on: the
+  /// request's text alone is evaluated with it then. Null when the device
+  /// cannot evaluate either text.
+  static LocalFilter? compileWithRequest(
+    ViewFilter? own,
+    ViewFilter request, {
+    required tz.Location location,
+    required DateTime now,
+    bool savedFilter = false,
+  }) {
+    final base = own ?? const ViewFilter();
+    LocalFilter? compiled(ViewFilter filter) =>
+        compile(filter, location: location, now: now);
+    if (request.filter.isEmpty) return compiled(base);
+    if (base.filter.isEmpty) {
+      return compiled(
+        ViewFilter(
+          filter: request.filter,
+          search: base.search,
+          includeNulls: base.includeNulls || request.includeNulls,
+        ),
+      );
+    }
+    if (savedFilter && request.includeNulls && !base.includeNulls) {
+      final nullable = compiled(
+        ViewFilter(filter: request.filter, includeNulls: true),
+      );
+      final rest = compiled(base);
+      if (nullable == null || rest == null) return null;
+      return LocalFilter._(
+        nullable._filter,
+        null,
+        onlyOpenTasks: nullable.onlyOpenTasks || rest.onlyOpenTasks,
+        also: rest,
+      );
+    }
+    return compiled(
+      ViewFilter(
+        filter: '(${request.filter}) && (${base.filter})',
+        search: base.search,
+        includeNulls: base.includeNulls || request.includeNulls,
+      ),
+    );
+  }
+
   /// Whether [filter] narrows anything down: an empty one lists every task.
   static bool restricts(ViewFilter? filter) =>
       filter != null &&
@@ -49,13 +104,15 @@ final class LocalFilter {
 
   final BoundFilter? _filter;
   final String? _search;
+  final LocalFilter? _also;
 
   /// No done task can match, so the candidates can leave them out.
   final bool onlyOpenTasks;
 
   bool matches(FilterableTask task) =>
       (_search == null || matchesTaskSearch(_search, task)) &&
-      (_filter?.matches(task) ?? true);
+      (_filter?.matches(task) ?? true) &&
+      (_also?.matches(task) ?? true);
 
   Set<int> matchingIds(Iterable<FilterRow> rows) => {
     for (final row in rows)
@@ -110,18 +167,28 @@ final class LocalFilters {
 
   /// The ids of the project's tasks a view with [filter] lists; null when
   /// the filter does not restrict anything or the device cannot evaluate
-  /// it.
+  /// it. With a [request] (a timeline's range), what the view's tasks
+  /// endpoint answers to it: both filters, as
+  /// [LocalFilter.compileWithRequest] combines them.
   Future<Set<int>?> matchingInProject(
     int projectId,
     ViewFilter? filter, {
     required String timezoneSetting,
+    ViewFilter? request,
   }) async {
-    if (filter == null || !LocalFilter.restricts(filter)) return null;
-    final compiled = LocalFilter.compile(
-      filter,
-      location: locationForFilters([timezoneSetting]),
-      now: _now(),
-    );
+    final location = locationForFilters([timezoneSetting]);
+    final LocalFilter? compiled;
+    if (request != null && LocalFilter.restricts(request)) {
+      compiled = LocalFilter.compileWithRequest(
+        filter,
+        request,
+        location: location,
+        now: _now(),
+      );
+    } else {
+      if (filter == null || !LocalFilter.restricts(filter)) return null;
+      compiled = LocalFilter.compile(filter, location: location, now: _now());
+    }
     if (compiled == null) return null;
     return compiled.matchingIds(
       await _db.tasksDao.loadFilterRowsInProject(
@@ -219,6 +286,25 @@ bool changesWithTime(ViewFilter? filter) =>
       final FilterExpression expression => expression.usesRelativeDates,
       FilterError() => false,
     };
+
+/// Whether a view with [filter] lists what only the server can evaluate:
+/// its filter restricts something, and the engine refuses it or it names
+/// `bucket_id`. Such a view's tasks come from its download.
+bool refusesViewFilter(ViewFilter? filter) =>
+    LocalFilter.restricts(filter) &&
+    LocalFilter.compile(filter!, location: tz.UTC, now: DateTime.timestamp()) ==
+        null;
+
+/// Whether [view]'s tasks are downloaded into its snapshot
+/// (`downloadViewSnapshot`): a list view's for their positions, a table's
+/// or Gantt view's only for a filter the device cannot evaluate, whose
+/// answer only the server has. A kanban view has its board instead.
+bool downloadsSnapshot(ProjectView view) => switch (view.kind) {
+  ProjectViewKind.list => true,
+  ProjectViewKind.table ||
+  ProjectViewKind.gantt => refusesViewFilter(view.filter),
+  ProjectViewKind.kanban => false,
+};
 
 /// Whether the device can evaluate a saved filter with [definition]
 /// itself: known and accepted by the engine.

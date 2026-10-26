@@ -3539,15 +3539,6 @@
     }
   },
   "projectChangeFailed": "The change couldn't be saved.",
-  "projectViewsIntro": "The views of {project}, in the order the app and the web show them. Table and Gantt views show on the web only for now.",
-  "@projectViewsIntro": {
-    "placeholders": {
-      "project": {
-        "type": "String",
-        "example": "Work"
-      }
-    }
-  },
   "projectViewNew": "New view",
   "projectViewEditTitle": "Edit view",
   "projectViewOptionsFor": "Options for {view}",
@@ -3575,16 +3566,6 @@
   "projectViewSaved": "View saved",
   "projectViewDeleted": "View deleted",
   "projectViewKindLabel": "Kind",
-  "projectViewKindWebOnly": "{kind} – shown on the web only for now",
-  "@projectViewKindWebOnly": {
-    "description": "A view kind the app does not show yet (Table, Gantt).",
-    "placeholders": {
-      "kind": {
-        "type": "String",
-        "example": "Table"
-      }
-    }
-  },
   "projectViewShowDone": "Show done tasks",
   "projectViewShowDoneHint": "Off adds “done = false” to the filter, like the web's List view.",
   "projectViewFilterInvalid": "This filter isn't valid: {message}",
@@ -5442,5 +5423,222 @@
         "example": "Family"
       }
     }
+  },
+  "projectTimelineRangeTitle": "Date range",
+  "@projectTimelineRangeTitle": {
+    "description": "Title of the timeline's date range sheet."
+  },
+  "projectTimelineRangeCurrent": "Date range: {dates}",
+  "@projectTimelineRangeCurrent": {
+    "description": "Tooltip and screen reader label of the timeline's range chip.",
+    "placeholders": {
+      "dates": {
+        "type": "String",
+        "example": "Oct 11 – Dec 20"
+      }
+    }
+  },
+  "projectTimelineRangeDefault": "Default (15 days back, 55 ahead)",
+  "@projectTimelineRangeDefault": {
+    "description": "The timeline's default range in its range sheet, which follows today."
+  },
+  "projectTimelineRangeCustom": "Custom range…",
+  "@projectTimelineRangeCustom": {
+    "description": "Opens the date pickers for a custom timeline range."
+  },
+  "projectTimelineReset": "Reset to defaults",
+  "@projectTimelineReset": {
+    "description": "In the timeline's range sheet, shown when the range, the tasks without dates or the zoom differ from the defaults: sets all three back."
+  },
+  "projectTimelineZoomIn": "Zoom in",
+  "@projectTimelineZoomIn": {
+    "description": "Widens the timeline's days."
+  },
+  "projectTimelineZoomOut": "Zoom out",
+  "@projectTimelineZoomOut": {
+    "description": "Narrows the timeline's days."
+  },
+  "projectTimelineGoToToday": "Go to today",
+  "@projectTimelineGoToToday": {
+    "description": "Scrolls the timeline to today."
+  },
+  "projectTimelineSpanSemantics": "{from} to {to}",
+  "@projectTimelineSpanSemantics": {
+    "description": "Read by screen readers for a timeline bar: its first and last day.",
+    "placeholders": {
+      "from": {
+        "type": "String",
+        "example": "Tue, Nov 3"
+      },
+      "to": {
+        "type": "String",
+        "example": "Mon, Nov 9"
+      }
+    }
+  },
+  "projectTimelineStartOnlySemantics": "starts {date}, open end",
+  "@projectTimelineStartOnlySemantics": {
+    "description": "Read by screen readers for a timeline bar of a task with a start date only.",
+    "placeholders": {
+      "date": {
+        "type": "String",
+        "example": "Tue, Nov 3"
+      }
+    }
+  },
+  "projectTimelineEndOnlySemantics": "ends {date}, open start",
+  "@projectTimelineEndOnlySemantics": {
+    "description": "Read by screen readers for a timeline bar of a task with an end date and no start date.",
+    "placeholders": {
+      "date": {
+        "type": "String",
+        "example": "Mon, Nov 9"
+      }
+    }
+  },
+  "projectTimelineDueOnlySemantics": "due {date}, open start",
+  "@projectTimelineDueOnlySemantics": {
+    "description": "Read by screen readers for a timeline bar of a task with a due date and no start or end date.",
+    "placeholders": {
+      "date": {
+        "type": "String",
+        "example": "Mon, Nov 9"
+      }
+    }
+  },
+  "projectTimelineEstimatedSemantics": "no dates, estimated",
+  "@projectTimelineEstimatedSemantics": {
+    "description": "Read by screen readers for a timeline bar of a task without dates, drawn from today for a week."
+  },
+  "projectTimelineDerivedSemantics": "dates from its subtasks",
+  "@projectTimelineDerivedSemantics": {
+    "description": "Read by screen readers for a timeline bar of a task without dates of its own, drawn over its subtasks' dates."
+  },
+  "projectTimelineExpand": "Show subtasks of {title}",
+  "@projectTimelineExpand": {
+    "description": "Tooltip and screen reader action of a collapsed timeline row.",
+    "placeholders": {
+      "title": {
+        "type": "String",
+        "example": "Plan the trip"
+      }
+    }
+  },
+  "projectTimelineCollapse": "Hide subtasks of {title}",
+  "@projectTimelineCollapse": {
+    "description": "Tooltip and screen reader action of an expanded timeline row.",
+    "placeholders": {
+      "title": {
+        "type": "String",
+        "example": "Plan the trip"
+      }
+    }
+  },
+  "projectTimelineEmptyTitle": "No tasks between {from} and {to}",
+  "@projectTimelineEmptyTitle": {
+    "description": "Empty timeline: no task in its date range.",
+    "placeholders": {
+      "from": {
+        "type": "String",
+        "example": "Oct 11"
+      },
+      "to": {
+        "type": "String",
+        "example": "Dec 20"
+      }
+    }
+  },
+  "projectTimelineEmptyBody": "Choose another date range or show tasks without dates.",
+  "@projectTimelineEmptyBody": {
+    "description": "Below the empty timeline's title while tasks without dates are hidden."
+  },
+  "projectTimelineEmptyRangeBody": "Choose another date range.",
+  "@projectTimelineEmptyRangeBody": {
+    "description": "Below the empty timeline's title while tasks without dates are shown."
+  },
+  "projectTableColumns": "Columns",
+  "@projectTableColumns": {
+    "description": "A table view's button and sheet that pick what each row shows."
+  },
+  "projectTableColumnsHint": "Choose what each row shows. The choice applies to every table view.",
+  "projectTableColumnsReset": "Default columns",
+  "@projectTableColumnsReset": {
+    "description": "Resets the table's columns to the web's six."
+  },
+  "projectTableColumnTitleAlways": "Every row shows it",
+  "@projectTableColumnTitleAlways": {
+    "description": "Below the Title column, which cannot be turned off."
+  },
+  "projectTableColumnNumber": "Number",
+  "@projectTableColumnNumber": {
+    "description": "The table column of a task's number or identifier, # on the web."
+  },
+  "projectTableColumnComments": "Comments",
+  "@projectTableColumnComments": {
+    "description": "The table column of a task's comment count."
+  },
+  "projectTableColumnDoneAt": "Done at",
+  "projectTableColumnCreated": "Created",
+  "projectTableColumnUpdated": "Updated",
+  "projectTableColumnCreatedBy": "Created by",
+  "projectTableSortDefault": "Default (Highest number first)",
+  "@projectTableSortDefault": {
+    "description": "The table's default sort, by number, highest first."
+  },
+  "projectTableSortNumberDesc": "Number (Highest first)",
+  "projectTableSortNumberAsc": "Number (Lowest first)",
+  "projectTableSortDoneAsc": "Done (Open first)",
+  "projectTableSortDoneDesc": "Done (Done first)",
+  "projectTableSortDoneAtDesc": "Done at (Newest first)",
+  "projectTableSortDoneAtAsc": "Done at (Oldest first)",
+  "projectTableStartsSemantics": "Starts {when}",
+  "@projectTableStartsSemantics": {
+    "placeholders": {
+      "when": {
+        "type": "String",
+        "example": "in 2 days"
+      }
+    }
+  },
+  "projectTableEndsSemantics": "Ends {when}",
+  "@projectTableEndsSemantics": {
+    "placeholders": {
+      "when": {
+        "type": "String",
+        "example": "in 2 days"
+      }
+    }
+  },
+  "projectTableCreatedBySemantics": "Created by {name}",
+  "@projectTableCreatedBySemantics": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Kim"
+      }
+    }
+  },
+  "projectTableCellPercent": "{percent}%",
+  "@projectTableCellPercent": {
+    "description": "A task's percent done in a table row, rounded to a whole percent.",
+    "placeholders": {
+      "percent": {
+        "type": "int",
+        "example": "40"
+      }
+    }
+  },
+  "projectViewsIntro": "The views of {project}, in the order the app and the web show them.",
+  "@projectViewsIntro": {
+    "placeholders": {
+      "project": {
+        "type": "String",
+        "example": "Work"
+      }
+    }
+  },
+  "projectTimelineShowUndated": "Show undated",
+  "@projectTimelineShowUndated": {
+    "description": "Filter chip above a Gantt view's timeline that adds the tasks without any date, as estimated bars from today. Phrased as an action like 'Show done'."
   }
 }

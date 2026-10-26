@@ -15,6 +15,7 @@ import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/account_switcher_button.dart';
+import 'package:vikunja_mobile/features/common/presentation/day_range_picker.dart';
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
 import 'package:vikunja_mobile/features/common/presentation/option_sheet.dart';
 import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
@@ -33,7 +34,6 @@ import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
 import 'package:vikunja_mobile/features/upcoming/application/upcoming_providers.dart';
 import 'package:vikunja_mobile/features/upcoming/application/upcoming_sections.dart';
 import 'package:vikunja_mobile/features/upcoming/presentation/date_range_labels.dart';
-import 'package:vikunja_mobile/features/upcoming/presentation/day_range_picker.dart';
 import 'package:vikunja_mobile/features/upcoming/presentation/day_strip.dart';
 import 'package:vikunja_mobile/features/upcoming/presentation/timeline_day.dart';
 

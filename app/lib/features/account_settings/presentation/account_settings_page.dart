@@ -655,7 +655,7 @@ class _Settings extends ConsumerWidget {
                   for (final kind in ProjectViewKind.values)
                     SheetOption(
                       value: SettingChange.set(kind),
-                      label: viewKindOptionLabel(l10n, kind),
+                      label: viewKindLabel(l10n, kind),
                       selected: settings.defaultViewKind == kind,
                     ),
                 ],
@@ -1224,7 +1224,7 @@ Future<String?> _pickLanguage(BuildContext context, String current) {
 String _defaultViewLabel(AppLocalizations l10n, ProjectViewKind? kind) =>
     kind == null
     ? l10n.accountSettingsDefaultViewFirst
-    : viewKindOptionLabel(l10n, kind);
+    : viewKindLabel(l10n, kind);
 
 String _magicModeLabel(AppLocalizations l10n, QuickAddMagicMode mode) =>
     switch (mode) {

@@ -56,7 +56,7 @@ class BoardCard extends ConsumerWidget {
     final taskColor = summary.taskColor;
 
     final meta = [
-      if (task.done) const _DoneBadge(),
+      if (task.done) const DoneBadge(),
       if (identifier != null)
         IdentifierText(identifier, style: const TextStyle(fontSize: 11)),
       if (summary.showsPriority) PriorityFlag(priority: task.priority),
@@ -186,30 +186,4 @@ class _ChecklistCount extends StatelessWidget {
       ),
     ],
   );
-}
-
-/// The web's small "Done" tag on a done card.
-class _DoneBadge extends StatelessWidget {
-  const new();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: colors.primaryContainer,
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-        child: Text(
-          context.l10n.taskDoneSemantics,
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: colors.onPrimaryContainer,
-          ),
-        ),
-      ),
-    );
-  }
 }

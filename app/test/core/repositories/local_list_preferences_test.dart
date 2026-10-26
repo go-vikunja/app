@@ -84,6 +84,278 @@ void main() {
     });
   });
 
+  group('a table view', () {
+    test('starts with the highest number first', () async {
+      final read = await preferences.watchView('view:72').first;
+
+      expect(read.tableSort, TableSort.defaultSort);
+      expect(read.tableSort.wireName, 'index:desc');
+    });
+
+    test("every sort survives the round trip, in the web's URL "
+        'form', () async {
+      for (final field in TableSortField.values) {
+        for (final descending in [false, true]) {
+          final sort = TableSort(field, descending: descending);
+          await preferences.saveView(
+            'view:72',
+            ViewPreferences(tableSort: sort),
+          );
+          expect(
+            (await preferences.watchView('view:72').first).tableSort,
+            sort,
+            reason: sort.wireName,
+          );
+          expect(
+            await db.listPreferencesDao.read('list:view:72'),
+            contains('"table_sort":"${sort.wireName}"'),
+          );
+        }
+      }
+    });
+
+    test('an unknown sort falls back to the default, not to manual, and '
+        'leaves the other fields', () async {
+      for (final stored in [
+        '{"table_sort": "position:asc", "show_done": true}',
+        '{"table_sort": "index", "show_done": true}',
+        '{"table_sort": "due_date:up", "show_done": true}',
+        '{"table_sort": 3, "show_done": true}',
+      ]) {
+        await db.listPreferencesDao.write('list:view:72', stored);
+        expect(
+          await preferences.watchView('view:72').first,
+          const ViewPreferences(showDone: true),
+          reason: stored,
+        );
+      }
+    });
+  });
+
+  group('a timeline', () {
+    const range = GanttRange(
+      from: CalendarDate(2026, 11, 1),
+      to: CalendarDate(2026, 11, 30),
+    );
+
+    test('starts at the default range without dateless tasks, 36 wide, and '
+        'the default follows today', () {
+      const timeline = TimelinePreferences();
+
+      expect(timeline.customRange, isNull);
+      expect(timeline.withoutDates, isFalse);
+      expect(timeline.dayWidth, 36);
+      expect(
+        timeline.range(DateTime(2026, 10, 26, 23, 59)),
+        const GanttRange(
+          from: CalendarDate(2026, 10, 11),
+          to: CalendarDate(2026, 12, 20),
+        ),
+      );
+      expect(
+        timeline.range(DateTime(2026, 10, 27, 0, 1)).from,
+        const CalendarDate(2026, 10, 12),
+      );
+    });
+
+    test('a custom range, the toggle and the zoom survive the round trip, '
+        'and Reset goes back to the default', () async {
+      const saved = ViewPreferences(
+        timeline: TimelinePreferences(
+          customRange: range,
+          withoutDates: true,
+          dayWidth: 52,
+        ),
+      );
+
+      await preferences.saveView('view:73', saved);
+
+      expect(await preferences.watchView('view:73').first, saved);
+      expect(
+        await db.listPreferencesDao.read('list:view:73'),
+        contains(
+          '"timeline":{"range":{"from":"2026-11-01","to":"2026-11-30"},'
+          '"without_dates":true,"day_width":52.0}',
+        ),
+      );
+      expect(saved.timeline.range(DateTime(2026, 10, 26)), range);
+
+      await preferences.saveView(
+        'view:73',
+        saved.copyWith(timeline: saved.timeline.copyWith(defaultRange: true)),
+      );
+
+      final reset = (await preferences.watchView('view:73').first).timeline;
+      expect(reset.customRange, isNull);
+      expect(reset.withoutDates, isTrue);
+      expect(
+        await db.listPreferencesDao.read('list:view:73'),
+        contains('"range":"default"'),
+      );
+    });
+
+    test('an unreadable value is the default, field by field', () async {
+      for (final (stored, expected) in [
+        ('{"timeline": "wide"}', const TimelinePreferences()),
+        (
+          '{"timeline": {"range": {"from": "2026-11-30", "to": "2026-11-01"}, '
+              '"without_dates": true}}',
+          const TimelinePreferences(withoutDates: true),
+        ),
+        (
+          '{"timeline": {"range": {"from": "2026-11-01"}, "day_width": 50}}',
+          const TimelinePreferences(dayWidth: 50),
+        ),
+        (
+          '{"timeline": {"range": "custom", "without_dates": "yes", '
+              '"day_width": "36"}}',
+          const TimelinePreferences(),
+        ),
+        (
+          '{"timeline": {"day_width": 5}}',
+          const TimelinePreferences(dayWidth: 20),
+        ),
+        (
+          '{"timeline": {"day_width": 500}}',
+          const TimelinePreferences(dayWidth: 72),
+        ),
+        (
+          '{"timeline": {"range": {"from": "2026-11-01", "to": "2026-11-30"}}}',
+          const TimelinePreferences(customRange: range),
+        ),
+      ]) {
+        await db.listPreferencesDao.write('list:view:73', stored);
+        expect(
+          (await preferences.watchView('view:73').first).timeline,
+          expected,
+          reason: stored,
+        );
+      }
+    });
+
+    test('a list view written before keeps its sort and done '
+        'preferences', () async {
+      await db.listPreferencesDao.write(
+        'list:view:70',
+        '{"sort":"due_date:asc","show_done":true}',
+      );
+
+      expect(
+        await preferences.watchView('view:70').first,
+        const ViewPreferences(sort: TaskListSort.dueDateAsc, showDone: true),
+      );
+    });
+
+    test("a deleted view's preferences go, every kind's", () async {
+      await preferences.saveView(
+        'view:72',
+        const ViewPreferences(
+          tableSort: TableSort(TableSortField.title, descending: false),
+        ),
+      );
+      await preferences.saveView(
+        'view:73',
+        const ViewPreferences(
+          timeline: TimelinePreferences(customRange: range),
+        ),
+      );
+      await preferences.saveView('view:74', const ViewPreferences());
+      await preferences.saveTableColumns({TableColumn.title});
+
+      await preferences.forget(viewIds: {72, 73});
+
+      expect(await db.listPreferencesDao.read('list:view:72'), isNull);
+      expect(await db.listPreferencesDao.read('list:view:73'), isNull);
+      expect(await db.listPreferencesDao.read('list:view:74'), isNotNull);
+      expect(await preferences.watchTableColumns().first, {TableColumn.title});
+    });
+  });
+
+  group('table columns', () {
+    test("start at the web's six", () async {
+      expect(await preferences.watchTableColumns().first, {
+        TableColumn.taskIndex,
+        TableColumn.done,
+        TableColumn.title,
+        TableColumn.labels,
+        TableColumn.assignees,
+        TableColumn.dueDate,
+      });
+    });
+
+    test("are saved for the account by the web's keys in its order and "
+        'streamed on change only', () async {
+      final seen = <Set<TableColumn>>[];
+      final subscription = preferences.watchTableColumns().listen(seen.add);
+      addTearDown(subscription.cancel);
+      await pumpEventQueue();
+
+      await preferences.saveTableColumns({
+        TableColumn.createdBy,
+        TableColumn.title,
+        TableColumn.percentDone,
+        TableColumn.commentCount,
+      });
+      await preferences.saveTableColumns({
+        TableColumn.title,
+        TableColumn.percentDone,
+        TableColumn.createdBy,
+        TableColumn.commentCount,
+      });
+      await pumpEventQueue();
+
+      expect(seen, [
+        TableColumn.defaults,
+        {
+          TableColumn.title,
+          TableColumn.commentCount,
+          TableColumn.percentDone,
+          TableColumn.createdBy,
+        },
+      ]);
+      expect(
+        await db.listPreferencesDao.read('table_columns'),
+        '["title","commentCount","percentDone","createdBy"]',
+      );
+    });
+
+    test('every column survives the round trip', () async {
+      await preferences.saveTableColumns(TableColumn.values.toSet());
+
+      expect(
+        await preferences.watchTableColumns().first,
+        TableColumn.values.toSet(),
+      );
+    });
+
+    test('none or an unreadable value is the defaults, unknown keys are '
+        'left out', () async {
+      for (final (stored, expected) in [
+        ('[]', TableColumn.defaults),
+        ('{"columns": ["title"]}', TableColumn.defaults),
+        ('["mood", 3, null]', TableColumn.defaults),
+        ('not json', TableColumn.defaults),
+        (
+          '["dueDate", "mood", "doneAt"]',
+          {TableColumn.dueDate, TableColumn.doneAt},
+        ),
+      ]) {
+        await db.listPreferencesDao.write('table_columns', stored);
+        expect(
+          await preferences.watchTableColumns().first,
+          expected,
+          reason: stored,
+        );
+      }
+    });
+
+    test('an empty choice saves the defaults', () async {
+      await preferences.saveTableColumns(const {});
+
+      expect(await preferences.watchTableColumns().first, TableColumn.defaults);
+    });
+  });
+
   group('last view', () {
     test('is remembered per project', () async {
       expect(await preferences.lastViewOf(7), isNull);

@@ -47,6 +47,48 @@ List<TaskListSort> sortsInMenuOrder(AppLocalizations l10n) => [
   ),
 ];
 
+String tableSortLabel(AppLocalizations l10n, TableSort sort) =>
+    switch ((sort.field, sort.descending)) {
+      (TableSortField.taskIndex, true) => l10n.projectTableSortNumberDesc,
+      (TableSortField.taskIndex, false) => l10n.projectTableSortNumberAsc,
+      (TableSortField.done, false) => l10n.projectTableSortDoneAsc,
+      (TableSortField.done, true) => l10n.projectTableSortDoneDesc,
+      (TableSortField.title, false) => l10n.sortTitleAsc,
+      (TableSortField.title, true) => l10n.sortTitleDesc,
+      (TableSortField.priority, true) => l10n.sortPriorityDesc,
+      (TableSortField.priority, false) => l10n.sortPriorityAsc,
+      (TableSortField.dueDate, false) => l10n.sortDueDateAsc,
+      (TableSortField.dueDate, true) => l10n.sortDueDateDesc,
+      (TableSortField.startDate, false) => l10n.sortStartDateAsc,
+      (TableSortField.startDate, true) => l10n.sortStartDateDesc,
+      (TableSortField.endDate, false) => l10n.sortEndDateAsc,
+      (TableSortField.endDate, true) => l10n.sortEndDateDesc,
+      (TableSortField.percentDone, true) => l10n.sortPercentDoneDesc,
+      (TableSortField.percentDone, false) => l10n.sortPercentDoneAsc,
+      (TableSortField.doneAt, true) => l10n.projectTableSortDoneAtDesc,
+      (TableSortField.doneAt, false) => l10n.projectTableSortDoneAtAsc,
+      (TableSortField.created, true) => l10n.sortCreatedDesc,
+      (TableSortField.created, false) => l10n.sortCreatedAsc,
+      (TableSortField.updated, true) => l10n.sortUpdatedDesc,
+      (TableSortField.updated, false) => l10n.sortUpdatedAsc,
+    };
+
+/// The web table's sortable columns in its order, each in the direction
+/// most often wanted first, the default first of all.
+final List<TableSort> tableSortsInMenuOrder = [
+  for (final field in TableSortField.values)
+    for (final descending in switch (field) {
+      TableSortField.taskIndex ||
+      TableSortField.priority ||
+      TableSortField.percentDone ||
+      TableSortField.doneAt ||
+      TableSortField.created ||
+      TableSortField.updated => const [true, false],
+      _ => const [false, true],
+    })
+      TableSort(field, descending: descending),
+];
+
 /// What the server matches the view against: its filter, else its search.
 String describeViewFilter(ViewFilter? filter) => switch (filter) {
   null => '',

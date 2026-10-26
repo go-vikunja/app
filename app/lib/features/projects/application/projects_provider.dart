@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
@@ -43,6 +44,32 @@ Stream<ProjectListSource> projectListSource(
         ) ??
     const Stream.empty();
 
+/// A Gantt view's tasks for [range], as the web's timeline asks for them:
+/// `matchingIds` holds what the view's tasks endpoint answers to the web's
+/// range filter with [withoutDates] as include-nulls; the project's done
+/// tasks come along only where they match. Stays loading while no account
+/// is signed in.
+@riverpod
+Stream<ProjectListSource> timelineSource(
+  Ref ref,
+  int projectId, {
+  required int viewId,
+  required GanttRange range,
+  required bool withoutDates,
+}) =>
+    ref
+        .watch(taskRepositoryProvider)
+        ?.watchProjectList(
+          projectId,
+          viewId: viewId,
+          includeDone: false,
+          request: ViewFilter(
+            filter: ganttFilterText(range),
+            includeNulls: withoutDates,
+          ),
+        ) ??
+    const Stream.empty();
+
 /// Stays loading while no account is signed in.
 @riverpod
 Stream<BoardSource> boardSource(Ref ref, int projectId, int viewId) =>
@@ -66,6 +93,13 @@ Stream<Map<int, int>> openTaskCounts(Ref ref) =>
 Stream<ViewPreferences> viewPreferences(Ref ref, String listKey) =>
     ref.watch(listPreferencesProvider)?.watchView(listKey) ??
     Stream.value(const ViewPreferences());
+
+/// The columns of every table view; the defaults while nobody is signed
+/// in.
+@riverpod
+Stream<Set<TableColumn>> tableColumns(Ref ref) =>
+    ref.watch(listPreferencesProvider)?.watchTableColumns() ??
+    Stream.value(TableColumn.defaults);
 
 /// What the Projects tab shows of the tree; the defaults while nobody is
 /// signed in.

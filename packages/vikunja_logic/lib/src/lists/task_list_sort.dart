@@ -63,7 +63,7 @@ int compareTasksForList(
 int _compareByKey(Task a, Task b, TaskListSort sort) => switch (sort) {
   TaskListSort.manual => 0,
   TaskListSort.titleAsc ||
-  TaskListSort.titleDesc => _directed(sort, _compareTitles(a.title, b.title)),
+  TaskListSort.titleDesc => _directed(sort, compareTitles(a.title, b.title)),
   TaskListSort.priorityDesc || TaskListSort.priorityAsc => _directed(
     sort,
     a.priority.value.compareTo(b.priority.value),
@@ -91,11 +91,6 @@ int _directed(TaskListSort sort, int order) => sort.descending ? -order : order;
 
 int _nullsLast(TaskListSort sort, DateTime? a, DateTime? b) =>
     compareNullsLast(a, b, descending: sort.descending);
-
-int _compareTitles(String a, String b) {
-  final ignoringCase = a.toLowerCase().compareTo(b.toLowerCase());
-  return ignoringCase != 0 ? ignoringCase : a.compareTo(b);
-}
 
 int _compareManually(
   Task a,

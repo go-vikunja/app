@@ -21,6 +21,7 @@ import 'package:vikunja_mobile/features/tasks/presentation/task_summary.dart';
 /// the detail sheet), the assignees and the favourite star. The controls
 /// are indicators only without their callbacks; the checkbox also in a
 /// project the user may only read. Full-bleed or in a section card alike.
+/// In a table view the line holds the chosen [columns] instead.
 class TaskRow extends ConsumerWidget {
   const new({
     required this.task,
@@ -31,6 +32,7 @@ class TaskRow extends ConsumerWidget {
     this.identifierBeforeTitle = false,
     this.depth = 0,
     this.parentTitle,
+    this.columns,
     this.pending = false,
     this.onTap,
     this.onDoneChanged,
@@ -45,7 +47,8 @@ class TaskRow extends ConsumerWidget {
   /// `UserSettings.effectiveMinimumPriority`.
   final int minimumPriority;
 
-  /// For a task from another project than the list's.
+  /// For a task from another project than the list's; in a table, for
+  /// every task, shown while [columns] has the project.
   final String? projectTitle;
   final Color? projectColor;
 
@@ -60,6 +63,9 @@ class TaskRow extends ConsumerWidget {
   /// The title of the row a subtask is nested under, for screen readers:
   /// the indent alone does not reach them.
   final String? parentTitle;
+
+  /// A table view's columns; null for the list row.
+  final Set<TableColumn>? columns;
 
   /// A change of the task still waits to be sent.
   final bool pending;
@@ -107,6 +113,7 @@ class TaskRow extends ConsumerWidget {
       minimumPriority: minimumPriority,
       formatter: MomentFormatter.watch(context, ref),
       projectTitle: projectTitle,
+      columns: columns,
     );
     final readOnly = ref.watch(
       projectAccessProvider(task.projectId)
@@ -149,34 +156,63 @@ class TaskRow extends ConsumerWidget {
       ],
     );
 
-    final meta = [
-      if (summary.showsPriority) PriorityFlag(priority: task.priority),
-      if (summary.dueText case final due?)
-        DueBadge(text: due, tone: summary.dueTone),
-      if (identifier != null && !identifierLeads) IdentifierText(identifier),
-      if (summary.projectTitle case final project?)
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (projectColor case final color?) ...[
-              ColorDot(color: color),
-              const SizedBox(width: 4),
-            ],
-            Flexible(child: Text(project, style: mutedSmall)),
+    final project = switch (summary.projectTitle) {
+      final project? => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (projectColor case final color?) ...[
+            ColorDot(color: color),
+            const SizedBox(width: 4),
           ],
-        ),
-      for (final label in summary.labels) LabelPill(label: label),
-      if (!summary.checklist.isEmpty)
-        _ChecklistCount(statistics: summary.checklist, style: mutedSmall),
-      if (task.commentCount > 0)
-        CommentCount(count: task.commentCount, unread: task.isUnread),
-      if (summary.described) metaIcon(Icons.notes),
-      if (task.repeats) metaIcon(Icons.repeat),
-      if (pending) metaIcon(Icons.cloud_off_outlined),
-    ];
-    final avatars = task.assignees.isEmpty
-        ? null
-        : AvatarStack(users: task.assignees);
+          Flexible(child: Text(project, style: mutedSmall)),
+        ],
+      ),
+      null => null,
+    };
+    final comments = summary.showsCommentCount
+        ? CommentCount(count: task.commentCount, unread: task.isUnread)
+        : null;
+    final identifierBelow = identifier != null && !identifierLeads
+        ? IdentifierText(identifier)
+        : null;
+    final pendingIcon = pending ? metaIcon(Icons.cloud_off_outlined) : null;
+    final meta = columns == null
+        ? [
+            if (summary.showsPriority) PriorityFlag(priority: task.priority),
+            if (summary.dueText case final due?)
+              DueBadge(text: due, tone: summary.dueTone),
+            ?identifierBelow,
+            ?project,
+            for (final label in summary.labels) LabelPill(label: label),
+            if (!summary.checklist.isEmpty)
+              _ChecklistCount(statistics: summary.checklist, style: mutedSmall),
+            ?comments,
+            if (summary.described) metaIcon(Icons.notes),
+            if (summary.repeats) metaIcon(Icons.repeat),
+            ?pendingIcon,
+          ]
+        : [
+            ?identifierBelow,
+            if (summary.showsDoneBadge) const DoneBadge(),
+            ?project,
+            if (summary.showsPriority)
+              TablePriorityLabel(priority: task.priority),
+            for (final label in summary.labels) LabelPill(label: label),
+            ?comments,
+            // The web's column order puts the progress among the dates.
+            for (final date in summary.tableDates)
+              if (date.column.index < TableColumn.percentDone.index)
+                TableDateItem(column: date.column, text: date.text),
+            if (summary.showsPercent) PercentDoneItem(percent: summary.percent),
+            for (final date in summary.tableDates)
+              if (date.column.index > TableColumn.percentDone.index)
+                TableDateItem(column: date.column, text: date.text),
+            if (summary.createdBy case final user?) CreatedByItem(user: user),
+            ?pendingIcon,
+          ];
+    final avatars = summary.showsAssignees
+        ? AvatarStack(users: task.assignees)
+        : null;
 
     return InkWell(
       onTap: onTap,
@@ -241,7 +277,7 @@ class TaskRow extends ConsumerWidget {
                                 ),
                               ),
                             ),
-                          if (summary.percent > 0)
+                          if (columns == null && summary.showsPercent)
                             Padding(
                               padding: const EdgeInsets.only(top: 8),
                               child: ExcludeSemantics(

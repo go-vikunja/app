@@ -3962,11 +3962,6 @@ class AppLocalizationsDe extends AppLocalizations {
       'Die Änderung konnte nicht gespeichert werden.';
 
   @override
-  String projectViewsIntro(String project) {
-    return 'Die Ansichten von $project in der Reihenfolge, in der App und Web sie zeigen. Tabellen- und Gantt-Ansichten erscheinen vorerst nur im Web.';
-  }
-
-  @override
   String get projectViewNew => 'Neue Ansicht';
 
   @override
@@ -4004,11 +3999,6 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get projectViewKindLabel => 'Art';
-
-  @override
-  String projectViewKindWebOnly(String kind) {
-    return '$kind – vorerst nur im Web';
-  }
 
   @override
   String get projectViewShowDone => 'Erledigte Aufgaben anzeigen';
@@ -6671,4 +6661,159 @@ class AppLocalizationsDe extends AppLocalizations {
   String linkShareShareNamed(String name) {
     return '$name teilen';
   }
+
+  @override
+  String get projectTimelineRangeTitle => 'Zeitraum';
+
+  @override
+  String projectTimelineRangeCurrent(String dates) {
+    return 'Zeitraum: $dates';
+  }
+
+  @override
+  String get projectTimelineRangeDefault =>
+      'Standard (15 Tage zurück, 55 voraus)';
+
+  @override
+  String get projectTimelineRangeCustom => 'Eigener Zeitraum …';
+
+  @override
+  String get projectTimelineReset => 'Auf Standard zurücksetzen';
+
+  @override
+  String get projectTimelineZoomIn => 'Vergrößern';
+
+  @override
+  String get projectTimelineZoomOut => 'Verkleinern';
+
+  @override
+  String get projectTimelineGoToToday => 'Zu heute springen';
+
+  @override
+  String projectTimelineSpanSemantics(String from, String to) {
+    return '$from bis $to';
+  }
+
+  @override
+  String projectTimelineStartOnlySemantics(String date) {
+    return 'beginnt am $date, offenes Ende';
+  }
+
+  @override
+  String projectTimelineEndOnlySemantics(String date) {
+    return 'endet am $date, offener Beginn';
+  }
+
+  @override
+  String projectTimelineDueOnlySemantics(String date) {
+    return 'fällig am $date, offener Beginn';
+  }
+
+  @override
+  String get projectTimelineEstimatedSemantics => 'ohne Datum, geschätzt';
+
+  @override
+  String get projectTimelineDerivedSemantics => 'Daten aus den Unteraufgaben';
+
+  @override
+  String projectTimelineExpand(String title) {
+    return 'Unteraufgaben von $title einblenden';
+  }
+
+  @override
+  String projectTimelineCollapse(String title) {
+    return 'Unteraufgaben von $title ausblenden';
+  }
+
+  @override
+  String projectTimelineEmptyTitle(String from, String to) {
+    return 'Keine Aufgaben zwischen $from und $to';
+  }
+
+  @override
+  String get projectTimelineEmptyBody =>
+      'Wähle einen anderen Zeitraum oder zeige Aufgaben ohne Datum an.';
+
+  @override
+  String get projectTimelineEmptyRangeBody => 'Wähle einen anderen Zeitraum.';
+
+  @override
+  String get projectTableColumns => 'Spalten';
+
+  @override
+  String get projectTableColumnsHint =>
+      'Wähle, was jede Zeile zeigt. Die Auswahl gilt für alle Tabellenansichten.';
+
+  @override
+  String get projectTableColumnsReset => 'Standardspalten';
+
+  @override
+  String get projectTableColumnTitleAlways => 'Jede Zeile zeigt ihn';
+
+  @override
+  String get projectTableColumnNumber => 'Nummer';
+
+  @override
+  String get projectTableColumnComments => 'Kommentare';
+
+  @override
+  String get projectTableColumnDoneAt => 'Erledigt am';
+
+  @override
+  String get projectTableColumnCreated => 'Erstellt';
+
+  @override
+  String get projectTableColumnUpdated => 'Aktualisiert';
+
+  @override
+  String get projectTableColumnCreatedBy => 'Erstellt von';
+
+  @override
+  String get projectTableSortDefault => 'Standard (höchste Nummer zuerst)';
+
+  @override
+  String get projectTableSortNumberDesc => 'Nummer (höchste zuerst)';
+
+  @override
+  String get projectTableSortNumberAsc => 'Nummer (niedrigste zuerst)';
+
+  @override
+  String get projectTableSortDoneAsc => 'Erledigt (offene zuerst)';
+
+  @override
+  String get projectTableSortDoneDesc => 'Erledigt (erledigte zuerst)';
+
+  @override
+  String get projectTableSortDoneAtDesc => 'Erledigt am (neueste zuerst)';
+
+  @override
+  String get projectTableSortDoneAtAsc => 'Erledigt am (älteste zuerst)';
+
+  @override
+  String projectTableStartsSemantics(String when) {
+    return 'Beginnt $when';
+  }
+
+  @override
+  String projectTableEndsSemantics(String when) {
+    return 'Endet $when';
+  }
+
+  @override
+  String projectTableCreatedBySemantics(String name) {
+    return 'Erstellt von $name';
+  }
+
+  @override
+  String projectTableCellPercent(int percent) {
+    return '$percent %';
+  }
+
+  @override
+  String projectViewsIntro(String project) {
+    return 'Die Ansichten von $project in der Reihenfolge, in der App und Web sie zeigen.';
+  }
+
+  @override
+  String get projectTimelineShowUndated => 'Undatierte zeigen';
 }

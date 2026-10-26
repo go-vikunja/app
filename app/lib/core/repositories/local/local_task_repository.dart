@@ -16,6 +16,7 @@ import 'package:vikunja_mobile/core/outbox/outbox_sender.dart';
 import 'package:vikunja_mobile/core/outbox/pending_task_ids_source.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/outbox/upload_json.dart';
+import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/local/shared_latest.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
@@ -173,28 +174,72 @@ final class LocalTaskRepository
     int projectId, {
     required int viewId,
     bool includeDone = true,
+    ViewFilter? request,
   }) => switchLatest(_timezoneSetting(), (timezone) {
     var viewChangesWithTime = false;
     return _db.watchTables(_db.tasksDao.projectListTables, () async {
       final view = viewId == 0 ? null : await _db.projectsDao.loadView(viewId);
-      viewChangesWithTime = changesWithTime(view?.filter);
+      viewChangesWithTime =
+          changesWithTime(view?.filter) || changesWithTime(request);
       return await _db.tasksDao.loadProjectList(
         projectId,
         viewId: viewId,
         includeDone: includeDone,
-        matchingIds: await _filters.matchingInProject(
+        matchingIds: await _matchingInView(
           projectId,
+          viewId,
           view?.filter,
-          timezoneSetting: timezone,
+          request: request,
+          timezone: timezone,
         ),
       );
     }, alsoOn: _clockTicks.where((_) => viewChangesWithTime));
   });
 
+  /// Where the device cannot evaluate the view's own filter, the tasks of
+  /// its last download stand in for it under a [request]; the request's
+  /// filter still narrows them, with the view's include-nulls as the server
+  /// applies it to the whole.
+  Future<Set<int>?> _matchingInView(
+    int projectId,
+    int viewId,
+    ViewFilter? filter, {
+    required ViewFilter? request,
+    required String timezone,
+  }) async {
+    final matching = await _filters.matchingInProject(
+      projectId,
+      filter,
+      timezoneSetting: timezone,
+      request: request,
+    );
+    if (matching != null || !LocalFilter.restricts(request)) return matching;
+    final requested =
+        await _filters.matchingInProject(
+          projectId,
+          ViewFilter(
+            filter: request!.filter,
+            includeNulls:
+                request.includeNulls || (filter?.includeNulls ?? false),
+          ),
+          timezoneSetting: timezone,
+        ) ??
+        const <int>{};
+    final snapshot = await _db.listSnapshotsDao.load(
+      listKeyFor(projectId: projectId, viewId: viewId),
+    );
+    return {
+      for (final id in snapshot.taskIds)
+        if (requested.contains(id)) id,
+    };
+  }
+
   @override
   Future<void> refreshProjectList(int projectId, {required int viewId}) async {
     await _sync.refresh();
     if (viewId == 0) return;
+    final view = await _db.projectsDao.loadView(viewId);
+    if (view != null && !downloadsSnapshot(view)) return;
     await downloadViewSnapshot(
       db: _db,
       client: _readClient('A view download'),

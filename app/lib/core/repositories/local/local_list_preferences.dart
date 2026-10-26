@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
@@ -16,6 +17,7 @@ final class LocalListPreferences implements ListPreferences {
   static String lastViewKey(int projectId) => 'last_view:$projectId';
   static const upcomingKey = 'upcoming';
   static const projectTreeKey = 'projects';
+  static const tableColumnsKey = 'table_columns';
 
   @override
   Stream<ViewPreferences> watchView(String listKey) => _db.listPreferencesDao
@@ -62,8 +64,20 @@ final class LocalListPreferences implements ListPreferences {
       .listPreferencesDao
       .write(projectTreeKey, encodeProjectTreePreferences(preferences));
 
+  @override
+  Stream<Set<TableColumn>> watchTableColumns() => _db.listPreferencesDao
+      .watchValue(tableColumnsKey)
+      .map(decodeTableColumns)
+      .distinct(setEquals);
+
+  @override
+  Future<void> saveTableColumns(Set<TableColumn> columns) => _db
+      .listPreferencesDao
+      .write(tableColumnsKey, encodeTableColumns(columns));
+
   /// Drops what is kept for deleted projects and views: their lists' sort
-  /// and done preferences, the view last shown and the collapsed state.
+  /// and done preferences, a table's sort, a timeline's range and zoom, the
+  /// view last shown and the collapsed state.
   Future<void> forget({
     Set<int> projectIds = const {},
     Set<int> viewIds = const {},
@@ -89,6 +103,8 @@ final class LocalListPreferences implements ListPreferences {
 String encodeViewPreferences(ViewPreferences preferences) => jsonEncode({
   'sort': preferences.sort.wireName,
   'show_done': preferences.showDone,
+  'table_sort': preferences.tableSort.wireName,
+  'timeline': _encodeTimeline(preferences.timeline),
 });
 
 ViewPreferences decodeViewPreferences(String? stored) {
@@ -99,7 +115,52 @@ ViewPreferences decodeViewPreferences(String? stored) {
       _ => null,
     }),
     showDone: json['show_done'] == true,
+    tableSort: TableSort.fromWireName(switch (json['table_sort']) {
+      final String sort => sort,
+      _ => null,
+    }),
+    timeline: _decodeTimeline(json['timeline']),
   );
+}
+
+Map<String, Object?> _encodeTimeline(TimelinePreferences timeline) => {
+  'range': timeline.customRange?.toJson() ?? 'default',
+  'without_dates': timeline.withoutDates,
+  'day_width': timeline.dayWidth,
+};
+
+TimelinePreferences _decodeTimeline(Object? stored) {
+  const defaults = TimelinePreferences();
+  if (stored is! Map<String, Object?>) return defaults;
+  return TimelinePreferences(
+    customRange: GanttRange.fromJson(stored['range']),
+    withoutDates: stored['without_dates'] == true,
+    dayWidth: switch (stored['day_width']) {
+      final num width when width.isFinite => width.toDouble().clamp(
+        TimelinePreferences.minDayWidth,
+        TimelinePreferences.maxDayWidth,
+      ),
+      _ => defaults.dayWidth,
+    },
+  );
+}
+
+/// The web's keys, in its column order.
+String encodeTableColumns(Set<TableColumn> columns) => jsonEncode([
+  for (final column in TableColumn.values)
+    if (columns.contains(column)) column.wireName,
+]);
+
+/// [TableColumn.defaults] when none is known.
+Set<TableColumn> decodeTableColumns(String? stored) {
+  final keys = switch (_decodeJson(stored)) {
+    final List<Object?> keys => keys,
+    _ => const <Object?>[],
+  };
+  final columns = {
+    for (final key in keys) ?TableColumn.fromWire(key is String ? key : null),
+  };
+  return columns.isEmpty ? TableColumn.defaults : Set.unmodifiable(columns);
 }
 
 String encodeUpcomingPreferences(UpcomingPreferences preferences) =>
@@ -159,15 +220,17 @@ ProjectTreePreferences decodeProjectTreePreferences(String? stored) {
   );
 }
 
-Map<String, Object?> _decode(String? stored) {
-  if (stored == null) return const {};
+Map<String, Object?> _decode(String? stored) => switch (_decodeJson(stored)) {
+  final Map<String, Object?> json => json,
+  _ => const {},
+};
+
+Object? _decodeJson(String? stored) {
+  if (stored == null) return null;
   try {
-    return switch (jsonDecode(stored)) {
-      final Map<String, Object?> json => json,
-      _ => const {},
-    };
+    return jsonDecode(stored);
   } on FormatException {
-    return const {};
+    return null;
   }
 }
 

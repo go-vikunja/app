@@ -691,20 +691,10 @@ void main() {
     expect(data.tasks.projectListWatches.last, (1, 12, true));
   });
 
-  testWidgets('a project without views the app shows lists its open tasks '
-      'and only syncs', (tester) async {
-    data.projects.all = [
-      work(
-        views: const [
-          ProjectView(
-            id: 15,
-            projectId: 1,
-            title: 'Gantt',
-            kind: ProjectViewKind.gantt,
-          ),
-        ],
-      ),
-    ];
+  testWidgets('a project without views lists its open tasks and only syncs', (
+    tester,
+  ) async {
+    data.projects.all = [work(views: const [])];
     await pumpProject(tester);
 
     expect(find.byType(TabBar), findsNothing);

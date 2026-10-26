@@ -6,9 +6,9 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/theme/app_theme.dart';
+import 'package:vikunja_mobile/features/common/presentation/day_range_picker.dart';
 import 'package:vikunja_mobile/features/tasks/application/display_settings.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/date_time_picker.dart';
-import 'package:vikunja_mobile/features/upcoming/presentation/day_range_picker.dart';
 
 import '../../helpers/pump_app.dart';
 import '../../helpers/sample_data.dart';

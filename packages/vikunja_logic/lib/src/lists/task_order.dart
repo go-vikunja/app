@@ -20,6 +20,13 @@ int compareNullsLast<T extends Comparable<Object>>(
   return descending ? -order : order;
 }
 
+/// Ignoring case first, then by code unit. The server's database collation
+/// can differ (SQLite compares bytes: `Apple, Date, _under, apple`).
+int compareTitles(String a, String b) {
+  final ignoringCase = a.toLowerCase().compareTo(b.toLowerCase());
+  return ignoringCase != 0 ? ignoringCase : a.compareTo(b);
+}
+
 /// The order of the web's Overview and Upcoming requests: due date
 /// ascending with undated tasks last, then newest first.
 int compareByDueDate(Task a, Task b) {

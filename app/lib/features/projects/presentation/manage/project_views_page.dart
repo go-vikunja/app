@@ -243,7 +243,7 @@ class _ViewRow extends StatelessWidget {
       enabled: enabled,
       leading: Icon(viewKindIcon(view.kind), color: colors.onSurfaceVariant),
       title: Text(title),
-      subtitle: Text(viewKindOptionLabel(l10n, view.kind)),
+      subtitle: Text(viewKindLabel(l10n, view.kind)),
       onTap: onTap,
       trailing: busy
           ? SizedBox.square(

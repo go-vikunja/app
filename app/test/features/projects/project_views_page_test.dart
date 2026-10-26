@@ -88,7 +88,7 @@ void main() {
   }
 
   testWidgets('lists every view in order with its translated title and '
-      'kind, saying which ones show on the web only', (tester) async {
+      'kind, none of them marked as shown on the web only', (tester) async {
     useLocale(tester, const Locale('de'));
     final de = lookupAppLocalizations(const Locale('de'));
     await pumpViews(tester, 1);
@@ -99,14 +99,8 @@ void main() {
       de.projectViewTable,
       de.projectViewKanban,
     ]);
-    expect(
-      find.text(de.projectViewKindWebOnly(de.projectViewTable)),
-      findsOneWidget,
-    );
-    expect(
-      find.text(de.projectViewKindWebOnly(de.projectViewGantt)),
-      findsOneWidget,
-    );
+    expect(find.text(de.projectViewsIntro('Work')), findsOneWidget);
+    expect(find.textContaining('nur im Web'), findsNothing);
   });
 
   testWidgets('a new list view hides done tasks like the web unless told '

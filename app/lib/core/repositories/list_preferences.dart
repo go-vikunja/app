@@ -19,6 +19,13 @@ abstract interface class ListPreferences {
   /// are collapsed.
   Stream<ProjectTreePreferences> watchProjectTree();
   Future<void> saveProjectTree(ProjectTreePreferences preferences);
+
+  /// The columns every table view shows, one choice for the account like
+  /// the web's `tableViewColumns`; [TableColumn.defaults] until chosen.
+  Stream<Set<TableColumn>> watchTableColumns();
+
+  /// An empty [columns] stands for the defaults: one column at least stays.
+  Future<void> saveTableColumns(Set<TableColumn> columns);
 }
 
 @immutable
@@ -51,27 +58,91 @@ final class ProjectTreePreferences {
 String listKeyFor({required int projectId, required int viewId}) =>
     viewId == 0 ? 'project:$projectId' : 'view:$viewId';
 
+/// How the user left one view: [sort] and [showDone] for a list view (and
+/// [showDone] for a table view), [tableSort] for a table view, [timeline]
+/// for a Gantt view.
 @immutable
 final class ViewPreferences {
-  const new({this.sort = TaskListSort.manual, this.showDone = false});
+  const new({
+    this.sort = TaskListSort.manual,
+    this.showDone = false,
+    this.tableSort = TableSort.defaultSort,
+    this.timeline = const TimelinePreferences(),
+  });
 
   final TaskListSort sort;
   final bool showDone;
+  final TableSort tableSort;
+  final TimelinePreferences timeline;
 
-  ViewPreferences copyWith({TaskListSort? sort, bool? showDone}) =>
-      ViewPreferences(
-        sort: sort ?? this.sort,
-        showDone: showDone ?? this.showDone,
-      );
+  ViewPreferences copyWith({
+    TaskListSort? sort,
+    bool? showDone,
+    TableSort? tableSort,
+    TimelinePreferences? timeline,
+  }) => ViewPreferences(
+    sort: sort ?? this.sort,
+    showDone: showDone ?? this.showDone,
+    tableSort: tableSort ?? this.tableSort,
+    timeline: timeline ?? this.timeline,
+  );
 
   @override
   bool operator ==(Object other) =>
       other is ViewPreferences &&
       other.sort == sort &&
-      other.showDone == showDone;
+      other.showDone == showDone &&
+      other.tableSort == tableSort &&
+      other.timeline == timeline;
 
   @override
-  int get hashCode => Object.hash(sort, showDone);
+  int get hashCode => Object.hash(sort, showDone, tableSort, timeline);
+}
+
+/// A Gantt view's timeline as the user left it.
+@immutable
+final class TimelinePreferences {
+  const new({
+    this.customRange,
+    this.withoutDates = false,
+    this.dayWidth = defaultDayWidth,
+  });
+
+  static const defaultDayWidth = 36.0;
+  static const minDayWidth = 20.0;
+  static const maxDayWidth = 72.0;
+
+  /// Null for the web's default range, which moves with today.
+  final GanttRange? customRange;
+
+  /// "Show tasks without dates": the request's include-nulls.
+  final bool withoutDates;
+
+  /// Logical pixels per day column, from [minDayWidth] to [maxDayWidth].
+  final double dayWidth;
+
+  GanttRange range(DateTime today) => customRange ?? defaultGanttRange(today);
+
+  TimelinePreferences copyWith({
+    GanttRange? customRange,
+    bool defaultRange = false,
+    bool? withoutDates,
+    double? dayWidth,
+  }) => TimelinePreferences(
+    customRange: defaultRange ? null : customRange ?? this.customRange,
+    withoutDates: withoutDates ?? this.withoutDates,
+    dayWidth: dayWidth ?? this.dayWidth,
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      other is TimelinePreferences &&
+      other.customRange == customRange &&
+      other.withoutDates == withoutDates &&
+      other.dayWidth == dayWidth;
+
+  @override
+  int get hashCode => Object.hash(customRange, withoutDates, dayWidth);
 }
 
 @immutable
