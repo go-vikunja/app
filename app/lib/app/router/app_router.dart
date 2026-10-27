@@ -47,6 +47,8 @@ import 'package:vikunja_mobile/features/tasks/presentation/edit/task_edit_page.d
 import 'package:vikunja_mobile/features/teams/presentation/team_page.dart';
 import 'package:vikunja_mobile/features/teams/presentation/teams_page.dart';
 import 'package:vikunja_mobile/features/upcoming/presentation/upcoming_screen.dart';
+import 'package:vikunja_mobile/features/widgets/presentation/widget_configure_page.dart';
+import 'package:vikunja_mobile/features/widgets/presentation/widgets_page.dart';
 
 part 'app_router.g.dart';
 
@@ -125,6 +127,16 @@ abstract final class AppRoutes {
   static const accountApiTokenNew = '$accountApiTokens/new';
   static const accountCaldav = '$accountSettings/caldav';
   static const accountDataExport = '$accountSettings/data-export';
+
+  /// Over the shell, from the Account tab: how to place the home-screen
+  /// widgets, and on Android the placed ones.
+  static const widgets = '$home/widgets';
+
+  /// Over the shell, from a placed Android widget's setup (through a
+  /// widget link, [fromWidget]) and the widgets page.
+  static String widgetConfigure(int appWidgetId, {bool fromWidget = false}) =>
+      '$widgets/configure?appWidgetId=$appWidgetId'
+      '${fromWidget ? '&from=widget' : ''}';
 
   /// The connect screen and the server overview over the shell, for
   /// signing in to another account; pushed, so back returns to the shell.
@@ -479,6 +491,24 @@ GoRouter appRouter(Ref ref) {
         ],
       ),
       GoRoute(
+        path: AppRoutes.widgets,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const WidgetsPage(),
+        routes: [
+          GoRoute(
+            path: 'configure',
+            parentNavigatorKey: rootNavigatorKey,
+            redirect: (context, state) =>
+                _appWidgetIdParam(state) == null ? AppRoutes.widgets : null,
+            builder: (context, state) => WidgetConfigurePage(
+              key: ValueKey(_appWidgetIdParam(state)),
+              appWidgetId: _appWidgetIdParam(state)!,
+              fromWidget: state.uri.queryParameters['from'] == 'widget',
+            ),
+          ),
+        ],
+      ),
+      GoRoute(
         path: AppRoutes.addAccount,
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const ConnectServerScreen(adding: true),
@@ -576,6 +606,9 @@ final class _AppSchemeLinks with WidgetsBindingObserver {
 /// a saved filter).
 int? _idParam(GoRouterState state) =>
     int.tryParse(state.pathParameters['id'] ?? '');
+
+int? _appWidgetIdParam(GoRouterState state) =>
+    int.tryParse(state.uri.queryParameters['appWidgetId'] ?? '');
 
 /// Not [syncStatusProvider], which follows a change of the active account
 /// only once it rebuilds.

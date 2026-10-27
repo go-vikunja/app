@@ -32,14 +32,15 @@ import 'package:vikunja_mobile/features/session/application/sign_out_controller.
 import 'package:vikunja_mobile/features/session/presentation/sign_in_failure_message.dart';
 import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
 import 'package:vikunja_mobile/features/sync/presentation/sync_progress_bar.dart';
+import 'package:vikunja_mobile/features/widgets/presentation/widgets_section.dart';
 
 /// Who is signed in with the way to the account's settings on the server,
 /// a session that needs a new sign-in, the account's labels and teams, the
 /// other accounts, the server with the sync state and the changes still
-/// waiting for it, what is set on this device only (notifications,
-/// colours), sign-out and the app's version. A link-share guest gets a
-/// note on what it may do instead of the settings and the labels and
-/// teams.
+/// waiting for it, what is set on this device only (the home-screen
+/// widgets, notifications, colours), sign-out and the app's version. A
+/// link-share guest gets a note on what it may do instead of the settings
+/// and the labels and teams.
 class AccountTab extends ConsumerWidget {
   const new({super.key});
 
@@ -184,6 +185,7 @@ class AccountTab extends ConsumerWidget {
                 SyncProblemsSection(entry: entry),
               ],
             ),
+            const WidgetsSection(),
             NotificationsSection(entry: entry),
             const AppearanceSection(),
             const SizedBox(height: 16),

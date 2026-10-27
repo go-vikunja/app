@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_tasks_label">Aufgaben</string>
+    <string name="widget_tasks_description">Heute, die nächsten Tage, ein Projekt, ein Label oder ein gespeicherter Filter</string>
+    <string name="widget_quick_add_label">Neue Aufgabe</string>
+    <string name="widget_quick_add_description">Leg mit einem Tipp eine Aufgabe an</string>
+    <string name="widget_new_task">Neue Aufgabe</string>
+    <string name="widget_set_up">Tippe, um auszuwählen, was dieses Widget zeigt</string>
+    <string name="widget_not_loaded">Öffne Rurana, um diese Liste zu laden</string>
+    <string name="widget_empty">Nichts zu tun</string>
+    <plurals name="widget_more">
+        <item quantity="one">+%d weitere</item>
+        <item quantity="other">+%d weitere</item>
+    </plurals>
+    <plurals name="widget_count">
+        <item quantity="one">%d Aufgabe</item>
+        <item quantity="other">%d Aufgaben</item>
+    </plurals>
+    <string name="widget_preview_title">Heute</string>
+    <string name="widget_preview_task_1">Blumen gießen</string>
+    <string name="widget_preview_task_2">Miete überweisen</string>
+    <string name="widget_preview_task_3">Klempner anrufen</string>
+    <string name="widget_preview_due_1">Überfällig</string>
+    <string name="widget_preview_due_2">Heute</string>
+    <string name="widget_preview_due_3">Morgen</string>
+</resources>

@@ -61,6 +61,7 @@ import 'subscription_fakes.dart';
 import 'task_details_fakes.dart';
 import 'task_edits.dart';
 import 'team_sharing_fakes.dart';
+import 'widget_fakes.dart';
 
 /// Replays [current] to every subscriber when it has one, then forwards
 /// [updates].
@@ -1975,6 +1976,7 @@ final class SyncFakes {
     linkShareActionsProvider.overrideWithValue(linkShares),
     sensitiveClipboardProvider.overrideWithValue(clipboard),
     secureDisplayProvider.overrideWithValue(secureDisplay),
+    ...quietWidgetOverrides(),
     // The real one opens the account's database; every list reads it.
     userSettingsProvider.overrideWith((ref) {
       final accountId = ref.watch(activeAccountIdProvider);

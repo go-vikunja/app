@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+ places the widget without the configuration step
+     (configuration_optional): it shows the active account's Today list
+     until it is reconfigured. Updates are pushed by the app, never polled. -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:configure="dev.coderoftime.vikunja.widgets.WidgetConfigureActivity"
+    android:description="@string/widget_tasks_description"
+    android:initialLayout="@layout/glance_default_loading_layout"
+    android:minWidth="180dp"
+    android:minHeight="110dp"
+    android:minResizeWidth="110dp"
+    android:minResizeHeight="40dp"
+    android:previewImage="@drawable/widget_preview_tasks"
+    android:previewLayout="@layout/widget_preview_tasks"
+    android:resizeMode="horizontal|vertical"
+    android:targetCellWidth="3"
+    android:targetCellHeight="2"
+    android:updatePeriodMillis="0"
+    android:widgetCategory="home_screen"
+    android:widgetFeatures="reconfigurable|configuration_optional" />

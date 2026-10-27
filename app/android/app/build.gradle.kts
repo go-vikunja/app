@@ -1,5 +1,6 @@
 plugins {
     id("com.android.application")
+    id("org.jetbrains.kotlin.plugin.compose")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
@@ -30,11 +31,16 @@ android {
         versionName = flutter.versionName
     }
 
+    buildFeatures {
+        compose = true
+    }
+
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+            proguardFiles("proguard-rules.pro")
         }
     }
 }
@@ -54,4 +60,14 @@ dependencies {
     // FileProvider and IntentCompat for attachments and shares; declared
     // here rather than relied on through the plugins.
     implementation("androidx.core:core:1.18.0")
+    // Home-screen widgets. The Compose compiler plugin above fails the build
+    // without the Compose runtime that Glance brings.
+    implementation("androidx.glance:glance-appwidget:1.2.0")
+    // Already in the app through workmanager; declared for the widget worker.
+    // Below 2.11.2, R8 stripped Glance's RemoteViews translator.
+    implementation("androidx.work:work-runtime:2.11.2")
+
+    testImplementation("junit:junit:4.13.2")
+    // The JVM tests parse with the real org.json; android.jar has stubs.
+    testImplementation("org.json:json:20260814")
 }

@@ -7089,4 +7089,218 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get overviewGreetingEveningGuest => 'Guten Abend';
+
+  @override
+  String widgetDueAt(String day, String time) {
+    return '$day, $time';
+  }
+
+  @override
+  String widgetMoreTasks(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '+$count weitere',
+      one: '+1 weitere',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String widgetTaskCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Aufgaben',
+      one: '1 Aufgabe',
+      zero: 'Keine Aufgaben',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String widgetMarkDone(String title) {
+    return '„$title“ als erledigt markieren';
+  }
+
+  @override
+  String widgetUpcomingTitle(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Nächste $days Tage',
+      one: 'Nächster Tag',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get widgetAccountRemovedTitle => 'Konto entfernt';
+
+  @override
+  String get widgetChooseAnotherList =>
+      'Wähle eine andere Liste für dieses Widget.';
+
+  @override
+  String get widgetTodayEmptyBody => 'Heute ist nichts fällig.';
+
+  @override
+  String get widgetOverdueEmptyTitle => 'Nichts überfällig';
+
+  @override
+  String widgetAccountSubtitle(String name, String host) {
+    return '$name · $host';
+  }
+
+  @override
+  String get widgetsTitle => 'Widgets für den Startbildschirm';
+
+  @override
+  String get widgetsEntrySubtitle =>
+      'Deine Aufgaben auf dem Startbildschirm, direkt dort abhaken';
+
+  @override
+  String get widgetsIntro =>
+      'Ein Widget zeigt eine Liste eines Kontos: die Aufgaben von heute, die nächsten Tage, die überfälligen, deine Favoriten, ein Projekt, ein Label oder einen gespeicherten Filter. Hake eine Aufgabe direkt dort ab oder tippe sie an, um sie hier zu öffnen.';
+
+  @override
+  String get widgetsHowToHeading => 'So fügst du eins hinzu';
+
+  @override
+  String get widgetsHowToIos =>
+      'Halte eine freie Stelle auf dem Home-Bildschirm gedrückt, tippe auf „Bearbeiten“ und dann auf „Widget hinzufügen“ und such nach Rurana. Um Konto und Liste zu wählen, halte das Widget gedrückt und tippe auf „Widget bearbeiten“.';
+
+  @override
+  String get widgetsAddHeading => 'Widget hinzufügen';
+
+  @override
+  String get widgetsAddHint =>
+      'Es zeigt das aktive Konto; das kannst du in seinen Einstellungen ändern.';
+
+  @override
+  String get widgetsAdd => 'Hinzufügen';
+
+  @override
+  String get widgetsPinUnsupported =>
+      'Dein Startbildschirm kann von hier aus keine Widgets hinzufügen. Füge es direkt auf dem Startbildschirm hinzu.';
+
+  @override
+  String get widgetsPlacedHeading => 'Auf deinem Startbildschirm';
+
+  @override
+  String get widgetsPlacedAccountRemoved =>
+      'Konto entfernt – wähle ein anderes';
+
+  @override
+  String get widgetsPrivacyNote =>
+      'Widgets zeigen die Titel deiner Aufgaben auf dem Startbildschirm, wo jeder sie lesen kann, der dein Handy sieht.';
+
+  @override
+  String get widgetKindToday => 'Heute';
+
+  @override
+  String get widgetKindTodayHint => 'Überfällig und heute fällig';
+
+  @override
+  String get widgetKindUpcoming => 'Anstehend';
+
+  @override
+  String get widgetKindUpcomingHint => 'In den nächsten Tagen fällig';
+
+  @override
+  String get widgetKindOverdue => 'Überfällig';
+
+  @override
+  String get widgetKindOverdueHint => 'Fälligkeit überschritten';
+
+  @override
+  String get widgetKindFavorites => 'Favoriten';
+
+  @override
+  String get widgetKindFavoritesHint => 'Deine Favoriten unter den Aufgaben';
+
+  @override
+  String get widgetKindProject => 'Projekt';
+
+  @override
+  String get widgetKindLabel => 'Label';
+
+  @override
+  String get widgetKindSavedFilter => 'Gespeicherter Filter';
+
+  @override
+  String get widgetKindQuickAdd => 'Button „Neue Aufgabe“';
+
+  @override
+  String get widgetKindQuickAddHint => 'Mit einem Tipp zur neuen Aufgabe';
+
+  @override
+  String widgetUpcomingDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Tage',
+      one: '1 Tag',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get widgetConfigureTitle => 'Widget einrichten';
+
+  @override
+  String get widgetConfigureAccountHeading => 'Konto';
+
+  @override
+  String get widgetConfigureListHeading => 'Zeigt';
+
+  @override
+  String get widgetConfigureDaysLabel => 'Tage im Voraus';
+
+  @override
+  String get widgetConfigureChoose => 'Auswählen';
+
+  @override
+  String get widgetConfigureNoProjects =>
+      'Dieses Konto hat keine Projekte zum Anzeigen.';
+
+  @override
+  String get widgetConfigureNoLabels => 'Dieses Konto hat noch keine Labels.';
+
+  @override
+  String get widgetConfigureNoSavedFilters =>
+      'Dieses Konto hat noch keine gespeicherten Filter.';
+
+  @override
+  String get widgetConfigurePreviewHeading => 'Vorschau';
+
+  @override
+  String get widgetConfigurePreviewNone => 'Noch keine Vorschau';
+
+  @override
+  String get widgetConfigureSave => 'Speichern';
+
+  @override
+  String get widgetConfigureSaving => 'Wird gespeichert …';
+
+  @override
+  String get widgetConfigureSaved => 'Widget eingerichtet';
+
+  @override
+  String get widgetConfigureSaveFailed =>
+      'Das Widget konnte nicht gespeichert werden. Versuch es noch einmal.';
+
+  @override
+  String get widgetsHeading => 'Startbildschirm';
+
+  @override
+  String get widgetsEntryTitle => 'Widgets';
+
+  @override
+  String get widgetsHowToAndroid =>
+      'Halte eine freie Stelle auf dem Startbildschirm gedrückt, tippe auf „Widgets“ und such nach Rurana. Um Konto und Liste zu wählen, tippe unten unter „Auf deinem Startbildschirm“ auf das Widget. Manche Startbildschirme bieten das auch in den Einstellungen des Widgets an, wenn du es gedrückt hältst.';
+
+  @override
+  String get widgetsPlacedNotSetUp =>
+      'Noch nicht eingerichtet – zeigt das aktive Konto';
 }

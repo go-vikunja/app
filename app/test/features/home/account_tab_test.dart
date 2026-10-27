@@ -439,6 +439,17 @@ void main() {
         find.widgetWithText(TextButton, en.signOutDialogConfirm),
       );
       await tester.pump();
+      // Sign-out sits below the device's own sections, out of its reach.
+      await tester.scrollUntilVisible(
+        find.text(en.accountSyncNow),
+        -100,
+        scrollable: find
+            .descendant(
+              of: find.byType(AccountTab),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
 
       final button = tester.widget<FilledButton>(
         find.widgetWithText(FilledButton, en.accountSyncNow),

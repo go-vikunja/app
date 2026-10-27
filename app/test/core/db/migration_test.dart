@@ -40,7 +40,7 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 9);
+    await verifier.migrateAndValidate(db, 10);
 
     final task = (await db.tasksDao.find(1))!;
     expect(task.title, 'Keep me');
@@ -98,7 +98,7 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 9);
+    await verifier.migrateAndValidate(db, 10);
 
     final op = (await db.outboxDao.all()).single;
     expect(op.id, 'op-1');
@@ -156,7 +156,7 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 9);
+    await verifier.migrateAndValidate(db, 10);
 
     final task = (await db.tasksDao.find(50))!;
     expect(task.title, 'Remind me');
@@ -214,7 +214,7 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 9);
+    await verifier.migrateAndValidate(db, 10);
 
     expect((await db.tasksDao.find(50))!.title, 'Remind me');
     final scheduled = (await db.scheduledNotificationsDao.all()).single;
@@ -284,7 +284,7 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 9);
+    await verifier.migrateAndValidate(db, 10);
 
     final parent = (await db.tasksDao.find(60))!;
     expect(parent.subtasks.map((task) => task.id), [61]);
@@ -341,7 +341,7 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 9);
+    await verifier.migrateAndValidate(db, 10);
 
     final snapshot = await db.listSnapshotsDao.load('view:70');
     expect(snapshot.positions, {61: 1, 60: 2});
@@ -396,7 +396,7 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 9);
+    await verifier.migrateAndValidate(db, 10);
 
     final task = (await db.tasksDao.find(60))!;
     expect(task.title, 'Talked about');
@@ -448,7 +448,7 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 9);
+    await verifier.migrateAndValidate(db, 10);
 
     final project = (await db.projectsDao.loadProject(7))!;
     expect(project.title, 'Shared');
@@ -468,6 +468,49 @@ void main() {
       (await db.projectsDao.loadProject(7))!.maxPermission,
       Permission.read,
     );
+  });
+  test('v9 → v10 keeps the tasks with their queued changes and adds the '
+      'imported widget actions', () async {
+    final verifier = SchemaVerifier(GeneratedHelper());
+    final schema = await verifier.schemaAt(9);
+    schema.rawDatabase
+      ..execute(
+        'INSERT INTO projects (id, title, description, identifier, hex_color, '
+        'parent_project_id, is_archived, is_favorite, position, owner_id, '
+        'created, updated, max_permission) '
+        "VALUES (7, 'Work', '', '', '', 0, 0, 0, 1.0, NULL, NULL, NULL, 1)",
+      )
+      ..execute(
+        'INSERT INTO tasks (id, project_id, title, description, done, done_at, '
+        'due_date, start_date, end_date, priority, percent_done, hex_color, '
+        'identifier, "index", is_favorite, position, repeat_after, '
+        'repeat_mode, bucket_id, created_by_id, created, updated, '
+        'sync_run_id, pending_changes, pending_delete, comment_count, '
+        'is_unread) '
+        "VALUES (70, 7, 'Water the plants', '', 1, NULL, NULL, NULL, NULL, "
+        "0, 0.0, '', '-1', 1, 0, 0.0, 0, 0, 0, NULL, NULL, 1759000000000, "
+        "'run-1', ?, 0, 0, 0)",
+        [encodeTaskChanges(const TaskChanges(done: true))],
+      );
+    final db = AppDatabase(schema.newConnection());
+    addTearDown(db.close);
+
+    await verifier.migrateAndValidate(db, 10);
+
+    final task = (await db.tasksDao.find(70))!;
+    expect(task.title, 'Water the plants');
+    expect(task.done, isTrue);
+    expect(await db.importedWidgetActionsDao.contains('tap-1'), isFalse);
+    final at = DateTime.utc(2026, 10, 26, 12);
+    await db.importedWidgetActionsDao.add('tap-1', at: at);
+    expect(await db.importedWidgetActionsDao.contains('tap-1'), isTrue);
+    expect(
+      await db.importedWidgetActionsDao.forgetBefore(
+        at.add(const Duration(seconds: 1)),
+      ),
+      1,
+    );
+    expect(await db.importedWidgetActionsDao.contains('tap-1'), isFalse);
   });
 }
 

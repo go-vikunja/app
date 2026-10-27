@@ -45,6 +45,8 @@ dependencies:
   qr: ^4.0.0
   quick_actions: ^1.1.1
   riverpod_annotation: ^4.0.7
+  rurana_widgets:
+    path: ../plugins/rurana_widgets
   share_plus: ^13.3.1
   shared_preferences: ^2.5.6
   sqlite3: ^3.7.0

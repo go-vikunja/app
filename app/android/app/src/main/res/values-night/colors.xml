@@ -2,4 +2,11 @@
 <resources>
     <!-- Matches the Flutter theme's dark surface colour (app_theme.dart). -->
     <color name="launch_background">#0E141C</color>
+    <color name="widget_surface">#0E141C</color>
+    <color name="widget_on_surface">#DDE3EE</color>
+    <color name="widget_on_surface_variant">#BFC7D5</color>
+    <color name="widget_primary">#B0C6FF</color>
+    <color name="widget_error">#FFB4AB</color>
+    <color name="widget_primary_container">#00419C</color>
+    <color name="widget_on_primary_container">#D9E2FF</color>
 </resources>

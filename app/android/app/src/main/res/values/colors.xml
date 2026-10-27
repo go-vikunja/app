@@ -2,4 +2,12 @@
 <resources>
     <!-- Matches the Flutter theme's light surface colour (app_theme.dart). -->
     <color name="launch_background">#F8F9FF</color>
+    <!-- Widget picker previews: the brand scheme (AppTheme.brandScheme). -->
+    <color name="widget_surface">#F8F9FF</color>
+    <color name="widget_on_surface">#161C24</color>
+    <color name="widget_on_surface_variant">#3F4753</color>
+    <color name="widget_primary">#0058CC</color>
+    <color name="widget_error">#BA1A1A</color>
+    <color name="widget_primary_container">#D9E2FF</color>
+    <color name="widget_on_primary_container">#00419C</color>
 </resources>

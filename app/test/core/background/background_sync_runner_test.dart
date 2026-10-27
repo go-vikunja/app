@@ -20,6 +20,10 @@ import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
+import 'package:vikunja_mobile/core/widgets/widget_config.dart';
+import 'package:vikunja_mobile/core/widgets/widget_host.dart';
+import 'package:vikunja_mobile/core/widgets/widget_providers.dart';
+import 'package:vikunja_mobile/core/widgets/widget_snapshot.dart';
 
 import '../../helpers/auth_fakes.dart';
 import '../../helpers/fake_sync_client.dart';
@@ -30,6 +34,7 @@ import '../../helpers/notification_fakes.dart';
 import '../../helpers/sample_data.dart';
 import '../../helpers/server_connections.dart';
 import '../../helpers/sync_fakes.dart';
+import '../../helpers/widget_fakes.dart';
 
 // The runner over the real providers, with an in-memory database per
 // account, fake clients and engines per account and the notification
@@ -47,6 +52,7 @@ void main() {
   late Map<String, FakeWriteClient> writes;
   late Set<String> disposedEngines;
   late List<String> order;
+  late FakeWidgetHost widgets;
   late ProviderContainer container;
 
   FakeSyncEngine engineOf(String accountId) => engines.putIfAbsent(
@@ -83,6 +89,7 @@ void main() {
     writes = {};
     disposedEngines = {};
     order = [];
+    widgets = FakeWidgetHost();
     final files = FakeAccountDatabaseFiles();
     container = ProviderContainer(
       overrides: [
@@ -107,6 +114,7 @@ void main() {
         ),
         clockProvider.overrideWithValue(() => now),
         notificationGatewayProvider.overrideWithValue(gateway),
+        widgetHostProvider.overrideWithValue(widgets),
       ],
     );
     addTearDown(() async {
@@ -185,6 +193,55 @@ void main() {
     expect(await BackgroundRunLog(auth.preferences).lastRunAt(entry.id), now);
     expect(await lastOutcome(), BackgroundRunOutcome.completed);
     expect(disposedEngines, {entry.id});
+  });
+
+  test("publishes each account's widgets after its turn, an ended "
+      "session's too", () async {
+    final synced = await signedIn(1, syncedAt: monday);
+    final ended = await signedIn(2, syncedAt: monday, needsReauth: true);
+    final fresh = await signedIn(3);
+    for (final (id, entry) in [(1, synced), (2, ended), (3, fresh)]) {
+      widgets.placed[id] = WidgetConfig(
+        accountId: entry.id,
+        kind: const TodayKind(),
+      );
+    }
+
+    await runner().run();
+
+    expect(
+      widgets.snapshot('${synced.id}.today')?.state,
+      WidgetSnapshotState.ok,
+    );
+    expect(
+      widgets.snapshot('${ended.id}.today')?.state,
+      WidgetSnapshotState.needsReauth,
+    );
+    expect(
+      widgets.snapshot('${fresh.id}.today'),
+      isNull,
+      reason: 'the first-sync screen owns an account that never synced',
+    );
+  });
+
+  test("imports the widgets' Done taps first, so the account's turn sends "
+      'them', () async {
+    final entry = await signedIn(1, syncedAt: monday);
+    final db = databases[entry.id]!;
+    await db.projectsDao.upsertAll([sampleProject(id: 7, title: 'Work')]);
+    await db.tasksDao.upsertAll([
+      sampleTask(id: 1, title: 'Water', projectId: 7),
+    ], syncRunId: 'run');
+    writeOf(entry.id).serverTasks[1] = sampleTask(id: 1, title: 'Water');
+    widgets.actions.add(
+      WidgetDoneTap(id: 'tap', accountId: entry.id, taskId: 1, createdAt: now),
+    );
+
+    await runner().run();
+
+    expect(writeOf(entry.id).requests, ['update 1']);
+    expect(await db.outboxDao.count(), 0);
+    expect(widgets.actions, isEmpty);
   });
 
   test('skips everything while the app is in front', () async {

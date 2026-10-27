@@ -10,6 +10,7 @@ import 'package:vikunja_mobile/app/widgets/adaptive_navigation_bar.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/notifications/notification_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/core/widgets/widget_providers.dart';
 import 'package:vikunja_mobile/features/session/application/session_check.dart';
 import 'package:vikunja_mobile/features/session/application/sign_in_controller.dart';
 import 'package:vikunja_mobile/features/session/application/sign_out_controller.dart';
@@ -55,7 +56,10 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       ..listenManual(foregroundSyncSchedulerProvider, (_, _) {})
       ..listenManual(realtimeConnectionProvider, (_, _) {})
       ..listenManual(inactiveOutboxesProvider, (_, _) {})
-      ..listenManual(accountNotificationSchedulersProvider, (_, _) {});
+      ..listenManual(accountNotificationSchedulersProvider, (_, _) {})
+      ..listenManual(accountWidgetPublishersProvider, (_, _) {})
+      ..listenManual(widgetTapImporterProvider, (_, _) {})
+      ..listenManual(widgetHostSettingsProvider, (_, _) {});
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkSession();
       _syncQuietly();

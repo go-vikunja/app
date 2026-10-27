@@ -17,3 +17,9 @@ DeepLinkRelay deepLinkRelay(Ref ref) {
 /// Where the app takes deep links from; tests replace it with a fake.
 @Riverpod(keepAlive: true)
 DeepLinkSource deepLinkSource(Ref ref) => ref.watch(deepLinkRelayProvider);
+
+/// Where the app takes the links of its home-screen widgets from; tests
+/// replace it with a fake.
+@Riverpod(keepAlive: true)
+DeepLinkSource widgetLinkSource(Ref ref) =>
+    ref.watch(deepLinkRelayProvider).widgetLinks;

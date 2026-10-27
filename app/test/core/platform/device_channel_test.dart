@@ -1,5 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vikunja_mobile/core/platform/app_backgrounding.dart';
 import 'package:vikunja_mobile/core/platform/device_channel.dart';
 import 'package:vikunja_mobile/core/platform/secure_display.dart';
 import 'package:vikunja_mobile/core/platform/sensitive_clipboard.dart';
@@ -86,5 +87,12 @@ void main() {
 
       expect(deviceCalls, isEmpty);
     });
+  });
+
+  test('moving to the back asks the activity on Android only', () async {
+    await PlatformAppBackgrounding(android: true).moveToBack();
+    await PlatformAppBackgrounding(android: false).moveToBack();
+
+    expect(deviceCalls.map((call) => call.method), ['moveTaskToBack']);
   });
 }

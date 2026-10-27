@@ -1856,7 +1856,8 @@ String _$userRepositoryHash() => r'28da8498a99ef2100dbc72f90b776490a8e9c948';
 /// let go of the account, drops its avatars and attachment images from
 /// memory, cancels the account's notifications (scheduled and in the
 /// tray) and forgets their preferences, the background notes and the
-/// unsent comments, stops its outbox sender and sync engine, closes its
+/// unsent comments, replaces its home-screen widgets' content with "Account
+/// removed", stops its outbox sender and sync engine, closes its
 /// database and deletes the files: the database, the stored copies of
 /// queued uploads and the downloaded attachments.
 
@@ -1867,7 +1868,8 @@ final accountDataWiperProvider = AccountDataWiperProvider._();
 /// let go of the account, drops its avatars and attachment images from
 /// memory, cancels the account's notifications (scheduled and in the
 /// tray) and forgets their preferences, the background notes and the
-/// unsent comments, stops its outbox sender and sync engine, closes its
+/// unsent comments, replaces its home-screen widgets' content with "Account
+/// removed", stops its outbox sender and sync engine, closes its
 /// database and deletes the files: the database, the stored copies of
 /// queued uploads and the downloaded attachments.
 
@@ -1883,7 +1885,8 @@ final class AccountDataWiperProvider
   /// let go of the account, drops its avatars and attachment images from
   /// memory, cancels the account's notifications (scheduled and in the
   /// tray) and forgets their preferences, the background notes and the
-  /// unsent comments, stops its outbox sender and sync engine, closes its
+  /// unsent comments, replaces its home-screen widgets' content with "Account
+  /// removed", stops its outbox sender and sync engine, closes its
   /// database and deletes the files: the database, the stored copies of
   /// queued uploads and the downloaded attachments.
   AccountDataWiperProvider._()
@@ -1919,4 +1922,4 @@ final class AccountDataWiperProvider
   }
 }
 
-String _$accountDataWiperHash() => r'8356814b1895112b4901055a7c7d7b2d0d1d6752';
+String _$accountDataWiperHash() => r'3e98a93e325a879335b8e4634a937671ac5a8c09';

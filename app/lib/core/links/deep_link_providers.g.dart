@@ -99,3 +99,52 @@ final class DeepLinkSourceProvider
 }
 
 String _$deepLinkSourceHash() => r'f80839960b87dc9830b4ecc3a497592bb849eb3e';
+
+/// Where the app takes the links of its home-screen widgets from; tests
+/// replace it with a fake.
+
+@ProviderFor(widgetLinkSource)
+final widgetLinkSourceProvider = WidgetLinkSourceProvider._();
+
+/// Where the app takes the links of its home-screen widgets from; tests
+/// replace it with a fake.
+
+final class WidgetLinkSourceProvider
+    extends $FunctionalProvider<DeepLinkSource, DeepLinkSource, DeepLinkSource>
+    with $Provider<DeepLinkSource> {
+  /// Where the app takes the links of its home-screen widgets from; tests
+  /// replace it with a fake.
+  WidgetLinkSourceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'widgetLinkSourceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$widgetLinkSourceHash();
+
+  @$internal
+  @override
+  $ProviderElement<DeepLinkSource> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  DeepLinkSource create(Ref ref) {
+    return widgetLinkSource(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(DeepLinkSource value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<DeepLinkSource>(value),
+    );
+  }
+}
+
+String _$widgetLinkSourceHash() => r'd6df7df309a60c70121fc95f312d1759e5b06176';

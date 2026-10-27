@@ -13,6 +13,7 @@ import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_resolver_providers.dart';
 import 'package:vikunja_mobile/features/accounts/application/account_switcher.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/open/account_picker.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 
@@ -29,12 +30,12 @@ String taskOpenFailureText(AppLocalizations l10n, Object error) =>
       _ => l10n.taskOpenFailed,
     };
 
-/// Opens a task from outside the screens (a notification, a deep link, the
-/// inbox) the same way: once the router shows the shell, in the task's
-/// account, which becomes active first, with the detail sheet over the
-/// Overview or over a page that covers the shell (the edit page keeps its
-/// unsaved changes). A sheet that opens a task itself stacks the next one
-/// instead and only uses [resolve].
+/// Opens a task from outside the screens (a notification, a deep link, a
+/// home-screen widget, the inbox) the same way: once the router shows the
+/// shell, in the task's account, which becomes active first, with the
+/// detail sheet over the Overview or over a page that covers the shell (the
+/// edit page keeps its unsaved changes). A sheet that opens a task itself
+/// stacks the next one instead and only uses [resolve].
 final class TaskOpener {
   new(this._ref) : _router = _ref.read(appRouterProvider) {
     _router.routerDelegate.addListener(_runWhenReady);
@@ -139,6 +140,12 @@ final class TaskOpener {
     }
   }
 
+  /// The projects [accountId] holds on this device.
+  Future<List<Project>> localProjects(String accountId) => withAccount(
+    accountProjectRepositoryProvider(accountId),
+    (projects) => _firstValue(projects.watchAll()),
+  );
+
   /// The task [reference] names in [accountId]: local first, else online.
   Future<Task> resolve(String accountId, TaskReference reference) =>
       withAccount(
@@ -160,6 +167,31 @@ final class TaskOpener {
       (context) =>
           unawaited(showTaskDetail(context, task: task, commentId: commentId)),
     );
+  }
+
+  /// Asks for the New task sheet the way [request] asks for a task: in
+  /// [accountId] when given, which becomes active first, with [projectId]
+  /// preselected.
+  void requestNewTask({String? accountId, int? projectId}) => request(() async {
+    if (accountId != null && !await activate(accountId)) return;
+    await showNewTask(projectId: projectId);
+  });
+
+  /// The New task sheet over the Overview or over a page that covers the
+  /// shell, like [showTask]; nothing while one is open, as launching the
+  /// app can report the same shortcut twice.
+  Future<void> showNewTask({int? projectId}) {
+    final modals = _ref.read(rootModalRoutesProvider);
+    if (modals.isOpen(newTaskSheetRouteName)) return Future.value();
+    modals.closeAll();
+    final location = _router.routerDelegate.state.matchedLocation;
+    if (AppRoutes.isTab(location) && location != AppRoutes.overview) {
+      _router.go(AppRoutes.overview);
+    }
+    return showAfterFrame((context) {
+      if (modals.isOpen(newTaskSheetRouteName)) return;
+      unawaited(showNewTaskSheet(context, projectId: projectId));
+    });
   }
 
   Future<void> showMessage(String Function(AppLocalizations l10n) text) =>
@@ -299,10 +331,7 @@ final class TaskOpener {
       if (local != null) return true;
       if (reference case TaskByIdentifier(:final identifier)) {
         final wanted = identifier.toLowerCase();
-        final projects = await withAccount(
-          accountProjectRepositoryProvider(accountId),
-          (projects) => _firstValue(projects.watchAll()),
-        );
+        final projects = await localProjects(accountId);
         return projects.any(
           (project) =>
               !project.isPseudo &&

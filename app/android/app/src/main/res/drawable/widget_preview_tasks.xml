@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Picker image below Android 12, which shows no preview layout: the
+     list widget's header and three rows. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="220dp"
+    android:height="130dp"
+    android:viewportWidth="220"
+    android:viewportHeight="130">
+    <path
+        android:fillColor="@color/widget_surface"
+        android:pathData="M16,0h188a16,16 0,0 1,16 16v98a16,16 0,0 1,-16 16h-188a16,16 0,0 1,-16 -16v-98a16,16 0,0 1,16 -16z" />
+    <path
+        android:fillColor="@color/widget_on_surface"
+        android:pathData="M16,15h56v10h-56z" />
+    <path
+        android:fillColor="@color/widget_primary"
+        android:pathData="M180,15h8v10h-8zM210,21h-6v6h-2v-6h-6v-2h6v-6h2v6h6z" />
+    <path
+        android:strokeColor="@color/widget_on_surface_variant"
+        android:strokeWidth="2"
+        android:pathData="M18,44h14v14h-14zM18,72h14v14h-14zM18,100h14v14h-14z" />
+    <path
+        android:fillColor="@color/widget_on_surface"
+        android:pathData="M44,44h110v6h-110zM44,72h90v6h-90zM44,100h120v6h-120z" />
+    <path
+        android:fillColor="@color/widget_error"
+        android:pathData="M44,54h40v4h-40z" />
+    <path
+        android:fillColor="@color/widget_primary"
+        android:pathData="M44,82h32v4h-32z" />
+    <path
+        android:fillColor="@color/widget_on_surface_variant"
+        android:pathData="M44,110h36v4h-36z" />
+</vector>

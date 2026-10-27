@@ -6001,5 +6001,267 @@
   "overviewGreetingEveningGuest": "Good evening",
   "@overviewGreetingEveningGuest": {
     "description": "Headline of the Overview from 6 pm to 5 am for a link-share guest."
+  },
+  "widgetDueAt": "{day}, {time}",
+  "@widgetDueAt": {
+    "description": "A task's due date on a home-screen widget: a day word (Today, Tomorrow, Yesterday) or a short weekday, then the time.",
+    "placeholders": {
+      "day": {
+        "type": "String",
+        "example": "Tomorrow"
+      },
+      "time": {
+        "type": "String",
+        "example": "14:30"
+      }
+    }
+  },
+  "widgetMoreTasks": "{count, plural, =1{+1 more} other{+{count} more}}",
+  "@widgetMoreTasks": {
+    "description": "Below the rows of a home-screen widget: how many matching tasks do not fit.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "widgetTaskCount": "{count, plural, =0{No tasks} =1{1 task} other{{count} tasks}}",
+  "@widgetTaskCount": {
+    "description": "Screen reader text of the task count in a home-screen widget's header.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "widgetMarkDone": "Mark “{title}” done",
+  "@widgetMarkDone": {
+    "description": "Screen reader text of the done control of a task row on a home-screen widget.",
+    "placeholders": {
+      "title": {
+        "type": "String",
+        "example": "Water the plants"
+      }
+    }
+  },
+  "widgetUpcomingTitle": "{days, plural, =1{Next day} other{Next {days} days}}",
+  "@widgetUpcomingTitle": {
+    "description": "Title of a home-screen widget with the tasks due in the next days.",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "widgetAccountRemovedTitle": "Account removed",
+  "@widgetAccountRemovedTitle": {
+    "description": "A home-screen widget whose account was signed out or removed."
+  },
+  "widgetChooseAnotherList": "Choose another list for this widget.",
+  "@widgetChooseAnotherList": {
+    "description": "On a home-screen widget whose account or list is gone."
+  },
+  "widgetTodayEmptyBody": "Nothing is due today.",
+  "@widgetTodayEmptyBody": {
+    "description": "An empty Today widget on the home screen, below the title All done."
+  },
+  "widgetOverdueEmptyTitle": "Nothing overdue",
+  "@widgetOverdueEmptyTitle": {
+    "description": "An empty Overdue widget on the home screen."
+  },
+  "widgetAccountSubtitle": "{name} · {host}",
+  "@widgetAccountSubtitle": {
+    "description": "The account line of a home-screen widget while more than one account is signed in.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Alice"
+      },
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "widgetsTitle": "Home-screen widgets",
+  "@widgetsTitle": {
+    "description": "The Account tab entry and the title of the page that explains the home-screen widgets."
+  },
+  "widgetsEntrySubtitle": "Your tasks on the home screen, ticked off right there",
+  "@widgetsEntrySubtitle": {
+    "description": "Subtitle of the Account tab entry to the widgets page."
+  },
+  "widgetsIntro": "A widget shows one list of an account: today's tasks, the next days, the overdue ones, your favourites, a project, a label or a saved filter. Tick a task off right there, or tap it to open it here.",
+  "@widgetsIntro": {
+    "description": "The widgets page's introduction."
+  },
+  "widgetsHowToHeading": "How to add one",
+  "@widgetsHowToHeading": {
+    "description": "Heading above the platform's steps to place a widget."
+  },
+  "widgetsHowToIos": "Touch and hold an empty spot on your Home Screen, tap Edit, then Add Widget, and look for Rurana. To choose the account and the list, touch and hold the widget and tap Edit Widget.",
+  "@widgetsHowToIos": {
+    "description": "iOS steps to place and set up a widget."
+  },
+  "widgetsAddHeading": "Add a widget",
+  "@widgetsAddHeading": {
+    "description": "Heading of the Android widget kinds that can be placed from the app."
+  },
+  "widgetsAddHint": "It shows the active account; you can change that in its settings.",
+  "@widgetsAddHint": {
+    "description": "Under the Add widget heading: which account a widget added from here shows."
+  },
+  "widgetsAdd": "Add",
+  "@widgetsAdd": {
+    "description": "Button that asks the launcher to place a widget of that kind."
+  },
+  "widgetsPinUnsupported": "Your home screen can't add widgets from here. Add it on the home screen instead.",
+  "@widgetsPinUnsupported": {
+    "description": "Snackbar when the launcher cannot place a widget requested by the app."
+  },
+  "widgetsPlacedHeading": "On your home screen",
+  "@widgetsPlacedHeading": {
+    "description": "Heading of the widgets already placed (Android); a tap sets one up."
+  },
+  "widgetsPlacedAccountRemoved": "Account removed – choose another",
+  "@widgetsPlacedAccountRemoved": {
+    "description": "A placed widget whose account was signed out."
+  },
+  "widgetsPrivacyNote": "Widgets show your task titles on the home screen, where anyone who sees your phone can read them.",
+  "@widgetsPrivacyNote": {
+    "description": "Privacy note on the widgets page."
+  },
+  "widgetKindToday": "Today",
+  "@widgetKindToday": {
+    "description": "Widget kind: overdue tasks and those due today."
+  },
+  "widgetKindTodayHint": "Overdue and due today",
+  "@widgetKindTodayHint": {
+    "description": "What the Today widget shows."
+  },
+  "widgetKindUpcoming": "Upcoming",
+  "@widgetKindUpcoming": {
+    "description": "Widget kind: tasks due in the next days."
+  },
+  "widgetKindUpcomingHint": "Due in the next days",
+  "@widgetKindUpcomingHint": {
+    "description": "What the Upcoming widget shows."
+  },
+  "widgetKindOverdue": "Overdue",
+  "@widgetKindOverdue": {
+    "description": "Widget kind: tasks past their due date."
+  },
+  "widgetKindOverdueHint": "Past their due date",
+  "@widgetKindOverdueHint": {
+    "description": "What the Overdue widget shows."
+  },
+  "widgetKindFavorites": "Favourites",
+  "@widgetKindFavorites": {
+    "description": "Widget kind: the favourite tasks."
+  },
+  "widgetKindFavoritesHint": "Your favourite tasks",
+  "@widgetKindFavoritesHint": {
+    "description": "What the Favourites widget shows."
+  },
+  "widgetKindProject": "Project",
+  "@widgetKindProject": {
+    "description": "Widget kind: a project's open tasks."
+  },
+  "widgetKindLabel": "Label",
+  "@widgetKindLabel": {
+    "description": "Widget kind: a label's open tasks."
+  },
+  "widgetKindSavedFilter": "Saved filter",
+  "@widgetKindSavedFilter": {
+    "description": "Widget kind: a saved filter's tasks."
+  },
+  "widgetKindQuickAdd": "New task button",
+  "@widgetKindQuickAdd": {
+    "description": "Widget kind: a button that opens the New task sheet."
+  },
+  "widgetKindQuickAddHint": "One tap to a new task",
+  "@widgetKindQuickAddHint": {
+    "description": "What the New task button widget does."
+  },
+  "widgetUpcomingDays": "{count, plural, =1{1 day} other{{count} days}}",
+  "@widgetUpcomingDays": {
+    "description": "How many days ahead an Upcoming widget shows.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "widgetConfigureTitle": "Set up widget",
+  "@widgetConfigureTitle": {
+    "description": "Title of the page that sets up a placed widget (Android)."
+  },
+  "widgetConfigureAccountHeading": "Account",
+  "@widgetConfigureAccountHeading": {
+    "description": "Heading of the account choice on the widget setup page."
+  },
+  "widgetConfigureListHeading": "Shows",
+  "@widgetConfigureListHeading": {
+    "description": "Heading of the list choice on the widget setup page."
+  },
+  "widgetConfigureDaysLabel": "Days ahead",
+  "@widgetConfigureDaysLabel": {
+    "description": "Label of the Upcoming widget's day count choice."
+  },
+  "widgetConfigureChoose": "Choose",
+  "@widgetConfigureChoose": {
+    "description": "Trailing text of a project, label or saved filter choice not picked yet."
+  },
+  "widgetConfigureNoProjects": "This account has no projects to show.",
+  "@widgetConfigureNoProjects": {
+    "description": "Project picker without projects."
+  },
+  "widgetConfigureNoLabels": "This account has no labels yet.",
+  "@widgetConfigureNoLabels": {
+    "description": "Label picker without labels."
+  },
+  "widgetConfigureNoSavedFilters": "This account has no saved filters yet.",
+  "@widgetConfigureNoSavedFilters": {
+    "description": "Saved filter picker without saved filters."
+  },
+  "widgetConfigurePreviewHeading": "Preview",
+  "@widgetConfigurePreviewHeading": {
+    "description": "Heading of the widget preview on the setup page."
+  },
+  "widgetConfigurePreviewNone": "No preview yet",
+  "@widgetConfigurePreviewNone": {
+    "description": "When the widget's preview cannot be built."
+  },
+  "widgetConfigureSave": "Save",
+  "@widgetConfigureSave": {
+    "description": "Saves the widget's setup."
+  },
+  "widgetConfigureSaving": "Saving…",
+  "@widgetConfigureSaving": {
+    "description": "The Save button while the setup is written."
+  },
+  "widgetConfigureSaved": "Widget set up",
+  "@widgetConfigureSaved": {
+    "description": "Snackbar after saving a widget's setup."
+  },
+  "widgetConfigureSaveFailed": "The widget couldn't be saved. Try again.",
+  "@widgetConfigureSaveFailed": {
+    "description": "Snackbar when saving a widget's setup failed."
+  },
+  "widgetsHeading": "Home screen",
+  "@widgetsHeading": {
+    "description": "Account tab section heading with the way to the home-screen widgets."
+  },
+  "widgetsEntryTitle": "Widgets",
+  "@widgetsEntryTitle": {
+    "description": "Account tab entry to the home-screen widgets page."
+  },
+  "widgetsHowToAndroid": "Touch and hold an empty spot on your home screen, tap Widgets and look for Rurana. To choose the account and the list, tap the widget under “On your home screen” below. Some home screens also offer this in the widget's settings when you touch and hold it.",
+  "@widgetsHowToAndroid": {
+    "description": "Android steps to place and set up a widget. Below Android 12 and on some launchers the widgets page is the only way to set one up."
+  },
+  "widgetsPlacedNotSetUp": "Not set up yet – shows the active account",
+  "@widgetsPlacedNotSetUp": {
+    "description": "A placed list widget that was never set up; it shows Today of the active account. Tapping opens its setup."
   }
 }

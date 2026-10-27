@@ -7018,4 +7018,216 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get overviewGreetingEveningGuest => 'Good evening';
+
+  @override
+  String widgetDueAt(String day, String time) {
+    return '$day, $time';
+  }
+
+  @override
+  String widgetMoreTasks(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '+$count more',
+      one: '+1 more',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String widgetTaskCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tasks',
+      one: '1 task',
+      zero: 'No tasks',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String widgetMarkDone(String title) {
+    return 'Mark “$title” done';
+  }
+
+  @override
+  String widgetUpcomingTitle(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Next $days days',
+      one: 'Next day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get widgetAccountRemovedTitle => 'Account removed';
+
+  @override
+  String get widgetChooseAnotherList => 'Choose another list for this widget.';
+
+  @override
+  String get widgetTodayEmptyBody => 'Nothing is due today.';
+
+  @override
+  String get widgetOverdueEmptyTitle => 'Nothing overdue';
+
+  @override
+  String widgetAccountSubtitle(String name, String host) {
+    return '$name · $host';
+  }
+
+  @override
+  String get widgetsTitle => 'Home-screen widgets';
+
+  @override
+  String get widgetsEntrySubtitle =>
+      'Your tasks on the home screen, ticked off right there';
+
+  @override
+  String get widgetsIntro =>
+      'A widget shows one list of an account: today\'s tasks, the next days, the overdue ones, your favourites, a project, a label or a saved filter. Tick a task off right there, or tap it to open it here.';
+
+  @override
+  String get widgetsHowToHeading => 'How to add one';
+
+  @override
+  String get widgetsHowToIos =>
+      'Touch and hold an empty spot on your Home Screen, tap Edit, then Add Widget, and look for Rurana. To choose the account and the list, touch and hold the widget and tap Edit Widget.';
+
+  @override
+  String get widgetsAddHeading => 'Add a widget';
+
+  @override
+  String get widgetsAddHint =>
+      'It shows the active account; you can change that in its settings.';
+
+  @override
+  String get widgetsAdd => 'Add';
+
+  @override
+  String get widgetsPinUnsupported =>
+      'Your home screen can\'t add widgets from here. Add it on the home screen instead.';
+
+  @override
+  String get widgetsPlacedHeading => 'On your home screen';
+
+  @override
+  String get widgetsPlacedAccountRemoved => 'Account removed – choose another';
+
+  @override
+  String get widgetsPrivacyNote =>
+      'Widgets show your task titles on the home screen, where anyone who sees your phone can read them.';
+
+  @override
+  String get widgetKindToday => 'Today';
+
+  @override
+  String get widgetKindTodayHint => 'Overdue and due today';
+
+  @override
+  String get widgetKindUpcoming => 'Upcoming';
+
+  @override
+  String get widgetKindUpcomingHint => 'Due in the next days';
+
+  @override
+  String get widgetKindOverdue => 'Overdue';
+
+  @override
+  String get widgetKindOverdueHint => 'Past their due date';
+
+  @override
+  String get widgetKindFavorites => 'Favourites';
+
+  @override
+  String get widgetKindFavoritesHint => 'Your favourite tasks';
+
+  @override
+  String get widgetKindProject => 'Project';
+
+  @override
+  String get widgetKindLabel => 'Label';
+
+  @override
+  String get widgetKindSavedFilter => 'Saved filter';
+
+  @override
+  String get widgetKindQuickAdd => 'New task button';
+
+  @override
+  String get widgetKindQuickAddHint => 'One tap to a new task';
+
+  @override
+  String widgetUpcomingDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count days',
+      one: '1 day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get widgetConfigureTitle => 'Set up widget';
+
+  @override
+  String get widgetConfigureAccountHeading => 'Account';
+
+  @override
+  String get widgetConfigureListHeading => 'Shows';
+
+  @override
+  String get widgetConfigureDaysLabel => 'Days ahead';
+
+  @override
+  String get widgetConfigureChoose => 'Choose';
+
+  @override
+  String get widgetConfigureNoProjects =>
+      'This account has no projects to show.';
+
+  @override
+  String get widgetConfigureNoLabels => 'This account has no labels yet.';
+
+  @override
+  String get widgetConfigureNoSavedFilters =>
+      'This account has no saved filters yet.';
+
+  @override
+  String get widgetConfigurePreviewHeading => 'Preview';
+
+  @override
+  String get widgetConfigurePreviewNone => 'No preview yet';
+
+  @override
+  String get widgetConfigureSave => 'Save';
+
+  @override
+  String get widgetConfigureSaving => 'Saving…';
+
+  @override
+  String get widgetConfigureSaved => 'Widget set up';
+
+  @override
+  String get widgetConfigureSaveFailed =>
+      'The widget couldn\'t be saved. Try again.';
+
+  @override
+  String get widgetsHeading => 'Home screen';
+
+  @override
+  String get widgetsEntryTitle => 'Widgets';
+
+  @override
+  String get widgetsHowToAndroid =>
+      'Touch and hold an empty spot on your home screen, tap Widgets and look for Rurana. To choose the account and the list, tap the widget under “On your home screen” below. Some home screens also offer this in the widget\'s settings when you touch and hold it.';
+
+  @override
+  String get widgetsPlacedNotSetUp =>
+      'Not set up yet – shows the active account';
 }

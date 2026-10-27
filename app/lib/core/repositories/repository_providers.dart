@@ -47,6 +47,7 @@ import 'package:vikunja_mobile/core/sync/sync_engine.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine_impl.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
+import 'package:vikunja_mobile/core/widgets/widget_providers.dart';
 
 part 'repository_providers.g.dart';
 
@@ -517,7 +518,8 @@ UserRepository? userRepository(Ref ref) {
 /// let go of the account, drops its avatars and attachment images from
 /// memory, cancels the account's notifications (scheduled and in the
 /// tray) and forgets their preferences, the background notes and the
-/// unsent comments, stops its outbox sender and sync engine, closes its
+/// unsent comments, replaces its home-screen widgets' content with "Account
+/// removed", stops its outbox sender and sync engine, closes its
 /// database and deletes the files: the database, the stored copies of
 /// queued uploads and the downloaded attachments.
 @Riverpod(keepAlive: true)
@@ -553,6 +555,11 @@ AccountDataWiper accountDataWiper(Ref ref) => (accountId) async {
     'Notification preferences',
     accountId,
     () => ref.read(notificationPreferencesStoreProvider).delete(accountId),
+  );
+  await _disposeQuietly(
+    'Widgets',
+    accountId,
+    () => ref.read(widgetPublishersProvider).wipe(accountId),
   );
   if (ref.exists(outboxSenderProvider(accountId))) {
     await _disposeQuietly(

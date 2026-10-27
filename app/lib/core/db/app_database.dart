@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import 'package:vikunja_mobile/core/db/daos/imported_widget_actions_dao.dart';
 import 'package:vikunja_mobile/core/db/daos/kanban_dao.dart';
 import 'package:vikunja_mobile/core/db/daos/labels_dao.dart';
 import 'package:vikunja_mobile/core/db/daos/list_preferences_dao.dart';
@@ -11,6 +12,7 @@ import 'package:vikunja_mobile/core/db/daos/sync_state_dao.dart';
 import 'package:vikunja_mobile/core/db/daos/tasks_dao.dart';
 import 'package:vikunja_mobile/core/db/daos/users_dao.dart';
 import 'package:vikunja_mobile/core/db/epoch_millis.dart';
+import 'package:vikunja_mobile/core/db/tables/imported_widget_actions.dart';
 import 'package:vikunja_mobile/core/db/tables/kanban.dart';
 import 'package:vikunja_mobile/core/db/tables/labels.dart';
 import 'package:vikunja_mobile/core/db/tables/lists.dart';
@@ -47,6 +49,7 @@ part 'app_database.g.dart';
     ListSnapshotTasks,
     ListPreferenceEntries,
     KanbanBuckets,
+    ImportedWidgetActions,
   ],
   daos: [
     ProjectsDao,
@@ -60,13 +63,14 @@ part 'app_database.g.dart';
     ListSnapshotsDao,
     ListPreferencesDao,
     KanbanDao,
+    ImportedWidgetActionsDao,
   ],
 )
 final class AppDatabase extends _$AppDatabase {
   new(super.e);
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -119,6 +123,7 @@ final class AppDatabase extends _$AppDatabase {
           syncState,
         )..where((row) => row.key.equals('last_full_sync_at'))).go();
       }
+      if (from < 10) await m.createTable(importedWidgetActions);
     },
     beforeOpen: (_) => customStatement('PRAGMA foreign_keys = ON'),
   );

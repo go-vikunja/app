@@ -123,10 +123,11 @@ void main() {
 
     double top(String text) => tester.getTopLeft(find.text(text)).dy;
     final server = top(en.accountServerHeading);
-    final deviceOnly = top(en.notificationsHeading);
+    // The first of the device's own sections.
+    final deviceOnly = top(en.widgetsHeading);
     expect(
-      tester.getCenter(find.text(en.onThisDeviceHeading)).dy,
-      closeTo(tester.getCenter(find.text(en.notificationsHeading)).dy, 1),
+      tester.getCenter(find.text(en.onThisDeviceHeading).first).dy,
+      closeTo(tester.getCenter(find.text(en.widgetsHeading)).dy, 1),
     );
     for (final text in [en.accountPendingChanges(2), en.accountSyncProblems]) {
       expect(top(text), allOf(greaterThan(server), lessThan(deviceOnly)));

@@ -9,6 +9,7 @@ import 'package:vikunja_mobile/features/notifications/presentation/notification_
 import 'package:vikunja_mobile/features/onboarding/presentation/guest/guest_landing_listener.dart';
 import 'package:vikunja_mobile/features/quick_add/presentation/new_task_shortcut.dart';
 import 'package:vikunja_mobile/features/share/presentation/share_intent_listener.dart';
+import 'package:vikunja_mobile/features/widgets/presentation/widget_link_listener.dart';
 
 class VikunjaApp extends ConsumerWidget {
   const new({super.key});
@@ -26,10 +27,12 @@ class VikunjaApp extends ConsumerWidget {
       routerConfig: ref.watch(appRouterProvider),
       builder: (context, child) => NotificationTapListener(
         child: DeepLinkListener(
-          child: NewTaskShortcutListener(
-            child: ShareIntentListener(
-              child: GuestLandingListener(
-                child: child ?? const SizedBox.shrink(),
+          child: WidgetLinkListener(
+            child: NewTaskShortcutListener(
+              child: ShareIntentListener(
+                child: GuestLandingListener(
+                  child: child ?? const SizedBox.shrink(),
+                ),
               ),
             ),
           ),

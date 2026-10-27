@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Picker image below Android 12: the Quick add button. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="110dp"
+    android:height="48dp"
+    android:viewportWidth="110"
+    android:viewportHeight="48">
+    <path
+        android:fillColor="@color/widget_primary_container"
+        android:pathData="M16,0h78a16,16 0,0 1,16 16v16a16,16 0,0 1,-16 16h-78a16,16 0,0 1,-16 -16v-16a16,16 0,0 1,16 -16z" />
+    <path
+        android:fillColor="@color/widget_on_primary_container"
+        android:pathData="M37,25h-6v6h-2v-6h-6v-2h6v-6h2v6h6zM44,20h44v8h-44z" />
+</vector>

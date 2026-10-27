@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Native texts of the home-screen widgets. Everything a widget shows
+     from the app's data comes localized in its snapshot. -->
+<resources>
+    <string name="widget_tasks_label">Tasks</string>
+    <string name="widget_tasks_description">Today, the coming days, a project, a label or a saved filter</string>
+    <string name="widget_quick_add_label">New task</string>
+    <string name="widget_quick_add_description">Add a task with one tap</string>
+    <string name="widget_new_task">New task</string>
+    <string name="widget_set_up">Tap to choose what this widget shows</string>
+    <string name="widget_not_loaded">Open Rurana to load this list</string>
+    <string name="widget_empty">Nothing to do</string>
+    <plurals name="widget_more">
+        <item quantity="one">+%d more</item>
+        <item quantity="other">+%d more</item>
+    </plurals>
+    <plurals name="widget_count">
+        <item quantity="one">%d task</item>
+        <item quantity="other">%d tasks</item>
+    </plurals>
+    <string name="widget_preview_title">Today</string>
+    <string name="widget_preview_task_1">Water the plants</string>
+    <string name="widget_preview_task_2">Pay the rent</string>
+    <string name="widget_preview_task_3">Call the plumber</string>
+    <string name="widget_preview_due_1">Overdue</string>
+    <string name="widget_preview_due_2">Today</string>
+    <string name="widget_preview_due_3">Tomorrow</string>
+</resources>

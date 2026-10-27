@@ -127,6 +127,46 @@
         <receiver
             android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver"
             android:exported="false" />
+        <!-- Home-screen widgets (Glance). The app writes their data and asks
+             for redraws; a Done tap runs widgetActionsMain in a worker. -->
+        <receiver
+            android:name=".widgets.TasksWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_tasks_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_tasks_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.QuickAddWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_quick_add_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_quick_add_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.WidgetRedrawReceiver"
+            android:exported="false" />
+        <!-- The launcher's configuration step; it only hands over to
+             MainActivity in the app's own task, like TaskLinkActivity. -->
+        <activity
+            android:name=".widgets.WidgetConfigureActivity"
+            android:exported="true"
+            android:noHistory="true"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

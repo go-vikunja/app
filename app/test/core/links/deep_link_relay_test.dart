@@ -10,6 +10,7 @@ void main() {
   final taskLink = Uri.parse('$scheme://task/12');
   final identifierLink = Uri.parse('$scheme://task/PROJ-12?account=abc');
   final oauthCallback = Uri.parse('$scheme://oauth/callback?code=x&state=y');
+  final widgetLink = Uri.parse('$scheme://widget/task/12?account=abc');
 
   group('the start link', () {
     test('is a task link of the default route, answered once', () async {
@@ -27,6 +28,7 @@ void main() {
         '$oauthCallback',
         'https://vikunja.example.com/tasks/12',
         '$scheme://project/3',
+        '$widgetLink',
         '',
       ]) {
         final relay = DeepLinkRelay(defaultRouteName: () => route);
@@ -47,6 +49,18 @@ void main() {
       expect(source, same(container.read(deepLinkRelayProvider)));
       expect(await source.initialLink(), taskLink);
       expect(await source.initialLink(), isNull);
+      expect(
+        await container.read(widgetLinkSourceProvider).initialLink(),
+        isNull,
+      );
+    });
+
+    test('of a widget goes to the widget links only, once', () async {
+      final relay = DeepLinkRelay(defaultRouteName: () => '$widgetLink');
+
+      expect(await relay.initialLink(), isNull);
+      expect(await relay.widgetLinks.initialLink(), widgetLink);
+      expect(await relay.widgetLinks.initialLink(), isNull);
     });
   });
 
@@ -94,6 +108,46 @@ void main() {
       await pumpEventQueue();
 
       expect(received, isEmpty);
+    });
+
+    test(
+      'widget links are taken and passed on to their own listeners',
+      () async {
+        final widgetReceived = <Uri>[];
+        final widgetSubscription = relay.widgetLinks.links.listen(
+          widgetReceived.add,
+        );
+        addTearDown(widgetSubscription.cancel);
+        listen();
+
+        expect(relay.accept(widgetLink), isTrue);
+        expect(relay.accept(taskLink), isTrue);
+        expect(relay.accept(Uri.parse('$scheme://Widget/open')), isTrue);
+        await pumpEventQueue();
+
+        expect(received, [taskLink]);
+        expect(widgetReceived, [
+          widgetLink,
+          Uri.parse('$scheme://widget/open'),
+        ]);
+      },
+    );
+
+    test('a widget link that arrives before anyone listens waits for the '
+        'first widget listener', () async {
+      relay.accept(widgetLink);
+      listen();
+      await pumpEventQueue();
+      expect(received, isEmpty);
+
+      final widgetReceived = <Uri>[];
+      final widgetSubscription = relay.widgetLinks.links.listen(
+        widgetReceived.add,
+      );
+      addTearDown(widgetSubscription.cancel);
+      await pumpEventQueue();
+
+      expect(widgetReceived, [widgetLink]);
     });
 
     test('routes and other schemes are left to the router', () async {

@@ -9,7 +9,7 @@ set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 roots=()
-for dir in app/lib app/test app/integration_test packages; do
+for dir in app/lib app/test app/integration_test packages plugins; do
   if [[ -d "$dir" ]]; then
     roots+=("$dir")
   fi

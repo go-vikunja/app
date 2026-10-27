@@ -14,6 +14,8 @@ import 'package:vikunja_mobile/core/notifications/notification_providers.dart';
 import 'package:vikunja_mobile/core/repositories/activity_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
+import 'package:vikunja_mobile/core/widgets/widget_providers.dart';
+import 'package:vikunja_mobile/core/widgets/widget_taps.dart';
 
 final _log = Logger('BackgroundSync');
 
@@ -230,6 +232,8 @@ final class _Run {
     try {
       final state = await container.read(accountsProvider.future);
       if (state.accounts.isEmpty) return BackgroundRunOutcome.nothing;
+      // The widgets' Done taps go into the outboxes the turns then drain.
+      await importWidgetTaps(container, drains: false);
       final log = container.read(backgroundRunLogProvider);
       final ordered = await _longestWaitingFirst(state.accounts, log);
       final labelled = state.accounts.length > 1;
@@ -308,6 +312,7 @@ final class _Run {
     if (account.needsReauth) {
       await _step(account, 'notice', () => notifier.sessionEnded(account));
       await _reconcile(account);
+      await _publishWidgets(account);
       return;
     }
     await _step(account, 'notice', () => notifier.sessionRestored(account.id));
@@ -350,6 +355,7 @@ final class _Run {
     }
     // What the sync brought (a reminder set on the web) is planned too.
     if (synced == _Step.done) await _reconcile(account);
+    await _publishWidgets(account);
     if (synced == _Step.done && _goesOn(account.id)) {
       await _step(
         account,
@@ -391,6 +397,12 @@ final class _Run {
     () async => await container
         .read(notificationSchedulerProvider(account.id))
         ?.reconcile(),
+  );
+
+  Future<void> _publishWidgets(Account account) => _step(
+    account,
+    'widgets',
+    () => container.read(widgetRefresherProvider).refresh(account.id),
   );
 
   Future<_Step> _network(

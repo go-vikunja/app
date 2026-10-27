@@ -60,6 +60,7 @@ class MainActivity : FlutterActivity() {
                     "osVersion" -> result.success(Build.VERSION.RELEASE)
                     "copySensitive" -> copySensitive(call.argument<String>("text"), result)
                     "setSecure" -> setSecure(call.argument<Boolean>("secure"), result)
+                    "moveTaskToBack" -> result.success(moveTaskToBack(true))
                     else -> result.notImplemented()
                 }
             }

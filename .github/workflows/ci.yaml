@@ -73,6 +73,10 @@ jobs:
         working-directory: packages/vikunja_api
         run: flutter test --exclude-tags contract
 
+      - name: Test rurana_widgets
+        working-directory: plugins/rurana_widgets
+        run: flutter test
+
   # The page is committed so that the Flutter jobs need no Node; this job
   # runs its tests and checks that it is what the sources build.
   editor:
@@ -167,6 +171,11 @@ jobs:
       - name: Build release APK
         working-directory: app
         run: flutter build apk --release
+
+      # The JVM tests of the widgets' Kotlin need no Flutter build.
+      - name: Test the home-screen widgets (Kotlin)
+        working-directory: app/android
+        run: ./gradlew :app:testDebugUnitTest -x compileFlutterBuildDebug
 
   build-ios:
     name: Build iOS (release, unsigned)

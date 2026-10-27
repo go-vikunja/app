@@ -11009,6 +11009,330 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Good evening'**
   String get overviewGreetingEveningGuest;
+
+  /// A task's due date on a home-screen widget: a day word (Today, Tomorrow, Yesterday) or a short weekday, then the time.
+  ///
+  /// In en, this message translates to:
+  /// **'{day}, {time}'**
+  String widgetDueAt(String day, String time);
+
+  /// Below the rows of a home-screen widget: how many matching tasks do not fit.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{+1 more} other{+{count} more}}'**
+  String widgetMoreTasks(int count);
+
+  /// Screen reader text of the task count in a home-screen widget's header.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No tasks} =1{1 task} other{{count} tasks}}'**
+  String widgetTaskCount(int count);
+
+  /// Screen reader text of the done control of a task row on a home-screen widget.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark “{title}” done'**
+  String widgetMarkDone(String title);
+
+  /// Title of a home-screen widget with the tasks due in the next days.
+  ///
+  /// In en, this message translates to:
+  /// **'{days, plural, =1{Next day} other{Next {days} days}}'**
+  String widgetUpcomingTitle(int days);
+
+  /// A home-screen widget whose account was signed out or removed.
+  ///
+  /// In en, this message translates to:
+  /// **'Account removed'**
+  String get widgetAccountRemovedTitle;
+
+  /// On a home-screen widget whose account or list is gone.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose another list for this widget.'**
+  String get widgetChooseAnotherList;
+
+  /// An empty Today widget on the home screen, below the title All done.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing is due today.'**
+  String get widgetTodayEmptyBody;
+
+  /// An empty Overdue widget on the home screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing overdue'**
+  String get widgetOverdueEmptyTitle;
+
+  /// The account line of a home-screen widget while more than one account is signed in.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} · {host}'**
+  String widgetAccountSubtitle(String name, String host);
+
+  /// The Account tab entry and the title of the page that explains the home-screen widgets.
+  ///
+  /// In en, this message translates to:
+  /// **'Home-screen widgets'**
+  String get widgetsTitle;
+
+  /// Subtitle of the Account tab entry to the widgets page.
+  ///
+  /// In en, this message translates to:
+  /// **'Your tasks on the home screen, ticked off right there'**
+  String get widgetsEntrySubtitle;
+
+  /// The widgets page's introduction.
+  ///
+  /// In en, this message translates to:
+  /// **'A widget shows one list of an account: today\'s tasks, the next days, the overdue ones, your favourites, a project, a label or a saved filter. Tick a task off right there, or tap it to open it here.'**
+  String get widgetsIntro;
+
+  /// Heading above the platform's steps to place a widget.
+  ///
+  /// In en, this message translates to:
+  /// **'How to add one'**
+  String get widgetsHowToHeading;
+
+  /// iOS steps to place and set up a widget.
+  ///
+  /// In en, this message translates to:
+  /// **'Touch and hold an empty spot on your Home Screen, tap Edit, then Add Widget, and look for Rurana. To choose the account and the list, touch and hold the widget and tap Edit Widget.'**
+  String get widgetsHowToIos;
+
+  /// Heading of the Android widget kinds that can be placed from the app.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a widget'**
+  String get widgetsAddHeading;
+
+  /// Under the Add widget heading: which account a widget added from here shows.
+  ///
+  /// In en, this message translates to:
+  /// **'It shows the active account; you can change that in its settings.'**
+  String get widgetsAddHint;
+
+  /// Button that asks the launcher to place a widget of that kind.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get widgetsAdd;
+
+  /// Snackbar when the launcher cannot place a widget requested by the app.
+  ///
+  /// In en, this message translates to:
+  /// **'Your home screen can\'t add widgets from here. Add it on the home screen instead.'**
+  String get widgetsPinUnsupported;
+
+  /// Heading of the widgets already placed (Android); a tap sets one up.
+  ///
+  /// In en, this message translates to:
+  /// **'On your home screen'**
+  String get widgetsPlacedHeading;
+
+  /// A placed widget whose account was signed out.
+  ///
+  /// In en, this message translates to:
+  /// **'Account removed – choose another'**
+  String get widgetsPlacedAccountRemoved;
+
+  /// Privacy note on the widgets page.
+  ///
+  /// In en, this message translates to:
+  /// **'Widgets show your task titles on the home screen, where anyone who sees your phone can read them.'**
+  String get widgetsPrivacyNote;
+
+  /// Widget kind: overdue tasks and those due today.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get widgetKindToday;
+
+  /// What the Today widget shows.
+  ///
+  /// In en, this message translates to:
+  /// **'Overdue and due today'**
+  String get widgetKindTodayHint;
+
+  /// Widget kind: tasks due in the next days.
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming'**
+  String get widgetKindUpcoming;
+
+  /// What the Upcoming widget shows.
+  ///
+  /// In en, this message translates to:
+  /// **'Due in the next days'**
+  String get widgetKindUpcomingHint;
+
+  /// Widget kind: tasks past their due date.
+  ///
+  /// In en, this message translates to:
+  /// **'Overdue'**
+  String get widgetKindOverdue;
+
+  /// What the Overdue widget shows.
+  ///
+  /// In en, this message translates to:
+  /// **'Past their due date'**
+  String get widgetKindOverdueHint;
+
+  /// Widget kind: the favourite tasks.
+  ///
+  /// In en, this message translates to:
+  /// **'Favourites'**
+  String get widgetKindFavorites;
+
+  /// What the Favourites widget shows.
+  ///
+  /// In en, this message translates to:
+  /// **'Your favourite tasks'**
+  String get widgetKindFavoritesHint;
+
+  /// Widget kind: a project's open tasks.
+  ///
+  /// In en, this message translates to:
+  /// **'Project'**
+  String get widgetKindProject;
+
+  /// Widget kind: a label's open tasks.
+  ///
+  /// In en, this message translates to:
+  /// **'Label'**
+  String get widgetKindLabel;
+
+  /// Widget kind: a saved filter's tasks.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved filter'**
+  String get widgetKindSavedFilter;
+
+  /// Widget kind: a button that opens the New task sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'New task button'**
+  String get widgetKindQuickAdd;
+
+  /// What the New task button widget does.
+  ///
+  /// In en, this message translates to:
+  /// **'One tap to a new task'**
+  String get widgetKindQuickAddHint;
+
+  /// How many days ahead an Upcoming widget shows.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 day} other{{count} days}}'**
+  String widgetUpcomingDays(int count);
+
+  /// Title of the page that sets up a placed widget (Android).
+  ///
+  /// In en, this message translates to:
+  /// **'Set up widget'**
+  String get widgetConfigureTitle;
+
+  /// Heading of the account choice on the widget setup page.
+  ///
+  /// In en, this message translates to:
+  /// **'Account'**
+  String get widgetConfigureAccountHeading;
+
+  /// Heading of the list choice on the widget setup page.
+  ///
+  /// In en, this message translates to:
+  /// **'Shows'**
+  String get widgetConfigureListHeading;
+
+  /// Label of the Upcoming widget's day count choice.
+  ///
+  /// In en, this message translates to:
+  /// **'Days ahead'**
+  String get widgetConfigureDaysLabel;
+
+  /// Trailing text of a project, label or saved filter choice not picked yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose'**
+  String get widgetConfigureChoose;
+
+  /// Project picker without projects.
+  ///
+  /// In en, this message translates to:
+  /// **'This account has no projects to show.'**
+  String get widgetConfigureNoProjects;
+
+  /// Label picker without labels.
+  ///
+  /// In en, this message translates to:
+  /// **'This account has no labels yet.'**
+  String get widgetConfigureNoLabels;
+
+  /// Saved filter picker without saved filters.
+  ///
+  /// In en, this message translates to:
+  /// **'This account has no saved filters yet.'**
+  String get widgetConfigureNoSavedFilters;
+
+  /// Heading of the widget preview on the setup page.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get widgetConfigurePreviewHeading;
+
+  /// When the widget's preview cannot be built.
+  ///
+  /// In en, this message translates to:
+  /// **'No preview yet'**
+  String get widgetConfigurePreviewNone;
+
+  /// Saves the widget's setup.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get widgetConfigureSave;
+
+  /// The Save button while the setup is written.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving…'**
+  String get widgetConfigureSaving;
+
+  /// Snackbar after saving a widget's setup.
+  ///
+  /// In en, this message translates to:
+  /// **'Widget set up'**
+  String get widgetConfigureSaved;
+
+  /// Snackbar when saving a widget's setup failed.
+  ///
+  /// In en, this message translates to:
+  /// **'The widget couldn\'t be saved. Try again.'**
+  String get widgetConfigureSaveFailed;
+
+  /// Account tab section heading with the way to the home-screen widgets.
+  ///
+  /// In en, this message translates to:
+  /// **'Home screen'**
+  String get widgetsHeading;
+
+  /// Account tab entry to the home-screen widgets page.
+  ///
+  /// In en, this message translates to:
+  /// **'Widgets'**
+  String get widgetsEntryTitle;
+
+  /// Android steps to place and set up a widget. Below Android 12 and on some launchers the widgets page is the only way to set one up.
+  ///
+  /// In en, this message translates to:
+  /// **'Touch and hold an empty spot on your home screen, tap Widgets and look for Rurana. To choose the account and the list, tap the widget under “On your home screen” below. Some home screens also offer this in the widget\'s settings when you touch and hold it.'**
+  String get widgetsHowToAndroid;
+
+  /// A placed list widget that was never set up; it shows Today of the active account. Tapping opens its setup.
+  ///
+  /// In en, this message translates to:
+  /// **'Not set up yet – shows the active account'**
+  String get widgetsPlacedNotSetUp;
 }
 
 class _AppLocalizationsDelegate

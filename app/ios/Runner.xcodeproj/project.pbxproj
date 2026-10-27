@@ -7,16 +7,29 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		09E45E7C2DF810A08B8D862B /* ListSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 901EC50D8CA4AD742EBD6064 /* ListSelection.swift */; };
+		14684F259A9527449EE0B7D8 /* QuickAddWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA666BD697837E356CAAAD31 /* QuickAddWidget.swift */; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
+		14E0A00D987E9E46E8FA7B3B /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 641868F34AC1937AF0EFB691 /* Localizable.strings */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
+		3C0D680EC2807289F51A8715 /* DoneTaps.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95298CE85693C845A592E150 /* DoneTaps.swift */; };
+		5D33EE8FD05B84B69778B8DD /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = BC2B8CAB680C75E787831D84 /* InfoPlist.strings */; };
+		7203F1F792A49E21B2BBCA43 /* ListConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = D808A2078B99FAE0CA85A328 /* ListConfiguration.swift */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
+		7795F69CBED24F5DB4C1C168 /* TasksTimeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ADEC68A4297DAD832534A3F /* TasksTimeline.swift */; };
 		7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */; };
 		78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
+		8BD0FC968D4BFCDB0410F43F /* RuranaWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41318BA8774FB96831E9C6CF /* RuranaWidgetsBundle.swift */; };
+		90FA2C6086623D4A789AA5A3 /* WidgetData.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA232269523BADBB390955C5 /* WidgetData.swift */; };
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
-		5D33EE8FD05B84B69778B8DD /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = BC2B8CAB680C75E787831D84 /* InfoPlist.strings */; };
+		A13FD33318467313B5D0830D /* TasksWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EC78A226878B4EB9CD72A09 /* TasksWidget.swift */; };
+		A8C1D59F2D7A41F1EFC958B3 /* MarkDoneIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E487AEBDC87C2E471E0D878 /* MarkDoneIntent.swift */; };
+		B50B64F5FABEFD983BA75B2E /* RuranaWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = CB32EB9549894E98AD5159D9 /* RuranaWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		C2CFDE6CB9590F5415254FB1 /* AppGroupStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D48ED279119280F5C2DA8256 /* AppGroupStore.swift */; };
+		F47F65F01136F1BC3562E37E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 635D4630D0F7E9070752A0BC /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -27,9 +40,27 @@
 			remoteGlobalIDString = 97C146ED1CF9000F007C117D;
 			remoteInfo = Runner;
 		};
+		C097814F39A424994E1E4575 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D992F59ADB07E47AD702253A;
+			remoteInfo = RuranaWidgets;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
+		33B5F2654B287E7AB3C91C67 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				B50B64F5FABEFD983BA75B2E /* RuranaWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		9705A1C41CF9048500538489 /* Embed Frameworks */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -43,16 +74,25 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		0EC78A226878B4EB9CD72A09 /* TasksWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TasksWidget.swift; sourceTree = "<group>"; };
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
 		331C807B294A618700263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		3ADEC68A4297DAD832534A3F /* TasksTimeline.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TasksTimeline.swift; sourceTree = "<group>"; };
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
+		41318BA8774FB96831E9C6CF /* RuranaWidgetsBundle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RuranaWidgetsBundle.swift; sourceTree = "<group>"; };
+		635D4630D0F7E9070752A0BC /* Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Runner-Bridging-Header.h"; sourceTree = "<group>"; };
 		74858FAE1ED2DC5600515810 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		78E0A7A72DC9AD7400C4905E /* FlutterGeneratedPluginSwiftPackage */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = FlutterGeneratedPluginSwiftPackage; path = Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage; sourceTree = "<group>"; };
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = Flutter/Release.xcconfig; sourceTree = "<group>"; };
+		7E487AEBDC87C2E471E0D878 /* MarkDoneIntent.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MarkDoneIntent.swift; sourceTree = "<group>"; };
+		8946AA314206909025DBE3CC /* RuranaWidgets.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = RuranaWidgets.entitlements; sourceTree = "<group>"; };
+		8A080A3F44BC6386188621ED /* de */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.strings; name = de; path = de.lproj/Localizable.strings; sourceTree = "<group>"; };
+		901EC50D8CA4AD742EBD6064 /* ListSelection.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ListSelection.swift; sourceTree = "<group>"; };
+		95298CE85693C845A592E150 /* DoneTaps.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DoneTaps.swift; sourceTree = "<group>"; };
 		9740EEB21CF90195004384FC /* Debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Debug.xcconfig; path = Flutter/Debug.xcconfig; sourceTree = "<group>"; };
 		9740EEB31CF90195004384FC /* Generated.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Generated.xcconfig; path = Flutter/Generated.xcconfig; sourceTree = "<group>"; };
 		97C146EE1CF9000F007C117D /* Runner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Runner.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -60,7 +100,15 @@
 		97C146FD1CF9000F007C117D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		97C147001CF9000F007C117D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		9A854B00FB65A3BE4E560685 /* en */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
+		A918980765DDF1C4A212BA1B /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		B78CCCB721027B72C03ACC68 /* Runner.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = Runner.entitlements; sourceTree = "<group>"; };
+		CA232269523BADBB390955C5 /* WidgetData.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetData.swift; sourceTree = "<group>"; };
+		CB32EB9549894E98AD5159D9 /* RuranaWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = RuranaWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		D2A2FFE064F58591902C69A3 /* de */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = de; path = de.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		D48ED279119280F5C2DA8256 /* AppGroupStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppGroupStore.swift; sourceTree = "<group>"; };
+		D808A2078B99FAE0CA85A328 /* ListConfiguration.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ListConfiguration.swift; sourceTree = "<group>"; };
+		EA666BD697837E356CAAAD31 /* QuickAddWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = QuickAddWidget.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -69,6 +117,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A18ACAF88D7F05A671497921 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -81,6 +136,28 @@
 				331C807B294A618700263BE5 /* RunnerTests.swift */,
 			);
 			path = RunnerTests;
+			sourceTree = "<group>";
+		};
+		6AF4BFBE6E4E92BA9C63F8A4 /* RuranaWidgets */ = {
+			isa = PBXGroup;
+			children = (
+				A918980765DDF1C4A212BA1B /* Info.plist */,
+				8946AA314206909025DBE3CC /* RuranaWidgets.entitlements */,
+				D48ED279119280F5C2DA8256 /* AppGroupStore.swift */,
+				95298CE85693C845A592E150 /* DoneTaps.swift */,
+				D808A2078B99FAE0CA85A328 /* ListConfiguration.swift */,
+				901EC50D8CA4AD742EBD6064 /* ListSelection.swift */,
+				7E487AEBDC87C2E471E0D878 /* MarkDoneIntent.swift */,
+				EA666BD697837E356CAAAD31 /* QuickAddWidget.swift */,
+				41318BA8774FB96831E9C6CF /* RuranaWidgetsBundle.swift */,
+				3ADEC68A4297DAD832534A3F /* TasksTimeline.swift */,
+				0EC78A226878B4EB9CD72A09 /* TasksWidget.swift */,
+				CA232269523BADBB390955C5 /* WidgetData.swift */,
+				635D4630D0F7E9070752A0BC /* Assets.xcassets */,
+				641868F34AC1937AF0EFB691 /* Localizable.strings */,
+			);
+			name = RuranaWidgets;
+			path = RuranaWidgets;
 			sourceTree = "<group>";
 		};
 		9740EEB11CF90186004384FC /* Flutter */ = {
@@ -102,6 +179,7 @@
 				97C146F01CF9000F007C117D /* Runner */,
 				97C146EF1CF9000F007C117D /* Products */,
 				331C8082294A63A400263BE5 /* RunnerTests */,
+				6AF4BFBE6E4E92BA9C63F8A4 /* RuranaWidgets */,
 			);
 			sourceTree = "<group>";
 		};
@@ -110,6 +188,7 @@
 			children = (
 				97C146EE1CF9000F007C117D /* Runner.app */,
 				331C8081294A63A400263BE5 /* RunnerTests.xctest */,
+				CB32EB9549894E98AD5159D9 /* RuranaWidgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -127,6 +206,7 @@
 				74858FAE1ED2DC5600515810 /* AppDelegate.swift */,
 				7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
+				B78CCCB721027B72C03ACC68 /* Runner.entitlements */,
 			);
 			path = Runner;
 			sourceTree = "<group>";
@@ -160,11 +240,13 @@
 				97C146EB1CF9000F007C117D /* Frameworks */,
 				97C146EC1CF9000F007C117D /* Resources */,
 				9705A1C41CF9048500538489 /* Embed Frameworks */,
+				33B5F2654B287E7AB3C91C67 /* Embed Foundation Extensions */,
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				50DE62DB3C4C8DB8AEC22A36 /* PBXTargetDependency */,
 			);
 			name = Runner;
 			packageProductDependencies = (
@@ -173,6 +255,23 @@
 			productName = Runner;
 			productReference = 97C146EE1CF9000F007C117D /* Runner.app */;
 			productType = "com.apple.product-type.application";
+		};
+		D992F59ADB07E47AD702253A /* RuranaWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B07A91ECB03BFA768982C56A /* Build configuration list for PBXNativeTarget "RuranaWidgets" */;
+			buildPhases = (
+				AE3F7F575467B3473C67E4E3 /* Sources */,
+				A18ACAF88D7F05A671497921 /* Frameworks */,
+				BD499C38A800D076E84A1B48 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = RuranaWidgets;
+			productName = RuranaWidgets;
+			productReference = CB32EB9549894E98AD5159D9 /* RuranaWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -205,7 +304,7 @@
 			);
 			mainGroup = 97C146E51CF9000F007C117D;
 			packageReferences = (
-				781AD8BC2B33823900A9FFBB /* XCLocalSwiftPackageReference "Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage" */,
+				781AD8BC2B33823900A9FFBB /* XCLocalSwiftPackageReference "FlutterGeneratedPluginSwiftPackage" */,
 			);
 			productRefGroup = 97C146EF1CF9000F007C117D /* Products */;
 			projectDirPath = "";
@@ -213,6 +312,7 @@
 			targets = (
 				97C146ED1CF9000F007C117D /* Runner */,
 				331C8080294A63A400263BE5 /* RunnerTests */,
+				D992F59ADB07E47AD702253A /* RuranaWidgets */,
 			);
 		};
 /* End PBXProject section */
@@ -234,6 +334,15 @@
 				97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */,
 				97C146FC1CF9000F007C117D /* Main.storyboard in Resources */,
 				5D33EE8FD05B84B69778B8DD /* InfoPlist.strings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BD499C38A800D076E84A1B48 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F47F65F01136F1BC3562E37E /* Assets.xcassets in Resources */,
+				14E0A00D987E9E46E8FA7B3B /* Localizable.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -292,6 +401,23 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		AE3F7F575467B3473C67E4E3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C2CFDE6CB9590F5415254FB1 /* AppGroupStore.swift in Sources */,
+				3C0D680EC2807289F51A8715 /* DoneTaps.swift in Sources */,
+				7203F1F792A49E21B2BBCA43 /* ListConfiguration.swift in Sources */,
+				09E45E7C2DF810A08B8D862B /* ListSelection.swift in Sources */,
+				A8C1D59F2D7A41F1EFC958B3 /* MarkDoneIntent.swift in Sources */,
+				14684F259A9527449EE0B7D8 /* QuickAddWidget.swift in Sources */,
+				8BD0FC968D4BFCDB0410F43F /* RuranaWidgetsBundle.swift in Sources */,
+				7795F69CBED24F5DB4C1C168 /* TasksTimeline.swift in Sources */,
+				A13FD33318467313B5D0830D /* TasksWidget.swift in Sources */,
+				90FA2C6086623D4A789AA5A3 /* WidgetData.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -300,9 +426,24 @@
 			target = 97C146ED1CF9000F007C117D /* Runner */;
 			targetProxy = 331C8085294A63A400263BE5 /* PBXContainerItemProxy */;
 		};
+		50DE62DB3C4C8DB8AEC22A36 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = RuranaWidgets;
+			target = D992F59ADB07E47AD702253A /* RuranaWidgets */;
+			targetProxy = C097814F39A424994E1E4575 /* PBXContainerItemProxy */;
+		};
 /* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
+		641868F34AC1937AF0EFB691 /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				8A080A3F44BC6386188621ED /* de */,
+				9A854B00FB65A3BE4E560685 /* en */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
 		97C146FA1CF9000F007C117D /* Main.storyboard */ = {
 			isa = PBXVariantGroup;
 			children = (
@@ -389,6 +530,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Runner/Info.plist;
@@ -450,6 +592,37 @@
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Runner.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Runner";
 			};
 			name = Profile;
+		};
+		697AF8EE44A2BECA199C0F18 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 9740EEB21CF90195004384FC /* Debug.xcconfig */;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = RuranaWidgets/RuranaWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = RuranaWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Rurana;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = dev.coderoftime.vikunja.RuranaWidgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
 		};
 		97C147031CF9000F007C117D /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -570,6 +743,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Runner/Info.plist;
@@ -592,6 +766,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Runner/Info.plist;
@@ -606,6 +781,70 @@
 				VERSIONING_SYSTEM = "apple-generic";
 			};
 			name = Release;
+		};
+		993C3765002E8C64A1D5C404 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 7AFA3C8E1D35360C0083082E /* Release.xcconfig */;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = RuranaWidgets/RuranaWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = RuranaWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Rurana;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = dev.coderoftime.vikunja.RuranaWidgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		AC350364EB3C3F3ABD9AB268 /* Profile */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 7AFA3C8E1D35360C0083082E /* Release.xcconfig */;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = RuranaWidgets/RuranaWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = RuranaWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Rurana;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = dev.coderoftime.vikunja.RuranaWidgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Profile;
 		};
 /* End XCBuildConfiguration section */
 
@@ -640,10 +879,20 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		B07A91ECB03BFA768982C56A /* Build configuration list for PBXNativeTarget "RuranaWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				993C3765002E8C64A1D5C404 /* Release */,
+				697AF8EE44A2BECA199C0F18 /* Debug */,
+				AC350364EB3C3F3ABD9AB268 /* Profile */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		781AD8BC2B33823900A9FFBB /* XCLocalSwiftPackageReference "Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage" */ = {
+		781AD8BC2B33823900A9FFBB /* XCLocalSwiftPackageReference "FlutterGeneratedPluginSwiftPackage" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage;
 		};

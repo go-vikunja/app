@@ -16,6 +16,7 @@ import 'package:vikunja_mobile/core/network/dio_factory.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/home/application/app_version.dart';
+import 'package:vikunja_mobile/features/home/presentation/account_tab.dart';
 import 'package:vikunja_mobile/features/home/presentation/home_shell.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_server_screen.dart';
 
@@ -203,6 +204,17 @@ void main() {
     ]);
 
     adapter.requests.clear();
+    // Below the device's own sections, past what the list builds ahead.
+    await tester.scrollUntilVisible(
+      find.widgetWithText(OutlinedButton, en.homeSignOut),
+      200,
+      scrollable: find
+          .descendant(
+            of: find.byType(AccountTab),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
     await tester.tap(find.widgetWithText(OutlinedButton, en.homeSignOut));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(TextButton, en.signOutDialogConfirm));

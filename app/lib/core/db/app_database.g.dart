@@ -8168,6 +8168,233 @@ class KanbanBucketsCompanion extends UpdateCompanion<KanbanBucketRow> {
   }
 }
 
+class $ImportedWidgetActionsTable extends ImportedWidgetActions
+    with TableInfo<$ImportedWidgetActionsTable, ImportedWidgetActionRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ImportedWidgetActionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<DateTime, int> importedAt =
+      GeneratedColumn<int>(
+        'imported_at',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: true,
+      ).withConverter<DateTime>(
+        $ImportedWidgetActionsTable.$converterimportedAt,
+      );
+  @override
+  List<GeneratedColumn> get $columns => [id, importedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'imported_widget_actions';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ImportedWidgetActionRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ImportedWidgetActionRow map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ImportedWidgetActionRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      importedAt: $ImportedWidgetActionsTable.$converterimportedAt.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}imported_at'],
+        )!,
+      ),
+    );
+  }
+
+  @override
+  $ImportedWidgetActionsTable createAlias(String alias) {
+    return $ImportedWidgetActionsTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<DateTime, int> $converterimportedAt =
+      const EpochMillis();
+}
+
+class ImportedWidgetActionRow extends DataClass
+    implements Insertable<ImportedWidgetActionRow> {
+  final String id;
+  final DateTime importedAt;
+  const ImportedWidgetActionRow({required this.id, required this.importedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    {
+      map['imported_at'] = Variable<int>(
+        $ImportedWidgetActionsTable.$converterimportedAt.toSql(importedAt),
+      );
+    }
+    return map;
+  }
+
+  ImportedWidgetActionsCompanion toCompanion(bool nullToAbsent) {
+    return ImportedWidgetActionsCompanion(
+      id: Value(id),
+      importedAt: Value(importedAt),
+    );
+  }
+
+  factory ImportedWidgetActionRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ImportedWidgetActionRow(
+      id: serializer.fromJson<String>(json['id']),
+      importedAt: serializer.fromJson<DateTime>(json['importedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'importedAt': serializer.toJson<DateTime>(importedAt),
+    };
+  }
+
+  ImportedWidgetActionRow copyWith({String? id, DateTime? importedAt}) =>
+      ImportedWidgetActionRow(
+        id: id ?? this.id,
+        importedAt: importedAt ?? this.importedAt,
+      );
+  ImportedWidgetActionRow copyWithCompanion(
+    ImportedWidgetActionsCompanion data,
+  ) {
+    return ImportedWidgetActionRow(
+      id: data.id.present ? data.id.value : this.id,
+      importedAt: data.importedAt.present
+          ? data.importedAt.value
+          : this.importedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ImportedWidgetActionRow(')
+          ..write('id: $id, ')
+          ..write('importedAt: $importedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, importedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ImportedWidgetActionRow &&
+          other.id == this.id &&
+          other.importedAt == this.importedAt);
+}
+
+class ImportedWidgetActionsCompanion
+    extends UpdateCompanion<ImportedWidgetActionRow> {
+  final Value<String> id;
+  final Value<DateTime> importedAt;
+  final Value<int> rowid;
+  const ImportedWidgetActionsCompanion({
+    this.id = const Value.absent(),
+    this.importedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ImportedWidgetActionsCompanion.insert({
+    required String id,
+    required DateTime importedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       importedAt = Value(importedAt);
+  static Insertable<ImportedWidgetActionRow> custom({
+    Expression<String>? id,
+    Expression<int>? importedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (importedAt != null) 'imported_at': importedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ImportedWidgetActionsCompanion copyWith({
+    Value<String>? id,
+    Value<DateTime>? importedAt,
+    Value<int>? rowid,
+  }) {
+    return ImportedWidgetActionsCompanion(
+      id: id ?? this.id,
+      importedAt: importedAt ?? this.importedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (importedAt.present) {
+      map['imported_at'] = Variable<int>(
+        $ImportedWidgetActionsTable.$converterimportedAt.toSql(
+          importedAt.value,
+        ),
+      );
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ImportedWidgetActionsCompanion(')
+          ..write('id: $id, ')
+          ..write('importedAt: $importedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -8193,6 +8420,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $ListPreferenceEntriesTable listPreferenceEntries =
       $ListPreferenceEntriesTable(this);
   late final $KanbanBucketsTable kanbanBuckets = $KanbanBucketsTable(this);
+  late final $ImportedWidgetActionsTable importedWidgetActions =
+      $ImportedWidgetActionsTable(this);
   late final Index projectViewsProject = Index(
     'project_views_project',
     'CREATE INDEX project_views_project ON project_views (project_id)',
@@ -8226,6 +8455,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this as AppDatabase,
   );
   late final KanbanDao kanbanDao = KanbanDao(this as AppDatabase);
+  late final ImportedWidgetActionsDao importedWidgetActionsDao =
+      ImportedWidgetActionsDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -8249,6 +8480,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     listSnapshotTasks,
     listPreferenceEntries,
     kanbanBuckets,
+    importedWidgetActions,
     projectViewsProject,
     tasksProject,
     tasksDoneDue,
@@ -14087,6 +14319,184 @@ typedef $$KanbanBucketsTableProcessedTableManager =
       KanbanBucketRow,
       PrefetchHooks Function()
     >;
+typedef $$ImportedWidgetActionsTableCreateCompanionBuilder =
+    ImportedWidgetActionsCompanion Function({
+      required String id,
+      required DateTime importedAt,
+      Value<int> rowid,
+    });
+typedef $$ImportedWidgetActionsTableUpdateCompanionBuilder =
+    ImportedWidgetActionsCompanion Function({
+      Value<String> id,
+      Value<DateTime> importedAt,
+      Value<int> rowid,
+    });
+
+class $$ImportedWidgetActionsTableFilterComposer
+    extends Composer<_$AppDatabase, $ImportedWidgetActionsTable> {
+  $$ImportedWidgetActionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<DateTime, DateTime, int> get importedAt =>
+      $composableBuilder(
+        column: $table.importedAt,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+}
+
+class $$ImportedWidgetActionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ImportedWidgetActionsTable> {
+  $$ImportedWidgetActionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get importedAt => $composableBuilder(
+    column: $table.importedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ImportedWidgetActionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ImportedWidgetActionsTable> {
+  $$ImportedWidgetActionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<DateTime, int> get importedAt =>
+      $composableBuilder(
+        column: $table.importedAt,
+        builder: (column) => column,
+      );
+}
+
+class $$ImportedWidgetActionsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ImportedWidgetActionsTable,
+          ImportedWidgetActionRow,
+          $$ImportedWidgetActionsTableFilterComposer,
+          $$ImportedWidgetActionsTableOrderingComposer,
+          $$ImportedWidgetActionsTableAnnotationComposer,
+          $$ImportedWidgetActionsTableCreateCompanionBuilder,
+          $$ImportedWidgetActionsTableUpdateCompanionBuilder,
+          (
+            ImportedWidgetActionRow,
+            BaseReferences<
+              _$AppDatabase,
+              $ImportedWidgetActionsTable,
+              ImportedWidgetActionRow
+            >,
+          ),
+          ImportedWidgetActionRow,
+          PrefetchHooks Function()
+        > {
+  $$ImportedWidgetActionsTableTableManager(
+    _$AppDatabase db,
+    $ImportedWidgetActionsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ImportedWidgetActionsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$ImportedWidgetActionsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$ImportedWidgetActionsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<DateTime> importedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ImportedWidgetActionsCompanion(
+                id: id,
+                importedAt: importedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required DateTime importedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => ImportedWidgetActionsCompanion.insert(
+                id: id,
+                importedAt: importedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<
+                    $ImportedWidgetActionsTable,
+                    ImportedWidgetActionRow
+                  >(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $ImportedWidgetActionsTable,
+                    ImportedWidgetActionRow
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ImportedWidgetActionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ImportedWidgetActionsTable,
+      ImportedWidgetActionRow,
+      $$ImportedWidgetActionsTableFilterComposer,
+      $$ImportedWidgetActionsTableOrderingComposer,
+      $$ImportedWidgetActionsTableAnnotationComposer,
+      $$ImportedWidgetActionsTableCreateCompanionBuilder,
+      $$ImportedWidgetActionsTableUpdateCompanionBuilder,
+      (
+        ImportedWidgetActionRow,
+        BaseReferences<
+          _$AppDatabase,
+          $ImportedWidgetActionsTable,
+          ImportedWidgetActionRow
+        >,
+      ),
+      ImportedWidgetActionRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -14130,4 +14540,6 @@ class $AppDatabaseManager {
       $$ListPreferenceEntriesTableTableManager(_db, _db.listPreferenceEntries);
   $$KanbanBucketsTableTableManager get kanbanBuckets =>
       $$KanbanBucketsTableTableManager(_db, _db.kanbanBuckets);
+  $$ImportedWidgetActionsTableTableManager get importedWidgetActions =>
+      $$ImportedWidgetActionsTableTableManager(_db, _db.importedWidgetActions);
 }
