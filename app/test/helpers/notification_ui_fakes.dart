@@ -76,6 +76,7 @@ final class FakeNotificationOs implements NotificationGateway {
     required String title,
     required String body,
     required String payload,
+    NotificationPrivacy privacy = const NotificationPrivacy(),
   }) async {
     await _call('showNow $osId');
     shown.add((osId: osId, title: title, body: body, payload: payload));
@@ -98,6 +99,7 @@ final class FakeNotificationOs implements NotificationGateway {
     required String payload,
     String? subtitle,
     String? group,
+    NotificationPrivacy privacy = const NotificationPrivacy(),
   }) async {
     await _call('showActivity $osId');
     activities.add((osId: osId, title: title, body: body, payload: payload));

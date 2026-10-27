@@ -275,6 +275,7 @@ void main() {
       String title,
       String body,
       bool exact,
+      NotificationPrivacy privacy,
     })
     scheduled(
       String key,
@@ -282,6 +283,7 @@ void main() {
       DateTime at, {
       String title = 'T',
       bool exact = true,
+      NotificationPrivacy privacy = const NotificationPrivacy(),
     }) => (
       key: key,
       osId: osId,
@@ -289,6 +291,7 @@ void main() {
       title: title,
       body: 'B',
       exact: exact,
+      privacy: privacy,
     );
 
     test('schedules what is missing, keeps the unchanged, cancels the gone '
@@ -308,6 +311,7 @@ void main() {
         ],
         window: 10,
         exact: true,
+        privacy: const NotificationPrivacy(),
       );
 
       expect(diff.cancelOsIds, [11, 12, 13]);
@@ -325,6 +329,7 @@ void main() {
         scheduled: [scheduled('c', 30, inTwoHours)],
         window: 2,
         exact: true,
+        privacy: const NotificationPrivacy(),
       );
 
       expect(diff.cancelOsIds, [30]);
@@ -337,6 +342,7 @@ void main() {
         scheduled: [scheduled('a', 1, inAnHour)],
         window: 60,
         exact: true,
+        privacy: const NotificationPrivacy(),
       );
 
       expect(diff.cancelOsIds, isEmpty);
@@ -352,6 +358,7 @@ void main() {
         ],
         window: 60,
         exact: true,
+        privacy: const NotificationPrivacy(),
       );
 
       expect(diff.cancelOsIds, [1]);
@@ -362,9 +369,45 @@ void main() {
         scheduled: [scheduled('a', 1, inAnHour)],
         window: 60,
         exact: false,
+        privacy: const NotificationPrivacy(),
       );
       expect(revoked.cancelOsIds, [1]);
       expect(revoked.schedule.map((d) => d.key), ['a']);
+    });
+
+    test('an entry scheduled with other privacy settings is rescheduled', () {
+      const hidden = NotificationPrivacy(hiddenOnLockScreen: true);
+      final diff = diffSchedule(
+        desired: [desired('a', inAnHour), desired('b', inAnHour)],
+        scheduled: [
+          scheduled('a', 1, inAnHour),
+          scheduled('b', 2, inAnHour, privacy: hidden),
+        ],
+        window: 60,
+        exact: true,
+        privacy: hidden,
+      );
+
+      expect(diff.cancelOsIds, [1]);
+      expect(diff.schedule.map((d) => d.key), ['a']);
+    });
+
+    test('forced, every scheduled entry is cancelled and the window '
+        'scheduled again, unchanged ones too', () {
+      final diff = diffSchedule(
+        desired: [desired('a', inAnHour), desired('b', inTwoHours)],
+        scheduled: [
+          scheduled('a', 1, inAnHour),
+          scheduled('gone', 2, inAnHour),
+        ],
+        window: 60,
+        exact: true,
+        privacy: const NotificationPrivacy(),
+        force: true,
+      );
+
+      expect(diff.cancelOsIds, [1, 2]);
+      expect(diff.schedule.map((d) => d.key), ['a', 'b']);
     });
 
     test('an empty plan cancels everything', () {
@@ -373,6 +416,7 @@ void main() {
         scheduled: [scheduled('a', 1, inAnHour), scheduled('b', 2, inAnHour)],
         window: 60,
         exact: true,
+        privacy: const NotificationPrivacy(),
       );
 
       expect(diff.cancelOsIds, [1, 2]);

@@ -7,6 +7,8 @@ import 'package:logging/logging.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:vikunja_mobile/core/notifications/notification_actions.dart';
 import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
+import 'package:vikunja_mobile/core/platform/app_round_trips.dart';
+import 'package:vikunja_mobile/core/security/app_excursions.dart';
 import 'package:vikunja_mobile/core/storage/preferences_store.dart';
 
 final _log = Logger('LocalNotificationGateway');
@@ -54,6 +56,7 @@ final class LocalNotificationGateway implements NotificationGateway {
     this._onBackgroundResponse,
     FlutterLocalNotificationsPlugin? plugin,
     this._clock = DateTime.now,
+    this._excursions,
   }) : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
 
   static const channelId = 'reminders';
@@ -65,6 +68,11 @@ final class LocalNotificationGateway implements NotificationGateway {
   /// iOS keeps a category's actions until the app is reinstalled, so a
   /// change to the actions needs a new identifier.
   static const darwinCategoryId = 'task';
+
+  /// [darwinCategoryId] with a Done that asks for the device to be
+  /// unlocked, chosen while the app lock is on. Snoozing stays plain: it
+  /// only moves a local notification (D39).
+  static const darwinLockedCategoryId = 'task_locked';
 
   /// `res/drawable-*dpi/ic_notification.png`, kept by `res/raw/keep.xml`.
   static const androidIcon = 'ic_notification';
@@ -78,6 +86,10 @@ final class LocalNotificationGateway implements NotificationGateway {
   final DidReceiveBackgroundNotificationResponseCallback? _onBackgroundResponse;
   final FlutterLocalNotificationsPlugin _plugin;
   final DateTime Function() _clock;
+
+  /// The permission prompts and the system pages they open do not lock
+  /// the app.
+  final AppExcursions? _excursions;
   Future<void>? _initialized;
 
   AndroidFlutterLocalNotificationsPlugin? get _android => _plugin
@@ -113,26 +125,11 @@ final class LocalNotificationGateway implements NotificationGateway {
         requestAlertPermission: false,
         requestBadgePermission: false,
         requestSoundPermission: false,
+        // Every isolate registers both: the action isolate initialises
+        // the plugin again for each run.
         notificationCategories: [
-          DarwinNotificationCategory(
-            darwinCategoryId,
-            // No `foreground` option: the actions run in the background
-            // engine, like the Android actions without a user interface.
-            actions: [
-              DarwinNotificationAction.plain(
-                NotificationActionIds.markDone,
-                _texts.markDone,
-              ),
-              DarwinNotificationAction.plain(
-                NotificationActionIds.snooze10Minutes,
-                _texts.snooze10Minutes,
-              ),
-              DarwinNotificationAction.plain(
-                NotificationActionIds.snooze1Hour,
-                _texts.snooze1Hour,
-              ),
-            ],
-          ),
+          _darwinCategory(darwinCategoryId, doneNeedsUnlock: false),
+          _darwinCategory(darwinLockedCategoryId, doneNeedsUnlock: true),
         ],
       ),
     );
@@ -157,6 +154,33 @@ final class LocalNotificationGateway implements NotificationGateway {
       ),
     );
   }
+
+  // No `foreground` option: the actions run in the background engine, like
+  // the Android actions without a user interface.
+  DarwinNotificationCategory _darwinCategory(
+    String identifier, {
+    required bool doneNeedsUnlock,
+  }) => DarwinNotificationCategory(
+    identifier,
+    actions: [
+      DarwinNotificationAction.plain(
+        NotificationActionIds.markDone,
+        _texts.markDone,
+        options: {
+          if (doneNeedsUnlock)
+            DarwinNotificationActionOption.authenticationRequired,
+        },
+      ),
+      DarwinNotificationAction.plain(
+        NotificationActionIds.snooze10Minutes,
+        _texts.snooze10Minutes,
+      ),
+      DarwinNotificationAction.plain(
+        NotificationActionIds.snooze1Hour,
+        _texts.snooze1Hour,
+      ),
+    ],
+  );
 
   @override
   Future<NotificationCapabilities> capabilities() async {
@@ -187,11 +211,13 @@ final class LocalNotificationGateway implements NotificationGateway {
   @override
   Future<NotificationCapabilities> requestPermission() async {
     try {
-      if (_android case final android?) {
-        await android.requestNotificationsPermission();
-      } else if (_ios case final ios?) {
-        await ios.requestPermissions(alert: true, badge: true, sound: true);
-      }
+      await _roundTrip(() async {
+        if (_android case final android?) {
+          await android.requestNotificationsPermission();
+        } else if (_ios case final ios?) {
+          await ios.requestPermissions(alert: true, badge: true, sound: true);
+        }
+      });
     } on PlatformException catch (error) {
       _log.warning('Notification permission request failed: ${error.code}');
     }
@@ -204,16 +230,29 @@ final class LocalNotificationGateway implements NotificationGateway {
     try {
       // Opens the system page on Android 12+ and returns when the user
       // comes back; a no-op that answers true below that.
-      await _android?.requestExactAlarmsPermission();
+      await _roundTrip(
+        () async => await _android?.requestExactAlarmsPermission(),
+      );
     } on PlatformException catch (error) {
       _log.warning('Could not open the exact alarm settings: ${error.code}');
     }
   }
 
+  Future<T> _roundTrip<T>(Future<T> Function() action) =>
+      _excursions?.roundTrip(action) ?? action();
+
   @override
   Future<void> openNotificationSettings() async {
     try {
-      final opened = await _plugin.openAppNotificationSettings();
+      // Answers as soon as the page opens.
+      Future<bool?> open() => _plugin.openAppNotificationSettings();
+      final excursions = _excursions;
+      final opened = excursions == null
+          ? await open()
+          : await excursions.launchAway(
+              open,
+              opened: (opened) => opened != false,
+            );
       if (opened == false) _log.info('The notification settings did not open');
     } on PlatformException catch (error) {
       _log.warning('Could not open the notification settings: ${error.code}');
@@ -232,6 +271,7 @@ final class LocalNotificationGateway implements NotificationGateway {
         title: notification.title,
         body: notification.body,
         payload: notification.payload,
+        privacy: notification.privacy,
       );
       return;
     }
@@ -258,7 +298,7 @@ final class LocalNotificationGateway implements NotificationGateway {
       // Dates are absolute instants; tz.UTC is built in, so the time zone
       // database stays unloaded.
       scheduledDate: tz.TZDateTime.from(notification.fireAt, tz.UTC),
-      notificationDetails: _details(),
+      notificationDetails: _details(notification.privacy),
       androidScheduleMode: exact
           ? AndroidScheduleMode.exactAllowWhileIdle
           : AndroidScheduleMode.inexactAllowWhileIdle,
@@ -285,13 +325,14 @@ final class LocalNotificationGateway implements NotificationGateway {
     required String title,
     required String body,
     required String payload,
+    NotificationPrivacy privacy = const NotificationPrivacy(),
   }) async {
     await initialize();
     await _plugin.show(
       id: osId,
       title: title,
       body: body,
-      notificationDetails: _details(),
+      notificationDetails: _details(privacy),
       payload: payload,
     );
   }
@@ -314,6 +355,7 @@ final class LocalNotificationGateway implements NotificationGateway {
     required String payload,
     String? subtitle,
     String? group,
+    NotificationPrivacy privacy = const NotificationPrivacy(),
   }) async {
     await initialize();
     await _plugin.show(
@@ -330,6 +372,7 @@ final class LocalNotificationGateway implements NotificationGateway {
           styleInformation: BigTextStyleInformation(body),
           subText: subtitle,
           groupKey: group,
+          visibility: _visibility(privacy),
         ),
         iOS: DarwinNotificationDetails(
           presentAlert: true,
@@ -351,34 +394,43 @@ final class LocalNotificationGateway implements NotificationGateway {
     return details.notificationResponse;
   }
 
-  NotificationDetails _details() => NotificationDetails(
-    android: AndroidNotificationDetails(
-      channelId,
-      _texts.channelName,
-      channelDescription: _texts.channelDescription,
-      importance: Importance.high,
-      priority: Priority.high,
-      category: AndroidNotificationCategory.reminder,
-      // The defaults do what the background handler needs: no user
-      // interface (`showsUserInterface`), dismissed on tap
-      // (`cancelNotification`).
-      actions: [
-        for (final (id, title) in [
-          (NotificationActionIds.markDone, _texts.markDone),
-          (NotificationActionIds.snooze10Minutes, _texts.snooze10Minutes),
-          (NotificationActionIds.snooze1Hour, _texts.snooze1Hour),
-        ])
-          AndroidNotificationAction(id, title),
-      ],
-    ),
-    iOS: const DarwinNotificationDetails(
-      categoryIdentifier: darwinCategoryId,
-      // Shown while the app is in front too.
-      presentAlert: true,
-      presentBanner: true,
-      presentList: true,
-      presentSound: true,
-      interruptionLevel: InterruptionLevel.active,
-    ),
-  );
+  // `private` would still show the content title, which is the task's, and
+  // the plugin has no public version to put in its place.
+  static NotificationVisibility? _visibility(NotificationPrivacy privacy) =>
+      privacy.hiddenOnLockScreen ? NotificationVisibility.secret : null;
+
+  NotificationDetails _details(NotificationPrivacy privacy) =>
+      NotificationDetails(
+        android: AndroidNotificationDetails(
+          channelId,
+          _texts.channelName,
+          channelDescription: _texts.channelDescription,
+          importance: Importance.high,
+          priority: Priority.high,
+          category: AndroidNotificationCategory.reminder,
+          visibility: _visibility(privacy),
+          // The defaults do what the background handler needs: no user
+          // interface (`showsUserInterface`), dismissed on tap
+          // (`cancelNotification`).
+          actions: [
+            for (final (id, title) in [
+              (NotificationActionIds.markDone, _texts.markDone),
+              (NotificationActionIds.snooze10Minutes, _texts.snooze10Minutes),
+              (NotificationActionIds.snooze1Hour, _texts.snooze1Hour),
+            ])
+              AndroidNotificationAction(id, title),
+          ],
+        ),
+        iOS: DarwinNotificationDetails(
+          categoryIdentifier: privacy.doneNeedsUnlock
+              ? darwinLockedCategoryId
+              : darwinCategoryId,
+          // Shown while the app is in front too.
+          presentAlert: true,
+          presentBanner: true,
+          presentList: true,
+          presentSound: true,
+          interruptionLevel: InterruptionLevel.active,
+        ),
+      );
 }

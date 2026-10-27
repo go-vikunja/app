@@ -8,6 +8,7 @@ import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/security/app_lock_controller.dart';
 import 'package:vikunja_mobile/core/share/share_intent_source.dart';
 import 'package:vikunja_mobile/core/share/share_providers.dart';
 import 'package:vikunja_mobile/features/onboarding/application/connect_server_controller.dart';
@@ -20,7 +21,8 @@ final _log = Logger('ShareIntent');
 
 /// Takes what other apps share into Rurana, the share that started the app
 /// and the ones that arrive while it runs: once the app is past the splash
-/// and the first sync, with several accounts the user picks one first (a
+/// and the first sync and the app lock is open (the platform keeps the
+/// share meanwhile), with several accounts the user picks one first (a
 /// switch follows), then the share sheet opens over the current screen.
 /// Signed out it says so. A shared project's link is offered to open as a
 /// guest and an admin's invite goes to its check, signed in or out, both on
@@ -53,6 +55,12 @@ class _ShareIntentListenerState extends ConsumerState<ShareIntentListener> {
     _source = ref.read(shareIntentSourceProvider);
     _router = ref.read(appRouterProvider)
       ..routerDelegate.addListener(_runWhenReady);
+    ref.listenManual(
+      appLockControllerProvider.select((state) => state.locked),
+      (_, locked) {
+        if (!locked) _runWhenReady();
+      },
+    );
     _shares = _source.shares.listen(_onShare);
     unawaited(
       _source.pending().then(
@@ -88,6 +96,7 @@ class _ShareIntentListenerState extends ConsumerState<ShareIntentListener> {
   void _runWhenReady() {
     final share = _waiting;
     if (share == null || _handling != null || !mounted) return;
+    if (ref.read(appLockControllerProvider.notifier).isLockedNow()) return;
     final delegate = _router.routerDelegate;
     if (delegate.currentConfiguration.isEmpty) return;
     final location = delegate.state.matchedLocation;

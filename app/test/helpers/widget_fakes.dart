@@ -102,6 +102,15 @@ final class FakeWidgetHost implements WidgetHost {
   }
 
   @override
+  Future<void> deleteSnapshotsExcept(String accountId, Set<String> keys) async {
+    _fail();
+    calls.add('deleteSnapshotsExcept $accountId');
+    snapshots.removeWhere(
+      (key, _) => key.startsWith('$accountId.') && !keys.contains(key),
+    );
+  }
+
+  @override
   Future<Map<int, WidgetConfig?>> configs() async => Map.of(placed);
 
   @override

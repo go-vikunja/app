@@ -32,6 +32,7 @@ import 'package:vikunja_mobile/features/onboarding/application/current_server.da
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_server_screen.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/overview/server_overview_screen.dart';
 import 'package:vikunja_mobile/features/overview/presentation/overview_screen.dart';
+import 'package:vikunja_mobile/features/privacy/presentation/privacy_page.dart';
 import 'package:vikunja_mobile/features/projects/presentation/manage/project_edit_page.dart';
 import 'package:vikunja_mobile/features/projects/presentation/manage/project_views_page.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_tasks_screen.dart';
@@ -137,6 +138,11 @@ abstract final class AppRoutes {
   static String widgetConfigure(int appWidgetId, {bool fromWidget = false}) =>
       '$widgets/configure?appWidgetId=$appWidgetId'
       '${fromWidget ? '&from=widget' : ''}';
+
+  /// Over the shell, from the Account tab: the app lock and what the
+  /// screen, notifications and widgets show. Open to link-share guests,
+  /// whose device it is too.
+  static const privacy = '$home/privacy';
 
   /// The connect screen and the server overview over the shell, for
   /// signing in to another account; pushed, so back returns to the shell.
@@ -507,6 +513,11 @@ GoRouter appRouter(Ref ref) {
             ),
           ),
         ],
+      ),
+      GoRoute(
+        path: AppRoutes.privacy,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const PrivacyPage(),
       ),
       GoRoute(
         path: AppRoutes.addAccount,

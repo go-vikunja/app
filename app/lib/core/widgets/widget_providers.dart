@@ -11,6 +11,7 @@ import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway_provider.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/core/security/privacy_providers.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/core/widgets/no_widget_host.dart';
 import 'package:vikunja_mobile/core/widgets/plugin_widget_host.dart';
@@ -92,8 +93,9 @@ WidgetPublishers widgetPublishers(Ref ref) => WidgetPublishers(
 
 /// One account's publisher; null once the account is gone. In the app it
 /// publishes when built, when the app comes back to the front, when the
-/// account's registry entry changes and when its snapshots go stale; a
-/// headless container publishes on request ([widgetRefresherProvider]).
+/// account's registry entry changes, when the "Show task titles in
+/// widgets" switch changes and when its snapshots go stale; a headless
+/// container publishes on request ([widgetRefresherProvider]).
 @Riverpod(keepAlive: true)
 WidgetPublisher? widgetPublisher(Ref ref, String accountId) {
   final registered = ref.watch(
@@ -112,9 +114,11 @@ WidgetPublisher? widgetPublisher(Ref ref, String accountId) {
     account: () => _widgetAccount(ref.read(accountsProvider).value, accountId),
     build: (account, kinds, {required withCatalog}) async {
       final texts = await ref.read(widgetTextsProvider.future);
+      final privacy = await ref.read(privacySettingsProvider.future);
       return await WidgetSnapshotBuilder(
         db: db,
         texts: texts,
+        showTaskTitles: privacy.widgetTitles,
         now: now,
       ).build(account, kinds, withCatalog: withCatalog);
     },
@@ -123,12 +127,19 @@ WidgetPublisher? widgetPublisher(Ref ref, String accountId) {
     now: now,
   );
   ref.watch(widgetPublishersProvider).register(publisher);
-  ref.listen(
-    accountsProvider.select(
-      (accounts) => _widgetAccount(accounts.value, accountId),
-    ),
-    (_, _) => publisher.publishSoon(),
-  );
+  ref
+    ..listen(
+      accountsProvider.select(
+        (accounts) => _widgetAccount(accounts.value, accountId),
+      ),
+      (_, _) => publisher.publishSoon(),
+    )
+    ..listen(
+      privacySettingsProvider.select((async) => async.value?.widgetTitles),
+      (previous, next) {
+        if (previous != null && next != null) publisher.publishQuietly();
+      },
+    );
   final lifecycle = headless
       ? null
       : AppLifecycleListener(

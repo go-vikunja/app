@@ -1,6 +1,8 @@
 import 'package:flutter/services.dart';
 import 'package:logging/logging.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
+import 'package:vikunja_mobile/core/platform/app_round_trips.dart';
+import 'package:vikunja_mobile/core/security/app_excursions.dart';
 import 'package:vikunja_mobile/features/attachments/application/attachment_picker.dart';
 
 final _log = Logger('DocumentPicker');
@@ -10,25 +12,26 @@ final _log = Logger('DocumentPicker');
 /// main thread. The activity reports the picked files first; only the
 /// ones not known to be above the limit are copied, capped and off the
 /// main thread, into the app's cache. Names come from other apps and are
-/// made safe here.
+/// made safe here. Leaving the app for the picker does not lock it.
 final class ChannelDocumentPicker {
-  new({this._channel = const MethodChannel(channelName)});
+  new({this._channel = const MethodChannel(channelName), this._excursions});
 
   static const channelName = 'dev.coderoftime.vikunja/documents';
 
   final MethodChannel _channel;
+  final AppExcursions? _excursions;
 
   Future<PickedFiles> pick({
     required int maxBytes,
     required bool imagesOnly,
     required bool multiple,
   }) async {
+    Future<List<Object?>?> pick() => _channel.invokeListMethod<Object?>(
+      'pick',
+      {'imagesOnly': imagesOnly, 'multiple': multiple},
+    );
     final described =
-        await _channel.invokeListMethod<Object?>('pick', {
-          'imagesOnly': imagesOnly,
-          'multiple': multiple,
-        }) ??
-        const [];
+        await (_excursions?.roundTrip(pick) ?? pick()) ?? const [];
     final files = <PickedFile>[];
     final tooLarge = <String>[];
     final failed = <String>[];

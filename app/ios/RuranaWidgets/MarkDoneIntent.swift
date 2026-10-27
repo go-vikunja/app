@@ -6,6 +6,8 @@ import WidgetKit
 struct MarkDoneIntent: AppIntent {
   static let title: LocalizedStringResource = "Mark task done"
   static let isDiscoverable = false
+  // The default runs it on a locked device too (StandBy, the lock screen).
+  static let authenticationPolicy: IntentAuthenticationPolicy = .requiresAuthentication
 
   @Parameter(title: "Account") var accountId: String
   @Parameter(title: "Task") var taskId: Int

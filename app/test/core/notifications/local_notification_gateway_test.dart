@@ -141,7 +141,9 @@ void main() {
       expect(activity['importance'], Importance.defaultImportance.value);
     });
 
-    test('iOS: the task category with background actions, no prompt', () async {
+    test('iOS: both task categories with background actions, no '
+        'prompt; the locked one asks for the device unlock for Done '
+        'only', () async {
       // Implied by the first use.
       await gateway(platform: TargetPlatform.iOS).cancel(1);
 
@@ -150,27 +152,42 @@ void main() {
       expect(init['requestAlertPermission'], isFalse);
       expect(init['requestBadgePermission'], isFalse);
       expect(init['requestSoundPermission'], isFalse);
-      final categories = init['notificationCategories']! as List;
-      expect(categories, hasLength(1));
-      final category = Map<String, Object?>.from(categories.single as Map);
-      expect(category['identifier'], LocalNotificationGateway.darwinCategoryId);
-      final actions = (category['actions']! as List)
-          .map((a) => Map<String, Object?>.from(a as Map))
-          .toList();
-      expect(actions.map((a) => a['identifier']), [
-        NotificationActionIds.markDone,
-        NotificationActionIds.snooze10Minutes,
-        NotificationActionIds.snooze1Hour,
+      final categories = [
+        for (final category in init['notificationCategories']! as List)
+          Map<String, Object?>.from(category as Map),
+      ];
+      expect(categories.map((c) => c['identifier']), [
+        LocalNotificationGateway.darwinCategoryId,
+        LocalNotificationGateway.darwinLockedCategoryId,
       ]);
-      expect(actions.map((a) => a['title']), [
-        en.notificationActionDone,
-        en.notificationActionSnooze10Minutes,
-        en.notificationActionSnooze1Hour,
-      ]);
-      for (final action in actions) {
-        expect(action['options'], isEmpty, reason: 'no foreground option');
-        expect(action['type'], 'plain');
+      List<Map<String, Object?>> actionsOf(Map<String, Object?> category) =>
+          (category['actions']! as List)
+              .map((a) => Map<String, Object?>.from(a as Map))
+              .toList();
+      for (final category in categories) {
+        final actions = actionsOf(category);
+        expect(actions.map((a) => a['identifier']), [
+          NotificationActionIds.markDone,
+          NotificationActionIds.snooze10Minutes,
+          NotificationActionIds.snooze1Hour,
+        ]);
+        expect(actions.map((a) => a['title']), [
+          en.notificationActionDone,
+          en.notificationActionSnooze10Minutes,
+          en.notificationActionSnooze1Hour,
+        ]);
+        for (final action in actions) {
+          expect(action['type'], 'plain');
+        }
       }
+      for (final action in actionsOf(categories.first)) {
+        expect(action['options'], isEmpty, reason: 'no foreground option');
+      }
+      expect(actionsOf(categories.last).map((a) => a['options']), [
+        [DarwinNotificationActionOption.authenticationRequired.value],
+        isEmpty,
+        isEmpty,
+      ]);
     });
 
     test('without a background entry point', () async {
@@ -216,6 +233,27 @@ void main() {
         expect(action['showsUserInterface'], isFalse);
         expect(action['cancelNotification'], isTrue);
       }
+      expect(specifics['visibility'], isNull);
+    });
+
+    test('hidden on the lock screen: secret, not private, which would '
+        'still show the title', () async {
+      await gateway().schedule(
+        ScheduledNotification(
+          osId: 1,
+          fireAt: notification.fireAt,
+          title: 't',
+          body: 'b',
+          payload: 'p',
+          exact: true,
+          privacy: const NotificationPrivacy(hiddenOnLockScreen: true),
+        ),
+      );
+
+      expect(
+        platformSpecifics(call('zonedSchedule'))['visibility'],
+        NotificationVisibility.secret.index,
+      );
     });
 
     test('inexact when exact alarms are not allowed', () async {
@@ -250,6 +288,43 @@ void main() {
       expect(specifics['presentAlert'], isTrue);
       expect(specifics['presentBanner'], isTrue);
       expect(specifics['presentList'], isTrue);
+    });
+
+    test('iOS: the locked category while Done needs the device '
+        'unlocked, also when shown at once', () async {
+      const locked = NotificationPrivacy(doneNeedsUnlock: true);
+      final gateway0 = gateway(platform: TargetPlatform.iOS);
+      await gateway0.schedule(
+        ScheduledNotification(
+          osId: 1,
+          fireAt: notification.fireAt,
+          title: 't',
+          body: 'b',
+          payload: 'p',
+          exact: true,
+          privacy: locked,
+        ),
+      );
+      await gateway0.schedule(
+        ScheduledNotification(
+          osId: 2,
+          fireAt: now,
+          title: 't',
+          body: 'b',
+          payload: 'p',
+          exact: true,
+          privacy: locked,
+        ),
+      );
+
+      expect(
+        platformSpecifics(call('zonedSchedule'))['categoryIdentifier'],
+        LocalNotificationGateway.darwinLockedCategoryId,
+      );
+      expect(
+        platformSpecifics(call('show'))['categoryIdentifier'],
+        LocalNotificationGateway.darwinLockedCategoryId,
+      );
     });
 
     test('an instant due within a second is shown at once', () async {
@@ -332,6 +407,21 @@ void main() {
     );
   });
 
+  test('showNow follows the privacy it is given', () async {
+    await gateway().showNow(
+      osId: 1,
+      title: 'Test',
+      body: 'Body',
+      payload: 'p',
+      privacy: const NotificationPrivacy(hiddenOnLockScreen: true),
+    );
+
+    expect(
+      platformSpecifics(call('show'))['visibility'],
+      NotificationVisibility.secret.index,
+    );
+  });
+
   group('showActivity', () {
     test(
       'Android: the activity channel, default importance, no actions',
@@ -357,8 +447,24 @@ void main() {
         expect(specifics['importance'], Importance.defaultImportance.value);
         expect(specifics['category'], 'social');
         expect(specifics['actions'], anyOf(isNull, isEmpty));
+        expect(specifics['visibility'], isNull);
       },
     );
+
+    test('Android: secret while hidden on the lock screen', () async {
+      await gateway().showActivity(
+        osId: 42,
+        title: 't',
+        body: 'b',
+        payload: 'p',
+        privacy: const NotificationPrivacy(hiddenOnLockScreen: true),
+      );
+
+      expect(
+        platformSpecifics(call('show'))['visibility'],
+        NotificationVisibility.secret.index,
+      );
+    });
 
     test('iOS: no category, so no task actions', () async {
       await gateway(platform: TargetPlatform.iOS)

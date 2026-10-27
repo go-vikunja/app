@@ -31,6 +31,7 @@ void main() {
   late String title;
   late WidgetAccount? registered;
   late List<Set<WidgetKind>> builds;
+  late bool showsTaskTitles;
 
   setUp(() {
     db = testDatabase();
@@ -40,6 +41,7 @@ void main() {
     title = 'Water the plants';
     registered = account;
     builds = [];
+    showsTaskTitles = true;
   });
 
   Future<WidgetBuild> build(
@@ -74,6 +76,7 @@ void main() {
               canAddTasks: true,
             )
           : null,
+      showsTaskTitles: showsTaskTitles,
     );
   }
 
@@ -119,6 +122,38 @@ void main() {
     expect(host.snapshot('$alice.today')?.title, 'today: Water the plants');
     expect(host.catalogs.keys, [alice]);
     expect(host.updatedKeys.single, host.snapshots.keys.toSet());
+  });
+
+  test("while task titles are hidden, the account's snapshots no widget "
+      "shows go, another account's stay", () async {
+    place(1, alice, const TodayKind());
+    host.snapshots['$alice.project_9'] = 'a list no widget shows any more';
+    host.snapshots['$bob.today'] = 'another account';
+    final widgets = publisher();
+    await widgets.publishNow();
+    expect(host.snapshots, contains('$alice.project_9'));
+
+    showsTaskTitles = false;
+    await widgets.publishNow();
+
+    expect(host.snapshots.keys.toSet(), {'$alice.today', '$bob.today'});
+  });
+
+  test('a snapshot deleted while task titles are hidden is written again '
+      'once a widget shows it again', () async {
+    showsTaskTitles = false;
+    place(1, alice, const TodayKind());
+    place(2, alice, const ProjectTasksKind(7));
+    final widgets = publisher();
+    await widgets.publishNow();
+
+    host.placed.remove(2);
+    await widgets.publishNow();
+    expect(host.snapshots, isNot(contains('$alice.project_7')));
+
+    place(2, alice, const ProjectTasksKind(7));
+    await widgets.publishNow();
+    expect(host.snapshots, contains('$alice.project_7'));
   });
 
   test('writes nothing that did not change, then only what did', () async {

@@ -20,15 +20,23 @@ typedef NotificationDescriber = ({String title, String body}) Function(
   Project? project,
 );
 
+/// How one run words the notifications and what the OS may show of them
+/// while the device is locked: the device's privacy settings, read anew
+/// for every run.
+typedef NotificationPresentation = ({
+  NotificationDescriber describe,
+  NotificationPrivacy privacy,
+});
+
 typedef CreateTimer = Timer Function(
   Duration duration,
   void Function() callback,
 );
 
 /// Keeps the OS notifications of one account in step with its database.
-/// Headless: the database, the gateway, the preferences, a clock and a
-/// timer factory are injected, so the background action isolate runs it
-/// like the UI does.
+/// Headless: the database, the gateway, the preferences, the presentation,
+/// a clock and a timer factory are injected, so the background action
+/// isolate runs it like the UI does.
 ///
 /// [reconcile] loads the open tasks and the stored snoozes, plans what the
 /// account should have, diffs that against what the table says the OS
@@ -46,7 +54,7 @@ final class NotificationScheduler {
     required this._db,
     required this._gateway,
     required this._preferences,
-    required this._describe,
+    required this._presentation,
     required this._window,
     DateTime Function()? now,
     this.debounce = const Duration(milliseconds: 700),
@@ -72,7 +80,10 @@ final class NotificationScheduler {
   final AppDatabase _db;
   final NotificationGateway _gateway;
   final NotificationPreferencesStore _preferences;
-  final NotificationDescriber _describe;
+
+  /// The table records the texts and the privacy of every entry, so a run
+  /// schedules again what a run with older settings scheduled.
+  final Future<NotificationPresentation> Function() _presentation;
   final int _window;
   final DateTime Function() _now;
   final CreateTimer _createTimer;
@@ -84,23 +95,28 @@ final class NotificationScheduler {
   Set<int> _heldOsIds = const {};
   Future<void>? _running;
   var _requested = false;
+  var _forced = false;
   var _disposed = false;
   Timer? _debounceTimer;
 
   /// Brings the OS in step with the database; a call during a run makes
   /// that run look once more before the returned future completes. Nothing
   /// after [dispose]. Gateway and database errors propagate; the next run
-  /// starts from the table as it is.
-  Future<void> reconcile() {
+  /// starts from the table as it is. With [force], every pending
+  /// notification of the account is cancelled and scheduled again, and a
+  /// run that fails leaves that to the next one; the snoozes in the table
+  /// stay.
+  Future<void> reconcile({bool force = false}) {
     if (_disposed) return Future.value();
     _requested = true;
+    if (force) _forced = true;
     return _running ??= _loop().whenComplete(() => _running = null);
   }
 
   /// [reconcile] for the triggers, which have nobody to report to: an error
   /// is logged and the next trigger starts afresh.
-  void reconcileQuietly() => unawaited(
-    reconcile().then<void>(
+  void reconcileQuietly({bool force = false}) => unawaited(
+    reconcile(force: force).then<void>(
       (_) {},
       onError: (Object error) => _log.warning(
         'Could not reconcile the notifications of account $accountId: '
@@ -124,12 +140,15 @@ final class NotificationScheduler {
     final now = _now();
     final until = now.add(duration).toUtc();
     final capabilities = await _gateway.capabilities();
+    final presentation = await _presentation();
     final row = await _snoozedRow(
       key,
       taskId,
       now: now,
       until: until,
       exact: capabilities.exactAlarms,
+      describe: presentation.describe,
+      privacy: presentation.privacy,
     );
     if (row == null) {
       _log.info('Ignored a snooze of a notification that is not scheduled');
@@ -149,6 +168,7 @@ final class NotificationScheduler {
             key: row.key,
           ).toJson(),
           exact: capabilities.exactAlarms,
+          privacy: presentation.privacy,
         ),
       );
     }
@@ -162,6 +182,8 @@ final class NotificationScheduler {
     required DateTime now,
     required DateTime until,
     required bool exact,
+    required NotificationDescriber describe,
+    required NotificationPrivacy privacy,
   }) async {
     final parsed = parseNotificationKey(key);
     if (parsed == null) return null;
@@ -181,6 +203,8 @@ final class NotificationScheduler {
       return existing.copyWith(
         fireAt: until,
         exact: exact,
+        hiddenOnLockScreen: privacy.hiddenOnLockScreen,
+        doneNeedsUnlock: privacy.doneNeedsUnlock,
         snoozedUntil: Value(until),
         // A second snooze keeps the task's own instant.
         snoozeOriginalFireAt: Value(
@@ -199,7 +223,7 @@ final class NotificationScheduler {
     };
     if (instant == null || instant.isAfter(now)) return null;
     final projects = await _db.projectsDao.loadAll();
-    final (:title, :body) = _describe(
+    final (:title, :body) = describe(
       task,
       parsed.kind,
       projects.where((p) => p.id == task.projectId).firstOrNull,
@@ -218,6 +242,8 @@ final class NotificationScheduler {
       snoozedUntil: until,
       snoozeOriginalFireAt: instant.toUtc(),
       exact: exact,
+      hiddenOnLockScreen: privacy.hiddenOnLockScreen,
+      doneNeedsUnlock: privacy.doneNeedsUnlock,
     );
   }
 
@@ -269,11 +295,18 @@ final class NotificationScheduler {
   Future<void> _loop() async {
     while (_requested && !_disposed) {
       _requested = false;
-      await _run();
+      final force = _forced;
+      _forced = false;
+      try {
+        await _run(force: force);
+      } on Object {
+        if (force) _forced = true;
+        rethrow;
+      }
     }
   }
 
-  Future<void> _run() async {
+  Future<void> _run({required bool force}) async {
     final capabilities = await _gateway.capabilities();
     final preferences = await _preferences.read(accountId);
     if (capabilities.permission != NotificationPermission.granted ||
@@ -281,6 +314,7 @@ final class NotificationScheduler {
       await cancelAll();
       return;
     }
+    final (:describe, :privacy) = await _presentation();
     final rows = await _db.scheduledNotificationsDao.all();
     final held = await _pendingIds();
     final scheduled = [
@@ -293,6 +327,10 @@ final class NotificationScheduler {
             title: row.title,
             body: row.body,
             exact: row.exact,
+            privacy: NotificationPrivacy(
+              hiddenOnLockScreen: row.hiddenOnLockScreen,
+              doneNeedsUnlock: row.doneNeedsUnlock,
+            ),
           ),
     ];
     final snoozes = [
@@ -314,7 +352,7 @@ final class NotificationScheduler {
       preferences: preferences,
       now: _now(),
       snoozes: snoozes,
-      describe: (task, kind) => _describe(task, kind, projects[task.projectId]),
+      describe: (task, kind) => describe(task, kind, projects[task.projectId]),
     );
     if (_disposed) return;
     final (:cancelOsIds, :schedule) = diffSchedule(
@@ -322,6 +360,8 @@ final class NotificationScheduler {
       scheduled: scheduled,
       window: _window,
       exact: capabilities.exactAlarms,
+      privacy: privacy,
+      force: force,
     );
     final window = desired.take(_window).toList();
     final osIds = _assignOsIds(window, rows);
@@ -342,6 +382,7 @@ final class NotificationScheduler {
             key: entry.key,
           ).toJson(),
           exact: capabilities.exactAlarms,
+          privacy: privacy,
         ),
       );
     }
@@ -360,6 +401,8 @@ final class NotificationScheduler {
           snoozedUntil: entry.snooze?.until.toUtc(),
           snoozeOriginalFireAt: entry.snooze?.originalFireAt.toUtc(),
           exact: capabilities.exactAlarms,
+          hiddenOnLockScreen: privacy.hiddenOnLockScreen,
+          doneNeedsUnlock: privacy.doneNeedsUnlock,
         ),
     ], sinceRead: rows);
     if (!written) {

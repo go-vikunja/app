@@ -5932,6 +5932,35 @@ class $ScheduledNotificationsTable extends ScheduledNotifications
       'CHECK ("exact" IN (0, 1))',
     ),
   );
+  static const VerificationMeta _hiddenOnLockScreenMeta =
+      const VerificationMeta('hiddenOnLockScreen');
+  @override
+  late final GeneratedColumn<bool> hiddenOnLockScreen = GeneratedColumn<bool>(
+    'hidden_on_lock_screen',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("hidden_on_lock_screen" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _doneNeedsUnlockMeta = const VerificationMeta(
+    'doneNeedsUnlock',
+  );
+  @override
+  late final GeneratedColumn<bool> doneNeedsUnlock = GeneratedColumn<bool>(
+    'done_needs_unlock',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("done_needs_unlock" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     key,
@@ -5944,6 +5973,8 @@ class $ScheduledNotificationsTable extends ScheduledNotifications
     snoozedUntil,
     snoozeOriginalFireAt,
     exact,
+    hiddenOnLockScreen,
+    doneNeedsUnlock,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -6013,6 +6044,24 @@ class $ScheduledNotificationsTable extends ScheduledNotifications
     } else if (isInserting) {
       context.missing(_exactMeta);
     }
+    if (data.containsKey('hidden_on_lock_screen')) {
+      context.handle(
+        _hiddenOnLockScreenMeta,
+        hiddenOnLockScreen.isAcceptableOrUnknown(
+          data['hidden_on_lock_screen']!,
+          _hiddenOnLockScreenMeta,
+        ),
+      );
+    }
+    if (data.containsKey('done_needs_unlock')) {
+      context.handle(
+        _doneNeedsUnlockMeta,
+        doneNeedsUnlock.isAcceptableOrUnknown(
+          data['done_needs_unlock']!,
+          _doneNeedsUnlockMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -6074,6 +6123,14 @@ class $ScheduledNotificationsTable extends ScheduledNotifications
         DriftSqlType.bool,
         data['${effectivePrefix}exact'],
       )!,
+      hiddenOnLockScreen: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}hidden_on_lock_screen'],
+      )!,
+      doneNeedsUnlock: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}done_needs_unlock'],
+      )!,
     );
   }
 
@@ -6115,6 +6172,12 @@ class ScheduledNotificationRow extends DataClass
   /// Whether the OS was given an exact alarm. Part of the diff: a granted
   /// or revoked exact-alarm permission re-registers the whole window.
   final bool exact;
+
+  /// What the OS may show of it on a locked device (`NotificationPrivacy`),
+  /// part of the diff like [exact]: an entry another isolate scheduled
+  /// with older privacy settings is scheduled again by the next run.
+  final bool hiddenOnLockScreen;
+  final bool doneNeedsUnlock;
   const ScheduledNotificationRow({
     required this.key,
     required this.osId,
@@ -6126,6 +6189,8 @@ class ScheduledNotificationRow extends DataClass
     this.snoozedUntil,
     this.snoozeOriginalFireAt,
     required this.exact,
+    required this.hiddenOnLockScreen,
+    required this.doneNeedsUnlock,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -6156,6 +6221,8 @@ class ScheduledNotificationRow extends DataClass
       );
     }
     map['exact'] = Variable<bool>(exact);
+    map['hidden_on_lock_screen'] = Variable<bool>(hiddenOnLockScreen);
+    map['done_needs_unlock'] = Variable<bool>(doneNeedsUnlock);
     return map;
   }
 
@@ -6175,6 +6242,8 @@ class ScheduledNotificationRow extends DataClass
           ? const Value.absent()
           : Value(snoozeOriginalFireAt),
       exact: Value(exact),
+      hiddenOnLockScreen: Value(hiddenOnLockScreen),
+      doneNeedsUnlock: Value(doneNeedsUnlock),
     );
   }
 
@@ -6196,6 +6265,8 @@ class ScheduledNotificationRow extends DataClass
         json['snoozeOriginalFireAt'],
       ),
       exact: serializer.fromJson<bool>(json['exact']),
+      hiddenOnLockScreen: serializer.fromJson<bool>(json['hiddenOnLockScreen']),
+      doneNeedsUnlock: serializer.fromJson<bool>(json['doneNeedsUnlock']),
     );
   }
   @override
@@ -6214,6 +6285,8 @@ class ScheduledNotificationRow extends DataClass
         snoozeOriginalFireAt,
       ),
       'exact': serializer.toJson<bool>(exact),
+      'hiddenOnLockScreen': serializer.toJson<bool>(hiddenOnLockScreen),
+      'doneNeedsUnlock': serializer.toJson<bool>(doneNeedsUnlock),
     };
   }
 
@@ -6228,6 +6301,8 @@ class ScheduledNotificationRow extends DataClass
     Value<DateTime?> snoozedUntil = const Value.absent(),
     Value<DateTime?> snoozeOriginalFireAt = const Value.absent(),
     bool? exact,
+    bool? hiddenOnLockScreen,
+    bool? doneNeedsUnlock,
   }) => ScheduledNotificationRow(
     key: key ?? this.key,
     osId: osId ?? this.osId,
@@ -6241,6 +6316,8 @@ class ScheduledNotificationRow extends DataClass
         ? snoozeOriginalFireAt.value
         : this.snoozeOriginalFireAt,
     exact: exact ?? this.exact,
+    hiddenOnLockScreen: hiddenOnLockScreen ?? this.hiddenOnLockScreen,
+    doneNeedsUnlock: doneNeedsUnlock ?? this.doneNeedsUnlock,
   );
   ScheduledNotificationRow copyWithCompanion(
     ScheduledNotificationsCompanion data,
@@ -6260,6 +6337,12 @@ class ScheduledNotificationRow extends DataClass
           ? data.snoozeOriginalFireAt.value
           : this.snoozeOriginalFireAt,
       exact: data.exact.present ? data.exact.value : this.exact,
+      hiddenOnLockScreen: data.hiddenOnLockScreen.present
+          ? data.hiddenOnLockScreen.value
+          : this.hiddenOnLockScreen,
+      doneNeedsUnlock: data.doneNeedsUnlock.present
+          ? data.doneNeedsUnlock.value
+          : this.doneNeedsUnlock,
     );
   }
 
@@ -6275,7 +6358,9 @@ class ScheduledNotificationRow extends DataClass
           ..write('body: $body, ')
           ..write('snoozedUntil: $snoozedUntil, ')
           ..write('snoozeOriginalFireAt: $snoozeOriginalFireAt, ')
-          ..write('exact: $exact')
+          ..write('exact: $exact, ')
+          ..write('hiddenOnLockScreen: $hiddenOnLockScreen, ')
+          ..write('doneNeedsUnlock: $doneNeedsUnlock')
           ..write(')'))
         .toString();
   }
@@ -6292,6 +6377,8 @@ class ScheduledNotificationRow extends DataClass
     snoozedUntil,
     snoozeOriginalFireAt,
     exact,
+    hiddenOnLockScreen,
+    doneNeedsUnlock,
   );
   @override
   bool operator ==(Object other) =>
@@ -6306,7 +6393,9 @@ class ScheduledNotificationRow extends DataClass
           other.body == this.body &&
           other.snoozedUntil == this.snoozedUntil &&
           other.snoozeOriginalFireAt == this.snoozeOriginalFireAt &&
-          other.exact == this.exact);
+          other.exact == this.exact &&
+          other.hiddenOnLockScreen == this.hiddenOnLockScreen &&
+          other.doneNeedsUnlock == this.doneNeedsUnlock);
 }
 
 class ScheduledNotificationsCompanion
@@ -6321,6 +6410,8 @@ class ScheduledNotificationsCompanion
   final Value<DateTime?> snoozedUntil;
   final Value<DateTime?> snoozeOriginalFireAt;
   final Value<bool> exact;
+  final Value<bool> hiddenOnLockScreen;
+  final Value<bool> doneNeedsUnlock;
   final Value<int> rowid;
   const ScheduledNotificationsCompanion({
     this.key = const Value.absent(),
@@ -6333,6 +6424,8 @@ class ScheduledNotificationsCompanion
     this.snoozedUntil = const Value.absent(),
     this.snoozeOriginalFireAt = const Value.absent(),
     this.exact = const Value.absent(),
+    this.hiddenOnLockScreen = const Value.absent(),
+    this.doneNeedsUnlock = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ScheduledNotificationsCompanion.insert({
@@ -6346,6 +6439,8 @@ class ScheduledNotificationsCompanion
     this.snoozedUntil = const Value.absent(),
     this.snoozeOriginalFireAt = const Value.absent(),
     required bool exact,
+    this.hiddenOnLockScreen = const Value.absent(),
+    this.doneNeedsUnlock = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : key = Value(key),
        osId = Value(osId),
@@ -6366,6 +6461,8 @@ class ScheduledNotificationsCompanion
     Expression<int>? snoozedUntil,
     Expression<int>? snoozeOriginalFireAt,
     Expression<bool>? exact,
+    Expression<bool>? hiddenOnLockScreen,
+    Expression<bool>? doneNeedsUnlock,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -6380,6 +6477,9 @@ class ScheduledNotificationsCompanion
       if (snoozeOriginalFireAt != null)
         'snooze_original_fire_at': snoozeOriginalFireAt,
       if (exact != null) 'exact': exact,
+      if (hiddenOnLockScreen != null)
+        'hidden_on_lock_screen': hiddenOnLockScreen,
+      if (doneNeedsUnlock != null) 'done_needs_unlock': doneNeedsUnlock,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -6395,6 +6495,8 @@ class ScheduledNotificationsCompanion
     Value<DateTime?>? snoozedUntil,
     Value<DateTime?>? snoozeOriginalFireAt,
     Value<bool>? exact,
+    Value<bool>? hiddenOnLockScreen,
+    Value<bool>? doneNeedsUnlock,
     Value<int>? rowid,
   }) {
     return ScheduledNotificationsCompanion(
@@ -6408,6 +6510,8 @@ class ScheduledNotificationsCompanion
       snoozedUntil: snoozedUntil ?? this.snoozedUntil,
       snoozeOriginalFireAt: snoozeOriginalFireAt ?? this.snoozeOriginalFireAt,
       exact: exact ?? this.exact,
+      hiddenOnLockScreen: hiddenOnLockScreen ?? this.hiddenOnLockScreen,
+      doneNeedsUnlock: doneNeedsUnlock ?? this.doneNeedsUnlock,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -6455,6 +6559,12 @@ class ScheduledNotificationsCompanion
     if (exact.present) {
       map['exact'] = Variable<bool>(exact.value);
     }
+    if (hiddenOnLockScreen.present) {
+      map['hidden_on_lock_screen'] = Variable<bool>(hiddenOnLockScreen.value);
+    }
+    if (doneNeedsUnlock.present) {
+      map['done_needs_unlock'] = Variable<bool>(doneNeedsUnlock.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -6474,6 +6584,8 @@ class ScheduledNotificationsCompanion
           ..write('snoozedUntil: $snoozedUntil, ')
           ..write('snoozeOriginalFireAt: $snoozeOriginalFireAt, ')
           ..write('exact: $exact, ')
+          ..write('hiddenOnLockScreen: $hiddenOnLockScreen, ')
+          ..write('doneNeedsUnlock: $doneNeedsUnlock, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -12953,6 +13065,8 @@ typedef $$ScheduledNotificationsTableCreateCompanionBuilder =
       Value<DateTime?> snoozedUntil,
       Value<DateTime?> snoozeOriginalFireAt,
       required bool exact,
+      Value<bool> hiddenOnLockScreen,
+      Value<bool> doneNeedsUnlock,
       Value<int> rowid,
     });
 typedef $$ScheduledNotificationsTableUpdateCompanionBuilder =
@@ -12967,6 +13081,8 @@ typedef $$ScheduledNotificationsTableUpdateCompanionBuilder =
       Value<DateTime?> snoozedUntil,
       Value<DateTime?> snoozeOriginalFireAt,
       Value<bool> exact,
+      Value<bool> hiddenOnLockScreen,
+      Value<bool> doneNeedsUnlock,
       Value<int> rowid,
     });
 
@@ -13031,6 +13147,16 @@ class $$ScheduledNotificationsTableFilterComposer
     column: $table.exact,
     builder: (column) => ColumnFilters(column),
   );
+
+  ColumnFilters<bool> get hiddenOnLockScreen => $composableBuilder(
+    column: $table.hiddenOnLockScreen,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get doneNeedsUnlock => $composableBuilder(
+    column: $table.doneNeedsUnlock,
+    builder: (column) => ColumnFilters(column),
+  );
 }
 
 class $$ScheduledNotificationsTableOrderingComposer
@@ -13091,6 +13217,16 @@ class $$ScheduledNotificationsTableOrderingComposer
     column: $table.exact,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get hiddenOnLockScreen => $composableBuilder(
+    column: $table.hiddenOnLockScreen,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get doneNeedsUnlock => $composableBuilder(
+    column: $table.doneNeedsUnlock,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$ScheduledNotificationsTableAnnotationComposer
@@ -13137,6 +13273,16 @@ class $$ScheduledNotificationsTableAnnotationComposer
 
   GeneratedColumn<bool> get exact =>
       $composableBuilder(column: $table.exact, builder: (column) => column);
+
+  GeneratedColumn<bool> get hiddenOnLockScreen => $composableBuilder(
+    column: $table.hiddenOnLockScreen,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get doneNeedsUnlock => $composableBuilder(
+    column: $table.doneNeedsUnlock,
+    builder: (column) => column,
+  );
 }
 
 class $$ScheduledNotificationsTableTableManager
@@ -13195,6 +13341,8 @@ class $$ScheduledNotificationsTableTableManager
                 Value<DateTime?> snoozedUntil = const Value.absent(),
                 Value<DateTime?> snoozeOriginalFireAt = const Value.absent(),
                 Value<bool> exact = const Value.absent(),
+                Value<bool> hiddenOnLockScreen = const Value.absent(),
+                Value<bool> doneNeedsUnlock = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ScheduledNotificationsCompanion(
                 key: key,
@@ -13207,6 +13355,8 @@ class $$ScheduledNotificationsTableTableManager
                 snoozedUntil: snoozedUntil,
                 snoozeOriginalFireAt: snoozeOriginalFireAt,
                 exact: exact,
+                hiddenOnLockScreen: hiddenOnLockScreen,
+                doneNeedsUnlock: doneNeedsUnlock,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -13221,6 +13371,8 @@ class $$ScheduledNotificationsTableTableManager
                 Value<DateTime?> snoozedUntil = const Value.absent(),
                 Value<DateTime?> snoozeOriginalFireAt = const Value.absent(),
                 required bool exact,
+                Value<bool> hiddenOnLockScreen = const Value.absent(),
+                Value<bool> doneNeedsUnlock = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ScheduledNotificationsCompanion.insert(
                 key: key,
@@ -13233,6 +13385,8 @@ class $$ScheduledNotificationsTableTableManager
                 snoozedUntil: snoozedUntil,
                 snoozeOriginalFireAt: snoozeOriginalFireAt,
                 exact: exact,
+                hiddenOnLockScreen: hiddenOnLockScreen,
+                doneNeedsUnlock: doneNeedsUnlock,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

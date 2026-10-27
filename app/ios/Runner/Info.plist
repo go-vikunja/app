@@ -55,6 +55,8 @@
 	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>Rurana uses the camera to take photos you attach to tasks.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Rurana uses Face ID to unlock the app when the app lock is on.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Rurana connects to the Vikunja server you enter, which may run on your local network.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

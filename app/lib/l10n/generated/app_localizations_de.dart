@@ -7303,4 +7303,208 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get widgetsPlacedNotSetUp =>
       'Noch nicht eingerichtet – zeigt das aktive Konto';
+
+  @override
+  String get notificationContentReminderTitle => 'Erinnerung an eine Aufgabe';
+
+  @override
+  String get notificationContentDueTitle => 'Aufgabe fällig';
+
+  @override
+  String get notificationContentBody => 'Öffne Rurana, um sie zu sehen';
+
+  @override
+  String get notificationContentActivityTitle => 'Neue Aktivität';
+
+  @override
+  String get privacyTitle => 'Privatsphäre';
+
+  @override
+  String get privacyEntryTitle => 'App-Sperre und Privatsphäre';
+
+  @override
+  String get privacyEntryAppLockOff => 'App-Sperre: Aus';
+
+  @override
+  String get privacyEntryAppLockImmediately => 'App-Sperre: An · sofort';
+
+  @override
+  String privacyEntryAppLockAfter(String duration) {
+    return 'App-Sperre: An · nach $duration';
+  }
+
+  @override
+  String get privacyLockAfterImmediately => 'Sofort';
+
+  @override
+  String privacyLockAfterMinutes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Minuten',
+      one: '1 Minute',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String privacyLockAfterHours(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Stunden',
+      one: '1 Stunde',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get privacyAppLockHeading => 'App-Sperre';
+
+  @override
+  String get privacyAppLockSwitch => 'Rurana sperren';
+
+  @override
+  String get privacyAppLockSubtitle =>
+      'Mit Biometrie oder der Displaysperre des Geräts entsperren';
+
+  @override
+  String get privacyAppLockUnsupported =>
+      'Richte zuerst eine Displaysperre auf diesem Gerät ein';
+
+  @override
+  String get privacyAppLockLockedOut =>
+      'Zu viele Versuche. Versuch es später noch einmal.';
+
+  @override
+  String get privacyAppLockFailed =>
+      'Die Displaysperre ließ sich nicht prüfen. Versuch es noch einmal.';
+
+  @override
+  String get privacyLockAfter => 'Sperren nach';
+
+  @override
+  String get privacyLockAfterRestart =>
+      'Nach einem Neustart sperrt sich Rurana immer.';
+
+  @override
+  String get privacyAppSwitcherHidden =>
+      'Solange die Sperre an ist, verbirgt die App-Übersicht den Inhalt von Rurana.';
+
+  @override
+  String get privacyAppSwitcherBestEffort =>
+      'Solange die Sperre an ist, verbirgt die App-Übersicht den Inhalt von Rurana, soweit diese Android-Version es zulässt. Schalte „Screenshots blockieren“ ein, um sicherzugehen.';
+
+  @override
+  String get privacyScreenshotsHeading => 'Screenshots';
+
+  @override
+  String get privacyBlockScreenshots => 'Screenshots blockieren';
+
+  @override
+  String get privacyBlockScreenshotsSubtitle =>
+      'Verbirgt Rurana auch vor Bildschirmaufnahmen und der App-Übersicht.';
+
+  @override
+  String get privacyNotificationContentHeading =>
+      'Inhalt von Benachrichtigungen';
+
+  @override
+  String get privacyNotificationContentAll => 'Alles anzeigen';
+
+  @override
+  String get privacyNotificationContentAllSubtitle =>
+      'Aufgabentitel und Kommentare, auch auf dem Sperrbildschirm';
+
+  @override
+  String get privacyNotificationContentHidden =>
+      'Auf dem Sperrbildschirm verbergen';
+
+  @override
+  String get privacyNotificationContentHiddenSubtitle =>
+      'Der Inhalt erscheint nur, wenn das Handy entsperrt ist';
+
+  @override
+  String get privacyNotificationContentNoTitles => 'Nie Aufgabentitel anzeigen';
+
+  @override
+  String get privacyNotificationContentNoTitlesSubtitle =>
+      'Allgemeine Texte ohne Aufgabentitel, Namen oder Kommentare';
+
+  @override
+  String get privacyNotificationContentIosHint =>
+      'Auf dem iPhone legt iOS das für jede App fest: Stelle unter Einstellungen → Mitteilungen → Rurana „Vorschauen zeigen“ auf „Wenn entsperrt“.';
+
+  @override
+  String get privacyWidgetsHeading => 'Widgets';
+
+  @override
+  String get privacyWidgetTitles => 'Aufgabentitel in Widgets anzeigen';
+
+  @override
+  String get privacyWidgetTitlesSubtitle =>
+      'Wenn aus, zeigen Widgets nur, wie viele Aufgaben es sind';
+
+  @override
+  String get privacySettingsUnreadable =>
+      'Deine Privatsphäre-Einstellungen ließen sich nicht lesen, deshalb hat sich Rurana gesperrt. Wähle sie hier neu.';
+
+  @override
+  String get appLockPromptReason => 'Rurana entsperren';
+
+  @override
+  String get privacyAppLockReasonOn =>
+      'Bestätige, dass du es bist, um die App-Sperre einzuschalten';
+
+  @override
+  String get privacyAppLockReasonOff =>
+      'Bestätige, dass du es bist, um die App-Sperre auszuschalten';
+
+  @override
+  String get privacySaveFailed =>
+      'Die Einstellung ließ sich nicht speichern. Versuch es noch einmal.';
+
+  @override
+  String get appLockTitle => 'Rurana ist gesperrt';
+
+  @override
+  String get appLockBody =>
+      'Entsperre mit Biometrie oder der Displaysperre deines Geräts.';
+
+  @override
+  String get appLockUnlock => 'Entsperren';
+
+  @override
+  String get appLockLockedOut =>
+      'Zu viele Versuche. Versuch es später noch einmal.';
+
+  @override
+  String get appLockUnavailable =>
+      'Rurana konnte deine Displaysperre nicht prüfen. Versuch es noch einmal.';
+
+  @override
+  String get appLockTurnedOff =>
+      'Die App-Sperre wurde ausgeschaltet, weil dieses Gerät keine Displaysperre hat.';
+
+  @override
+  String get appLockPromptHint =>
+      'Nutze Fingerabdruck, Gesicht oder Displaysperre';
+
+  @override
+  String get appLockPromptStuck =>
+      'Die Entsperrabfrage reagiert nicht. Schließe Rurana ganz und öffne es neu.';
+
+  @override
+  String widgetTitlesHiddenHint(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Öffne Rurana, um sie zu sehen',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get privacyNotificationContentHiddenSubtitleAndroid =>
+      'Benachrichtigungen erscheinen nicht auf dem Sperrbildschirm; du siehst sie nach dem Entsperren';
 }

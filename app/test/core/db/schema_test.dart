@@ -15,15 +15,15 @@ void main() {
   setUpAll(() => verifier = SchemaVerifier(GeneratedHelper()));
 
   test('the schema dump matches the generated code', () async {
-    final connection = await verifier.startAt(10);
+    final connection = await verifier.startAt(11);
     final db = AppDatabase(connection);
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 10);
+    await verifier.migrateAndValidate(db, 11);
   });
 
   test('a fresh database validates against the code', () async {
-    final schema = await verifier.schemaAt(10);
+    final schema = await verifier.schemaAt(11);
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 

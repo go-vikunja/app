@@ -72,7 +72,7 @@ void main() {
 
     expect(clipboardTexts, [address, 'alice']);
     // Neither is a secret, so the screen stays as it is.
-    expect(harness.secureDisplay.changes, isEmpty);
+    expect(harness.secureWindow.changes, isEmpty);
   });
 
   testWidgets('a copy shows a check for a moment, as not every system '
@@ -216,7 +216,7 @@ void main() {
     expect(find.text(secret), findsOneWidget);
     expect(find.text(en.oneTimeSecretCaldavUsage('alice')), findsOneWidget);
     expect(clipboardTexts, isEmpty);
-    expect(harness.secureDisplay.secure, isTrue);
+    expect(harness.secureWindow.secure, isTrue);
     await tester.tap(find.text(en.oneTimeSecretCopy));
     await tester.pumpAndSettle();
     expect(harness.clipboard.copied, [secret]);
@@ -225,7 +225,7 @@ void main() {
     await tester.tap(find.text(en.oneTimeSecretDone));
     await tester.pumpAndSettle();
     expect(find.byType(CaldavPage), findsOneWidget);
-    expect(harness.secureDisplay.secure, isFalse);
+    expect(harness.secureWindow.secure, isFalse);
     expect(find.text(secret), findsNothing);
     await scrollTo(tester, find.text(en.caldavTokenName(1)));
     expect(find.text(en.caldavTokenName(1)), findsOneWidget);

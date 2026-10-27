@@ -10,6 +10,8 @@ import 'package:vikunja_mobile/core/notifications/notification_os_ids.dart';
 import 'package:vikunja_mobile/core/notifications/notification_providers.dart';
 import 'package:vikunja_mobile/core/outbox/external_done.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/core/security/privacy_providers.dart';
+import 'package:vikunja_mobile/core/security/privacy_settings.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/core/widgets/widget_config.dart';
@@ -20,6 +22,7 @@ import 'package:vikunja_mobile/core/widgets/widget_snapshot.dart';
 import 'package:vikunja_mobile/core/widgets/widget_taps.dart';
 
 import '../../helpers/activity_fakes.dart';
+import '../../helpers/app_lock_fakes.dart';
 import '../../helpers/auth_fakes.dart';
 import '../../helpers/fake_sync_client.dart';
 import '../../helpers/fake_write_client.dart';
@@ -290,6 +293,19 @@ void main() {
     expect(host.catalogs, isEmpty);
   });
 
+  test('a headless container builds from the stored switch', () async {
+    await storePrivacySettings(
+      auth.preferences,
+      const PrivacySettings(widgetTitles: false),
+    );
+    final (accountId, _) = await signedIn();
+
+    await container.read(widgetRefresherProvider).refresh(accountId);
+
+    expect(host.snapshot('$accountId.today')!.rows, isEmpty);
+    expect(host.snapshot('$accountId.today')!.total, 2);
+  });
+
   group('in the app', () {
     late ProviderContainer app;
 
@@ -323,6 +339,50 @@ void main() {
         host.snapshot('${entry.id}.today')?.state,
         WidgetSnapshotState.needsReauth,
       );
+    });
+
+    test('turning task titles off republishes without rows, turning them '
+        'on again with them', () async {
+      final entry = await auth.seedAccount(
+        fullServer270(),
+        tokens: issueTokens(issuedAt: now, userId: alice.id),
+      );
+      await app.read(accountsProvider.future);
+      final db = app.read(appDatabaseProvider(entry.id));
+      await db.projectsDao.upsertAll([sampleProject(id: 7, title: 'Home')]);
+      await db.tasksDao.upsertAll([water, repeating], syncRunId: 'run');
+      host.placed[1] = WidgetConfig(
+        accountId: entry.id,
+        kind: const TodayKind(),
+      );
+      app.listen(accountWidgetPublishersProvider, (_, _) {});
+      await pumpEventQueue();
+      await app.read(widgetRefresherProvider).refresh(entry.id);
+      expect(host.snapshot('${entry.id}.today')!.rows, hasLength(2));
+      Future<void> showTitles({required bool show}) async {
+        await app
+            .read(privacySettingsControllerProvider.notifier)
+            .change((settings) => settings.copyWith(widgetTitles: show));
+        await pumpEventQueue();
+      }
+
+      // A list a widget showed before it was removed, with its titles.
+      final stale = '${entry.id}.project_9';
+      host.snapshots[stale] = host.snapshots['${entry.id}.today']!;
+
+      await showTitles(show: false);
+
+      final hidden = host.snapshot('${entry.id}.today')!;
+      expect(hidden.rows, isEmpty);
+      expect(hidden.total, 2);
+      expect(hidden.empty?.title, '2 tasks');
+      expect(hidden.empty?.body, 'Open Rurana to see them');
+      expect(host.updatedKeys.last, {'${entry.id}.today'});
+      expect(host.snapshots, isNot(contains(stale)));
+
+      await showTitles(show: true);
+
+      expect(todayTitles(entry.id), ['Water the plants', 'Take out the bins']);
     });
 
     test('the host file follows the active account, whose Today an '

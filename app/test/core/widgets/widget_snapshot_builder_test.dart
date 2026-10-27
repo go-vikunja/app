@@ -367,6 +367,92 @@ void main() {
     expect(inbox.countLabel, '44 tasks');
   });
 
+  group('without task titles', () {
+    Future<Map<String, WidgetSnapshot>> hidden(
+      Set<WidgetKind> kinds, {
+      WidgetTexts? using,
+    }) async => (await WidgetSnapshotBuilder(
+      db: db,
+      texts: using ?? texts,
+      showTaskTitles: false,
+      now: () => now,
+    ).build(alice, kinds, withCatalog: false)).snapshots;
+
+    test('a list keeps its title, count and links but no row, and says '
+        'where to see them', () async {
+      await db.tasksDao.upsertAll([
+        for (var id = 100; id < 140; id++)
+          sampleTask(id: id, title: 'Task $id'),
+      ], syncRunId: 'run');
+
+      final snapshots = await hidden({
+        const TodayKind(),
+        const ProjectTasksKind(1),
+      });
+      final today = snapshots['$accountId.today']!;
+      final inbox = snapshots['$accountId.project_1']!;
+
+      expect(today.title, 'Today');
+      expect(today.rows, isEmpty);
+      expect(today.total, 2);
+      expect(today.countLabel, '2 tasks');
+      // The count as the title, the hint in the smaller body that both
+      // renderers wrap over more lines.
+      expect(
+        today.empty,
+        const WidgetText('2 tasks', body: 'Open Rurana to see them'),
+      );
+      expect(today.changesAt, isEmpty);
+      expect(today.link, isNotNull);
+      expect(today.newTaskLink, isNotNull);
+      expect(inbox.title, 'Inbox');
+      expect(inbox.rows, isEmpty);
+      expect(inbox.total, 44);
+      expect(inbox.moreLabel, isNull);
+      expect(
+        inbox.empty,
+        const WidgetText('44 tasks', body: 'Open Rurana to see them'),
+      );
+      for (final snapshot in snapshots.values) {
+        expect(snapshot.encode(), isNot(contains('This afternoon')));
+        expect(snapshot.encode(), isNot(contains('Task 1')));
+      }
+    });
+
+    test('an empty list keeps its own empty text', () async {
+      await db.tasksDao.upsertAll([
+        sampleTask(
+          id: 1,
+          title: 'Yesterday',
+          due: DateTime(2026, 10, 25, 9),
+          done: true,
+        ),
+      ], syncRunId: 'run');
+
+      final overdue = (await hidden({const OverdueKind()})).values.single;
+
+      expect(overdue.total, 0);
+      expect(overdue.empty, const WidgetText('Nothing overdue'));
+    });
+
+    test('one task, in German', () async {
+      final german = await WidgetTexts.load(
+        lookupAppLocalizations(const Locale('de')),
+        alwaysUse24HourFormat: true,
+      );
+
+      final overdue = (await hidden({
+        const OverdueKind(),
+      }, using: german)).values.single;
+
+      expect(overdue.total, 1);
+      expect(
+        overdue.empty,
+        const WidgetText('1 Aufgabe', body: 'Öffne Rurana, um sie zu sehen'),
+      );
+    });
+  });
+
   test('an ended session keeps the rows and asks for a new '
       'sign-in', () async {
     final user = await one(

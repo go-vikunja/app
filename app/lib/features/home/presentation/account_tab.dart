@@ -27,6 +27,7 @@ import 'package:vikunja_mobile/features/home/presentation/sync_problems_section.
 import 'package:vikunja_mobile/features/home/presentation/sync_status_section.dart';
 import 'package:vikunja_mobile/features/notifications/presentation/notifications_section.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connection_error_card.dart';
+import 'package:vikunja_mobile/features/privacy/presentation/privacy_section.dart';
 import 'package:vikunja_mobile/features/session/application/sign_in_controller.dart';
 import 'package:vikunja_mobile/features/session/application/sign_out_controller.dart';
 import 'package:vikunja_mobile/features/session/presentation/sign_in_failure_message.dart';
@@ -38,9 +39,9 @@ import 'package:vikunja_mobile/features/widgets/presentation/widgets_section.dar
 /// a session that needs a new sign-in, the account's labels and teams, the
 /// other accounts, the server with the sync state and the changes still
 /// waiting for it, what is set on this device only (the home-screen
-/// widgets, notifications, colours), sign-out and the app's version. A
-/// link-share guest gets a note on what it may do instead of the settings
-/// and the labels and teams.
+/// widgets, notifications, privacy, colours), sign-out and the app's
+/// version. A link-share guest gets a note on what it may do instead of
+/// the settings and the labels and teams.
 class AccountTab extends ConsumerWidget {
   const new({super.key});
 
@@ -187,6 +188,7 @@ class AccountTab extends ConsumerWidget {
             ),
             const WidgetsSection(),
             NotificationsSection(entry: entry),
+            const PrivacySection(),
             const AppearanceSection(),
             const SizedBox(height: 16),
             Center(

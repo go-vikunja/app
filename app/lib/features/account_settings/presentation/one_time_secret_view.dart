@@ -37,7 +37,7 @@ class OneTimeSecretView extends ConsumerStatefulWidget {
 }
 
 class _OneTimeSecretViewState extends ConsumerState<OneTimeSecretView> {
-  late final SecureDisplay _display = ref.read(secureDisplayProvider);
+  late final SecureHold _secureHold;
   bool _copied = false;
   bool _askedBeforeLeaving = false;
   TextSelection _selection = const TextSelection.collapsed(offset: -1);
@@ -45,21 +45,13 @@ class _OneTimeSecretViewState extends ConsumerState<OneTimeSecretView> {
   @override
   void initState() {
     super.initState();
-    unawaited(_setSecure(true));
+    _secureHold = ref.read(secureDisplayProvider).hold();
   }
 
   @override
   void dispose() {
-    unawaited(_setSecure(false));
+    _secureHold.release();
     super.dispose();
-  }
-
-  Future<void> _setSecure(bool secure) async {
-    try {
-      await _display.setSecure(secure);
-    } on Object catch (error) {
-      _log.info('Screen protection unavailable: ${error.runtimeType}');
-    }
   }
 
   Future<void> _copy(String text) async {

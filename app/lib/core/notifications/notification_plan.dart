@@ -166,9 +166,10 @@ int _byFireAtThenKey(DesiredNotification a, DesiredNotification b) {
 
 /// What to cancel and what to schedule so that the OS holds the first
 /// [window] of [desired] and nothing else of this account: an entry
-/// already scheduled with the same key, instant, title and body, and as
-/// [exact] as this run schedules, is left alone. Cancels come in
-/// [scheduled] order, schedules in [desired] order.
+/// already scheduled with the same key, instant, title and body, as
+/// [exact] and with the same [privacy] as this run schedules, is left
+/// alone, unless [force] has every entry cancelled and scheduled again.
+/// Cancels come in [scheduled] order, schedules in [desired] order.
 ({List<int> cancelOsIds, List<DesiredNotification> schedule}) diffSchedule({
   required List<DesiredNotification> desired,
   required List<
@@ -179,11 +180,14 @@ int _byFireAtThenKey(DesiredNotification a, DesiredNotification b) {
       String title,
       String body,
       bool exact,
+      NotificationPrivacy privacy,
     })
   >
   scheduled,
   required int window,
   required bool exact,
+  required NotificationPrivacy privacy,
+  bool force = false,
 }) {
   final wanted = desired.take(window < 0 ? 0 : window).toList();
   final wantedByKey = {for (final entry in wanted) entry.key: entry};
@@ -191,11 +195,13 @@ int _byFireAtThenKey(DesiredNotification a, DesiredNotification b) {
   final cancelOsIds = <int>[];
   for (final entry in scheduled) {
     final want = wantedByKey[entry.key];
-    if (want != null &&
+    if (!force &&
+        want != null &&
         want.fireAt == entry.fireAt.toUtc() &&
         want.title == entry.title &&
         want.body == entry.body &&
-        entry.exact == exact) {
+        entry.exact == exact &&
+        entry.privacy == privacy) {
       unchangedKeys.add(entry.key);
     } else {
       cancelOsIds.add(entry.osId);

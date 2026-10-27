@@ -17,6 +17,30 @@ enum ScheduledNotificationKind { reminder, dueDate }
 /// A notification the OS shows in its tray right now.
 typedef DeliveredNotification = ({int osId, String? payload});
 
+/// What the OS may show of a notification while the device is locked, from
+/// the device's privacy settings.
+@immutable
+final class NotificationPrivacy {
+  const new({this.hiddenOnLockScreen = false, this.doneNeedsUnlock = false});
+
+  /// Android: no part of it on a secure lock screen. iOS decides this
+  /// in its own settings.
+  final bool hiddenOnLockScreen;
+
+  /// iOS: the Done action asks for the device to be unlocked. Android
+  /// cannot ask per action.
+  final bool doneNeedsUnlock;
+
+  @override
+  bool operator ==(Object other) =>
+      other is NotificationPrivacy &&
+      other.hiddenOnLockScreen == hiddenOnLockScreen &&
+      other.doneNeedsUnlock == doneNeedsUnlock;
+
+  @override
+  int get hashCode => Object.hash(hiddenOnLockScreen, doneNeedsUnlock);
+}
+
 /// One notification as handed to the OS. [osId] is the plugin's integer id;
 /// [payload] travels back with a tap or an action.
 @immutable
@@ -28,6 +52,7 @@ final class ScheduledNotification {
     required this.body,
     required this.payload,
     required this.exact,
+    this.privacy = const NotificationPrivacy(),
   });
 
   final int osId;
@@ -40,6 +65,7 @@ final class ScheduledNotification {
 
   /// Exact alarm on Android when allowed, else inexact-allow-while-idle.
   final bool exact;
+  final NotificationPrivacy privacy;
 }
 
 /// The thin wrapper around `flutter_local_notifications`; everything above
@@ -82,6 +108,7 @@ abstract interface class NotificationGateway {
     required String payload,
     String? subtitle,
     String? group,
+    NotificationPrivacy privacy = const NotificationPrivacy(),
   });
 
   /// Shows a notification at once (the "Send a test notification" button).
@@ -90,5 +117,6 @@ abstract interface class NotificationGateway {
     required String title,
     required String body,
     required String payload,
+    NotificationPrivacy privacy = const NotificationPrivacy(),
   });
 }

@@ -15,8 +15,16 @@ final class FakeNotificationGateway implements NotificationGateway {
   final Map<int, ScheduledNotification> pending = {};
   final List<ScheduledNotification> scheduled = [];
   final List<int> cancelled = [];
-  final List<({int osId, String title, String body, String payload})> shown =
-      [];
+  final List<
+    ({
+      int osId,
+      String title,
+      String body,
+      String payload,
+      NotificationPrivacy privacy,
+    })
+  >
+  shown = [];
 
   /// `initialize`, `capabilities`, `requestPermission`,
   /// `openExactAlarmSettings`, `openNotificationSettings`,
@@ -83,9 +91,16 @@ final class FakeNotificationGateway implements NotificationGateway {
     required String title,
     required String body,
     required String payload,
+    NotificationPrivacy privacy = const NotificationPrivacy(),
   }) async {
     await _call('showNow $osId');
-    shown.add((osId: osId, title: title, body: body, payload: payload));
+    shown.add((
+      osId: osId,
+      title: title,
+      body: body,
+      payload: payload,
+      privacy: privacy,
+    ));
   }
 
   final List<
@@ -96,6 +111,7 @@ final class FakeNotificationGateway implements NotificationGateway {
       String payload,
       String? subtitle,
       String? group,
+      NotificationPrivacy privacy,
     })
   >
   activities = [];
@@ -120,6 +136,7 @@ final class FakeNotificationGateway implements NotificationGateway {
     required String payload,
     String? subtitle,
     String? group,
+    NotificationPrivacy privacy = const NotificationPrivacy(),
   }) async {
     await _call('showActivity $osId');
     activities.add((
@@ -129,6 +146,7 @@ final class FakeNotificationGateway implements NotificationGateway {
       payload: payload,
       subtitle: subtitle,
       group: group,
+      privacy: privacy,
     ));
     tray[osId] = payload;
   }

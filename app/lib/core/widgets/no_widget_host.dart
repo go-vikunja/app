@@ -22,6 +22,12 @@ final class NoWidgetHost implements WidgetHost {
   Future<void> deleteForAccount(String accountId) async {}
 
   @override
+  Future<void> deleteSnapshotsExcept(
+    String accountId,
+    Set<String> keys,
+  ) async {}
+
+  @override
   Future<Map<int, WidgetConfig?>> configs() async => const {};
 
   @override

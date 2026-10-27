@@ -253,4 +253,7 @@ final class _RecordingBackgrounding implements AppBackgrounding {
 
   @override
   Future<void> moveToBack() async => moves++;
+
+  @override
+  Future<void> setBackMovesToBack({required bool enabled}) async {}
 }

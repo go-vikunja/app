@@ -70,7 +70,7 @@ final class AppDatabase extends _$AppDatabase {
   new(super.e);
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -124,6 +124,18 @@ final class AppDatabase extends _$AppDatabase {
         )..where((row) => row.key.equals('last_full_sync_at'))).go();
       }
       if (from < 10) await m.createTable(importedWidgetActions);
+      // A database from before 4 got the table in its current shape. The
+      // defaults are what the OS was told before.
+      if (from >= 4 && from < 11) {
+        await m.addColumn(
+          scheduledNotifications,
+          scheduledNotifications.hiddenOnLockScreen,
+        );
+        await m.addColumn(
+          scheduledNotifications,
+          scheduledNotifications.doneNeedsUnlock,
+        );
+      }
     },
     beforeOpen: (_) => customStatement('PRAGMA foreign_keys = ON'),
   );

@@ -6,6 +6,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway.dart';
 import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
+import 'package:vikunja_mobile/core/security/app_excursions.dart';
 import 'package:vikunja_mobile/core/storage/preferences_store.dart';
 import 'package:vikunja_mobile/l10n/generated/app_localizations.dart';
 
@@ -17,6 +18,7 @@ NotificationGateway notificationGateway(Ref ref) => LocalNotificationGateway(
   preferences: ref.watch(preferencesStoreProvider),
   onResponse: ref.watch(notificationResponsesProvider).add,
   onBackgroundResponse: ref.watch(notificationBackgroundEntryPointProvider),
+  excursions: ref.watch(appExcursionsProvider),
 );
 
 /// The top-level `@pragma('vm:entry-point')` function the plugin runs in its

@@ -1,5 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
+import 'package:vikunja_mobile/core/platform/app_round_trips.dart';
+import 'package:vikunja_mobile/core/security/app_excursions.dart';
 
 /// Shows a web page in the system browser sheet until it redirects to the
 /// callback scheme.
@@ -21,9 +23,12 @@ final class WebAuthenticationFailed implements Exception {
   String toString() => 'WebAuthenticationFailed($problem, $platformCode)';
 }
 
-/// ASWebAuthenticationSession on iOS, Custom Tabs on Android.
+/// ASWebAuthenticationSession on iOS, Custom Tabs on Android; leaving the
+/// app for it does not lock the app.
 final class FlutterWebAuthenticator implements WebAuthenticator {
-  const new();
+  const new({this.excursions});
+
+  final AppExcursions? excursions;
 
   @override
   Future<Uri?> authenticate(
@@ -35,11 +40,12 @@ final class FlutterWebAuthenticator implements WebAuthenticator {
       // Ephemeral, so a web login in the system browser is never redeemed
       // silently: Vikunja has no consent screen and sends no `iss`, so a code
       // from another server would be indistinguishable.
-      callback = await FlutterWebAuth2.authenticate(
+      Future<String> open() => FlutterWebAuth2.authenticate(
         url: url.toString(),
         callbackUrlScheme: callbackUrlScheme,
         options: const FlutterWebAuth2Options(preferEphemeral: true),
       );
+      callback = await (excursions?.roundTrip(open) ?? open());
     } on PlatformException catch (error) {
       if (error.code == 'CANCELED') return null;
       // The message and details can echo the URL, so only the code is kept.

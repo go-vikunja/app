@@ -244,6 +244,8 @@ private struct TaskRowView: View {
     .frame(maxWidth: .infinity, alignment: .leading)
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(Text(row.semanticsLabel))
+    // After the label, so that the title it names is redacted too.
+    .privacySensitive()
   }
 }
 
@@ -258,6 +260,7 @@ private struct DoneButton: View {
     .buttonStyle(.plain)
     .widgetAccentable()
     .accessibilityLabel(Text(row.doneLabel))
+    .privacySensitive()
   }
 }
 
@@ -333,6 +336,7 @@ private struct SmallView: View {
           }
           .accessibilityElement(children: .ignore)
           .accessibilityLabel(Text(next.semanticsLabel))
+          .privacySensitive()
         }
         .invalidatableContent()
       } else {

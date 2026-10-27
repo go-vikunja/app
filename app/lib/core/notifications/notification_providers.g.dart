@@ -60,18 +60,22 @@ String _$notificationPreferencesStoreHash() =>
 
 /// One account's scheduler, reconciling when built (app start, and the
 /// first run of a background action) and when the app comes back to the
-/// front; null once the account is gone. Disposed with the account's
-/// database on sign-out, after which [NotificationSchedulers] still holds
-/// it for the wipe.
+/// front, and rescheduling everything when the notification content or
+/// the app lock changes; a content that shows less also withdraws what the
+/// account has in the tray. Null once the account is gone. Disposed with
+/// the account's database on sign-out, after which
+/// [NotificationSchedulers] still holds it for the wipe.
 
 @ProviderFor(notificationScheduler)
 final notificationSchedulerProvider = NotificationSchedulerFamily._();
 
 /// One account's scheduler, reconciling when built (app start, and the
 /// first run of a background action) and when the app comes back to the
-/// front; null once the account is gone. Disposed with the account's
-/// database on sign-out, after which [NotificationSchedulers] still holds
-/// it for the wipe.
+/// front, and rescheduling everything when the notification content or
+/// the app lock changes; a content that shows less also withdraws what the
+/// account has in the tray. Null once the account is gone. Disposed with
+/// the account's database on sign-out, after which
+/// [NotificationSchedulers] still holds it for the wipe.
 
 final class NotificationSchedulerProvider
     extends
@@ -83,9 +87,11 @@ final class NotificationSchedulerProvider
     with $Provider<NotificationScheduler?> {
   /// One account's scheduler, reconciling when built (app start, and the
   /// first run of a background action) and when the app comes back to the
-  /// front; null once the account is gone. Disposed with the account's
-  /// database on sign-out, after which [NotificationSchedulers] still holds
-  /// it for the wipe.
+  /// front, and rescheduling everything when the notification content or
+  /// the app lock changes; a content that shows less also withdraws what the
+  /// account has in the tray. Null once the account is gone. Disposed with
+  /// the account's database on sign-out, after which
+  /// [NotificationSchedulers] still holds it for the wipe.
   NotificationSchedulerProvider._({
     required NotificationSchedulerFamily super.from,
     required String super.argument,
@@ -139,13 +145,15 @@ final class NotificationSchedulerProvider
 }
 
 String _$notificationSchedulerHash() =>
-    r'd284711a09cb5af7c038a9d5d5ce001828fd0ca7';
+    r'4f163c92c3216aed7c3c334b7b036ff1741ee42f';
 
 /// One account's scheduler, reconciling when built (app start, and the
 /// first run of a background action) and when the app comes back to the
-/// front; null once the account is gone. Disposed with the account's
-/// database on sign-out, after which [NotificationSchedulers] still holds
-/// it for the wipe.
+/// front, and rescheduling everything when the notification content or
+/// the app lock changes; a content that shows less also withdraws what the
+/// account has in the tray. Null once the account is gone. Disposed with
+/// the account's database on sign-out, after which
+/// [NotificationSchedulers] still holds it for the wipe.
 
 final class NotificationSchedulerFamily extends $Family
     with $FunctionalFamilyOverride<NotificationScheduler?, String> {
@@ -160,9 +168,11 @@ final class NotificationSchedulerFamily extends $Family
 
   /// One account's scheduler, reconciling when built (app start, and the
   /// first run of a background action) and when the app comes back to the
-  /// front; null once the account is gone. Disposed with the account's
-  /// database on sign-out, after which [NotificationSchedulers] still holds
-  /// it for the wipe.
+  /// front, and rescheduling everything when the notification content or
+  /// the app lock changes; a content that shows less also withdraws what the
+  /// account has in the tray. Null once the account is gone. Disposed with
+  /// the account's database on sign-out, after which
+  /// [NotificationSchedulers] still holds it for the wipe.
 
   NotificationSchedulerProvider call(String accountId) =>
       NotificationSchedulerProvider._(argument: accountId, from: this);

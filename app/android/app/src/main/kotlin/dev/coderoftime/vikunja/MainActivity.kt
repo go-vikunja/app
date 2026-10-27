@@ -6,15 +6,29 @@ import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.os.PersistableBundle
+import android.view.View
+import android.view.ViewGroup
 import android.view.WindowManager
-import io.flutter.embedding.android.FlutterActivity
+import androidx.activity.OnBackPressedCallback
+import io.flutter.embedding.android.FlutterFragmentActivity
+import io.flutter.embedding.android.FlutterView
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
-class MainActivity : FlutterActivity() {
+// A FragmentActivity because local_auth's BiometricPrompt needs one.
+class MainActivity : FlutterFragmentActivity() {
     private var shareInbox: ShareInbox? = null
     private var fileActions: FileActionsChannel? = null
     private var documents: DocumentPickerChannel? = null
+
+    // On while the app lock is up, when Flutter leaves back to the platform:
+    // Android would otherwise close the activity, and the app's state with
+    // it, whenever the task was not started from the launcher.
+    private val backWhileLocked = object : OnBackPressedCallback(false) {
+        override fun handleOnBackPressed() {
+            moveTaskToBack(true)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Reopened from Recents, the activity gets the task's root intent
@@ -37,6 +51,7 @@ class MainActivity : FlutterActivity() {
             intent = ShareInbox.withoutShare(intent)
         }
         super.onCreate(savedInstanceState)
+        onBackPressedDispatcher.addCallback(this, backWhileLocked)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -51,6 +66,24 @@ class MainActivity : FlutterActivity() {
         shareInbox?.announce()
     }
 
+    override fun onPostResume() {
+        super.onPostResume()
+        // Under the AppCompat theme, Android draws its grey default focus
+        // highlight over the focused FlutterView, i.e. the whole app, once a
+        // key press leaves touch mode, and keeps it there.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            withoutFocusHighlight(window.decorView)
+        }
+    }
+
+    private fun withoutFocusHighlight(view: View) {
+        if (view is FlutterView) {
+            view.defaultFocusHighlightEnabled = false
+        } else if (view is ViewGroup) {
+            for (i in 0 until view.childCount) withoutFocusHighlight(view.getChildAt(i))
+        }
+    }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         val messenger = flutterEngine.dartExecutor.binaryMessenger
@@ -60,7 +93,11 @@ class MainActivity : FlutterActivity() {
                     "osVersion" -> result.success(Build.VERSION.RELEASE)
                     "copySensitive" -> copySensitive(call.argument<String>("text"), result)
                     "setSecure" -> setSecure(call.argument<Boolean>("secure"), result)
+                    "setRecentsScreenshotEnabled" ->
+                        setRecentsScreenshot(call.argument<Boolean>("enabled"), result)
                     "moveTaskToBack" -> result.success(moveTaskToBack(true))
+                    "setBackMovesTaskToBack" ->
+                        setBackMovesTaskToBack(call.argument<Boolean>("enabled"), result)
                     else -> result.notImplemented()
                 }
             }
@@ -99,6 +136,28 @@ class MainActivity : FlutterActivity() {
                 return
             }
         }
+        result.success(null)
+    }
+
+    private fun setRecentsScreenshot(enabled: Boolean?, result: MethodChannel.Result) {
+        if (enabled == null) {
+            result.error("invalid_arguments", "enabled is missing", null)
+            return
+        }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            result.success(false)
+            return
+        }
+        setRecentsScreenshotEnabled(enabled)
+        result.success(true)
+    }
+
+    private fun setBackMovesTaskToBack(enabled: Boolean?, result: MethodChannel.Result) {
+        if (enabled == null) {
+            result.error("invalid_arguments", "enabled is missing", null)
+            return
+        }
+        backWhileLocked.isEnabled = enabled
         result.success(null)
     }
 

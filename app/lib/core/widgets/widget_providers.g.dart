@@ -232,16 +232,18 @@ String _$widgetPublishersHash() => r'80bc294a14f93de6b77d358f4828aa70a882403e';
 
 /// One account's publisher; null once the account is gone. In the app it
 /// publishes when built, when the app comes back to the front, when the
-/// account's registry entry changes and when its snapshots go stale; a
-/// headless container publishes on request ([widgetRefresherProvider]).
+/// account's registry entry changes, when the "Show task titles in
+/// widgets" switch changes and when its snapshots go stale; a headless
+/// container publishes on request ([widgetRefresherProvider]).
 
 @ProviderFor(widgetPublisher)
 final widgetPublisherProvider = WidgetPublisherFamily._();
 
 /// One account's publisher; null once the account is gone. In the app it
 /// publishes when built, when the app comes back to the front, when the
-/// account's registry entry changes and when its snapshots go stale; a
-/// headless container publishes on request ([widgetRefresherProvider]).
+/// account's registry entry changes, when the "Show task titles in
+/// widgets" switch changes and when its snapshots go stale; a headless
+/// container publishes on request ([widgetRefresherProvider]).
 
 final class WidgetPublisherProvider
     extends
@@ -253,8 +255,9 @@ final class WidgetPublisherProvider
     with $Provider<WidgetPublisher?> {
   /// One account's publisher; null once the account is gone. In the app it
   /// publishes when built, when the app comes back to the front, when the
-  /// account's registry entry changes and when its snapshots go stale; a
-  /// headless container publishes on request ([widgetRefresherProvider]).
+  /// account's registry entry changes, when the "Show task titles in
+  /// widgets" switch changes and when its snapshots go stale; a headless
+  /// container publishes on request ([widgetRefresherProvider]).
   WidgetPublisherProvider._({
     required WidgetPublisherFamily super.from,
     required String super.argument,
@@ -306,12 +309,13 @@ final class WidgetPublisherProvider
   }
 }
 
-String _$widgetPublisherHash() => r'd70c3158298db5a705a6d619b2bc756966321cc1';
+String _$widgetPublisherHash() => r'1eafd7234b2bbd7aed35b9cc30bd8333548e7d26';
 
 /// One account's publisher; null once the account is gone. In the app it
 /// publishes when built, when the app comes back to the front, when the
-/// account's registry entry changes and when its snapshots go stale; a
-/// headless container publishes on request ([widgetRefresherProvider]).
+/// account's registry entry changes, when the "Show task titles in
+/// widgets" switch changes and when its snapshots go stale; a headless
+/// container publishes on request ([widgetRefresherProvider]).
 
 final class WidgetPublisherFamily extends $Family
     with $FunctionalFamilyOverride<WidgetPublisher?, String> {
@@ -326,8 +330,9 @@ final class WidgetPublisherFamily extends $Family
 
   /// One account's publisher; null once the account is gone. In the app it
   /// publishes when built, when the app comes back to the front, when the
-  /// account's registry entry changes and when its snapshots go stale; a
-  /// headless container publishes on request ([widgetRefresherProvider]).
+  /// account's registry entry changes, when the "Show task titles in
+  /// widgets" switch changes and when its snapshots go stale; a headless
+  /// container publishes on request ([widgetRefresherProvider]).
 
   WidgetPublisherProvider call(String accountId) =>
       WidgetPublisherProvider._(argument: accountId, from: this);

@@ -66,6 +66,9 @@ dependencies {
     // Already in the app through workmanager; declared for the widget worker.
     // Below 2.11.2, R8 stripped Glance's RemoteViews translator.
     implementation("androidx.work:work-runtime:2.11.2")
+    // The AppCompat themes MainActivity needs for local_auth; biometric
+    // 1.1.0 would otherwise pull in 1.2.0.
+    implementation("androidx.appcompat:appcompat:1.8.0")
 
     testImplementation("junit:junit:4.13.2")
     // The JVM tests parse with the real org.json; android.jar has stubs.

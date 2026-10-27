@@ -1,5 +1,6 @@
 import 'package:characters/characters.dart';
 import 'package:vikunja_mobile/core/activity/activity_item.dart';
+import 'package:vikunja_mobile/core/security/privacy_settings.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/l10n/generated/app_localizations.dart';
 
@@ -11,10 +12,27 @@ const activityCommentLength = 80;
 /// list but with the names spelled out: the title names the task (or the
 /// project or team), the body who did what. Null for a kind that is not
 /// shown. A name the payload lacks falls back like the inbox's row does.
+/// With [NotificationContent.noTitles] the same generic texts for every
+/// kind that is shown: no title, name or comment.
 ({String title, String body})? describeActivity(
   ActivityItem item, {
   required AppLocalizations l10n,
+  NotificationContent content = NotificationContent.all,
 }) {
+  final described = _describe(item, l10n);
+  if (described == null || content != NotificationContent.noTitles) {
+    return described;
+  }
+  return (
+    title: l10n.notificationContentActivityTitle,
+    body: l10n.notificationContentBody,
+  );
+}
+
+({String title, String body})? _describe(
+  ActivityItem item,
+  AppLocalizations l10n,
+) {
   final doer = item.doerName ?? l10n.inboxSomeone;
   final team = item.teamName ?? l10n.inboxUnnamed;
   final project = switch (item.projectTitle) {

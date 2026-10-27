@@ -6263,5 +6263,233 @@
   "widgetsPlacedNotSetUp": "Not set up yet – shows the active account",
   "@widgetsPlacedNotSetUp": {
     "description": "A placed list widget that was never set up; it shows Today of the active account. Tapping opens its setup."
+  },
+  "notificationContentReminderTitle": "Task reminder",
+  "@notificationContentReminderTitle": {
+    "description": "Title of a reminder notification while the privacy setting hides task titles from notifications."
+  },
+  "notificationContentDueTitle": "Task due",
+  "@notificationContentDueTitle": {
+    "description": "Title of a due-date notification while the privacy setting hides task titles from notifications."
+  },
+  "notificationContentBody": "Open Rurana to see it",
+  "@notificationContentBody": {
+    "description": "Body of a reminder, due-date or activity notification while the privacy setting hides task titles from notifications; no project, name or comment is shown."
+  },
+  "notificationContentActivityTitle": "New activity",
+  "@notificationContentActivityTitle": {
+    "description": "Title of an activity notification (comment, assignment, mention) while the privacy setting hides task titles from notifications."
+  },
+  "privacyTitle": "Privacy",
+  "@privacyTitle": {
+    "description": "Heading of the Account tab's privacy section and title of the privacy page (app lock, screenshots, notification content, widget titles)."
+  },
+  "privacyEntryTitle": "App lock and privacy",
+  "@privacyEntryTitle": {
+    "description": "The Account tab entry to the privacy page."
+  },
+  "privacyEntryAppLockOff": "App lock: Off",
+  "@privacyEntryAppLockOff": {
+    "description": "Subtitle of the Account tab's privacy entry while the app lock is off."
+  },
+  "privacyEntryAppLockImmediately": "App lock: On · immediately",
+  "@privacyEntryAppLockImmediately": {
+    "description": "Subtitle of the Account tab's privacy entry while the app lock is on and locks as soon as the app leaves the screen."
+  },
+  "privacyEntryAppLockAfter": "App lock: On · after {duration}",
+  "@privacyEntryAppLockAfter": {
+    "description": "Subtitle of the Account tab's privacy entry while the app lock is on; the duration is one of the Lock after choices, e.g. \"1 minute\".",
+    "placeholders": {
+      "duration": {
+        "type": "String",
+        "example": "1 minute"
+      }
+    }
+  },
+  "privacyLockAfterImmediately": "Immediately",
+  "@privacyLockAfterImmediately": {
+    "description": "Lock after choice: lock as soon as the app leaves the screen."
+  },
+  "privacyLockAfterMinutes": "{count, plural, =1{1 minute} other{{count} minutes}}",
+  "@privacyLockAfterMinutes": {
+    "description": "Lock after choice: lock when the app has been away this many minutes. Also used after \"after\" in the Account tab entry.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "5"
+      }
+    }
+  },
+  "privacyLockAfterHours": "{count, plural, =1{1 hour} other{{count} hours}}",
+  "@privacyLockAfterHours": {
+    "description": "Lock after choice: lock when the app has been away this many hours. Also used after \"after\" in the Account tab entry.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "1"
+      }
+    }
+  },
+  "privacyAppLockHeading": "App lock",
+  "@privacyAppLockHeading": {
+    "description": "Heading of the app lock settings on the privacy page."
+  },
+  "privacyAppLockSwitch": "Lock Rurana",
+  "@privacyAppLockSwitch": {
+    "description": "Switch that turns the app lock on or off."
+  },
+  "privacyAppLockSubtitle": "Unlock with biometrics or the device screen lock",
+  "@privacyAppLockSubtitle": {
+    "description": "Under the app lock switch: what unlocks the app."
+  },
+  "privacyAppLockUnsupported": "Set a screen lock on this device first",
+  "@privacyAppLockUnsupported": {
+    "description": "Under the disabled app lock switch when the device has no screen lock or biometrics."
+  },
+  "privacyAppLockLockedOut": "Too many attempts. Try again later.",
+  "@privacyAppLockLockedOut": {
+    "description": "Under the app lock switch when the system locked out biometrics or the screen lock after too many attempts."
+  },
+  "privacyAppLockFailed": "Couldn't check your screen lock. Try again.",
+  "@privacyAppLockFailed": {
+    "description": "Under the app lock switch when the system's authentication failed for another reason."
+  },
+  "privacyLockAfter": "Lock after",
+  "@privacyLockAfter": {
+    "description": "Setting: how long the app may be away before it locks; its value is one of the Lock after choices."
+  },
+  "privacyLockAfterRestart": "Rurana always locks after a restart.",
+  "@privacyLockAfterRestart": {
+    "description": "Under the Lock after setting."
+  },
+  "privacyAppSwitcherHidden": "While the lock is on, the app switcher hides Rurana's content.",
+  "@privacyAppSwitcherHidden": {
+    "description": "Info line on the privacy page: the app lock also hides the app's content in the app switcher."
+  },
+  "privacyAppSwitcherBestEffort": "While the lock is on, the app switcher hides Rurana's content as far as this Android version allows. To be sure, turn on Block screenshots.",
+  "@privacyAppSwitcherBestEffort": {
+    "description": "Info line on the privacy page on Android 12 and older, where hiding the app switcher's thumbnail is best effort."
+  },
+  "privacyScreenshotsHeading": "Screenshots",
+  "@privacyScreenshotsHeading": {
+    "description": "Heading of the Block screenshots setting (Android only)."
+  },
+  "privacyBlockScreenshots": "Block screenshots",
+  "@privacyBlockScreenshots": {
+    "description": "Switch (Android only) that keeps the app out of screenshots, screen recordings and the app overview."
+  },
+  "privacyBlockScreenshotsSubtitle": "Also hides Rurana from screen recordings and the app overview.",
+  "@privacyBlockScreenshotsSubtitle": {
+    "description": "Under the Block screenshots switch."
+  },
+  "privacyNotificationContentHeading": "Notification content",
+  "@privacyNotificationContentHeading": {
+    "description": "Heading of the choice how much reminders and activity notifications show."
+  },
+  "privacyNotificationContentAll": "Show everything",
+  "@privacyNotificationContentAll": {
+    "description": "Notification content choice: task titles and comments everywhere, also on the lock screen."
+  },
+  "privacyNotificationContentAllSubtitle": "Task titles and comments, also on the lock screen",
+  "@privacyNotificationContentAllSubtitle": {
+    "description": "Under the Show everything choice."
+  },
+  "privacyNotificationContentHidden": "Hide on the lock screen",
+  "@privacyNotificationContentHidden": {
+    "description": "Notification content choice: the content shows only while the phone is unlocked."
+  },
+  "privacyNotificationContentHiddenSubtitle": "The content shows only while the phone is unlocked",
+  "@privacyNotificationContentHiddenSubtitle": {
+    "description": "Under the Hide on the lock screen choice."
+  },
+  "privacyNotificationContentNoTitles": "Never show task titles",
+  "@privacyNotificationContentNoTitles": {
+    "description": "Notification content choice: generic texts without task titles, names or comments."
+  },
+  "privacyNotificationContentNoTitlesSubtitle": "Generic texts without task titles, names or comments",
+  "@privacyNotificationContentNoTitlesSubtitle": {
+    "description": "Under the Never show task titles choice."
+  },
+  "privacyNotificationContentIosHint": "On iPhone, iOS decides this for each app: in Settings → Notifications → Rurana, set Show Previews to When Unlocked.",
+  "@privacyNotificationContentIosHint": {
+    "description": "iOS only, under the Hide on the lock screen choice: the app cannot hide the content itself; the system setting does. Use the names of the iOS Settings app."
+  },
+  "privacyWidgetsHeading": "Widgets",
+  "@privacyWidgetsHeading": {
+    "description": "Heading of the widget titles setting on the privacy page."
+  },
+  "privacyWidgetTitles": "Show task titles in widgets",
+  "@privacyWidgetTitles": {
+    "description": "Switch: whether the home-screen widgets list the tasks by title."
+  },
+  "privacyWidgetTitlesSubtitle": "When off, widgets show only how many tasks there are",
+  "@privacyWidgetTitlesSubtitle": {
+    "description": "Under the Show task titles in widgets switch."
+  },
+  "privacySettingsUnreadable": "Your privacy settings couldn't be read, so Rurana locked itself. Choose them again here.",
+  "@privacySettingsUnreadable": {
+    "description": "Note on the privacy page when the stored settings could not be read; the app was locked for safety and shows the defaults."
+  },
+  "appLockPromptReason": "Unlock Rurana",
+  "@appLockPromptReason": {
+    "description": "Reason shown in the system's biometric or screen lock prompt when the app lock asks to unlock the app."
+  },
+  "privacyAppLockReasonOn": "Confirm it's you to turn on the app lock",
+  "@privacyAppLockReasonOn": {
+    "description": "Reason shown in the system's biometric or screen lock prompt when turning the app lock on."
+  },
+  "privacyAppLockReasonOff": "Confirm it's you to turn off the app lock",
+  "@privacyAppLockReasonOff": {
+    "description": "Reason shown in the system's biometric or screen lock prompt when turning the app lock off."
+  },
+  "privacySaveFailed": "The setting couldn't be saved. Try again.",
+  "@privacySaveFailed": {
+    "description": "Note on the privacy page when a changed setting could not be stored on the device."
+  },
+  "appLockTitle": "Rurana is locked",
+  "@appLockTitle": {
+    "description": "Heading of the lock screen shown while the app lock is on and the app is locked."
+  },
+  "appLockBody": "Unlock with biometrics or your device's screen lock.",
+  "@appLockBody": {
+    "description": "Under the lock screen's heading: what unlocks the app."
+  },
+  "appLockUnlock": "Unlock",
+  "@appLockUnlock": {
+    "description": "Lock screen button that asks for biometrics or the device's screen lock."
+  },
+  "appLockLockedOut": "Too many attempts. Try again later.",
+  "@appLockLockedOut": {
+    "description": "On the lock screen when the system locked out biometrics or the screen lock after too many failed attempts."
+  },
+  "appLockUnavailable": "Rurana couldn't check your screen lock. Try again.",
+  "@appLockUnavailable": {
+    "description": "On the lock screen when the system's authentication failed for a reason other than a cancel or a lockout."
+  },
+  "appLockTurnedOff": "App lock was turned off because this device has no screen lock.",
+  "@appLockTurnedOff": {
+    "description": "Shown once after unlocking when the device's screen lock had been removed, so the app lock turned itself off."
+  },
+  "appLockPromptHint": "Use your fingerprint, face or screen lock",
+  "@appLockPromptHint": {
+    "description": "Subtitle of the Android system prompt for the app lock (under the title Rurana, above the reason). At most 60 characters."
+  },
+  "appLockPromptStuck": "The unlock prompt doesn't respond. Close Rurana completely and open it again.",
+  "@appLockPromptStuck": {
+    "description": "On the lock screen and under the app lock switch when the system's prompt is still held by an earlier one that never answered; only restarting the app releases it."
+  },
+  "widgetTitlesHiddenHint": "{count, plural, =1{Open Rurana to see it} other{Open Rurana to see them}}",
+  "@widgetTitlesHiddenHint": {
+    "description": "Shown in a home-screen list widget below the task count, instead of the task rows, while the privacy setting hides task titles in widgets.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "5"
+      }
+    }
+  },
+  "privacyNotificationContentHiddenSubtitleAndroid": "Notifications don't appear on the lock screen; you see them once you unlock",
+  "@privacyNotificationContentHiddenSubtitleAndroid": {
+    "description": "Android only, under the Hide on the lock screen choice: Android leaves such notifications off the secure lock screen entirely, without a placeholder."
   }
 }

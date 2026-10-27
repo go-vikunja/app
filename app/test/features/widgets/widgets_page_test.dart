@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/core/security/app_excursions.dart';
 import 'package:vikunja_mobile/core/widgets/widget_config.dart';
 import 'package:vikunja_mobile/features/home/presentation/account_tab.dart';
 import 'package:vikunja_mobile/features/widgets/presentation/widget_configure_page.dart';
@@ -83,6 +84,26 @@ void main() {
     expect(find.text(en.widgetsPinUnsupported), findsNothing);
   });
 
+  testWidgets("the launcher's dialog does not lock the app until the app is "
+      'back from it', (tester) async {
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await harness.pump(tester, location: AppRoutes.widgets);
+    final excursions = containerOf(tester).read(appExcursionsProvider);
+
+    await scrollTo(tester, find.text(en.widgetKindToday));
+    await tester.tap(find.text(en.widgetKindToday));
+    await tester.pumpAndSettle();
+    expect(harness.host.pinRequests, hasLength(1));
+    expect(excursions.active, isTrue);
+
+    const [
+      AppLifecycleState.inactive,
+      AppLifecycleState.resumed,
+    ].forEach(tester.binding.handleAppLifecycleStateChanged);
+    await tester.pump();
+    expect(excursions.active, isFalse);
+  });
+
   testWidgets('a launcher that cannot pin leaves only the steps', (
     tester,
   ) async {
@@ -102,6 +123,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(harness.host.pinRequests, hasLength(1));
+    expect(containerOf(tester).read(appExcursionsProvider).active, isFalse);
     await scrollTo(tester, find.text(en.widgetsPinUnsupported));
     expect(find.text(en.widgetsPinUnsupported), findsOneWidget);
   });

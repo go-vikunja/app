@@ -29,6 +29,14 @@ class ScheduledNotifications extends Table {
   /// or revoked exact-alarm permission re-registers the whole window.
   BoolColumn get exact => boolean()();
 
+  /// What the OS may show of it on a locked device (`NotificationPrivacy`),
+  /// part of the diff like [exact]: an entry another isolate scheduled
+  /// with older privacy settings is scheduled again by the next run.
+  BoolColumn get hiddenOnLockScreen =>
+      boolean().withDefault(const Constant(false))();
+  BoolColumn get doneNeedsUnlock =>
+      boolean().withDefault(const Constant(false))();
+
   @override
   Set<Column<Object>> get primaryKey => {key};
 }

@@ -1,3 +1,4 @@
 "NSCameraUsageDescription" = "Rurana nutzt die Kamera für Fotos, die du an Aufgaben anhängst.";
+"NSFaceIDUsageDescription" = "Rurana nutzt Face ID, um die App zu entsperren, wenn die App-Sperre an ist.";
 "NSLocalNetworkUsageDescription" = "Rurana verbindet sich mit dem Vikunja-Server, den du eingibst. Er kann in deinem lokalen Netzwerk laufen.";
 "NSPhotoLibraryUsageDescription" = "Rurana lässt dich Fotos auswählen, die du an Aufgaben anhängst.";

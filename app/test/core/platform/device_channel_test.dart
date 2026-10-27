@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_mobile/core/platform/app_backgrounding.dart';
 import 'package:vikunja_mobile/core/platform/device_channel.dart';
+import 'package:vikunja_mobile/core/platform/recents_screenshots.dart';
 import 'package:vikunja_mobile/core/platform/secure_display.dart';
 import 'package:vikunja_mobile/core/platform/sensitive_clipboard.dart';
 
@@ -65,9 +66,9 @@ void main() {
     });
   });
 
-  group('the secure display', () {
+  group('the secure window', () {
     test("on Android sets and clears the window's flag", () async {
-      final display = PlatformSecureDisplay(android: true);
+      final display = PlatformSecureWindow(android: true);
 
       await display.setSecure(true);
       await display.setSecure(false);
@@ -83,8 +84,42 @@ void main() {
     });
 
     test('on iOS does nothing for now', () async {
-      await PlatformSecureDisplay(android: false).setSecure(true);
+      await PlatformSecureWindow(android: false).setSecure(true);
 
+      expect(deviceCalls, isEmpty);
+    });
+  });
+
+  group('the Recents screenshot', () {
+    test('on Android asks the activity and reports whether it '
+        'applied', () async {
+      messenger.setMockMethodCallHandler(deviceChannel, (call) async {
+        deviceCalls.add(call);
+        return true;
+      });
+
+      final applied = await PlatformRecentsScreenshots(android: true)
+          .setEnabled(false);
+
+      expect(applied, isTrue);
+      expect(deviceCalls.single.method, 'setRecentsScreenshotEnabled');
+      expect(deviceCalls.single.arguments, {'enabled': false});
+    });
+
+    test('below Android 13 the activity answers that it did not', () async {
+      messenger.setMockMethodCallHandler(deviceChannel, (call) async => false);
+
+      expect(
+        await PlatformRecentsScreenshots(android: true).setEnabled(false),
+        isFalse,
+      );
+    });
+
+    test('on iOS does nothing', () async {
+      expect(
+        await PlatformRecentsScreenshots(android: false).setEnabled(false),
+        isFalse,
+      );
       expect(deviceCalls, isEmpty);
     });
   });
@@ -94,5 +129,15 @@ void main() {
     await PlatformAppBackgrounding(android: false).moveToBack();
 
     expect(deviceCalls.map((call) => call.method), ['moveTaskToBack']);
+  });
+
+  test('back moving the app to the back is switched on Android only', () async {
+    await PlatformAppBackgrounding(android: true)
+        .setBackMovesToBack(enabled: true);
+    await PlatformAppBackgrounding(android: false)
+        .setBackMovesToBack(enabled: false);
+
+    expect(deviceCalls.map((call) => call.method), ['setBackMovesTaskToBack']);
+    expect(deviceCalls.single.arguments, {'enabled': true});
   });
 }

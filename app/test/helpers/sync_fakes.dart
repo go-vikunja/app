@@ -49,6 +49,7 @@ import 'package:vikunja_mobile/features/sync/application/inactive_outboxes.dart'
 import 'account_security_fakes.dart';
 import 'account_settings_fakes.dart';
 import 'activity_fakes.dart';
+import 'app_lock_fakes.dart';
 import 'attachment_fakes.dart';
 import 'bucket_fakes.dart';
 import 'label_user_fakes.dart';
@@ -1849,7 +1850,7 @@ final class SyncFakes {
   /// What a one-time secret view or a link share copied, and whether it hid
   /// the screen.
   final clipboard = FakeSensitiveClipboard();
-  final secureDisplay = FakeSecureDisplay();
+  final secureWindow = FakeSecureWindow();
 
   /// The links handed to the share sheet.
   final linkShares = FakeLinkShareActions();
@@ -1975,7 +1976,7 @@ final class SyncFakes {
     ),
     linkShareActionsProvider.overrideWithValue(linkShares),
     sensitiveClipboardProvider.overrideWithValue(clipboard),
-    secureDisplayProvider.overrideWithValue(secureDisplay),
+    secureWindowProvider.overrideWithValue(secureWindow),
     ...quietWidgetOverrides(),
     // The real one opens the account's database; every list reads it.
     userSettingsProvider.overrideWith((ref) {

@@ -369,7 +369,7 @@ void main() {
       expect(find.byType(OneTimeSecretView), findsOneWidget);
       expect(find.text(secret), findsOneWidget);
       expect(find.text(en.oneTimeSecretOnce), findsOneWidget);
-      expect(harness.secureDisplay.secure, isTrue);
+      expect(harness.secureWindow.secure, isTrue);
       expect(
         announcements,
         contains('${en.oneTimeSecretApiTitle} ${en.oneTimeSecretOnce}'),
@@ -384,7 +384,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(ApiTokensPage), findsOneWidget);
       expect(find.text('Home Assistant'), findsOneWidget);
-      expect(harness.secureDisplay.secure, isFalse);
+      expect(harness.secureWindow.secure, isFalse);
       expect(find.text(secret), findsNothing);
 
       expect(logs.where((line) => line.contains(secret)), isEmpty);
@@ -435,7 +435,7 @@ void main() {
         findsOneWidget,
       );
       expect(find.byType(OneTimeSecretView), findsNothing);
-      expect(harness.secureDisplay.changes, isEmpty);
+      expect(harness.secureWindow.changes, isEmpty);
     });
 
     testWidgets('a refusal is in view when the list was scrolled down', (

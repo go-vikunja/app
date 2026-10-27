@@ -2,7 +2,6 @@ import 'dart:math';
 
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
-import 'package:vikunja_mobile/core/platform/secure_display.dart';
 import 'package:vikunja_mobile/core/platform/sensitive_clipboard.dart';
 import 'package:vikunja_mobile/core/repositories/account_security_repository.dart';
 
@@ -419,17 +418,5 @@ final class FakeSensitiveClipboard implements SensitiveClipboard {
   Future<void> copy(String text) async {
     if (failure case final failure?) throw failure;
     copied.add(text);
-  }
-}
-
-/// [secure] as last set; every call in [changes].
-final class FakeSecureDisplay implements SecureDisplay {
-  bool secure = false;
-  final List<bool> changes = [];
-
-  @override
-  Future<void> setSecure(bool secure) async {
-    changes.add(secure);
-    this.secure = secure;
   }
 }

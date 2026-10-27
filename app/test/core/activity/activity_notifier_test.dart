@@ -12,6 +12,7 @@ import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
 import 'package:vikunja_mobile/core/notifications/notification_os_ids.dart';
 import 'package:vikunja_mobile/core/notifications/notification_preferences.dart';
+import 'package:vikunja_mobile/core/security/privacy_settings.dart';
 import 'package:vikunja_mobile/l10n/generated/app_localizations.dart';
 
 import '../../helpers/auth_fakes.dart';
@@ -207,6 +208,87 @@ void main() {
       );
 
       expect(gateway.activities.single.subtitle, '@ben · tasks.example.com');
+    });
+
+    test('shown everywhere by default', () async {
+      final fresh = await stored([sampleNotification(id: 1)]);
+
+      await notifier.show(account: account, db: db, fresh: fresh);
+
+      expect(gateway.activities.single.privacy, const NotificationPrivacy());
+    });
+
+    test('hidden on the lock screen: the same texts, hidden there, the '
+        '"more" notification too', () async {
+      notifier = ActivityNotifier(
+        gateway: gateway,
+        preferences: preferences,
+        store: store,
+        l10n: en,
+        content: () async => NotificationContent.hiddenOnLockScreen,
+        shownPerRun: 1,
+      );
+      final fresh = await stored([
+        sampleNotification(id: 1),
+        sampleNotification(id: 2),
+      ]);
+
+      await notifier.show(account: account, db: db, fresh: fresh);
+
+      expect(gateway.activities.first.title, 'Water the plants');
+      expect(gateway.activities.map((a) => a.privacy.hiddenOnLockScreen), [
+        isTrue,
+        isTrue,
+      ]);
+      expect(
+        gateway.activities.map((a) => a.privacy.doneNeedsUnlock),
+        everyElement(isFalse),
+      );
+    });
+
+    test('no titles: generic texts for every shown kind and the payload as '
+        'before, without the account label of several accounts, which names '
+        'the user and the server', () async {
+      notifier = ActivityNotifier(
+        gateway: gateway,
+        preferences: preferences,
+        store: store,
+        l10n: en,
+        content: () async => NotificationContent.noTitles,
+      );
+      final fresh = await stored([
+        sampleNotification(
+          id: 1,
+          name: 'task.comment',
+          extra: {
+            'comment': {'comment': '<p>Please check the pots</p>'},
+          },
+        ),
+        sampleNotification(id: 2, name: 'task.reminder'),
+        sampleNotification(id: 3, name: 'project.created', taskId: null),
+      ]);
+
+      expect(
+        await notifier.show(
+          account: account,
+          db: db,
+          fresh: fresh,
+          labelled: true,
+        ),
+        2,
+      );
+
+      for (final activity in gateway.activities) {
+        expect(activity.title, 'New activity');
+        expect(activity.body, 'Open Rurana to see it');
+        expect(activity.subtitle, isNull);
+        expect(activity.privacy, const NotificationPrivacy());
+      }
+      expect(jsonDecode(gateway.activities.first.payload), {
+        'account': 'acc',
+        'task': 1,
+        'key': 'activity:1',
+      });
     });
 
     test('a single account goes without the label', () async {
@@ -487,6 +569,31 @@ void main() {
       );
     });
 
+    test('no titles: one generic text for every kind that is shown, in '
+        'English and German', () {
+      ({String title, String body})? generic(
+        ServerNotification notification,
+        AppLocalizations l10n,
+      ) => describeActivity(
+        ActivityItem.fromNotification(notification, userId: me),
+        l10n: l10n,
+        content: NotificationContent.noTitles,
+      );
+
+      expect(generic(comment, en), (
+        title: 'New activity',
+        body: 'Open Rurana to see it',
+      ));
+      expect(generic(sampleNotification(id: 2, name: 'task.mentioned'), de), (
+        title: 'Neue Aktivität',
+        body: 'Öffne Rurana, um sie zu sehen',
+      ));
+      expect(
+        generic(sampleNotification(id: 3, name: 'task.reminder'), en),
+        isNull,
+      );
+    });
+
     test('task.reminder and unknown kinds have none', () {
       expect(
         describeOrNull(sampleNotification(id: 1, name: 'task.reminder')),
@@ -540,6 +647,21 @@ void main() {
       expect(
         gateway.activities.single.title,
         'Sign in again to localhost:34527',
+      );
+    });
+
+    test('unchanged without titles: it holds no task data', () async {
+      await ActivityNotifier(
+        gateway: gateway,
+        preferences: preferences,
+        store: store,
+        l10n: en,
+        content: () async => NotificationContent.noTitles,
+      ).sessionEnded(account);
+
+      expect(
+        gateway.activities.single.title,
+        'Sign in again to tasks.example.com',
       );
     });
 

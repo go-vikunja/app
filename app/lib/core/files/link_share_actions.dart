@@ -3,6 +3,8 @@ import 'dart:ui' show Rect;
 import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:vikunja_mobile/core/platform/app_round_trips.dart';
+import 'package:vikunja_mobile/core/security/app_excursions.dart';
 
 part 'link_share_actions.g.dart';
 
@@ -16,21 +18,27 @@ abstract interface class LinkShareActions {
   Future<bool> shareLink(Uri url, {String? subject, Rect? origin});
 }
 
+/// Leaving the app for the share sheet does not lock it.
 final class PlatformLinkShareActions implements LinkShareActions {
-  new({Future<ShareResult> Function(ShareParams params)? share})
-    : _share = share ?? SharePlus.instance.share;
+  new({
+    Future<ShareResult> Function(ShareParams params)? share,
+    this._excursions,
+  }) : _share = share ?? SharePlus.instance.share;
 
   final Future<ShareResult> Function(ShareParams params) _share;
+  final AppExcursions? _excursions;
 
   @override
   Future<bool> shareLink(Uri url, {String? subject, Rect? origin}) async {
-    final result = await _share(
+    Future<ShareResult> share() => _share(
       ShareParams(uri: url, subject: subject, sharePositionOrigin: origin),
     );
+    final result = await (_excursions?.roundTrip(share) ?? share());
     _log.fine('Shared a link: ${result.status.name}');
     return result.status != ShareResultStatus.unavailable;
   }
 }
 
 @Riverpod(keepAlive: true)
-LinkShareActions linkShareActions(Ref ref) => PlatformLinkShareActions();
+LinkShareActions linkShareActions(Ref ref) =>
+    PlatformLinkShareActions(excursions: ref.watch(appExcursionsProvider));

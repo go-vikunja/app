@@ -147,12 +147,19 @@ void main() {
   test('an upload is shown as sending only while this sender sends it; one '
       'a dead run left sending waits', () async {
     final held = Completer<void>();
-    write.beforeRequest = (_) => held.future;
+    // The copy is real file I/O, which a fixed number of event loop turns
+    // does not always outlast under load.
+    final requested = Completer<void>();
+    write.beforeRequest = (_) {
+      if (!requested.isCompleted) requested.complete();
+      return held.future;
+    };
     await repository.queueUpload(
       1,
       sourcePath: picked('photo', const [1]).path,
       fileName: 'photo.png',
     );
+    await requested.future;
     await pumpEventQueue();
     expect(
       (await repository.watchPendingUploads(1).first).single.state,

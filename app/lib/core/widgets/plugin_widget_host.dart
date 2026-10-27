@@ -35,6 +35,13 @@ final class PluginWidgetHost implements WidgetHost {
       _plugin.deleteForAccount(accountId);
 
   @override
+  Future<void> deleteSnapshotsExcept(String accountId, Set<String> keys) async {
+    for (final key in await _plugin.snapshotKeys(accountId: accountId)) {
+      if (!keys.contains(key)) await _plugin.deleteSnapshot(key);
+    }
+  }
+
+  @override
   Future<Map<int, WidgetConfig?>> configs() async => {
     for (final instance in await _plugin.configs())
       if (_configOf(instance.config) case final config?)

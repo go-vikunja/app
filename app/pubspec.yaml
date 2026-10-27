@@ -34,6 +34,10 @@ dependencies:
   # reviewed.
   image_picker_ios: 0.8.13+10
   intl: ^0.20.3
+  local_auth: ^3.0.2
+  # local_auth's own Android side, which it already pulls in; named for the
+  # prompt's title and hint (AndroidAuthMessages).
+  local_auth_android: ^2.3.0
   logging: ^1.3.0
   material_ui: ^1.6.0
   native_dio_adapter: ^1.8.0

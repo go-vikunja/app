@@ -22,6 +22,8 @@ void main() {
     title: 'T',
     body: 'B',
     exact: true,
+    hiddenOnLockScreen: false,
+    doneNeedsUnlock: false,
   );
 
   setUp(() => db = testDatabase());

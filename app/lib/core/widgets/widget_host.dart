@@ -23,6 +23,9 @@ abstract interface class WidgetHost {
   /// on screen can get a tombstone.
   Future<void> deleteForAccount(String accountId);
 
+  /// Deletes the account's snapshots other than those of [keys].
+  Future<void> deleteSnapshotsExcept(String accountId, Set<String> keys);
+
   /// The placed widgets by widget id with their configs (Android): null for
   /// a list widget not set up, or whose config cannot be read, which shows
   /// the active account's Today; a Quick add widget without one, which

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
@@ -12,6 +13,7 @@ import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_resolver_providers.dart';
+import 'package:vikunja_mobile/core/security/app_lock_controller.dart';
 import 'package:vikunja_mobile/features/accounts/application/account_switcher.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/open/account_picker.dart';
@@ -46,6 +48,7 @@ final class TaskOpener {
   Future<void> Function()? _pending;
   var _running = false;
   var _disposed = false;
+  ProviderSubscription<bool>? _unlocks;
 
   /// How long a switch's registry change may take to reach the providers.
   static const _switchTimeout = Duration(seconds: 10);
@@ -53,8 +56,8 @@ final class TaskOpener {
   GoRouter get router => _router;
 
   /// Runs [open] once the router has left the splash, the first sync and
-  /// the notification setup. One runs at a time; of the ones that wait,
-  /// only the last runs. Signed out it is dropped.
+  /// the notification setup, and the app lock is open. One runs at a time;
+  /// of the ones that wait, only the last runs. Signed out it is dropped.
   void request(Future<void> Function() open) {
     _pending = open;
     _runWhenReady();
@@ -62,6 +65,7 @@ final class TaskOpener {
 
   void _runWhenReady() {
     if (_disposed || _pending == null) return;
+    if (_lockedNow()) return;
     final delegate = _router.routerDelegate;
     if (delegate.currentConfiguration.isEmpty) return;
     final location = delegate.state.matchedLocation;
@@ -85,6 +89,18 @@ final class TaskOpener {
             _runWhenReady();
           }),
     );
+  }
+
+  /// Only once a request waits: a sheet that just resolves tasks needs no
+  /// lock controller.
+  bool _lockedNow() {
+    _unlocks ??= _ref.listen(
+      appLockControllerProvider.select((state) => state.locked),
+      (_, locked) {
+        if (!locked) _runWhenReady();
+      },
+    );
+    return _ref.read(appLockControllerProvider.notifier).isLockedNow();
   }
 
   /// Makes [accountId] active, and true once the providers follow; false
@@ -358,6 +374,7 @@ final class TaskOpener {
   void dispose() {
     _disposed = true;
     _pending = null;
+    _unlocks?.close();
     _router.routerDelegate.removeListener(_runWhenReady);
   }
 }

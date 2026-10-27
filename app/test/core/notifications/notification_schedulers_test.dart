@@ -29,7 +29,10 @@ void main() {
       db: db,
       gateway: gateway,
       preferences: preferences,
-      describe: describeNotificationsWith(AppLocalizationsEn()),
+      presentation: () async => (
+        describe: describeNotificationsWith(AppLocalizationsEn()),
+        privacy: const NotificationPrivacy(),
+      ),
       window: 100,
       now: () => DateTime.utc(2026, 10, 12, 9),
       createTimer: FakeTimers().create,

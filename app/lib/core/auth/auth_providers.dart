@@ -13,6 +13,7 @@ import 'package:vikunja_mobile/core/auth/session_manager.dart';
 import 'package:vikunja_mobile/core/auth/token_store.dart';
 import 'package:vikunja_mobile/core/auth/web_authenticator.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
+import 'package:vikunja_mobile/core/security/app_excursions.dart';
 import 'package:vikunja_mobile/core/storage/preferences_store.dart';
 import 'package:vikunja_mobile/core/storage/secure_store.dart';
 
@@ -49,7 +50,8 @@ AccountGateway accountGateway(Ref ref) =>
     ApiAccountGateway(ref.watch(dioProvider));
 
 @Riverpod(keepAlive: true)
-WebAuthenticator webAuthenticator(Ref ref) => const FlutterWebAuthenticator();
+WebAuthenticator webAuthenticator(Ref ref) =>
+    FlutterWebAuthenticator(excursions: ref.watch(appExcursionsProvider));
 
 @Riverpod(keepAlive: true)
 SessionManagers sessionManagers(Ref ref) {

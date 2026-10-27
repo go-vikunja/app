@@ -3,18 +3,12 @@ import 'dart:async';
 import 'package:drift/drift.dart';
 import 'package:logging/logging.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
-import 'package:vikunja_mobile/core/widgets/widget_catalog.dart';
 import 'package:vikunja_mobile/core/widgets/widget_config.dart';
 import 'package:vikunja_mobile/core/widgets/widget_host.dart';
 import 'package:vikunja_mobile/core/widgets/widget_snapshot.dart';
 import 'package:vikunja_mobile/core/widgets/widget_snapshot_builder.dart';
 
 final _log = Logger('Widgets');
-
-typedef WidgetBuild = ({
-  Map<String, WidgetSnapshot> snapshots,
-  WidgetCatalog? catalog,
-});
 
 typedef BuildWidgets = Future<WidgetBuild> Function(
   WidgetAccount account,
@@ -34,10 +28,12 @@ typedef CreateTimer = Timer Function(
 /// [publishNow] builds the snapshots of the widgets showing this account
 /// (what the host says they show, and [alwaysKinds]) and
 /// the catalog, writes what changed since this publisher last wrote it and
-/// asks the OS to redraw the widgets of those keys. A change to the tables
-/// a widget reads publishes after [debounce] of quiet, and at the latest
-/// [maxWait] after the first change, so a change reaches the widget within
-/// seconds even while changes keep coming.
+/// asks the OS to redraw the widgets of those keys. While task titles are
+/// hidden it deletes the account's other snapshots, which may still list
+/// them (a widget removed meanwhile, a list an iOS widget picks next). A
+/// change to the tables a widget reads publishes after [debounce] of
+/// quiet, and at the latest [maxWait] after the first change, so a change
+/// reaches the widget within seconds even while changes keep coming.
 final class WidgetPublisher {
   new({
     required this.accountId,
@@ -201,6 +197,13 @@ final class WidgetPublisher {
       await _host.writeSnapshot(key, snapshot.encode());
       _written[key] = content;
       changed.add(key);
+    }
+    if (!build.showsTaskTitles) {
+      await _host.deleteSnapshotsExcept(
+        accountId,
+        build.snapshots.keys.toSet(),
+      );
+      _written.removeWhere((key, _) => !build.snapshots.containsKey(key));
     }
     if (build.catalog case final catalog?) {
       final content = catalog.contentFingerprint();

@@ -48,4 +48,4 @@ final class FileActionsProvider
   }
 }
 
-String _$fileActionsHash() => r'abeddfe58c15b5cd9143d5be89669b06cda923e4';
+String _$fileActionsHash() => r'346e175b5de5683a5c88f8d554b4d5f6ce1efd27';

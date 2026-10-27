@@ -10,6 +10,7 @@ import 'package:vikunja_mobile/core/repositories/account_settings_repository.dar
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 
 import '../../helpers/account_security_fakes.dart';
+import '../../helpers/app_lock_fakes.dart';
 import '../../helpers/auth_fakes.dart';
 import '../../helpers/fakes.dart';
 import '../../helpers/pump_app.dart';
@@ -60,7 +61,7 @@ final class SecurityHarness {
 
   FakeAccountSecurityRepository get security => data.accountSecurity;
   FakeSensitiveClipboard get clipboard => data.clipboard;
-  FakeSecureDisplay get secureDisplay => data.secureDisplay;
+  FakeSecureWindow get secureWindow => data.secureWindow;
 
   /// Signed in on [connection] (a [securityServer] by default) with
   /// [state] as the account settings, then [location] pushed over the

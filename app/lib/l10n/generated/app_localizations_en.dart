@@ -7230,4 +7230,202 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get widgetsPlacedNotSetUp =>
       'Not set up yet – shows the active account';
+
+  @override
+  String get notificationContentReminderTitle => 'Task reminder';
+
+  @override
+  String get notificationContentDueTitle => 'Task due';
+
+  @override
+  String get notificationContentBody => 'Open Rurana to see it';
+
+  @override
+  String get notificationContentActivityTitle => 'New activity';
+
+  @override
+  String get privacyTitle => 'Privacy';
+
+  @override
+  String get privacyEntryTitle => 'App lock and privacy';
+
+  @override
+  String get privacyEntryAppLockOff => 'App lock: Off';
+
+  @override
+  String get privacyEntryAppLockImmediately => 'App lock: On · immediately';
+
+  @override
+  String privacyEntryAppLockAfter(String duration) {
+    return 'App lock: On · after $duration';
+  }
+
+  @override
+  String get privacyLockAfterImmediately => 'Immediately';
+
+  @override
+  String privacyLockAfterMinutes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count minutes',
+      one: '1 minute',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String privacyLockAfterHours(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count hours',
+      one: '1 hour',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get privacyAppLockHeading => 'App lock';
+
+  @override
+  String get privacyAppLockSwitch => 'Lock Rurana';
+
+  @override
+  String get privacyAppLockSubtitle =>
+      'Unlock with biometrics or the device screen lock';
+
+  @override
+  String get privacyAppLockUnsupported =>
+      'Set a screen lock on this device first';
+
+  @override
+  String get privacyAppLockLockedOut => 'Too many attempts. Try again later.';
+
+  @override
+  String get privacyAppLockFailed =>
+      'Couldn\'t check your screen lock. Try again.';
+
+  @override
+  String get privacyLockAfter => 'Lock after';
+
+  @override
+  String get privacyLockAfterRestart => 'Rurana always locks after a restart.';
+
+  @override
+  String get privacyAppSwitcherHidden =>
+      'While the lock is on, the app switcher hides Rurana\'s content.';
+
+  @override
+  String get privacyAppSwitcherBestEffort =>
+      'While the lock is on, the app switcher hides Rurana\'s content as far as this Android version allows. To be sure, turn on Block screenshots.';
+
+  @override
+  String get privacyScreenshotsHeading => 'Screenshots';
+
+  @override
+  String get privacyBlockScreenshots => 'Block screenshots';
+
+  @override
+  String get privacyBlockScreenshotsSubtitle =>
+      'Also hides Rurana from screen recordings and the app overview.';
+
+  @override
+  String get privacyNotificationContentHeading => 'Notification content';
+
+  @override
+  String get privacyNotificationContentAll => 'Show everything';
+
+  @override
+  String get privacyNotificationContentAllSubtitle =>
+      'Task titles and comments, also on the lock screen';
+
+  @override
+  String get privacyNotificationContentHidden => 'Hide on the lock screen';
+
+  @override
+  String get privacyNotificationContentHiddenSubtitle =>
+      'The content shows only while the phone is unlocked';
+
+  @override
+  String get privacyNotificationContentNoTitles => 'Never show task titles';
+
+  @override
+  String get privacyNotificationContentNoTitlesSubtitle =>
+      'Generic texts without task titles, names or comments';
+
+  @override
+  String get privacyNotificationContentIosHint =>
+      'On iPhone, iOS decides this for each app: in Settings → Notifications → Rurana, set Show Previews to When Unlocked.';
+
+  @override
+  String get privacyWidgetsHeading => 'Widgets';
+
+  @override
+  String get privacyWidgetTitles => 'Show task titles in widgets';
+
+  @override
+  String get privacyWidgetTitlesSubtitle =>
+      'When off, widgets show only how many tasks there are';
+
+  @override
+  String get privacySettingsUnreadable =>
+      'Your privacy settings couldn\'t be read, so Rurana locked itself. Choose them again here.';
+
+  @override
+  String get appLockPromptReason => 'Unlock Rurana';
+
+  @override
+  String get privacyAppLockReasonOn =>
+      'Confirm it\'s you to turn on the app lock';
+
+  @override
+  String get privacyAppLockReasonOff =>
+      'Confirm it\'s you to turn off the app lock';
+
+  @override
+  String get privacySaveFailed => 'The setting couldn\'t be saved. Try again.';
+
+  @override
+  String get appLockTitle => 'Rurana is locked';
+
+  @override
+  String get appLockBody =>
+      'Unlock with biometrics or your device\'s screen lock.';
+
+  @override
+  String get appLockUnlock => 'Unlock';
+
+  @override
+  String get appLockLockedOut => 'Too many attempts. Try again later.';
+
+  @override
+  String get appLockUnavailable =>
+      'Rurana couldn\'t check your screen lock. Try again.';
+
+  @override
+  String get appLockTurnedOff =>
+      'App lock was turned off because this device has no screen lock.';
+
+  @override
+  String get appLockPromptHint => 'Use your fingerprint, face or screen lock';
+
+  @override
+  String get appLockPromptStuck =>
+      'The unlock prompt doesn\'t respond. Close Rurana completely and open it again.';
+
+  @override
+  String widgetTitlesHiddenHint(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Open Rurana to see them',
+      one: 'Open Rurana to see it',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get privacyNotificationContentHiddenSubtitleAndroid =>
+      'Notifications don\'t appear on the lock screen; you see them once you unlock';
 }

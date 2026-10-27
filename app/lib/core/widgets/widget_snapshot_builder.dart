@@ -91,33 +91,53 @@ final class WidgetAccount {
   );
 }
 
+/// `showsTaskTitles` as the device's privacy setting was when built.
+typedef WidgetBuild = ({
+  Map<String, WidgetSnapshot> snapshots,
+  WidgetCatalog? catalog,
+  bool showsTaskTitles,
+});
+
 /// The widgets' content of one account, from its database at one instant,
 /// with the account's own display settings: the same sources, order,
 /// permissions and texts as the app's screens. Headless: nothing here
-/// needs a widget tree.
+/// needs a widget tree. Without `showTaskTitles` (a device privacy
+/// setting) a list carries its title and count but no rows, so no task
+/// title and no Done reach the home screen.
 final class WidgetSnapshotBuilder {
-  new({required this._db, required this._texts, DateTime Function()? now})
-    : _now = now ?? DateTime.now;
+  new({
+    required this._db,
+    required this._texts,
+    this._showTaskTitles = true,
+    DateTime Function()? now,
+  }) : _now = now ?? DateTime.now;
 
   final AppDatabase _db;
   final WidgetTexts _texts;
+  final bool _showTaskTitles;
   final DateTime Function() _now;
 
   /// The snapshots of [kinds] by key, and the account's catalog when
   /// [withCatalog]; the database is read once for all of them.
-  Future<({Map<String, WidgetSnapshot> snapshots, WidgetCatalog? catalog})>
-  build(
+  Future<WidgetBuild> build(
     WidgetAccount account,
     Iterable<WidgetKind> kinds, {
     bool withCatalog = true,
   }) async {
-    final build = await _AccountBuild.load(_db, _texts, account, _now());
+    final build = await _AccountBuild.load(
+      _db,
+      _texts,
+      account,
+      _now(),
+      showTaskTitles: _showTaskTitles,
+    );
     return (
       snapshots: {
         for (final kind in kinds.toSet())
           snapshotKey(account.id, kind): await build.snapshot(kind),
       },
       catalog: withCatalog ? build.catalog() : null,
+      showsTaskTitles: _showTaskTitles,
     );
   }
 }
@@ -153,6 +173,7 @@ final class _AccountBuild {
     required this.labels,
     required this.state,
     required this.settings,
+    required this.showTaskTitles,
   }) : projectsById = {for (final project in projects) project.id: project},
        archived = archivedProjectIds(projects).toSet(),
        formatter = texts.formatter(DisplaySettings.from(settings)),
@@ -162,8 +183,9 @@ final class _AccountBuild {
     AppDatabase db,
     WidgetTexts texts,
     WidgetAccount account,
-    DateTime now,
-  ) async {
+    DateTime now, {
+    required bool showTaskTitles,
+  }) async {
     final state = await db.syncStateDao.readAll();
     return _AccountBuild._(
       db: db,
@@ -174,6 +196,7 @@ final class _AccountBuild {
       labels: await db.labelsDao.loadAll(),
       state: state,
       settings: decodeUserSettings(state[SyncStateKeys.userSettings]),
+      showTaskTitles: showTaskTitles,
     );
   }
 
@@ -185,6 +208,7 @@ final class _AccountBuild {
   final List<Label> labels;
   final Map<String, String> state;
   final UserSettings settings;
+  final bool showTaskTitles;
   final Map<int, Project> projectsById;
   final Set<int> archived;
   final MomentFormatter formatter;
@@ -405,8 +429,9 @@ final class _AccountBuild {
     int? newTaskProjectId,
   }) {
     final rows = [
-      for (final task in tasks.take(WidgetSnapshot.maxRows))
-        _row(task, listProjectId: listProjectId),
+      if (showTaskTitles)
+        for (final task in tasks.take(WidgetSnapshot.maxRows))
+          _row(task, listProjectId: listProjectId),
     ];
     final validUntil = nextLocalMidnight(now);
     final more = tasks.length - rows.length;
@@ -428,9 +453,15 @@ final class _AccountBuild {
       }.toList()..sort(),
       rows: rows,
       total: tasks.length,
-      moreLabel: more > 0 ? l10n.widgetMoreTasks(more) : null,
+      moreLabel: more > 0 && showTaskTitles ? l10n.widgetMoreTasks(more) : null,
       countLabel: l10n.widgetTaskCount(tasks.length),
-      empty: empty,
+      // Both renderers show this text in place of the rows.
+      empty: showTaskTitles || tasks.isEmpty
+          ? empty
+          : WidgetText(
+              l10n.widgetTaskCount(tasks.length),
+              body: l10n.widgetTitlesHiddenHint(tasks.length),
+            ),
       message: _sessionMessage,
       messageLink: _sessionMessageLink,
       link: kind.listLink(account.id)?.toUri().toString(),

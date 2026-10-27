@@ -149,6 +149,10 @@ final class _DecliningPins implements WidgetHost {
       _host.deleteForAccount(accountId);
 
   @override
+  Future<void> deleteSnapshotsExcept(String accountId, Set<String> keys) =>
+      _host.deleteSnapshotsExcept(accountId, keys);
+
+  @override
   Future<Map<int, WidgetConfig?>> configs() => _host.configs();
 
   @override

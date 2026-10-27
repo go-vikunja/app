@@ -2,20 +2,28 @@ import 'package:drift/drift.dart' show driftRuntimeOptions;
 import 'package:drift/native.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/activity/activity_providers.dart';
+import 'package:vikunja_mobile/core/activity/activity_tray.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/auth/sign_out_providers.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway_provider.dart';
+import 'package:vikunja_mobile/core/notifications/notification_actions.dart';
+import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
 import 'package:vikunja_mobile/core/notifications/notification_os_ids.dart';
 import 'package:vikunja_mobile/core/notifications/notification_preferences.dart';
 import 'package:vikunja_mobile/core/notifications/notification_preferences_store.dart';
 import 'package:vikunja_mobile/core/notifications/notification_providers.dart';
 import 'package:vikunja_mobile/core/notifications/notification_schedulers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/core/security/privacy_providers.dart';
+import 'package:vikunja_mobile/core/security/privacy_settings.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 
+import '../../helpers/app_lock_fakes.dart';
 import '../../helpers/auth_fakes.dart';
 import '../../helpers/notification_fakes.dart';
 import '../../helpers/sample_data.dart';
@@ -31,6 +39,19 @@ void main() {
   late FakeNotificationGateway gateway;
   late ProviderContainer container;
 
+  List<Override> overrides() => [
+    ...auth.overrides,
+    accountDatabaseFilesProvider.overrideWithValue(files),
+    openDatabasesProvider.overrideWithValue(
+      OpenDatabases(
+        files,
+        open: (_, _) => AppDatabase(NativeDatabase.memory()),
+      ),
+    ),
+    clockProvider.overrideWithValue(() => now),
+    notificationGatewayProvider.overrideWithValue(gateway),
+  ];
+
   setUp(() {
     // One in-memory database per account is the point here.
     driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
@@ -40,20 +61,7 @@ void main() {
     auth = AuthFakes();
     files = FakeAccountDatabaseFiles();
     gateway = FakeNotificationGateway();
-    container = ProviderContainer(
-      overrides: [
-        ...auth.overrides,
-        accountDatabaseFilesProvider.overrideWithValue(files),
-        openDatabasesProvider.overrideWithValue(
-          OpenDatabases(
-            files,
-            open: (_, _) => AppDatabase(NativeDatabase.memory()),
-          ),
-        ),
-        clockProvider.overrideWithValue(() => now),
-        notificationGatewayProvider.overrideWithValue(gateway),
-      ],
-    );
+    container = ProviderContainer(overrides: overrides());
     addTearDown(container.dispose);
   });
 
@@ -166,5 +174,211 @@ void main() {
     expect(gateway.pending.keys, [aliceDue]);
     expect(gateway.calls.where((c) => c.startsWith('schedule')), isEmpty);
     expect(gateway.cancelled, isEmpty);
+  });
+
+  group('privacy settings', () {
+    Future<void> change(PrivacySettings Function(PrivacySettings) edit) =>
+        container.read(privacySettingsControllerProvider.notifier).change(edit);
+
+    Future<(int, int)> scheduledForBoth() async {
+      final (alice, bob) = await twoAccounts();
+      container.listen(accountNotificationSchedulersProvider, (_, _) {});
+      await pumpEventQueue();
+      return (
+        notificationOsIdFor(alice, '1:due'),
+        notificationOsIdFor(bob, '1:due'),
+      );
+    }
+
+    test('stored ones are read for the first run', () async {
+      await storePrivacySettings(
+        auth.preferences,
+        const PrivacySettings(
+          appLock: true,
+          notificationContent: NotificationContent.noTitles,
+        ),
+      );
+
+      await scheduledForBoth();
+
+      expect(gateway.pending.values.map((n) => n.title), [
+        'Task due',
+        'Task due',
+      ]);
+      expect(
+        gateway.pending.values.map((n) => n.privacy),
+        everyElement(const NotificationPrivacy(doneNeedsUnlock: true)),
+      );
+    });
+
+    test('hiding notifications on the lock screen reschedules every '
+        "account's pending ones, hidden", () async {
+      final (aliceDue, bobDue) = await scheduledForBoth();
+      gateway.calls.clear();
+
+      await change(
+        (settings) => settings.copyWith(
+          notificationContent: NotificationContent.hiddenOnLockScreen,
+        ),
+      );
+      await pumpEventQueue();
+
+      expect(
+        gateway.calls.where((c) => c.startsWith('cancel')),
+        unorderedEquals(['cancel $aliceDue', 'cancel $bobDue']),
+      );
+      expect(gateway.pending.keys, unorderedEquals([aliceDue, bobDue]));
+      for (final notification in gateway.pending.values) {
+        expect(notification.title, 'Mine');
+        expect(
+          notification.privacy,
+          const NotificationPrivacy(hiddenOnLockScreen: true),
+        );
+      }
+    });
+
+    test('turning the app lock on reschedules with Done behind the device '
+        'unlock', () async {
+      await scheduledForBoth();
+      gateway.calls.clear();
+
+      await change((settings) => settings.copyWith(appLock: true));
+      await pumpEventQueue();
+
+      expect(
+        gateway.calls.where((c) => c.startsWith('schedule')),
+        hasLength(2),
+      );
+      expect(gateway.pending.values.map((n) => n.privacy.doneNeedsUnlock), [
+        isTrue,
+        isTrue,
+      ]);
+    });
+
+    test('no titles: generic texts, the payload unchanged', () async {
+      final (aliceDue, _) = await scheduledForBoth();
+      final payload = gateway.pending[aliceDue]!.payload;
+
+      await change(
+        (settings) => settings.copyWith(
+          notificationContent: NotificationContent.noTitles,
+        ),
+      );
+      await pumpEventQueue();
+
+      final due = gateway.pending[aliceDue]!;
+      expect(due.title, 'Task due');
+      expect(due.body, 'Open Rurana to see it');
+      expect(due.payload, payload);
+    });
+
+    test("a content that shows less withdraws every account's reminders "
+        'and activity from the tray, but not the sign-in notification; one '
+        'that shows more withdraws nothing', () async {
+      final (alice, bob) = await twoAccounts();
+      container.listen(accountNotificationSchedulersProvider, (_, _) {});
+      await pumpEventQueue();
+      String payload(String accountId, String key) => NotificationPayload(
+        accountId: accountId,
+        taskId: 1,
+        key: key,
+      ).toJson();
+      gateway.tray.addAll({
+        101: payload(alice, '1:due'),
+        102: payload(alice, ActivityTray.activityKey(5)),
+        103: payload(alice, ActivityTray.sessionKey(alice)),
+        201: payload(bob, ActivityTray.moreKey(bob)),
+        301: null,
+      });
+
+      await change(
+        (settings) => settings.copyWith(
+          notificationContent: NotificationContent.noTitles,
+        ),
+      );
+      await pumpEventQueue();
+      expect(gateway.tray.keys, unorderedEquals([103, 301]));
+
+      gateway.tray[104] = payload(alice, '1:due');
+      await change(
+        (settings) =>
+            settings.copyWith(notificationContent: NotificationContent.all),
+      );
+      await pumpEventQueue();
+      expect(gateway.tray.keys, unorderedEquals([103, 104, 301]));
+    });
+
+    test('a headless container reads them anew for every run, since the '
+        'app may have changed them meanwhile', () async {
+      container = ProviderContainer(
+        overrides: [
+          ...overrides(),
+          runsHeadlessProvider.overrideWithValue(true),
+        ],
+      );
+      addTearDown(container.dispose);
+      final (alice, _) = await twoAccounts();
+      final scheduler = container.read(notificationSchedulerProvider(alice))!;
+      await scheduler.reconcile();
+      final due = notificationOsIdFor(alice, '1:due');
+      expect(gateway.pending[due]!.title, 'Mine');
+
+      await storePrivacySettings(
+        auth.preferences,
+        const PrivacySettings(
+          notificationContent: NotificationContent.noTitles,
+        ),
+      );
+      await scheduler.reconcile();
+      await pumpEventQueue();
+
+      expect(gateway.pending[due]!.title, 'Task due');
+    });
+
+    test('other settings leave the notifications alone', () async {
+      await scheduledForBoth();
+      gateway.calls.clear();
+
+      await change(
+        (settings) => settings.copyWith(
+          lockAfter: LockAfter.fiveMinutes,
+          blockScreenshots: true,
+          widgetTitles: false,
+        ),
+      );
+      await pumpEventQueue();
+
+      expect(gateway.calls, isEmpty);
+    });
+
+    test('activity notifications follow the notification content', () async {
+      final (alice, _) = await twoAccounts();
+      await change(
+        (settings) => settings.copyWith(
+          notificationContent: NotificationContent.hiddenOnLockScreen,
+        ),
+      );
+      final entry = container.read(accountsProvider).value!.find(alice)!;
+      final db = container.read(appDatabaseProvider(alice));
+      await db.serverNotificationsDao.upsertAll([
+        sampleNotification(
+          id: 1,
+          extra: {
+            'assignee': const {'id': 7},
+          },
+        ),
+      ], handled: false);
+
+      await container
+          .read(activityNoticesProvider)
+          .show(
+            account: entry.account,
+            db: db,
+            fresh: await db.serverNotificationsDao.unhandledUnread(),
+          );
+
+      expect(gateway.activities.single.title, 'Water the plants');
+      expect(gateway.activities.single.privacy.hiddenOnLockScreen, isTrue);
+    });
   });
 }

@@ -11333,6 +11333,312 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Not set up yet – shows the active account'**
   String get widgetsPlacedNotSetUp;
+
+  /// Title of a reminder notification while the privacy setting hides task titles from notifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Task reminder'**
+  String get notificationContentReminderTitle;
+
+  /// Title of a due-date notification while the privacy setting hides task titles from notifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Task due'**
+  String get notificationContentDueTitle;
+
+  /// Body of a reminder, due-date or activity notification while the privacy setting hides task titles from notifications; no project, name or comment is shown.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Rurana to see it'**
+  String get notificationContentBody;
+
+  /// Title of an activity notification (comment, assignment, mention) while the privacy setting hides task titles from notifications.
+  ///
+  /// In en, this message translates to:
+  /// **'New activity'**
+  String get notificationContentActivityTitle;
+
+  /// Heading of the Account tab's privacy section and title of the privacy page (app lock, screenshots, notification content, widget titles).
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy'**
+  String get privacyTitle;
+
+  /// The Account tab entry to the privacy page.
+  ///
+  /// In en, this message translates to:
+  /// **'App lock and privacy'**
+  String get privacyEntryTitle;
+
+  /// Subtitle of the Account tab's privacy entry while the app lock is off.
+  ///
+  /// In en, this message translates to:
+  /// **'App lock: Off'**
+  String get privacyEntryAppLockOff;
+
+  /// Subtitle of the Account tab's privacy entry while the app lock is on and locks as soon as the app leaves the screen.
+  ///
+  /// In en, this message translates to:
+  /// **'App lock: On · immediately'**
+  String get privacyEntryAppLockImmediately;
+
+  /// Subtitle of the Account tab's privacy entry while the app lock is on; the duration is one of the Lock after choices, e.g. "1 minute".
+  ///
+  /// In en, this message translates to:
+  /// **'App lock: On · after {duration}'**
+  String privacyEntryAppLockAfter(String duration);
+
+  /// Lock after choice: lock as soon as the app leaves the screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Immediately'**
+  String get privacyLockAfterImmediately;
+
+  /// Lock after choice: lock when the app has been away this many minutes. Also used after "after" in the Account tab entry.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 minute} other{{count} minutes}}'**
+  String privacyLockAfterMinutes(int count);
+
+  /// Lock after choice: lock when the app has been away this many hours. Also used after "after" in the Account tab entry.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 hour} other{{count} hours}}'**
+  String privacyLockAfterHours(int count);
+
+  /// Heading of the app lock settings on the privacy page.
+  ///
+  /// In en, this message translates to:
+  /// **'App lock'**
+  String get privacyAppLockHeading;
+
+  /// Switch that turns the app lock on or off.
+  ///
+  /// In en, this message translates to:
+  /// **'Lock Rurana'**
+  String get privacyAppLockSwitch;
+
+  /// Under the app lock switch: what unlocks the app.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock with biometrics or the device screen lock'**
+  String get privacyAppLockSubtitle;
+
+  /// Under the disabled app lock switch when the device has no screen lock or biometrics.
+  ///
+  /// In en, this message translates to:
+  /// **'Set a screen lock on this device first'**
+  String get privacyAppLockUnsupported;
+
+  /// Under the app lock switch when the system locked out biometrics or the screen lock after too many attempts.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many attempts. Try again later.'**
+  String get privacyAppLockLockedOut;
+
+  /// Under the app lock switch when the system's authentication failed for another reason.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t check your screen lock. Try again.'**
+  String get privacyAppLockFailed;
+
+  /// Setting: how long the app may be away before it locks; its value is one of the Lock after choices.
+  ///
+  /// In en, this message translates to:
+  /// **'Lock after'**
+  String get privacyLockAfter;
+
+  /// Under the Lock after setting.
+  ///
+  /// In en, this message translates to:
+  /// **'Rurana always locks after a restart.'**
+  String get privacyLockAfterRestart;
+
+  /// Info line on the privacy page: the app lock also hides the app's content in the app switcher.
+  ///
+  /// In en, this message translates to:
+  /// **'While the lock is on, the app switcher hides Rurana\'s content.'**
+  String get privacyAppSwitcherHidden;
+
+  /// Info line on the privacy page on Android 12 and older, where hiding the app switcher's thumbnail is best effort.
+  ///
+  /// In en, this message translates to:
+  /// **'While the lock is on, the app switcher hides Rurana\'s content as far as this Android version allows. To be sure, turn on Block screenshots.'**
+  String get privacyAppSwitcherBestEffort;
+
+  /// Heading of the Block screenshots setting (Android only).
+  ///
+  /// In en, this message translates to:
+  /// **'Screenshots'**
+  String get privacyScreenshotsHeading;
+
+  /// Switch (Android only) that keeps the app out of screenshots, screen recordings and the app overview.
+  ///
+  /// In en, this message translates to:
+  /// **'Block screenshots'**
+  String get privacyBlockScreenshots;
+
+  /// Under the Block screenshots switch.
+  ///
+  /// In en, this message translates to:
+  /// **'Also hides Rurana from screen recordings and the app overview.'**
+  String get privacyBlockScreenshotsSubtitle;
+
+  /// Heading of the choice how much reminders and activity notifications show.
+  ///
+  /// In en, this message translates to:
+  /// **'Notification content'**
+  String get privacyNotificationContentHeading;
+
+  /// Notification content choice: task titles and comments everywhere, also on the lock screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Show everything'**
+  String get privacyNotificationContentAll;
+
+  /// Under the Show everything choice.
+  ///
+  /// In en, this message translates to:
+  /// **'Task titles and comments, also on the lock screen'**
+  String get privacyNotificationContentAllSubtitle;
+
+  /// Notification content choice: the content shows only while the phone is unlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide on the lock screen'**
+  String get privacyNotificationContentHidden;
+
+  /// Under the Hide on the lock screen choice.
+  ///
+  /// In en, this message translates to:
+  /// **'The content shows only while the phone is unlocked'**
+  String get privacyNotificationContentHiddenSubtitle;
+
+  /// Notification content choice: generic texts without task titles, names or comments.
+  ///
+  /// In en, this message translates to:
+  /// **'Never show task titles'**
+  String get privacyNotificationContentNoTitles;
+
+  /// Under the Never show task titles choice.
+  ///
+  /// In en, this message translates to:
+  /// **'Generic texts without task titles, names or comments'**
+  String get privacyNotificationContentNoTitlesSubtitle;
+
+  /// iOS only, under the Hide on the lock screen choice: the app cannot hide the content itself; the system setting does. Use the names of the iOS Settings app.
+  ///
+  /// In en, this message translates to:
+  /// **'On iPhone, iOS decides this for each app: in Settings → Notifications → Rurana, set Show Previews to When Unlocked.'**
+  String get privacyNotificationContentIosHint;
+
+  /// Heading of the widget titles setting on the privacy page.
+  ///
+  /// In en, this message translates to:
+  /// **'Widgets'**
+  String get privacyWidgetsHeading;
+
+  /// Switch: whether the home-screen widgets list the tasks by title.
+  ///
+  /// In en, this message translates to:
+  /// **'Show task titles in widgets'**
+  String get privacyWidgetTitles;
+
+  /// Under the Show task titles in widgets switch.
+  ///
+  /// In en, this message translates to:
+  /// **'When off, widgets show only how many tasks there are'**
+  String get privacyWidgetTitlesSubtitle;
+
+  /// Note on the privacy page when the stored settings could not be read; the app was locked for safety and shows the defaults.
+  ///
+  /// In en, this message translates to:
+  /// **'Your privacy settings couldn\'t be read, so Rurana locked itself. Choose them again here.'**
+  String get privacySettingsUnreadable;
+
+  /// Reason shown in the system's biometric or screen lock prompt when the app lock asks to unlock the app.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock Rurana'**
+  String get appLockPromptReason;
+
+  /// Reason shown in the system's biometric or screen lock prompt when turning the app lock on.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm it\'s you to turn on the app lock'**
+  String get privacyAppLockReasonOn;
+
+  /// Reason shown in the system's biometric or screen lock prompt when turning the app lock off.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm it\'s you to turn off the app lock'**
+  String get privacyAppLockReasonOff;
+
+  /// Note on the privacy page when a changed setting could not be stored on the device.
+  ///
+  /// In en, this message translates to:
+  /// **'The setting couldn\'t be saved. Try again.'**
+  String get privacySaveFailed;
+
+  /// Heading of the lock screen shown while the app lock is on and the app is locked.
+  ///
+  /// In en, this message translates to:
+  /// **'Rurana is locked'**
+  String get appLockTitle;
+
+  /// Under the lock screen's heading: what unlocks the app.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock with biometrics or your device\'s screen lock.'**
+  String get appLockBody;
+
+  /// Lock screen button that asks for biometrics or the device's screen lock.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock'**
+  String get appLockUnlock;
+
+  /// On the lock screen when the system locked out biometrics or the screen lock after too many failed attempts.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many attempts. Try again later.'**
+  String get appLockLockedOut;
+
+  /// On the lock screen when the system's authentication failed for a reason other than a cancel or a lockout.
+  ///
+  /// In en, this message translates to:
+  /// **'Rurana couldn\'t check your screen lock. Try again.'**
+  String get appLockUnavailable;
+
+  /// Shown once after unlocking when the device's screen lock had been removed, so the app lock turned itself off.
+  ///
+  /// In en, this message translates to:
+  /// **'App lock was turned off because this device has no screen lock.'**
+  String get appLockTurnedOff;
+
+  /// Subtitle of the Android system prompt for the app lock (under the title Rurana, above the reason). At most 60 characters.
+  ///
+  /// In en, this message translates to:
+  /// **'Use your fingerprint, face or screen lock'**
+  String get appLockPromptHint;
+
+  /// On the lock screen and under the app lock switch when the system's prompt is still held by an earlier one that never answered; only restarting the app releases it.
+  ///
+  /// In en, this message translates to:
+  /// **'The unlock prompt doesn\'t respond. Close Rurana completely and open it again.'**
+  String get appLockPromptStuck;
+
+  /// Shown in a home-screen list widget below the task count, instead of the task rows, while the privacy setting hides task titles in widgets.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Open Rurana to see it} other{Open Rurana to see them}}'**
+  String widgetTitlesHiddenHint(int count);
+
+  /// Android only, under the Hide on the lock screen choice: Android leaves such notifications off the secure lock screen entirely, without a placeholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications don\'t appear on the lock screen; you see them once you unlock'**
+  String get privacyNotificationContentHiddenSubtitleAndroid;
 }
 
 class _AppLocalizationsDelegate

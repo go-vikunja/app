@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:vikunja_mobile/core/security/app_excursions.dart';
 import 'package:vikunja_mobile/features/attachments/application/channel_document_picker.dart';
 import 'package:vikunja_mobile/features/attachments/application/plugin_attachment_picker.dart';
 
@@ -77,8 +78,12 @@ extension PickFrom on AttachmentPicker {
 }
 
 @Riverpod(keepAlive: true)
-AttachmentPicker attachmentPicker(Ref ref) => PluginAttachmentPicker(
-  documents: defaultTargetPlatform == TargetPlatform.android
-      ? ChannelDocumentPicker()
-      : null,
-);
+AttachmentPicker attachmentPicker(Ref ref) {
+  final excursions = ref.watch(appExcursionsProvider);
+  return PluginAttachmentPicker(
+    documents: defaultTargetPlatform == TargetPlatform.android
+        ? ChannelDocumentPicker(excursions: excursions)
+        : null,
+    excursions: excursions,
+  );
+}

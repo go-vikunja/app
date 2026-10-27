@@ -10,21 +10,18 @@ part of 'copy_confirmation.dart';
 // ignore_for_file: type=lint, type=warning
 /// Whether the system shows a copy to the clipboard itself, as Android
 /// does from version 13 on; a message of the app's own would say it twice.
-/// The version is the one the app remembered when it started.
 
 @ProviderFor(systemConfirmsCopies)
 final systemConfirmsCopiesProvider = SystemConfirmsCopiesProvider._();
 
 /// Whether the system shows a copy to the clipboard itself, as Android
 /// does from version 13 on; a message of the app's own would say it twice.
-/// The version is the one the app remembered when it started.
 
 final class SystemConfirmsCopiesProvider
     extends $FunctionalProvider<AsyncValue<bool>, bool, FutureOr<bool>>
     with $FutureModifier<bool>, $FutureProvider<bool> {
   /// Whether the system shows a copy to the clipboard itself, as Android
   /// does from version 13 on; a message of the app's own would say it twice.
-  /// The version is the one the app remembered when it started.
   SystemConfirmsCopiesProvider._()
     : super(
         from: null,
@@ -51,4 +48,4 @@ final class SystemConfirmsCopiesProvider
 }
 
 String _$systemConfirmsCopiesHash() =>
-    r'7c75fd635fbfbb6fa27c5632aceec2acd02b11df';
+    r'b0c74c9f13c8754015eee9a564196115afc205b4';

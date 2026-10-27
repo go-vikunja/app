@@ -9,6 +9,7 @@ import 'package:vikunja_mobile/core/notifications/notification_actions.dart';
 import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
 import 'package:vikunja_mobile/core/notifications/notification_os_ids.dart';
 import 'package:vikunja_mobile/core/notifications/notification_preferences.dart';
+import 'package:vikunja_mobile/core/security/privacy_settings.dart';
 import 'package:vikunja_mobile/core/storage/preferences_store.dart';
 import 'package:vikunja_mobile/l10n/generated/app_localizations.dart';
 
@@ -16,13 +17,16 @@ final _log = Logger('ActivityNotifier');
 
 /// Turns new server notifications into OS notifications on the activity
 /// channel, and tells the user once when an account's session has ended.
-/// Headless, so the background runner uses it like the UI does.
+/// Headless, so the background runner uses it like the UI does. The
+/// device's privacy choice of what notifications show is read for every
+/// run; the session notification holds no task data and ignores it.
 final class ActivityNotifier {
   new({
     required this._gateway,
     required this._preferences,
     required this._store,
     required this._l10n,
+    this._content = _showEverything,
     this.shownPerRun = 5,
     this.keptPerAccount = 10,
   }) : _tray = ActivityTray(_gateway);
@@ -31,7 +35,11 @@ final class ActivityNotifier {
   final NotificationPreferencesStore _preferences;
   final PreferencesStore _store;
   final AppLocalizations _l10n;
+  final Future<NotificationContent> Function() _content;
   final ActivityTray _tray;
+
+  static Future<NotificationContent> _showEverything() async =>
+      NotificationContent.all;
 
   /// The newest this many of a run are shown one by one; one more
   /// notification stands for the rest.
@@ -53,7 +61,8 @@ final class ActivityNotifier {
   /// deliberately not, so none is ever shown twice, nor later after the
   /// preference was off. A failing gateway throws and leaves the ones not
   /// yet shown to the next run. With [labelled] (several accounts signed
-  /// in) each names its account. Returns how many were shown one by one.
+  /// in) each names its account, unless notifications show no titles.
+  /// Returns how many were shown one by one.
   Future<int> show({
     required Account account,
     required AppDatabase db,
@@ -66,6 +75,7 @@ final class ActivityNotifier {
       await dao.markHandled(fresh.map((n) => n.id));
       return 0;
     }
+    final content = await _content();
     final described = [
       for (final notification in fresh)
         if (describeActivity(
@@ -74,6 +84,7 @@ final class ActivityNotifier {
                 userId: account.userId,
               ),
               l10n: _l10n,
+              content: content,
             )
             case final text?)
           (notification, text),
@@ -82,8 +93,13 @@ final class ActivityNotifier {
     final oneByOne = described.length > shownPerRun
         ? described.sublist(described.length - shownPerRun)
         : described;
-    final subtitle = labelled ? _label(account) : null;
+    final subtitle = labelled && content != NotificationContent.noTitles
+        ? _label(account)
+        : null;
     final group = 'activity:${account.id}';
+    final privacy = NotificationPrivacy(
+      hiddenOnLockScreen: content == NotificationContent.hiddenOnLockScreen,
+    );
     for (final (notification, text) in oneByOne) {
       final key = ActivityTray.activityKey(notification.id);
       await _gateway.showActivity(
@@ -100,6 +116,7 @@ final class ActivityNotifier {
         ).toJson(),
         subtitle: subtitle,
         group: group,
+        privacy: privacy,
       );
       await dao.markHandled([notification.id]);
     }
@@ -117,6 +134,7 @@ final class ActivityNotifier {
         ).toJson(),
         subtitle: subtitle,
         group: group,
+        privacy: privacy,
       );
     }
     await dao.markHandled(fresh.map((n) => n.id));

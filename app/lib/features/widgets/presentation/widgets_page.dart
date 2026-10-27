@@ -9,7 +9,9 @@ import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/router/pushed_pages.dart';
 import 'package:vikunja_mobile/core/auth/account_title.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/platform/app_round_trips.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/core/security/app_excursions.dart';
 import 'package:vikunja_mobile/core/widgets/widget_config.dart';
 import 'package:vikunja_mobile/core/widgets/widget_providers.dart';
 import 'package:vikunja_mobile/features/common/presentation/announce.dart';
@@ -113,7 +115,13 @@ class _WidgetsPageState extends ConsumerState<WidgetsPage> {
     try {
       // The launcher draws the placed widget at once, from this snapshot.
       await ref.read(widgetRefresherProvider).publish(config);
-      requested = await ref.read(widgetHostProvider).requestPin(config);
+      // The launcher's dialog does not lock the app.
+      requested = await ref
+          .read(appExcursionsProvider)
+          .launchAway(
+            () => ref.read(widgetHostProvider).requestPin(config),
+            opened: (requested) => requested,
+          );
     } on Object catch (error) {
       _log.warning('Could not ask to place a widget: ${error.runtimeType}');
     }

@@ -13,6 +13,9 @@ import 'package:vikunja_mobile/core/network/client_identity.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway_provider.dart';
 import 'package:vikunja_mobile/core/notifications/notification_entry_points.dart';
+import 'package:vikunja_mobile/core/security/app_lock_controller.dart';
+import 'package:vikunja_mobile/core/security/privacy_providers.dart';
+import 'package:vikunja_mobile/core/security/screen_protection.dart';
 import 'package:vikunja_mobile/core/settings/user_settings_providers.dart';
 import 'package:vikunja_mobile/core/storage/preferences_store.dart';
 import 'package:vikunja_mobile/core/sync/sync_providers.dart';
@@ -36,6 +39,9 @@ Future<void> bootstrap() async {
       ),
     ],
   );
+  // Awaited even when the rest fails, so that the first frame is already
+  // locked while the app lock is on.
+  final privacy = container.read(privacySettingsControllerProvider.future);
   try {
     // Behind the native launch screen, so the router starts on its first
     // real screen instead of animating it in over the empty splash route,
@@ -53,10 +59,18 @@ Future<void> bootstrap() async {
   } on Object catch (error) {
     _log.severe('Could not load the local state: ${error.runtimeType}');
   }
-  container.listen(foregroundHeartbeatProvider, (_, _) {});
+  try {
+    await privacy.timeout(const Duration(seconds: 5));
+  } on Object catch (error) {
+    _log.severe('Could not read the privacy settings: ${error.runtimeType}');
+  }
+  container
+    ..listen(foregroundHeartbeatProvider, (_, _) {})
+    ..listen(appLockControllerProvider, (_, _) {});
   runApp(
     UncontrolledProviderScope(container: container, child: const VikunjaApp()),
   );
+  container.listen(screenProtectionProvider, (_, _) {});
   unawaited(_initializeNotifications(container));
   unawaited(_initializeBackground(container));
 }

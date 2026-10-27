@@ -7,6 +7,7 @@ import 'package:vikunja_mobile/core/notifications/local_notification_gateway_pro
 import 'package:vikunja_mobile/core/notifications/notification_providers.dart';
 import 'package:vikunja_mobile/core/repositories/activity_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/core/security/privacy_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
 
 part 'activity_providers.g.dart';
@@ -19,6 +20,8 @@ ActivityNotifier activityNotices(Ref ref) => ActivityNotifier(
   preferences: ref.watch(notificationPreferencesStoreProvider),
   store: ref.watch(preferencesStoreProvider),
   l10n: ref.watch(deviceAppLocalizationsProvider),
+  content: () async =>
+      (await ref.read(privacySettingsProvider.future)).notificationContent,
 );
 
 /// The foreground side of activity and background sync; the foreground

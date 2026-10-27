@@ -52,6 +52,17 @@ final class ActivityTray {
     }
   }
 
+  /// What notifications show became more private: the account's reminders
+  /// and activity notifications go from the tray. The "Sign in again"
+  /// notification holds no task data and stays.
+  Future<void> withdrawTaskNotifications(String accountId) async {
+    for (final (osId, payload) in await _delivered()) {
+      if (payload.accountId == accountId && !isSessionKey(payload.key)) {
+        await _gateway.cancel(osId);
+      }
+    }
+  }
+
   /// Android drops every post beyond 50 notifications of an app, reminders
   /// included, so the account keeps its [keep] newest activity
   /// notifications; the oldest go.

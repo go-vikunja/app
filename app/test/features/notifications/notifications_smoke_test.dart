@@ -85,8 +85,21 @@ void main() {
       await pumpSignedInApp(tester, notifications: notifications);
       await openTab(tester, lookupAppLocalizations(locale).tabAccount);
 
-      await scrollToEnd(tester, find.byType(AccountTab));
+      // Sections below it can take it out of the lazily built list again
+      // by the end.
+      await tester.scrollUntilVisible(
+        find.byType(NotificationsSection),
+        300,
+        scrollable: find
+            .descendant(
+              of: find.byType(AccountTab),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      await tester.pumpAndSettle();
       expect(find.byType(NotificationsSection), findsOneWidget);
+      await scrollToEnd(tester, find.byType(AccountTab));
       expect(tester.takeException(), isNull);
     });
   }

@@ -40,7 +40,7 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 10);
+    await verifier.migrateAndValidate(db, 11);
 
     final task = (await db.tasksDao.find(1))!;
     expect(task.title, 'Keep me');
@@ -98,7 +98,7 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 10);
+    await verifier.migrateAndValidate(db, 11);
 
     final op = (await db.outboxDao.all()).single;
     expect(op.id, 'op-1');
@@ -156,7 +156,7 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 10);
+    await verifier.migrateAndValidate(db, 11);
 
     final task = (await db.tasksDao.find(50))!;
     expect(task.title, 'Remind me');
@@ -180,6 +180,8 @@ void main() {
         title: 'Remind me',
         body: 'Reminder',
         exact: false,
+        hiddenOnLockScreen: false,
+        doneNeedsUnlock: false,
       ),
     ]);
     expect(await db.scheduledNotificationsDao.osIds(), {1234});
@@ -214,13 +216,14 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 10);
+    await verifier.migrateAndValidate(db, 11);
 
     expect((await db.tasksDao.find(50))!.title, 'Remind me');
     final scheduled = (await db.scheduledNotificationsDao.all()).single;
     expect(scheduled.key, '50:due');
     expect(scheduled.osId, 4321);
     expect(scheduled.exact, isTrue);
+    expect(scheduled.hiddenOnLockScreen, isFalse);
     final state = await db.syncStateDao.readAll();
     expect(state[SyncStateKeys.lastSyncedAt], '2026-10-12T12:00:00.000Z');
     expect(state[SyncStateKeys.activitySyncedAt], isNull);
@@ -284,7 +287,7 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 10);
+    await verifier.migrateAndValidate(db, 11);
 
     final parent = (await db.tasksDao.find(60))!;
     expect(parent.subtasks.map((task) => task.id), [61]);
@@ -341,7 +344,7 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 10);
+    await verifier.migrateAndValidate(db, 11);
 
     final snapshot = await db.listSnapshotsDao.load('view:70');
     expect(snapshot.positions, {61: 1, 60: 2});
@@ -396,7 +399,7 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 10);
+    await verifier.migrateAndValidate(db, 11);
 
     final task = (await db.tasksDao.find(60))!;
     expect(task.title, 'Talked about');
@@ -448,7 +451,7 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 10);
+    await verifier.migrateAndValidate(db, 11);
 
     final project = (await db.projectsDao.loadProject(7))!;
     expect(project.title, 'Shared');
@@ -495,7 +498,7 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 10);
+    await verifier.migrateAndValidate(db, 11);
 
     final task = (await db.tasksDao.find(70))!;
     expect(task.title, 'Water the plants');
@@ -511,6 +514,36 @@ void main() {
       1,
     );
     expect(await db.importedWidgetActionsDao.contains('tap-1'), isFalse);
+  });
+
+  test('v10 → v11 keeps the scheduled notifications as scheduled without '
+      'privacy and records it from then on', () async {
+    final verifier = SchemaVerifier(GeneratedHelper());
+    final schema = await verifier.schemaAt(10);
+    schema.rawDatabase.execute(
+      'INSERT INTO scheduled_notifications (key, os_id, task_id, kind, '
+      'fire_at, title, body, snoozed_until, snooze_original_fire_at, exact) '
+      "VALUES ('50:due', 4321, 50, 'dueDate', 1760000000000, 'Remind me', "
+      "'Due now', NULL, NULL, 1)",
+    );
+    final db = AppDatabase(schema.newConnection());
+    addTearDown(db.close);
+
+    await verifier.migrateAndValidate(db, 11);
+
+    final dao = db.scheduledNotificationsDao;
+    final scheduled = (await dao.all()).single;
+    expect(scheduled.key, '50:due');
+    expect(scheduled.title, 'Remind me');
+    expect(scheduled.exact, isTrue);
+    expect(scheduled.hiddenOnLockScreen, isFalse);
+    expect(scheduled.doneNeedsUnlock, isFalse);
+    await dao.upsert(
+      scheduled.copyWith(hiddenOnLockScreen: true, doneNeedsUnlock: true),
+    );
+    final updated = (await dao.all()).single;
+    expect(updated.hiddenOnLockScreen, isTrue);
+    expect(updated.doneNeedsUnlock, isTrue);
   });
 }
 

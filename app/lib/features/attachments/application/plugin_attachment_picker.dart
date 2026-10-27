@@ -2,16 +2,20 @@ import 'package:file_selector/file_selector.dart';
 import 'package:image_picker/image_picker.dart' hide PickedFile;
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
+import 'package:vikunja_mobile/core/platform/app_round_trips.dart';
+import 'package:vikunja_mobile/core/security/app_excursions.dart';
 import 'package:vikunja_mobile/features/attachments/application/attachment_picker.dart';
 import 'package:vikunja_mobile/features/attachments/application/channel_document_picker.dart';
 
 /// [AttachmentPicker] through file_selector (the document picker; on
 /// Android the app's own [documents] instead) and image_picker (the photo
-/// picker and the camera).
+/// picker and the camera). Leaving the app for a picker does not lock it.
 final class PluginAttachmentPicker implements AttachmentPicker {
-  new({this.documents, DateTime Function()? now}) : _now = now ?? DateTime.now;
+  new({this.documents, this.excursions, DateTime Function()? now})
+    : _now = now ?? DateTime.now;
 
   final ChannelDocumentPicker? documents;
+  final AppExcursions? excursions;
   final DateTime Function() _now;
 
   static const _images = XTypeGroup(
@@ -36,9 +40,11 @@ final class PluginAttachmentPicker implements AttachmentPicker {
       );
     }
     final groups = imagesOnly ? const [_images] : const <XTypeGroup>[];
-    final files = multiple
-        ? await openFiles(acceptedTypeGroups: groups)
-        : [?await openFile(acceptedTypeGroups: groups)];
+    final files = await _away(
+      () async => multiple
+          ? await openFiles(acceptedTypeGroups: groups)
+          : [?await openFile(acceptedTypeGroups: groups)],
+    );
     return PickedFiles(files: files.map(_picked).toList());
   }
 
@@ -50,29 +56,31 @@ final class PluginAttachmentPicker implements AttachmentPicker {
     bool multiple = true,
   }) async {
     final picker = ImagePicker();
-    final List<XFile> files;
-    if (imagesOnly) {
-      files = multiple
-          ? await picker.pickMultiImage(requestFullMetadata: false)
-          : [
-              ?await picker.pickImage(
-                source: ImageSource.gallery,
-                requestFullMetadata: false,
-              ),
-            ];
-    } else {
-      files = multiple
+    final files = await _away(() async {
+      if (imagesOnly) {
+        return multiple
+            ? await picker.pickMultiImage(requestFullMetadata: false)
+            : [
+                ?await picker.pickImage(
+                  source: ImageSource.gallery,
+                  requestFullMetadata: false,
+                ),
+              ];
+      }
+      return multiple
           ? await picker.pickMultipleMedia(requestFullMetadata: false)
           : [?await picker.pickMedia(requestFullMetadata: false)];
-    }
+    });
     return files.map(_picked).toList();
   }
 
   @override
   Future<PickedFile?> takePhoto() async {
-    final file = await ImagePicker().pickImage(
-      source: ImageSource.camera,
-      requestFullMetadata: false,
+    final file = await _away(
+      () => ImagePicker().pickImage(
+        source: ImageSource.camera,
+        requestFullMetadata: false,
+      ),
     );
     if (file == null) return null;
     return PickedFile(
@@ -81,6 +89,9 @@ final class PluginAttachmentPicker implements AttachmentPicker {
       mimeType: file.mimeType ?? mediaTypeOf(file.path),
     );
   }
+
+  Future<T> _away<T>(Future<T> Function() pick) =>
+      excursions?.roundTrip(pick) ?? pick();
 
   static PickedFile _picked(XFile file) => PickedFile(
     path: file.path,

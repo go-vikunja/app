@@ -108,6 +108,8 @@ void main() {
       AppRoutes.taskEdit(4),
       AppRoutes.taskDescription(4),
       AppRoutes.addAccount,
+      AppRoutes.widgets,
+      AppRoutes.privacy,
       '${AppRoutes.labels}x',
     ]) {
       expect(AppRoutes.isClosedToGuests(location), isFalse, reason: location);
