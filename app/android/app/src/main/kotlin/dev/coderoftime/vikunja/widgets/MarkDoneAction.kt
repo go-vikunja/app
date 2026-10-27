@@ -25,7 +25,7 @@ class MarkDoneAction : ActionCallback {
         val queued = try {
             withContext(Dispatchers.IO) { WidgetActionQueue(WidgetFiles.of(context)).add(action, generatedAt) }
         } catch (error: IOException) {
-            Log.w(TAG, "Could not queue a widget Done", error)
+            Log.w(TAG, "Could not queue a widget Done: ${error.javaClass.simpleName}")
             false
         }
         // Also without a new entry: the redraw clears the tick the launcher drew.

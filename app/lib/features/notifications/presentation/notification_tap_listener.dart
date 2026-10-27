@@ -3,10 +3,13 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/router/pop_pages_over_shell.dart';
 import 'package:vikunja_mobile/core/activity/activity_item.dart';
 import 'package:vikunja_mobile/core/activity/activity_tray.dart';
+import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/links/widget_link_key.dart';
 import 'package:vikunja_mobile/core/notifications/notification_actions.dart';
 import 'package:vikunja_mobile/core/repositories/activity_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
@@ -25,7 +28,12 @@ final _log = Logger('NotificationTap');
 /// task, and so does the one that stands for several; a test notification
 /// and one about an ended session open the Account tab, after the pages
 /// over the shell went as if the user went back (the edit page asks
-/// first). Signed out, the tap is dropped.
+/// first). Signed out, the tap is dropped. All this only for a payload with
+/// the install's widget-link key: on Android any app can make one up, so a
+/// tap without it (or from a notification scheduled before the key) never
+/// switches accounts silently and marks nothing read; its task opens like a
+/// task link from outside, which asks first, and the rest opens only in
+/// the active account.
 class NotificationTapListener extends ConsumerStatefulWidget {
   const new({required this.child, super.key});
 
@@ -39,12 +47,14 @@ class NotificationTapListener extends ConsumerStatefulWidget {
 class _NotificationTapListenerState
     extends ConsumerState<NotificationTapListener> {
   late final TaskOpener _opener;
+  late final Future<String?> _linkKey;
   StreamSubscription<String>? _taps;
 
   @override
   void initState() {
     super.initState();
     _opener = ref.read(taskOpenerProvider);
+    _linkKey = readWidgetLinkKey(ref.read(preferencesStoreProvider));
     final source = ref.read(notificationTapSourceProvider);
     _taps = source.taps.listen(_onPayload);
     unawaited(
@@ -74,14 +84,46 @@ class _NotificationTapListenerState
       _log.fine('Ignoring a notification without a readable payload');
       return;
     }
-    // A tap during an opening waits for it: the last one wins.
-    _opener.request(
-      () => _open(payload).catchError((Object error) {
-        _log.warning(
-          'Could not open the tapped notification: ${error.runtimeType}',
+    unawaited(
+      _linkKey.then((key) {
+        if (!mounted) return;
+        final open = widgetLinkKeyMatches(payload.linkKey, key)
+            ? _open
+            : _openForeign;
+        // A tap during an opening waits for it: the last one wins.
+        _opener.request(
+          () => open(payload).catchError((Object error) {
+            _log.warning(
+              'Could not open the tapped notification: ${error.runtimeType}',
+            );
+          }),
         );
       }),
     );
+  }
+
+  Future<void> _openForeign(NotificationPayload payload) async {
+    _log.fine('A notification tap without the link key: no account switch');
+    // 0 names no task: a test notification or a task-less activity.
+    final namesTask =
+        payload.taskId != 0 &&
+        !ActivityTray.isSessionKey(payload.key) &&
+        !ActivityTray.isMoreKey(payload.key);
+    if (namesTask) {
+      await _opener.openLink(
+        TaskDeepLink(TaskById(payload.taskId), account: payload.accountId),
+      );
+      return;
+    }
+    if (!mounted || !_opener.isActive(payload.accountId)) return;
+    if (ActivityTray.isSessionKey(payload.key)) {
+      await _openAccountTab(confirmTest: false);
+    } else if (ActivityTray.isMoreKey(payload.key) ||
+        ActivityTray.activityIdOf(payload.key) != null) {
+      _openInbox();
+    } else if (payload.taskId == testNotificationTaskId) {
+      await _openAccountTab(confirmTest: true);
+    }
   }
 
   /// The active account's repositories are read only once the payload's

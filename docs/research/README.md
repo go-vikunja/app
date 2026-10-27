@@ -72,6 +72,12 @@ Item 11 comes from the step 35b research and was read from the dio 5.11.1 and Da
     - It runs after the request was sent and the response headers arrived, and only for a chain the `SecurityContext` already accepted: a self-signed server fails before it is asked, and an impostor would get the token first.
     - The app pins in the TLS handshake instead, and one adapter in the base `Dio`s sends only pinned, CA-trusted and client-certificate servers through `dart:io` ([D65](../decisions.md#d65-connection-settings-per-server-address-in-the-apps-transport-a-certificate-pinned-in-the-tls-handshake-or-a-trusted-ca-certificate-a-client-certificate-access-headers-and-unencrypted-connections-only-with-consent-failing-closed)).
 
+Item 12 comes from the step 35c audit and was read from Android's documentation on Auto Backup and on the backup changes of Android 12.
+
+12. **`android:allowBackup="false"` does not stop a device-to-device transfer** (auth.md §15.2, synthesis.md §2.5 and §3).
+    - For an app targeting Android 12 or later it turns cloud backup off, but on devices of some manufacturers not a transfer to a new phone. That takes `android:dataExtractionRules` with a `<device-transfer>` section; below Android 12 `allowBackup="false"` covers both.
+    - The app excludes everything from both since step 35c ([D66](../decisions.md#d66-a-threat-model-uncaught-errors-redacted-and-never-printed-in-release-builds-the-apps-data-out-of-backups-and-device-transfer-routes-pushed-by-the-platform-taken-only-as-app-scheme-links-widget-links-and-notification-taps-switching-accounts-only-with-a-per-install-key-exported-components-and-dependencies-checked-in-ci)).
+
 ## Confirmed on live servers
 
 These statements in the research files are now confirmed:

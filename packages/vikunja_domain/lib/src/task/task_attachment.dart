@@ -40,5 +40,5 @@ final class TaskAttachment {
   int get hashCode => Object.hash(id, taskId, name, mime, size);
 
   @override
-  String toString() => 'TaskAttachment($id, $name)';
+  String toString() => 'TaskAttachment($id)';
 }

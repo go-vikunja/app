@@ -16,6 +16,8 @@ import 'package:vikunja_mobile/core/widgets/widget_config.dart';
 import 'package:vikunja_mobile/core/widgets/widget_providers.dart';
 import 'package:vikunja_mobile/core/widgets/widget_snapshot.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/account_identity.dart';
+import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
+import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 import 'package:vikunja_mobile/features/widgets/application/widget_choices.dart';
@@ -26,6 +28,10 @@ final _log = Logger('WidgetConfigure');
 /// The setup of one placed Android widget: its account, what it shows and
 /// the list's project, label, saved filter or days, with a preview of what
 /// it would show now. Save stores the setup and writes the widget's data.
+/// Any app can send the link that opens it, so an id that is not one of
+/// the app's placed widgets, or placed widgets that cannot be read, get a
+/// refusal instead (iOS, which sets widgets up in their own settings,
+/// always).
 class WidgetConfigurePage extends ConsumerStatefulWidget {
   const new({required this.appWidgetId, this.fromWidget = false, super.key});
 
@@ -55,6 +61,7 @@ class _WidgetConfigurePageState extends ConsumerState<WidgetConfigurePage> {
   String? _accountId;
   WidgetKind? _kind;
   var _saving = false;
+  var _refused = false;
   Future<WidgetSnapshot?>? _preview;
 
   @override
@@ -64,14 +71,20 @@ class _WidgetConfigurePageState extends ConsumerState<WidgetConfigurePage> {
   }
 
   Future<void> _load() async {
-    Map<int, WidgetConfig?> configs;
+    final Map<int, WidgetConfig?> configs;
     try {
       configs = await ref.read(widgetHostProvider).configs();
     } on Object catch (error) {
       _log.warning('Could not read the widget configs: ${error.runtimeType}');
-      configs = const {};
+      if (mounted) setState(() => _refused = true);
+      return;
     }
     if (!mounted) return;
+    if (!configs.containsKey(widget.appWidgetId)) {
+      _log.info('Refused to set up a widget that is not placed');
+      setState(() => _refused = true);
+      return;
+    }
     final registry = ref.read(accountsProvider).value;
     final saved = configs[widget.appWidgetId];
     final keep = saved != null && registry?.find(saved.accountId) != null;
@@ -279,6 +292,18 @@ class _WidgetConfigurePageState extends ConsumerState<WidgetConfigurePage> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    if (_refused) {
+      return Scaffold(
+        appBar: AppBar(title: Text(l10n.widgetConfigureTitle)),
+        body: CenteredScrollView(
+          child: EmptyState(
+            icon: Icons.widgets_outlined,
+            title: l10n.widgetConfigureUnknownTitle,
+            body: l10n.widgetConfigureUnknownBody,
+          ),
+        ),
+      );
+    }
     final registry = ref.watch(accountsProvider).value;
     final accountId = _accountId;
     final kind = _kind;

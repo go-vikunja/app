@@ -131,5 +131,5 @@ final class Project {
   );
 
   @override
-  String toString() => 'Project($id, $title)';
+  String toString() => 'Project($id)';
 }

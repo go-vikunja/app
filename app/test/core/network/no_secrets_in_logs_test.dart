@@ -14,18 +14,11 @@ import 'package:vikunja_mobile/core/realtime/realtime_providers.dart';
 import '../../helpers/auth_fakes.dart';
 import '../../helpers/tls_fixtures.dart';
 
-/// The dummy values of `test/fixtures/tls/access.env`.
-Map<String, String> _accessValues() => {
-  for (final line in const LineSplitter().convert(tlsFixtureText('access.env')))
-    if (line.split('=') case [final name, final value] when value.isNotEmpty)
-      name.trim(): value.trim(),
-};
-
 // Runs the profile paths that log (requests, failures, refused settings,
 // the realtime connector) with every logger on, and greps the output.
 void main() {
   test('header values and the PKCS#12 password never reach a log', () async {
-    final access = _accessValues();
+    final access = tlsAccessValues();
     final id = access['RURANA_TEST_ACCESS_ID']!;
     final secret = access['RURANA_TEST_ACCESS_SECRET']!;
     final password = tlsFixturePassword;

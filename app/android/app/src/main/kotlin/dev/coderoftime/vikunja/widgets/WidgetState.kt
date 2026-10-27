@@ -8,6 +8,7 @@ internal data class ListWidgetState(
     val snapshot: Snapshot?,
     val hiddenTaskIds: Set<Long>,
     val dynamicColor: Boolean,
+    val linkKey: String? = null,
 ) {
     companion object {
         fun load(files: WidgetFiles, appWidgetId: Int): ListWidgetState {
@@ -25,6 +26,7 @@ internal data class ListWidgetState(
                     ?.let { WidgetActionQueue(files).hiddenTaskIds(it.accountId, it.generatedAt) }
                     .orEmpty(),
                 dynamicColor = host?.dynamicColor ?: true,
+                linkKey = host?.linkKey,
             )
         }
     }
@@ -36,14 +38,17 @@ internal data class QuickAddState(
     val accountId: String?,
     val snapshot: Snapshot?,
     val dynamicColor: Boolean,
+    val linkKey: String? = null,
 ) {
     companion object {
         fun load(files: WidgetFiles, appWidgetId: Int): QuickAddState {
             val config = files.readConfig(appWidgetId)
+            val host = files.readHost()
             return QuickAddState(
                 accountId = config?.accountId,
                 snapshot = config?.key?.let(files::readSnapshot),
-                dynamicColor = files.readHost()?.dynamicColor ?: true,
+                dynamicColor = host?.dynamicColor ?: true,
+                linkKey = host?.linkKey,
             )
         }
     }
@@ -52,9 +57,9 @@ internal data class QuickAddState(
 internal data class ShownRow(val row: SnapshotRow, val tone: DueTone)
 
 internal sealed interface ListContent {
-    data class SetUp(val appWidgetId: Int) : ListContent
+    data class SetUp(val appWidgetId: Int, val linkKey: String? = null) : ListContent
 
-    data class NotLoaded(val accountId: String?) : ListContent
+    data class NotLoaded(val accountId: String?, val linkKey: String? = null) : ListContent
 
     data class Shown(
         val accountId: String,
@@ -75,15 +80,16 @@ internal sealed interface ListContent {
         val more: Int,
         val moreLabel: String?,
         val empty: WidgetText?,
+        val linkKey: String? = null,
     ) : ListContent
 
     companion object {
         fun of(state: ListWidgetState, now: Long): ListContent {
             val snapshot = state.snapshot
                 ?: return if (!state.configured && state.accountId == null) {
-                    SetUp(state.appWidgetId)
+                    SetUp(state.appWidgetId, state.linkKey)
                 } else {
-                    NotLoaded(state.accountId)
+                    NotLoaded(state.accountId, state.linkKey)
                 }
             val listed = snapshot.state != SnapshotState.ACCOUNT_REMOVED && snapshot.state != SnapshotState.GONE
             val rows = if (listed) snapshot.rows else emptyList()
@@ -104,7 +110,7 @@ internal sealed interface ListContent {
                 message = snapshot.message.takeIf { snapshot.state != SnapshotState.OK },
                 // "Choose another list" leads to this widget's own setup.
                 messageLink = if (!listed && state.configured) {
-                    WidgetLinks.configureLink(state.appWidgetId)
+                    WidgetLinks.configureLink(state.appWidgetId, state.linkKey)
                 } else {
                     snapshot.messageLink ?: snapshot.link
                 },
@@ -112,6 +118,7 @@ internal sealed interface ListContent {
                 more = total - visible.size,
                 moreLabel = snapshot.moreLabel,
                 empty = snapshot.empty,
+                linkKey = state.linkKey,
             )
         }
 

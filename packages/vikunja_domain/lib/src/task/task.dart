@@ -243,5 +243,5 @@ final class Task {
   );
 
   @override
-  String toString() => 'Task($id, $displayIdentifier, $title)';
+  String toString() => 'Task($id, $displayIdentifier)';
 }

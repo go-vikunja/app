@@ -75,9 +75,11 @@ class RuranaWidgets {
     return file == null ? null : await _readOrNull(file);
   }
 
+  /// [linkKey] goes into the links the native widgets build themselves.
   Future<bool> writeHost({
     required String? activeAccountId,
     required bool dynamicColor,
+    String? linkKey,
   }) async {
     final root = await widgetsDirectory();
     if (root == null) return false;
@@ -87,6 +89,7 @@ class RuranaWidgets {
         'version': 1,
         'activeAccountId': activeAccountId,
         'dynamicColor': dynamicColor,
+        'linkKey': ?linkKey,
       }),
     );
   }

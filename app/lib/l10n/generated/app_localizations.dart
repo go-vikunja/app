@@ -12599,6 +12599,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This certificate is valid for less than 100 days, so the server replaces it often. Trusting this exact certificate stops working at every renewal; trusting the CA certificate that issued it keeps working.'**
   String get connectionTrustShortLived;
+
+  /// Shown instead of the widget setup when a link names a widget that is not one of the app's widgets placed on this device's home screen.
+  ///
+  /// In en, this message translates to:
+  /// **'This widget can\'t be set up here'**
+  String get widgetConfigureUnknownTitle;
+
+  /// Body below widgetConfigureUnknownTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Only Rurana widgets on this device\'s home screen can be set up. Open the widget\'s settings on the home screen instead.'**
+  String get widgetConfigureUnknownBody;
 }
 
 class _AppLocalizationsDelegate

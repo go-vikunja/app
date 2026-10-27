@@ -43,10 +43,8 @@ final _redactions = <(RegExp, String Function(Match))>[
     RegExp(r'\b(bearer)\s+[A-Za-z0-9\-._~+/]{8,}=*', caseSensitive: false),
     (m) => '${m[1]} $redactedPlaceholder',
   ),
-  (
-    RegExp(r'eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*'),
-    (_) => redactedPlaceholder,
-  ),
+  // Also a JWT cut off after its header, as a FormatException quotes it.
+  (RegExp(r'eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_.-]*'), (_) => redactedPlaceholder),
   (RegExp(r'\btk_[A-Za-z0-9]+'), (_) => redactedPlaceholder),
   // A TOTP setup link carries the secret and names the account.
   (
@@ -57,7 +55,7 @@ final _redactions = <(RegExp, String Function(Match))>[
     RegExp(
       '"(password|old_password|new_password|token|access_token|refresh_token|'
       'id_token|code|code_verifier|client_secret|secret|totp_passcode|'
-      r'passcode|state|hash)"\s*:\s*"[^"]*"',
+      r'passcode|state|hash|email|k)"\s*:\s*"[^"\r\n]*"?',
       caseSensitive: false,
     ),
     (m) => '"${m[1]}":"$redactedPlaceholder"',
@@ -65,7 +63,8 @@ final _redactions = <(RegExp, String Function(Match))>[
   (
     RegExp(
       r'\b(password|token|access_token|refresh_token|id_token|code|'
-      r'code_verifier|client_secret|secret|state)=[^&\s"]+',
+      'code_verifier|client_secret|secret|state|email|invite-link|'
+      r'share-auth-token)=[^&\s"]+',
       caseSensitive: false,
     ),
     (m) => '${m[1]}=$redactedPlaceholder',
@@ -86,9 +85,27 @@ final _redactions = <(RegExp, String Function(Match))>[
     RegExp('(?<![A-Za-z0-9_-])[A-Za-z0-9_-]{40,}(?![A-Za-z0-9_-])'),
     (_) => redactedPlaceholder,
   ),
+  // The widget-link key (`k`), which also fits the long-run rule.
+  (RegExp(r'([?&])k=[^&\s"#]+'), (m) => '${m[1]}k=$redactedPlaceholder'),
+  // A link's fragment carries a guest's share hash or an invite token; the
+  // name of its first key stays readable.
+  (
+    RegExp(
+      r'''(\b[a-z][a-z0-9+.-]*://[^\s#"'<>]*)#(?:([A-Za-z][\w-]*)=)?[^\s"'<>]+''',
+      caseSensitive: false,
+    ),
+    (m) => '${m[1]}#${m[2] == null ? '' : '${m[2]}='}$redactedPlaceholder',
+  ),
   (
     RegExp(r'(\b[a-z][a-z0-9+.-]*://)[^/\s@]+@', caseSensitive: false),
     (m) => '${m[1]}$redactedPlaceholder@',
+  ),
+  // After the user-info rule, which keeps the host of `user:pw@host`.
+  (
+    RegExp(
+      r'(?<![\w.%+-])[\w.%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}',
+    ),
+    (_) => redactedPlaceholder,
   ),
 ];
 

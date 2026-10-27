@@ -134,11 +134,19 @@ internal data class InstanceConfig(val key: String?, val accountId: String?) {
     }
 }
 
-internal data class HostSettings(val activeAccountId: String?, val dynamicColor: Boolean) {
+internal data class HostSettings(
+    val activeAccountId: String?,
+    val dynamicColor: Boolean,
+    val linkKey: String? = null,
+) {
     companion object {
         fun parse(text: String): HostSettings? = parseOrNull {
             val json = JSONObject(text)
-            HostSettings(json.string("activeAccountId"), json.opt("dynamicColor") != false)
+            HostSettings(
+                json.string("activeAccountId"),
+                json.opt("dynamicColor") != false,
+                json.string("linkKey")?.takeIf { it.isNotEmpty() },
+            )
         }
     }
 }

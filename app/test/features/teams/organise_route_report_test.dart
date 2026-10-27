@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
@@ -12,7 +14,7 @@ import '../../helpers/pump_app.dart';
 import '../../helpers/route_report.dart';
 import 'organise_harness.dart';
 
-// Android reports the route list back when the app is opened again; the
+// go_router decodes the route list anew (flutter/flutter#128122); the
 // pages that wait for one they pushed must still get its result.
 void main() {
   late OrganiseHarness harness;
@@ -76,6 +78,28 @@ void main() {
     expect(find.byType(TeamPage), findsOneWidget);
     expect(find.text(en.descriptionEditorSaved), findsOneWidget);
     expect(find.textContaining('New'), findsOneWidget);
+  });
+
+  // The helper's canary: when a plain push's future survives the report,
+  // the helper no longer causes the re-decode (or go_router fixed it), and
+  // the tests here prove nothing.
+  testWidgets("the report drops a plain push's future", (tester) async {
+    harness.teams.teams = [sampleTeam(id: 5, name: 'Design')];
+    await harness.pump(tester, location: AppRoutes.teams);
+    final router = containerOf(tester).read(appRouterProvider);
+
+    Future<bool> popped({required bool reported}) async {
+      var done = false;
+      unawaited(router.push<void>(AppRoutes.team(5)).then((_) => done = true));
+      await tester.pumpAndSettle();
+      if (reported) await reportRouteFromPlatform(tester);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      return done;
+    }
+
+    expect(await popped(reported: false), isTrue);
+    expect(await popped(reported: true), isFalse);
   });
 
   testWidgets('the teams page reads the list again after a team page that '

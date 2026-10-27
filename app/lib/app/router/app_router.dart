@@ -241,6 +241,10 @@ GoRouter appRouter(Ref ref) {
       if (ref.read(deepLinkRelayProvider).accept(state.uri)) {
         return AppRoutes.splash;
       }
+      // Only app code could still go to a full URI; it is no route either.
+      if (state.uri.hasScheme || state.uri.host.isNotEmpty) {
+        return AppRoutes.splash;
+      }
       final registry = ref.read(accountsProvider);
       final redirect = _redirect(
         location: state.matchedLocation,
@@ -621,20 +625,26 @@ GoRouter appRouter(Ref ref) {
   return router;
 }
 
-/// Takes every URI of the app's own scheme that the platform pushes (a
-/// task link, an OAuth callback that arrived after its sign-in ended) for
-/// the deep-link relay, so that the router never treats one as a route.
-/// go_router's `onEnter` could block them too, but with an `onEnter` every
-/// route parse is asynchronous, the first one included, and the app's
-/// first frame would be empty.
+/// Takes every route the platform pushes, so that the router never treats
+/// one as a route: a URI of the app's own scheme (a task or widget link, an
+/// OAuth callback that arrived after its sign-in ended) goes to the
+/// deep-link relay, anything else is dropped. Android pushes the data of
+/// any intent another app sends to the exported MainActivity, whatever its
+/// scheme, a bare path included; the app never navigates itself this way
+/// (its links use the app's scheme, notifications, shares and shortcuts
+/// their own channels). go_router's `onEnter` could block them too, but
+/// with an `onEnter` every route parse is asynchronous, the first one
+/// included, and the app's first frame would be empty.
 final class _AppSchemeLinks with WidgetsBindingObserver {
   new(this._accept);
 
   final bool Function(Uri uri) _accept;
 
   @override
-  Future<bool> didPushRouteInformation(RouteInformation routeInformation) =>
-      SynchronousFuture(_accept(routeInformation.uri));
+  Future<bool> didPushRouteInformation(RouteInformation routeInformation) {
+    _accept(routeInformation.uri);
+    return SynchronousFuture(true);
+  }
 }
 
 /// The `:id` of a route; negative for a task created on this device and

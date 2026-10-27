@@ -110,9 +110,11 @@ void main() {
     Set<WidgetKind> kinds, {
     WidgetAccount account = alice,
     WidgetTexts? using,
+    String? linkKey,
   }) async => (await WidgetSnapshotBuilder(
     db: db,
     texts: using ?? texts,
+    linkKey: linkKey,
     now: () => now,
   ).build(account, kinds, withCatalog: false)).snapshots;
 
@@ -122,6 +124,44 @@ void main() {
     WidgetTexts? using,
   }) async =>
       (await build({kind}, account: account, using: using)).values.single;
+
+  test("every link carries the install's link key", () async {
+    const key = 'AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8';
+    const ended = WidgetAccount(
+      id: accountId,
+      title: 'Alice',
+      host: 'vikunja.example.com',
+      isGuest: false,
+      sessionEnded: true,
+      supportsV2: true,
+    );
+    final snapshots = [
+      ...(await build({
+        const TodayKind(),
+        const ProjectTasksKind(1),
+        const ProjectTasksKind(99),
+        const QuickAddKind(),
+      }, linkKey: key)).values,
+      ...(await build(
+        {const TodayKind()},
+        account: ended,
+        linkKey: key,
+      )).values,
+    ];
+    final links = [
+      for (final snapshot in snapshots) ...[
+        ?snapshot.link,
+        ?snapshot.newTaskLink,
+        ?snapshot.messageLink,
+        for (final row in snapshot.rows) row.link,
+      ],
+    ];
+
+    expect(links, hasLength(greaterThan(6)));
+    for (final link in links) {
+      expect(Uri.parse(link).queryParameters['k'], key, reason: link);
+    }
+  });
 
   List<String> titles(WidgetSnapshot snapshot) => [
     for (final row in snapshot.rows) row.title,

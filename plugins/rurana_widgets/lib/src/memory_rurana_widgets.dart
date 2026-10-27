@@ -3,7 +3,11 @@ import 'dart:io';
 import 'package:rurana_widgets/src/rurana_widgets.dart';
 import 'package:rurana_widgets/src/widget_models.dart';
 
-typedef WidgetHostState = ({String? activeAccountId, bool dynamicColor});
+typedef WidgetHostState = ({
+  String? activeAccountId,
+  bool dynamicColor,
+  String? linkKey,
+});
 
 typedef PinRequest = ({
   WidgetProviderKind provider,
@@ -71,8 +75,13 @@ final class MemoryRuranaWidgets implements RuranaWidgets {
   Future<bool> writeHost({
     required String? activeAccountId,
     required bool dynamicColor,
+    String? linkKey,
   }) async {
-    final next = (activeAccountId: activeAccountId, dynamicColor: dynamicColor);
+    final next = (
+      activeAccountId: activeAccountId,
+      dynamicColor: dynamicColor,
+      linkKey: linkKey,
+    );
     if (host == next) return false;
     host = next;
     return true;

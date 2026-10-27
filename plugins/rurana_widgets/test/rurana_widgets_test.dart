@@ -149,6 +149,19 @@ void main() {
         'activeAccountId': _account,
         'dynamicColor': false,
       });
+
+      expect(
+        await widgets.writeHost(
+          activeAccountId: _account,
+          dynamicColor: false,
+          linkKey: 'link-key-marker',
+        ),
+        isTrue,
+      );
+      expect(
+        jsonDecode(file('host.json').readAsStringSync()),
+        containsPair('linkKey', 'link-key-marker'),
+      );
     });
   });
 

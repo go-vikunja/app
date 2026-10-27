@@ -53,7 +53,11 @@ void main() {
       2,
       const WidgetConfig(accountId: alice, kind: QuickAddKind()),
     );
-    await host.writeHost(activeAccountId: alice, dynamicColor: false);
+    await host.writeHost(
+      activeAccountId: alice,
+      dynamicColor: false,
+      linkKey: 'link-key-marker',
+    );
     plugin.requestedKeys.addAll({'$alice.label_3', 'not a key of ours'});
 
     expect(await host.displayedConfigs(), {
@@ -61,7 +65,11 @@ void main() {
       const WidgetConfig(accountId: alice, kind: TodayKind()),
       const WidgetConfig(accountId: alice, kind: LabelTasksKind(3)),
     });
-    expect(plugin.host, (activeAccountId: alice, dynamicColor: false));
+    expect(plugin.host, (
+      activeAccountId: alice,
+      dynamicColor: false,
+      linkKey: 'link-key-marker',
+    ));
   });
 
   test('asks the launcher for the right widget, with its config', () async {

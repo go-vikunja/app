@@ -56,6 +56,7 @@ void main() {
     int window = 100,
     AppDatabase? database,
     NotificationPrivacy privacy = const NotificationPrivacy(),
+    String? linkKey,
   }) {
     final scheduler = NotificationScheduler(
       accountId: accountId,
@@ -68,6 +69,7 @@ void main() {
         privacy: privacy,
       ),
       window: window,
+      linkKey: () async => linkKey,
       now: () => now,
       createTimer: timers.create,
     );
@@ -77,6 +79,18 @@ void main() {
 
   Future<List<ScheduledNotificationRow>> rows() =>
       db.scheduledNotificationsDao.all();
+
+  test("the payloads carry the install's link key", () async {
+    await scheduler(linkKey: 'link-key-marker').reconcile();
+
+    expect(gateway.scheduled, hasLength(2));
+    for (final scheduled in gateway.scheduled) {
+      expect(
+        NotificationPayload.fromJson(scheduled.payload).linkKey,
+        'link-key-marker',
+      );
+    }
+  });
 
   test(
     'reconcile schedules the plan, writes the table and is then idle',
@@ -95,6 +109,7 @@ void main() {
       expect(payload.accountId, accountId);
       expect(payload.taskId, 1);
       expect(payload.key, '1:reminder:0');
+      expect(payload.linkKey, isNull);
       expect(gateway.scheduled.last.body, 'Due now · Work');
       expect(gateway.cancelled, isEmpty);
       final stored = await rows();

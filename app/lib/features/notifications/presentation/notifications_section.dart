@@ -5,6 +5,8 @@ import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
+import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/links/widget_link_key.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway_provider.dart';
 import 'package:vikunja_mobile/core/notifications/notification_actions.dart';
 import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
@@ -50,6 +52,9 @@ class NotificationsSection extends ConsumerWidget {
 
   Future<void> _sendTest(WidgetRef ref, AppLocalizations l10n) async {
     try {
+      final linkKey = await readWidgetLinkKey(
+        ref.read(preferencesStoreProvider),
+      );
       await ref
           .read(notificationGatewayProvider)
           .showNow(
@@ -60,6 +65,7 @@ class NotificationsSection extends ConsumerWidget {
               accountId: entry.id,
               taskId: testNotificationTaskId,
               key: 'test',
+              linkKey: linkKey,
             ).toJson(),
           );
     } on Object catch (error) {

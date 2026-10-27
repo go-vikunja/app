@@ -27,7 +27,8 @@ class WidgetConfigureActivity : Activity() {
                     .setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE)
                     .putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, intArrayOf(appWidgetId)),
             )
-            startActivity(WidgetLinks.intent(this, WidgetLinks.configure(appWidgetId)))
+            val key = WidgetFiles.of(this).readHost()?.linkKey
+            startActivity(WidgetLinks.intent(this, WidgetLinks.configure(appWidgetId, key)))
         }
         finish()
     }

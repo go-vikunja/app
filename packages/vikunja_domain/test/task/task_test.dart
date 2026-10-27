@@ -130,8 +130,8 @@ void main() {
     });
   });
 
-  test('toString uses the display identifier', () {
-    expect('${_task(identifier: '-4', index: 4)}', 'Task(1, #4, t)');
+  test('toString uses the display identifier and never the title', () {
+    expect('${_task(identifier: '-4', index: 4)}', 'Task(1, #4)');
   });
 
   group('comments', () {

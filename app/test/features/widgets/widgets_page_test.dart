@@ -167,6 +167,8 @@ void main() {
     await tester.tap(find.text('Garage Sale'));
     await tester.pumpAndSettle();
     expect(find.byType(WidgetConfigurePage), findsOneWidget);
+    expect(find.text(en.widgetConfigureSave), findsOneWidget);
+    expect(find.text(en.widgetConfigureUnknownTitle), findsNothing);
     expect(
       harness.routerOf(tester).state.uri.toString(),
       AppRoutes.widgetConfigure(12),
@@ -181,5 +183,6 @@ void main() {
       AppRoutes.widgetConfigure(16),
       reason: 'below Android 12 the only way to set it up',
     );
+    expect(find.text(en.widgetConfigureSave), findsOneWidget);
   });
 }

@@ -124,6 +124,30 @@ void main() {
     },
   );
 
+  // The Android plugin turns on JavaScript windows (window.open), whose
+  // loads reach this same delegate as main-frame navigations.
+  test(
+    'a window.open main-frame navigation after ready is prevented',
+    () async {
+      final navigation = controller().navigationDelegate!;
+      controller().post('{"type":"ready"}');
+      await pumpEventQueue();
+
+      for (final url in [
+        'about:blank',
+        'data:text/html,<p>x</p>',
+        'https://evil.example.org/',
+        'intent://scan/#Intent;scheme=zxing;end',
+      ]) {
+        expect(
+          await navigation.request(url),
+          NavigationDecision.prevent,
+          reason: url,
+        );
+      }
+    },
+  );
+
   test('a page that fails to load is reported, a failed subresource '
       'not', () async {
     controller().navigationDelegate!

@@ -39,5 +39,5 @@ final class Label {
   int get hashCode => Object.hash(id, title, description, hexColor, updated);
 
   @override
-  String toString() => 'Label($id, $title)';
+  String toString() => 'Label($id)';
 }

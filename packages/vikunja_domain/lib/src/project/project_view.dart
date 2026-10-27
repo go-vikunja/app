@@ -105,5 +105,5 @@ final class ProjectView {
   int get hashCode => Object.hash(id, projectId);
 
   @override
-  String toString() => 'ProjectView($id, ${kind.wireName}, $title)';
+  String toString() => 'ProjectView($id, ${kind.wireName})';
 }

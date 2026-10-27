@@ -170,6 +170,7 @@ void main() {
           action: 'Sign in again',
         ),
       );
+      harness.host.placed[4] = null;
       unawaited(harness.routerOf(tester).push(AppRoutes.widgetConfigure(4)));
       await tester.pumpAndSettle();
 

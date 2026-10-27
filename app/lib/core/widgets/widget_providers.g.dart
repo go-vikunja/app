@@ -309,7 +309,7 @@ final class WidgetPublisherProvider
   }
 }
 
-String _$widgetPublisherHash() => r'1eafd7234b2bbd7aed35b9cc30bd8333548e7d26';
+String _$widgetPublisherHash() => r'de0a06c04353d5a8456d992f8c5aa4b86ecfaac2';
 
 /// One account's publisher; null once the account is gone. In the app it
 /// publishes when built, when the app comes back to the front, when the
@@ -499,21 +499,27 @@ String _$widgetTapImporterHash() => r'c09bd226c46e312b4f0f04602e9576137e67b1f5';
 
 /// In the app: what an unconfigured Android list widget shows follows the
 /// active account (its Today list, published at once), and every widget
-/// follows the "Use system colours" switch. The shell keeps it listened.
+/// follows the "Use system colours" switch. The native widgets put the
+/// widget-link key into the links they build themselves. The shell keeps
+/// it listened.
 
 @ProviderFor(widgetHostSettings)
 final widgetHostSettingsProvider = WidgetHostSettingsProvider._();
 
 /// In the app: what an unconfigured Android list widget shows follows the
 /// active account (its Today list, published at once), and every widget
-/// follows the "Use system colours" switch. The shell keeps it listened.
+/// follows the "Use system colours" switch. The native widgets put the
+/// widget-link key into the links they build themselves. The shell keeps
+/// it listened.
 
 final class WidgetHostSettingsProvider
     extends $FunctionalProvider<AsyncValue<void>, void, FutureOr<void>>
     with $FutureModifier<void>, $FutureProvider<void> {
   /// In the app: what an unconfigured Android list widget shows follows the
   /// active account (its Today list, published at once), and every widget
-  /// follows the "Use system colours" switch. The shell keeps it listened.
+  /// follows the "Use system colours" switch. The native widgets put the
+  /// widget-link key into the links they build themselves. The shell keeps
+  /// it listened.
   WidgetHostSettingsProvider._()
     : super(
         from: null,
@@ -540,4 +546,4 @@ final class WidgetHostSettingsProvider
 }
 
 String _$widgetHostSettingsHash() =>
-    r'4d9e94a0a91469b008b75d4c1288ab4830af9dd3';
+    r'cc01370762c07432e3e9ecf8ffdb9f70d74aa962';

@@ -4,10 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/router/pop_pages_over_shell.dart';
+import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/links/deep_link_providers.dart';
 import 'package:vikunja_mobile/core/links/widget_link.dart';
+import 'package:vikunja_mobile/core/links/widget_link_key.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/features/inbox/application/local_task_lookup.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/open/task_opener.dart';
@@ -17,8 +20,12 @@ final _log = Logger('WidgetLink');
 /// Opens what a home-screen widget's link names (see [WidgetLink]), the one
 /// that started the app and the ones that arrive while it runs, through the
 /// [TaskOpener]: once the shell shows, in the widget's account, which
-/// becomes active without asking like a notification's, since a widget
-/// only shows the user's own accounts. Links are never logged.
+/// becomes active without asking when the link carries the install's
+/// widget-link key. Any app or web page can send a widget link, so one
+/// without the key never switches: a task opens like a task link from
+/// outside, which asks first, the rest only in the active account, and a
+/// widget's setup page checks the widget itself. Links and the key are
+/// never logged.
 class WidgetLinkListener extends ConsumerStatefulWidget {
   const new({required this.child, super.key});
 
@@ -30,12 +37,15 @@ class WidgetLinkListener extends ConsumerStatefulWidget {
 
 class _WidgetLinkListenerState extends ConsumerState<WidgetLinkListener> {
   late final TaskOpener _opener;
+  late final Future<String?> _linkKey;
   StreamSubscription<Uri>? _links;
 
   @override
   void initState() {
     super.initState();
     _opener = ref.read(taskOpenerProvider);
+    // Read once: only the UI start creates or rotates it, before this.
+    _linkKey = readWidgetLinkKey(ref.read(preferencesStoreProvider));
     final source = ref.read(widgetLinkSourceProvider);
     _links = source.links.listen(_onLink);
     unawaited(
@@ -63,6 +73,20 @@ class _WidgetLinkListenerState extends ConsumerState<WidgetLinkListener> {
       _log.fine('Ignoring a malformed widget link');
       return;
     }
+    // Links stay in their order: each waits for the same read.
+    unawaited(
+      _linkKey.then((key) {
+        if (!mounted) return;
+        if (widgetLinkKeyMatches(link.linkKey, key)) {
+          _openOwn(link);
+        } else {
+          _openForeign(link);
+        }
+      }),
+    );
+  }
+
+  void _openOwn(WidgetLink link) {
     if (link case WidgetNewTaskLink(:final accountId, :final projectId)) {
       _opener.requestNewTask(
         accountId: accountId,
@@ -70,12 +94,43 @@ class _WidgetLinkListenerState extends ConsumerState<WidgetLinkListener> {
       );
       return;
     }
-    _opener.request(
-      () => _open(link).catchError((Object error) {
-        _log.warning('Could not open a widget link: ${error.runtimeType}');
-      }),
-    );
+    _request(() => _open(link));
   }
+
+  void _openForeign(WidgetLink link) {
+    _log.fine('A widget link without the link key: no account switch');
+    if (link case WidgetTaskLink(:final accountId, :final taskId)) {
+      _request(
+        () => _opener.openLink(
+          TaskDeepLink(TaskById(taskId), account: accountId),
+        ),
+      );
+      return;
+    }
+    final accountId = switch (link) {
+      WidgetNewTaskLink(:final accountId) => accountId,
+      WidgetOpenLink(:final accountId) => accountId,
+      WidgetAccountLink(:final accountId) => accountId,
+      WidgetListLink(:final accountId) => accountId,
+      WidgetTaskLink() || WidgetConfigureLink() => null,
+    };
+    _request(() async {
+      if (accountId != null && !_opener.isActive(accountId)) return;
+      if (link case WidgetNewTaskLink(:final projectId)) {
+        await _opener.showNewTask(
+          projectId: accountId == null ? null : projectId,
+        );
+      } else {
+        await _open(link);
+      }
+    });
+  }
+
+  void _request(Future<void> Function() open) => _opener.request(
+    () => open().catchError((Object error) {
+      _log.warning('Could not open a widget link: ${error.runtimeType}');
+    }),
+  );
 
   Future<void> _open(WidgetLink link) async {
     switch (link) {

@@ -2,6 +2,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/bootstrap/logging_setup.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/background/background_providers.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
@@ -269,6 +270,7 @@ void main() {
           .setMockMethodCallHandler(widgetWorkerChannel, null),
     );
 
+    addTearDown(resetLoggingForTest);
     await runWidgetActions(createContainer: () async => container);
 
     expect(write.updates, [(1, const TaskChanges(done: true))]);

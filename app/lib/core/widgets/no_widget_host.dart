@@ -16,6 +16,7 @@ final class NoWidgetHost implements WidgetHost {
   Future<void> writeHost({
     required String? activeAccountId,
     required bool dynamicColor,
+    required String? linkKey,
   }) async {}
 
   @override

@@ -94,6 +94,27 @@ void main() {
       );
     });
 
+    test('redacts a JWT and a JSON value that an excerpt cuts off', () {
+      final excerpt = FormatException(
+        'Unexpected end of input',
+        '{"access_token":"eyJhbGciOiJIUzI1NiJ9.${'eyJ0eXAiOjF9' * 8}.sig"}',
+      ).toString();
+      expect(excerpt, endsWith('...'));
+      expect(
+        redactSecrets(excerpt),
+        'FormatException: Unexpected end of input\n'
+        '{"access_token":"[redacted]"',
+      );
+      expect(
+        redactSecrets('header eyJhbGciOiJIUzI1NiJ9.eyJ0eXAiOj only'),
+        'header [redacted] only',
+      );
+      expect(
+        redactSecrets('{"password":"hunter2\nnext line'),
+        '{"password":"[redacted]"\nnext line',
+      );
+    });
+
     test('redacts secrets in JSON bodies', () {
       expect(
         redactSecrets('{"username":"alice","password":"hunter2"}'),
@@ -235,6 +256,59 @@ void main() {
       ]) {
         expect(redactSecrets(text), expected);
       }
+    });
+
+    test('redacts e-mail addresses but keeps the host of a URL with user '
+        'info', () {
+      expect(
+        redactSecrets('no account for marker.user+x@mail.example.com.'),
+        'no account for [redacted].',
+      );
+      expect(
+        redactSecrets('{"email":"a@b.example","id":1}'),
+        '{"email":"[redacted]","id":1}',
+      );
+      expect(
+        redactSecrets('POST /register?email=a%40b.example&x=1'),
+        'POST /register?email=[redacted]&x=1',
+      );
+      expect(
+        redactSecrets('Account(4, alice@vikunja.example.com)'),
+        'Account(4, [redacted])',
+      );
+      expect(
+        redactSecrets('failed for https://bob@example.com/api'),
+        'failed for https://[redacted]@example.com/api',
+      );
+    });
+
+    test('redacts invite tokens and share hashes in link fragments', () {
+      const invite = 'Ab3.d_e~F';
+      final hash = 'aB3dE' * 8;
+      final texts = {
+        'open https://example.com/register#invite-link=$invite now':
+            'open https://example.com/register#invite-link=[redacted] now',
+        'https://example.com/share/x#share-auth-token=$hash&view=2':
+            'https://example.com/share/x#share-auth-token=[redacted]',
+        'pasted invite-link=$invite': 'pasted invite-link=[redacted]',
+        'share-auth-token=short': 'share-auth-token=[redacted]',
+        'https://example.com/tasks/4#comment-12 and Task #4':
+            'https://example.com/tasks/4#[redacted] and Task #4',
+      };
+      for (final MapEntry(key: text, value: expected) in texts.entries) {
+        expect(redactSecrets(text), expected, reason: text);
+      }
+    });
+
+    test('redacts the widget-link key and a payload key', () {
+      expect(
+        redactSecrets('rurana://widget/open?account=a1&k=c2hvcnQ'),
+        'rurana://widget/open?account=a1&k=[redacted]',
+      );
+      expect(
+        redactSecrets('{"account":"a1","task":3,"k":"c2hvcnQ"}'),
+        '{"account":"a1","task":3,"k":"[redacted]"}',
+      );
     });
 
     test('leaves ordinary messages untouched', () {

@@ -169,12 +169,13 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('a pushed route of the app still navigates', (tester) async {
+    testWidgets('a pushed route of the app is dropped too: any app can '
+        'push one on Android', (tester) async {
       await pumpSignedInApp(tester, sync: data);
 
-      await push(tester, AppRoutes.upcoming);
+      expect(await push(tester, AppRoutes.upcoming), isTrue);
 
-      expect(location(tester), AppRoutes.upcoming);
+      expect(location(tester), AppRoutes.overview);
     });
 
     testWidgets('another deep-link source feeds the same opener', (

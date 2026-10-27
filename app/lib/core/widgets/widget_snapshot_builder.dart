@@ -103,18 +103,21 @@ typedef WidgetBuild = ({
 /// permissions and texts as the app's screens. Headless: nothing here
 /// needs a widget tree. Without `showTaskTitles` (a device privacy
 /// setting) a list carries its title and count but no rows, so no task
-/// title and no Done reach the home screen.
+/// title and no Done reach the home screen. Every link carries the
+/// install's widget-link key when there is one.
 final class WidgetSnapshotBuilder {
   new({
     required this._db,
     required this._texts,
     this._showTaskTitles = true,
+    this._linkKey,
     DateTime Function()? now,
   }) : _now = now ?? DateTime.now;
 
   final AppDatabase _db;
   final WidgetTexts _texts;
   final bool _showTaskTitles;
+  final String? _linkKey;
   final DateTime Function() _now;
 
   /// The snapshots of [kinds] by key, and the account's catalog when
@@ -130,6 +133,7 @@ final class WidgetSnapshotBuilder {
       account,
       _now(),
       showTaskTitles: _showTaskTitles,
+      linkKey: _linkKey,
     );
     return (
       snapshots: {
@@ -174,6 +178,7 @@ final class _AccountBuild {
     required this.state,
     required this.settings,
     required this.showTaskTitles,
+    required this.linkKey,
   }) : projectsById = {for (final project in projects) project.id: project},
        archived = archivedProjectIds(projects).toSet(),
        formatter = texts.formatter(DisplaySettings.from(settings)),
@@ -185,6 +190,7 @@ final class _AccountBuild {
     WidgetAccount account,
     DateTime now, {
     required bool showTaskTitles,
+    required String? linkKey,
   }) async {
     final state = await db.syncStateDao.readAll();
     return _AccountBuild._(
@@ -197,6 +203,7 @@ final class _AccountBuild {
       state: state,
       settings: decodeUserSettings(state[SyncStateKeys.userSettings]),
       showTaskTitles: showTaskTitles,
+      linkKey: linkKey,
     );
   }
 
@@ -209,6 +216,7 @@ final class _AccountBuild {
   final Map<String, String> state;
   final UserSettings settings;
   final bool showTaskTitles;
+  final String? linkKey;
   final Map<int, Project> projectsById;
   final Set<int> archived;
   final MomentFormatter formatter;
@@ -464,7 +472,7 @@ final class _AccountBuild {
             ),
       message: _sessionMessage,
       messageLink: _sessionMessageLink,
-      link: kind.listLink(account.id)?.toUri().toString(),
+      link: kind.listLink(account.id)?.withLinkKey(linkKey).toUri().toString(),
       newTaskLink: canAddTasks
           ? _newTaskLink(listProjectId == null ? null : newTaskProjectId)
           : null,
@@ -481,7 +489,10 @@ final class _AccountBuild {
     generatedAt: now,
     validUntil: nextLocalMidnight(now),
     message: WidgetText(title, body: l10n.widgetChooseAnotherList),
-    messageLink: WidgetOpenLink(accountId: account.id).toUri().toString(),
+    messageLink: WidgetOpenLink(
+      accountId: account.id,
+      linkKey: linkKey,
+    ).toUri().toString(),
   );
 
   WidgetRow _row(Task task, {int? listProjectId}) {
@@ -530,6 +541,7 @@ final class _AccountBuild {
       link: WidgetTaskLink(
         accountId: account.id,
         taskId: task.id,
+        linkKey: linkKey,
       ).toUri().toString(),
     );
   }
@@ -551,12 +563,16 @@ final class _AccountBuild {
   };
 
   String? get _sessionMessageLink => account.sessionEnded
-      ? WidgetAccountLink(accountId: account.id).toUri().toString()
+      ? WidgetAccountLink(
+          accountId: account.id,
+          linkKey: linkKey,
+        ).toUri().toString()
       : null;
 
   String _newTaskLink(int? projectId) => WidgetNewTaskLink(
     accountId: account.id,
     projectId: projectId,
+    linkKey: linkKey,
   ).toUri().toString();
 
   WidgetCatalog catalog() {

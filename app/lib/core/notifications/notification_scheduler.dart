@@ -56,10 +56,12 @@ final class NotificationScheduler {
     required this._preferences,
     required this._presentation,
     required this._window,
+    Future<String?> Function()? linkKey,
     DateTime Function()? now,
     this.debounce = const Duration(milliseconds: 700),
     this._createTimer = Timer.new,
-  }) : _now = now ?? DateTime.now {
+  }) : _linkKey = linkKey ?? _noLinkKey,
+       _now = now ?? DateTime.now {
     _tableUpdates = _db
         .tableUpdates(
           TableUpdateQuery.onAllTables([
@@ -85,10 +87,16 @@ final class NotificationScheduler {
   /// schedules again what a run with older settings scheduled.
   final Future<NotificationPresentation> Function() _presentation;
   final int _window;
+
+  /// The install's widget-link key, which a tap needs to switch accounts
+  /// without asking; null leaves it out.
+  final Future<String?> Function() _linkKey;
   final DateTime Function() _now;
   final CreateTimer _createTimer;
   late final StreamSubscription<Object?> _tableUpdates;
   late final StreamSubscription<Object?> _preferenceChanges;
+
+  static Future<String?> _noLinkKey() async => null;
 
   /// The ids the table held after the last run, for [cancelAll] once the
   /// database has gone.
@@ -141,6 +149,7 @@ final class NotificationScheduler {
     final until = now.add(duration).toUtc();
     final capabilities = await _gateway.capabilities();
     final presentation = await _presentation();
+    final linkKey = await _linkKey();
     final row = await _snoozedRow(
       key,
       taskId,
@@ -166,6 +175,7 @@ final class NotificationScheduler {
             accountId: accountId,
             taskId: row.taskId,
             key: row.key,
+            linkKey: linkKey,
           ).toJson(),
           exact: capabilities.exactAlarms,
           privacy: presentation.privacy,
@@ -315,6 +325,7 @@ final class NotificationScheduler {
       return;
     }
     final (:describe, :privacy) = await _presentation();
+    final linkKey = await _linkKey();
     final rows = await _db.scheduledNotificationsDao.all();
     final held = await _pendingIds();
     final scheduled = [
@@ -380,6 +391,7 @@ final class NotificationScheduler {
             accountId: accountId,
             taskId: entry.taskId,
             key: entry.key,
+            linkKey: linkKey,
           ).toJson(),
           exact: capabilities.exactAlarms,
           privacy: privacy,

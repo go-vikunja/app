@@ -33,14 +33,19 @@ struct AccountCatalog: Decodable {
   }
 }
 
-private struct Host: Decodable {
+/// What the app writes to host.json; `linkKey` goes into the links built
+/// here (see `WidgetLinks`).
+struct Host: Decodable {
   var activeAccountId: String?
+  var linkKey: String?
+
+  static func read() -> Host? { AppGroupStore.read(Host.self, AppGroupStore.hostFile) }
 }
 
 enum Catalogs {
   /// The active account first, so a new widget shows what the app shows.
   static func all() -> [AccountCatalog] {
-    let active = AppGroupStore.read(Host.self, AppGroupStore.hostFile)?.activeAccountId
+    let active = Host.read()?.activeAccountId
     return AppGroupStore.readAll(AccountCatalog.self, in: AppGroupStore.catalogsDirectory)
       .filter { $0.v == 1 }
       .sorted {

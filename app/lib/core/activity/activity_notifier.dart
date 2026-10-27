@@ -5,6 +5,7 @@ import 'package:vikunja_mobile/core/activity/activity_notification_texts.dart';
 import 'package:vikunja_mobile/core/activity/activity_tray.dart';
 import 'package:vikunja_mobile/core/auth/account_title.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/links/widget_link_key.dart';
 import 'package:vikunja_mobile/core/notifications/notification_actions.dart';
 import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
 import 'package:vikunja_mobile/core/notifications/notification_os_ids.dart';
@@ -97,6 +98,7 @@ final class ActivityNotifier {
         ? _label(account)
         : null;
     final group = 'activity:${account.id}';
+    final linkKey = await readWidgetLinkKey(_store);
     final privacy = NotificationPrivacy(
       hiddenOnLockScreen: content == NotificationContent.hiddenOnLockScreen,
     );
@@ -113,6 +115,7 @@ final class ActivityNotifier {
               ? 0
               : notification.taskId ?? 0,
           key: key,
+          linkKey: linkKey,
         ).toJson(),
         subtitle: subtitle,
         group: group,
@@ -131,6 +134,7 @@ final class ActivityNotifier {
           accountId: account.id,
           taskId: 0,
           key: key,
+          linkKey: linkKey,
         ).toJson(),
         subtitle: subtitle,
         group: group,
@@ -167,6 +171,7 @@ final class ActivityNotifier {
         accountId: account.id,
         taskId: 0,
         key: payloadKey,
+        linkKey: await readWidgetLinkKey(_store),
       ).toJson(),
     );
     await _store.setString(key, 'true');

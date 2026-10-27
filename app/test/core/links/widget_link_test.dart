@@ -54,6 +54,46 @@ void main() {
       );
     });
 
+    test('reads the link key, and none from an empty one', () {
+      expect(
+        parse('$scheme://widget/task/7?account=$account&k=key-1'),
+        const WidgetTaskLink(accountId: account, taskId: 7, linkKey: 'key-1'),
+      );
+      expect(
+        parse('$scheme://widget/list?account=$account&kind=today&k=key-1'),
+        const WidgetListLink(
+          accountId: account,
+          kind: WidgetListKind.today,
+          linkKey: 'key-1',
+        ),
+      );
+      expect(
+        parse('$scheme://widget/configure?appWidgetId=12&k=key-1')?.linkKey,
+        'key-1',
+      );
+      expect(parse('$scheme://widget/open?k=')?.linkKey, isNull);
+      expect(
+        parse('$scheme://widget/task/7?account=$account'),
+        isNot(
+          const WidgetTaskLink(accountId: account, taskId: 7, linkKey: 'key-1'),
+        ),
+      );
+    });
+
+    test('keeps the days of a list within a year', () {
+      int? days(String value) => switch (parse(
+        '$scheme://widget/list?account=$account&kind=upcoming&days=$value',
+      )) {
+        WidgetListLink(:final days) => days,
+        _ => null,
+      };
+
+      expect(days('14'), 14);
+      expect(days('0'), 1);
+      expect(days('-5'), 1);
+      expect(days('99999999'), WidgetLink.maxDays);
+    });
+
     test('ignores the case of the scheme and the host', () {
       expect(
         parse(
@@ -103,6 +143,17 @@ void main() {
       WidgetOpenLink(accountId: account),
       WidgetOpenLink(),
       WidgetConfigureLink(appWidgetId: 31),
+      WidgetTaskLink(accountId: account, taskId: 7, linkKey: 'key-1'),
+      WidgetNewTaskLink(linkKey: 'key-1'),
+      WidgetListLink(
+        accountId: account,
+        kind: WidgetListKind.project,
+        id: 3,
+        linkKey: 'key-1',
+      ),
+      WidgetAccountLink(accountId: account, linkKey: 'key-1'),
+      WidgetOpenLink(accountId: account, linkKey: 'key-1'),
+      WidgetConfigureLink(appWidgetId: 31, linkKey: 'key-1'),
     ]) {
       final uri = link.toUri();
       expect(uri.scheme, scheme);
@@ -125,6 +176,10 @@ void main() {
     expect(
       '${projectList.toUri()}',
       '$scheme://widget/list?account=$account&kind=project&id=12',
+    );
+    expect(
+      '${projectList.withLinkKey('key-1').toUri()}',
+      '$scheme://widget/list?account=$account&kind=project&id=12&k=key-1',
     );
   });
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_mobile/core/platform/app_backgrounding.dart';
+import 'package:vikunja_mobile/core/platform/backup_exclusion.dart';
 import 'package:vikunja_mobile/core/platform/device_channel.dart';
 import 'package:vikunja_mobile/core/platform/recents_screenshots.dart';
 import 'package:vikunja_mobile/core/platform/secure_display.dart';
@@ -45,12 +46,41 @@ void main() {
       },
     );
 
-    test('on iOS copies plainly for now', () async {
-      await PlatformSensitiveClipboard(android: false).copy(secret);
+    test('on iOS asks the app for a local, expiring copy', () async {
+      await PlatformSensitiveClipboard(android: false, ios: true).copy(secret);
+
+      expect(deviceCalls.single.method, 'copySensitive');
+      expect(deviceCalls.single.arguments, {'text': secret});
+      expect(platformCalls, isEmpty);
+    });
+
+    for (final failure in [
+      MissingPluginException(),
+      PlatformException(code: 'unavailable'),
+    ]) {
+      test('on iOS copies plainly when the channel answers with '
+          '${failure.runtimeType}', () async {
+        messenger.setMockMethodCallHandler(deviceChannel, (call) async {
+          deviceCalls.add(call);
+          throw failure;
+        });
+
+        await PlatformSensitiveClipboard(
+          android: false,
+          ios: true,
+        ).copy(secret);
+
+        expect(deviceCalls.single.method, 'copySensitive');
+        expect(platformCalls.single.method, 'Clipboard.setData');
+        expect(platformCalls.single.arguments, {'text': secret});
+      });
+    }
+
+    test('elsewhere copies plainly', () async {
+      await PlatformSensitiveClipboard(android: false, ios: false).copy(secret);
 
       expect(deviceCalls, isEmpty);
       expect(platformCalls.single.method, 'Clipboard.setData');
-      expect(platformCalls.single.arguments, {'text': secret});
     });
 
     test('a copy the system refused fails', () async {
@@ -63,6 +93,23 @@ void main() {
         PlatformSensitiveClipboard(android: true).copy(secret),
         throwsA(isA<PlatformException>()),
       );
+    });
+  });
+
+  group('the backup exclusion', () {
+    test('on iOS hands the paths to the app', () async {
+      await PlatformBackupExclusion(ios: true).exclude(['/a', '/b']);
+
+      expect(deviceCalls.single.method, 'excludeFromBackup');
+      expect(deviceCalls.single.arguments, {
+        'paths': ['/a', '/b'],
+      });
+    });
+
+    test('on Android does nothing: the extraction rules cover it', () async {
+      await PlatformBackupExclusion(ios: false).exclude(['/a']);
+
+      expect(deviceCalls, isEmpty);
     });
   });
 

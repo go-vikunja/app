@@ -7316,5 +7316,13 @@
   "connectionTrustShortLived": "This certificate is valid for less than 100 days, so the server replaces it often. Trusting this exact certificate stops working at every renewal; trusting the CA certificate that issued it keeps working.",
   "@connectionTrustShortLived": {
     "description": "Warning on the certificate screen for a short-lived server certificate: a pin breaks at each renewal, CA trust does not."
+  },
+  "widgetConfigureUnknownTitle": "This widget can't be set up here",
+  "@widgetConfigureUnknownTitle": {
+    "description": "Shown instead of the widget setup when a link names a widget that is not one of the app's widgets placed on this device's home screen."
+  },
+  "widgetConfigureUnknownBody": "Only Rurana widgets on this device's home screen can be set up. Open the widget's settings on the home screen instead.",
+  "@widgetConfigureUnknownBody": {
+    "description": "Body below widgetConfigureUnknownTitle."
   }
 }

@@ -55,6 +55,21 @@ flutter {
     source = "../.."
 }
 
+// gradle.lockfile, for the vulnerability scan. After a plugin or Flutter
+// upgrade: ./gradlew :app:dependencies --write-locks
+// Locks only what ships and the JVM tests: the tooling classpaths (lint, test
+// platform, Kotlin compiler) change with every AGP update and never ship.
+configurations.configureEach {
+    if (name.endsWith("RuntimeClasspath")) {
+        resolutionStrategy.activateDependencyLocking()
+    }
+}
+
+// The engine artifacts change with every Flutter version.
+dependencyLocking {
+    ignoredDependencies.add("io.flutter:*")
+}
+
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
     // FileProvider and IntentCompat for attachments and shares; declared

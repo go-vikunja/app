@@ -9,6 +9,7 @@ import 'package:rurana_widgets/rurana_widgets.dart';
 import 'package:vikunja_mobile/app/theme/theme_providers.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/links/widget_link_key.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway_provider.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/security/privacy_providers.dart';
@@ -115,10 +116,14 @@ WidgetPublisher? widgetPublisher(Ref ref, String accountId) {
     build: (account, kinds, {required withCatalog}) async {
       final texts = await ref.read(widgetTextsProvider.future);
       final privacy = await ref.read(privacySettingsProvider.future);
+      final linkKey = await readWidgetLinkKey(
+        ref.read(preferencesStoreProvider),
+      );
       return await WidgetSnapshotBuilder(
         db: db,
         texts: texts,
         showTaskTitles: privacy.widgetTitles,
+        linkKey: linkKey,
         now: now,
       ).build(account, kinds, withCatalog: withCatalog);
     },
@@ -268,16 +273,20 @@ final class WidgetTapImporter {
 
 /// In the app: what an unconfigured Android list widget shows follows the
 /// active account (its Today list, published at once), and every widget
-/// follows the "Use system colours" switch. The shell keeps it listened.
+/// follows the "Use system colours" switch. The native widgets put the
+/// widget-link key into the links they build themselves. The shell keeps
+/// it listened.
 @Riverpod(keepAlive: true)
 Future<void> widgetHostSettings(Ref ref) async {
   final activeAccountId = ref.watch(activeAccountIdProvider);
   final dynamicColor = await ref.watch(useSystemColorsProvider.future);
   final host = ref.watch(widgetHostProvider);
+  final linkKey = await readWidgetLinkKey(ref.read(preferencesStoreProvider));
   try {
     await host.writeHost(
       activeAccountId: activeAccountId,
       dynamicColor: dynamicColor,
+      linkKey: linkKey,
     );
     if (!ref.mounted) return;
     if (activeAccountId != null) {

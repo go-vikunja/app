@@ -139,9 +139,11 @@ final class _DecliningPins implements WidgetHost {
   Future<void> writeHost({
     required String? activeAccountId,
     required bool dynamicColor,
+    required String? linkKey,
   }) => _host.writeHost(
     activeAccountId: activeAccountId,
     dynamicColor: dynamicColor,
+    linkKey: linkKey,
   );
 
   @override

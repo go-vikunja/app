@@ -104,9 +104,15 @@ private fun ListWidget(content: ListContent) {
     ) {
         when (content) {
             is ListContent.SetUp ->
-                Notice(context.getString(R.string.widget_set_up), link = WidgetLinks.configure(content.appWidgetId))
+                Notice(
+                    context.getString(R.string.widget_set_up),
+                    link = WidgetLinks.configure(content.appWidgetId, content.linkKey),
+                )
             is ListContent.NotLoaded ->
-                Notice(context.getString(R.string.widget_not_loaded), link = WidgetLinks.open(content.accountId))
+                Notice(
+                    context.getString(R.string.widget_not_loaded),
+                    link = WidgetLinks.open(content.accountId, content.linkKey),
+                )
             is ListContent.Shown -> ShownList(content)
         }
     }
@@ -117,8 +123,8 @@ private fun ShownList(content: ListContent.Shown) {
     val context = LocalContext.current
     val size = LocalSize.current
     val compact = size.height < TasksWidget.narrow.height
-    val link = WidgetLinks.parse(content.link) ?: WidgetLinks.open(content.accountId)
-    val messageLink = WidgetLinks.parse(content.messageLink) ?: WidgetLinks.open(content.accountId)
+    val link = WidgetLinks.parse(content.link) ?: WidgetLinks.open(content.accountId, content.linkKey)
+    val messageLink = WidgetLinks.parse(content.messageLink) ?: WidgetLinks.open(content.accountId, content.linkKey)
     val message = content.message
     Column(
         GlanceModifier.fillMaxSize(),
@@ -234,7 +240,7 @@ private fun TaskRow(shown: ShownRow, content: ListContent.Shown, wide: Boolean) 
     Row(
         modifier = GlanceModifier
             .fillMaxWidth()
-            .clickable(open(context, WidgetLinks.parse(row.link) ?: WidgetLinks.open(accountId)))
+            .clickable(open(context, WidgetLinks.parse(row.link) ?: WidgetLinks.open(accountId, content.linkKey)))
             .semantics { contentDescription = row.semanticsLabel },
         verticalAlignment = Alignment.CenterVertically,
     ) {

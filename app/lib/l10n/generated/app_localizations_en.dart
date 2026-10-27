@@ -8017,4 +8017,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get connectionTrustShortLived =>
       'This certificate is valid for less than 100 days, so the server replaces it often. Trusting this exact certificate stops working at every renewal; trusting the CA certificate that issued it keeps working.';
+
+  @override
+  String get widgetConfigureUnknownTitle => 'This widget can\'t be set up here';
+
+  @override
+  String get widgetConfigureUnknownBody =>
+      'Only Rurana widgets on this device\'s home screen can be set up. Open the widget\'s settings on the home screen instead.';
 }

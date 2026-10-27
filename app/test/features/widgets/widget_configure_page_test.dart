@@ -17,7 +17,11 @@ import 'widget_pages_harness.dart';
 void main() {
   late WidgetPagesHarness harness;
 
-  setUp(() => harness = WidgetPagesHarness());
+  // Placed on the home screen, not set up yet.
+  setUp(() {
+    harness = WidgetPagesHarness();
+    harness.host.placed.addAll({3: null, 12: null});
+  });
 
   final page = find.byType(WidgetConfigurePage);
 
@@ -81,11 +85,11 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Yesterday'), findsOneWidget);
-    expect(harness.host.placed, isEmpty);
+    expect(harness.host.placed, {3: null, 12: null});
 
     final published = await save(tester);
 
-    expect(harness.host.placed, {12: today});
+    expect(harness.host.placed[12], today);
     expect(harness.host.calls, contains('saveConfig 12'));
     expect(published, [today]);
     expect(page, findsNothing);
@@ -245,6 +249,35 @@ void main() {
     );
     expect(harness.host.placed[3], bobToday);
     expect(published, [bobToday]);
+  });
+
+  group('refuses, without a form', () {
+    Future<void> expectRefused(WidgetTester tester) async {
+      expect(page, findsOneWidget);
+      expect(find.text(en.widgetConfigureUnknownTitle), findsOneWidget);
+      expect(find.text(en.widgetConfigureSave), findsNothing);
+      expect(find.text(en.widgetConfigureListHeading), findsNothing);
+      expect(harness.refresher.previewed, isEmpty);
+    }
+
+    testWidgets('a widget id that is not placed, as any app could send', (
+      tester,
+    ) async {
+      await harness.pump(
+        tester,
+        location: AppRoutes.widgetConfigure(999, fromWidget: true),
+      );
+
+      await expectRefused(tester);
+      expect(harness.host.calls, isNot(contains('saveConfig 999')));
+    });
+
+    testWidgets('when the placed widgets cannot be read', (tester) async {
+      harness.host.configsFailure = Exception('no widget manager');
+      await harness.pump(tester, location: AppRoutes.widgetConfigure(12));
+
+      await expectRefused(tester);
+    });
   });
 }
 

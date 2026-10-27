@@ -10,3 +10,6 @@ coverage/
 key.properties
 # tool/gen_tls_test_certs.sh output for the Docker `tls` profile
 test_servers/tls/generated/
+
+# Python bytecode from tool/ scripts
+__pycache__/

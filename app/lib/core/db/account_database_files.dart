@@ -28,6 +28,9 @@ final class PathProviderAccountDatabaseFiles implements AccountDatabaseFiles {
 
   static const fileName = 'vikunja.db';
   static const uploadsFolder = 'uploads';
+
+  /// Under application support; it holds every account's folder.
+  static const accountsFolder = 'accounts';
   static const _sidecars = ['', '-wal', '-shm', '-journal'];
 
   final Future<Directory> Function() _supportDirectory;
@@ -62,6 +65,6 @@ final class PathProviderAccountDatabaseFiles implements AccountDatabaseFiles {
       throw ArgumentError.value(accountId, 'accountId', 'not an account id');
     }
     final support = await _supportDirectory();
-    return Directory(p.join(support.path, 'accounts', accountId));
+    return Directory(p.join(support.path, accountsFolder, accountId));
   }
 }

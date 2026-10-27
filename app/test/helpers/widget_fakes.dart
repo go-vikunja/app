@@ -46,6 +46,7 @@ final class FakeWidgetHost implements WidgetHost {
   final requested = <WidgetConfig>{};
   final actions = <WidgetDoneTap>[];
   ({String? activeAccountId, bool dynamicColor})? hostFile;
+  String? hostLinkKey;
 
   /// Every call in order, e.g. `writeSnapshot <key>`, `update <keys>`.
   final calls = <String>[];
@@ -55,6 +56,9 @@ final class FakeWidgetHost implements WidgetHost {
 
   /// Thrown by every write while set.
   Exception? failure;
+
+  /// Thrown by [configs] while set.
+  Exception? configsFailure;
 
   WidgetSnapshot? snapshot(String key) => switch (snapshots[key]) {
     final json? => WidgetSnapshot.decode(json),
@@ -86,10 +90,12 @@ final class FakeWidgetHost implements WidgetHost {
   Future<void> writeHost({
     required String? activeAccountId,
     required bool dynamicColor,
+    required String? linkKey,
   }) async {
     _fail();
     calls.add('writeHost $activeAccountId $dynamicColor');
     hostFile = (activeAccountId: activeAccountId, dynamicColor: dynamicColor);
+    hostLinkKey = linkKey;
   }
 
   @override
@@ -111,7 +117,10 @@ final class FakeWidgetHost implements WidgetHost {
   }
 
   @override
-  Future<Map<int, WidgetConfig?>> configs() async => Map.of(placed);
+  Future<Map<int, WidgetConfig?>> configs() async {
+    if (configsFailure case final failure?) throw failure;
+    return Map.of(placed);
+  }
 
   @override
   Future<void> saveConfig(int widgetId, WidgetConfig config) async {

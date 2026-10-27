@@ -23,10 +23,12 @@ final class PluginWidgetHost implements WidgetHost {
   Future<void> writeHost({
     required String? activeAccountId,
     required bool dynamicColor,
+    required String? linkKey,
   }) async {
     await _plugin.writeHost(
       activeAccountId: activeAccountId,
       dynamicColor: dynamicColor,
+      linkKey: linkKey,
     );
   }
 

@@ -9,6 +9,7 @@ import 'package:vikunja_mobile/core/activity/activity_notification_texts.dart';
 import 'package:vikunja_mobile/core/activity/activity_notifier.dart';
 import 'package:vikunja_mobile/core/activity/activity_tray.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/links/widget_link_key.dart';
 import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
 import 'package:vikunja_mobile/core/notifications/notification_os_ids.dart';
 import 'package:vikunja_mobile/core/notifications/notification_preferences.dart';
@@ -606,6 +607,21 @@ void main() {
     });
   });
 
+  test("every payload carries the install's link key", () async {
+    store.values[widgetLinkKeyPreference] = _linkKey;
+    final fresh = await stored([
+      for (var id = 1; id <= 7; id++) sampleNotification(id: id),
+    ]);
+
+    await notifier.show(account: account, db: db, fresh: fresh);
+    await notifier.sessionEnded(account);
+
+    expect(gateway.activities, hasLength(7));
+    for (final activity in gateway.activities) {
+      expect(jsonDecode(activity.payload), containsPair('k', _linkKey));
+    }
+  });
+
   group('session ended', () {
     test(
       'notifies once per ended session, again after a new sign-in',
@@ -710,3 +726,5 @@ void main() {
     });
   });
 }
+
+const String _linkKey = 'AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8';

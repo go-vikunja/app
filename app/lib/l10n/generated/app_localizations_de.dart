@@ -8104,4 +8104,12 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get connectionTrustShortLived =>
       'Dieses Zertifikat ist weniger als 100 Tage gültig, der Server ersetzt es also oft. Das Vertrauen in genau dieses Zertifikat endet bei jeder Erneuerung; das Vertrauen in das CA-Zertifikat, das es ausgestellt hat, bleibt bestehen.';
+
+  @override
+  String get widgetConfigureUnknownTitle =>
+      'Dieses Widget kann hier nicht eingerichtet werden';
+
+  @override
+  String get widgetConfigureUnknownBody =>
+      'Nur Rurana-Widgets auf dem Startbildschirm dieses Geräts lassen sich einrichten. Öffne stattdessen die Einstellungen des Widgets auf dem Startbildschirm.';
 }

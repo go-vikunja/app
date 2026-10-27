@@ -2082,5 +2082,7 @@
   "connectionClientCertificateIntroFor": "Wähle die Zertifikatsdatei (.p12 oder .pfx) und gib ihr Passwort ein. Das Zertifikat wird nur {origin} vorgelegt; sein privater Schlüssel und das Passwort bleiben verschlüsselt auf diesem Gerät.",
   "connectionHeadersHeldBack": "Diese Header sind gespeichert, werden aber erst gesendet, wenn unverschlüsselte Verbindungen zu dieser Adresse erlaubt sind.",
   "connectionTrustDeviceTrusted": "Dieses Gerät vertraut diesem Zertifikat bereits, du musst ihm also nicht zusätzlich vertrauen.",
-  "connectionTrustShortLived": "Dieses Zertifikat ist weniger als 100 Tage gültig, der Server ersetzt es also oft. Das Vertrauen in genau dieses Zertifikat endet bei jeder Erneuerung; das Vertrauen in das CA-Zertifikat, das es ausgestellt hat, bleibt bestehen."
+  "connectionTrustShortLived": "Dieses Zertifikat ist weniger als 100 Tage gültig, der Server ersetzt es also oft. Das Vertrauen in genau dieses Zertifikat endet bei jeder Erneuerung; das Vertrauen in das CA-Zertifikat, das es ausgestellt hat, bleibt bestehen.",
+  "widgetConfigureUnknownTitle": "Dieses Widget kann hier nicht eingerichtet werden",
+  "widgetConfigureUnknownBody": "Nur Rurana-Widgets auf dem Startbildschirm dieses Geräts lassen sich einrichten. Öffne stattdessen die Einstellungen des Widgets auf dem Startbildschirm."
 }

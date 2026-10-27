@@ -12,10 +12,12 @@ abstract interface class WidgetHost {
   Future<void> writeCatalog(String accountId, String json);
 
   /// What an Android list widget without a config shows (the active
-  /// account's Today) and whether the widgets follow the system colours.
+  /// account's Today), whether the widgets follow the system colours, and
+  /// the widget-link key for the links the native widgets build.
   Future<void> writeHost({
     required String? activeAccountId,
     required bool dynamicColor,
+    required String? linkKey,
   });
 
   /// Deletes the account's snapshots, catalog and the Done taps still

@@ -70,11 +70,11 @@ private fun QuickAddButton(state: QuickAddState) {
     // A snapshot without a New task link: the account can add no task, or
     // it is gone; the tap opens the app instead.
     val target = if (snapshot == null) {
-        WidgetLinks.newTask(state.accountId)
+        WidgetLinks.newTask(state.accountId, state.linkKey)
     } else {
         WidgetLinks.parse(snapshot.newTaskLink)
             ?: WidgetLinks.parse(snapshot.messageLink)
-            ?: WidgetLinks.open(snapshot.accountId)
+            ?: WidgetLinks.open(snapshot.accountId, state.linkKey)
     }
     Row(
         modifier = GlanceModifier

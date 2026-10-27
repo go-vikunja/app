@@ -77,6 +77,13 @@ jobs:
         working-directory: plugins/rurana_widgets
         run: flutter test
 
+      # Informational: upgrades are a decision of their own, and advisories
+      # fail the vulnerability scan (osv.yaml) instead.
+      - name: List outdated dependencies
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        run: flutter pub outdated --no-dev-dependencies
+
   # The page is committed so that the Flutter jobs need no Node; this job
   # runs its tests and checks that it is what the sources build.
   editor:
@@ -95,6 +102,10 @@ jobs:
           node-version-file: app/editor/.nvmrc
           cache: npm
           cache-dependency-path: app/editor/package-lock.json
+
+      - name: Audit the editor's npm packages
+        working-directory: app/editor
+        run: npm audit --package-lock-only --audit-level=high
 
       - name: Test the editor and check the committed page
         run: tool/build_editor.sh --check
@@ -171,6 +182,12 @@ jobs:
       - name: Build release APK
         working-directory: app
         run: flutter build apk --release
+
+      # Fails when a plugin update exports a component or changes one.
+      - name: Check exported components
+        run: |
+          python3 -I tool/check_exported_components.py --self-test
+          python3 -I tool/check_exported_components.py app/build/app/intermediates/merged_manifests/release/processReleaseManifest/AndroidManifest.xml
 
       # The JVM tests of the widgets' Kotlin need no Flutter build.
       - name: Test the home-screen widgets (Kotlin)

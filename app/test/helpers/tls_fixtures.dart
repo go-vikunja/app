@@ -15,6 +15,13 @@ String tlsFixtureText(String name) =>
 
 String get tlsFixturePassword => tlsFixtureText('client-p12-password.txt');
 
+/// The dummy values of `access.env`, by name.
+Map<String, String> tlsAccessValues() => {
+  for (final line in const LineSplitter().convert(tlsFixtureText('access.env')))
+    if (line.split('=') case [final name, final value] when value.isNotEmpty)
+      name.trim(): value.trim(),
+};
+
 Map<String, Object?> _manifest(String name) =>
     ((jsonDecode(tlsFixtureText('manifest.json'))
                 as Map<String, Object?>)['certificates']!

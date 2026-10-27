@@ -112,11 +112,15 @@ enum SnapshotRequests {
   }
 }
 
-/// The app's widget links (`…://widget/<action>?account=…`).
+/// The app's widget links (`…://widget/<action>?account=…`). Each carries
+/// the app's widget-link key from host.json as `k` when the app wrote one;
+/// without it the app opens the link but never switches accounts silently.
 enum WidgetLinks {
   static let scheme = "vikunja-dev.coderoftime.vikunja"
 
   static func url(_ path: String, _ query: [String: String?] = [:]) -> URL? {
+    var query = query
+    if let key = Host.read()?.linkKey, !key.isEmpty { query["k"] = key }
     var components = URLComponents()
     components.scheme = scheme
     components.host = "widget"

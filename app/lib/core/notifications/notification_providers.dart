@@ -7,6 +7,7 @@ import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_mobile/core/activity/activity_tray.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/links/widget_link_key.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway_provider.dart';
 import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
 import 'package:vikunja_mobile/core/notifications/notification_preferences.dart';
@@ -64,6 +65,7 @@ NotificationScheduler? notificationScheduler(Ref ref, String accountId) {
     preferences: ref.watch(notificationPreferencesStoreProvider),
     presentation: () async => _presentation(l10n, await _currentPrivacy(ref)),
     window: notificationWindow(),
+    linkKey: () => readWidgetLinkKey(ref.read(preferencesStoreProvider)),
     now: ref.watch(clockProvider),
   );
   ref.watch(notificationSchedulersProvider).register(scheduler);

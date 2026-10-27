@@ -1,5 +1,6 @@
 import Flutter
 import UIKit
+import UniformTypeIdentifiers
 import flutter_local_notifications
 import workmanager_apple
 
@@ -37,5 +38,58 @@ import workmanager_apple
       GeneratedPluginRegistrant.register(with: registry)
     }
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+    DeviceChannel.register(with: engineBridge.applicationRegistrar.messenger())
+  }
+}
+
+/// The app's own calls on the UI engine (lib/core/platform/device_channel.dart);
+/// the background and notification engines do not get it.
+private enum DeviceChannel {
+  static func register(with messenger: FlutterBinaryMessenger) {
+    let channel = FlutterMethodChannel(
+      name: "dev.coderoftime.vikunja/device", binaryMessenger: messenger)
+    channel.setMethodCallHandler { call, result in
+      let arguments = call.arguments as? [String: Any]
+      switch call.method {
+      case "excludeFromBackup":
+        guard let paths = arguments?["paths"] as? [String] else {
+          result(FlutterError(code: "invalid_arguments", message: "paths is missing", details: nil))
+          return
+        }
+        result(DeviceChannel.excludeFromBackup(paths))
+      case "copySensitive":
+        guard let text = arguments?["text"] as? String else {
+          result(FlutterError(code: "invalid_arguments", message: "text is missing", details: nil))
+          return
+        }
+        // Not to other devices through Universal Clipboard, and gone after two minutes.
+        UIPasteboard.general.setItems(
+          [[UTType.utf8PlainText.identifier: text]],
+          options: [.localOnly: true, .expirationDate: Date(timeIntervalSinceNow: 120)])
+        result(nil)
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    }
+  }
+
+  /// Creates each folder when missing. A restore or a move to another device clears the flag,
+  /// so the app sets it at every start. A failure names its type only, never a path.
+  private static func excludeFromBackup(_ paths: [String]) -> FlutterError? {
+    var failure: Error?
+    for path in paths {
+      var url = URL(fileURLWithPath: path, isDirectory: true)
+      do {
+        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        try url.setResourceValues(values)
+      } catch {
+        failure = failure ?? error
+      }
+    }
+    guard let failure else { return nil }
+    return FlutterError(
+      code: "exclude_failed", message: String(describing: type(of: failure)), details: nil)
   }
 }

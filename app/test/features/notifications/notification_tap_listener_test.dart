@@ -5,8 +5,10 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/core/activity/activity_tray.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/links/widget_link_key.dart';
 import 'package:vikunja_mobile/core/notifications/notification_actions.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_providers.dart';
@@ -20,6 +22,7 @@ import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_
 import 'package:vikunja_mobile/features/session/application/sign_in_controller.dart';
 import 'package:vikunja_mobile/features/sync/presentation/first_sync_screen.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/task_edit_page.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/open/account_picker.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 
 import '../../helpers/auth_fakes.dart';
@@ -35,8 +38,10 @@ import '../inbox/inbox_samples.dart';
 void main() {
   late SyncFakes data;
   late NotificationFakes notifications;
+  late AuthFakes auth;
 
   setUp(() {
+    auth = _withLinkKey(AuthFakes());
     data = SyncFakes();
     data.projects.all = [sampleProject(id: 1, title: 'Work')];
     data.tasks.all = [sampleTask(id: 7, title: 'Water the plants')];
@@ -52,20 +57,28 @@ void main() {
   String activeAccountId(WidgetTester tester) =>
       containerOf(tester).read(accountsProvider).value!.activeAccountId!;
 
+  /// As the app's own notifications carry it: with the install's link key.
   String payload({
     required String accountId,
     int taskId = 7,
     String key = '7:due',
+    String? linkKey = _linkKey,
   }) => NotificationPayload(
     accountId: accountId,
     taskId: taskId,
     key: key,
+    linkKey: linkKey,
   ).toJson();
 
   final sheet = find.byType(TaskDetailSheet);
 
   testWidgets('a tap opens the task over the overview', (tester) async {
-    await pumpSignedInApp(tester, sync: data, notifications: notifications);
+    await pumpSignedInApp(
+      tester,
+      auth: auth,
+      sync: data,
+      notifications: notifications,
+    );
     routerOf(tester).go(AppRoutes.project(1));
     await tester.pumpAndSettle();
 
@@ -85,6 +98,7 @@ void main() {
     usePhoneSurface(tester, logicalSize: const Size(360, 2200));
     await pumpSignedInApp(
       tester,
+      auth: auth,
       sync: data,
       notifications: notifications,
       overrides: [
@@ -111,7 +125,12 @@ void main() {
   });
 
   testWidgets('a tap over the add-account screen keeps it', (tester) async {
-    await pumpSignedInApp(tester, sync: data, notifications: notifications);
+    await pumpSignedInApp(
+      tester,
+      auth: auth,
+      sync: data,
+      notifications: notifications,
+    );
     unawaited(routerOf(tester).push(AppRoutes.addAccount));
     await tester.pumpAndSettle();
 
@@ -128,7 +147,12 @@ void main() {
       sampleTask(id: 7, title: 'Water the plants'),
       sampleTask(id: 8, title: 'Buy milk'),
     ];
-    await pumpSignedInApp(tester, sync: data, notifications: notifications);
+    await pumpSignedInApp(
+      tester,
+      auth: auth,
+      sync: data,
+      notifications: notifications,
+    );
 
     notifications.taps
       ..tap(payload(accountId: activeAccountId(tester)))
@@ -147,7 +171,6 @@ void main() {
   testWidgets('the notification that launched the app waits for the shell', (
     tester,
   ) async {
-    final auth = AuthFakes();
     final entry = await auth.seedAccount(
       fullServer270(),
       tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
@@ -178,6 +201,7 @@ void main() {
 
   testWidgets('a tap for another account switches to it first', (tester) async {
     final accounts = ThreeAccounts();
+    _withLinkKey(accounts.auth);
     await accounts.seed();
     accounts.bobData.projects.all = [sampleProject(id: 3, title: 'Garden')];
     accounts.bobData.tasks.all = [
@@ -200,6 +224,7 @@ void main() {
   testWidgets('a tap for another account waits until the switch has reached '
       'the shell', (tester) async {
     final accounts = ThreeAccounts();
+    _withLinkKey(accounts.auth);
     await accounts.seed();
     accounts.bobData.projects.all = [sampleProject(id: 3, title: 'Garden')];
     accounts.bobData.tasks.all = [
@@ -243,6 +268,7 @@ void main() {
     tester,
   ) async {
     final accounts = ThreeAccounts();
+    _withLinkKey(accounts.auth);
     await accounts.seed(bobNeedsReauth: true);
     accounts.bobData.tasks.all = [
       sampleTask(id: 31, title: 'Mow the lawn', projectId: 3),
@@ -265,7 +291,12 @@ void main() {
   });
 
   testWidgets('a task that is gone is reported', (tester) async {
-    await pumpSignedInApp(tester, sync: data, notifications: notifications);
+    await pumpSignedInApp(
+      tester,
+      auth: auth,
+      sync: data,
+      notifications: notifications,
+    );
 
     notifications.taps.tap(
       payload(accountId: activeAccountId(tester), taskId: 99),
@@ -278,7 +309,12 @@ void main() {
 
   testWidgets('a test notification closes an open sheet and opens the '
       'Account tab', (tester) async {
-    await pumpSignedInApp(tester, sync: data, notifications: notifications);
+    await pumpSignedInApp(
+      tester,
+      auth: auth,
+      sync: data,
+      notifications: notifications,
+    );
     notifications.taps.tap(payload(accountId: activeAccountId(tester)));
     await tester.pumpAndSettle();
     expect(sheet, findsOneWidget);
@@ -301,7 +337,12 @@ void main() {
   testWidgets('a test notification tapped on the Account tab says so', (
     tester,
   ) async {
-    await pumpSignedInApp(tester, sync: data, notifications: notifications);
+    await pumpSignedInApp(
+      tester,
+      auth: auth,
+      sync: data,
+      notifications: notifications,
+    );
     await openTab(tester, en.tabAccount);
 
     notifications.taps.tap(
@@ -320,7 +361,12 @@ void main() {
   testWidgets('an unknown account and a broken payload are dropped', (
     tester,
   ) async {
-    await pumpSignedInApp(tester, sync: data, notifications: notifications);
+    await pumpSignedInApp(
+      tester,
+      auth: auth,
+      sync: data,
+      notifications: notifications,
+    );
 
     notifications.taps
       ..tap(payload(accountId: 'nobody'))
@@ -349,7 +395,12 @@ void main() {
 
     testWidgets('a tap marks it read and opens its task', (tester) async {
       data.activity.notifications = [comment()];
-      await pumpSignedInApp(tester, sync: data, notifications: notifications);
+      await pumpSignedInApp(
+        tester,
+        auth: auth,
+        sync: data,
+        notifications: notifications,
+      );
 
       notifications.taps.tap(
         payload(accountId: activeAccountId(tester), key: 'activity:5'),
@@ -368,7 +419,12 @@ void main() {
     testWidgets('a tap on a comment opens its task at the comment the '
         'stored notification names', (tester) async {
       data.activity.notifications = [comment(commentId: 12)];
-      await pumpSignedInApp(tester, sync: data, notifications: notifications);
+      await pumpSignedInApp(
+        tester,
+        auth: auth,
+        sync: data,
+        notifications: notifications,
+      );
 
       notifications.taps.tap(
         payload(accountId: activeAccountId(tester), key: 'activity:5'),
@@ -383,7 +439,12 @@ void main() {
 
     testWidgets('a reminder tap and an activity this device no longer has '
         'open the task without a comment', (tester) async {
-      await pumpSignedInApp(tester, sync: data, notifications: notifications);
+      await pumpSignedInApp(
+        tester,
+        auth: auth,
+        sync: data,
+        notifications: notifications,
+      );
 
       notifications.taps.tap(
         payload(accountId: activeAccountId(tester), key: 'activity:5'),
@@ -401,7 +462,12 @@ void main() {
     testWidgets('a tap without a task marks it read and opens the inbox', (
       tester,
     ) async {
-      await pumpSignedInApp(tester, sync: data, notifications: notifications);
+      await pumpSignedInApp(
+        tester,
+        auth: auth,
+        sync: data,
+        notifications: notifications,
+      );
 
       notifications.taps.tap(
         payload(
@@ -421,7 +487,12 @@ void main() {
     testWidgets('a tap for a task that is not on this device says so', (
       tester,
     ) async {
-      await pumpSignedInApp(tester, sync: data, notifications: notifications);
+      await pumpSignedInApp(
+        tester,
+        auth: auth,
+        sync: data,
+        notifications: notifications,
+      );
 
       notifications.taps.tap(
         payload(
@@ -440,6 +511,7 @@ void main() {
     testWidgets('a tap for another account marks it read there after the '
         'switch', (tester) async {
       final accounts = ThreeAccounts();
+      _withLinkKey(accounts.auth);
       await accounts.seed();
       accounts.bobData.projects.all = [sampleProject(id: 3, title: 'Garden')];
       accounts.bobData.tasks.all = [
@@ -466,6 +538,7 @@ void main() {
   testWidgets('a session notification switches to its account and opens the '
       'Account tab with the banner', (tester) async {
     final accounts = ThreeAccounts();
+    _withLinkKey(accounts.auth);
     await accounts.seed(bobNeedsReauth: true);
     accounts.aliceData.tasks.all = data.tasks.all;
     await accounts.pump(tester, notifications: notifications);
@@ -494,6 +567,7 @@ void main() {
     usePhoneSurface(tester, logicalSize: const Size(360, 2200));
     await pumpSignedInApp(
       tester,
+      auth: auth,
       sync: data,
       notifications: notifications,
       overrides: [
@@ -525,7 +599,12 @@ void main() {
 
   testWidgets('a session notification over a page without changes opens the '
       'Account tab', (tester) async {
-    await pumpSignedInApp(tester, sync: data, notifications: notifications);
+    await pumpSignedInApp(
+      tester,
+      auth: auth,
+      sync: data,
+      notifications: notifications,
+    );
     unawaited(routerOf(tester).push(AppRoutes.addAccount));
     await tester.pumpAndSettle();
 
@@ -545,7 +624,12 @@ void main() {
   testWidgets('the notification standing for several opens the inbox', (
     tester,
   ) async {
-    await pumpSignedInApp(tester, sync: data, notifications: notifications);
+    await pumpSignedInApp(
+      tester,
+      auth: auth,
+      sync: data,
+      notifications: notifications,
+    );
 
     notifications.taps.tap(
       payload(
@@ -564,7 +648,12 @@ void main() {
   testWidgets('a session notification tapped on the Account tab stays quiet', (
     tester,
   ) async {
-    await pumpSignedInApp(tester, sync: data, notifications: notifications);
+    await pumpSignedInApp(
+      tester,
+      auth: auth,
+      sync: data,
+      notifications: notifications,
+    );
     await openTab(tester, en.tabAccount);
 
     notifications.taps.tap(
@@ -589,4 +678,113 @@ void main() {
     expect(find.byType(ConnectServerScreen), findsOneWidget);
     expect(sheet, findsNothing);
   });
+
+  // On Android any app can send MainActivity a tap with a payload it made
+  // up; notifications scheduled before the key existed carry none either.
+  group('without the link key', () {
+    late ThreeAccounts accounts;
+
+    setUp(() async {
+      accounts = ThreeAccounts();
+      _withLinkKey(accounts.auth);
+      await accounts.seed(bobNeedsReauth: true);
+      accounts.aliceData.tasks.all = data.tasks.all;
+      accounts.bobData.projects.all = [sampleProject(id: 3, title: 'Garden')];
+      accounts.bobData.tasks.all = [
+        sampleTask(id: 31, title: 'Mow the lawn', projectId: 3),
+      ];
+      accounts.bobData.activity.notifications = [
+        inboxNotification(
+          id: 9,
+          name: 'task.comment',
+          created: DateTime.now(),
+          payload: {
+            'doer': payloadUser(id: 2, username: 'anna', name: 'Anna'),
+            'task': payloadTask(id: 31, title: 'Mow the lawn'),
+          },
+        ),
+      ];
+    });
+
+    for (final (name, linkKey) in [
+      ('none', null),
+      ('a wrong one', _otherLinkKey),
+    ]) {
+      testWidgets("with $name, another account's task asks before it "
+          'switches and marks nothing read', (tester) async {
+        await accounts.pump(tester, notifications: notifications);
+
+        notifications.taps.tap(
+          payload(
+            accountId: accounts.bob.id,
+            taskId: 31,
+            key: 'activity:9',
+            linkKey: linkKey,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byType(AccountPickerSheet), findsOneWidget);
+        expect(activeAccountId(tester), accounts.alice.id);
+        expect(accounts.bobData.activity.markedRead, isEmpty);
+        expect(sheet, findsNothing);
+      });
+    }
+
+    testWidgets("another account's session, inbox and test notifications "
+        'open nothing', (tester) async {
+      await accounts.pump(tester, notifications: notifications);
+      await openTab(tester, en.tabUpcoming);
+      final bob = accounts.bob.id;
+
+      for (final (taskId, key) in [
+        (0, ActivityTray.sessionKey(bob)),
+        (0, ActivityTray.activityKey(9)),
+        (0, ActivityTray.moreKey(bob)),
+        (testNotificationTaskId, 'test'),
+      ]) {
+        notifications.taps.tap(
+          payload(accountId: bob, taskId: taskId, key: key, linkKey: null),
+        );
+        await tester.pumpAndSettle();
+      }
+
+      expect(activeAccountId(tester), accounts.alice.id);
+      expect(location(tester), AppRoutes.upcoming);
+      expect(accounts.bobData.activity.markedRead, isEmpty);
+      expect(find.byType(AccountPickerSheet), findsNothing);
+    });
+
+    testWidgets('in the active account a task opens without asking and the '
+        'test notification still answers', (tester) async {
+      await accounts.pump(tester, notifications: notifications);
+      final alice = accounts.alice.id;
+
+      notifications.taps.tap(payload(accountId: alice, linkKey: null));
+      await tester.pumpAndSettle();
+      expect(find.byType(AccountPickerSheet), findsNothing);
+      expect(
+        find.descendant(of: sheet, matching: find.text('Water the plants')),
+        findsOneWidget,
+      );
+
+      notifications.taps.tap(
+        payload(
+          accountId: alice,
+          taskId: testNotificationTaskId,
+          key: 'test',
+          linkKey: null,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(location(tester), AppRoutes.account);
+    });
+  });
 }
+
+/// The install's widget-link key in these tests (32 bytes 0…31).
+const String _linkKey = 'AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8';
+const String _otherLinkKey = 'HxwdHhcYGRoTFBUWDxAREgsMDQ4HCAkKAwQFBgABAgM';
+
+AuthFakes _withLinkKey(AuthFakes auth) =>
+    auth..preferences.values[widgetLinkKeyPreference] = _linkKey;

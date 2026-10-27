@@ -7,6 +7,7 @@ import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/links/deep_link_providers.dart';
 import 'package:vikunja_mobile/core/links/widget_link.dart';
+import 'package:vikunja_mobile/core/links/widget_link_key.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/core/widgets/widget_providers.dart';
@@ -37,8 +38,11 @@ void main() {
   late ComposerHarness harness;
   late FakeWidgetHost host;
   late FakeWidgetRefresher refresher;
+  late AuthFakes auth;
 
   setUp(() {
+    auth = AuthFakes();
+    auth.preferences.values[widgetLinkKeyPreference] = _linkKey;
     harness = ComposerHarness();
     harness.data.tasks.all = [
       sampleTask(id: 7, title: 'Water the plants'),
@@ -77,6 +81,7 @@ void main() {
     usePhoneSurface(tester);
     await pumpSignedInApp(
       tester,
+      auth: auth,
       sync: harness.data,
       now: composerNow,
       overrides: [
@@ -87,11 +92,15 @@ void main() {
     );
   }
 
-  Future<bool> push(WidgetTester tester, WidgetLink link) async {
-    final handled = await tester.binding.handlePushRoute('${link.toUri()}');
+  Future<bool> pushUri(WidgetTester tester, Uri uri) async {
+    final handled = await tester.binding.handlePushRoute('$uri');
     await tester.pumpAndSettle();
     return handled;
   }
+
+  /// As the app's own widgets send it: with the install's link key.
+  Future<bool> push(WidgetTester tester, WidgetLink link) =>
+      pushUri(tester, _keyed(link.toUri()));
 
   group('while the app runs', () {
     testWidgets('a row opens its task over the overview', (tester) async {
@@ -207,11 +216,13 @@ void main() {
     });
 
     testWidgets('a widget being set up opens its setup page', (tester) async {
+      host.placed[12] = null;
       await pumpApp(tester);
 
       await push(tester, const WidgetConfigureLink(appWidgetId: 12));
 
       expect(find.byType(WidgetConfigurePage), findsOneWidget);
+      expect(find.text(en.widgetConfigureUnknownTitle), findsNothing);
       expect(
         routerOf(tester).state.uri.toString(),
         AppRoutes.widgetConfigure(12, fromWidget: true),
@@ -232,13 +243,14 @@ void main() {
     ) async {
       await pumpApp(tester);
       await openTab(tester, en.tabUpcoming);
+      const nobody = WidgetTaskLink(accountId: 'nobody', taskId: 7);
 
       for (final link in [
         '$_scheme://widget/task/seven?account=x',
         '$_scheme://widget/list?account=x&kind=weekly',
         '$_scheme://widget/settings',
-        '${const WidgetTaskLink(accountId: 'nobody', taskId: 7).toUri()}',
-        '$_scheme://widget/list?account=nobody&kind=today',
+        '${_keyed(nobody.toUri())}',
+        '$_scheme://widget/list?account=nobody&kind=today&k=$_linkKey',
       ]) {
         expect(await tester.binding.handlePushRoute(link), isTrue);
         await tester.pumpAndSettle();
@@ -267,7 +279,9 @@ void main() {
       );
 
       source.push(
-        WidgetTaskLink(accountId: activeAccountId(tester), taskId: 7).toUri(),
+        _keyed(
+          WidgetTaskLink(accountId: activeAccountId(tester), taskId: 7).toUri(),
+        ),
       );
       await tester.pumpAndSettle();
 
@@ -295,14 +309,13 @@ void main() {
     }
 
     testWidgets('opens the task once the shell shows', (tester) async {
-      final auth = AuthFakes();
       final entry = await auth.seedAccount(
         fullServer270(),
         tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
       );
       startWith(
         tester,
-        '${WidgetTaskLink(accountId: entry.id, taskId: 7).toUri()}',
+        '${_keyed(WidgetTaskLink(accountId: entry.id, taskId: 7).toUri())}',
       );
       usePhoneSurface(tester);
       await pumpVikunjaApp(
@@ -319,15 +332,12 @@ void main() {
     });
 
     testWidgets('waits for the first sync', (tester) async {
-      final auth = AuthFakes();
       final entry = await auth.seedAccount(
         fullServer270(),
         tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
       );
-      startWith(
-        tester,
-        '${WidgetNewTaskLink(accountId: entry.id, projectId: 3).toUri()}',
-      );
+      final link = WidgetNewTaskLink(accountId: entry.id, projectId: 3);
+      startWith(tester, '${_keyed(link.toUri())}');
       final sync = SyncFakes(status: const SyncNeverRun());
       sync.projects.all = harness.data.projects.all;
       final firstSync = Completer<void>();
@@ -353,10 +363,12 @@ void main() {
     });
 
     testWidgets('a widget setup opens over the overview', (tester) async {
+      host.placed[5] = null;
       startWith(tester, '${const WidgetConfigureLink(appWidgetId: 5).toUri()}');
       await pumpApp(tester);
 
       expect(find.byType(WidgetConfigurePage), findsOneWidget);
+      expect(find.text(en.widgetConfigureUnknownTitle), findsNothing);
       await tester.pageBack();
       await tester.pumpAndSettle();
       expect(location(tester), AppRoutes.overview);
@@ -369,6 +381,7 @@ void main() {
     setUp(() async {
       accounts = ThreeAccounts();
       await accounts.seed();
+      accounts.auth.preferences.values[widgetLinkKeyPreference] = _linkKey;
       accounts.aliceData.projects.all = [sampleProject(id: 1, title: 'Work')];
       accounts.aliceData.tasks.all = [
         sampleTask(id: 7, title: 'Water the plants'),
@@ -462,7 +475,92 @@ void main() {
       expect(location(tester), AppRoutes.upcoming);
       expect(sheet, findsNothing);
     });
+
+    group('without the link key, as any app or web page can send', () {
+      Future<bool> pushForeign(
+        WidgetTester tester,
+        WidgetLink link, {
+        String? key,
+      }) {
+        final uri = link.toUri();
+        return pushUri(
+          tester,
+          key == null
+              ? uri
+              : uri.replace(
+                  queryParameters: {...uri.queryParameters, 'k': key},
+                ),
+        );
+      }
+
+      for (final (name, key) in [
+        ('no key', null),
+        ('a wrong key', _otherLinkKey),
+      ]) {
+        testWidgets("with $name another account's row asks before it "
+            'switches', (tester) async {
+          await pumpAccounts(tester);
+
+          await pushForeign(
+            tester,
+            WidgetTaskLink(accountId: accounts.bob.id, taskId: 31),
+            key: key,
+          );
+
+          expect(find.byType(AccountPickerSheet), findsOneWidget);
+          expect(activeAccountId(tester), accounts.alice.id);
+          expect(sheet, findsNothing);
+        });
+      }
+
+      testWidgets("another account's list, Account tab, Open and New task "
+          'neither switch nor open', (tester) async {
+        await pumpAccounts(tester);
+        await openTab(tester, en.tabUpcoming);
+        final bob = accounts.bob.id;
+
+        for (final link in [
+          WidgetListLink(accountId: bob, kind: WidgetListKind.project, id: 3),
+          WidgetAccountLink(accountId: bob),
+          WidgetOpenLink(accountId: bob),
+          WidgetNewTaskLink(accountId: bob, projectId: 3),
+        ]) {
+          expect(await pushForeign(tester, link), isTrue);
+        }
+
+        expect(activeAccountId(tester), accounts.alice.id);
+        expect(location(tester), AppRoutes.upcoming);
+        expect(find.byType(NewTaskSheet), findsNothing);
+        expect(find.byType(AccountPickerSheet), findsNothing);
+      });
+
+      testWidgets('in the active account they open as before', (tester) async {
+        await pumpAccounts(tester);
+        final alice = accounts.alice.id;
+
+        await pushForeign(
+          tester,
+          WidgetListLink(accountId: alice, kind: WidgetListKind.upcoming),
+        );
+        expect(location(tester), AppRoutes.upcoming);
+
+        await pushForeign(tester, WidgetTaskLink(accountId: alice, taskId: 7));
+        expect(find.byType(AccountPickerSheet), findsNothing);
+        expect(inSheet('Water the plants'), findsOneWidget);
+
+        await pushForeign(tester, WidgetNewTaskLink(accountId: alice));
+        expect(find.byType(NewTaskSheet), findsOneWidget);
+        expect(activeAccountId(tester), alice);
+      });
+    });
   });
 }
 
 const String _scheme = 'vikunja-dev.coderoftime.vikunja';
+
+/// The install's widget-link key in these tests (32 bytes 0…31).
+const String _linkKey = 'AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8';
+const String _otherLinkKey = 'HxwdHhcYGRoTFBUWDxAREgsMDQ4HCAkKAwQFBgABAgM';
+
+Uri _keyed(Uri uri) =>
+    uri.replace(queryParameters: {...uri.queryParameters, 'k': _linkKey});
