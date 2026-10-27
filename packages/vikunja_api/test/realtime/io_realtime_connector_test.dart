@@ -127,6 +127,58 @@ void main() {
     });
   });
 
+  group('the HTTP client', () {
+    test('comes from createHttpClient, a new one for each connect, closed '
+        'after the upgrade', () async {
+      await serve((request) async {
+        final webSocket = await WebSocketTransformer.upgrade(request);
+        await webSocket.close();
+      });
+      final created = <HttpClient>[];
+      final connector = IoRealtimeConnector(
+        createHttpClient: () {
+          final client = HttpClient()..userAgent = 'Rurana test client';
+          created.add(client);
+          return client;
+        },
+      );
+
+      for (var i = 0; i < 2; i++) {
+        await _allMessages(await connector.connect(server.url));
+      }
+
+      expect(created, hasLength(2));
+      expect(created.first, isNot(same(created.last)));
+      expect(server.requests.map((r) => r.headers.value('user-agent')), [
+        'Rurana test client',
+        'Rurana test client',
+      ]);
+      for (final client in created) {
+        expect(
+          () => client.getUrl(Uri.parse('http://127.0.0.1:1/')),
+          throwsStateError,
+        );
+      }
+    });
+
+    test('is closed when the upgrade fails', () async {
+      await serve((request) => answer(request, HttpStatus.forbidden));
+      late HttpClient client;
+      final connector = IoRealtimeConnector(
+        createHttpClient: () => client = HttpClient(),
+      );
+
+      await expectLater(
+        connector.connect(server.url),
+        throwsA(_refused(HttpStatus.forbidden)),
+      );
+      expect(
+        () => client.getUrl(Uri.parse('http://127.0.0.1:1/')),
+        throwsStateError,
+      );
+    });
+  });
+
   group('a refused upgrade', () {
     test('429 carries Retry-After', () async {
       await serve(

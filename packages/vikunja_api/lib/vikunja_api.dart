@@ -12,10 +12,13 @@ export 'src/auth/oauth_token_client.dart';
 export 'src/dto/user_profile_codec.dart' show parseUserProfile;
 export 'src/errors/normalize_error.dart';
 export 'src/invites/invite_links_port.dart';
+export 'src/negotiation/info_probe.dart' show preConsentProbeKey;
 export 'src/negotiation/server_address.dart';
 export 'src/negotiation/server_connector.dart';
 export 'src/negotiation/server_info_parser.dart';
 export 'src/negotiation/server_info_serializer.dart';
+export 'src/negotiation/transport_failure.dart'
+    show mentionsClientCertificateRefusal;
 export 'src/read/read_ports.dart';
 export 'src/realtime/io_realtime_connector.dart';
 export 'src/realtime/realtime_message.dart';

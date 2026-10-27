@@ -61,4 +61,4 @@ final class RealtimeConnectorProvider
   }
 }
 
-String _$realtimeConnectorHash() => r'fc40f7fca095eda7f109fec6f36c0768380e2b85';
+String _$realtimeConnectorHash() => r'c722dc77099ed088082cc6be86a9af09a8f39019';

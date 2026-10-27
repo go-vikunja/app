@@ -182,6 +182,24 @@ void main() {
       }
     });
 
+    test('marks the probes as the only requests allowed before consenting '
+        'to plain http, and sends no credentials with them', () async {
+      final dio = fakeDio(_vikunja27('http://example.com'));
+
+      await _connect(dio, 'http://example.com');
+
+      final requests = adapterOf(dio).requests;
+      expect(requests, hasLength(2));
+      for (final request in requests) {
+        expect(request.extra[preConsentProbeKey], isTrue);
+        expect(
+          request.headers.keys.map((name) => name.toLowerCase()),
+          isNot(anyOf(contains('authorization'), contains('cookie'))),
+        );
+      }
+      expect(preConsentProbeKey, 'rurana.preConsentProbe');
+    });
+
     test('probes both versions at the same time', () async {
       final v1Requested = Completer<void>();
       final dio = fakeDio({
@@ -615,6 +633,109 @@ void main() {
           uri: 'http://example.com:8080',
           feature: (f) => f.statusCode,
           matcher: 404,
+        ),
+      );
+    });
+  });
+
+  group('stopped by the connection settings', () {
+    for (final error in <Exception>[
+      const CleartextBlockedException('https://example.com:443'),
+      const ConnectionProfileLockedException('https://example.com:443'),
+      const ConnectionProfileIncompleteException('https://example.com:443'),
+      const ConnectionProfilesDamagedException(),
+    ]) {
+      test('${error.runtimeType} probes no other port or scheme', () async {
+        final dio = fakeDio({
+          ..._both(
+            'https://example.com',
+            failsWith(
+              (request) => DioException.connectionError(
+                requestOptions: request,
+                reason: 'refused by the connection settings',
+                error: error,
+              ),
+            ),
+          ),
+          ..._vikunja27('https://example.com:3456'),
+          ..._vikunja27('http://example.com'),
+          ..._vikunja27('http://example.com:3456'),
+        });
+
+        await expectLater(
+          _connect(dio, 'example.com'),
+          _throwsFailure<ConnectionSettingsFailure>(uri: 'https://example.com'),
+        );
+        expect(adapterOf(dio).requestedUrls, [
+          'https://example.com/api/v2/info',
+          'https://example.com/api/v1/info',
+        ]);
+      });
+    }
+
+    for (final (description, route) in [
+      (
+        'confirmed by the transport',
+        throwing(
+          const ClientCertificateRefusedException('https://example.com:443'),
+        ),
+      ),
+      (
+        'as an alert in the handshake',
+        throwing(
+          const HandshakeException(
+            'Handshake error in client (OS Error: '
+            'SSLV3_ALERT_BAD_CERTIFICATE)',
+          ),
+        ),
+      ),
+      (
+        'as the alert dart:io reports after a TLS 1.3 handshake',
+        throwing(
+          HttpException(
+            '\n\tTLSV1_ALERT_CERTIFICATE_REQUIRED(tls_record.cc:489) '
+            'error 268436572',
+            uri: Uri.parse('https://example.com/api/v2/info'),
+          ),
+        ),
+      ),
+    ]) {
+      test('a refused client certificate, $description, probes no other '
+          'port or scheme', () async {
+        final dio = fakeDio({
+          ..._both('https://example.com', route),
+          ..._vikunja27('https://example.com:3456'),
+          ..._vikunja27('http://example.com'),
+        });
+
+        await expectLater(
+          _connect(dio, 'example.com'),
+          _throwsFailure<TlsFailure>(
+            uri: 'https://example.com',
+            feature: (f) => (f.clientCertificateRefused, f.certificateRejected),
+            matcher: (true, false),
+          ),
+        );
+        expect(adapterOf(dio).requestedUrls, [
+          'https://example.com/api/v2/info',
+          'https://example.com/api/v1/info',
+        ]);
+      });
+    }
+
+    test('an answer of the other probe does not hide it', () async {
+      final dio = fakeDio({
+        'https://example.com/api/v2/info': throwing(
+          const ConnectionProfileIncompleteException('https://example.com:443'),
+        ),
+        'https://example.com/api/v1/info': html('<h1>x</h1>', status: 404),
+      });
+
+      await expectLater(
+        _connect(dio, 'example.com'),
+        _throwsFailure<ConnectionSettingsFailure>(
+          feature: (f) => f.problem,
+          matcher: ConnectionSettingsProblem.incomplete,
         ),
       );
     });
@@ -1249,7 +1370,7 @@ void main() {
       (
         'cupertino_http by code',
         'NSErrorClientException: Something went wrong. '
-            '[domain=NSURLErrorDomain, code=-1206]',
+            '[domain=NSURLErrorDomain, code=-1204]',
         true,
       ),
       (

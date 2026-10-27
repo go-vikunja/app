@@ -39,6 +39,7 @@ import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.
 import 'package:vikunja_mobile/features/common/presentation/option_sheet.dart';
 import 'package:vikunja_mobile/features/common/presentation/settings_section.dart';
 import 'package:vikunja_mobile/features/common/presentation/user_avatar.dart';
+import 'package:vikunja_mobile/features/connection/presentation/browser_leg_hint.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/server_address_display.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/projects/presentation/manage/project_confirmations.dart';
@@ -379,11 +380,7 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
             onRetry: () => unawaited(_refresh()),
             onSignInAgain: signingIn
                 ? null
-                : () => unawaited(
-                    ref
-                        .read(signInControllerProvider.notifier)
-                        .signInAgain(entry),
-                  ),
+                : () => unawaited(signInAgainAfterHint(context, ref, entry)),
             onNameChanged: () =>
                 setState(() => _errors.remove(AccountSettingsField.name)),
             onSaveName: () => unawaited(_saveName()),

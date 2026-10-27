@@ -218,6 +218,25 @@ void main() {
       );
     });
 
+    test('redacts Cloudflare Access service-token headers, whose id is too '
+        'short for the long-run rule', () {
+      const id = '0123456789abcdef0123456789abcdef.access';
+      for (final (text, expected) in [
+        ('CF-Access-Client-Id: $id', 'CF-Access-Client-Id: [redacted]'),
+        (
+          'cf-access-client-secret=fedcba98 next',
+          'cf-access-client-secret=[redacted] next',
+        ),
+        (
+          '{"CF-Access-Client-Id": "$id", "x": 1}',
+          '{"CF-Access-Client-Id": [redacted], "x": 1}',
+        ),
+        ('{cf-access-token: abc.def}', '{cf-access-token: [redacted]}'),
+      ]) {
+        expect(redactSecrets(text), expected);
+      }
+    });
+
     test('leaves ordinary messages untouched', () {
       const message =
           'GET https://vikunja.example.com/api/v1/info -> 200 12 ms '

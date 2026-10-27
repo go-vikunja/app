@@ -66,6 +66,12 @@ Item 10 comes from the step 2+3 security review and was read from the source.
     - A malicious server can therefore point the app at another server's authorize page. With the browser's web login reused, that server issues a code silently, and the app hands it and the PKCE verifier to the malicious server's token endpoint.
     - The app therefore uses an ephemeral browser session, contrary to §15.1 ([D23](../decisions.md#d23-browser-sign-in-through-flutter_web_auth_2-client-id-and-redirect-uri)).
 
+Item 11 comes from the step 35b research and was read from the dio 5.11.1 and Dart SDK sources.
+
+11. **dio's `validateCertificate` cannot pin a certificate** (flutter-stack.md §3.4).
+    - It runs after the request was sent and the response headers arrived, and only for a chain the `SecurityContext` already accepted: a self-signed server fails before it is asked, and an impostor would get the token first.
+    - The app pins in the TLS handshake instead, and one adapter in the base `Dio`s sends only pinned, CA-trusted and client-certificate servers through `dart:io` ([D65](../decisions.md#d65-connection-settings-per-server-address-in-the-apps-transport-a-certificate-pinned-in-the-tls-handshake-or-a-trusted-ca-certificate-a-client-certificate-access-headers-and-unencrypted-connections-only-with-consent-failing-closed)).
+
 ## Confirmed on live servers
 
 These statements in the research files are now confirmed:

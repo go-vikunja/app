@@ -95,14 +95,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get failureTlsSuggestion =>
-      'If your server uses its own certificate authority, install its certificate in your device settings. Trusting self-signed certificates directly in the app is planned.';
-
-  @override
-  String get failureTlsSuggestionIos =>
-      'If your server uses its own certificate authority, install its certificate profile, then turn on full trust for it under Settings › General › About › Certificate Trust Settings. Trusting self-signed certificates directly in the app is planned.';
-
-  @override
   String failureTlsHandshakeExplanation(String host) {
     return '$host did not complete a secure (HTTPS) connection. The address may only speak plain http, or the server’s HTTPS setup is incomplete.';
   }
@@ -142,10 +134,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String failureLoginProxyExplanation(String host) {
     return 'A proxy in front of $host asks for its own sign-in before Vikunja can be reached.';
   }
-
-  @override
-  String get failureLoginProxySuggestion =>
-      'Ask whoever runs the server to let the app reach the Vikunja API directly. Support for custom proxy headers, such as Cloudflare Access tokens, is planned.';
 
   @override
   String get failureUnexpectedTitle => 'Something went wrong';
@@ -7428,4 +7416,605 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get privacyNotificationContentHiddenSubtitleAndroid =>
       'Notifications don\'t appear on the lock screen; you see them once you unlock';
+
+  @override
+  String get connectionClientCertificateFailureTitle =>
+      'Client certificate not accepted';
+
+  @override
+  String connectionClientCertificateFailureExplanation(String host) {
+    return '$host did not accept a client certificate from this device.';
+  }
+
+  @override
+  String connectionClientCertificateNeededExplanation(String host) {
+    return '$host needs a client certificate.';
+  }
+
+  @override
+  String connectionClientCertificateRefusedExplanation(String host) {
+    return '$host refused the stored client certificate.';
+  }
+
+  @override
+  String get connectionClientCertificateFailureSuggestion =>
+      'Add the client certificate (a .p12 or .pfx file) in this server\'s connection settings.';
+
+  @override
+  String get connectionClientCertificateRefusedSuggestion =>
+      'Check that it is the right certificate and still valid, or replace it in this server\'s connection settings.';
+
+  @override
+  String get connectionCleartextBlockedTitle =>
+      'Unencrypted connection not allowed';
+
+  @override
+  String connectionCleartextBlockedExplanation(String host) {
+    return 'Unencrypted connections to $host are not allowed on this device.';
+  }
+
+  @override
+  String get connectionCleartextBlockedSuggestion =>
+      'Allow unencrypted connections in this server\'s connection settings if you trust the network.';
+
+  @override
+  String get connectionProfileLockedTitle =>
+      'Connection settings not available yet';
+
+  @override
+  String connectionProfileLockedExplanation(String host) {
+    return 'The connection settings for $host are not available until the device has been unlocked once.';
+  }
+
+  @override
+  String get connectionProfileLockedSuggestion =>
+      'Unlock the device, then try again.';
+
+  @override
+  String get connectionProfileIncompleteTitle =>
+      'Connection settings incomplete';
+
+  @override
+  String connectionProfileIncompleteExplanation(String host) {
+    return 'Some connection settings for $host are missing and need to be entered again.';
+  }
+
+  @override
+  String get connectionProfileIncompleteSuggestion =>
+      'Open this server\'s connection settings and enter them again.';
+
+  @override
+  String get connectionProfileDamagedTitle => 'Connection settings unreadable';
+
+  @override
+  String get connectionProfileDamagedExplanation =>
+      'The stored connection settings could not be read. Reset them to continue.';
+
+  @override
+  String get connectionProfileDamagedSuggestion =>
+      'Afterwards, enter the settings again for the servers that need them.';
+
+  @override
+  String get connectionTlsSuggestion =>
+      'If your server uses its own certificate authority, install its certificate in your device settings, or trust the certificate in this server\'s connection settings.';
+
+  @override
+  String get connectionTlsSuggestionIos =>
+      'If your server uses its own certificate authority, install its certificate profile and turn on full trust for it under Settings › General › About › Certificate Trust Settings, or trust the certificate in this server\'s connection settings.';
+
+  @override
+  String get connectionLoginProxySuggestion =>
+      'If the proxy accepts access tokens, such as a Cloudflare Access service token, add them as access headers in this server\'s connection settings; otherwise ask whoever runs the server to let the app reach the Vikunja API directly.';
+
+  @override
+  String connectionPinMismatchExplanation(String host) {
+    return '$host presented a certificate other than the one trusted in the app.';
+  }
+
+  @override
+  String get connectionPinMismatchSuggestion =>
+      'Review the new certificate in this server\'s connection settings before you accept it.';
+
+  @override
+  String get connectionOpenSettings => 'Open connection settings';
+
+  @override
+  String get connectionReset => 'Reset connection settings';
+
+  @override
+  String get connectionResetTitle => 'Reset connection settings?';
+
+  @override
+  String get connectionResetBody =>
+      'This removes the connection settings and the permissions for unencrypted connections of every server. The affected accounts stop working until the settings are entered again.';
+
+  @override
+  String get connectionResetConfirm => 'Reset';
+
+  @override
+  String get connectionViewCertificate => 'View certificate';
+
+  @override
+  String get connectionAddHeaders => 'Add access headers';
+
+  @override
+  String get connectionAddClientCertificate => 'Add client certificate';
+
+  @override
+  String get connectionReplaceClientCertificate => 'Replace client certificate';
+
+  @override
+  String get connectionSaveFailed =>
+      'The connection settings could not be saved.';
+
+  @override
+  String get connectionOptions => 'Connection options';
+
+  @override
+  String connectionOptionsFor(String origin) {
+    return 'Settings for $origin';
+  }
+
+  @override
+  String get connectionOptionsSaved => 'Saved settings';
+
+  @override
+  String get connectionTitle => 'Connection';
+
+  @override
+  String get connectionIntro =>
+      'Used by this app for every account on this address. The browser that opens the sign-in page does not use them.';
+
+  @override
+  String get connectionServerCertificateHeading => 'Server certificate';
+
+  @override
+  String get connectionPinnedTitle => 'Trusted certificate';
+
+  @override
+  String connectionPinnedSince(String date) {
+    return 'Trusted since $date';
+  }
+
+  @override
+  String get connectionCaTitle => 'Trusted CA certificate';
+
+  @override
+  String connectionFileAdded(String fileName, String date) {
+    return '$fileName, added $date';
+  }
+
+  @override
+  String get connectionCaIosHint =>
+      'On iPhone and iPad, server certificates from this authority must name the server and be valid for at most 825 days; otherwise trust the server\'s certificate itself.';
+
+  @override
+  String get connectionDeviceTrust =>
+      'The certificates trusted by the device are used.';
+
+  @override
+  String get connectionCheckCertificate => 'Check the server\'s certificate';
+
+  @override
+  String get connectionClientCertificateHeading => 'Client certificate';
+
+  @override
+  String get connectionClientCertificateNone =>
+      'None. Only needed when the server asks for one.';
+
+  @override
+  String get connectionRemove => 'Remove';
+
+  @override
+  String get connectionHeadersHeading => 'Access headers';
+
+  @override
+  String get connectionHeadersNone =>
+      'None. Only needed behind an access proxy such as Cloudflare Access.';
+
+  @override
+  String get connectionEditHeaders => 'Edit access headers';
+
+  @override
+  String get connectionHeaderValueHidden => 'value hidden';
+
+  @override
+  String get connectionCleartextHeading => 'Unencrypted connections';
+
+  @override
+  String connectionCleartextAllowedSince(String date) {
+    return 'Allowed since $date';
+  }
+
+  @override
+  String get connectionCleartextNotAllowed =>
+      'Not allowed. Requests to this address fail until you allow them.';
+
+  @override
+  String get connectionCleartextRevoke => 'Revoke';
+
+  @override
+  String get connectionCleartextRevokeTitle => 'Revoke the permission?';
+
+  @override
+  String connectionCleartextRevokeBody(String host) {
+    return 'Requests to $host will fail. The accounts on this server stop working until unencrypted connections are allowed again.';
+  }
+
+  @override
+  String get connectionCleartextAllow => 'Allow unencrypted connection';
+
+  @override
+  String get connectionHeadersUnencrypted =>
+      'Like everything else on this address, the headers travel unencrypted.';
+
+  @override
+  String get connectionHeadersNeedCleartext =>
+      'Access headers can be added once unencrypted connections are allowed.';
+
+  @override
+  String get connectionForget => 'Forget connection settings';
+
+  @override
+  String get connectionForgetTitle => 'Forget connection settings?';
+
+  @override
+  String connectionForgetBody(String host) {
+    return 'The accounts on $host stop working until the settings are entered again. The permission for unencrypted connections is removed too.';
+  }
+
+  @override
+  String get connectionForgetConfirm => 'Forget';
+
+  @override
+  String get connectionStatusPinMismatch => 'Certificate changed';
+
+  @override
+  String get connectionStatusNeedsReentry => 'Needs re-entry';
+
+  @override
+  String get connectionStatusUnavailable => 'Not available yet';
+
+  @override
+  String get connectionStatusDamaged => 'Settings could not be read';
+
+  @override
+  String get connectionNeedsReentryTitle =>
+      'Some settings need to be entered again';
+
+  @override
+  String get connectionNeedsReentryBody =>
+      'The stored access headers or client certificate are missing or could not be used. Requests to this address fail until you enter them again or remove them.';
+
+  @override
+  String get connectionMismatchTitle => 'The server\'s certificate changed';
+
+  @override
+  String connectionMismatchBody(String date) {
+    return 'On $date the server presented a certificate other than the trusted one. Requests are refused until you review it.';
+  }
+
+  @override
+  String get connectionMismatchReview => 'Review';
+
+  @override
+  String get connectionSummaryPinned => 'Trusted certificate';
+
+  @override
+  String get connectionSummaryCa => 'Trusted CA certificate';
+
+  @override
+  String get connectionSummaryClientCertificate => 'Client certificate';
+
+  @override
+  String get connectionSummaryHeaders => 'Access headers';
+
+  @override
+  String get connectionSummaryCleartext => 'Unencrypted connections allowed';
+
+  @override
+  String connectionCertificateChecking(String origin) {
+    return 'Fetching the certificate of $origin…';
+  }
+
+  @override
+  String get connectionFingerprintLabel => 'SHA-256 fingerprint';
+
+  @override
+  String get connectionCopyFingerprint => 'Copy fingerprint';
+
+  @override
+  String get connectionIssuedTo => 'Issued to';
+
+  @override
+  String get connectionIssuedBy => 'Issued by';
+
+  @override
+  String get connectionSelfSigned => 'Self-signed';
+
+  @override
+  String connectionValidity(String from, String until) {
+    return 'Valid from $from until $until';
+  }
+
+  @override
+  String get connectionCertificateExpired => 'This certificate has expired.';
+
+  @override
+  String get connectionCertificateNotYetValid =>
+      'This certificate is not valid yet.';
+
+  @override
+  String get connectionCompareHint =>
+      'Compare the fingerprint with the one on your server, for example with:';
+
+  @override
+  String get connectionBrowserWarnsToo =>
+      'Your browser will also warn about this certificate when you sign in; check that it shows the same fingerprint.';
+
+  @override
+  String connectionTrustOnlyFor(String origin) {
+    return 'The app trusts it only for $origin.';
+  }
+
+  @override
+  String get connectionTrustCertificate => 'Trust this certificate';
+
+  @override
+  String get connectionUseCa => 'Use a CA certificate instead';
+
+  @override
+  String get connectionPinReplacesCa =>
+      'Trusting this certificate replaces the trusted CA certificate.';
+
+  @override
+  String get connectionCaReplacesPin =>
+      'A CA certificate replaces the trusted certificate.';
+
+  @override
+  String get connectionReviewTitle => 'Review the new certificate';
+
+  @override
+  String connectionReviewRecorded(String date) {
+    return 'Certificate seen on $date';
+  }
+
+  @override
+  String get connectionReviewProbed => 'Certificate the server presents now';
+
+  @override
+  String get connectionReviewSame =>
+      'The server still presents the certificate seen then.';
+
+  @override
+  String get connectionReviewDiffers =>
+      'The server now presents yet another certificate than the one seen then. Check it carefully before you accept it.';
+
+  @override
+  String get connectionReviewMatchesTrusted =>
+      'The server presents the trusted certificate again.';
+
+  @override
+  String get connectionReviewAccept => 'Accept new certificate';
+
+  @override
+  String get connectionReviewKeep => 'Keep current certificate';
+
+  @override
+  String get connectionCaNotTrusted =>
+      'This CA certificate did not issue the server\'s certificate.';
+
+  @override
+  String connectionCaCheckFailed(String host) {
+    return 'The CA certificate could not be checked, because $host could not be reached securely.';
+  }
+
+  @override
+  String get connectionCaSaveAnyway => 'Save anyway';
+
+  @override
+  String get connectionCaFileInvalid =>
+      'The file is not a PEM certificate file, or it also contains a private key.';
+
+  @override
+  String get connectionFileTooLarge => 'The file is larger than 64 KB.';
+
+  @override
+  String get connectionFileEmpty => 'The file is empty.';
+
+  @override
+  String get connectionFileUnreadable => 'The file could not be read.';
+
+  @override
+  String get connectionPickerFailed => 'The file picker could not be opened.';
+
+  @override
+  String get connectionChooseFile => 'Choose file';
+
+  @override
+  String get connectionChooseOtherFile => 'Choose another file';
+
+  @override
+  String get connectionNoFileChosen => 'Choose a file first.';
+
+  @override
+  String get connectionFilePassword => 'File password';
+
+  @override
+  String get connectionShowPassword => 'Show password';
+
+  @override
+  String get connectionHidePassword => 'Hide password';
+
+  @override
+  String get connectionWrongPasswordOrUnsupported =>
+      'Wrong password or unsupported file.';
+
+  @override
+  String get connectionClientCertificatePrivateCaHint =>
+      'If the server\'s certificate comes from your own certificate authority, trust it under Server certificate too: certificates installed in the device settings do not apply to connections with a client certificate.';
+
+  @override
+  String get connectionSave => 'Save';
+
+  @override
+  String connectionHeadersIntro(String origin) {
+    return 'Sent with every request of this app to $origin, and to no other address.';
+  }
+
+  @override
+  String get connectionHeaderPresetCloudflare =>
+      'Cloudflare Access service token';
+
+  @override
+  String get connectionHeaderPresetCustom => 'Custom header';
+
+  @override
+  String get connectionHeaderName => 'Header name';
+
+  @override
+  String get connectionHeaderValue => 'Value';
+
+  @override
+  String get connectionShowValue => 'Show value';
+
+  @override
+  String get connectionHideValue => 'Hide value';
+
+  @override
+  String get connectionRemoveHeader => 'Remove header';
+
+  @override
+  String get connectionAddHeader => 'Add header';
+
+  @override
+  String get connectionServiceTokenHint =>
+      'Cloudflare Access apps that allow only service tokens let the app reach the server, but signing in through the browser is then not possible. Opening a shared link as a guest still works.';
+
+  @override
+  String get connectionHeaderNameEmpty => 'Enter a name.';
+
+  @override
+  String get connectionHeaderNameInvalid => 'Not a valid header name.';
+
+  @override
+  String get connectionHeaderNameReserved =>
+      'The app or the system sets this header itself.';
+
+  @override
+  String get connectionHeaderNameDuplicate =>
+      'This header is already in the list.';
+
+  @override
+  String get connectionHeaderValueEmpty => 'Enter a value.';
+
+  @override
+  String get connectionHeaderValueNonAscii =>
+      'Only visible ASCII characters are allowed.';
+
+  @override
+  String get connectionHeaderValueTooLong => 'At most 4 KB.';
+
+  @override
+  String get connectionHeadersTooMany => 'At most 10 headers.';
+
+  @override
+  String get connectionBrowserHintTitle => 'Before you sign in';
+
+  @override
+  String get connectionBrowserHintPinned =>
+      'Your browser will warn about this server\'s certificate. Check that it shows the same SHA-256 fingerprint as the one trusted here:';
+
+  @override
+  String get connectionBrowserHintCa =>
+      'Your browser may warn about this server\'s certificate, unless its certificate authority is also installed in the device settings.';
+
+  @override
+  String get connectionBrowserHintClientCertificate =>
+      'The browser needs the client certificate installed in the device settings too, or the sign-in page must be reachable without it.';
+
+  @override
+  String get connectionBrowserHintHeaders =>
+      'The browser goes through the access login itself.';
+
+  @override
+  String connectionBrowserHintOtherHost(String host) {
+    return 'Sign-in opens $host.';
+  }
+
+  @override
+  String get connectionBrowserHintContinue => 'Continue';
+
+  @override
+  String get connectionForgetCheckbox =>
+      'Also forget this server\'s connection settings';
+
+  @override
+  String connectionProbeUnreachable(String host) {
+    return '$host could not be reached.';
+  }
+
+  @override
+  String connectionProbeTimeout(String host) {
+    return '$host did not answer in time.';
+  }
+
+  @override
+  String connectionProbeNotTls(String host) {
+    return '$host did not start a secure connection, so there is no certificate to show.';
+  }
+
+  @override
+  String get connectionNotAvailableBody =>
+      'Try again once the device has been unlocked.';
+
+  @override
+  String get connectionRemoveTrustTitle => 'Stop trusting this certificate?';
+
+  @override
+  String connectionRemoveTrustBody(String host) {
+    return 'Requests to $host then fail unless the device itself trusts the server\'s certificate.';
+  }
+
+  @override
+  String get connectionRemoveClientCertificateTitle =>
+      'Remove the client certificate?';
+
+  @override
+  String connectionRemoveClientCertificateBody(String host) {
+    return 'Requests to $host then fail if the server requires a client certificate.';
+  }
+
+  @override
+  String get connectionRemoveHeadersTitle => 'Remove the access headers?';
+
+  @override
+  String connectionRemoveHeadersBody(String host) {
+    return 'Requests to $host then fail if the access proxy requires them.';
+  }
+
+  @override
+  String get connectionAlreadyTrusted =>
+      'This is the certificate the app trusts for this address.';
+
+  @override
+  String get connectionCaNotTrustedLeaf =>
+      'The server presented this certificate:';
+
+  @override
+  String connectionClientCertificateIntroFor(String origin) {
+    return 'Choose the certificate file (.p12 or .pfx) and enter its password. The certificate is presented only to $origin; its private key and the password stay encrypted on this device.';
+  }
+
+  @override
+  String get connectionHeadersHeldBack =>
+      'These headers are stored but not sent until unencrypted connections to this address are allowed.';
+
+  @override
+  String get connectionTrustDeviceTrusted =>
+      'This device already trusts this certificate, so no extra trust is needed.';
+
+  @override
+  String get connectionTrustShortLived =>
+      'This certificate is valid for less than 100 days, so the server replaces it often. Trusting this exact certificate stops working at every renewal; trusting the CA certificate that issued it keeps working.';
 }

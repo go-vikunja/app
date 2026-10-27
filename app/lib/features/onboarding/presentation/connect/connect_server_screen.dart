@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
@@ -12,10 +13,15 @@ import 'package:vikunja_mobile/app/widgets/status_card.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/links/external_link_opener.dart';
+import 'package:vikunja_mobile/core/network/network_profile_providers.dart';
+import 'package:vikunja_mobile/core/network/origin_key.dart';
+import 'package:vikunja_mobile/features/connection/application/connection_fix.dart';
+import 'package:vikunja_mobile/features/connection/presentation/connection_navigation.dart';
 import 'package:vikunja_mobile/features/onboarding/application/connect_server_controller.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_button.dart';
+import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_failure_card.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_header.dart';
-import 'package:vikunja_mobile/features/onboarding/presentation/connect/connection_error_card.dart';
+import 'package:vikunja_mobile/features/onboarding/presentation/connect/connection_options_button.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/failure_message.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/insecure_connection_dialog.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/invite_card.dart';
@@ -46,12 +52,17 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
   final _address = TextEditingController();
   final _addressFocus = FocusNode();
 
+  /// The address the typed text names, for its connection settings.
+  OriginKey? _typedOrigin;
+  var _typedOriginHasSettings = false;
+
   ConnectServerController get _controller =>
       ref.read(connectServerControllerProvider.notifier);
 
   @override
   void initState() {
     super.initState();
+    _address.addListener(_onAddressEdited);
     // The shell keeps the sign-in state, so a failure of the active
     // account's "Sign in again" would otherwise show on the new server's
     // overview.
@@ -62,8 +73,83 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
     }
   }
 
+  void _onAddressEdited() {
+    final origin = originOfTypedAddress(_address.text);
+    if (origin == _typedOrigin) return;
+    setState(() {
+      _typedOrigin = origin;
+      _typedOriginHasSettings = false;
+    });
+    if (origin != null) unawaited(_lookUpSettings(origin));
+  }
+
+  Future<void> _lookUpSettings(OriginKey origin) async {
+    var stored = false;
+    try {
+      final profile = await ref
+          .read(networkProfilesProvider)
+          .metadataFor(origin);
+      stored = profile != null && !profile.isEmpty;
+    } on Object {
+      // The options open anyway and say what is wrong.
+    }
+    if (mounted && origin == _typedOrigin) {
+      setState(() => _typedOriginHasSettings = stored);
+    }
+  }
+
+  Future<void> _openConnectionOptions(OriginKey origin) async {
+    final changed = await openConnectionSettings(context, ref, origin);
+    if (!mounted) return;
+    unawaited(_lookUpSettings(origin));
+    if (changed) unawaited(_controller.retryAfterConnectionChange());
+  }
+
+  Future<void> _fix(ConnectionFix fix, OriginKey origin) async {
+    final profiles = ref.read(networkProfilesProvider);
+    switch (fix) {
+      case ConnectionFix.retry:
+        await profiles.reload();
+        if (mounted) unawaited(_controller.retryAfterConnectionChange());
+      case ConnectionFix.reset:
+        if (await resetConnectionSettings(context, profiles) && mounted) {
+          unawaited(_controller.retryAfterConnectionChange());
+        }
+      case ConnectionFix.viewCertificate ||
+          ConnectionFix.addHeaders ||
+          ConnectionFix.clientCertificate ||
+          ConnectionFix.openSettings:
+        final changed = await openConnectionSettings(
+          context,
+          ref,
+          origin,
+          editor: switch (fix) {
+            ConnectionFix.viewCertificate => ConnectionEditor.certificate,
+            ConnectionFix.addHeaders => ConnectionEditor.headers,
+            ConnectionFix.clientCertificate =>
+              ConnectionEditor.clientCertificate,
+            _ => null,
+          },
+        );
+        if (!mounted) return;
+        unawaited(_lookUpSettings(origin));
+        if (changed) unawaited(_controller.retryAfterConnectionChange());
+    }
+  }
+
+  void _onFix(ConnectionFix fix, OriginKey origin) =>
+      unawaited(_fix(fix, origin));
+
+  /// A shared link's own host that refused the app like an access proxy.
+  static OriginKey? _headersFixOrigin(ServerConnectionFailure failure) =>
+      switch ((connectionFixFor(failure), failure.uri)) {
+        (ConnectionFix.addHeaders, final uri?) => OriginKey.tryOf(uri),
+        _ => null,
+      };
+
   @override
   void dispose() {
+    _address.removeListener(_onAddressEdited);
     _address.dispose();
     _addressFocus.dispose();
     super.dispose();
@@ -236,6 +322,14 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
                       onSubmitted: _submit,
                       onChanged: _onAddressChanged,
                     ),
+                    ConnectionOptionsButton(
+                      origin: _typedOrigin,
+                      hasSettings: _typedOriginHasSettings,
+                      onPressed: isConnecting
+                          ? null
+                          : (origin) =>
+                                unawaited(_openConnectionOptions(origin)),
+                    ),
                     if (knownServers.isNotEmpty) ...[
                       const SizedBox(height: 16),
                       KnownServers(
@@ -252,13 +346,24 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
                         ConnectServerFailed(:final failure, :final input) =>
                           Padding(
                             padding: const EdgeInsets.only(top: 16),
-                            child: ConnectionErrorCard(
+                            child: ConnectFailureCard(
                               key: _errorKey,
-                              message: FailureMessage.describe(
+                              error: failure,
+                              origin: switch (failure?.uri) {
+                                final uri? => OriginKey.tryOf(uri),
+                                null => null,
+                              },
+                              onFix: _onFix,
+                              describe: (settings) => FailureMessage.describe(
                                 l10n,
                                 failure: failure,
                                 input: input,
                                 platform: theme.platform,
+                                hasClientCertificate: settings == null
+                                    ? null
+                                    : settings.profile?.clientCertificate !=
+                                          null,
+                                pinned: settings?.profile?.pin != null,
                               ),
                             ),
                           ),
@@ -268,9 +373,12 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
                         ) =>
                           Padding(
                             padding: const EdgeInsets.only(top: 16),
-                            child: ConnectionErrorCard(
+                            child: ConnectFailureCard(
                               key: _errorKey,
-                              message: describeLinkFailure(
+                              error: error,
+                              origin: OriginKey.tryOf(serverRoot),
+                              onFix: _onFix,
+                              describe: (_) => describeLinkFailure(
                                 l10n,
                                 error,
                                 serverRoot: serverRoot,
@@ -278,7 +386,10 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
                               ),
                             ),
                           ),
-                        ConnectServerShareNeedsServer(:final linkBase) =>
+                        ConnectServerShareNeedsServer(
+                          :final linkBase,
+                          :final failure,
+                        ) =>
                           Padding(
                             padding: const EdgeInsets.only(top: 16),
                             child: StatusCard(
@@ -293,9 +404,24 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
                               foreground:
                                   theme.colorScheme.onSecondaryContainer,
                               liveRegion: true,
-                              action: TextButton(
-                                onPressed: _controller.reset,
-                                child: Text(l10n.cancel),
+                              action: Wrap(
+                                alignment: WrapAlignment.end,
+                                spacing: 8,
+                                children: [
+                                  if (_headersFixOrigin(failure)
+                                      case final origin?)
+                                    TextButton(
+                                      onPressed: () => _onFix(
+                                        ConnectionFix.addHeaders,
+                                        origin,
+                                      ),
+                                      child: Text(l10n.connectionAddHeaders),
+                                    ),
+                                  TextButton(
+                                    onPressed: _controller.reset,
+                                    child: Text(l10n.cancel),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
@@ -384,3 +510,20 @@ String _connectingText(
   ),
   ConnectTarget.server => l10n.connectConnectingTo(connecting.input.trim()),
 };
+
+/// The origin whose connection settings apply to what was typed: a shared
+/// link's or an invite's server, else the address as the connector reads
+/// it first (https when no scheme is typed); null while it is no address.
+OriginKey? originOfTypedAddress(String input) {
+  if (parseLinkShareUrl(input) case final share?) {
+    return OriginKey.tryOf(share.base);
+  }
+  if (parseInviteLink(input) case final invite?) {
+    return OriginKey.tryOf(invite.base);
+  }
+  try {
+    return OriginKey.tryOf(normalizeServerAddress(input).root);
+  } on InvalidServerAddress {
+    return null;
+  }
+}

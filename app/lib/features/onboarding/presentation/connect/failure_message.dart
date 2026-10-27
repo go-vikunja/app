@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/features/connection/presentation/connection_failure_message.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/server_address_display.dart';
 
 final class FailureMessage {
@@ -10,11 +11,15 @@ final class FailureMessage {
     required this.suggestion,
   });
 
+  /// [hasClientCertificate] and [pinned] say what the failed origin's
+  /// connection settings hold, where the screen knows them.
   factory describe(
     AppLocalizations l10n, {
     required ServerConnectionFailure? failure,
     required String input,
     required TargetPlatform platform,
+    bool? hasClientCertificate,
+    bool pinned = false,
   }) {
     final failedUri = failure?.uri;
     final host = failedUri == null || failedUri.host.isEmpty
@@ -37,12 +42,24 @@ final class FailureMessage {
         explanation: l10n.failureTimeoutExplanation(host),
         suggestion: l10n.failureTimeoutSuggestion,
       ),
+      TlsFailure(clientCertificateRefused: true) =>
+        connectionSettingsFailureMessage(
+          l10n,
+          NetworkProblem.clientCertificate,
+          host: host,
+          hasClientCertificate: hasClientCertificate,
+        )!,
+      TlsFailure(certificateRejected: true) when pinned => FailureMessage(
+        title: l10n.failureTlsTitle,
+        explanation: l10n.connectionPinMismatchExplanation(host),
+        suggestion: l10n.connectionPinMismatchSuggestion,
+      ),
       TlsFailure(certificateRejected: true) => FailureMessage(
         title: l10n.failureTlsTitle,
         explanation: l10n.failureTlsExplanation(host),
         suggestion: platform == TargetPlatform.iOS
-            ? l10n.failureTlsSuggestionIos
-            : l10n.failureTlsSuggestion,
+            ? l10n.connectionTlsSuggestionIos
+            : l10n.connectionTlsSuggestion,
       ),
       TlsFailure() => FailureMessage(
         title: l10n.failureTlsTitle,
@@ -62,8 +79,14 @@ final class FailureMessage {
       BehindLoginProxy() => FailureMessage(
         title: l10n.failureLoginProxyTitle,
         explanation: l10n.failureLoginProxyExplanation(host),
-        suggestion: l10n.failureLoginProxySuggestion,
+        suggestion: l10n.connectionLoginProxySuggestion,
       ),
+      ConnectionSettingsFailure(:final problem) =>
+        connectionSettingsFailureMessage(
+          l10n,
+          networkProblemOfSettings(problem),
+          host: host,
+        )!,
       null => FailureMessage(
         title: l10n.failureUnexpectedTitle,
         explanation: l10n.failureUnexpectedExplanation,

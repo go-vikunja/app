@@ -1,6 +1,7 @@
 # Local Vikunja server for the vikunja_api contract tests and manual sign-in
 # tests. Only the latest release is tested (owner decision, 2026-10-09):
 #   34527  2.7.0  latest release
+#   34528-34531  the same release behind TLS, opt-in profile `tls` (below)
 # Bump the image tag when a new Vikunja release comes out.
 # The host port is referenced by the contract tests, tool/*.sh and the docs;
 # do not change it. It is published on 127.0.0.1 only, because the server
@@ -47,3 +48,38 @@ services:
       VIKUNJA_SERVICE_PUBLICURL: http://localhost:34527/
     tmpfs: ["/tmp:mode=1777"]
     ports: ["127.0.0.1:34527:3456"]
+
+  # Opt-in TLS servers for the connection-profile checks (test_servers/tls/
+  # README.md). They start only with `--profile tls`, so CI, a plain `up -d`
+  # and tool/contract_tests.sh never see them. Generate the certificates first
+  # with tool/gen_tls_test_certs.sh.
+  #   34528  self-signed leaf (pin)
+  #   34529  client certificate required, server certificate from the test CA
+  #   34530  access-header gate like Cloudflare Access, test CA
+  #   34531  plain HTTP straight to Vikunja, for seeding from the host only
+  vikunja-2-7-tls:
+    image: vikunja/vikunja:2.7.0
+    profiles: ["tls"]
+    environment:
+      <<: *vikunja-env
+      # Not shared with vikunja-2-7, so a token of one server fails on the other.
+      VIKUNJA_SERVICE_SECRET: tls-tests-only-not-a-secret
+      VIKUNJA_SERVICE_JWTSECRET: tls-tests-only-not-a-secret
+      VIKUNJA_SERVICE_PUBLICURL: https://localhost:34528/
+    tmpfs: ["/tmp:mode=1777"]
+    ports: ["127.0.0.1:34531:3456"]
+  tls-proxy:
+    image: caddy:2.11.7-alpine
+    profiles: ["tls"]
+    depends_on: [vikunja-2-7-tls]
+    # Only the two dummy access-header values. Inspect this file with
+    # `config --services`, never a plain `config`, which prints them.
+    env_file: ./tls/generated/access.env
+    volumes:
+      - ./tls/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./tls/generated:/certs:ro
+    tmpfs: ["/data", "/config"]
+    ports:
+      - "127.0.0.1:34528:8443"
+      - "127.0.0.1:34529:8444"
+      - "127.0.0.1:34530:8445"

@@ -14,7 +14,33 @@ sealed class VikunjaFailure implements Exception {
   final String message;
 }
 
-enum NetworkProblem { unreachable, timeout, tls }
+enum NetworkProblem {
+  unreachable,
+  timeout,
+  tls,
+
+  /// The server refused this device's client certificate, or wants one and
+  /// got none.
+  clientCertificate,
+
+  // These fail before a request leaves the device: the origin's stored
+  // connection settings forbid it or cannot be used right now.
+  cleartextBlocked,
+  profileLocked,
+  profileIncomplete,
+  profileDamaged;
+
+  /// Caused by the stored connection settings or fixed in them, so retrying
+  /// at once does not help.
+  bool get concernsConnectionSettings => switch (this) {
+    unreachable || timeout || tls => false,
+    clientCertificate ||
+    cleartextBlocked ||
+    profileLocked ||
+    profileIncomplete ||
+    profileDamaged => true,
+  };
+}
 
 final class NetworkFailure extends VikunjaFailure {
   const new(this.problem, {this.cause}) : super();

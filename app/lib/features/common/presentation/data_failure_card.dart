@@ -4,9 +4,11 @@ import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/widgets/status_card.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_message.dart';
+import 'package:vikunja_mobile/features/connection/presentation/connection_settings_action.dart';
 
-/// Explains a failed load or refresh and offers a retry. With [stale] data
-/// on screen it is a notice above the list rather than the whole screen.
+/// Explains a failed load or refresh and offers a retry, and the server's
+/// connection settings when only they can fix it. With [stale] data on
+/// screen it is a notice above the list rather than the whole screen.
 class DataFailureCard extends ConsumerWidget {
   const new({
     required this.error,
@@ -51,11 +53,26 @@ class DataFailureCard extends ConsumerWidget {
       background: colors.errorContainer,
       foreground: colors.onErrorContainer,
       liveRegion: true,
-      action: TextButton.icon(
-        onPressed: onRetry,
-        style: TextButton.styleFrom(foregroundColor: colors.onErrorContainer),
-        icon: const Icon(Icons.refresh),
-        label: Text(l10n.retry),
+      action: Wrap(
+        alignment: WrapAlignment.end,
+        spacing: 8,
+        children: [
+          if (serverRoot != null && ConnectionSettingsAction.appliesTo(error))
+            ConnectionSettingsAction(
+              error: error,
+              serverRoot: serverRoot,
+              onChanged: onRetry,
+              foreground: colors.onErrorContainer,
+            ),
+          TextButton.icon(
+            onPressed: onRetry,
+            style: TextButton.styleFrom(
+              foregroundColor: colors.onErrorContainer,
+            ),
+            icon: const Icon(Icons.refresh),
+            label: Text(l10n.retry),
+          ),
+        ],
       ),
     );
   }

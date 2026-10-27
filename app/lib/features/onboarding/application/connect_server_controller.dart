@@ -5,8 +5,11 @@ import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/core/logging/redaction.dart';
+import 'package:vikunja_mobile/core/network/network_profile_providers.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
+import 'package:vikunja_mobile/core/network/origin_key.dart';
 import 'package:vikunja_mobile/core/sync/sync_providers.dart';
+import 'package:vikunja_mobile/features/connection/application/connection_fix.dart';
 import 'package:vikunja_mobile/features/onboarding/application/connect_server_state.dart';
 import 'package:vikunja_mobile/features/onboarding/application/current_server.dart';
 import 'package:vikunja_mobile/features/onboarding/application/guest_sign_in.dart';
@@ -56,6 +59,10 @@ class ConnectServerController extends _$ConnectServerController {
   ParsedLinkShareUrl? _share;
   ServerConnection? _shareConnection;
 
+  /// What the last connect opened, while its failure is one the connection
+  /// settings can fix, or while it waits for the consent to http.
+  _PendingTarget? _pending;
+
   @override
   ConnectServerState build() {
     ref.onDispose(() => _cancelToken?.cancel());
@@ -73,30 +80,56 @@ class ConnectServerController extends _$ConnectServerController {
         forPendingShare && state is ConnectServerShareNeedsServer
         ? _share
         : null;
+    await _run(switch ((share, invite, shareAwaitingServer)) {
+      (final share?, _, _) => _ShareTarget(share),
+      (_, final invite?, _) => _InviteTarget(invite),
+      (_, _, final share?) => _ShareTarget(share, serverAddress: input),
+      _ => _AddressTarget(input),
+    });
+  }
+
+  /// Opens the last target again after its server's connection settings
+  /// changed, while its failure is one they can fix: a shared link opens
+  /// without being sent again.
+  Future<void> retryAfterConnectionChange() async {
+    final target = _pending;
+    if (target == null ||
+        state is ConnectServerAwaitingInsecureConsent ||
+        !_keepsTarget(state)) {
+      return;
+    }
+    await _run(target);
+  }
+
+  Future<void> _run(_PendingTarget target) async {
     final cancelToken = _cancelToken = CancelToken();
     _forgetLink();
+    _pending = target;
     ref.read(currentServerProvider.notifier).clear();
-    state = switch ((share, invite)) {
-      (final share?, _) => ConnectServerConnecting(
-        share.shortened,
-        target: ConnectTarget.sharedLink,
+    state = switch (target) {
+      _ShareTarget(:final share, serverAddress: null) =>
+        ConnectServerConnecting(
+          share.shortened,
+          target: ConnectTarget.sharedLink,
+        ),
+      _ShareTarget(:final serverAddress?) => ConnectServerConnecting(
+        serverAddress,
       ),
-      (_, final invite?) => ConnectServerConnecting(
+      _InviteTarget(:final invite) => ConnectServerConnecting(
         '${invite.base}',
         target: ConnectTarget.invite,
       ),
-      _ => ConnectServerConnecting(input),
+      _AddressTarget(:final input) => ConnectServerConnecting(input),
     };
 
-    final outcome = switch ((share, invite, shareAwaitingServer)) {
-      (final share?, _, _) => await _openShare(share, cancelToken),
-      (_, final invite?, _) => await _openInvite(invite, cancelToken),
-      (_, _, final share?) => await _openShare(
+    final outcome = switch (target) {
+      _ShareTarget(:final share, :final serverAddress) => await _openShare(
         share,
         cancelToken,
-        serverAddress: input,
+        serverAddress: serverAddress,
       ),
-      _ => await _probe(input, cancelToken),
+      _InviteTarget(:final invite) => await _openInvite(invite, cancelToken),
+      _AddressTarget(:final input) => await _probe(input, cancelToken),
     };
     if (!ref.mounted || cancelToken.isCancelled) return;
     _cancelToken = null;
@@ -288,20 +321,34 @@ class ConnectServerController extends _$ConnectServerController {
     _cancelToken = null;
     cancelToken.cancel();
     _forgetLink();
+    _pending = null;
     state = const ConnectServerIdle();
   }
 
+  /// Records the consent for the server's origin first: the transport
+  /// refuses http to an origin without it.
   Future<void> acceptInsecureConnection() async {
     if (state case ConnectServerAwaitingInsecureConsent(:final connection)) {
       final next = _afterConsent;
       _afterConsent = null;
-      if (next == null) {
-        _apply(ConnectServerConnected(connection));
-        return;
-      }
       final cancelToken = _cancelToken = CancelToken();
       state = ConnectServerConnecting(connection.rootUri.toString());
-      final outcome = await next(connection);
+      try {
+        await ref
+            .read(networkProfilesProvider)
+            .consentToCleartext(OriginKey.of(connection.rootUri));
+      } on Object catch (error) {
+        _log.warning('Recording the consent failed: ${error.runtimeType}');
+        if (!ref.mounted || cancelToken.isCancelled) return;
+        _cancelToken = null;
+        _forgetLink();
+        _apply(ConnectServerFailed(input: connection.rootUri.toString()));
+        return;
+      }
+      if (!ref.mounted || cancelToken.isCancelled) return;
+      final outcome = next == null
+          ? ConnectServerConnected(connection)
+          : await next(connection);
       if (!ref.mounted || cancelToken.isCancelled) return;
       _cancelToken = null;
       _apply(outcome);
@@ -323,6 +370,7 @@ class ConnectServerController extends _$ConnectServerController {
   void reset() {
     if (state is ConnectServerConnecting) return;
     _forgetLink();
+    _pending = null;
     state = const ConnectServerIdle();
   }
 
@@ -336,12 +384,46 @@ class ConnectServerController extends _$ConnectServerController {
     if (next is ConnectServerConnected) {
       ref.read(currentServerProvider.notifier).select(next.connection);
     }
+    if (!_keepsTarget(next)) _pending = null;
     state = next;
   }
+
+  static bool _keepsTarget(ConnectServerState state) => switch (state) {
+    ConnectServerAwaitingInsecureConsent() => true,
+    ConnectServerFailed(:final failure) => connectionFixFor(failure) != null,
+    ConnectServerShareNeedsServer(:final failure) =>
+      connectionFixFor(failure) != null,
+    ConnectServerLinkFailed(:final error) => connectionFixFor(error) != null,
+    _ => false,
+  };
 
   void _logUnexpected(Object error, StackTrace stackTrace) => _log.severe(
     'Unexpected connect failure: ${redactSecrets('$error')}',
     null,
     stackTrace,
   );
+}
+
+sealed class _PendingTarget {
+  const new();
+}
+
+final class _AddressTarget extends _PendingTarget {
+  const new(this.input);
+
+  final String input;
+}
+
+/// With [serverAddress] when the link's own host is not the API.
+final class _ShareTarget extends _PendingTarget {
+  const new(this.share, {this.serverAddress});
+
+  final ParsedLinkShareUrl share;
+  final String? serverAddress;
+}
+
+final class _InviteTarget extends _PendingTarget {
+  const new(this.invite);
+
+  final ParsedInviteLink invite;
 }

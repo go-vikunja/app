@@ -110,7 +110,10 @@ class _TeamsPageState extends ConsumerState<TeamsPage> with PageReachability {
     final userId = ref.watch(activeUserIdProvider);
     final publicTeams = ref.watch(activeServerHasPublicTeamsProvider);
     final notice = switch (failure) {
-      NetworkFailure() => const OfflineNotice(),
+      NetworkFailure(
+        problem: NetworkProblem(concernsConnectionSettings: false),
+      ) =>
+        const OfflineNotice(),
       final failure? when teams != null => DataFailureCard(
         error: failure,
         stale: true,

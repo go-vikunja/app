@@ -8,18 +8,24 @@ import 'package:vikunja_mobile/core/network/network_providers.dart';
 import 'package:vikunja_mobile/features/onboarding/application/connect_server_controller.dart';
 import 'package:vikunja_mobile/features/onboarding/application/current_server.dart';
 
+import '../../../helpers/auth_fakes.dart';
 import '../../../helpers/fakes.dart';
 import '../../../helpers/server_connections.dart';
 
 void main() {
   late FakeServerConnector connector;
+  late AuthFakes auth;
   late ProviderContainer container;
   late List<ConnectServerState> states;
 
   setUp(() {
     connector = FakeServerConnector();
+    auth = AuthFakes();
     container = ProviderContainer.test(
-      overrides: [serverConnectorProvider.overrideWithValue(connector)],
+      overrides: [
+        serverConnectorProvider.overrideWithValue(connector),
+        ...auth.overrides,
+      ],
     );
     states = [];
     container.listen(

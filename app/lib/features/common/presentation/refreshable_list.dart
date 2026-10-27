@@ -83,7 +83,10 @@ mixin RefreshableList<W extends ConsumerStatefulWidget> on ConsumerState<W> {
           child: LoadingPlaceholder(label: loadingLabel),
         ),
         AsyncValue(:final value?) => builder(value, switch (_refreshFailure) {
-          NetworkFailure() => underBanner ? null : const OfflineNotice(),
+          NetworkFailure(
+            problem: NetworkProblem(concernsConnectionSettings: false),
+          ) =>
+            underBanner ? null : const OfflineNotice(),
           final failure? => DataFailureCard(
             error: failure,
             stale: true,

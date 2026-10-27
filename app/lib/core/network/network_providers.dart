@@ -3,6 +3,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_mobile/core/network/client_identity.dart';
 import 'package:vikunja_mobile/core/network/dio_factory.dart';
+import 'package:vikunja_mobile/core/network/network_profile_providers.dart';
 
 part 'network_providers.g.dart';
 
@@ -10,9 +11,14 @@ part 'network_providers.g.dart';
 ClientIdentity clientIdentity(Ref ref) =>
     throw UnimplementedError('Overridden in bootstrap with the loaded value.');
 
+/// Each Dio owns its adapter over the shared profile table, which edits
+/// change in place: rebuilding a Dio would tear down running syncs.
 @Riverpod(keepAlive: true)
 Dio dio(Ref ref) {
-  final dio = createDio(userAgent: ref.watch(clientIdentityProvider).userAgent);
+  final dio = createDio(
+    userAgent: ref.watch(clientIdentityProvider).userAgent,
+    profiles: ref.watch(networkProfilesProvider),
+  );
   ref.onDispose(dio.close);
   return dio;
 }
@@ -24,6 +30,7 @@ Dio dio(Ref ref) {
 Dio authDio(Ref ref) {
   final dio = createDio(
     userAgent: ref.watch(clientIdentityProvider).userAgent,
+    profiles: ref.watch(networkProfilesProvider),
     receiveTimeout: const Duration(seconds: 60),
   );
   ref.onDispose(dio.close);

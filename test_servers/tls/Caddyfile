@@ -1,0 +1,50 @@
+# TLS front for vikunja-2-7-tls (compose profile `tls`, see README.md).
+# Certificates come from tool/gen_tls_test_certs.sh, mounted at /certs.
+# There is no access log and no autosaved config, so the access-header values
+# never reach a log or a file.
+{
+	admin off
+	persist_config off
+	auto_https off
+	# Clients that connect by IP send no SNI; they get the localhost certificates.
+	default_sni localhost
+	servers {
+		# No HTTP/3: Caddy would advertise it with Alt-Svc on the container
+		# port, which is not published (and adb reverse forwards TCP only).
+		protocols h1 h2
+	}
+}
+
+https://:8443 {
+	tls /certs/selfsigned.pem /certs/selfsigned.key
+	reverse_proxy vikunja-2-7-tls:3456
+}
+
+https://:8444 {
+	tls /certs/server.pem /certs/server.key {
+		client_auth {
+			mode require_and_verify
+			trust_pool file /certs/client-ca.pem
+		}
+	}
+	reverse_proxy vikunja-2-7-tls:3456
+}
+
+https://:8445 {
+	tls /certs/server.pem /certs/server.key
+	@access {
+		header CF-Access-Client-Id {$RURANA_TEST_ACCESS_ID}
+		header CF-Access-Client-Secret {$RURANA_TEST_ACCESS_SECRET}
+	}
+	handle @access {
+		reverse_proxy vikunja-2-7-tls:3456 {
+			header_up -CF-Access-Client-Id
+			header_up -CF-Access-Client-Secret
+		}
+	}
+	# Like Cloudflare Access without a valid token: off to its login page, on a
+	# reserved name that cannot resolve.
+	handle {
+		redir https://rurana-test.cloudflareaccess.example/cdn-cgi/access/login 302
+	}
+}

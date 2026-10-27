@@ -142,7 +142,7 @@ void main() {
       platform: TargetPlatform.iOS,
     );
 
-    expect(message.suggestion, en.failureTlsSuggestionIos);
+    expect(message.suggestion, en.connectionTlsSuggestionIos);
   });
 
   test('every message exists in German', () {

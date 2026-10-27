@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/features/connection/presentation/connection_failure_message.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/failure_message.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/server_address_display.dart';
 
@@ -25,6 +26,16 @@ FailureMessage describeDataFailure(
         explanation: explanation,
         suggestion: [?suggestion, ?staleNote].join(' '),
       );
+  if (error case NetworkFailure(:final problem)) {
+    final settings = connectionSettingsFailureMessage(
+      l10n,
+      problem,
+      host: host,
+    );
+    if (settings != null) {
+      return message(settings.explanation, settings.suggestion);
+    }
+  }
   return switch (error) {
     NetworkFailure(problem: NetworkProblem.unreachable) => message(
       l10n.failureUnreachableExplanation(host),
@@ -37,9 +48,10 @@ FailureMessage describeDataFailure(
     NetworkFailure(problem: NetworkProblem.tls) => message(
       l10n.failureTlsExplanation(host),
       platform == TargetPlatform.iOS
-          ? l10n.failureTlsSuggestionIos
-          : l10n.failureTlsSuggestion,
+          ? l10n.connectionTlsSuggestionIos
+          : l10n.connectionTlsSuggestion,
     ),
+
     SessionEnded() || TokenRejected() || RefreshRaceLost() => message(
       guest
           ? l10n.guestDataFailureAccessEnded(host)

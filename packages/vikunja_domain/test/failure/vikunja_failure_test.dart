@@ -118,6 +118,23 @@ void main() {
     expect(describe(const RateLimited()), 'rate');
   });
 
+  test('only the problems the connection settings cause or fix concern '
+      'them', () {
+    expect(
+      {
+        for (final problem in NetworkProblem.values)
+          if (problem.concernsConnectionSettings) problem,
+      },
+      {
+        NetworkProblem.clientCertificate,
+        NetworkProblem.cleartextBlocked,
+        NetworkProblem.profileLocked,
+        NetworkProblem.profileIncomplete,
+        NetworkProblem.profileDamaged,
+      },
+    );
+  });
+
   test('a missing team member is a not found of an existing route', () {
     const failure = TeamMemberMissing();
 

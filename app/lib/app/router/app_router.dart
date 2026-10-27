@@ -10,6 +10,7 @@ import 'package:vikunja_mobile/app/router/splash_screen.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/links/deep_link_providers.dart';
+import 'package:vikunja_mobile/core/network/origin_key.dart';
 import 'package:vikunja_mobile/core/sync/sync_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_page.dart';
@@ -19,6 +20,8 @@ import 'package:vikunja_mobile/features/account_settings/presentation/avatar_pag
 import 'package:vikunja_mobile/features/account_settings/presentation/caldav_page.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/data_export_page.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/sessions_page.dart';
+import 'package:vikunja_mobile/features/connection/presentation/connection_navigation.dart';
+import 'package:vikunja_mobile/features/connection/presentation/connection_page.dart';
 import 'package:vikunja_mobile/features/description_editor/application/description_target.dart';
 import 'package:vikunja_mobile/features/description_editor/presentation/description_editor_page.dart';
 import 'package:vikunja_mobile/features/home/presentation/account_tab.dart';
@@ -63,6 +66,18 @@ abstract final class AppRoutes {
 
   /// The notification permissions, once per device after the first sync.
   static const notificationsSetup = '/notifications-setup';
+
+  /// One server address's connection settings, for users and guests, signed
+  /// in or not; outside [home], so that no redirect ever sends it away.
+  static const connection = '/connection';
+
+  /// The origin goes in the query, never in `extra`, which go_router drops
+  /// when the platform reports the route list back.
+  static String connectionFor(OriginKey origin, {ConnectionEditor? editor}) =>
+      Uri(
+        path: connection,
+        queryParameters: {'origin': '$origin', 'edit': ?editor?.name},
+      ).toString();
 
   /// The signed-in shell; it opens on [overview].
   static const home = '/home';
@@ -254,6 +269,16 @@ GoRouter appRouter(Ref ref) {
             builder: (context, state) => const ServerOverviewScreen(),
           ),
         ],
+      ),
+      GoRoute(
+        path: AppRoutes.connection,
+        builder: (context, state) {
+          final query = state.uri.queryParameters;
+          return ConnectionPage(
+            origin: OriginKey.tryParse(query['origin'] ?? ''),
+            editor: ConnectionEditor.values.asNameMap()[query['edit']],
+          );
+        },
       ),
       GoRoute(
         path: AppRoutes.firstSync,

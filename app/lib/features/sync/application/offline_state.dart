@@ -42,7 +42,14 @@ class Offline extends _$Offline {
 
 OfflineState? offlineAfter(OfflineState? previous, SyncStatus? status) =>
     switch (status) {
-      SyncFailed(failure: NetworkFailure(), :final lastSyncedAt) =>
+      // A failure of the connection settings is no outage: retrying alone
+      // never gets through.
+      SyncFailed(
+        failure: NetworkFailure(
+          problem: NetworkProblem(concernsConnectionSettings: false),
+        ),
+        :final lastSyncedAt,
+      ) =>
         OfflineState(lastSyncedAt: lastSyncedAt),
       SyncRunning() || null => previous,
       _ => null,

@@ -29,6 +29,16 @@ final _redactions = <(RegExp, String Function(Match))>[
     ),
     (m) => '${m[1]}: $redactedPlaceholder',
   ),
+  // Cloudflare Access service tokens (connection profiles, D65): the id is
+  // 32 hex characters, too short for the long-run rule below.
+  (
+    RegExp(
+      r'\b(cf-access-client-id|cf-access-client-secret|cf-access-token)'
+      r'''("?\s*[:=]\s*)("[^"]*"|'[^']*'|[^\s,;}\]]+)''',
+      caseSensitive: false,
+    ),
+    (m) => '${m[1]}${m[2]}$redactedPlaceholder',
+  ),
   (
     RegExp(r'\b(bearer)\s+[A-Za-z0-9\-._~+/]{8,}=*', caseSensitive: false),
     (m) => '${m[1]} $redactedPlaceholder',

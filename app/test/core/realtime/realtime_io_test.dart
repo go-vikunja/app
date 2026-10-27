@@ -5,13 +5,17 @@ import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_api/vikunja_api.dart';
+import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/network/client_identity.dart';
+import 'package:vikunja_mobile/core/network/network_profile_providers.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
+import 'package:vikunja_mobile/core/network/origin_key.dart';
 import 'package:vikunja_mobile/core/realtime/realtime_connection.dart';
 import 'package:vikunja_mobile/core/realtime/realtime_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 
 import '../../helpers/activity_fakes.dart';
+import '../../helpers/auth_fakes.dart';
 import '../../helpers/recording_sync_engine.dart';
 
 final class _StaticToken implements AccessTokenSource {
@@ -44,9 +48,16 @@ void main() {
             osVersion: '15',
           ),
         ),
+        preferencesStoreProvider.overrideWithValue(MemoryPreferencesStore()),
+        secureStoreProvider.overrideWithValue(MemorySecureStore()),
       ],
     );
     addTearDown(container.dispose);
+    await container
+        .read(networkProfilesProvider)
+        .consentToCleartext(
+          OriginKey.fromString('http://127.0.0.1:${server.port}'),
+        );
 
     final connecting = container
         .read(realtimeConnectorProvider)

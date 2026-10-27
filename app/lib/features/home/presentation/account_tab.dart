@@ -14,6 +14,9 @@ import 'package:vikunja_mobile/features/account_settings/presentation/web_settin
 import 'package:vikunja_mobile/features/accounts/presentation/account_actions.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/accounts_section.dart';
 import 'package:vikunja_mobile/features/common/presentation/settings_section.dart';
+import 'package:vikunja_mobile/features/connection/presentation/browser_leg_hint.dart';
+import 'package:vikunja_mobile/features/connection/presentation/connection_settings_action.dart';
+import 'package:vikunja_mobile/features/connection/presentation/connection_tile.dart';
 import 'package:vikunja_mobile/features/home/application/app_version.dart';
 import 'package:vikunja_mobile/features/home/presentation/account_header.dart';
 import 'package:vikunja_mobile/features/home/presentation/appearance_section.dart';
@@ -37,11 +40,11 @@ import 'package:vikunja_mobile/features/widgets/presentation/widgets_section.dar
 
 /// Who is signed in with the way to the account's settings on the server,
 /// a session that needs a new sign-in, the account's labels and teams, the
-/// other accounts, the server with the sync state and the changes still
-/// waiting for it, what is set on this device only (the home-screen
-/// widgets, notifications, privacy, colours), sign-out and the app's
-/// version. A link-share guest gets a note on what it may do instead of
-/// the settings and the labels and teams.
+/// other accounts, the server with its connection settings, the sync state
+/// and the changes still waiting for it, what is set on this device only
+/// (the home-screen widgets, notifications, privacy, colours), sign-out and
+/// the app's version. A link-share guest gets a note on what it may do
+/// instead of the settings and the labels and teams.
 class AccountTab extends ConsumerWidget {
   const new({super.key});
 
@@ -114,9 +117,7 @@ class AccountTab extends ConsumerWidget {
                         serverRoot: connection.rootUri,
                         isSigningIn: isSigningIn,
                         onSignInAgain: () => unawaited(
-                          ref
-                              .read(signInControllerProvider.notifier)
-                              .signInAgain(entry),
+                          signInAgainAfterHint(context, ref, entry),
                         ),
                       ),
               ),
@@ -130,6 +131,13 @@ class AccountTab extends ConsumerWidget {
                     serverRoot: serverRoot,
                     platform: theme.platform,
                   ),
+                  action: ConnectionSettingsAction.appliesTo(error)
+                      ? ConnectionSettingsAction(
+                          error: error,
+                          serverRoot: serverRoot,
+                          foreground: theme.colorScheme.onErrorContainer,
+                        )
+                      : null,
                 ),
               ),
             // The account being signed out must not be changed or read
@@ -177,6 +185,10 @@ class AccountTab extends ConsumerWidget {
                     leading: const Icon(Icons.dns_outlined),
                     title: Text(l10n.overviewVikunjaVersion(serverVersion)),
                   ),
+                ConnectionTile(
+                  serverRoot: connection.rootUri,
+                  enabled: !signingOut,
+                ),
                 ServerNotices(info: connection.info),
                 SyncStatusSection(entry: entry, signingOut: signingOut),
                 PendingChangesLine(

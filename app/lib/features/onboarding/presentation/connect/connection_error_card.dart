@@ -3,9 +3,12 @@ import 'package:vikunja_mobile/app/widgets/status_card.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/failure_message.dart';
 
 class ConnectionErrorCard extends StatelessWidget {
-  const new({required this.message, super.key});
+  const new({required this.message, this.action, super.key});
 
   final FailureMessage message;
+
+  /// What can fix it, such as the server's connection settings.
+  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
@@ -18,6 +21,7 @@ class ConnectionErrorCard extends StatelessWidget {
       background: colors.errorContainer,
       foreground: colors.onErrorContainer,
       liveRegion: true,
+      action: action,
     );
   }
 }

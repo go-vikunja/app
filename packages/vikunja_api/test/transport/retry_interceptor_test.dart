@@ -286,6 +286,36 @@ void main() {
       ),
     ),
     (
+      'a refused client certificate of a native adapter',
+      throwing(
+        const _NativeClientException(
+          'NetworkClientException: net::ERR_BAD_SSL_CLIENT_AUTH_CERT, '
+          'uri=$_url, errorCode=11, cronetInternalErrorCode=-117, '
+          'immediatelyRetryable=false',
+        ),
+      ),
+    ),
+    for (final error in <Exception>[
+      const CleartextBlockedException('http://tasks.example.com:80'),
+      const ConnectionProfileLockedException('https://tasks.example.com:443'),
+      const ConnectionProfileIncompleteException(
+        'https://tasks.example.com:443',
+      ),
+      const ConnectionProfilesDamagedException(),
+      const ClientCertificateRefusedException('https://tasks.example.com:443'),
+    ])
+      (
+        'a request the connection settings stopped '
+            '(${error.runtimeType})',
+        failsWith(
+          (r) => DioException.connectionError(
+            requestOptions: r,
+            reason: 'refused by the connection settings',
+            error: error,
+          ),
+        ),
+      ),
+    (
       'an undecodable body',
       failsWith(
         (r) => DioException(

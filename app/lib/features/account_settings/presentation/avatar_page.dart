@@ -21,6 +21,7 @@ import 'package:vikunja_mobile/features/common/presentation/initials_avatar.dart
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
 import 'package:vikunja_mobile/features/common/presentation/option_sheet.dart';
 import 'package:vikunja_mobile/features/common/presentation/user_avatar.dart';
+import 'package:vikunja_mobile/features/connection/presentation/browser_leg_hint.dart';
 import 'package:vikunja_mobile/features/session/application/sign_in_controller.dart';
 import 'package:vikunja_mobile/features/sync/application/offline_state.dart';
 
@@ -177,11 +178,7 @@ class _AvatarPageState extends ConsumerState<AvatarPage> {
           onRetry: () => unawaited(_refresh()),
           onSignInAgain: signingIn
               ? null
-              : () => unawaited(
-                  ref
-                      .read(signInControllerProvider.notifier)
-                      .signInAgain(entry),
-                ),
+              : () => unawaited(signInAgainAfterHint(context, ref, entry)),
           onChoose: (provider) => unawaited(_choose(provider)),
           onUpload: () => unawaited(_uploadPhoto()),
         ),

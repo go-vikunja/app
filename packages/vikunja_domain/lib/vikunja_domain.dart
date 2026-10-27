@@ -29,6 +29,7 @@ export 'src/security/user_data_export.dart';
 export 'src/security/user_session.dart';
 export 'src/server/api_version.dart';
 export 'src/server/capability.dart';
+export 'src/server/connection_settings_exceptions.dart';
 export 'src/server/server_capabilities.dart';
 export 'src/server/server_connection.dart';
 export 'src/server/server_connection_failure.dart';

@@ -39,17 +39,40 @@ final class ServerTimeout extends ServerConnectionFailure {
 
 /// The TLS handshake failed, typically an untrusted or expired certificate.
 final class TlsFailure extends ServerConnectionFailure {
-  const new(Uri super.uri, {this.cause, this.certificateRejected = false});
+  const new(
+    Uri super.uri, {
+    this.cause,
+    this.certificateRejected = false,
+    this.clientCertificateRefused = false,
+  });
 
   final Object? cause;
 
-  /// The certificate was refused, so a TLS server did answer. False for
-  /// protocol mismatches such as plain http on the port.
+  /// The server's certificate was refused, so a TLS server did answer. False
+  /// for protocol mismatches such as plain http on the port.
   final bool certificateRejected;
+
+  /// The server refused this device's client certificate, or wants one and
+  /// got none. A TLS server answered; never set with [certificateRejected].
+  final bool clientCertificateRefused;
 
   @override
   String toString() =>
-      'TlsFailure($uri, $cause, certificateRejected: $certificateRejected)';
+      'TlsFailure($uri, $cause, certificateRejected: $certificateRejected, '
+      'clientCertificateRefused: $clientCertificateRefused)';
+}
+
+enum ConnectionSettingsProblem { cleartextBlocked, locked, incomplete, damaged }
+
+/// The stored connection settings of the origin stopped the request before
+/// it left the device.
+final class ConnectionSettingsFailure extends ServerConnectionFailure {
+  const new(Uri super.uri, {required this.problem});
+
+  final ConnectionSettingsProblem problem;
+
+  @override
+  String toString() => 'ConnectionSettingsFailure($uri, $problem)';
 }
 
 /// Something answered, but not with a Vikunja `/info` document.

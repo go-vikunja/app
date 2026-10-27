@@ -50,11 +50,19 @@ final class ClientIdentityProvider
 
 String _$clientIdentityHash() => r'6e460b55c131f93269061eaa1a7f302652c2280e';
 
+/// Each Dio owns its adapter over the shared profile table, which edits
+/// change in place: rebuilding a Dio would tear down running syncs.
+
 @ProviderFor(dio)
 final dioProvider = DioProvider._();
 
+/// Each Dio owns its adapter over the shared profile table, which edits
+/// change in place: rebuilding a Dio would tear down running syncs.
+
 final class DioProvider extends $FunctionalProvider<Dio, Dio, Dio>
     with $Provider<Dio> {
+  /// Each Dio owns its adapter over the shared profile table, which edits
+  /// change in place: rebuilding a Dio would tear down running syncs.
   DioProvider._()
     : super(
         from: null,
@@ -88,7 +96,7 @@ final class DioProvider extends $FunctionalProvider<Dio, Dio, Dio>
   }
 }
 
-String _$dioHash() => r'8509dd2ba37c704c7d7fff80a37d894e19166f96';
+String _$dioHash() => r'ba1880662f43039710a29431e18512a41915fa25';
 
 /// For the OAuth token endpoint: no auth interceptor, and a long receive
 /// timeout, because the server rotates the refresh token as soon as it
@@ -139,7 +147,7 @@ final class AuthDioProvider extends $FunctionalProvider<Dio, Dio, Dio>
   }
 }
 
-String _$authDioHash() => r'25533df9f4d8a90cd0bffbf757beb2f310d63b73';
+String _$authDioHash() => r'be2df70f82db48793960a3e31290051ed689550b';
 
 @ProviderFor(serverConnector)
 final serverConnectorProvider = ServerConnectorProvider._();

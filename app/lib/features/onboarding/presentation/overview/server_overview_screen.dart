@@ -8,7 +8,10 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/core/network/network_profile_providers.dart';
 import 'package:vikunja_mobile/features/common/presentation/external_link.dart';
+import 'package:vikunja_mobile/features/connection/presentation/browser_leg_hint.dart';
+import 'package:vikunja_mobile/features/connection/presentation/connection_settings_action.dart';
 import 'package:vikunja_mobile/features/onboarding/application/browser_sign_in_method.dart';
 import 'package:vikunja_mobile/features/onboarding/application/current_server.dart';
 import 'package:vikunja_mobile/features/onboarding/application/web_auth_pages.dart';
@@ -86,14 +89,30 @@ class _ServerOverviewScreenState extends ConsumerState<ServerOverviewScreen> {
     unawaited(ref.read(signInControllerProvider.notifier).signIn(connection));
   }
 
+  Future<void> _continueToSignIn(ServerConnection connection) async {
+    if (await confirmBrowserLeg(context, ref, connection) && mounted) {
+      _signIn(connection);
+    }
+  }
+
   // The web's login page links to its registration form and comes back
-  // here once the account exists.
+  // here once the account exists. What the browser meets despite the
+  // connection settings goes into the same question.
   Future<void> _createAccount(ServerConnection connection) async {
     final l10n = context.l10n;
+    final hint = await browserLegHint(
+      l10n,
+      ref.read(networkProfilesProvider),
+      connection,
+    );
+    if (!mounted) return;
     final confirmed = await confirmAdaptive(
       context,
       title: l10n.overviewCreateAccount,
-      body: l10n.overviewCreateAccountHint,
+      body: [
+        l10n.overviewCreateAccountHint,
+        if (hint != null) hint.asText(l10n),
+      ].join('\n\n'),
       confirmLabel: l10n.continueToSignIn,
     );
     if (confirmed && mounted) _signIn(connection);
@@ -128,7 +147,7 @@ class _ServerOverviewScreenState extends ConsumerState<ServerOverviewScreen> {
     final actions = OverviewActions(
       canSignIn: signInMethod != null,
       isSigningIn: isSigningIn,
-      onContinue: () => _signIn(connection),
+      onContinue: () => unawaited(_continueToSignIn(connection)),
       onUseDifferentServer: () =>
           widget.adding ? context.pop() : context.go(AppRoutes.connect),
       onCreateAccount: signInMethod?.offersRegistration ?? false
@@ -187,6 +206,13 @@ class _ServerOverviewScreenState extends ConsumerState<ServerOverviewScreen> {
                     serverRoot: serverRoot,
                     platform: theme.platform,
                   ),
+                  action: ConnectionSettingsAction.appliesTo(error)
+                      ? ConnectionSettingsAction(
+                          error: error,
+                          serverRoot: serverRoot,
+                          foreground: theme.colorScheme.onErrorContainer,
+                        )
+                      : null,
                 ),
                 const SizedBox(height: 20),
               ],

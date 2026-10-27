@@ -11,6 +11,8 @@ import 'package:vikunja_mobile/core/sync/sync_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/account_actions.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
+import 'package:vikunja_mobile/features/connection/presentation/browser_leg_hint.dart';
+import 'package:vikunja_mobile/features/connection/presentation/connection_settings_action.dart';
 import 'package:vikunja_mobile/features/home/presentation/guest_reauth_banner.dart';
 import 'package:vikunja_mobile/features/home/presentation/reauth_banner.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_header.dart';
@@ -124,9 +126,7 @@ class _FirstSyncScreenState extends ConsumerState<FirstSyncScreen> {
                         serverRoot: entry.connection.rootUri,
                         isSigningIn: signIn is SignInInProgress,
                         onSignInAgain: () => unawaited(
-                          ref
-                              .read(signInControllerProvider.notifier)
-                              .signInAgain(entry),
+                          signInAgainAfterHint(context, ref, entry),
                         ),
                       ),
                       if (signIn case SignInFailed(
@@ -141,6 +141,14 @@ class _FirstSyncScreenState extends ConsumerState<FirstSyncScreen> {
                             serverRoot: serverRoot,
                             platform: theme.platform,
                           ),
+                          action: ConnectionSettingsAction.appliesTo(error)
+                              ? ConnectionSettingsAction(
+                                  error: error,
+                                  serverRoot: serverRoot,
+                                  foreground:
+                                      theme.colorScheme.onErrorContainer,
+                                )
+                              : null,
                         ),
                       ],
                     ] else

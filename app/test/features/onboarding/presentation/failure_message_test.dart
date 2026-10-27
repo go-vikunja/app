@@ -20,13 +20,16 @@ void main() {
   );
 
   test('a TLS failure on iOS points to the certificate trust settings', () {
-    expect(describe(TargetPlatform.iOS).suggestion, en.failureTlsSuggestionIos);
+    expect(
+      describe(TargetPlatform.iOS).suggestion,
+      en.connectionTlsSuggestionIos,
+    );
   });
 
   test('a TLS failure elsewhere only asks to install the certificate', () {
     expect(
       describe(TargetPlatform.android).suggestion,
-      en.failureTlsSuggestion,
+      en.connectionTlsSuggestion,
     );
   });
 

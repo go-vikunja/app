@@ -11,9 +11,12 @@ VikunjaFailure normalizeError(Object error) => switch (error) {
   final VikunjaFailure failure => failure,
   DioException(error: final VikunjaFailure failure) => failure,
   final DioException exception => _fromDioException(exception),
-  // Never the error's text: a FormatException quotes its input, which can be
-  // a token.
-  _ => UnexpectedResponse(null, message: '${error.runtimeType}'),
+  _ => switch (connectionSettingsProblemOf(error)) {
+    final problem? => NetworkFailure(problem, cause: error),
+    // Never the error's text: a FormatException quotes its input, which can
+    // be a token.
+    null => UnexpectedResponse(null, message: '${error.runtimeType}'),
+  },
 };
 
 VikunjaFailure _fromDioException(DioException exception) {

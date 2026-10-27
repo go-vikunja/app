@@ -1029,6 +1029,34 @@ void main() {
     }
   });
 
+  group('connection settings that refuse the socket', () {
+    final failures = <Exception>[
+      const CleartextBlockedException('http://192.168.1.20:3456'),
+      const ConnectionProfileLockedException('https://vikunja.example:443'),
+      const ConnectionProfileIncompleteException('https://vikunja.example:443'),
+      const ConnectionProfilesDamagedException(),
+      const ClientCertificateRefusedException('https://vikunja.example:443'),
+    ];
+    for (final error in failures) {
+      test('${error.runtimeType}: unavailable until the next resume', () async {
+        connector.onConnect = (_) async => throw error;
+        final realtime = connection()..start();
+        await pumpEventQueue();
+
+        expect(realtime.state, RealtimeState.unavailable);
+        expect(timers.active, isEmpty);
+
+        connector.onConnect = null;
+        realtime
+          ..onPause()
+          ..onResume();
+        await pumpEventQueue();
+        expect(connector.connectCalls, 2);
+        expect(realtime.state, RealtimeState.live);
+      });
+    }
+  });
+
   group('offline', () {
     test('no attempt while offline; one at once when online again', () async {
       final realtime = connection()

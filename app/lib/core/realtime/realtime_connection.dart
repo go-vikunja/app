@@ -259,6 +259,14 @@ final class RealtimeConnection {
         _giveUp(_GivenUp.untilResume, '${error.runtimeType}');
       case SessionEnded():
         _giveUp(_GivenUp.untilResume, 'session ended');
+      // The connection settings refuse the socket before it opens; an edit
+      // restarts the connection, otherwise the next resume tries again.
+      case CleartextBlockedException() ||
+          ConnectionProfileLockedException() ||
+          ConnectionProfileIncompleteException() ||
+          ConnectionProfilesDamagedException() ||
+          ClientCertificateRefusedException():
+        _giveUp(_GivenUp.untilResume, '${error.runtimeType}');
       default:
         _retryLater('${error.runtimeType}');
     }

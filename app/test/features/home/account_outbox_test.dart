@@ -37,7 +37,7 @@ void main() {
       needsReauth: needsReauth,
     );
     // Tall enough for the whole tab, which the list builds lazily.
-    usePhoneSurface(tester, logicalSize: const Size(360, 1800));
+    usePhoneSurface(tester, logicalSize: const Size(360, 2000));
     await pumpVikunjaApp(
       tester,
       auth: auth,

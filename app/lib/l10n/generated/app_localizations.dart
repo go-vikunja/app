@@ -236,18 +236,6 @@ abstract class AppLocalizations {
   /// **'This device does not trust the certificate of {host}. It may be self-signed, issued for a different address, or expired.'**
   String failureTlsExplanation(String host);
 
-  /// No description provided for @failureTlsSuggestion.
-  ///
-  /// In en, this message translates to:
-  /// **'If your server uses its own certificate authority, install its certificate in your device settings. Trusting self-signed certificates directly in the app is planned.'**
-  String get failureTlsSuggestion;
-
-  /// No description provided for @failureTlsSuggestionIos.
-  ///
-  /// In en, this message translates to:
-  /// **'If your server uses its own certificate authority, install its certificate profile, then turn on full trust for it under Settings › General › About › Certificate Trust Settings. Trusting self-signed certificates directly in the app is planned.'**
-  String get failureTlsSuggestionIos;
-
   /// No description provided for @failureTlsHandshakeExplanation.
   ///
   /// In en, this message translates to:
@@ -307,12 +295,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'A proxy in front of {host} asks for its own sign-in before Vikunja can be reached.'**
   String failureLoginProxyExplanation(String host);
-
-  /// No description provided for @failureLoginProxySuggestion.
-  ///
-  /// In en, this message translates to:
-  /// **'Ask whoever runs the server to let the app reach the Vikunja API directly. Support for custom proxy headers, such as Cloudflare Access tokens, is planned.'**
-  String get failureLoginProxySuggestion;
 
   /// No description provided for @failureUnexpectedTitle.
   ///
@@ -11639,6 +11621,984 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Notifications don\'t appear on the lock screen; you see them once you unlock'**
   String get privacyNotificationContentHiddenSubtitleAndroid;
+
+  /// Title of a failure: the server refused this device's client certificate, or wanted one and got none.
+  ///
+  /// In en, this message translates to:
+  /// **'Client certificate not accepted'**
+  String get connectionClientCertificateFailureTitle;
+
+  /// Explanation of a client-certificate failure where the app does not know whether one is stored.
+  ///
+  /// In en, this message translates to:
+  /// **'{host} did not accept a client certificate from this device.'**
+  String connectionClientCertificateFailureExplanation(String host);
+
+  /// Explanation of a client-certificate failure when no client certificate is stored for the server.
+  ///
+  /// In en, this message translates to:
+  /// **'{host} needs a client certificate.'**
+  String connectionClientCertificateNeededExplanation(String host);
+
+  /// Explanation of a client-certificate failure when one is stored for the server.
+  ///
+  /// In en, this message translates to:
+  /// **'{host} refused the stored client certificate.'**
+  String connectionClientCertificateRefusedExplanation(String host);
+
+  /// Suggestion for a client-certificate failure.
+  ///
+  /// In en, this message translates to:
+  /// **'Add the client certificate (a .p12 or .pfx file) in this server\'s connection settings.'**
+  String get connectionClientCertificateFailureSuggestion;
+
+  /// Suggestion when the server refused the stored client certificate.
+  ///
+  /// In en, this message translates to:
+  /// **'Check that it is the right certificate and still valid, or replace it in this server\'s connection settings.'**
+  String get connectionClientCertificateRefusedSuggestion;
+
+  /// Title of a failure: the app refused a plain http request because unencrypted connections to the server are not allowed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unencrypted connection not allowed'**
+  String get connectionCleartextBlockedTitle;
+
+  /// Explanation of the cleartext failure.
+  ///
+  /// In en, this message translates to:
+  /// **'Unencrypted connections to {host} are not allowed on this device.'**
+  String connectionCleartextBlockedExplanation(String host);
+
+  /// Suggestion for the cleartext failure.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow unencrypted connections in this server\'s connection settings if you trust the network.'**
+  String get connectionCleartextBlockedSuggestion;
+
+  /// Title of a failure: the stored connection settings are in secure storage that cannot be read before the device was unlocked once. Never use the word locked (that belongs to the app lock).
+  ///
+  /// In en, this message translates to:
+  /// **'Connection settings not available yet'**
+  String get connectionProfileLockedTitle;
+
+  /// Explanation of the unavailable-settings failure.
+  ///
+  /// In en, this message translates to:
+  /// **'The connection settings for {host} are not available until the device has been unlocked once.'**
+  String connectionProfileLockedExplanation(String host);
+
+  /// Suggestion for the unavailable-settings failure.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock the device, then try again.'**
+  String get connectionProfileLockedSuggestion;
+
+  /// Title of a failure: stored access headers or the client certificate are missing or could not be used.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection settings incomplete'**
+  String get connectionProfileIncompleteTitle;
+
+  /// Explanation of the incomplete-settings failure.
+  ///
+  /// In en, this message translates to:
+  /// **'Some connection settings for {host} are missing and need to be entered again.'**
+  String connectionProfileIncompleteExplanation(String host);
+
+  /// Suggestion for the incomplete-settings failure.
+  ///
+  /// In en, this message translates to:
+  /// **'Open this server\'s connection settings and enter them again.'**
+  String get connectionProfileIncompleteSuggestion;
+
+  /// Title of a failure: the stored connection settings of all servers could not be read.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection settings unreadable'**
+  String get connectionProfileDamagedTitle;
+
+  /// Explanation of the damaged-settings failure.
+  ///
+  /// In en, this message translates to:
+  /// **'The stored connection settings could not be read. Reset them to continue.'**
+  String get connectionProfileDamagedExplanation;
+
+  /// Suggestion for the damaged-settings failure.
+  ///
+  /// In en, this message translates to:
+  /// **'Afterwards, enter the settings again for the servers that need them.'**
+  String get connectionProfileDamagedSuggestion;
+
+  /// Suggestion when the device does not trust the server's certificate (Android).
+  ///
+  /// In en, this message translates to:
+  /// **'If your server uses its own certificate authority, install its certificate in your device settings, or trust the certificate in this server\'s connection settings.'**
+  String get connectionTlsSuggestion;
+
+  /// Suggestion when the device does not trust the server's certificate (iOS).
+  ///
+  /// In en, this message translates to:
+  /// **'If your server uses its own certificate authority, install its certificate profile and turn on full trust for it under Settings › General › About › Certificate Trust Settings, or trust the certificate in this server\'s connection settings.'**
+  String get connectionTlsSuggestionIos;
+
+  /// Suggestion when a login proxy sits in front of the server.
+  ///
+  /// In en, this message translates to:
+  /// **'If the proxy accepts access tokens, such as a Cloudflare Access service token, add them as access headers in this server\'s connection settings; otherwise ask whoever runs the server to let the app reach the Vikunja API directly.'**
+  String get connectionLoginProxySuggestion;
+
+  /// Explanation when the server's certificate does not match the certificate the user trusted for it.
+  ///
+  /// In en, this message translates to:
+  /// **'{host} presented a certificate other than the one trusted in the app.'**
+  String connectionPinMismatchExplanation(String host);
+
+  /// Suggestion when the server's certificate changed.
+  ///
+  /// In en, this message translates to:
+  /// **'Review the new certificate in this server\'s connection settings before you accept it.'**
+  String get connectionPinMismatchSuggestion;
+
+  /// Action on a failure that the server's connection settings can fix.
+  ///
+  /// In en, this message translates to:
+  /// **'Open connection settings'**
+  String get connectionOpenSettings;
+
+  /// Action when the stored connection settings could not be read.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset connection settings'**
+  String get connectionReset;
+
+  /// Title of the confirmation before resetting unreadable connection settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset connection settings?'**
+  String get connectionResetTitle;
+
+  /// Body of the confirmation before resetting unreadable connection settings.
+  ///
+  /// In en, this message translates to:
+  /// **'This removes the connection settings and the permissions for unencrypted connections of every server. The affected accounts stop working until the settings are entered again.'**
+  String get connectionResetBody;
+
+  /// Confirms resetting the connection settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get connectionResetConfirm;
+
+  /// Action on a failure where the device does not trust the server's certificate: shows the certificate to trust it.
+  ///
+  /// In en, this message translates to:
+  /// **'View certificate'**
+  String get connectionViewCertificate;
+
+  /// Action on a failure where a login proxy sits in front of the server: opens the access headers editor.
+  ///
+  /// In en, this message translates to:
+  /// **'Add access headers'**
+  String get connectionAddHeaders;
+
+  /// Action on a client-certificate failure when none is stored, and on the connection screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Add client certificate'**
+  String get connectionAddClientCertificate;
+
+  /// Action on a client-certificate failure when one is stored, and on the connection screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace client certificate'**
+  String get connectionReplaceClientCertificate;
+
+  /// Snack bar when writing the connection settings failed.
+  ///
+  /// In en, this message translates to:
+  /// **'The connection settings could not be saved.'**
+  String get connectionSaveFailed;
+
+  /// Text button under the server address field on the connect screen: certificate, client certificate and access headers for the typed address.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection options'**
+  String get connectionOptions;
+
+  /// Which address the connection settings are for; the origin is scheme, host and port.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings for {origin}'**
+  String connectionOptionsFor(String origin);
+
+  /// Indicator next to Connection options when settings are stored for the typed address.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved settings'**
+  String get connectionOptionsSaved;
+
+  /// Title of the connection settings screen of a server address, and the Account tab entry to it.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection'**
+  String get connectionTitle;
+
+  /// Note at the top of the connection screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Used by this app for every account on this address. The browser that opens the sign-in page does not use them.'**
+  String get connectionIntro;
+
+  /// Heading of the server certificate section, and title of the screen that shows the server's certificate.
+  ///
+  /// In en, this message translates to:
+  /// **'Server certificate'**
+  String get connectionServerCertificateHeading;
+
+  /// The server certificate the user trusted for this address.
+  ///
+  /// In en, this message translates to:
+  /// **'Trusted certificate'**
+  String get connectionPinnedTitle;
+
+  /// When the user trusted the certificate.
+  ///
+  /// In en, this message translates to:
+  /// **'Trusted since {date}'**
+  String connectionPinnedSince(String date);
+
+  /// A certificate authority's certificate the user trusted for this address.
+  ///
+  /// In en, this message translates to:
+  /// **'Trusted CA certificate'**
+  String get connectionCaTitle;
+
+  /// A stored certificate file's name and when it was added.
+  ///
+  /// In en, this message translates to:
+  /// **'{fileName}, added {date}'**
+  String connectionFileAdded(String fileName, String date);
+
+  /// iOS rules for certificates trusted through a CA certificate.
+  ///
+  /// In en, this message translates to:
+  /// **'On iPhone and iPad, server certificates from this authority must name the server and be valid for at most 825 days; otherwise trust the server\'s certificate itself.'**
+  String get connectionCaIosHint;
+
+  /// Server certificate section when nothing is trusted in the app.
+  ///
+  /// In en, this message translates to:
+  /// **'The certificates trusted by the device are used.'**
+  String get connectionDeviceTrust;
+
+  /// Button that fetches the server's certificate to trust it or a CA certificate.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the server\'s certificate'**
+  String get connectionCheckCertificate;
+
+  /// Heading of the client certificate section and title of its import screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Client certificate'**
+  String get connectionClientCertificateHeading;
+
+  /// Client certificate section when none is stored.
+  ///
+  /// In en, this message translates to:
+  /// **'None. Only needed when the server asks for one.'**
+  String get connectionClientCertificateNone;
+
+  /// Removes a stored client certificate or the access headers.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get connectionRemove;
+
+  /// Heading of the access headers section and title of its editor.
+  ///
+  /// In en, this message translates to:
+  /// **'Access headers'**
+  String get connectionHeadersHeading;
+
+  /// Access headers section when none are stored.
+  ///
+  /// In en, this message translates to:
+  /// **'None. Only needed behind an access proxy such as Cloudflare Access.'**
+  String get connectionHeadersNone;
+
+  /// Opens the access headers editor.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit access headers'**
+  String get connectionEditHeaders;
+
+  /// Read by screen readers instead of the dots that stand for a stored header value.
+  ///
+  /// In en, this message translates to:
+  /// **'value hidden'**
+  String get connectionHeaderValueHidden;
+
+  /// Heading of the section on plain http for this address.
+  ///
+  /// In en, this message translates to:
+  /// **'Unencrypted connections'**
+  String get connectionCleartextHeading;
+
+  /// When the user allowed unencrypted connections.
+  ///
+  /// In en, this message translates to:
+  /// **'Allowed since {date}'**
+  String connectionCleartextAllowedSince(String date);
+
+  /// Cleartext section when unencrypted connections are not allowed.
+  ///
+  /// In en, this message translates to:
+  /// **'Not allowed. Requests to this address fail until you allow them.'**
+  String get connectionCleartextNotAllowed;
+
+  /// Revokes the permission for unencrypted connections.
+  ///
+  /// In en, this message translates to:
+  /// **'Revoke'**
+  String get connectionCleartextRevoke;
+
+  /// Title of the confirmation before revoking the permission for unencrypted connections.
+  ///
+  /// In en, this message translates to:
+  /// **'Revoke the permission?'**
+  String get connectionCleartextRevokeTitle;
+
+  /// Body of the confirmation before revoking the permission for unencrypted connections.
+  ///
+  /// In en, this message translates to:
+  /// **'Requests to {host} will fail. The accounts on this server stop working until unencrypted connections are allowed again.'**
+  String connectionCleartextRevokeBody(String host);
+
+  /// Button that asks before allowing plain http for this address.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow unencrypted connection'**
+  String get connectionCleartextAllow;
+
+  /// Warning in the access headers section and editor of a plain http address.
+  ///
+  /// In en, this message translates to:
+  /// **'Like everything else on this address, the headers travel unencrypted.'**
+  String get connectionHeadersUnencrypted;
+
+  /// Access headers section of a plain http address without the permission.
+  ///
+  /// In en, this message translates to:
+  /// **'Access headers can be added once unencrypted connections are allowed.'**
+  String get connectionHeadersNeedCleartext;
+
+  /// Removes everything stored for this address.
+  ///
+  /// In en, this message translates to:
+  /// **'Forget connection settings'**
+  String get connectionForget;
+
+  /// Title of the confirmation before forgetting an address's connection settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Forget connection settings?'**
+  String get connectionForgetTitle;
+
+  /// Body of the confirmation before forgetting an address's connection settings.
+  ///
+  /// In en, this message translates to:
+  /// **'The accounts on {host} stop working until the settings are entered again. The permission for unencrypted connections is removed too.'**
+  String connectionForgetBody(String host);
+
+  /// Confirms forgetting the connection settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Forget'**
+  String get connectionForgetConfirm;
+
+  /// Subtitle of the Account tab's Connection entry after the server presented another certificate.
+  ///
+  /// In en, this message translates to:
+  /// **'Certificate changed'**
+  String get connectionStatusPinMismatch;
+
+  /// Subtitle of the Account tab's Connection entry when stored headers or the client certificate are missing.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs re-entry'**
+  String get connectionStatusNeedsReentry;
+
+  /// Subtitle of the Account tab's Connection entry while secure storage cannot be read yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Not available yet'**
+  String get connectionStatusUnavailable;
+
+  /// Subtitle of the Account tab's Connection entry when the stored settings are unreadable.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings could not be read'**
+  String get connectionStatusDamaged;
+
+  /// Notice on the connection screen when stored headers or the client certificate are missing or unusable.
+  ///
+  /// In en, this message translates to:
+  /// **'Some settings need to be entered again'**
+  String get connectionNeedsReentryTitle;
+
+  /// Body of the re-entry notice on the connection screen.
+  ///
+  /// In en, this message translates to:
+  /// **'The stored access headers or client certificate are missing or could not be used. Requests to this address fail until you enter them again or remove them.'**
+  String get connectionNeedsReentryBody;
+
+  /// Card on the connection screen after the server presented another certificate than the trusted one.
+  ///
+  /// In en, this message translates to:
+  /// **'The server\'s certificate changed'**
+  String get connectionMismatchTitle;
+
+  /// Body of the certificate-changed card.
+  ///
+  /// In en, this message translates to:
+  /// **'On {date} the server presented a certificate other than the trusted one. Requests are refused until you review it.'**
+  String connectionMismatchBody(String date);
+
+  /// Opens the review of a changed server certificate.
+  ///
+  /// In en, this message translates to:
+  /// **'Review'**
+  String get connectionMismatchReview;
+
+  /// Item of the list of what is stored for a server.
+  ///
+  /// In en, this message translates to:
+  /// **'Trusted certificate'**
+  String get connectionSummaryPinned;
+
+  /// Item of the list of what is stored for a server.
+  ///
+  /// In en, this message translates to:
+  /// **'Trusted CA certificate'**
+  String get connectionSummaryCa;
+
+  /// Item of the list of what is stored for a server.
+  ///
+  /// In en, this message translates to:
+  /// **'Client certificate'**
+  String get connectionSummaryClientCertificate;
+
+  /// Item of the list of what is stored for a server.
+  ///
+  /// In en, this message translates to:
+  /// **'Access headers'**
+  String get connectionSummaryHeaders;
+
+  /// Item of the list of what is stored for a server.
+  ///
+  /// In en, this message translates to:
+  /// **'Unencrypted connections allowed'**
+  String get connectionSummaryCleartext;
+
+  /// Shown while the app fetches the server's certificate.
+  ///
+  /// In en, this message translates to:
+  /// **'Fetching the certificate of {origin}…'**
+  String connectionCertificateChecking(String origin);
+
+  /// Label of a certificate's SHA-256 fingerprint.
+  ///
+  /// In en, this message translates to:
+  /// **'SHA-256 fingerprint'**
+  String get connectionFingerprintLabel;
+
+  /// Copies the certificate's fingerprint.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy fingerprint'**
+  String get connectionCopyFingerprint;
+
+  /// Label of a certificate's subject.
+  ///
+  /// In en, this message translates to:
+  /// **'Issued to'**
+  String get connectionIssuedTo;
+
+  /// Label of a certificate's issuer.
+  ///
+  /// In en, this message translates to:
+  /// **'Issued by'**
+  String get connectionIssuedBy;
+
+  /// The certificate is issued by itself.
+  ///
+  /// In en, this message translates to:
+  /// **'Self-signed'**
+  String get connectionSelfSigned;
+
+  /// A certificate's validity.
+  ///
+  /// In en, this message translates to:
+  /// **'Valid from {from} until {until}'**
+  String connectionValidity(String from, String until);
+
+  /// Warning about an expired certificate.
+  ///
+  /// In en, this message translates to:
+  /// **'This certificate has expired.'**
+  String get connectionCertificateExpired;
+
+  /// Warning about a certificate whose validity starts later.
+  ///
+  /// In en, this message translates to:
+  /// **'This certificate is not valid yet.'**
+  String get connectionCertificateNotYetValid;
+
+  /// Introduces the openssl command that prints the fingerprint on the server.
+  ///
+  /// In en, this message translates to:
+  /// **'Compare the fingerprint with the one on your server, for example with:'**
+  String get connectionCompareHint;
+
+  /// Note on the certificate screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Your browser will also warn about this certificate when you sign in; check that it shows the same fingerprint.'**
+  String get connectionBrowserWarnsToo;
+
+  /// Note under the certificate: the trust is limited to one address.
+  ///
+  /// In en, this message translates to:
+  /// **'The app trusts it only for {origin}.'**
+  String connectionTrustOnlyFor(String origin);
+
+  /// Trusts the shown server certificate for this address.
+  ///
+  /// In en, this message translates to:
+  /// **'Trust this certificate'**
+  String get connectionTrustCertificate;
+
+  /// Picks a certificate authority's certificate file (PEM) to trust instead of the server's certificate.
+  ///
+  /// In en, this message translates to:
+  /// **'Use a CA certificate instead'**
+  String get connectionUseCa;
+
+  /// Note when a CA certificate is already trusted for the address.
+  ///
+  /// In en, this message translates to:
+  /// **'Trusting this certificate replaces the trusted CA certificate.'**
+  String get connectionPinReplacesCa;
+
+  /// Note when a server certificate is already trusted for the address.
+  ///
+  /// In en, this message translates to:
+  /// **'A CA certificate replaces the trusted certificate.'**
+  String get connectionCaReplacesPin;
+
+  /// Title of the review of a changed server certificate.
+  ///
+  /// In en, this message translates to:
+  /// **'Review the new certificate'**
+  String get connectionReviewTitle;
+
+  /// Heading of the certificate the server presented when the change was noticed.
+  ///
+  /// In en, this message translates to:
+  /// **'Certificate seen on {date}'**
+  String connectionReviewRecorded(String date);
+
+  /// Heading of the certificate fetched for the review.
+  ///
+  /// In en, this message translates to:
+  /// **'Certificate the server presents now'**
+  String get connectionReviewProbed;
+
+  /// The fetched certificate equals the recorded one.
+  ///
+  /// In en, this message translates to:
+  /// **'The server still presents the certificate seen then.'**
+  String get connectionReviewSame;
+
+  /// The fetched certificate differs from the recorded one.
+  ///
+  /// In en, this message translates to:
+  /// **'The server now presents yet another certificate than the one seen then. Check it carefully before you accept it.'**
+  String get connectionReviewDiffers;
+
+  /// The fetched certificate equals the trusted one.
+  ///
+  /// In en, this message translates to:
+  /// **'The server presents the trusted certificate again.'**
+  String get connectionReviewMatchesTrusted;
+
+  /// Trusts the fetched certificate instead of the trusted one.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept new certificate'**
+  String get connectionReviewAccept;
+
+  /// Keeps the trusted certificate and dismisses the change notice.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep current certificate'**
+  String get connectionReviewKeep;
+
+  /// The picked CA certificate does not verify the server.
+  ///
+  /// In en, this message translates to:
+  /// **'This CA certificate did not issue the server\'s certificate.'**
+  String get connectionCaNotTrusted;
+
+  /// The server could not be reached to check the picked CA certificate.
+  ///
+  /// In en, this message translates to:
+  /// **'The CA certificate could not be checked, because {host} could not be reached securely.'**
+  String connectionCaCheckFailed(String host);
+
+  /// Stores the CA certificate without the check.
+  ///
+  /// In en, this message translates to:
+  /// **'Save anyway'**
+  String get connectionCaSaveAnyway;
+
+  /// The picked CA file was refused.
+  ///
+  /// In en, this message translates to:
+  /// **'The file is not a PEM certificate file, or it also contains a private key.'**
+  String get connectionCaFileInvalid;
+
+  /// A picked certificate file is too large.
+  ///
+  /// In en, this message translates to:
+  /// **'The file is larger than 64 KB.'**
+  String get connectionFileTooLarge;
+
+  /// A picked certificate file is empty.
+  ///
+  /// In en, this message translates to:
+  /// **'The file is empty.'**
+  String get connectionFileEmpty;
+
+  /// A picked certificate file could not be read.
+  ///
+  /// In en, this message translates to:
+  /// **'The file could not be read.'**
+  String get connectionFileUnreadable;
+
+  /// Snack bar when the system file picker failed.
+  ///
+  /// In en, this message translates to:
+  /// **'The file picker could not be opened.'**
+  String get connectionPickerFailed;
+
+  /// Opens the file picker for a certificate file.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose file'**
+  String get connectionChooseFile;
+
+  /// Opens the file picker again after a file was chosen.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose another file'**
+  String get connectionChooseOtherFile;
+
+  /// Error when saving the client certificate without a file.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a file first.'**
+  String get connectionNoFileChosen;
+
+  /// Label of the client certificate file's password field.
+  ///
+  /// In en, this message translates to:
+  /// **'File password'**
+  String get connectionFilePassword;
+
+  /// Reveals the password field's text.
+  ///
+  /// In en, this message translates to:
+  /// **'Show password'**
+  String get connectionShowPassword;
+
+  /// Hides the password field's text.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide password'**
+  String get connectionHidePassword;
+
+  /// The client certificate file could not be opened with the password.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong password or unsupported file.'**
+  String get connectionWrongPasswordOrUnsupported;
+
+  /// Hint in the client certificate import.
+  ///
+  /// In en, this message translates to:
+  /// **'If the server\'s certificate comes from your own certificate authority, trust it under Server certificate too: certificates installed in the device settings do not apply to connections with a client certificate.'**
+  String get connectionClientCertificatePrivateCaHint;
+
+  /// Saves the connection settings being edited.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get connectionSave;
+
+  /// Intro of the access headers editor.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent with every request of this app to {origin}, and to no other address.'**
+  String connectionHeadersIntro(String origin);
+
+  /// Preset of the access headers editor: CF-Access-Client-Id and CF-Access-Client-Secret.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloudflare Access service token'**
+  String get connectionHeaderPresetCloudflare;
+
+  /// Preset of the access headers editor: a free name and value.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom header'**
+  String get connectionHeaderPresetCustom;
+
+  /// Label of a header name field.
+  ///
+  /// In en, this message translates to:
+  /// **'Header name'**
+  String get connectionHeaderName;
+
+  /// Label of a header value field.
+  ///
+  /// In en, this message translates to:
+  /// **'Value'**
+  String get connectionHeaderValue;
+
+  /// Reveals a header value.
+  ///
+  /// In en, this message translates to:
+  /// **'Show value'**
+  String get connectionShowValue;
+
+  /// Hides a header value.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide value'**
+  String get connectionHideValue;
+
+  /// Removes a header row in the editor.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove header'**
+  String get connectionRemoveHeader;
+
+  /// Adds a header row in the editor.
+  ///
+  /// In en, this message translates to:
+  /// **'Add header'**
+  String get connectionAddHeader;
+
+  /// Hint in the access headers editor.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloudflare Access apps that allow only service tokens let the app reach the server, but signing in through the browser is then not possible. Opening a shared link as a guest still works.'**
+  String get connectionServiceTokenHint;
+
+  /// Header name validation.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a name.'**
+  String get connectionHeaderNameEmpty;
+
+  /// Header name validation: not an HTTP token.
+  ///
+  /// In en, this message translates to:
+  /// **'Not a valid header name.'**
+  String get connectionHeaderNameInvalid;
+
+  /// Header name validation: a header the app must not override.
+  ///
+  /// In en, this message translates to:
+  /// **'The app or the system sets this header itself.'**
+  String get connectionHeaderNameReserved;
+
+  /// Header name validation: same name twice.
+  ///
+  /// In en, this message translates to:
+  /// **'This header is already in the list.'**
+  String get connectionHeaderNameDuplicate;
+
+  /// Header value validation.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a value.'**
+  String get connectionHeaderValueEmpty;
+
+  /// Header value validation.
+  ///
+  /// In en, this message translates to:
+  /// **'Only visible ASCII characters are allowed.'**
+  String get connectionHeaderValueNonAscii;
+
+  /// Header value validation.
+  ///
+  /// In en, this message translates to:
+  /// **'At most 4 KB.'**
+  String get connectionHeaderValueTooLong;
+
+  /// Header list validation.
+  ///
+  /// In en, this message translates to:
+  /// **'At most 10 headers.'**
+  String get connectionHeadersTooMany;
+
+  /// Title of the hint before the browser sign-in opens for a server with connection settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Before you sign in'**
+  String get connectionBrowserHintTitle;
+
+  /// Browser hint when the sign-in page's address has a trusted certificate; the fingerprint follows.
+  ///
+  /// In en, this message translates to:
+  /// **'Your browser will warn about this server\'s certificate. Check that it shows the same SHA-256 fingerprint as the one trusted here:'**
+  String get connectionBrowserHintPinned;
+
+  /// Browser hint when the sign-in page's address trusts a CA certificate.
+  ///
+  /// In en, this message translates to:
+  /// **'Your browser may warn about this server\'s certificate, unless its certificate authority is also installed in the device settings.'**
+  String get connectionBrowserHintCa;
+
+  /// Browser hint when the server's address has a client certificate.
+  ///
+  /// In en, this message translates to:
+  /// **'The browser needs the client certificate installed in the device settings too, or the sign-in page must be reachable without it.'**
+  String get connectionBrowserHintClientCertificate;
+
+  /// Browser hint when the server's address has access headers.
+  ///
+  /// In en, this message translates to:
+  /// **'The browser goes through the access login itself.'**
+  String get connectionBrowserHintHeaders;
+
+  /// Browser hint when the sign-in page is on another address than the API.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in opens {host}.'**
+  String connectionBrowserHintOtherHost(String host);
+
+  /// Opens the browser sign-in after the hint.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get connectionBrowserHintContinue;
+
+  /// Checkbox in the sign-out or remove dialog of the last account on a server that has connection settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Also forget this server\'s connection settings'**
+  String get connectionForgetCheckbox;
+
+  /// Fetching the server's certificate failed: no connection.
+  ///
+  /// In en, this message translates to:
+  /// **'{host} could not be reached.'**
+  String connectionProbeUnreachable(String host);
+
+  /// Fetching the server's certificate timed out.
+  ///
+  /// In en, this message translates to:
+  /// **'{host} did not answer in time.'**
+  String connectionProbeTimeout(String host);
+
+  /// Fetching the server's certificate failed: the server does not speak TLS on this port.
+  ///
+  /// In en, this message translates to:
+  /// **'{host} did not start a secure connection, so there is no certificate to show.'**
+  String connectionProbeNotTls(String host);
+
+  /// Under the unavailable-settings notice on the connection screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again once the device has been unlocked.'**
+  String get connectionNotAvailableBody;
+
+  /// Title of the confirmation before removing the trusted certificate or CA certificate of an address.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop trusting this certificate?'**
+  String get connectionRemoveTrustTitle;
+
+  /// Body of the confirmation before removing the trusted certificate.
+  ///
+  /// In en, this message translates to:
+  /// **'Requests to {host} then fail unless the device itself trusts the server\'s certificate.'**
+  String connectionRemoveTrustBody(String host);
+
+  /// Title of the confirmation before removing the client certificate.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove the client certificate?'**
+  String get connectionRemoveClientCertificateTitle;
+
+  /// Body of the confirmation before removing the client certificate.
+  ///
+  /// In en, this message translates to:
+  /// **'Requests to {host} then fail if the server requires a client certificate.'**
+  String connectionRemoveClientCertificateBody(String host);
+
+  /// Title of the confirmation before removing the access headers.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove the access headers?'**
+  String get connectionRemoveHeadersTitle;
+
+  /// Body of the confirmation before removing the access headers.
+  ///
+  /// In en, this message translates to:
+  /// **'Requests to {host} then fail if the access proxy requires them.'**
+  String connectionRemoveHeadersBody(String host);
+
+  /// Note on the certificate screen when the fetched certificate is the trusted one.
+  ///
+  /// In en, this message translates to:
+  /// **'This is the certificate the app trusts for this address.'**
+  String get connectionAlreadyTrusted;
+
+  /// Introduces the fingerprint of the certificate the server presented when it differs from the one shown above.
+  ///
+  /// In en, this message translates to:
+  /// **'The server presented this certificate:'**
+  String get connectionCaNotTrustedLeaf;
+
+  /// Introduction on the client certificate import screen: the certificate goes to this one address in the TLS handshake, the key and password never leave the device.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the certificate file (.p12 or .pfx) and enter its password. The certificate is presented only to {origin}; its private key and the password stay encrypted on this device.'**
+  String connectionClientCertificateIntroFor(String origin);
+
+  /// Access headers section of a plain http address whose permission for unencrypted connections was revoked while headers are stored.
+  ///
+  /// In en, this message translates to:
+  /// **'These headers are stored but not sent until unencrypted connections to this address are allowed.'**
+  String get connectionHeadersHeldBack;
+
+  /// Note on the certificate screen when the device's own trusted certificates already accept the server's certificate.
+  ///
+  /// In en, this message translates to:
+  /// **'This device already trusts this certificate, so no extra trust is needed.'**
+  String get connectionTrustDeviceTrusted;
+
+  /// Warning on the certificate screen for a short-lived server certificate: a pin breaks at each renewal, CA trust does not.
+  ///
+  /// In en, this message translates to:
+  /// **'This certificate is valid for less than 100 days, so the server replaces it often. Trusting this exact certificate stops working at every renewal; trusting the CA certificate that issued it keeps working.'**
+  String get connectionTrustShortLived;
 }
 
 class _AppLocalizationsDelegate

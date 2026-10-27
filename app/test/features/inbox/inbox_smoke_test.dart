@@ -41,10 +41,15 @@ void main() {
               .first,
         )
         .position;
-    for (var i = 0; i < 50 && position.extentAfter > 0; i++) {
+    for (var i = 0; i < 80 && position.extentAfter > 300; i++) {
       await tester.drag(scrollView, const Offset(0, -300));
       await tester.pumpAndSettle();
     }
+    // A drag past the end bounces on iOS, and the lazily laid-out list then
+    // corrects its offset by the bounce again and again, depending on the
+    // exact layout; the last stretch therefore jumps.
+    position.jumpTo(position.maxScrollExtent);
+    await tester.pumpAndSettle();
     expect(position.extentAfter, 0);
   }
 

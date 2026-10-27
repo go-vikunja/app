@@ -10,6 +10,7 @@ import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_rows.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_message.dart';
+import 'package:vikunja_mobile/features/connection/presentation/connection_settings_action.dart';
 import 'package:vikunja_mobile/features/home/presentation/background_sync_line.dart';
 import 'package:vikunja_mobile/features/sync/presentation/sync_phase_label.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/relative_time.dart';
@@ -112,6 +113,12 @@ class SyncStatusSection extends ConsumerWidget {
                     ).explanation,
                     style: secondary,
                   ),
+                  if (ConnectionSettingsAction.appliesTo(failure))
+                    ConnectionSettingsAction(
+                      error: failure,
+                      serverRoot: entry.connection.rootUri,
+                      onChanged: canSync ? () => _syncNow(ref) : null,
+                    ),
                 ],
               ),
             ),

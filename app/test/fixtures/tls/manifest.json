@@ -1,0 +1,46 @@
+{
+  "certificates": {
+    "selfsigned.pem": {
+      "subject": "/O=Rurana tests (dummy)/CN=Rurana test self-signed (dummy)",
+      "issuer": "/O=Rurana tests (dummy)/CN=Rurana test self-signed (dummy)",
+      "sha256": "DBB4880289DA8F050664A7F68AA9AA073DB6A03AE7EE2C3C01D5018DE6F4F564",
+      "notBefore": "2026-10-27T11:00:02Z",
+      "notAfter": "2046-10-22T11:00:02Z"
+    },
+    "ca.pem": {
+      "subject": "/O=Rurana tests (dummy)/CN=Rurana test CA (dummy)",
+      "issuer": "/O=Rurana tests (dummy)/CN=Rurana test CA (dummy)",
+      "sha256": "EE66892EF672FAC1E7EA3756FF3EA169EB83EECAFC23B44395D188741AF851D6",
+      "notBefore": "2026-10-27T11:00:02Z",
+      "notAfter": "2046-10-22T11:00:02Z"
+    },
+    "server.pem": {
+      "subject": "/O=Rurana tests (dummy)/CN=Rurana test server (dummy)",
+      "issuer": "/O=Rurana tests (dummy)/CN=Rurana test CA (dummy)",
+      "sha256": "5F48E4EA545E0B035126DD72A025C1B5A12B9B8D1F3BA9ECBA7A0B36B444826C",
+      "notBefore": "2026-10-27T11:00:03Z",
+      "notAfter": "2029-01-24T11:00:03Z"
+    },
+    "client-ca.pem": {
+      "subject": "/O=Rurana tests (dummy)/CN=Rurana test client CA (dummy)",
+      "issuer": "/O=Rurana tests (dummy)/CN=Rurana test client CA (dummy)",
+      "sha256": "C681D3941F2106BED9CCD68439B0C7E3CA15B4482A043B2C09333FD153D0FD2F",
+      "notBefore": "2026-10-27T11:00:03Z",
+      "notAfter": "2046-10-22T11:00:03Z"
+    },
+    "client.pem": {
+      "subject": "/O=Rurana tests (dummy)/CN=Rurana test client (dummy)",
+      "issuer": "/O=Rurana tests (dummy)/CN=Rurana test client CA (dummy)",
+      "sha256": "0F540FC7C5DC273D0A069524C140A04C432FFA567445D71271BE4AC9F3E7334D",
+      "notBefore": "2026-10-27T11:00:03Z",
+      "notAfter": "2046-10-22T11:00:03Z"
+    },
+    "wrong-client.p12": {
+      "subject": "/O=Rurana tests (dummy)/CN=Rurana test wrong client (dummy)",
+      "issuer": "/O=Rurana tests (dummy)/CN=Rurana test other client CA (dummy)",
+      "sha256": "1C4BDB2A56C06101008B8CA7A7FECD47712409607DAF051DA110C5450E8986D6",
+      "notBefore": "2026-10-27T11:00:03Z",
+      "notAfter": "2046-10-22T11:00:03Z"
+    }
+  }
+}

@@ -419,6 +419,25 @@ void main() {
       );
     });
 
+    test('a refused client certificate is a problem of its own', () async {
+      expect(
+        await _failureFor(
+          throwing(
+            HttpException(
+              '\n\tTLSV1_ALERT_CERTIFICATE_REQUIRED(tls_record.cc:489) '
+              'error 268436572',
+              uri: Uri.parse('https://vikunja.example/api/v1/info'),
+            ),
+          ),
+        ),
+        isA<NetworkFailure>().having(
+          (f) => f.problem,
+          'problem',
+          NetworkProblem.clientCertificate,
+        ),
+      );
+    });
+
     test('a body that fails to decode is unexpected', () async {
       expect(
         await _failureFor(
@@ -444,6 +463,58 @@ void main() {
       );
       expect(() => normalizeError(exception), throwsArgumentError);
     });
+  });
+
+  group('requests the connection settings stopped', () {
+    const origin = 'https://vikunja.example:443';
+    final cases = [
+      (
+        const CleartextBlockedException('http://vikunja.example:80'),
+        NetworkProblem.cleartextBlocked,
+      ),
+      (
+        const ConnectionProfileLockedException(origin),
+        NetworkProblem.profileLocked,
+      ),
+      (
+        const ConnectionProfileIncompleteException(origin),
+        NetworkProblem.profileIncomplete,
+      ),
+      (
+        const ConnectionProfilesDamagedException(),
+        NetworkProblem.profileDamaged,
+      ),
+      (
+        const ClientCertificateRefusedException(origin),
+        NetworkProblem.clientCertificate,
+      ),
+    ];
+
+    for (final (error, problem) in cases) {
+      test('${error.runtimeType} is a network failure, so queued work '
+          'waits', () async {
+        final expected = isA<NetworkFailure>()
+            .having((f) => f.problem, 'problem', problem)
+            .having((f) => f.cause, 'cause', same(error));
+
+        expect(
+          await _failureFor(
+            failsWith(
+              (r) => DioException.connectionError(
+                requestOptions: r,
+                reason: 'refused by the connection settings',
+                error: error,
+              ),
+            ),
+          ),
+          expected,
+        );
+        // Dio wraps what an adapter throws as is into an unknown error.
+        expect(await _failureFor(throwing(error)), expected);
+        expect(normalizeError(error), expected);
+        expect(problem.concernsConnectionSettings, isTrue);
+      });
+    }
   });
 
   test('a failure passes through, also inside a DioException', () {

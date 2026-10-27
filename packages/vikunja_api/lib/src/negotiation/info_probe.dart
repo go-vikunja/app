@@ -55,8 +55,14 @@ final class InfoAnswer extends InfoProbeResult {
 final class InfoTransportError(final DioException exception)
     extends InfoProbeResult;
 
+/// `RequestOptions.extra` key marking the `/info` probes, the only requests
+/// the app's transport lets through to an `http://` origin before the user
+/// allowed unencrypted connections to it. They carry no credentials.
+const preConsentProbeKey = 'rurana.preConsentProbe';
+
 Options _probeOptions(Duration timeout) => Options(
   headers: {'Accept': 'application/json'},
+  extra: {preConsentProbeKey: true},
   connectTimeout: timeout,
   receiveTimeout: timeout,
   followRedirects: false,

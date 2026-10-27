@@ -201,7 +201,7 @@ void main() {
         ),
         en.failureTlsTitle,
         en.failureTlsExplanation('vikunja.example.com'),
-        en.failureTlsSuggestion,
+        en.connectionTlsSuggestion,
       ),
       'TLS handshake': (
         TlsFailure(Uri.parse('https://vikunja.example.com')),
@@ -228,7 +228,7 @@ void main() {
         BehindLoginProxy(Uri.parse('https://vikunja.example.com')),
         en.failureLoginProxyTitle,
         en.failureLoginProxyExplanation('vikunja.example.com'),
-        en.failureLoginProxySuggestion,
+        en.connectionLoginProxySuggestion,
       ),
       'unexpected': (
         StateError('bug'),
@@ -333,8 +333,8 @@ void main() {
       await _submitAddress(tester, 'vikunja.example.com');
       await tester.pumpAndSettle();
 
-      expect(find.text(en.failureTlsSuggestionIos), findsOneWidget);
-      expect(find.text(en.failureTlsSuggestion), findsNothing);
+      expect(find.text(en.connectionTlsSuggestionIos), findsOneWidget);
+      expect(find.text(en.connectionTlsSuggestion), findsNothing);
     }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 
     testWidgets('editing the address hides the error', (tester) async {

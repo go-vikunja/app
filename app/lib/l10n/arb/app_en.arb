@@ -66,8 +66,6 @@
       }
     }
   },
-  "failureTlsSuggestion": "If your server uses its own certificate authority, install its certificate in your device settings. Trusting self-signed certificates directly in the app is planned.",
-  "failureTlsSuggestionIos": "If your server uses its own certificate authority, install its certificate profile, then turn on full trust for it under Settings › General › About › Certificate Trust Settings. Trusting self-signed certificates directly in the app is planned.",
   "failureTlsHandshakeExplanation": "{host} did not complete a secure (HTTPS) connection. The address may only speak plain http, or the server’s HTTPS setup is incomplete.",
   "@failureTlsHandshakeExplanation": {
     "placeholders": {
@@ -110,7 +108,6 @@
       }
     }
   },
-  "failureLoginProxySuggestion": "Ask whoever runs the server to let the app reach the Vikunja API directly. Support for custom proxy headers, such as Cloudflare Access tokens, is planned.",
   "failureUnexpectedTitle": "Something went wrong",
   "failureUnexpectedExplanation": "An unexpected error occurred while connecting.",
   "failureUnexpectedSuggestion": "Try again in a moment.",
@@ -6491,5 +6488,833 @@
   "privacyNotificationContentHiddenSubtitleAndroid": "Notifications don't appear on the lock screen; you see them once you unlock",
   "@privacyNotificationContentHiddenSubtitleAndroid": {
     "description": "Android only, under the Hide on the lock screen choice: Android leaves such notifications off the secure lock screen entirely, without a placeholder."
+  },
+  "connectionClientCertificateFailureTitle": "Client certificate not accepted",
+  "@connectionClientCertificateFailureTitle": {
+    "description": "Title of a failure: the server refused this device's client certificate, or wanted one and got none."
+  },
+  "connectionClientCertificateFailureExplanation": "{host} did not accept a client certificate from this device.",
+  "@connectionClientCertificateFailureExplanation": {
+    "description": "Explanation of a client-certificate failure where the app does not know whether one is stored.",
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "connectionClientCertificateNeededExplanation": "{host} needs a client certificate.",
+  "@connectionClientCertificateNeededExplanation": {
+    "description": "Explanation of a client-certificate failure when no client certificate is stored for the server.",
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "connectionClientCertificateRefusedExplanation": "{host} refused the stored client certificate.",
+  "@connectionClientCertificateRefusedExplanation": {
+    "description": "Explanation of a client-certificate failure when one is stored for the server.",
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "connectionClientCertificateFailureSuggestion": "Add the client certificate (a .p12 or .pfx file) in this server's connection settings.",
+  "@connectionClientCertificateFailureSuggestion": {
+    "description": "Suggestion for a client-certificate failure."
+  },
+  "connectionClientCertificateRefusedSuggestion": "Check that it is the right certificate and still valid, or replace it in this server's connection settings.",
+  "@connectionClientCertificateRefusedSuggestion": {
+    "description": "Suggestion when the server refused the stored client certificate."
+  },
+  "connectionCleartextBlockedTitle": "Unencrypted connection not allowed",
+  "@connectionCleartextBlockedTitle": {
+    "description": "Title of a failure: the app refused a plain http request because unencrypted connections to the server are not allowed."
+  },
+  "connectionCleartextBlockedExplanation": "Unencrypted connections to {host} are not allowed on this device.",
+  "@connectionCleartextBlockedExplanation": {
+    "description": "Explanation of the cleartext failure.",
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "connectionCleartextBlockedSuggestion": "Allow unencrypted connections in this server's connection settings if you trust the network.",
+  "@connectionCleartextBlockedSuggestion": {
+    "description": "Suggestion for the cleartext failure."
+  },
+  "connectionProfileLockedTitle": "Connection settings not available yet",
+  "@connectionProfileLockedTitle": {
+    "description": "Title of a failure: the stored connection settings are in secure storage that cannot be read before the device was unlocked once. Never use the word locked (that belongs to the app lock)."
+  },
+  "connectionProfileLockedExplanation": "The connection settings for {host} are not available until the device has been unlocked once.",
+  "@connectionProfileLockedExplanation": {
+    "description": "Explanation of the unavailable-settings failure.",
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "connectionProfileLockedSuggestion": "Unlock the device, then try again.",
+  "@connectionProfileLockedSuggestion": {
+    "description": "Suggestion for the unavailable-settings failure."
+  },
+  "connectionProfileIncompleteTitle": "Connection settings incomplete",
+  "@connectionProfileIncompleteTitle": {
+    "description": "Title of a failure: stored access headers or the client certificate are missing or could not be used."
+  },
+  "connectionProfileIncompleteExplanation": "Some connection settings for {host} are missing and need to be entered again.",
+  "@connectionProfileIncompleteExplanation": {
+    "description": "Explanation of the incomplete-settings failure.",
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "connectionProfileIncompleteSuggestion": "Open this server's connection settings and enter them again.",
+  "@connectionProfileIncompleteSuggestion": {
+    "description": "Suggestion for the incomplete-settings failure."
+  },
+  "connectionProfileDamagedTitle": "Connection settings unreadable",
+  "@connectionProfileDamagedTitle": {
+    "description": "Title of a failure: the stored connection settings of all servers could not be read."
+  },
+  "connectionProfileDamagedExplanation": "The stored connection settings could not be read. Reset them to continue.",
+  "@connectionProfileDamagedExplanation": {
+    "description": "Explanation of the damaged-settings failure."
+  },
+  "connectionProfileDamagedSuggestion": "Afterwards, enter the settings again for the servers that need them.",
+  "@connectionProfileDamagedSuggestion": {
+    "description": "Suggestion for the damaged-settings failure."
+  },
+  "connectionTlsSuggestion": "If your server uses its own certificate authority, install its certificate in your device settings, or trust the certificate in this server's connection settings.",
+  "@connectionTlsSuggestion": {
+    "description": "Suggestion when the device does not trust the server's certificate (Android)."
+  },
+  "connectionTlsSuggestionIos": "If your server uses its own certificate authority, install its certificate profile and turn on full trust for it under Settings › General › About › Certificate Trust Settings, or trust the certificate in this server's connection settings.",
+  "@connectionTlsSuggestionIos": {
+    "description": "Suggestion when the device does not trust the server's certificate (iOS)."
+  },
+  "connectionLoginProxySuggestion": "If the proxy accepts access tokens, such as a Cloudflare Access service token, add them as access headers in this server's connection settings; otherwise ask whoever runs the server to let the app reach the Vikunja API directly.",
+  "@connectionLoginProxySuggestion": {
+    "description": "Suggestion when a login proxy sits in front of the server."
+  },
+  "connectionPinMismatchExplanation": "{host} presented a certificate other than the one trusted in the app.",
+  "@connectionPinMismatchExplanation": {
+    "description": "Explanation when the server's certificate does not match the certificate the user trusted for it.",
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "connectionPinMismatchSuggestion": "Review the new certificate in this server's connection settings before you accept it.",
+  "@connectionPinMismatchSuggestion": {
+    "description": "Suggestion when the server's certificate changed."
+  },
+  "connectionOpenSettings": "Open connection settings",
+  "@connectionOpenSettings": {
+    "description": "Action on a failure that the server's connection settings can fix."
+  },
+  "connectionReset": "Reset connection settings",
+  "@connectionReset": {
+    "description": "Action when the stored connection settings could not be read."
+  },
+  "connectionResetTitle": "Reset connection settings?",
+  "@connectionResetTitle": {
+    "description": "Title of the confirmation before resetting unreadable connection settings."
+  },
+  "connectionResetBody": "This removes the connection settings and the permissions for unencrypted connections of every server. The affected accounts stop working until the settings are entered again.",
+  "@connectionResetBody": {
+    "description": "Body of the confirmation before resetting unreadable connection settings."
+  },
+  "connectionResetConfirm": "Reset",
+  "@connectionResetConfirm": {
+    "description": "Confirms resetting the connection settings."
+  },
+  "connectionViewCertificate": "View certificate",
+  "@connectionViewCertificate": {
+    "description": "Action on a failure where the device does not trust the server's certificate: shows the certificate to trust it."
+  },
+  "connectionAddHeaders": "Add access headers",
+  "@connectionAddHeaders": {
+    "description": "Action on a failure where a login proxy sits in front of the server: opens the access headers editor."
+  },
+  "connectionAddClientCertificate": "Add client certificate",
+  "@connectionAddClientCertificate": {
+    "description": "Action on a client-certificate failure when none is stored, and on the connection screen."
+  },
+  "connectionReplaceClientCertificate": "Replace client certificate",
+  "@connectionReplaceClientCertificate": {
+    "description": "Action on a client-certificate failure when one is stored, and on the connection screen."
+  },
+  "connectionSaveFailed": "The connection settings could not be saved.",
+  "@connectionSaveFailed": {
+    "description": "Snack bar when writing the connection settings failed."
+  },
+  "connectionOptions": "Connection options",
+  "@connectionOptions": {
+    "description": "Text button under the server address field on the connect screen: certificate, client certificate and access headers for the typed address."
+  },
+  "connectionOptionsFor": "Settings for {origin}",
+  "@connectionOptionsFor": {
+    "description": "Which address the connection settings are for; the origin is scheme, host and port.",
+    "placeholders": {
+      "origin": {
+        "type": "String",
+        "example": "https://vikunja.example.com:443"
+      }
+    }
+  },
+  "connectionOptionsSaved": "Saved settings",
+  "@connectionOptionsSaved": {
+    "description": "Indicator next to Connection options when settings are stored for the typed address."
+  },
+  "connectionTitle": "Connection",
+  "@connectionTitle": {
+    "description": "Title of the connection settings screen of a server address, and the Account tab entry to it."
+  },
+  "connectionIntro": "Used by this app for every account on this address. The browser that opens the sign-in page does not use them.",
+  "@connectionIntro": {
+    "description": "Note at the top of the connection screen."
+  },
+  "connectionServerCertificateHeading": "Server certificate",
+  "@connectionServerCertificateHeading": {
+    "description": "Heading of the server certificate section, and title of the screen that shows the server's certificate."
+  },
+  "connectionPinnedTitle": "Trusted certificate",
+  "@connectionPinnedTitle": {
+    "description": "The server certificate the user trusted for this address."
+  },
+  "connectionPinnedSince": "Trusted since {date}",
+  "@connectionPinnedSince": {
+    "description": "When the user trusted the certificate.",
+    "placeholders": {
+      "date": {
+        "type": "String",
+        "example": "Oct 27, 2026"
+      }
+    }
+  },
+  "connectionCaTitle": "Trusted CA certificate",
+  "@connectionCaTitle": {
+    "description": "A certificate authority's certificate the user trusted for this address."
+  },
+  "connectionFileAdded": "{fileName}, added {date}",
+  "@connectionFileAdded": {
+    "description": "A stored certificate file's name and when it was added.",
+    "placeholders": {
+      "fileName": {
+        "type": "String",
+        "example": "phone.p12"
+      },
+      "date": {
+        "type": "String",
+        "example": "Oct 27, 2026"
+      }
+    }
+  },
+  "connectionCaIosHint": "On iPhone and iPad, server certificates from this authority must name the server and be valid for at most 825 days; otherwise trust the server's certificate itself.",
+  "@connectionCaIosHint": {
+    "description": "iOS rules for certificates trusted through a CA certificate."
+  },
+  "connectionDeviceTrust": "The certificates trusted by the device are used.",
+  "@connectionDeviceTrust": {
+    "description": "Server certificate section when nothing is trusted in the app."
+  },
+  "connectionCheckCertificate": "Check the server's certificate",
+  "@connectionCheckCertificate": {
+    "description": "Button that fetches the server's certificate to trust it or a CA certificate."
+  },
+  "connectionClientCertificateHeading": "Client certificate",
+  "@connectionClientCertificateHeading": {
+    "description": "Heading of the client certificate section and title of its import screen."
+  },
+  "connectionClientCertificateNone": "None. Only needed when the server asks for one.",
+  "@connectionClientCertificateNone": {
+    "description": "Client certificate section when none is stored."
+  },
+  "connectionRemove": "Remove",
+  "@connectionRemove": {
+    "description": "Removes a stored client certificate or the access headers."
+  },
+  "connectionHeadersHeading": "Access headers",
+  "@connectionHeadersHeading": {
+    "description": "Heading of the access headers section and title of its editor."
+  },
+  "connectionHeadersNone": "None. Only needed behind an access proxy such as Cloudflare Access.",
+  "@connectionHeadersNone": {
+    "description": "Access headers section when none are stored."
+  },
+  "connectionEditHeaders": "Edit access headers",
+  "@connectionEditHeaders": {
+    "description": "Opens the access headers editor."
+  },
+  "connectionHeaderValueHidden": "value hidden",
+  "@connectionHeaderValueHidden": {
+    "description": "Read by screen readers instead of the dots that stand for a stored header value."
+  },
+  "connectionCleartextHeading": "Unencrypted connections",
+  "@connectionCleartextHeading": {
+    "description": "Heading of the section on plain http for this address."
+  },
+  "connectionCleartextAllowedSince": "Allowed since {date}",
+  "@connectionCleartextAllowedSince": {
+    "description": "When the user allowed unencrypted connections.",
+    "placeholders": {
+      "date": {
+        "type": "String",
+        "example": "Oct 27, 2026"
+      }
+    }
+  },
+  "connectionCleartextNotAllowed": "Not allowed. Requests to this address fail until you allow them.",
+  "@connectionCleartextNotAllowed": {
+    "description": "Cleartext section when unencrypted connections are not allowed."
+  },
+  "connectionCleartextRevoke": "Revoke",
+  "@connectionCleartextRevoke": {
+    "description": "Revokes the permission for unencrypted connections."
+  },
+  "connectionCleartextRevokeTitle": "Revoke the permission?",
+  "@connectionCleartextRevokeTitle": {
+    "description": "Title of the confirmation before revoking the permission for unencrypted connections."
+  },
+  "connectionCleartextRevokeBody": "Requests to {host} will fail. The accounts on this server stop working until unencrypted connections are allowed again.",
+  "@connectionCleartextRevokeBody": {
+    "description": "Body of the confirmation before revoking the permission for unencrypted connections.",
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "connectionCleartextAllow": "Allow unencrypted connection",
+  "@connectionCleartextAllow": {
+    "description": "Button that asks before allowing plain http for this address."
+  },
+  "connectionHeadersUnencrypted": "Like everything else on this address, the headers travel unencrypted.",
+  "@connectionHeadersUnencrypted": {
+    "description": "Warning in the access headers section and editor of a plain http address."
+  },
+  "connectionHeadersNeedCleartext": "Access headers can be added once unencrypted connections are allowed.",
+  "@connectionHeadersNeedCleartext": {
+    "description": "Access headers section of a plain http address without the permission."
+  },
+  "connectionForget": "Forget connection settings",
+  "@connectionForget": {
+    "description": "Removes everything stored for this address."
+  },
+  "connectionForgetTitle": "Forget connection settings?",
+  "@connectionForgetTitle": {
+    "description": "Title of the confirmation before forgetting an address's connection settings."
+  },
+  "connectionForgetBody": "The accounts on {host} stop working until the settings are entered again. The permission for unencrypted connections is removed too.",
+  "@connectionForgetBody": {
+    "description": "Body of the confirmation before forgetting an address's connection settings.",
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "connectionForgetConfirm": "Forget",
+  "@connectionForgetConfirm": {
+    "description": "Confirms forgetting the connection settings."
+  },
+  "connectionStatusPinMismatch": "Certificate changed",
+  "@connectionStatusPinMismatch": {
+    "description": "Subtitle of the Account tab's Connection entry after the server presented another certificate."
+  },
+  "connectionStatusNeedsReentry": "Needs re-entry",
+  "@connectionStatusNeedsReentry": {
+    "description": "Subtitle of the Account tab's Connection entry when stored headers or the client certificate are missing."
+  },
+  "connectionStatusUnavailable": "Not available yet",
+  "@connectionStatusUnavailable": {
+    "description": "Subtitle of the Account tab's Connection entry while secure storage cannot be read yet."
+  },
+  "connectionStatusDamaged": "Settings could not be read",
+  "@connectionStatusDamaged": {
+    "description": "Subtitle of the Account tab's Connection entry when the stored settings are unreadable."
+  },
+  "connectionNeedsReentryTitle": "Some settings need to be entered again",
+  "@connectionNeedsReentryTitle": {
+    "description": "Notice on the connection screen when stored headers or the client certificate are missing or unusable."
+  },
+  "connectionNeedsReentryBody": "The stored access headers or client certificate are missing or could not be used. Requests to this address fail until you enter them again or remove them.",
+  "@connectionNeedsReentryBody": {
+    "description": "Body of the re-entry notice on the connection screen."
+  },
+  "connectionMismatchTitle": "The server's certificate changed",
+  "@connectionMismatchTitle": {
+    "description": "Card on the connection screen after the server presented another certificate than the trusted one."
+  },
+  "connectionMismatchBody": "On {date} the server presented a certificate other than the trusted one. Requests are refused until you review it.",
+  "@connectionMismatchBody": {
+    "description": "Body of the certificate-changed card.",
+    "placeholders": {
+      "date": {
+        "type": "String",
+        "example": "Oct 27, 2026"
+      }
+    }
+  },
+  "connectionMismatchReview": "Review",
+  "@connectionMismatchReview": {
+    "description": "Opens the review of a changed server certificate."
+  },
+  "connectionSummaryPinned": "Trusted certificate",
+  "@connectionSummaryPinned": {
+    "description": "Item of the list of what is stored for a server."
+  },
+  "connectionSummaryCa": "Trusted CA certificate",
+  "@connectionSummaryCa": {
+    "description": "Item of the list of what is stored for a server."
+  },
+  "connectionSummaryClientCertificate": "Client certificate",
+  "@connectionSummaryClientCertificate": {
+    "description": "Item of the list of what is stored for a server."
+  },
+  "connectionSummaryHeaders": "Access headers",
+  "@connectionSummaryHeaders": {
+    "description": "Item of the list of what is stored for a server."
+  },
+  "connectionSummaryCleartext": "Unencrypted connections allowed",
+  "@connectionSummaryCleartext": {
+    "description": "Item of the list of what is stored for a server."
+  },
+  "connectionCertificateChecking": "Fetching the certificate of {origin}…",
+  "@connectionCertificateChecking": {
+    "description": "Shown while the app fetches the server's certificate.",
+    "placeholders": {
+      "origin": {
+        "type": "String",
+        "example": "https://vikunja.example.com:443"
+      }
+    }
+  },
+  "connectionFingerprintLabel": "SHA-256 fingerprint",
+  "@connectionFingerprintLabel": {
+    "description": "Label of a certificate's SHA-256 fingerprint."
+  },
+  "connectionCopyFingerprint": "Copy fingerprint",
+  "@connectionCopyFingerprint": {
+    "description": "Copies the certificate's fingerprint."
+  },
+  "connectionIssuedTo": "Issued to",
+  "@connectionIssuedTo": {
+    "description": "Label of a certificate's subject."
+  },
+  "connectionIssuedBy": "Issued by",
+  "@connectionIssuedBy": {
+    "description": "Label of a certificate's issuer."
+  },
+  "connectionSelfSigned": "Self-signed",
+  "@connectionSelfSigned": {
+    "description": "The certificate is issued by itself."
+  },
+  "connectionValidity": "Valid from {from} until {until}",
+  "@connectionValidity": {
+    "description": "A certificate's validity.",
+    "placeholders": {
+      "from": {
+        "type": "String",
+        "example": "Oct 27, 2026"
+      },
+      "until": {
+        "type": "String",
+        "example": "Nov 28, 2027"
+      }
+    }
+  },
+  "connectionCertificateExpired": "This certificate has expired.",
+  "@connectionCertificateExpired": {
+    "description": "Warning about an expired certificate."
+  },
+  "connectionCertificateNotYetValid": "This certificate is not valid yet.",
+  "@connectionCertificateNotYetValid": {
+    "description": "Warning about a certificate whose validity starts later."
+  },
+  "connectionCompareHint": "Compare the fingerprint with the one on your server, for example with:",
+  "@connectionCompareHint": {
+    "description": "Introduces the openssl command that prints the fingerprint on the server."
+  },
+  "connectionBrowserWarnsToo": "Your browser will also warn about this certificate when you sign in; check that it shows the same fingerprint.",
+  "@connectionBrowserWarnsToo": {
+    "description": "Note on the certificate screen."
+  },
+  "connectionTrustOnlyFor": "The app trusts it only for {origin}.",
+  "@connectionTrustOnlyFor": {
+    "description": "Note under the certificate: the trust is limited to one address.",
+    "placeholders": {
+      "origin": {
+        "type": "String",
+        "example": "https://vikunja.example.com:443"
+      }
+    }
+  },
+  "connectionTrustCertificate": "Trust this certificate",
+  "@connectionTrustCertificate": {
+    "description": "Trusts the shown server certificate for this address."
+  },
+  "connectionUseCa": "Use a CA certificate instead",
+  "@connectionUseCa": {
+    "description": "Picks a certificate authority's certificate file (PEM) to trust instead of the server's certificate."
+  },
+  "connectionPinReplacesCa": "Trusting this certificate replaces the trusted CA certificate.",
+  "@connectionPinReplacesCa": {
+    "description": "Note when a CA certificate is already trusted for the address."
+  },
+  "connectionCaReplacesPin": "A CA certificate replaces the trusted certificate.",
+  "@connectionCaReplacesPin": {
+    "description": "Note when a server certificate is already trusted for the address."
+  },
+  "connectionReviewTitle": "Review the new certificate",
+  "@connectionReviewTitle": {
+    "description": "Title of the review of a changed server certificate."
+  },
+  "connectionReviewRecorded": "Certificate seen on {date}",
+  "@connectionReviewRecorded": {
+    "description": "Heading of the certificate the server presented when the change was noticed.",
+    "placeholders": {
+      "date": {
+        "type": "String",
+        "example": "Oct 27, 2026"
+      }
+    }
+  },
+  "connectionReviewProbed": "Certificate the server presents now",
+  "@connectionReviewProbed": {
+    "description": "Heading of the certificate fetched for the review."
+  },
+  "connectionReviewSame": "The server still presents the certificate seen then.",
+  "@connectionReviewSame": {
+    "description": "The fetched certificate equals the recorded one."
+  },
+  "connectionReviewDiffers": "The server now presents yet another certificate than the one seen then. Check it carefully before you accept it.",
+  "@connectionReviewDiffers": {
+    "description": "The fetched certificate differs from the recorded one."
+  },
+  "connectionReviewMatchesTrusted": "The server presents the trusted certificate again.",
+  "@connectionReviewMatchesTrusted": {
+    "description": "The fetched certificate equals the trusted one."
+  },
+  "connectionReviewAccept": "Accept new certificate",
+  "@connectionReviewAccept": {
+    "description": "Trusts the fetched certificate instead of the trusted one."
+  },
+  "connectionReviewKeep": "Keep current certificate",
+  "@connectionReviewKeep": {
+    "description": "Keeps the trusted certificate and dismisses the change notice."
+  },
+  "connectionCaNotTrusted": "This CA certificate did not issue the server's certificate.",
+  "@connectionCaNotTrusted": {
+    "description": "The picked CA certificate does not verify the server."
+  },
+  "connectionCaCheckFailed": "The CA certificate could not be checked, because {host} could not be reached securely.",
+  "@connectionCaCheckFailed": {
+    "description": "The server could not be reached to check the picked CA certificate.",
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "connectionCaSaveAnyway": "Save anyway",
+  "@connectionCaSaveAnyway": {
+    "description": "Stores the CA certificate without the check."
+  },
+  "connectionCaFileInvalid": "The file is not a PEM certificate file, or it also contains a private key.",
+  "@connectionCaFileInvalid": {
+    "description": "The picked CA file was refused."
+  },
+  "connectionFileTooLarge": "The file is larger than 64 KB.",
+  "@connectionFileTooLarge": {
+    "description": "A picked certificate file is too large."
+  },
+  "connectionFileEmpty": "The file is empty.",
+  "@connectionFileEmpty": {
+    "description": "A picked certificate file is empty."
+  },
+  "connectionFileUnreadable": "The file could not be read.",
+  "@connectionFileUnreadable": {
+    "description": "A picked certificate file could not be read."
+  },
+  "connectionPickerFailed": "The file picker could not be opened.",
+  "@connectionPickerFailed": {
+    "description": "Snack bar when the system file picker failed."
+  },
+  "connectionChooseFile": "Choose file",
+  "@connectionChooseFile": {
+    "description": "Opens the file picker for a certificate file."
+  },
+  "connectionChooseOtherFile": "Choose another file",
+  "@connectionChooseOtherFile": {
+    "description": "Opens the file picker again after a file was chosen."
+  },
+  "connectionNoFileChosen": "Choose a file first.",
+  "@connectionNoFileChosen": {
+    "description": "Error when saving the client certificate without a file."
+  },
+  "connectionFilePassword": "File password",
+  "@connectionFilePassword": {
+    "description": "Label of the client certificate file's password field."
+  },
+  "connectionShowPassword": "Show password",
+  "@connectionShowPassword": {
+    "description": "Reveals the password field's text."
+  },
+  "connectionHidePassword": "Hide password",
+  "@connectionHidePassword": {
+    "description": "Hides the password field's text."
+  },
+  "connectionWrongPasswordOrUnsupported": "Wrong password or unsupported file.",
+  "@connectionWrongPasswordOrUnsupported": {
+    "description": "The client certificate file could not be opened with the password."
+  },
+  "connectionClientCertificatePrivateCaHint": "If the server's certificate comes from your own certificate authority, trust it under Server certificate too: certificates installed in the device settings do not apply to connections with a client certificate.",
+  "@connectionClientCertificatePrivateCaHint": {
+    "description": "Hint in the client certificate import."
+  },
+  "connectionSave": "Save",
+  "@connectionSave": {
+    "description": "Saves the connection settings being edited."
+  },
+  "connectionHeadersIntro": "Sent with every request of this app to {origin}, and to no other address.",
+  "@connectionHeadersIntro": {
+    "description": "Intro of the access headers editor.",
+    "placeholders": {
+      "origin": {
+        "type": "String",
+        "example": "https://vikunja.example.com:443"
+      }
+    }
+  },
+  "connectionHeaderPresetCloudflare": "Cloudflare Access service token",
+  "@connectionHeaderPresetCloudflare": {
+    "description": "Preset of the access headers editor: CF-Access-Client-Id and CF-Access-Client-Secret."
+  },
+  "connectionHeaderPresetCustom": "Custom header",
+  "@connectionHeaderPresetCustom": {
+    "description": "Preset of the access headers editor: a free name and value."
+  },
+  "connectionHeaderName": "Header name",
+  "@connectionHeaderName": {
+    "description": "Label of a header name field."
+  },
+  "connectionHeaderValue": "Value",
+  "@connectionHeaderValue": {
+    "description": "Label of a header value field."
+  },
+  "connectionShowValue": "Show value",
+  "@connectionShowValue": {
+    "description": "Reveals a header value."
+  },
+  "connectionHideValue": "Hide value",
+  "@connectionHideValue": {
+    "description": "Hides a header value."
+  },
+  "connectionRemoveHeader": "Remove header",
+  "@connectionRemoveHeader": {
+    "description": "Removes a header row in the editor."
+  },
+  "connectionAddHeader": "Add header",
+  "@connectionAddHeader": {
+    "description": "Adds a header row in the editor."
+  },
+  "connectionServiceTokenHint": "Cloudflare Access apps that allow only service tokens let the app reach the server, but signing in through the browser is then not possible. Opening a shared link as a guest still works.",
+  "@connectionServiceTokenHint": {
+    "description": "Hint in the access headers editor."
+  },
+  "connectionHeaderNameEmpty": "Enter a name.",
+  "@connectionHeaderNameEmpty": {
+    "description": "Header name validation."
+  },
+  "connectionHeaderNameInvalid": "Not a valid header name.",
+  "@connectionHeaderNameInvalid": {
+    "description": "Header name validation: not an HTTP token."
+  },
+  "connectionHeaderNameReserved": "The app or the system sets this header itself.",
+  "@connectionHeaderNameReserved": {
+    "description": "Header name validation: a header the app must not override."
+  },
+  "connectionHeaderNameDuplicate": "This header is already in the list.",
+  "@connectionHeaderNameDuplicate": {
+    "description": "Header name validation: same name twice."
+  },
+  "connectionHeaderValueEmpty": "Enter a value.",
+  "@connectionHeaderValueEmpty": {
+    "description": "Header value validation."
+  },
+  "connectionHeaderValueNonAscii": "Only visible ASCII characters are allowed.",
+  "@connectionHeaderValueNonAscii": {
+    "description": "Header value validation."
+  },
+  "connectionHeaderValueTooLong": "At most 4 KB.",
+  "@connectionHeaderValueTooLong": {
+    "description": "Header value validation."
+  },
+  "connectionHeadersTooMany": "At most 10 headers.",
+  "@connectionHeadersTooMany": {
+    "description": "Header list validation."
+  },
+  "connectionBrowserHintTitle": "Before you sign in",
+  "@connectionBrowserHintTitle": {
+    "description": "Title of the hint before the browser sign-in opens for a server with connection settings."
+  },
+  "connectionBrowserHintPinned": "Your browser will warn about this server's certificate. Check that it shows the same SHA-256 fingerprint as the one trusted here:",
+  "@connectionBrowserHintPinned": {
+    "description": "Browser hint when the sign-in page's address has a trusted certificate; the fingerprint follows."
+  },
+  "connectionBrowserHintCa": "Your browser may warn about this server's certificate, unless its certificate authority is also installed in the device settings.",
+  "@connectionBrowserHintCa": {
+    "description": "Browser hint when the sign-in page's address trusts a CA certificate."
+  },
+  "connectionBrowserHintClientCertificate": "The browser needs the client certificate installed in the device settings too, or the sign-in page must be reachable without it.",
+  "@connectionBrowserHintClientCertificate": {
+    "description": "Browser hint when the server's address has a client certificate."
+  },
+  "connectionBrowserHintHeaders": "The browser goes through the access login itself.",
+  "@connectionBrowserHintHeaders": {
+    "description": "Browser hint when the server's address has access headers."
+  },
+  "connectionBrowserHintOtherHost": "Sign-in opens {host}.",
+  "@connectionBrowserHintOtherHost": {
+    "description": "Browser hint when the sign-in page is on another address than the API.",
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "connectionBrowserHintContinue": "Continue",
+  "@connectionBrowserHintContinue": {
+    "description": "Opens the browser sign-in after the hint."
+  },
+  "connectionForgetCheckbox": "Also forget this server's connection settings",
+  "@connectionForgetCheckbox": {
+    "description": "Checkbox in the sign-out or remove dialog of the last account on a server that has connection settings."
+  },
+  "connectionProbeUnreachable": "{host} could not be reached.",
+  "@connectionProbeUnreachable": {
+    "description": "Fetching the server's certificate failed: no connection.",
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "connectionProbeTimeout": "{host} did not answer in time.",
+  "@connectionProbeTimeout": {
+    "description": "Fetching the server's certificate timed out.",
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "connectionProbeNotTls": "{host} did not start a secure connection, so there is no certificate to show.",
+  "@connectionProbeNotTls": {
+    "description": "Fetching the server's certificate failed: the server does not speak TLS on this port.",
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "connectionNotAvailableBody": "Try again once the device has been unlocked.",
+  "@connectionNotAvailableBody": {
+    "description": "Under the unavailable-settings notice on the connection screen."
+  },
+  "connectionRemoveTrustTitle": "Stop trusting this certificate?",
+  "@connectionRemoveTrustTitle": {
+    "description": "Title of the confirmation before removing the trusted certificate or CA certificate of an address."
+  },
+  "connectionRemoveTrustBody": "Requests to {host} then fail unless the device itself trusts the server's certificate.",
+  "@connectionRemoveTrustBody": {
+    "description": "Body of the confirmation before removing the trusted certificate.",
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "connectionRemoveClientCertificateTitle": "Remove the client certificate?",
+  "@connectionRemoveClientCertificateTitle": {
+    "description": "Title of the confirmation before removing the client certificate."
+  },
+  "connectionRemoveClientCertificateBody": "Requests to {host} then fail if the server requires a client certificate.",
+  "@connectionRemoveClientCertificateBody": {
+    "description": "Body of the confirmation before removing the client certificate.",
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "connectionRemoveHeadersTitle": "Remove the access headers?",
+  "@connectionRemoveHeadersTitle": {
+    "description": "Title of the confirmation before removing the access headers."
+  },
+  "connectionRemoveHeadersBody": "Requests to {host} then fail if the access proxy requires them.",
+  "@connectionRemoveHeadersBody": {
+    "description": "Body of the confirmation before removing the access headers.",
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "connectionAlreadyTrusted": "This is the certificate the app trusts for this address.",
+  "@connectionAlreadyTrusted": {
+    "description": "Note on the certificate screen when the fetched certificate is the trusted one."
+  },
+  "connectionCaNotTrustedLeaf": "The server presented this certificate:",
+  "@connectionCaNotTrustedLeaf": {
+    "description": "Introduces the fingerprint of the certificate the server presented when it differs from the one shown above."
+  },
+  "connectionClientCertificateIntroFor": "Choose the certificate file (.p12 or .pfx) and enter its password. The certificate is presented only to {origin}; its private key and the password stay encrypted on this device.",
+  "@connectionClientCertificateIntroFor": {
+    "description": "Introduction on the client certificate import screen: the certificate goes to this one address in the TLS handshake, the key and password never leave the device.",
+    "placeholders": {
+      "origin": {
+        "type": "String",
+        "example": "https://vikunja.example.com:443"
+      }
+    }
+  },
+  "connectionHeadersHeldBack": "These headers are stored but not sent until unencrypted connections to this address are allowed.",
+  "@connectionHeadersHeldBack": {
+    "description": "Access headers section of a plain http address whose permission for unencrypted connections was revoked while headers are stored."
+  },
+  "connectionTrustDeviceTrusted": "This device already trusts this certificate, so no extra trust is needed.",
+  "@connectionTrustDeviceTrusted": {
+    "description": "Note on the certificate screen when the device's own trusted certificates already accept the server's certificate."
+  },
+  "connectionTrustShortLived": "This certificate is valid for less than 100 days, so the server replaces it often. Trusting this exact certificate stops working at every renewal; trusting the CA certificate that issued it keeps working.",
+  "@connectionTrustShortLived": {
+    "description": "Warning on the certificate screen for a short-lived server certificate: a pin breaks at each renewal, CA trust does not."
   }
 }

@@ -22,6 +22,7 @@ final class IoRealtimeConnector implements RealtimeConnector {
   const new({
     this.connectTimeout = const Duration(seconds: 15),
     this.pingInterval = const Duration(seconds: 25),
+    this.createHttpClient = HttpClient.new,
   });
 
   /// For the whole handshake: TCP, TLS and the 101.
@@ -31,6 +32,11 @@ final class IoRealtimeConnector implements RealtimeConnector {
   /// answered regardless.
   final Duration pingInterval;
 
+  /// Called once per [connect]; the client is closed after the upgrade. The
+  /// app passes one with a server's own TLS settings (pinned certificate,
+  /// trusted CA, client certificate).
+  final HttpClient Function() createHttpClient;
+
   @override
   Future<RealtimeSocket> connect(
     Uri url, {
@@ -39,7 +45,7 @@ final class IoRealtimeConnector implements RealtimeConnector {
     if (!url.isScheme('ws') && !url.isScheme('wss')) {
       throw ArgumentError('A realtime URL needs the ws or wss scheme');
     }
-    final client = HttpClient()..connectionTimeout = connectTimeout;
+    final client = createHttpClient()..connectionTimeout = connectTimeout;
     final handshake = _upgrade(client, url, headers);
     final Socket socket;
     try {

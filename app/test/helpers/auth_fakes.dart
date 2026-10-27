@@ -58,8 +58,14 @@ final class MemorySecureStore implements SecureStore {
 final class MemoryPreferencesStore implements PreferencesStore {
   final Map<String, String> values = {};
 
+  /// Keys whose next read throws, once each.
+  final Set<String> failNextRead = {};
+
   @override
-  Future<String?> getString(String key) async => values[key];
+  Future<String?> getString(String key) async {
+    if (failNextRead.remove(key)) throw Exception('Preferences unreadable');
+    return values[key];
+  }
 
   @override
   Future<void> setString(String key, String value) async => values[key] = value;

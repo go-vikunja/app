@@ -362,7 +362,10 @@ class _TeamPageState extends ConsumerState<TeamPage> with PageReachability {
         guards: guards,
         userId: userId,
         notice: switch (failure) {
-          NetworkFailure() => const OfflineNotice(),
+          NetworkFailure(
+            problem: NetworkProblem(concernsConnectionSettings: false),
+          ) =>
+            const OfflineNotice(),
           final failure? => DataFailureCard(
             error: failure,
             stale: true,

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
+import 'package:vikunja_mobile/features/connection/presentation/connection_settings_action.dart';
 import 'package:vikunja_mobile/features/home/presentation/reauth_banner.dart';
 import 'package:vikunja_mobile/features/onboarding/application/connect_server_state.dart';
 import 'package:vikunja_mobile/features/onboarding/application/guest_sign_in.dart';
@@ -98,6 +99,13 @@ class _GuestReauthBannerState extends ConsumerState<GuestReauthBanner> {
               serverRoot: serverRoot,
               platform: Theme.of(context).platform,
             ),
+            action: ConnectionSettingsAction.appliesTo(failure)
+                ? ConnectionSettingsAction(
+                    error: failure,
+                    serverRoot: serverRoot,
+                    foreground: Theme.of(context).colorScheme.onErrorContainer,
+                  )
+                : null,
           ),
       ],
     );

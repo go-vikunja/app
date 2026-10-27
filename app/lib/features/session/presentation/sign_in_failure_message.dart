@@ -4,6 +4,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/auth/browser_sign_in.dart';
 import 'package:vikunja_mobile/core/auth/web_authenticator.dart';
+import 'package:vikunja_mobile/features/connection/presentation/connection_failure_message.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/failure_message.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/server_address_display.dart';
 
@@ -20,6 +21,14 @@ FailureMessage describeSignInFailure(
         explanation: explanation,
         suggestion: suggestion,
       );
+  if (error case NetworkFailure(:final problem)) {
+    final settings = connectionSettingsFailureMessage(
+      l10n,
+      problem,
+      host: host,
+    );
+    if (settings != null) return settings;
+  }
   return switch (error) {
     ServerConnectionFailure() => FailureMessage.describe(
       l10n,
@@ -41,9 +50,10 @@ FailureMessage describeSignInFailure(
       l10n.failureTlsTitle,
       l10n.failureTlsExplanation(host),
       platform == TargetPlatform.iOS
-          ? l10n.failureTlsSuggestionIos
-          : l10n.failureTlsSuggestion,
+          ? l10n.connectionTlsSuggestionIos
+          : l10n.connectionTlsSuggestion,
     ),
+
     RateLimited(:final retryAfter) => message(
       l10n.signInRateLimitedTitle,
       l10n.signInRateLimitedExplanation(host),

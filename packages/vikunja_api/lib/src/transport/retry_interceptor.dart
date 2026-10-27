@@ -81,22 +81,24 @@ final class RetryInterceptor extends Interceptor {
           DioExceptionType.sendTimeout ||
           DioExceptionType.receiveTimeout ||
           DioExceptionType.connectionError:
-        return networkProblemOf(err) == NetworkProblem.tls
-            ? null
-            : _backoff(attempt);
+        return _mayHelp(err) ? _backoff(attempt) : null;
       // The native adapters fail with http `ClientException`s, which are not
       // `IOException`s.
       case DioExceptionType.unknown
           when err.error is! FormatException && err.error is! Error:
-        return networkProblemOf(err) == NetworkProblem.tls
-            ? null
-            : _backoff(attempt);
+        return _mayHelp(err) ? _backoff(attempt) : null;
       case DioExceptionType.unknown ||
           DioExceptionType.badCertificate ||
           DioExceptionType.transformTimeout ||
           DioExceptionType.cancel:
         return null;
     }
+  }
+
+  // A TLS failure or the connection settings fail the same way again.
+  bool _mayHelp(DioException err) {
+    final problem = networkProblemOf(err);
+    return problem != NetworkProblem.tls && !problem.concernsConnectionSettings;
   }
 
   Duration _backoff(int attempt) {

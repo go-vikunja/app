@@ -113,6 +113,8 @@ void main() {
     expect(chip('vikunja.example.com'), findsOneWidget);
     expect(chip('tasks.example.net:8443'), findsOneWidget);
 
+    await tester.ensureVisible(chip('vikunja.example.com'));
+    await tester.pumpAndSettle();
     await tester.tap(chip('vikunja.example.com'));
     await tester.pump();
 

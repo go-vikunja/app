@@ -4,6 +4,8 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/network/network_profile_providers.dart';
+import 'package:vikunja_mobile/core/network/origin_key.dart';
 import 'package:vikunja_mobile/core/realtime/realtime_connection.dart';
 import 'package:vikunja_mobile/core/realtime/realtime_providers.dart';
 import 'package:vikunja_mobile/core/repositories/activity_repository_providers.dart';
@@ -20,8 +22,9 @@ part 'realtime_connection_providers.g.dart';
 /// scheduler: replaced on an account switch; gone in a background
 /// container, while nobody is signed in, before the account's first sync,
 /// while its session needs a new sign-in, during a sign-out and on a server
-/// without websockets, and for a link-share guest; closed while the app is
-/// not in front or nothing listens (the shell does).
+/// without websockets, for a link-share guest, and until the server's
+/// connection settings were read; replaced when they are edited; closed
+/// while the app is not in front or nothing listens (the shell does).
 @Riverpod(keepAlive: true)
 RealtimeConnection? realtimeConnection(Ref ref) {
   if (ref.watch(runsHeadlessProvider)) return null;
@@ -45,6 +48,10 @@ RealtimeConnection? realtimeConnection(Ref ref) {
     ),
   );
   if (url == null) return null;
+  // A recorded certificate mismatch changes nothing here.
+  if (ref.watch(connectionProfileRevisionProvider(OriginKey.of(url))) == null) {
+    return null;
+  }
   final firstSyncPending = ref.watch(
     accountSyncStatusProvider(accountId)
         .select((status) => needsFirstSync(status.value)),

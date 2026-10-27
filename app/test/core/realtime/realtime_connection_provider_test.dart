@@ -5,6 +5,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/network/certificate_info.dart';
+import 'package:vikunja_mobile/core/network/network_profile_providers.dart';
+import 'package:vikunja_mobile/core/network/origin_key.dart';
 import 'package:vikunja_mobile/core/realtime/realtime_connection.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
@@ -21,7 +24,10 @@ import '../../helpers/sync_fakes.dart';
 /// Begins a sign-out and never ends it.
 final class _SigningOut extends SignOutController {
   @override
-  Future<void> signOut(String accountId) async => state = true;
+  Future<void> signOut(
+    String accountId, {
+    bool forgetConnectionSettings = false,
+  }) async => state = true;
 }
 
 void main() {
@@ -240,6 +246,57 @@ void main() {
       expect(shell.read()?.state, RealtimeState.live);
       container.dispose();
     });
+  });
+
+  testWidgets('an edit of the connection settings reconnects; a recorded '
+      'certificate mismatch does not', (tester) async {
+    await seed(fullServer270());
+    final container = containerWith();
+    final shell = await listen(tester, container);
+    expect(sync.realtime.connectCalls, 1);
+    final profiles = container.read(networkProfilesProvider);
+    final origin = OriginKey.fromString('https://tasks.example.org:443');
+    CertificateInfo certificate(String hex) => CertificateInfo(
+      sha256: hex * 32,
+      subject: '/CN=tasks.example.org',
+      issuer: '/CN=tasks.example.org',
+      notBefore: DateTime.utc(2026),
+      notAfter: DateTime.utc(2027),
+    );
+
+    await profiles.trustCertificate(origin, certificate('AB'));
+    await settle(tester);
+    expect(sync.realtime.connectCalls, 2);
+    expect(sync.realtime.sockets.first.closedWith, 1000);
+    expect(shell.read()?.state, RealtimeState.live);
+
+    await profiles.recordPinMismatch(origin, certificate('CD'));
+    await settle(tester);
+    expect(sync.realtime.connectCalls, 2);
+
+    await profiles.setHeaders(origin, {'X-Token': 'dummy'});
+    await settle(tester);
+    expect(sync.realtime.connectCalls, 3);
+    container.dispose();
+  });
+
+  testWidgets('a revoked consent takes the http socket down', (tester) async {
+    await seed(insecureServer());
+    final container = containerWith();
+    final shell = await listen(tester, container);
+    expect(sync.realtime.connectCalls, 1);
+
+    await container
+        .read(networkProfilesProvider)
+        .revokeCleartext(OriginKey.fromString('http://192.168.1.20:3456'));
+    await settle(tester);
+
+    // The new connection's connect fails closed in the real connector; the
+    // fake one only counts.
+    expect(sync.realtime.connectCalls, 2);
+    expect(sync.realtime.sockets.first.closedWith, 1000);
+    expect(shell.read(), isNotNull);
+    container.dispose();
   });
 
   testWidgets('hidden or paused closes the socket; a resume connects again', (
