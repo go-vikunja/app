@@ -537,7 +537,7 @@
   "@projectArchived": {
     "description": "Semantic label of the icon on an archived project in the project tree."
   },
-  "projectArchivedNote": "This project is archived. It is not possible to create new or edit tasks for it.",
+  "projectArchivedNote": "This project is read-only because it is archived: no new tasks, no changes.",
   "savedFiltersHeading": "Saved filters",
   "savedFilterUnknownTitle": "Saved filter",
   "@savedFilterUnknownTitle": {
@@ -1351,7 +1351,7 @@
       }
     }
   },
-  "newTaskLabelsNotCreated": "These labels could not be created and were not added: {labels}",
+  "newTaskLabelsNotCreated": "Some labels couldn't be created, so the task doesn't have them: {labels}",
   "@newTaskLabelsNotCreated": {
     "placeholders": {
       "labels": {
@@ -2440,7 +2440,7 @@
     }
   },
   "tabUpcoming": "Upcoming",
-  "upcomingEmptyTitle": "Nothing to do — have a nice day!",
+  "upcomingEmptyTitle": "Nothing due — enjoy your day!",
   "upcomingEmptyBody": "No open task is due in this date range.",
   "upcomingShowOverdue": "Show overdue tasks",
   "upcomingShowWithoutDate": "Show tasks without date",
@@ -2707,7 +2707,7 @@
   "@boardFilterColumnsNote": {
     "description": "Above a kanban board whose buckets are defined by filters; the server refuses moves there."
   },
-  "boardDoneColumnHint": "All tasks moved into this column are marked as done automatically.",
+  "boardDoneColumnHint": "Moving a task here marks it as done.",
   "@boardDoneColumnHint": {
     "description": "Tooltip of the double check mark on the done bucket of a kanban board (the web's \"done bucket\")."
   },
@@ -2739,7 +2739,7 @@
   "@boardColumnFull": {
     "description": "Read by screen readers for a kanban column that has reached its task limit."
   },
-  "boardColumnLimitReached": "You have reached the column limit. Remove tasks or increase the limit to add new tasks.",
+  "boardColumnLimitReached": "This column is full. To add a task here, move one out or raise the column's limit.",
   "@boardColumnLimitReached": {
     "description": "Why a full kanban column takes no new task and refuses a dropped card."
   },
@@ -2827,7 +2827,7 @@
   "@boardDoneColumn": {
     "description": "Checkable item of a kanban column's menu that makes it the board's done column (the web's \"done bucket\")."
   },
-  "boardDoneColumnHintExtended": "All tasks moved into the done column are marked as done automatically. All tasks marked as done elsewhere move there as well.",
+  "boardDoneColumnHintExtended": "Moving a task into this column marks it as done, and a task marked as done anywhere else moves here.",
   "@boardDoneColumnHintExtended": {
     "description": "Under the \"Done column\" menu item."
   },
@@ -2835,7 +2835,7 @@
   "@boardDefaultColumn": {
     "description": "Checkable item of a kanban column's menu that makes it the board's default column (the web's \"default bucket\")."
   },
-  "boardDefaultColumnHint": "When creating tasks without specifying a column, they will be added to this column.",
+  "boardDefaultColumnHint": "New tasks without a column of their own end up here.",
   "@boardDefaultColumnHint": {
     "description": "Under the \"Default column\" menu item."
   },
@@ -3102,7 +3102,7 @@
   "attachmentRemoveCover": "Remove cover",
   "attachmentDelete": "Delete attachment",
   "attachmentDeleteTitle": "Delete attachment",
-  "attachmentDeleteBody": "Are you sure you want to delete the attachment {name}? This cannot be undone!",
+  "attachmentDeleteBody": "“{name}” will be deleted from this task. This can't be undone.",
   "@attachmentDeleteBody": {
     "placeholders": {
       "name": {
@@ -3397,7 +3397,7 @@
   "@projectTitleLabel": {
     "description": "Title field of the project and view forms."
   },
-  "projectTitleHint": "The project's title goes here…",
+  "projectTitleHint": "For example, Groceries",
   "projectTitleRequired": "Please specify a title.",
   "projectParentLabel": "Parent project",
   "@projectParentLabel": {
@@ -3442,11 +3442,11 @@
   "projectUnarchive": "Unarchive",
   "projectArchiveTitle": "Archive this project?",
   "projectUnarchiveTitle": "Unarchive this project?",
-  "projectArchiveBody": "You won't be able to edit this project or create tasks until you unarchive it. Its subprojects are archived too.",
-  "projectUnarchiveBody": "You will be able to create tasks or edit it. Its subprojects are unarchived too.",
+  "projectArchiveBody": "It becomes read-only: no edits and no new tasks while it is archived. Its subprojects are archived too.",
+  "projectUnarchiveBody": "You can edit it and add tasks to it again. Its subprojects are unarchived too.",
   "projectArchivedDone": "Project archived",
   "projectUnarchivedDone": "Project unarchived",
-  "projectArchiveDefaultHint": "You can't archive this because it's your default project.",
+  "projectArchiveDefaultHint": "Your default project can't be archived.",
   "projectNewSubproject": "New subproject",
   "projectAddToFavourites": "Add to favourites",
   "projectRemoveFromFavourites": "Remove from favourites",
@@ -3513,7 +3513,7 @@
   "projectViewsAdminOnly": "Only project admins can change views.",
   "projectDeleteDefault": "This is a user's default project. Only its owner can delete it.",
   "projectArchiveDefault": "This is a user's default project, so it can't be archived.",
-  "projectUnarchiveParentFirst": "The parent project is archived. Unarchive the parent project first.",
+  "projectUnarchiveParentFirst": "Its parent project is archived. Unarchive that one first.",
   "projectChangeArchived": "This project is archived. Unarchive it to change it.",
   "projectParentArchived": "The parent project is archived, so nothing can be added to it.",
   "projectGone": "The project no longer exists.",
@@ -3698,7 +3698,7 @@
   "savedFilterNew": "New saved filter",
   "savedFilterEditTitle": "Edit saved filter",
   "savedFilterDescriptionLabel": "Description",
-  "savedFilterIncludeNulls": "Include tasks which don't have a value set",
+  "savedFilterIncludeNulls": "Include tasks without a value",
   "savedFilterIncludeNullsHint": "Also lists tasks that have no value where the filter compares one, such as tasks without a due date.",
   "savedFilterFavourite": "Favourite",
   "savedFilterFavouriteHint": "Shows it among the favourites in the Projects tab.",
@@ -5918,7 +5918,7 @@
   "@inviteInvalidSuggestion": {
     "description": "Connect screen error: what to do about an invitation that was refused"
   },
-  "guestLabelPickerNote": "A shared link can't create labels; only the labels already used in this project can be added.",
+  "guestLabelPickerNote": "Through a shared link you can only add labels this project already uses, not new ones.",
   "@guestLabelPickerNote": {
     "description": "Under the label picker's search field for a link-share guest."
   },
@@ -7324,5 +7324,73 @@
   "widgetConfigureUnknownBody": "Only Rurana widgets on this device's home screen can be set up. Open the widget's settings on the home screen instead.",
   "@widgetConfigureUnknownBody": {
     "description": "Body below widgetConfigureUnknownTitle."
+  },
+  "aboutTitle": "About Rurana",
+  "@aboutTitle": {
+    "description": "Title of the About page, and the label of its entries on the Account tab's version line and the connect screen."
+  },
+  "aboutVersion": "Version {version} ({build})",
+  "@aboutVersion": {
+    "description": "The app's version under its name on the About page.",
+    "placeholders": {
+      "version": {
+        "type": "String",
+        "example": "1.0.0"
+      },
+      "build": {
+        "type": "String",
+        "example": "42"
+      }
+    }
+  },
+  "aboutVersionWithoutBuild": "Version {version}",
+  "@aboutVersionWithoutBuild": {
+    "description": "The About page's version when the build number is unknown.",
+    "placeholders": {
+      "version": {
+        "type": "String",
+        "example": "1.0.0"
+      }
+    }
+  },
+  "aboutLicenceHeading": "Licence",
+  "@aboutLicenceHeading": {
+    "description": "Section header on the About page."
+  },
+  "aboutLicence": "Rurana is free software: you may share and change it under the GNU Affero General Public License, version 3 or any later version, with an additional permission for app stores.",
+  "@aboutLicence": {
+    "description": "The licence notice on the About page (AGPL-3.0-or-later with the section 7 permission for app stores)."
+  },
+  "aboutNoWarranty": "Rurana comes with no warranty, as far as the law allows.",
+  "@aboutNoWarranty": {
+    "description": "The AGPL's no-warranty notice on the About page."
+  },
+  "aboutLicences": "Licences",
+  "@aboutLicences": {
+    "description": "Opens the licence page (Flutter's LicensePage)."
+  },
+  "aboutLicencesSubtitle": "The full licence text and the additional permission under “rurana”, and the licences of the software Rurana contains",
+  "@aboutLicencesSubtitle": {
+    "description": "Under Licences on the About page; “rurana” is the entry's name on the licence page (the workspace root package that carries the repository's LICENSE), kept in lower case."
+  },
+  "aboutSourceCodeHeading": "Source code",
+  "@aboutSourceCodeHeading": {
+    "description": "Section header on the About page."
+  },
+  "aboutSourceCodeLater": "The source code will be published with the first release.",
+  "@aboutSourceCodeLater": {
+    "description": "On the About page while the repository is not public yet."
+  },
+  "aboutSourceCodeOpen": "View the source code",
+  "@aboutSourceCodeOpen": {
+    "description": "Opens the repository in the browser; the address is shown below it."
+  },
+  "aboutNameAndLogoHeading": "Name and logo",
+  "@aboutNameAndLogoHeading": {
+    "description": "Section header on the About page."
+  },
+  "aboutNameAndLogo": "The name Rurana and the llama logo are not covered by the AGPL; all rights to them are reserved. You may pass on the logo files only unchanged, as part of a copy of Rurana's repository or of the app as Benedikt Lesch publishes it. If you distribute an app built from changed source code, give it a name and logo of its own.",
+  "@aboutNameAndLogo": {
+    "description": "The brand exclusion on the About page."
   }
 }

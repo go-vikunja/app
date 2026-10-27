@@ -4,4 +4,4 @@
 [[IgnoredVulns]]
 id = "GHSA-735f-pc8j-v9w8"
 ignoreUntil = 2027-01-31
-reason = "protobuf-javalite 3.22.3 comes with Cronet (cronet_http, play-services-cronet). In the app it parses only Cronet's HTTP flags file, which HttpFlagsLoader reads from a system-image package (MATCH_SYSTEM_ONLY), never data from the network or other apps. Upgrade with the next dependency update."
+reason = "protobuf-javalite 3.22.3 comes with embedded Cronet (cronet-embedded and cronet-shared 143.7445.0). Its only parse in the app is of Cronet's HTTP flags file from a system-image package (HttpFlagsLoader), and the app turns that off (android.net.http.ReadHttpFlags=false in AndroidManifest.xml, pinned by a test), so nothing reaches the parser; Cronet only writes its engine and proxy options with it. Upgrade with the next dependency update."

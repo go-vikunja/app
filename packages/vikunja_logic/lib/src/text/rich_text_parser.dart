@@ -12,6 +12,10 @@ import 'package:vikunja_logic/src/text/rich_text_schema.dart';
 // package:html. Only what this schema can reach is ported: no open slices,
 // no position tracking, and whitespace is always preserved because TipTap
 // parses with `preserveWhitespace: true`.
+//
+// Translated from prosemirror-model, Copyright (C) 2015-2017 by Marijn
+// Haverbeke and others, MIT License; see THIRD_PARTY_NOTICES.md in this
+// package.
 
 const _bodyPrefix = '<body>';
 

@@ -22,9 +22,13 @@ import {parseAttachmentUrl, parseTaskIdFromUrl} from './links.js'
 
 export const linkProtocols = ['ftp', 'git', 'obsidian', 'notion', 'message']
 const linkAttributes = {target: '_blank', rel: 'noopener noreferrer nofollow'}
-const plainAnchorAttributes = new Set(['href', 'target', 'rel'])
+// In the order a task link writes them.
+const taskLinkAttributeNames = ['target', 'rel', 'href']
 
 const idAlphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-'
+
+// StarterKit's own versions of these are replaced or configured below.
+const replacedStarterKitParts = ['blockquote', 'codeBlock', 'hardBreak', 'link', 'listKeymap', 'underline']
 
 export function newTaskItemId() {
   const bytes = crypto.getRandomValues(new Uint8Array(8))
@@ -38,14 +42,7 @@ export function newTaskItemId() {
 // that it may change while the editor lives.
 export function createExtensions(context) {
   return [
-    StarterKit.configure({
-      codeBlock: false,
-      hardBreak: false,
-      blockquote: false,
-      listKeymap: false,
-      link: false,
-      underline: false,
-    }),
+    StarterKit.configure(Object.fromEntries(replacedStarterKitParts.map(part => [part, false]))),
     ListKeymap,
     EnterReplacesSelection,
     BlockquoteWithCommentId,
@@ -56,11 +53,7 @@ export function createExtensions(context) {
     Subscript,
     Superscript,
     Underline,
-    Link.extend({
-      inclusive() {
-        return false
-      },
-    }).configure({
+    Link.extend({inclusive: () => false}).configure({
       openOnClick: false,
       protocols: linkProtocols,
       HTMLAttributes: linkAttributes,
@@ -83,45 +76,50 @@ const EnterReplacesSelection = Extension.create({
   name: 'enterReplacesSelection',
   priority: 1000,
   addKeyboardShortcuts() {
+    const startsAtBlockStart = selection =>
+      selection instanceof TextSelection && !selection.empty && selection.$from.parentOffset === 0
     return {
       Enter: ({editor}) => {
-        const {selection} = editor.state
-        if (selection.empty || !(selection instanceof TextSelection)) return false
-        if (selection.$from.parentOffset !== 0) return false
-        editor.commands.deleteSelection()
+        if (startsAtBlockStart(editor.state.selection)) editor.commands.deleteSelection()
         return false
       },
     }
   },
 })
 
+// A quote that answers a comment names it; anything but a positive whole
+// number is no comment.
+function commentIdOf(value) {
+  const id = value === null ? NaN : Number(value)
+  return id >= 1 && Number.isInteger(id) ? id : null
+}
+
 const BlockquoteWithCommentId = Blockquote.extend({
   addAttributes() {
-    return {
-      ...this.parent?.(),
-      commentId: {
-        default: null,
-        parseHTML: element => {
-          const raw = element.getAttribute('data-comment-id')
-          if (raw === null) return null
-          const id = Number(raw)
-          return Number.isInteger(id) && id > 0 ? id : null
-        },
-        renderHTML: attributes =>
-          attributes.commentId == null ? {} : {'data-comment-id': String(attributes.commentId)},
-      },
+    const commentId = {
+      default: null,
+      parseHTML: element => commentIdOf(element.getAttribute('data-comment-id')),
+      renderHTML: ({commentId: id}) => (id === null || id === undefined ? {} : {'data-comment-id': `${id}`}),
     }
+    return {...this.parent?.(), commentId}
   },
 })
 
 const HardBreakOnShiftEnter = HardBreak.extend({
   addKeyboardShortcuts() {
     return {
-      'Shift-Enter': () => this.editor.commands.setHardBreak(),
       'Mod-Enter': () => true,
+      'Shift-Enter': () => this.editor.commands.setHardBreak(),
     }
   },
 })
+
+function inlineView(className, text) {
+  const dom = document.createElement('span')
+  dom.className = className
+  dom.textContent = text
+  return {dom}
+}
 
 function isInCode(state) {
   const {$from} = state.selection
@@ -129,123 +127,91 @@ function isInCode(state) {
   return (state.storedMarks ?? $from.marks()).some(mark => mark.type.name === 'code')
 }
 
+// What the web shows as a task link: an anchor with nothing but a task link's
+// attributes and no markup inside, whose text is its own task URL.
+function isPlainTaskAnchor(anchor, bases) {
+  const href = anchor.getAttribute('href') ?? ''
+  return (
+    anchor.childElementCount === 0 &&
+    [...anchor.attributes].every(({name}) => taskLinkAttributeNames.includes(name)) &&
+    anchor.textContent.trim() === href &&
+    parseTaskIdFromUrl(href, bases) !== null
+  )
+}
+
+// The pasted plain text when it is a single task URL.
+function pastedTaskUrl(clipboard, bases) {
+  const text = clipboard?.getData('text/plain')?.trim() ?? ''
+  return /^\S+$/.test(text) && parseTaskIdFromUrl(text, bases) !== null ? text : null
+}
+
 function createTaskLink(context) {
   return Node.create({
     name: 'taskLink',
+    // Its anchors are tried before the Link mark's.
     priority: 200,
-    group: 'inline',
-    inline: true,
     atom: true,
-    selectable: true,
-    draggable: false,
+    inline: true,
+    group: 'inline',
     addAttributes() {
-      return {
-        target: {default: null, parseHTML: element => element.getAttribute('target')},
-        rel: {default: null, parseHTML: element => element.getAttribute('rel')},
-        href: {default: null, parseHTML: element => element.getAttribute('href')},
-      }
+      const fromAnchor = name => ({default: null, parseHTML: anchor => anchor.getAttribute(name)})
+      return Object.fromEntries(taskLinkAttributeNames.map(name => [name, fromAnchor(name)]))
     },
     parseHTML() {
-      return [
-        {
-          tag: 'a[href]',
-          priority: 100,
-          getAttrs: element => {
-            const href = element.getAttribute('href') ?? ''
-            if (parseTaskIdFromUrl(href, context.taskLinkBases) === null) return false
-            if (element.textContent?.trim() !== href) return false
-            if (element.children.length > 0) return false
-            for (const attribute of element.attributes) {
-              if (!plainAnchorAttributes.has(attribute.name)) return false
-            }
-            return {}
-          },
-        },
-      ]
+      const getAttrs = anchor => (isPlainTaskAnchor(anchor, context.taskLinkBases) ? {} : false)
+      return [{tag: 'a[href]', priority: 100, getAttrs}]
     },
-    renderHTML({node, HTMLAttributes}) {
-      return ['a', HTMLAttributes, node.attrs.href]
-    },
-    renderText({node}) {
-      return node.attrs.href
-    },
-    addNodeView() {
-      return ({node}) => {
-        const dom = document.createElement('span')
-        dom.className = 'task-link'
-        dom.textContent = node.attrs.href
-        return {dom}
-      }
-    },
+    renderHTML: ({node, HTMLAttributes}) => ['a', HTMLAttributes, node.attrs.href],
+    renderText: ({node}) => node.attrs.href,
+    addNodeView: () => ({node}) => inlineView('task-link', node.attrs.href),
     addProseMirrorPlugins() {
-      const type = this.type
-      return [
-        new Plugin({
-          key: new PluginKey('taskLinkPaste'),
-          props: {
-            handlePaste: (view, event) => {
-              const {state} = view
-              if (!state.selection.empty || isInCode(state)) return false
-              const text = event.clipboardData?.getData('text/plain')?.trim() ?? ''
-              if (text === '' || /\s/.test(text)) return false
-              if (parseTaskIdFromUrl(text, context.taskLinkBases) === null) return false
-              view.dispatch(
-                state.tr.replaceSelectionWith(type.create({...linkAttributes, href: text}), false),
-              )
-              return true
-            },
-          },
-        }),
-      ]
+      const taskLink = this.type
+      const handlePaste = (view, event) => {
+        const href = pastedTaskUrl(event.clipboardData, context.taskLinkBases)
+        if (href === null || !view.state.selection.empty || isInCode(view.state)) return false
+        view.dispatch(view.state.tr.replaceSelectionWith(taskLink.create({...linkAttributes, href}), false))
+        return true
+      }
+      return [new Plugin({key: new PluginKey('taskUrlPaste'), props: {handlePaste}})]
     },
   })
 }
 
 const TableCellWithBackground = TableCell.extend({
   addAttributes() {
-    return {
-      ...this.parent?.(),
-      backgroundColor: {
-        default: null,
-        parseHTML: element => element.getAttribute('data-background-color'),
-        renderHTML: attributes => ({
-          'data-background-color': attributes.backgroundColor,
-          style: `background-color: ${attributes.backgroundColor}`,
-        }),
-      },
+    const backgroundColor = {
+      default: null,
+      parseHTML: cell => cell.getAttribute('data-background-color'),
+      renderHTML: ({backgroundColor: color}) => ({'data-background-color': color, style: `background-color: ${color}`}),
     }
+    return {...this.parent?.(), backgroundColor}
   },
 })
+
+// The attributes in the order they are written; stored ids are dropped,
+// because an attachment image's id is derived from its URL.
+const imageAttributeNames = ['src', 'alt', 'title', 'id', 'data-src']
+
+// The web stores an attachment image with its URL in data-src, `#` as src
+// and an id naming the task and the attachment.
+function attachmentImageAttributes(url, {taskId, attachmentId}, {alt, title}) {
+  return {'data-src': url, src: '#', alt, title, id: `tiptap-image-${taskId}-${attachmentId}`}
+}
 
 // Images are never loaded here (the page has no session and no network);
 // the node keeps its attributes and shows a placeholder that says so.
 function createImage(context) {
   return Image.extend({
     addAttributes() {
-      return {
-        src: {default: null},
-        alt: {default: null},
-        title: {default: null},
-        id: {default: null, parseHTML: () => null},
-        'data-src': {default: null},
-      }
+      const attributes = Object.fromEntries(imageAttributeNames.map(name => [name, {default: null}]))
+      attributes.id.parseHTML = () => null
+      return attributes
     },
     renderHTML({HTMLAttributes}) {
       const url = HTMLAttributes['data-src'] ?? HTMLAttributes.src
       const attachment = parseAttachmentUrl(url, context.apiRoot)
-      if (attachment === null) {
-        return ['img', mergeAttributes(this.options.HTMLAttributes, HTMLAttributes)]
-      }
-      return [
-        'img',
-        mergeAttributes(this.options.HTMLAttributes, {
-          'data-src': url,
-          src: '#',
-          alt: HTMLAttributes.alt,
-          title: HTMLAttributes.title,
-          id: `tiptap-image-${attachment.taskId}-${attachment.attachmentId}`,
-        }),
-      ]
+      const written = attachment ? attachmentImageAttributes(url, attachment, HTMLAttributes) : HTMLAttributes
+      return ['img', mergeAttributes(this.options.HTMLAttributes, written)]
     },
     addNodeView() {
       return ({node}) => {
@@ -270,61 +236,48 @@ export function checkboxLabel(node) {
   return node.firstChild?.textContent.trim() || ' '
 }
 
+const withTaskItemId = id => id || newTaskItemId()
+
+// Every task item keeps a unique id: an item without one, or with the id of
+// an item before it (a split or a paste copies it), gets a new one.
 const TaskItemWithId = TaskItem.extend({
   addAttributes() {
-    return {
-      ...this.parent?.(),
-      taskId: {
-        default: null,
-        parseHTML: element => element.getAttribute('data-task-id') || newTaskItemId(),
-        renderHTML: attributes => ({'data-task-id': attributes.taskId || newTaskItemId()}),
-      },
+    const taskId = {
+      default: null,
+      parseHTML: element => withTaskItemId(element.getAttribute('data-task-id')),
+      renderHTML: attributes => ({'data-task-id': withTaskItemId(attributes.taskId)}),
     }
+    return {...this.parent?.(), taskId}
   },
   addProseMirrorPlugins() {
-    const name = this.name
-    return [
-      ...(this.parent?.() ?? []),
-      new Plugin({
-        key: new PluginKey('taskItemIds'),
-        appendTransaction: (transactions, _, state) => {
-          if (!transactions.some(transaction => transaction.docChanged)) return null
-          const seen = new Set()
-          const reissue = []
-          state.doc.descendants((node, pos) => {
-            if (node.type.name !== name) return
-            const id = node.attrs.taskId
-            if (!id || seen.has(id)) reissue.push({node, pos})
-            else seen.add(id)
-          })
-          if (reissue.length === 0) return null
-          const tr = state.tr
-          for (const {node, pos} of reissue) {
-            tr.setNodeMarkup(pos, undefined, {...node.attrs, taskId: newTaskItemId()})
+    const itemType = this.type
+    const uniqueIds = new Plugin({
+      key: new PluginKey('uniqueTaskItemIds'),
+      appendTransaction(transactions, _, state) {
+        if (!transactions.some(({docChanged}) => docChanged)) return null
+        const taken = new Set()
+        let fix = null
+        state.doc.descendants((node, pos) => {
+          if (node.type !== itemType) return
+          if (node.attrs.taskId && !taken.has(node.attrs.taskId)) {
+            taken.add(node.attrs.taskId)
+            return
           }
-          return tr
-        },
-      }),
-    ]
+          fix ??= state.tr
+          fix.setNodeMarkup(pos, undefined, {...node.attrs, taskId: newTaskItemId()})
+        })
+        return fix
+      },
+    })
+    return [...(this.parent?.() ?? []), uniqueIds]
   },
 })
 
 function createMention(context) {
   return Mention.extend({
-    parseHTML() {
-      return [{tag: 'mention-user'}]
-    },
-    renderHTML({HTMLAttributes}) {
-      return ['mention-user', HTMLAttributes]
-    },
-    addNodeView() {
-      return ({node}) => {
-        const dom = document.createElement('span')
-        dom.className = 'mention'
-        dom.textContent = `@${node.attrs.label || node.attrs.id || ''}`
-        return {dom}
-      }
-    },
+    parseHTML: () => [{tag: 'mention-user'}],
+    renderHTML: ({HTMLAttributes}) => ['mention-user', HTMLAttributes],
+    addNodeView: () => ({node}) => inlineView('mention', `@${node.attrs.label || node.attrs.id || ''}`),
   }).configure({
     suggestion: {
       char: '@',
@@ -342,28 +295,21 @@ function createMention(context) {
 // toolbar edits the link there. Pasted or dropped files are not inserted
 // (uploads are not part of this editor).
 function createEditorEvents() {
+  const props = {
+    handleClick(view, _, event) {
+      const anchor = event.target?.closest?.('a[href]')
+      if (anchor && view.dom.contains(anchor)) event.preventDefault()
+      return false
+    },
+    handlePaste(_, event) {
+      const data = event.clipboardData
+      const isText = type => type === 'text/plain' || type === 'text/html'
+      return Boolean(data && data.files.length > 0 && !data.types.some(isText))
+    },
+    handleDrop: (_, event) => (event.dataTransfer?.files.length ?? 0) > 0,
+  }
   return Extension.create({
     name: 'editorEvents',
-    addProseMirrorPlugins() {
-      return [
-        new Plugin({
-          key: new PluginKey('editorEvents'),
-          props: {
-            handleClick: (view, _, event) => {
-              const anchor = event.target?.closest?.('a[href]')
-              if (!anchor || !view.dom.contains(anchor)) return false
-              event.preventDefault()
-              return false
-            },
-            handlePaste: (_, event) => {
-              const data = event.clipboardData
-              if (!data || data.files.length === 0) return false
-              return !data.types.some(type => type === 'text/plain' || type === 'text/html')
-            },
-            handleDrop: (_, event) => (event.dataTransfer?.files.length ?? 0) > 0,
-          },
-        }),
-      ]
-    },
+    addProseMirrorPlugins: () => [new Plugin({key: new PluginKey('editorEvents'), props})],
   })
 }

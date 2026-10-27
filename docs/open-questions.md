@@ -1,8 +1,8 @@
 # Open questions
 
-The project owner answered Q1–Q15 on 2026-10-09. This page records each answer and where it was turned into a decision. The questions themselves are condensed from [research/synthesis.md](research/synthesis.md) §5.
+The project owner answered Q1–Q15 on 2026-10-09 and took up the deferred Q3 on 2026-10-27. This page records each answer and where it was turned into a decision. The questions themselves are condensed from [research/synthesis.md](research/synthesis.md) §5.
 
-**Still deferred:** [Q3](#q3-licence-and-distribution) licence, [Q11](#q11-optional-near-real-time-push-on-android) push, [Q12](#q12-crash-reporting) crash reporting, [Q14](#q14-licensed-features) licensed features.
+**Still deferred:** [Q11](#q11-optional-near-real-time-push-on-android) push, [Q12](#q12-crash-reporting) crash reporting, [Q14](#q14-licensed-features) licensed features.
 
 **Derived lead decision:** browser OAuth + PKCE is the only sign-in method (Q4), and it exists only on Vikunja 2.3.0 and newer. The effective support floor is therefore **2.3.0**, not the 2.0.0 of option A in Q1, and the `standard` tier for 2.0–2.2 is dropped ([D13](decisions.md#d13-support-floor-230)).
 
@@ -20,12 +20,11 @@ The project owner answered Q1–Q15 on 2026-10-09. This page records each answer
 
 ## Q3: Licence and distribution
 
-**Deferred** ("leave it for now"). There is no `LICENSE` file yet.
+**Answered 2026-10-27** (deferred on 2026-10-09: "leave it for now").
 
-- **Still open:**
-  - Licence: porting the web frontend's logic and strings (quick-add parser, i18n, error texts, TipTap configuration) probably makes the app a derivative of AGPL-3.0-or-later code. This is not legal advice; verify it.
-  - Stores: Play, App Store, F-Droid. F-Droid affects the Cronet and SQLite build choices.
-- **Needed by:** step 37 at the latest. Earlier is better, because the amount of ported web code grows from step 9 onwards (quick-add in step 13, TipTap in step 25).
+- **Asked:** the licence, given that the app ports the web frontend's behaviour and Vikunja is AGPL-3.0-or-later; the stores: Play, App Store, F-Droid.
+- **Answer:** AGPL-3.0-or-later for the whole repository, with an additional permission under section 7 for app stores such as Apple's from the start; contributions signed off under the Developer Certificate of Origin; the name and the llama logo not under the AGPL, all rights reserved; F-Droid is not a distribution target.
+- **Result:** `LICENSE`, `NOTICE.md`, `CONTRIBUTING.md` and a sign-off check on pull requests; an About page and a complete licence page in the app; the audit's copied texts and editor code rewritten. Step 37 publishes the source code before the first store release. The owner answered both follow-up questions the same day: the app ships embedded Cronet instead of Google Play services Cronet, and the logo files may be copied unmodified only as part of a copy of the repository or of an unmodified build published by Benedikt Lesch. [D67](decisions.md#d67-agpl-30-or-later-with-an-app-store-permission-contributions-under-the-dco-the-name-and-the-logo-reserved-no-f-droid-the-legal-notices-on-an-about-page-and-the-licence-page-the-source-code-published-before-the-first-store-release). Not legal advice.
 
 ## Q4: Login methods
 

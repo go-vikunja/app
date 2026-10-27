@@ -47,6 +47,14 @@ jobs:
       - name: Check that packages/ stay pure Dart
         run: tool/check_pure_dart_packages.sh
 
+      # Fails when a library of the Android release build has no notice yet:
+      # after a dependency change, run the script without --check (with
+      # --refresh-cronet after a Cronet version change).
+      - name: Check the Android libraries' notices
+        run: |
+          python3 -I tool/build_android_notices.py --self-test
+          python3 -I tool/build_android_notices.py --check
+
       - name: Analyze
         run: flutter analyze
 
@@ -179,6 +187,13 @@ jobs:
         with:
           codegen: "false"
 
+      # AGPL section 6 (D67): a release must say where its source code is.
+      # CI runs on no tags yet; release tags come with step 37.
+      - name: Check that a release names its source code
+        if: startsWith(github.ref, 'refs/tags/')
+        working-directory: app
+        run: flutter test --run-skipped --tags release
+
       - name: Build release APK
         working-directory: app
         run: flutter build apk --release
@@ -208,6 +223,13 @@ jobs:
         uses: ./.github/actions/setup-workspace
         with:
           codegen: "false"
+
+      # AGPL section 6 (D67): a release must say where its source code is.
+      # CI runs on no tags yet; release tags come with step 37.
+      - name: Check that a release names its source code
+        if: startsWith(github.ref, 'refs/tags/')
+        working-directory: app
+        run: flutter test --run-skipped --tags release
 
       - name: Build for iOS devices (unsigned)
         working-directory: app

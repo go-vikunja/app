@@ -83,6 +83,7 @@ flutter:
   assets:
     - assets/branding/
     - assets/editor/
+    - assets/legal/
 
 # Regenerate with `dart run flutter_launcher_icons` after changing branding/.
 flutter_launcher_icons:

@@ -5,6 +5,10 @@ import 'package:meta/meta.dart';
 // node types in schema order, their content expressions as small automata
 // and the marks by rank. Order matters: it decides which wrapper or filler
 // ProseMirror picks.
+//
+// The content matching and the mark sets are translated from
+// prosemirror-model, Copyright (C) 2015-2017 by Marijn Haverbeke and others,
+// MIT License; see THIRD_PARTY_NOTICES.md in this package.
 
 enum NodeKind {
   doc,

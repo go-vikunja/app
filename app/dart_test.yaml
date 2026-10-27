@@ -4,3 +4,7 @@ tags:
   # Against the opt-in Docker `tls` profile; skipped unless RURANA_TLS_DOCKER=1.
   tls-docker:
     timeout: 2x
+  # A distributed build must name its source code (D67): run only for
+  # releases, with --run-skipped --tags release.
+  release:
+    skip: "Runs for releases only: flutter test --run-skipped --tags release"

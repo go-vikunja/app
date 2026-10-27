@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "The description editor page the app loads in a WebView: TipTap with the Vikunja web editor's schema.",
-  "license": "UNLICENSED",
+  "license": "AGPL-3.0-or-later",
   "type": "module",
   "engines": {
     "node": ">=24"

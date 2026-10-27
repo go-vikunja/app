@@ -2,6 +2,8 @@
 
 Name and logo of **Rurana**, an unofficial Vikunja mobile client. Its `applicationId` and bundle id are `dev.coderoftime.vikunja`.
 
+The name and the logo, with every image derived from it, are not under the AGPL: all rights are reserved. The files may be passed on unmodified only as part of a copy of this repository or its history, or of an unmodified build published by Benedikt Lesch; an app built from modified source uses its own name and logo. [NOTICE.md](../NOTICE.md#name-and-logo) lists the files; the scripts and the Markdown files here are under the AGPL like the rest of the repository.
+
 The name was chosen by the owner on 2026-10-09 from the shortlist in [`explorations-v2/names.md`](explorations-v2/names.md). The logo is the illustrated llama with a check badge the owner chose on 2026-10-13 ([D42](../docs/decisions.md#d42-app-icon-the-illustrated-llama-with-a-check-badge-adaptive-themed-and-ios-18-variants-derived-by-script)); it replaced the "checkbox ears" icon of 2026-10-09, whose sources stay in [`explorations-v2/checkbox-ears/final/`](explorations-v2/checkbox-ears/final/).
 
 ![Preview: iOS light, dark and tinted; Android circle, squircle and teardrop masks; the themed icon in light and dark; 96 and 48 px; the status bar icon at 48 and 24 px; the in-app logo](png/preview-sheet.png)

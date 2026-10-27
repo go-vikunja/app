@@ -43,8 +43,8 @@ import 'package:vikunja_mobile/features/widgets/presentation/widgets_section.dar
 /// other accounts, the server with its connection settings, the sync state
 /// and the changes still waiting for it, what is set on this device only
 /// (the home-screen widgets, notifications, privacy, colours), sign-out and
-/// the app's version. A link-share guest gets a note on what it may do
-/// instead of the settings and the labels and teams.
+/// the app's version, which opens the About page. A link-share guest gets a
+/// note on what it may do instead of the settings and the labels and teams.
 class AccountTab extends ConsumerWidget {
   const new({super.key});
 
@@ -239,15 +239,26 @@ class _AppVersionLine extends ConsumerWidget {
     final theme = Theme.of(context);
     final (:version, :build) = ref.watch(appVersionProvider);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      child: Text(
-        build.isEmpty
-            ? l10n.accountAppVersionWithoutBuild(version)
-            : l10n.accountAppVersion(version, build),
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant,
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+      child: Center(
+        child: Tooltip(
+          message: l10n.aboutTitle,
+          child: TextButton.icon(
+            onPressed: () =>
+                unawaited(GoRouter.of(context).push(AppRoutes.about)),
+            style: TextButton.styleFrom(
+              foregroundColor: theme.colorScheme.onSurfaceVariant,
+              textStyle: theme.textTheme.bodySmall,
+            ),
+            icon: const Icon(Icons.info_outline, size: 18),
+            label: Text(
+              build.isEmpty
+                  ? l10n.accountAppVersionWithoutBuild(version)
+                  : l10n.accountAppVersion(version, build),
+              textAlign: TextAlign.center,
+            ),
+          ),
         ),
-        textAlign: TextAlign.center,
       ),
     );
   }

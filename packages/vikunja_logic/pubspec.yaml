@@ -17,3 +17,9 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+
+# The app shows these notices on its licence page; declaring the file here
+# does not make the package depend on Flutter.
+flutter:
+  assets:
+    - THIRD_PARTY_NOTICES.md

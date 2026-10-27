@@ -672,7 +672,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get projectArchivedNote =>
-      'Dieses Projekt ist archiviert. Es ist nicht möglich, neue Aufgaben zu erstellen oder es zu bearbeiten.';
+      'Dieses Projekt ist schreibgeschützt, weil es archiviert ist: keine neuen Aufgaben, keine Änderungen.';
 
   @override
   String get savedFiltersHeading => 'Gespeicherte Filter';
@@ -2693,7 +2693,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get tabUpcoming => 'Anstehend';
 
   @override
-  String get upcomingEmptyTitle => 'Nichts zu tun – einen schönen Tag noch!';
+  String get upcomingEmptyTitle => 'Nichts fällig – genieß den Tag!';
 
   @override
   String get upcomingEmptyBody =>
@@ -2993,7 +2993,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get boardDoneColumnHint =>
-      'Alle Aufgaben, die in diese Spalte verschoben werden, werden automatisch als erledigt markiert.';
+      'Verschiebst du eine Aufgabe hierher, ist sie damit erledigt.';
 
   @override
   String boardColumnTaskCount(int count) {
@@ -3022,7 +3022,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get boardColumnLimitReached =>
-      'Du hast das Limit dieser Spalte erreicht. Entferne Aufgaben oder erhöhe das Limit, um neue Aufgaben hinzuzufügen.';
+      'Diese Spalte ist voll. Um hier eine Aufgabe hinzuzufügen, verschieb eine andere hinaus oder erhöh das Limit der Spalte.';
 
   @override
   String boardTasksLeftInDefaultColumn(int count, String column) {
@@ -3087,14 +3087,14 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get boardDoneColumnHintExtended =>
-      'Alle Aufgaben, die in die Erledigt-Spalte verschoben werden, werden automatisch als erledigt markiert. Aufgaben, die anderswo als erledigt markiert werden, kommen ebenfalls in diese Spalte.';
+      'Verschiebst du eine Aufgabe in diese Spalte, ist sie damit erledigt, und eine anderswo als erledigt markierte Aufgabe wandert hierher.';
 
   @override
   String get boardDefaultColumn => 'Standard-Spalte';
 
   @override
   String get boardDefaultColumnHint =>
-      'Wenn Aufgaben ohne Angabe einer Spalte erstellt werden, werden sie zu dieser Spalte hinzugefügt.';
+      'Neue Aufgaben ohne eigene Spalte landen hier.';
 
   @override
   String get boardColumnMoveLeft => 'Nach links verschieben';
@@ -3378,7 +3378,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String attachmentDeleteBody(String name) {
-    return 'Soll der Anhang $name gelöscht werden? Dies kann nicht rückgängig gemacht werden!';
+    return '„$name“ wird aus dieser Aufgabe gelöscht. Das lässt sich nicht rückgängig machen.';
   }
 
   @override
@@ -3709,7 +3709,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get projectTitleLabel => 'Titel';
 
   @override
-  String get projectTitleHint => 'Der Titel des Projekts kommt hier hin …';
+  String get projectTitleHint => 'Zum Beispiel Einkäufe';
 
   @override
   String get projectTitleRequired => 'Bitte gib einen Titel an.';
@@ -3797,11 +3797,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get projectArchiveBody =>
-      'Du kannst dieses Projekt nicht bearbeiten oder Aufgaben erstellen, bis du die Archivierung aufhebst. Seine Unterprojekte werden ebenfalls archiviert.';
+      'Es ist dann schreibgeschützt: keine Änderungen und keine neuen Aufgaben, solange es archiviert ist. Seine Unterprojekte werden ebenfalls archiviert.';
 
   @override
   String get projectUnarchiveBody =>
-      'Du kannst Aufgaben erstellen oder es bearbeiten. Auch bei seinen Unterprojekten wird die Archivierung aufgehoben.';
+      'Du kannst es wieder bearbeiten und Aufgaben darin anlegen. Auch bei seinen Unterprojekten wird die Archivierung aufgehoben.';
 
   @override
   String get projectArchivedDone => 'Projekt archiviert';
@@ -3811,7 +3811,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get projectArchiveDefaultHint =>
-      'Du kannst dieses Projekt nicht archivieren, da es dein Standardprojekt ist.';
+      'Dein Standardprojekt lässt sich nicht archivieren.';
 
   @override
   String get projectNewSubproject => 'Neues Unterprojekt';
@@ -3915,7 +3915,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get projectUnarchiveParentFirst =>
-      'Das übergeordnete Projekt ist archiviert. Heb zuerst dessen Archivierung auf.';
+      'Sein übergeordnetes Projekt ist archiviert. Heb zuerst dort die Archivierung auf.';
 
   @override
   String get projectChangeArchived =>
@@ -4136,7 +4136,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get savedFilterDescriptionLabel => 'Beschreibung';
 
   @override
-  String get savedFilterIncludeNulls => 'Aufgaben ohne Werte einbeziehen';
+  String get savedFilterIncludeNulls => 'Aufgaben ohne Wert einschließen';
 
   @override
   String get savedFilterIncludeNullsHint =>
@@ -7027,7 +7027,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get guestLabelPickerNote =>
-      'Mit einem geteilten Link kannst du keine Labels erstellen; nur die Labels, die in diesem Projekt schon verwendet werden, lassen sich hinzufügen.';
+      'Über einen geteilten Link kannst du nur Labels hinzufügen, die dieses Projekt schon verwendet, aber keine neuen.';
 
   @override
   String guestSharingOffExplanation(String host) {
@@ -8112,4 +8112,52 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get widgetConfigureUnknownBody =>
       'Nur Rurana-Widgets auf dem Startbildschirm dieses Geräts lassen sich einrichten. Öffne stattdessen die Einstellungen des Widgets auf dem Startbildschirm.';
+
+  @override
+  String get aboutTitle => 'Über Rurana';
+
+  @override
+  String aboutVersion(String version, String build) {
+    return 'Version $version ($build)';
+  }
+
+  @override
+  String aboutVersionWithoutBuild(String version) {
+    return 'Version $version';
+  }
+
+  @override
+  String get aboutLicenceHeading => 'Lizenz';
+
+  @override
+  String get aboutLicence =>
+      'Rurana ist freie Software: Du darfst sie unter der GNU Affero General Public License, Version 3 oder jeder späteren Version, weitergeben und verändern, mit einer zusätzlichen Erlaubnis für App-Stores.';
+
+  @override
+  String get aboutNoWarranty =>
+      'Für Rurana gibt es keine Gewährleistung, soweit das Gesetz dies zulässt.';
+
+  @override
+  String get aboutLicences => 'Lizenzen';
+
+  @override
+  String get aboutLicencesSubtitle =>
+      'Der vollständige Lizenztext und die zusätzliche Erlaubnis unter „rurana“ sowie die Lizenzen der Software, die Rurana enthält';
+
+  @override
+  String get aboutSourceCodeHeading => 'Quellcode';
+
+  @override
+  String get aboutSourceCodeLater =>
+      'Der Quellcode wird mit der ersten Veröffentlichung bereitgestellt.';
+
+  @override
+  String get aboutSourceCodeOpen => 'Quellcode ansehen';
+
+  @override
+  String get aboutNameAndLogoHeading => 'Name und Logo';
+
+  @override
+  String get aboutNameAndLogo =>
+      'Der Name Rurana und das Lama-Logo fallen nicht unter die AGPL; alle Rechte daran sind vorbehalten. Die Logo-Dateien darfst du nur unverändert weitergeben, als Teil einer Kopie des Rurana-Repositorys oder der App, wie Benedikt Lesch sie veröffentlicht. Wenn du eine App aus verändertem Quellcode verbreitest, gib ihr einen eigenen Namen und ein eigenes Logo.';
 }

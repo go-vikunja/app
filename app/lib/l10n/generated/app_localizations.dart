@@ -1121,7 +1121,7 @@ abstract class AppLocalizations {
   /// No description provided for @projectArchivedNote.
   ///
   /// In en, this message translates to:
-  /// **'This project is archived. It is not possible to create new or edit tasks for it.'**
+  /// **'This project is read-only because it is archived: no new tasks, no changes.'**
   String get projectArchivedNote;
 
   /// No description provided for @savedFiltersHeading.
@@ -2537,7 +2537,7 @@ abstract class AppLocalizations {
   /// No description provided for @newTaskLabelsNotCreated.
   ///
   /// In en, this message translates to:
-  /// **'These labels could not be created and were not added: {labels}'**
+  /// **'Some labels couldn\'t be created, so the task doesn\'t have them: {labels}'**
   String newTaskLabelsNotCreated(String labels);
 
   /// No description provided for @newTaskNamesKept.
@@ -4017,7 +4017,7 @@ abstract class AppLocalizations {
   /// No description provided for @upcomingEmptyTitle.
   ///
   /// In en, this message translates to:
-  /// **'Nothing to do — have a nice day!'**
+  /// **'Nothing due — enjoy your day!'**
   String get upcomingEmptyTitle;
 
   /// No description provided for @upcomingEmptyBody.
@@ -4521,7 +4521,7 @@ abstract class AppLocalizations {
   /// Tooltip of the double check mark on the done bucket of a kanban board (the web's "done bucket").
   ///
   /// In en, this message translates to:
-  /// **'All tasks moved into this column are marked as done automatically.'**
+  /// **'Moving a task here marks it as done.'**
   String get boardDoneColumnHint;
 
   /// Read by screen readers after a kanban column's title.
@@ -4545,7 +4545,7 @@ abstract class AppLocalizations {
   /// Why a full kanban column takes no new task and refuses a dropped card.
   ///
   /// In en, this message translates to:
-  /// **'You have reached the column limit. Remove tasks or increase the limit to add new tasks.'**
+  /// **'This column is full. To add a task here, move one out or raise the column\'s limit.'**
   String get boardColumnLimitReached;
 
   /// After adding several tasks to a kanban column with a task limit: those beyond the limit stay in the board's default column, named by its title.
@@ -4635,7 +4635,7 @@ abstract class AppLocalizations {
   /// Under the "Done column" menu item.
   ///
   /// In en, this message translates to:
-  /// **'All tasks moved into the done column are marked as done automatically. All tasks marked as done elsewhere move there as well.'**
+  /// **'Moving a task into this column marks it as done, and a task marked as done anywhere else moves here.'**
   String get boardDoneColumnHintExtended;
 
   /// Checkable item of a kanban column's menu that makes it the board's default column (the web's "default bucket").
@@ -4647,7 +4647,7 @@ abstract class AppLocalizations {
   /// Under the "Default column" menu item.
   ///
   /// In en, this message translates to:
-  /// **'When creating tasks without specifying a column, they will be added to this column.'**
+  /// **'New tasks without a column of their own end up here.'**
   String get boardDefaultColumnHint;
 
   /// Item of a kanban column's menu and screen reader action on its header: one place to the left on the board.
@@ -5103,7 +5103,7 @@ abstract class AppLocalizations {
   /// No description provided for @attachmentDeleteBody.
   ///
   /// In en, this message translates to:
-  /// **'Are you sure you want to delete the attachment {name}? This cannot be undone!'**
+  /// **'“{name}” will be deleted from this task. This can\'t be undone.'**
   String attachmentDeleteBody(String name);
 
   /// No description provided for @attachmentDeleteConfirm.
@@ -5607,7 +5607,7 @@ abstract class AppLocalizations {
   /// No description provided for @projectTitleHint.
   ///
   /// In en, this message translates to:
-  /// **'The project\'s title goes here…'**
+  /// **'For example, Groceries'**
   String get projectTitleHint;
 
   /// No description provided for @projectTitleRequired.
@@ -5769,13 +5769,13 @@ abstract class AppLocalizations {
   /// No description provided for @projectArchiveBody.
   ///
   /// In en, this message translates to:
-  /// **'You won\'t be able to edit this project or create tasks until you unarchive it. Its subprojects are archived too.'**
+  /// **'It becomes read-only: no edits and no new tasks while it is archived. Its subprojects are archived too.'**
   String get projectArchiveBody;
 
   /// No description provided for @projectUnarchiveBody.
   ///
   /// In en, this message translates to:
-  /// **'You will be able to create tasks or edit it. Its subprojects are unarchived too.'**
+  /// **'You can edit it and add tasks to it again. Its subprojects are unarchived too.'**
   String get projectUnarchiveBody;
 
   /// No description provided for @projectArchivedDone.
@@ -5793,7 +5793,7 @@ abstract class AppLocalizations {
   /// No description provided for @projectArchiveDefaultHint.
   ///
   /// In en, this message translates to:
-  /// **'You can\'t archive this because it\'s your default project.'**
+  /// **'Your default project can\'t be archived.'**
   String get projectArchiveDefaultHint;
 
   /// No description provided for @projectNewSubproject.
@@ -5925,7 +5925,7 @@ abstract class AppLocalizations {
   /// No description provided for @projectUnarchiveParentFirst.
   ///
   /// In en, this message translates to:
-  /// **'The parent project is archived. Unarchive the parent project first.'**
+  /// **'Its parent project is archived. Unarchive that one first.'**
   String get projectUnarchiveParentFirst;
 
   /// No description provided for @projectChangeArchived.
@@ -6279,7 +6279,7 @@ abstract class AppLocalizations {
   /// No description provided for @savedFilterIncludeNulls.
   ///
   /// In en, this message translates to:
-  /// **'Include tasks which don\'t have a value set'**
+  /// **'Include tasks without a value'**
   String get savedFilterIncludeNulls;
 
   /// No description provided for @savedFilterIncludeNullsHint.
@@ -10917,7 +10917,7 @@ abstract class AppLocalizations {
   /// Under the label picker's search field for a link-share guest.
   ///
   /// In en, this message translates to:
-  /// **'A shared link can\'t create labels; only the labels already used in this project can be added.'**
+  /// **'Through a shared link you can only add labels this project already uses, not new ones.'**
   String get guestLabelPickerNote;
 
   /// Connect screen error: the server has link sharing turned off
@@ -12611,6 +12611,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Only Rurana widgets on this device\'s home screen can be set up. Open the widget\'s settings on the home screen instead.'**
   String get widgetConfigureUnknownBody;
+
+  /// Title of the About page, and the label of its entries on the Account tab's version line and the connect screen.
+  ///
+  /// In en, this message translates to:
+  /// **'About Rurana'**
+  String get aboutTitle;
+
+  /// The app's version under its name on the About page.
+  ///
+  /// In en, this message translates to:
+  /// **'Version {version} ({build})'**
+  String aboutVersion(String version, String build);
+
+  /// The About page's version when the build number is unknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Version {version}'**
+  String aboutVersionWithoutBuild(String version);
+
+  /// Section header on the About page.
+  ///
+  /// In en, this message translates to:
+  /// **'Licence'**
+  String get aboutLicenceHeading;
+
+  /// The licence notice on the About page (AGPL-3.0-or-later with the section 7 permission for app stores).
+  ///
+  /// In en, this message translates to:
+  /// **'Rurana is free software: you may share and change it under the GNU Affero General Public License, version 3 or any later version, with an additional permission for app stores.'**
+  String get aboutLicence;
+
+  /// The AGPL's no-warranty notice on the About page.
+  ///
+  /// In en, this message translates to:
+  /// **'Rurana comes with no warranty, as far as the law allows.'**
+  String get aboutNoWarranty;
+
+  /// Opens the licence page (Flutter's LicensePage).
+  ///
+  /// In en, this message translates to:
+  /// **'Licences'**
+  String get aboutLicences;
+
+  /// Under Licences on the About page; “rurana” is the entry's name on the licence page (the workspace root package that carries the repository's LICENSE), kept in lower case.
+  ///
+  /// In en, this message translates to:
+  /// **'The full licence text and the additional permission under “rurana”, and the licences of the software Rurana contains'**
+  String get aboutLicencesSubtitle;
+
+  /// Section header on the About page.
+  ///
+  /// In en, this message translates to:
+  /// **'Source code'**
+  String get aboutSourceCodeHeading;
+
+  /// On the About page while the repository is not public yet.
+  ///
+  /// In en, this message translates to:
+  /// **'The source code will be published with the first release.'**
+  String get aboutSourceCodeLater;
+
+  /// Opens the repository in the browser; the address is shown below it.
+  ///
+  /// In en, this message translates to:
+  /// **'View the source code'**
+  String get aboutSourceCodeOpen;
+
+  /// Section header on the About page.
+  ///
+  /// In en, this message translates to:
+  /// **'Name and logo'**
+  String get aboutNameAndLogoHeading;
+
+  /// The brand exclusion on the About page.
+  ///
+  /// In en, this message translates to:
+  /// **'The name Rurana and the llama logo are not covered by the AGPL; all rights to them are reserved. You may pass on the logo files only unchanged, as part of a copy of Rurana\'s repository or of the app as Benedikt Lesch publishes it. If you distribute an app built from changed source code, give it a name and logo of its own.'**
+  String get aboutNameAndLogo;
 }
 
 class _AppLocalizationsDelegate

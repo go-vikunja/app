@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict'
 import {createHash} from 'node:crypto'
+import {mkdtemp, rm, writeFile} from 'node:fs/promises'
+import {tmpdir} from 'node:os'
+import {join} from 'node:path'
 import {before, describe, test} from 'node:test'
 import {JSDOM} from 'jsdom'
-import {buildEditor} from '../build.mjs'
+import {buildEditor, licenseText} from '../build.mjs'
 import {loadPage, waitFor} from './helpers.mjs'
 
 let built
@@ -90,5 +93,17 @@ describe('the built page', () => {
     }
     assert.match(built.notices, /Permission is hereby granted, free of charge/)
     assert.doesNotMatch(built.notices, /highlight\.js|lowlight|nanoid|marked/)
+  })
+
+  test("a licence with a line starting with ``` is refused, because it would end the app's licence text", async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'licence-'))
+    try {
+      await writeFile(join(dir, 'LICENSE.md'), 'MIT License\n\n```\ncode\n```\n')
+      await assert.rejects(licenseText(dir, 'fenced'), /fenced's licence file has a line starting with ```/)
+      await writeFile(join(dir, 'LICENSE.md'), 'MIT License\n\nInline ``` is fine.\n')
+      assert.equal(await licenseText(dir, 'plain'), 'MIT License\n\nInline ``` is fine.')
+    } finally {
+      await rm(dir, {recursive: true, force: true})
+    }
   })
 })

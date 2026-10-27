@@ -102,10 +102,13 @@ function packageDir(input) {
   return parts.slice(0, index + 1 + length).join('/')
 }
 
-async function licenseText(dir, name) {
+export async function licenseText(dir, name) {
   const file = (await readdir(dir)).sort().find(entry => /^licen[cs]e(\.(md|txt))?$/i.test(entry))
   if (file === undefined) throw new Error(`${name} has no licence file`)
-  return (await readFile(join(dir, file), 'utf8')).replace(/\r\n/g, '\n').trim()
+  const text = (await readFile(join(dir, file), 'utf8')).replace(/\r\n/g, '\n').trim()
+  // The app's licence page ends a licence text at a line starting with ```.
+  if (/^```/m.test(text)) throw new Error(`${name}'s licence file has a line starting with \`\`\``)
+  return text
 }
 
 const outputs = result => ({

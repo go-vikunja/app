@@ -10,6 +10,7 @@ import 'package:vikunja_mobile/bootstrap/logging_setup.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/background/background_entry_point.dart';
 import 'package:vikunja_mobile/core/background/background_providers.dart';
+import 'package:vikunja_mobile/core/legal/app_licenses.dart';
 import 'package:vikunja_mobile/core/links/widget_link_key.dart';
 import 'package:vikunja_mobile/core/network/client_identity.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
@@ -30,6 +31,7 @@ final _log = Logger('Bootstrap');
 Future<void> bootstrap() async {
   WidgetsFlutterBinding.ensureInitialized();
   configureLogging();
+  registerAppLicenses();
   final clientIdentity = await ClientIdentity.load();
   final container = ProviderContainer(
     overrides: [

@@ -489,6 +489,17 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
                         onPressed: _controller.cancel,
                         child: Text(l10n.connectCancel),
                       ),
+                    // Signed in, the Account tab's version line opens it.
+                    if (!widget.adding) ...[
+                      const SizedBox(height: 16),
+                      TextButton.icon(
+                        onPressed: isConnecting
+                            ? null
+                            : () => unawaited(context.push(AppRoutes.about)),
+                        icon: const Icon(Icons.info_outline),
+                        label: Text(l10n.aboutTitle),
+                      ),
+                    ],
                   ],
                 ),
               ),

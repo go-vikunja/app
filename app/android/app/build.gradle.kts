@@ -70,7 +70,19 @@ dependencyLocking {
     ignoredDependencies.add("io.flutter:*")
 }
 
+// Embedded Cronet instead of Google Play services Cronet, so that the app
+// ships no Play services library (D67). cronet_http picks Play services
+// unless built with --dart-define=cronetHttpNoPlay=true; excluding it here
+// makes every build, test and CI run embedded without that define.
+configurations.configureEach {
+    exclude(group = "com.google.android.gms", module = "play-services-cronet")
+}
+
 dependencies {
+    // At least the version cronet_http names for cronetHttpNoPlay (a test
+    // checks it). Raise it for Chromium's security fixes, then run
+    // tool/build_android_notices.py --refresh-cronet.
+    implementation("org.chromium.net:cronet-embedded:143.7445.0")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
     // FileProvider and IntentCompat for attachments and shares; declared
     // here rather than relied on through the plugins.

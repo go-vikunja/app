@@ -103,6 +103,25 @@ void main() {
     }
   });
 
+  test("the DCO check that judges a pull request is the base commit's", () {
+    final dco = _file(workflows, 'dco.yaml').readAsStringSync();
+
+    expect(
+      dco,
+      contains(
+        r'git show "$BASE_SHA:tool/check_dco.py" > "$RUNNER_TEMP/check_dco.py"',
+      ),
+    );
+    expect(
+      dco,
+      contains(
+        r'python3 -I "$RUNNER_TEMP/check_dco.py" --repository '
+        r'"$GITHUB_WORKSPACE" "$BASE_SHA" "$HEAD_SHA"',
+      ),
+    );
+    expect(dco, isNot(contains(r'tool/check_dco.py "$BASE_SHA"')));
+  });
+
   test('CI runs on changes only, not on the weekly schedule', () {
     final ci = _blocks(_file(workflows, 'ci.yaml').readAsLinesSync());
 

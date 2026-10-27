@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Local reminders (flutter_local_notifications): the permission prompt
          on Android 13+, exact alarms (denied by default on 14+, never
@@ -170,6 +171,23 @@
                 <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
             </intent-filter>
         </activity>
+        <!-- Embedded Cronet's manifest flags (D67), read from this disabled
+             placeholder by its fully qualified name; the class does not
+             exist. Without ReadHttpFlags=false Cronet applies a flags file
+             from a system-image package, which can override its features
+             and swap the bundled stack for the platform's HttpEngine. -->
+        <service
+            android:name="android.net.http.MetaDataHolder"
+            android:enabled="false"
+            android:exported="false"
+            tools:ignore="MissingClass">
+            <meta-data
+                android:name="android.net.http.ReadHttpFlags"
+                android:value="false" />
+            <meta-data
+                android:name="android.net.http.EnableTelemetry"
+                android:value="false" />
+        </service>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

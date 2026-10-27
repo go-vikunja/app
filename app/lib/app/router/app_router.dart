@@ -13,6 +13,7 @@ import 'package:vikunja_mobile/core/links/deep_link_providers.dart';
 import 'package:vikunja_mobile/core/network/origin_key.dart';
 import 'package:vikunja_mobile/core/sync/sync_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
+import 'package:vikunja_mobile/features/about/presentation/about_page.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_page.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/api_token_form_page.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/api_tokens_page.dart';
@@ -78,6 +79,10 @@ abstract final class AppRoutes {
         path: connection,
         queryParameters: {'origin': '$origin', 'edit': ?editor?.name},
       ).toString();
+
+  /// The licence, the source code and the notices, for users and guests,
+  /// signed in or not; outside [home] like [connection].
+  static const about = '/about';
 
   /// The signed-in shell; it opens on [overview].
   static const home = '/home';
@@ -283,6 +288,10 @@ GoRouter appRouter(Ref ref) {
             editor: ConnectionEditor.values.asNameMap()[query['edit']],
           );
         },
+      ),
+      GoRoute(
+        path: AppRoutes.about,
+        builder: (context, state) => const AboutPage(),
       ),
       GoRoute(
         path: AppRoutes.firstSync,

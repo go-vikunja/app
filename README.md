@@ -94,12 +94,14 @@ Not planned for now: the admin panel, an MCP page, time tracking (licensed), pus
 | `packages/vikunja_api/` | Pure Dart API client: address normalisation, `/info` parsing, parallel v2/v1 `/info` probing, error normalisation, OAuth + PKCE token client, authenticated transport, the read client for projects, labels, tasks and (step 12b) the people of a project over v1 and v2, and the write client for task creates (step 12a), updates and deletes (v2 merge-patch, v1 full-replace emulation; since step 12b label and assignee changes through their endpoints) and label creates (step 12b); (step 13) the user's settings read with the current user; (step 16) the server notifications, listed and marked read over v1 and v2; (step 14) relation changes in the task update, duplicating a task and following tasks and projects (subscriptions); (step 9) the users' avatars (`AvatarsPort`) and the two list settings; (step 10) the task details read, a task by project id or identifier and index (following v2's redirect after a move), comment pages (`CommentsPort`), attachment downloads and previews with a size cap (`AttachmentsPort`), marking a task read and the comment order setting. `test/fixtures/` holds real server responses |
 | `packages/vikunja_logic/` | Pure Dart client logic ported from the behaviour of the web frontend, pinned by its test vectors (step 13): the Quick Add Magic parser (prefixes, labels, project, people, priority, repeats, dates and times) and the day intervals and default time of the date shortcuts; (step 14) subtasks from indented lines (`parseSubtasksViaIndention`); (step 9) the list logic: the server's date math and the web's date-range presets, the Upcoming selection, the List view's subtask tree and its 17 sorts, the classes of view filters and the checklist counts; (step 10) the rich-text parser of the web editor's format (`parseRichText`, on the pure Dart `html` package), task links, task references and deep links, attachment URLs, the attachment preview rules and human-readable sizes; later the filter engine |
 | `plugins/rurana_widgets/` | In-repo Flutter plugin of the home-screen widgets (steps 18 and 19; Dart, Kotlin and Swift): the snapshot files, the Android widgets' configs, redraws and "Add widget", the iOS App Group container. A workspace member, not a pure-Dart package |
-| `branding/` | Name, the logo source and the scripts that derive the icon PNGs from it |
+| `branding/` | Name, the logo source and the scripts that derive the icon PNGs from it; the name and the images are not under the AGPL ([NOTICE.md](NOTICE.md#name-and-logo)) |
 | `test_servers/` | Docker Compose stack with one Vikunja 2.7.0 for contract tests and manual sign-in ([D28](docs/decisions.md#d28-test-only-the-latest-vikunja-release)). `seed/e2e-user.env` holds the throwaway sign-in test user; the opt-in profile `tls` adds the TLS test servers of step 35b ([test_servers/tls/README.md](test_servers/tls/README.md)) |
-| `tool/` | Scripts used by CI and for local work; `check_exported_components.py` checks the exported Android components of the release build against its allowlist (step 35c); `add_widget_extension.rb` adds the iOS widget extension to the Xcode project and keeps its file list in sync (steps 18 and 19); `gen_tls_test_certs.sh`, `tls_e2e.py` and `wait_for_test_servers.sh --tls` serve the TLS test servers (step 35b) |
+| `tool/` | Scripts used by CI and for local work; `check_exported_components.py` checks the exported Android components of the release build against its allowlist (step 35c); `add_widget_extension.rb` adds the iOS widget extension to the Xcode project and keeps its file list in sync (steps 18 and 19); `gen_tls_test_certs.sh`, `tls_e2e.py` and `wait_for_test_servers.sh --tls` serve the TLS test servers (step 35b); `check_dco.py` checks that every commit of a pull request is signed off by its author; `build_android_notices.py` writes the Android libraries' notices for the licence page (`app/assets/legal/android.md`) from the Gradle lockfile, with the licence texts in `android_notices/` and the licence file of the embedded Cronet build in `android_notices/cronet/` |
 | `docs/` | Architecture, roadmap, decisions, open questions, the threat model, research |
-| `.github/workflows/ci.yaml` | CI: analyze and test, generated-code check, contract tests, Android and iOS release builds; since step 35c also `pub outdated` (informational), `npm audit` and the exported-components check |
+| `.github/workflows/ci.yaml` | CI: analyze and test, generated-code check, contract tests, Android and iOS release builds; since step 35c also `pub outdated` (informational), `npm audit` and the exported-components check; the check that the Android libraries' notices are current |
 | `.github/workflows/osv.yaml` | Vulnerability scan: OSV over `pubspec.lock`, the editor's `package-lock.json` and the Gradle lockfile on push, pull request and weekly (step 35c) |
+| `.github/workflows/dco.yaml` | Pull requests only: the sign-offs of their commits ([CONTRIBUTING.md](CONTRIBUTING.md#developer-certificate-of-origin)) |
+| `LICENSE`, `NOTICE.md`, `CONTRIBUTING.md` | The AGPL text; the copyright, licence notice, app store permission, brand exclusion and third-party notices; how to contribute, with the DCO |
 | `osv-scanner.toml` | Advisories accepted after review, each with a reason and an expiry |
 | `app/android/app/gradle.lockfile` | The locked Android runtime dependencies, for the scan (step 35c) |
 
@@ -190,6 +192,20 @@ The OSV scan runs in a workflow of its own; locally, `osv-scanner --config=osv-s
 (cd app/android && ./gradlew :app:dependencies --write-locks)
 ```
 
+The licence page lists the Android libraries from that lockfile; CI fails until their notices are written again too, then commit `app/assets/legal/android.md`. A library of a new Maven group needs its licence in the script's table first; a Google Play services library is refused. After the Cronet version changed (in `app/android/app/build.gradle.kts`, never below the one cronet_http names), write the lock and build the release APK once, so that Gradle has the new AAR, then download the licence file Chromium publishes for that Cronet build with `--refresh-cronet` (it checks that the build's published classes are those of the AAR) and commit `tool/android_notices/cronet/` too:
+
+```sh
+python3 -I tool/build_android_notices.py           # --check only compares, --self-test tests the script
+python3 -I tool/build_android_notices.py --refresh-cronet
+```
+
+Every commit of a pull request needs a sign-off of its author ([CONTRIBUTING.md](CONTRIBUTING.md#developer-certificate-of-origin)). The workflow `dco.yaml` checks it; locally:
+
+```sh
+python3 -I tool/check_dco.py --self-test
+python3 -I tool/check_dco.py origin/main HEAD    # the commits of your branch
+```
+
 The pure packages also use `flutter test` (see [D9](docs/decisions.md#d9-flutter_test-instead-of-packagetest-in-pure-packages)). The app's tests run on an in-memory SQLite, so they need no server and no device.
 
 Contract tests against the real server:
@@ -278,4 +294,10 @@ Every sign-in starts with an empty browser session and shows the login form ([D2
 
 ## License
 
-Not decided yet (deferred); see [Q3](docs/open-questions.md#q3-licence-and-distribution). There is no `LICENSE` file yet. Vikunja itself is AGPL-3.0-or-later.
+Rurana is free software under the [GNU Affero General Public License, version 3 or later](LICENSE) (AGPL-3.0-or-later), Copyright (C) 2026 Benedikt Lesch and the Rurana contributors. [NOTICE.md](NOTICE.md) has the licence notice and what goes with it:
+
+- **App stores:** an additional permission under section 7 of the AGPL allows distribution through app stores whose terms conflict with the AGPL, such as Apple's App Store, as long as the source is also available under the AGPL through a channel without such restrictions.
+- **Name and logo:** the name Rurana and the llama logo, with every icon derived from it, are not under the AGPL; all rights are reserved. Their files may be passed on unmodified only as part of a copy of this repository or its history, or of an unmodified build published by Benedikt Lesch; an app built from modified source uses its own name and logo.
+- **Third-party material** keeps its own licence; the app shows the notices on its licence page.
+
+Contributions come under the same terms, with every commit signed off under the Developer Certificate of Origin ([CONTRIBUTING.md](CONTRIBUTING.md)). The app shows its notices on an About page and on its licence page; the source code will be published before the first store release. Vikunja itself is AGPL-3.0-or-later too. The decision and its reasons are in [D67](docs/decisions.md#d67-agpl-30-or-later-with-an-app-store-permission-contributions-under-the-dco-the-name-and-the-logo-reserved-no-f-droid-the-legal-notices-on-an-about-page-and-the-licence-page-the-source-code-published-before-the-first-store-release). This summary is not legal advice; the texts of [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md) are what counts.

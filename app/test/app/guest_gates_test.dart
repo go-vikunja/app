@@ -110,6 +110,7 @@ void main() {
       AppRoutes.addAccount,
       AppRoutes.widgets,
       AppRoutes.privacy,
+      AppRoutes.about,
       '${AppRoutes.labels}x',
     ]) {
       expect(AppRoutes.isClosedToGuests(location), isFalse, reason: location);
