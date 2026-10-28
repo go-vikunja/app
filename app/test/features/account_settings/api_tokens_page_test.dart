@@ -68,12 +68,17 @@ void main() {
     testWidgets('shows each token with its expiry and permissions', (
       tester,
     ) async {
+      // A fixed clock and calendar dates: the page counts calendar days, and
+      // 72 hours before a moment near midnight can land two dates back
+      // across a daylight-saving change.
+      final clock = DateTime(2026, 10, 27, 12);
+      harness.clock = clock;
       harness.security.apiTokenList = [
-        fakeApiToken(expiresAt: harness.now.add(const Duration(days: 20))),
+        fakeApiToken(expiresAt: DateTime(2026, 11, 16, 12)),
         fakeApiToken(
           id: 2,
           title: 'Old script',
-          expiresAt: harness.now.subtract(const Duration(days: 3)),
+          expiresAt: DateTime(clock.year, clock.month, clock.day - 3, 12),
           permissions: const {
             'tasks': ['read_all'],
             'projects': ['read_all', 'read_one'],
