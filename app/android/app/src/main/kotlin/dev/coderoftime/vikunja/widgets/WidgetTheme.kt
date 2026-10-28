@@ -2,6 +2,8 @@ package dev.coderoftime.vikunja.widgets
 
 import android.os.Build
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.glance.GlanceTheme
 import androidx.glance.color.ColorProvider
@@ -39,10 +41,16 @@ private val brandColors = colorProviders(
     widgetBackground = ColorProvider(day = Color(0xFFF8F9FF), night = Color(0xFF0E141C)),
 )
 
+// Whether the widget draws in the system palette: Glance refuses its
+// resource-backed colours as explicit checkbox colours.
+internal val LocalSystemPalette = staticCompositionLocalOf { false }
+
 // The system palette on Android 12+ unless "Use system colours" is off in
 // the app (D45); the brand scheme otherwise.
 @Composable
 internal fun WidgetTheme(dynamicColor: Boolean, content: @Composable () -> Unit) {
     val dynamic = dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-    GlanceTheme(colors = if (dynamic) GlanceTheme.colors else brandColors, content = content)
+    CompositionLocalProvider(LocalSystemPalette provides dynamic) {
+        GlanceTheme(colors = if (dynamic) GlanceTheme.colors else brandColors, content = content)
+    }
 }

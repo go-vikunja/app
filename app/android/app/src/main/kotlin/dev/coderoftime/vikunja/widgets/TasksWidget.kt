@@ -187,7 +187,9 @@ private fun Header(content: ListContent.Shown, link: Uri) {
         }
         val newTask = WidgetLinks.parse(content.newTaskLink)
         if (newTask == null) {
-            MinimumHeight()
+            // Without a width of its own the spacer squeezes the title out of
+            // the row.
+            MinimumHeight(GlanceModifier.width(1.dp))
         } else {
             val label = content.newTaskLabel ?: context.getString(R.string.widget_new_task)
             Box(
@@ -251,7 +253,11 @@ private fun TaskRow(shown: ShownRow, content: ListContent.Shown, wide: Boolean) 
                     MarkDoneAction.parameters(accountId, row.taskId, content.generatedAt),
                 ),
                 modifier = GlanceModifier.size(touchTarget).semantics { contentDescription = row.doneLabel },
-                colors = CheckboxDefaults.colors(checkedColor = colors.primary, uncheckedColor = colors.onSurfaceVariant),
+                colors = if (LocalSystemPalette.current) {
+                    CheckboxDefaults.colors()
+                } else {
+                    CheckboxDefaults.colors(checkedColor = colors.primary, uncheckedColor = colors.onSurfaceVariant)
+                },
             )
         } else {
             MinimumHeight(GlanceModifier.width(12.dp))
