@@ -46,6 +46,8 @@ class AdaptiveNavigationBar extends StatelessWidget {
         child: CupertinoTabBar(
           currentIndex: selectedIndex,
           onTap: onDestinationSelected,
+          // Cupertino's inactive grey reads at 2.7:1 on the bar.
+          inactiveColor: Theme.of(context).colorScheme.onSurfaceVariant,
           items: [
             for (final destination in destinations)
               BottomNavigationBarItem(

@@ -102,6 +102,7 @@ class _FirstSyncScreenState extends ConsumerState<FirstSyncScreen> {
                     const SizedBox(height: 20),
                     Semantics(
                       header: true,
+                      headingLevel: 1,
                       child: Text(
                         l10n.firstSyncTitle,
                         style: theme.textTheme.headlineMedium,

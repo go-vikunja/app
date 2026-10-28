@@ -529,6 +529,7 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
       const SizedBox(height: 16),
       Semantics(
         header: true,
+        headingLevel: 2,
         child: Text(
           l10n.shareFiles,
           style: theme.textTheme.titleSmall?.copyWith(color: colors.primary),

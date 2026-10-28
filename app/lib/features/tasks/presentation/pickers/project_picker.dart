@@ -80,6 +80,7 @@ class _ProjectList extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
             child: Semantics(
               header: true,
+              headingLevel: 1,
               child: Text(
                 l10n.taskEditProjectPickerTitle,
                 style: theme.textTheme.titleMedium,

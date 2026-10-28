@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
+import 'package:vikunja_mobile/features/common/presentation/section_semantics.dart';
 import 'package:vikunja_mobile/features/tasks/application/relation_search.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/detail_section_header.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/relations/relation_row.dart';
@@ -37,49 +38,51 @@ class RelatedTasksSection extends StatelessWidget {
     ];
     final onRemove = this.onRemove;
     if (groups.isEmpty && onAdd == null) return const SizedBox.shrink();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        DetailSectionHeader(title: l10n.taskDetailRelatedTasks),
-        for (final (kind, others) in groups) ...[
-          Padding(
-            padding: const EdgeInsetsDirectional.fromSTEB(20, 4, 20, 4),
-            child: Text(
-              relationKindLabel(l10n, kind),
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-          SectionCard(
-            children: [
-              for (final other in others)
-                RelationRow(
-                  key: ValueKey((kind, other.id)),
-                  task: other,
-                  projectTitle: projectTitleOf?.call(other),
-                  onOpen: () => onOpen(other),
-                  onRemove: onRemove == null
-                      ? null
-                      : () => onRemove(kind, other),
+    return SectionSemantics(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          DetailSectionHeader(title: l10n.taskDetailRelatedTasks),
+          for (final (kind, others) in groups) ...[
+            Padding(
+              padding: const EdgeInsetsDirectional.fromSTEB(20, 4, 20, 4),
+              child: Text(
+                relationKindLabel(l10n, kind),
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
-            ],
-          ),
-          const SizedBox(height: 4),
-        ],
-        if (onAdd case final onAdd?)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: TextButton.icon(
-                onPressed: onAdd,
-                icon: const Icon(Icons.add_link),
-                label: Text(l10n.taskDetailAddRelation),
               ),
             ),
-          ),
-      ],
+            SectionCard(
+              children: [
+                for (final other in others)
+                  RelationRow(
+                    key: ValueKey((kind, other.id)),
+                    task: other,
+                    projectTitle: projectTitleOf?.call(other),
+                    onOpen: () => onOpen(other),
+                    onRemove: onRemove == null
+                        ? null
+                        : () => onRemove(kind, other),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 4),
+          ],
+          if (onAdd case final onAdd?)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: TextButton.icon(
+                  onPressed: onAdd,
+                  icon: const Icon(Icons.add_link),
+                  label: Text(l10n.taskDetailAddRelation),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -103,23 +106,25 @@ class ParentTasksBlock extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final onRemove = this.onRemove;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        DetailSectionHeader(title: l10n.taskDetailParentTask),
-        SectionCard(
-          children: [
-            for (final parent in parents)
-              RelationRow(
-                key: ValueKey(parent.id),
-                task: parent,
-                projectTitle: projectTitleOf?.call(parent),
-                onOpen: () => onOpen(parent),
-                onRemove: onRemove == null ? null : () => onRemove(parent),
-              ),
-          ],
-        ),
-      ],
+    return SectionSemantics(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          DetailSectionHeader(title: l10n.taskDetailParentTask),
+          SectionCard(
+            children: [
+              for (final parent in parents)
+                RelationRow(
+                  key: ValueKey(parent.id),
+                  task: parent,
+                  projectTitle: projectTitleOf?.call(parent),
+                  onOpen: () => onOpen(parent),
+                  onRemove: onRemove == null ? null : () => onRemove(parent),
+                ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

@@ -36,6 +36,7 @@ class ListSectionHeader extends StatelessWidget {
         constraints: const BoxConstraints(minHeight: 32),
         child: Semantics(
           header: true,
+          headingLevel: 2,
           child: Row(
             children: [
               Expanded(

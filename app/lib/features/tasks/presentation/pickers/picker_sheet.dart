@@ -96,6 +96,7 @@ class PickerHeader extends StatelessWidget {
               Flexible(
                 child: Semantics(
                   header: true,
+                  headingLevel: 1,
                   child: Text(title, style: theme.textTheme.titleMedium),
                 ),
               ),

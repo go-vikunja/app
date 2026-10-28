@@ -2,6 +2,7 @@ import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/l10n/picker_localizations.dart';
+import 'package:vikunja_mobile/features/common/presentation/app_bar_text_action.dart';
 
 /// A range of whole days: the Material date picker for the first day and
 /// again for the last, its weeks starting on [firstDayOfWeekIndex] (null:
@@ -120,20 +121,24 @@ class _CupertinoDayRangeSheetState extends State<_CupertinoDayRangeSheet> {
     Navigator.of(context).pop((_day(first), _day(last)));
   }
 
-  /// One wheel edits either end, so each segment shows its end's day.
+  /// One wheel edits either end, so each segment shows its end's day; in
+  /// one line each, smaller where large text would not fit the control.
   Widget _segment(String label, DateTime day) {
     final materialL10n = MaterialLocalizations.of(context);
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(label),
-        Text(
-          day.year == widget.now.year
-              ? materialL10n.formatShortMonthDay(day)
-              : materialL10n.formatShortDate(day),
-          style: CupertinoTheme.of(context).textTheme.tabLabelTextStyle,
-        ),
-      ],
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label),
+          Text(
+            day.year == widget.now.year
+                ? materialL10n.formatShortMonthDay(day)
+                : materialL10n.formatShortDate(day),
+            style: CupertinoTheme.of(context).textTheme.tabLabelTextStyle,
+          ),
+        ],
+      ),
     );
   }
 
@@ -141,6 +146,17 @@ class _CupertinoDayRangeSheetState extends State<_CupertinoDayRangeSheet> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final background = CupertinoTheme.of(context).scaffoldBackgroundColor;
+    final cancel = CupertinoButton(
+      onPressed: () => Navigator.of(context).pop(),
+      child: Text(l10n.pickerCancel),
+    );
+    final done = CupertinoButton(
+      onPressed: _done,
+      child: Text(l10n.pickerDone),
+    );
+    // As in the picker sheet: with large text the buttons stack when they
+    // do not fit, and grow to twice the size at most.
+    final largeText = MediaQuery.textScalerOf(context).scale(10) > 13;
     return ColoredBox(
       color: background,
       child: SafeArea(
@@ -148,27 +164,35 @@ class _CupertinoDayRangeSheetState extends State<_CupertinoDayRangeSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                CupertinoButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: Text(l10n.pickerCancel),
+            if (largeText)
+              MediaQuery.withClampedTextScaling(
+                maxScaleFactor: AppBarTextAction.maxTextScale,
+                child: OverflowBar(
+                  alignment: MainAxisAlignment.spaceBetween,
+                  overflowAlignment: OverflowBarAlignment.center,
+                  children: [cancel, done],
                 ),
-                CupertinoButton(onPressed: _done, child: Text(l10n.pickerDone)),
-              ],
-            ),
+              )
+            else
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [cancel, done],
+              ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: CupertinoSlidingSegmentedControl<_End>(
-                groupValue: _editing,
-                onValueChanged: (end) {
-                  if (end != null) setState(() => _editing = end);
-                },
-                children: {
-                  _End.first: _segment(l10n.upcomingRangeFrom, _first),
-                  _End.last: _segment(l10n.upcomingRangeTo, _last),
-                },
+              // The control keeps its native height.
+              child: MediaQuery.withClampedTextScaling(
+                maxScaleFactor: AppBarTextAction.maxTextScale,
+                child: CupertinoSlidingSegmentedControl<_End>(
+                  groupValue: _editing,
+                  onValueChanged: (end) {
+                    if (end != null) setState(() => _editing = end);
+                  },
+                  children: {
+                    _End.first: _segment(l10n.upcomingRangeFrom, _first),
+                    _End.last: _segment(l10n.upcomingRangeTo, _last),
+                  },
+                ),
               ),
             ),
             SizedBox(

@@ -18,6 +18,8 @@ import 'package:vikunja_mobile/features/account_settings/presentation/account_se
 import 'package:vikunja_mobile/features/account_settings/presentation/security_list_body.dart';
 import 'package:vikunja_mobile/features/common/presentation/announce.dart';
 import 'package:vikunja_mobile/features/common/presentation/external_link.dart';
+import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
+import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/confirm_dialog.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/picker_sheet.dart';
@@ -151,8 +153,9 @@ class _ApiTokensPageState extends ConsumerState<ApiTokensPage> {
     );
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n.apiTokensTitle),
+        title: ScreenTitle(l10n.apiTokensTitle),
         actions: [
+          RefreshButton(onPressed: _loading ? null : () => unawaited(_load())),
           IconButton(
             onPressed: () => unawaited(_create()),
             tooltip: l10n.apiTokensNew,
@@ -281,6 +284,7 @@ class _TokenDetails extends ConsumerWidget {
       children: [
         Semantics(
           header: true,
+          headingLevel: 1,
           child: Text(
             token.title.trim().isEmpty ? '–' : token.title,
             style: theme.textTheme.titleLarge,
@@ -305,6 +309,7 @@ class _TokenDetails extends ConsumerWidget {
         const SizedBox(height: 16),
         Semantics(
           header: true,
+          headingLevel: 2,
           child: Text(
             l10n.apiTokensPermissions,
             style: theme.textTheme.titleSmall?.copyWith(color: colors.primary),

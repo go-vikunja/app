@@ -16,8 +16,10 @@ import 'package:vikunja_mobile/core/widgets/widget_config.dart';
 import 'package:vikunja_mobile/core/widgets/widget_providers.dart';
 import 'package:vikunja_mobile/core/widgets/widget_snapshot.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/account_identity.dart';
+import 'package:vikunja_mobile/features/common/presentation/app_bar_text_action.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
+import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 import 'package:vikunja_mobile/features/widgets/application/widget_choices.dart';
@@ -294,7 +296,7 @@ class _WidgetConfigurePageState extends ConsumerState<WidgetConfigurePage> {
     final l10n = context.l10n;
     if (_refused) {
       return Scaffold(
-        appBar: AppBar(title: Text(l10n.widgetConfigureTitle)),
+        appBar: AppBar(title: ScreenTitle(l10n.widgetConfigureTitle)),
         body: CenteredScrollView(
           child: EmptyState(
             icon: Icons.widgets_outlined,
@@ -310,9 +312,9 @@ class _WidgetConfigurePageState extends ConsumerState<WidgetConfigurePage> {
     final entry = accountId == null ? null : registry?.find(accountId);
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n.widgetConfigureTitle),
+        title: ScreenTitle(l10n.widgetConfigureTitle),
         actions: [
-          TextButton(
+          AppBarTextAction(
             onPressed: _config == null || _saving
                 ? null
                 : () => unawaited(_save()),
@@ -583,6 +585,7 @@ class _ChoiceList extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
             child: Semantics(
               header: true,
+              headingLevel: 1,
               child: Text(title, style: theme.textTheme.titleMedium),
             ),
           );

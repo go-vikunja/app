@@ -13,11 +13,13 @@ import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/router/pushed_pages.dart';
 import 'package:vikunja_mobile/core/repositories/label_repository.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/features/common/presentation/app_bar_text_action.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
 import 'package:vikunja_mobile/features/common/presentation/form_parts.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_note.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
+import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/labels/application/label_groups.dart';
 import 'package:vikunja_mobile/features/labels/presentation/label_change_failure.dart';
 import 'package:vikunja_mobile/features/projects/presentation/manage/project_confirmations.dart';
@@ -288,10 +290,10 @@ class _LabelFormPageState extends ConsumerState<LabelFormPage> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text(_creating ? l10n.labelsNew : l10n.labelsEditTitle),
+          title: ScreenTitle(_creating ? l10n.labelsNew : l10n.labelsEditTitle),
           actions: [
             if (own)
-              TextButton(
+              AppBarTextAction(
                 onPressed: _canSave ? () => unawaited(_save()) : null,
                 child: Text(
                   _saving

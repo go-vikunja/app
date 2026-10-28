@@ -120,6 +120,7 @@ class QuickAddHelpSheet extends StatelessWidget {
       children: [
         Semantics(
           header: true,
+          headingLevel: 1,
           child: Text(
             l10n.quickAddHelpTitle,
             style: theme.textTheme.titleLarge,
@@ -247,6 +248,7 @@ class _Section extends StatelessWidget {
               Expanded(
                 child: Semantics(
                   header: true,
+                  headingLevel: 2,
                   child: Text(title, style: theme.textTheme.titleSmall),
                 ),
               ),

@@ -12689,6 +12689,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The name Rurana and the llama logo are not covered by the AGPL; all rights to them are reserved. You may pass on the logo files only unchanged, as part of a copy of Rurana\'s repository or of the app as Benedikt Lesch publishes it. If you distribute an app built from changed source code, give it a name and logo of its own.'**
   String get aboutNameAndLogo;
+
+  /// Screen reader: a line of a Gantt row's label for the solid arrows drawn from this task to the tasks it blocks; titles is a comma-separated list of task titles.
+  ///
+  /// In en, this message translates to:
+  /// **'blocks {titles}'**
+  String projectTimelineBlocksSemantics(String titles);
+
+  /// Screen reader: a line of a Gantt row's label for the solid arrows drawn to this task from the tasks that block it; titles is a comma-separated list of task titles.
+  ///
+  /// In en, this message translates to:
+  /// **'blocked by {titles}'**
+  String projectTimelineBlockedBySemantics(String titles);
+
+  /// Screen reader: a line of a Gantt row's label for the dashed arrows drawn from this task to the tasks that follow it; titles is a comma-separated list of task titles.
+  ///
+  /// In en, this message translates to:
+  /// **'precedes {titles}'**
+  String projectTimelinePrecedesSemantics(String titles);
+
+  /// Screen reader: a line of a Gantt row's label for the dashed arrows drawn to this task from the tasks it follows; titles is a comma-separated list of task titles.
+  ///
+  /// In en, this message translates to:
+  /// **'follows {titles}'**
+  String projectTimelineFollowsSemantics(String titles);
+
+  /// Screen reader: read for the Gantt chart's header of months and days, which is only drawn; today is the full date, range the dates the chart shows as in projectTimelineSpanSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Today, {today}; showing {range}'**
+  String projectTimelineSummarySemantics(String today, String range);
 }
 
 class _AppLocalizationsDelegate

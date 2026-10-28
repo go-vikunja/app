@@ -13,10 +13,12 @@ import 'package:vikunja_mobile/core/text/html_to_text.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
+import 'package:vikunja_mobile/features/common/presentation/app_bar_text_action.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
+import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/tasks/application/date_shortcuts.dart';
@@ -197,9 +199,9 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text(l10n.taskEditTitle),
+          title: ScreenTitle(l10n.taskEditTitle),
           actions: [
-            TextButton(
+            AppBarTextAction(
               onPressed: _canSave ? () => unawaited(_save()) : null,
               child: Text(l10n.taskEditSave),
             ),

@@ -67,6 +67,7 @@ class OpenSharedLinkSheet extends StatelessWidget {
         children: [
           Semantics(
             header: true,
+            headingLevel: 1,
             child: Text(
               l10n.guestShareTitle,
               style: theme.textTheme.titleLarge,

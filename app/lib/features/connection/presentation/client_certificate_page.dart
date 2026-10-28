@@ -13,6 +13,7 @@ import 'package:vikunja_mobile/features/attachments/application/attachment_picke
 import 'package:vikunja_mobile/features/common/presentation/announce.dart';
 import 'package:vikunja_mobile/features/common/presentation/form_parts.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_note.dart';
+import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/connection/application/certificate_file.dart';
 import 'package:vikunja_mobile/features/connection/presentation/secret_text_field.dart';
 
@@ -45,12 +46,22 @@ class _ClientCertificatePageState extends ConsumerState<ClientCertificatePage> {
     super.dispose();
   }
 
+  /// A new or changed error speaks itself as a live region: the file's on
+  /// every platform, the password field's where the platform cannot
+  /// announce. An unchanged one is announced.
   void _showError({String? file, String? password}) {
+    final announcer = Announcer.of(context);
+    final fileUnchanged = file == _fileError;
+    final passwordChanged = password != _passwordError;
     setState(() {
       _fileError = file;
       _passwordError = password;
     });
-    if (file ?? password case final message?) announce(context, message);
+    if (file != null) {
+      if (fileUnchanged) announcer.say(file);
+    } else if (password != null) {
+      announcer.say(password, onlyIfPlatformAnnounces: passwordChanged);
+    }
   }
 
   Future<void> _choose() async {
@@ -151,7 +162,7 @@ class _ClientCertificatePageState extends ConsumerState<ClientCertificatePage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n.connectionClientCertificateHeading),
+        title: ScreenTitle(l10n.connectionClientCertificateHeading),
         bottom: SavingProgressBar(saving: _busy),
       ),
       body: SafeArea(

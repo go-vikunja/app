@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
+import 'package:vikunja_mobile/features/common/presentation/section_semantics.dart';
 
 /// One day of Upcoming's timeline: a date column (the day's number, filled
 /// for today, its weekday and a line down to the next day) beside the
@@ -30,32 +31,34 @@ class TimelineDay extends StatelessWidget {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    final content = Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        ListSectionHeader(
-          title: title,
-          count: rows.isEmpty ? null : rows.length,
-          padding: const EdgeInsetsDirectional.fromSTEB(4, 2, 4, 4),
-        ),
-        if (rows.isEmpty)
-          Padding(
-            padding: const EdgeInsetsDirectional.only(start: 4),
-            child: Text(
-              l10n.upcomingNothingPlanned,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: colors.onSurfaceVariant,
+    final content = SectionSemantics(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ListSectionHeader(
+            title: title,
+            count: rows.isEmpty ? null : rows.length,
+            padding: const EdgeInsetsDirectional.fromSTEB(4, 2, 4, 4),
+          ),
+          if (rows.isEmpty)
+            Padding(
+              padding: const EdgeInsetsDirectional.only(start: 4),
+              child: Text(
+                l10n.upcomingNothingPlanned,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colors.onSurfaceVariant,
+                ),
               ),
             ),
-          ),
-        for (var i = 0; i < rows.length; i++)
-          SectionCardItem(
-            key: rows[i].key is LocalKey ? rows[i].key : null,
-            first: i == 0,
-            last: i == rows.length - 1,
-            child: rows[i],
-          ),
-      ],
+          for (var i = 0; i < rows.length; i++)
+            SectionCardItem(
+              key: rows[i].key is LocalKey ? rows[i].key : null,
+              first: i == 0,
+              last: i == rows.length - 1,
+              child: rows[i],
+            ),
+        ],
+      ),
     );
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),

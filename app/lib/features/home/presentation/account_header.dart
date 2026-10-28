@@ -29,6 +29,7 @@ class AccountHeader extends StatelessWidget {
       children: [
         Semantics(
           header: true,
+          headingLevel: 2,
           child: Text(accountTitle(account), style: theme.textTheme.titleLarge),
         ),
         Text(

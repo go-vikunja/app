@@ -2097,5 +2097,10 @@
   "aboutSourceCodeLater": "Der Quellcode wird mit der ersten Veröffentlichung bereitgestellt.",
   "aboutSourceCodeOpen": "Quellcode ansehen",
   "aboutNameAndLogoHeading": "Name und Logo",
-  "aboutNameAndLogo": "Der Name Rurana und das Lama-Logo fallen nicht unter die AGPL; alle Rechte daran sind vorbehalten. Die Logo-Dateien darfst du nur unverändert weitergeben, als Teil einer Kopie des Rurana-Repositorys oder der App, wie Benedikt Lesch sie veröffentlicht. Wenn du eine App aus verändertem Quellcode verbreitest, gib ihr einen eigenen Namen und ein eigenes Logo."
+  "aboutNameAndLogo": "Der Name Rurana und das Lama-Logo fallen nicht unter die AGPL; alle Rechte daran sind vorbehalten. Die Logo-Dateien darfst du nur unverändert weitergeben, als Teil einer Kopie des Rurana-Repositorys oder der App, wie Benedikt Lesch sie veröffentlicht. Wenn du eine App aus verändertem Quellcode verbreitest, gib ihr einen eigenen Namen und ein eigenes Logo.",
+  "projectTimelineBlocksSemantics": "blockiert {titles}",
+  "projectTimelineBlockedBySemantics": "blockiert durch {titles}",
+  "projectTimelinePrecedesSemantics": "geht {titles} voraus",
+  "projectTimelineFollowsSemantics": "folgt auf {titles}",
+  "projectTimelineSummarySemantics": "Heute, {today}; Zeitraum: {range}"
 }

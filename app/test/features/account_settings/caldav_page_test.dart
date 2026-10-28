@@ -130,6 +130,22 @@ void main() {
     );
   });
 
+  testWidgets('the refresh button reads the tokens again without a pull', (
+    tester,
+  ) async {
+    await pumpPage(tester);
+    expect(find.text(en.caldavTokenName(1)), findsNothing);
+    harness.security.caldavTokenList = [
+      CaldavToken(id: 1, created: harness.now),
+    ];
+
+    await tester.tap(find.byTooltip(en.refresh));
+    await tester.pumpAndSettle();
+
+    await scrollTo(tester, find.text(en.caldavTokenName(1)));
+    expect(find.text(en.caldavTokenName(1)), findsOneWidget);
+  });
+
   group('which password works', () {
     testWidgets('a password account without two-factor: either', (
       tester,

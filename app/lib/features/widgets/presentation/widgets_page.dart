@@ -16,7 +16,9 @@ import 'package:vikunja_mobile/core/widgets/widget_config.dart';
 import 'package:vikunja_mobile/core/widgets/widget_providers.dart';
 import 'package:vikunja_mobile/features/common/presentation/announce.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_note.dart';
+import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
+import 'package:vikunja_mobile/features/common/presentation/section_semantics.dart';
 import 'package:vikunja_mobile/features/widgets/presentation/widget_kind_texts.dart';
 
 final _log = Logger('WidgetsPage');
@@ -144,7 +146,7 @@ class _WidgetsPageState extends ConsumerState<WidgetsPage> {
       color: theme.colorScheme.onSurfaceVariant,
     );
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.widgetsTitle)),
+      appBar: AppBar(title: ScreenTitle(l10n.widgetsTitle)),
       body: SafeArea(
         top: false,
         child: ListView(
@@ -169,32 +171,39 @@ class _WidgetsPageState extends ConsumerState<WidgetsPage> {
               FutureBuilder<bool>(
                 future: _canPin,
                 builder: (context, canPin) => canPin.data ?? false
-                    ? Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          SectionCard(
-                            title: l10n.widgetsAddHeading,
-                            children: [
-                              for (final kind in _addable)
-                                _AddTile(
-                                  kind: kind,
-                                  onAdd: () => unawaited(_add(kind)),
-                                ),
-                            ],
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-                            child: Text(l10n.widgetsAddHint, style: muted),
-                          ),
-                          if (_pinUnsupported)
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                              child: ListNote(
-                                icon: Icons.info_outline,
-                                text: l10n.widgetsPinUnsupported,
-                              ),
+                    ? SectionSemantics(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            SectionCard(
+                              title: l10n.widgetsAddHeading,
+                              children: [
+                                for (final kind in _addable)
+                                  _AddTile(
+                                    kind: kind,
+                                    onAdd: () => unawaited(_add(kind)),
+                                  ),
+                              ],
                             ),
-                        ],
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                              child: Text(l10n.widgetsAddHint, style: muted),
+                            ),
+                            if (_pinUnsupported)
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  12,
+                                  16,
+                                  0,
+                                ),
+                                child: ListNote(
+                                  icon: Icons.info_outline,
+                                  text: l10n.widgetsPinUnsupported,
+                                ),
+                              ),
+                          ],
+                        ),
                       )
                     : const SizedBox.shrink(),
               ),

@@ -57,6 +57,15 @@ void main() {
     addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
   }
 
+  void useHighContrast(WidgetTester tester, {bool enabled = true}) {
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        FakeAccessibilityFeatures(
+          highContrast: enabled,
+          supportsAnnounce: true,
+        );
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+  }
+
   void useSystemPalette(WidgetTester tester, Int64List? Function() palette) {
     tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
       DynamicColorPlugin.channel,
@@ -278,5 +287,75 @@ void main() {
       expect(asked, 0);
       expect(themeOf(tester, OverviewScreen).colorScheme.primary, brandLight);
     }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+  });
+
+  group('high contrast', () {
+    for (final brightness in Brightness.values) {
+      testWidgets('takes the brand scheme at full contrast in $brightness', (
+        tester,
+      ) async {
+        usePlatformBrightness(tester, brightness);
+        useHighContrast(tester);
+        await pumpSignedInApp(tester, sync: data, now: now);
+
+        final colors = themeOf(tester, OverviewScreen).colorScheme;
+        expect(colors, AppTheme.brandScheme(brightness, contrastLevel: 1));
+        expect(colors, isNot(AppTheme.brandScheme(brightness)));
+      });
+    }
+
+    testWidgets('follows the setting while the app runs', (tester) async {
+      useHighContrast(tester, enabled: false);
+      await pumpSignedInApp(tester, sync: data, now: now);
+      expect(
+        themeOf(tester, OverviewScreen).colorScheme,
+        AppTheme.brandScheme(Brightness.light),
+      );
+
+      useHighContrast(tester);
+      await tester.pumpAndSettle();
+      expect(
+        themeOf(tester, OverviewScreen).colorScheme,
+        AppTheme.brandScheme(Brightness.light, contrastLevel: 1),
+      );
+
+      useHighContrast(tester, enabled: false);
+      await tester.pumpAndSettle();
+      expect(
+        themeOf(tester, OverviewScreen).colorScheme,
+        AppTheme.brandScheme(Brightness.light),
+      );
+    });
+
+    testWidgets("with system colours keeps the system's hue at full "
+        'contrast, light and dark', (tester) async {
+      useSystemPalette(
+        tester,
+        () => _palette(primary40: 0xFF00AA44, primary80: 0xFF66DD88),
+      );
+      useHighContrast(tester);
+      await pumpSignedInApp(tester, sync: data, now: now);
+
+      final light = themeOf(tester, OverviewScreen).colorScheme;
+      expect(
+        light,
+        ColorScheme.fromSeed(
+          seedColor: const Color(0xFF00AA44),
+          contrastLevel: 1,
+        ),
+      );
+      expect(light.primary, isNot(const Color(0xFF00AA44)));
+
+      data.shared.settings = const UserSettings(colorSchema: ColorSchema.dark);
+      await tester.pumpAndSettle();
+      expect(
+        themeOf(tester, OverviewScreen).colorScheme,
+        ColorScheme.fromSeed(
+          seedColor: const Color(0xFF66DD88),
+          brightness: Brightness.dark,
+          contrastLevel: 1,
+        ),
+      );
+    });
   });
 }

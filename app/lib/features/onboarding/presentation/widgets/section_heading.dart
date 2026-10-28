@@ -12,6 +12,7 @@ class SectionHeading extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 8),
       child: Semantics(
         header: true,
+        headingLevel: 2,
         child: Text(
           text,
           style: theme.textTheme.titleSmall?.copyWith(

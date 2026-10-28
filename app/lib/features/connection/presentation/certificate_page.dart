@@ -17,6 +17,7 @@ import 'package:vikunja_mobile/features/account_settings/presentation/account_se
 import 'package:vikunja_mobile/features/attachments/application/attachment_picker.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_note.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
+import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/connection/application/certificate_checks.dart';
 import 'package:vikunja_mobile/features/connection/application/certificate_file.dart';
 import 'package:vikunja_mobile/features/connection/presentation/connection_texts.dart';
@@ -162,7 +163,7 @@ class _CertificatePageState extends ConsumerState<CertificatePage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
+        title: ScreenTitle(
           review
               ? l10n.connectionReviewTitle
               : l10n.connectionServerCertificateHeading,
@@ -516,6 +517,7 @@ class _Heading extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Semantics(
     header: true,
+    headingLevel: 2,
     child: Text(text, style: Theme.of(context).textTheme.titleSmall),
   );
 }

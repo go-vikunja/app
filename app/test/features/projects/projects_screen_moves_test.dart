@@ -9,6 +9,7 @@ import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_row.dart';
 import 'package:vikunja_mobile/features/projects/presentation/reorder_slot.dart';
 
+import '../../helpers/announcer_region.dart';
 import '../../helpers/pump_app.dart';
 import '../../helpers/sample_data.dart';
 import '../../helpers/sync_fakes.dart';
@@ -552,6 +553,20 @@ void main() {
       expect(tester.takeAnnouncements(), [
         isAccessibilityAnnouncement(en.movedDown),
       ]);
+    });
+
+    testWidgets('without platform announcements, as on Android, a move is '
+        'said by the live region', (tester) async {
+      useLiveRegionAnnouncements(tester);
+      await pumpProjects(tester);
+
+      await performAction(tester, 'Reports', en.projectMoveOut('Work'));
+
+      expect(data.projects.moves.last.projectId, 3);
+      expect(tester.takeAnnouncements(), isEmpty);
+      final region = announcerRegion(tester)!;
+      expect(region.label, en.projectMovedOut('Work'));
+      expect(region.getSemanticsData().flagsCollection.isLiveRegion, isTrue);
     });
 
     testWidgets('moving into a collapsed project shows its subprojects', (

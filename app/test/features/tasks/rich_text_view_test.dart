@@ -127,6 +127,18 @@ void main() {
         tester.getSemantics(find.text('Details')),
         matchesSemantics(label: 'Details', isHeader: true),
       );
+      // The platforms take only the level for a heading.
+      expect(
+        tester.getSemantics(find.text('Plan')).getSemanticsData().headingLevel,
+        1,
+      );
+      expect(
+        tester
+            .getSemantics(find.text('Details'))
+            .getSemanticsData()
+            .headingLevel,
+        3,
+      );
       semantics.dispose();
     });
 

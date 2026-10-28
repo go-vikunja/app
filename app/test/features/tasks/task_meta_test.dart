@@ -139,6 +139,21 @@ void main() {
         expect(iconOf(tester, DueBadge).color, expected);
       });
     }
+
+    for (final (tone, icon) in [
+      (DueTone.overdue, Icons.error_outline),
+      (DueTone.today, Icons.calendar_today_outlined),
+      (DueTone.later, Icons.calendar_today_outlined),
+      (DueTone.done, Icons.calendar_today_outlined),
+    ]) {
+      testWidgets('the badge marks $tone with its icon, not only a colour', (
+        tester,
+      ) async {
+        await pump(tester, DueBadge(text: 'Tomorrow', tone: tone));
+
+        expect(iconOf(tester, DueBadge).icon, icon);
+      });
+    }
   });
 
   group('label pill', () {

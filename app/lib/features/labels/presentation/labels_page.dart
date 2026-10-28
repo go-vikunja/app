@@ -15,6 +15,7 @@ import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
 import 'package:vikunja_mobile/features/common/presentation/online_only_fab.dart';
 import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
+import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/labels/application/label_groups.dart';
 import 'package:vikunja_mobile/features/labels/presentation/label_change_failure.dart';
@@ -117,7 +118,7 @@ class _LabelsPageState extends ConsumerState<LabelsPage>
     final offline = ref.watch(offlineProvider) != null;
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n.labelsTitle),
+        title: ScreenTitle(l10n.labelsTitle),
         actions: [RefreshButton(onPressed: refreshing ? null : refresh)],
       ),
       floatingActionButton: OnlineOnlyFab(

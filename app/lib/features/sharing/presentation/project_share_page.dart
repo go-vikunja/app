@@ -17,6 +17,7 @@ import 'package:vikunja_mobile/features/common/presentation/list_note.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
 import 'package:vikunja_mobile/features/common/presentation/option_sheet.dart';
 import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
+import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/common/presentation/user_avatar.dart';
 import 'package:vikunja_mobile/features/projects/application/project_access.dart';
@@ -474,7 +475,7 @@ class _ProjectSharePageState extends ConsumerState<ProjectSharePage>
     if (_removedSelf &&
         (gone || _failure is Forbidden || _failure is NotFound)) {
       return Scaffold(
-        appBar: AppBar(title: Text(title)),
+        appBar: AppBar(title: ScreenTitle(title)),
         body: CenteredScrollView(
           child: EmptyState(
             icon: Icons.lock_outline,
@@ -486,7 +487,7 @@ class _ProjectSharePageState extends ConsumerState<ProjectSharePage>
     }
     if (gone) {
       return Scaffold(
-        appBar: AppBar(title: Text(title)),
+        appBar: AppBar(title: ScreenTitle(title)),
         body: CenteredScrollView(
           child: EmptyState(
             icon: Icons.search_off,
@@ -521,7 +522,7 @@ class _ProjectSharePageState extends ConsumerState<ProjectSharePage>
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(title),
+        title: ScreenTitle(title),
         actions: [
           RefreshButton(onPressed: _loading ? null : () => unawaited(_load())),
         ],

@@ -5,6 +5,7 @@ import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/theme/app_theme.dart';
 import 'package:vikunja_mobile/app/theme/theme_providers.dart';
 import 'package:vikunja_mobile/app/widgets/app_lock_gate.dart';
+import 'package:vikunja_mobile/features/common/presentation/announce.dart';
 import 'package:vikunja_mobile/features/deep_links/presentation/deep_link_listener.dart';
 import 'package:vikunja_mobile/features/notifications/presentation/notification_tap_listener.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/guest/guest_landing_listener.dart';
@@ -22,18 +23,26 @@ class VikunjaApp extends ConsumerWidget {
       onGenerateTitle: (context) => context.l10n.appTitle,
       theme: AppTheme.light(colorScheme: schemes?.light),
       darkTheme: AppTheme.dark(colorScheme: schemes?.dark),
+      highContrastTheme: AppTheme.highContrastLight(
+        colorScheme: schemes?.light,
+      ),
+      highContrastDarkTheme: AppTheme.highContrastDark(
+        colorScheme: schemes?.dark,
+      ),
       themeMode: ref.watch(themeModeProvider),
       localizationsDelegates: appLocalizationsDelegates,
       supportedLocales: appSupportedLocales,
       routerConfig: ref.watch(appRouterProvider),
       builder: (context, child) => AppLockGate(
-        child: NotificationTapListener(
-          child: DeepLinkListener(
-            child: WidgetLinkListener(
-              child: NewTaskShortcutListener(
-                child: ShareIntentListener(
-                  child: GuestLandingListener(
-                    child: child ?? const SizedBox.shrink(),
+        child: AnnouncerHost(
+          child: NotificationTapListener(
+            child: DeepLinkListener(
+              child: WidgetLinkListener(
+                child: NewTaskShortcutListener(
+                  child: ShareIntentListener(
+                    child: GuestLandingListener(
+                      child: child ?? const SizedBox.shrink(),
+                    ),
                   ),
                 ),
               ),

@@ -15,6 +15,7 @@ import 'package:vikunja_mobile/features/common/presentation/announce.dart';
 import 'package:vikunja_mobile/features/common/presentation/form_parts.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_note.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
+import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/connection/presentation/secret_text_field.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/insecure_connection_dialog.dart';
 
@@ -174,18 +175,37 @@ class _HeadersPageState extends ConsumerState<HeadersPage> {
     return valid && listProblem == null;
   }
 
+  /// The errors in reading order: the list's, then each row's name and
+  /// value.
+  List<String?> _errors(List<_HeaderRow> rows) => [
+    _listError,
+    for (final row in rows) ...[row.nameError, row.valueError],
+  ];
+
+  /// A new or changed error speaks itself as a live region: the list's on
+  /// every platform, a field's where the platform cannot announce. An
+  /// unchanged one is announced.
+  void _announceFirstError(List<String?> before, List<String?> after) {
+    final index = after.indexWhere((error) => error != null);
+    if (index < 0) return;
+    final error = after[index]!;
+    final changed = error != before[index];
+    if (index == 0) {
+      if (!changed) announce(context, error);
+    } else {
+      Announcer.of(context).say(error, onlyIfPlatformAnnounces: changed);
+    }
+  }
+
   Future<void> _save() async {
     final rows = _rows;
     if (rows == null) return;
     FocusManager.instance.primaryFocus?.unfocus();
+    final before = _errors(rows);
     final valid = _validate(rows);
     setState(() {});
     if (!valid) {
-      final first = [
-        _listError,
-        for (final row in rows) ...[row.nameError, row.valueError],
-      ].nonNulls.firstOrNull;
-      if (first != null) announce(context, first);
+      _announceFirstError(before, _errors(rows));
       return;
     }
     final profiles = ref.read(networkProfilesProvider);
@@ -241,7 +261,7 @@ class _HeadersPageState extends ConsumerState<HeadersPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n.connectionHeadersHeading),
+        title: ScreenTitle(l10n.connectionHeadersHeading),
         bottom: SavingProgressBar(saving: _busy),
       ),
       body: SafeArea(
@@ -394,6 +414,7 @@ class _HeaderFieldsState extends State<_HeaderFields> {
           if (_row.fixed)
             Semantics(
               header: true,
+              headingLevel: 2,
               child: Text(_row.name.text, style: theme.textTheme.titleSmall),
             )
           else

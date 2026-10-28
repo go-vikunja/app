@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:cupertino_ui/cupertino_ui.dart';
-import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -30,6 +29,7 @@ import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
 import 'package:vikunja_mobile/features/common/presentation/announce.dart';
 import 'package:vikunja_mobile/features/common/presentation/identifier_text.dart';
+import 'package:vikunja_mobile/features/common/presentation/motion.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/common/presentation/user_avatar.dart';
 import 'package:vikunja_mobile/features/description_editor/application/description_target.dart';
@@ -150,6 +150,11 @@ class _DraggableTaskDetailState extends State<_DraggableTaskDetail> {
 
   void _expand() {
     if (!_sheet.isAttached || _sheet.size >= _fullSize - 0.01) return;
+    // Not animateTo with a zero duration, which it refuses.
+    if (reduceMotionOf(context)) {
+      _sheet.jumpTo(_fullSize);
+      return;
+    }
     _sheet.animateTo(
       _fullSize,
       duration: const Duration(milliseconds: 250),
@@ -405,7 +410,9 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
     await Scrollable.ensureVisible(
       row,
       alignment: 0.1,
-      duration: const Duration(milliseconds: 300),
+      duration: reduceMotionOf(row)
+          ? Duration.zero
+          : const Duration(milliseconds: 300),
       curve: Curves.easeOutCubic,
     );
   }
@@ -733,13 +740,7 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
       after: after,
     );
     if (message == null) return;
-    unawaited(
-      SemanticsService.sendAnnouncement(
-        View.of(context),
-        message,
-        Directionality.of(context),
-      ),
-    );
+    announce(context, message);
   }
 
   /// The details again, and the images that failed for a reason that may
@@ -873,12 +874,9 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
     }
     if (!toggled || !mounted) return;
     unawaited(HapticFeedback.selectionClick());
-    unawaited(
-      SemanticsService.sendAnnouncement(
-        View.of(context),
-        checked ? l10n.checklistItemChecked : l10n.checklistItemUnchecked,
-        Directionality.of(context),
-      ),
+    announce(
+      context,
+      checked ? l10n.checklistItemChecked : l10n.checklistItemUnchecked,
     );
   }
 
@@ -1065,23 +1063,30 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
       IconData icon,
       String label,
       DateTime moment, {
+      String? semanticsText,
       TextStyle? style,
     }) => _Attribute.text(
       icon: icon,
       label: label,
       text: formatter.absolute(moment),
-      semanticsText: formatter.semanticsLabel(moment),
+      semanticsText: semanticsText ?? formatter.semanticsLabel(moment),
       style: style,
     );
+    final dueTone = DueTone.of(task, now: now);
     final attributes = [
       if (task.dueDate case final dueDate?)
         dateAttribute(
-          Icons.event_outlined,
+          dueTone == DueTone.overdue
+              ? Icons.error_outline
+              : Icons.event_outlined,
           l10n.taskDetailDueDate,
           dueDate,
+          semanticsText: dueTone == DueTone.overdue
+              ? l10n.taskOverdueSemantics(formatter.spokenAbsolute(dueDate))
+              : null,
           style: TextStyle(
             fontWeight: FontWeight.w500,
-            color: switch (DueTone.of(task, now: now)) {
+            color: switch (dueTone) {
               DueTone.overdue => colors.error,
               DueTone.today => colors.primary,
               DueTone.later => colors.onSurface,
@@ -1646,6 +1651,7 @@ class _Title extends StatelessWidget {
     return MergeSemantics(
       child: Semantics(
         header: true,
+        headingLevel: 1,
         button: onEdit != null,
         hint: onEdit == null ? null : l10n.taskEdit,
         child: InkWell(

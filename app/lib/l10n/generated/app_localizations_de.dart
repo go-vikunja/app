@@ -8160,4 +8160,29 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get aboutNameAndLogo =>
       'Der Name Rurana und das Lama-Logo fallen nicht unter die AGPL; alle Rechte daran sind vorbehalten. Die Logo-Dateien darfst du nur unverändert weitergeben, als Teil einer Kopie des Rurana-Repositorys oder der App, wie Benedikt Lesch sie veröffentlicht. Wenn du eine App aus verändertem Quellcode verbreitest, gib ihr einen eigenen Namen und ein eigenes Logo.';
+
+  @override
+  String projectTimelineBlocksSemantics(String titles) {
+    return 'blockiert $titles';
+  }
+
+  @override
+  String projectTimelineBlockedBySemantics(String titles) {
+    return 'blockiert durch $titles';
+  }
+
+  @override
+  String projectTimelinePrecedesSemantics(String titles) {
+    return 'geht $titles voraus';
+  }
+
+  @override
+  String projectTimelineFollowsSemantics(String titles) {
+    return 'folgt auf $titles';
+  }
+
+  @override
+  String projectTimelineSummarySemantics(String today, String range) {
+    return 'Heute, $today; Zeitraum: $range';
+  }
 }

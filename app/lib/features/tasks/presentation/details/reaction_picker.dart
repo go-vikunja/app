@@ -59,6 +59,7 @@ class _ReactionPickerState extends State<_ReactionPicker> {
       children: [
         Semantics(
           header: true,
+          headingLevel: 1,
           child: Text(l10n.reactionAdd, style: theme.textTheme.titleMedium),
         ),
         const SizedBox(height: 12),

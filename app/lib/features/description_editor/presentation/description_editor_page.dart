@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 
-import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -19,10 +18,13 @@ import 'package:vikunja_mobile/core/repositories/task_details_repository_provide
 import 'package:vikunja_mobile/core/repositories/team_repository_providers.dart';
 import 'package:vikunja_mobile/features/attachments/application/attachment_picker.dart';
 import 'package:vikunja_mobile/features/attachments/presentation/attachment_messages.dart';
+import 'package:vikunja_mobile/features/common/presentation/announce.dart';
+import 'package:vikunja_mobile/features/common/presentation/app_bar_text_action.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
 import 'package:vikunja_mobile/features/common/presentation/file_size_text.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
+import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/description_editor/application/description_drafts.dart';
 import 'package:vikunja_mobile/features/description_editor/application/description_target.dart';
 import 'package:vikunja_mobile/features/description_editor/application/editor_bridge.dart';
@@ -429,12 +431,9 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
     final arrived = _searching && suggestions.active && !suggestions.searching;
     _searching = suggestions.searching;
     if (!arrived || suggestions.people.isEmpty || !mounted) return;
-    unawaited(
-      SemanticsService.sendAnnouncement(
-        View.of(context),
-        context.l10n.editorMentionsFound(suggestions.people.length),
-        Directionality.of(context),
-      ),
+    announce(
+      context,
+      context.l10n.editorMentionsFound(suggestions.people.length),
     );
   }
 
@@ -574,13 +573,7 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
         ),
       );
       if (!mounted) return;
-      unawaited(
-        SemanticsService.sendAnnouncement(
-          View.of(context),
-          l10n.editorImageInserted,
-          Directionality.of(context),
-        ),
-      );
+      announce(context, l10n.editorImageInserted);
     } on Object catch (error) {
       if (cancel.isCancelled) return;
       _log.warning('Uploading an image failed: ${error.runtimeType}');
@@ -919,9 +912,9 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text(_title(l10n)),
+          title: ScreenTitle(_title(l10n)),
           actions: [
-            TextButton(
+            AppBarTextAction(
               // The image goes in first.
               onPressed: unsaved && !_saving && !gone && !uploadingImage
                   ? () => unawaited(_save())

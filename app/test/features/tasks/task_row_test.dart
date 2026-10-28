@@ -200,6 +200,18 @@ void main() {
     expect(find.textContaining('#'), findsNothing);
   });
 
+  testWidgets('an overdue due date has its own icon, a done one the calendar', (
+    tester,
+  ) async {
+    await pumpRow(tester, richTask());
+    expect(find.byIcon(Icons.error_outline), findsOneWidget);
+    expect(find.byIcon(Icons.calendar_today_outlined), findsNothing);
+
+    await pumpRow(tester, richTask(done: true));
+    expect(find.byIcon(Icons.error_outline), findsNothing);
+    expect(find.byIcon(Icons.calendar_today_outlined), findsOneWidget);
+  });
+
   testWidgets('the texts are one semantics node that reads everything', (
     tester,
   ) async {

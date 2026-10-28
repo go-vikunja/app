@@ -591,6 +591,7 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           child: Semantics(
             header: true,
+            headingLevel: 1,
             child: Text(l10n.newTask, style: theme.textTheme.headlineSmall),
           ),
         ),

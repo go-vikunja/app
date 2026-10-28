@@ -13,6 +13,8 @@ import 'package:vikunja_mobile/core/repositories/bucket_repository.dart';
 import 'package:vikunja_mobile/core/repositories/bucket_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
+import 'package:vikunja_mobile/features/common/presentation/announce.dart';
+import 'package:vikunja_mobile/features/common/presentation/motion.dart';
 import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
 import 'package:vikunja_mobile/features/projects/application/board_moves.dart';
 import 'package:vikunja_mobile/features/projects/presentation/board/board_card.dart';
@@ -176,14 +178,6 @@ class _ProjectBoardState extends ConsumerState<ProjectBoard> {
   BoardColumn? _columnOf(int bucketId) =>
       _columns.where((column) => column.bucket.id == bucketId).firstOrNull;
 
-  void _announce(String message) => unawaited(
-    SemanticsService.sendAnnouncement(
-      View.of(context),
-      message,
-      Directionality.of(context),
-    ),
-  );
-
   void _refuseFullColumn() {
     unawaited(HapticFeedback.heavyImpact());
     ScaffoldMessenger.of(context)
@@ -217,7 +211,7 @@ class _ProjectBoardState extends ConsumerState<ProjectBoard> {
         _refuseFullColumn();
       case MarkCardDone(:final placement):
         unawaited(HapticFeedback.selectionClick());
-        _announce(moved);
+        announce(context, moved);
         await repository.placeTask(
           task.id,
           viewId: widget.view.id,
@@ -226,7 +220,7 @@ class _ProjectBoardState extends ConsumerState<ProjectBoard> {
         );
       case PlaceCard(:final placement, :final done):
         unawaited(HapticFeedback.selectionClick());
-        _announce(moved);
+        announce(context, moved);
         await repository.placeTask(
           task.id,
           viewId: widget.view.id,
@@ -318,11 +312,16 @@ class _ProjectBoardState extends ConsumerState<ProjectBoard> {
   void _settleOn(int column) {
     if (!_horizontal.hasClients) return;
     final position = _horizontal.position;
+    final target = (column * _snapGrid.step).clamp(
+      position.minScrollExtent,
+      position.maxScrollExtent,
+    );
+    if (reduceMotionOf(context)) {
+      _horizontal.jumpTo(target);
+      return;
+    }
     _horizontal.animateTo(
-      (column * _snapGrid.step).clamp(
-        position.minScrollExtent,
-        position.maxScrollExtent,
-      ),
+      target,
       duration: const Duration(milliseconds: 250),
       curve: Curves.easeOut,
     );
@@ -549,7 +548,7 @@ class _ProjectBoardState extends ConsumerState<ProjectBoard> {
       await send(repository);
       if (!mounted) return true;
       unawaited(HapticFeedback.selectionClick());
-      _announce(changed);
+      announce(context, changed);
       return true;
     } on Object catch (error) {
       _log.warning('Changing a column failed: ${error.runtimeType}');
@@ -772,7 +771,9 @@ class _ProjectBoardState extends ConsumerState<ProjectBoard> {
       if (column == null || !column.attached) return;
       _horizontal.position.ensureVisible(
         column,
-        duration: const Duration(milliseconds: 250),
+        duration: reduceMotionOf(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 250),
         curve: Curves.easeOut,
         alignmentPolicy: following.right
             ? ScrollPositionAlignmentPolicy.keepVisibleAtEnd

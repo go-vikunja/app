@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
@@ -10,9 +9,11 @@ import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/repositories/project_view_repository.dart';
 import 'package:vikunja_mobile/core/repositories/project_view_repository_providers.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
+import 'package:vikunja_mobile/features/common/presentation/announce.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
+import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/projects/presentation/manage/project_change_failure.dart';
@@ -41,14 +42,6 @@ class _ProjectViewsPageState extends ConsumerState<ProjectViewsPage> {
   /// The view a change is on its way for.
   int? _busyViewId;
 
-  void _announce(String message) => unawaited(
-    SemanticsService.sendAnnouncement(
-      View.of(context),
-      message,
-      Directionality.of(context),
-    ),
-  );
-
   Future<void> _change(
     int viewId, {
     required String changed,
@@ -63,7 +56,7 @@ class _ProjectViewsPageState extends ConsumerState<ProjectViewsPage> {
       await send(repository);
       if (!mounted) return;
       unawaited(HapticFeedback.selectionClick());
-      _announce(changed);
+      announce(context, changed);
     } on Object catch (error) {
       _log.warning('Changing a view failed: ${error.runtimeType}');
       unawaited(HapticFeedback.heavyImpact());
@@ -87,7 +80,7 @@ class _ProjectViewsPageState extends ConsumerState<ProjectViewsPage> {
       context,
       projectId: widget.projectId,
       onSaved: () {
-        if (mounted) _announce(l10n.projectViewCreated);
+        if (mounted) announce(context, l10n.projectViewCreated);
       },
     );
   }
@@ -99,7 +92,7 @@ class _ProjectViewsPageState extends ConsumerState<ProjectViewsPage> {
       projectId: widget.projectId,
       view: view,
       onSaved: () {
-        if (mounted) _announce(l10n.projectViewSaved);
+        if (mounted) announce(context, l10n.projectViewSaved);
       },
     );
   }
@@ -150,7 +143,7 @@ class _ProjectViewsPageState extends ConsumerState<ProjectViewsPage> {
     final busy = _busyViewId != null;
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n.projectViews),
+        title: ScreenTitle(l10n.projectViews),
         actions: [
           if (project != null)
             IconButton(

@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 
+import '../../helpers/announcer_region.dart';
 import '../../helpers/pump_app.dart';
 import '../../helpers/sample_data.dart';
 import '../../helpers/sync_fakes.dart';
@@ -95,6 +96,20 @@ void main() {
     expect(tester.takeAnnouncements(), [
       isAccessibilityAnnouncement(en.checklistItemChecked),
     ]);
+  });
+
+  testWidgets('without platform announcements, as on Android, the tick is '
+      'said by the live region, which the open sheet leaves in the tree', (
+    tester,
+  ) async {
+    useLiveRegionAnnouncements(tester);
+    await openSheet(tester, 'Shopping');
+
+    await tester.tap(unchecked());
+    await tester.pumpAndSettle();
+
+    expect(tester.takeAnnouncements(), isEmpty);
+    expect(announcerRegion(tester)?.label, en.checklistItemChecked);
   });
 
   testWidgets('a ticked item is unticked the same way', (tester) async {

@@ -10,6 +10,7 @@ import 'package:vikunja_mobile/app/theme/hex_color.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
+import 'package:vikunja_mobile/features/common/presentation/announce.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
@@ -115,14 +116,6 @@ class _ProjectListBodyState extends State<ProjectListBody> {
       task.projectId == widget.projectId &&
       !widget.leavingIds.contains(task.id);
 
-  void _announce(String message) => unawaited(
-    SemanticsService.sendAnnouncement(
-      View.of(context),
-      message,
-      Directionality.of(context),
-    ),
-  );
-
   /// Puts [task]'s group at [index] of the groups, counted without it, and
   /// announces [moved] once it is queued.
   void _move(Task task, int index, {required String moved}) {
@@ -131,7 +124,7 @@ class _ProjectListBodyState extends State<ProjectListBody> {
     final positions = planListMove(_groups, task.id, index);
     if (positions == null) return;
     unawaited(HapticFeedback.selectionClick());
-    _announce(moved);
+    announce(context, moved);
     onReorder(positions);
   }
 

@@ -313,4 +313,52 @@ void main() {
     expect(value.left, closeTo(name.left, 1));
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('an overdue due date has its own icon and says it is overdue', (
+    tester,
+  ) async {
+    data.tasks.all = [
+      ...data.tasks.all,
+      sampleTask(
+        id: 3,
+        title: 'Late invoice',
+        due: DateTime(2026, 10, 9, 9, 30),
+      ),
+    ];
+    await openDetail(tester, 'Late invoice');
+
+    final sheet = find.byType(TaskDetailSheet);
+    expect(
+      find.descendant(of: sheet, matching: find.byIcon(Icons.error_outline)),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: sheet, matching: find.byIcon(Icons.event_outlined)),
+      findsNothing,
+    );
+    expect(
+      tester.getSemantics(find.text('Oct 9, 2026 9:30 AM')).label,
+      contains(en.taskOverdueSemantics('Oct 9, 2026 9:30 AM')),
+    );
+  });
+
+  testWidgets('a due date still to come keeps the calendar icon', (
+    tester,
+  ) async {
+    await openDetail(tester, 'Quarterly report');
+
+    final sheet = find.byType(TaskDetailSheet);
+    expect(
+      find.descendant(of: sheet, matching: find.byIcon(Icons.event_outlined)),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: sheet, matching: find.byIcon(Icons.error_outline)),
+      findsNothing,
+    );
+    expect(
+      tester.getSemantics(find.text('Oct 12, 2026 9:30 AM')).label,
+      isNot(contains(en.taskOverdueSemantics('Oct 12, 2026 9:30 AM'))),
+    );
+  });
 }

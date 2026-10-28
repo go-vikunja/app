@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/features/common/presentation/motion.dart';
 import 'package:vikunja_mobile/features/projects/presentation/timeline/timeline_days.dart';
 import 'package:vikunja_mobile/features/projects/presentation/timeline/timeline_grid.dart';
 import 'package:vikunja_mobile/features/projects/presentation/timeline/timeline_header.dart';
@@ -104,7 +105,7 @@ class _TimelineChartState extends ConsumerState<TimelineChart> {
     final target =
         (_days.xOf(column) + _dayWidth / 2 - position.viewportDimension / 3)
             .clamp(0.0, position.maxScrollExtent);
-    if (animate) {
+    if (animate && !reduceMotionOf(context)) {
       _horizontal.animateTo(
         target,
         duration: const Duration(milliseconds: 300),
@@ -214,13 +215,13 @@ class _TimelineChartState extends ConsumerState<TimelineChart> {
     final rows = layout.rows;
     final spans = layout.groupSpans;
     final today = layout.today;
-    final semantics = TimelineSemantics.of(context, today: today);
+    final semantics = TimelineSemantics.of(context, layout: layout);
     final pinching = _pinch != null;
     final ScrollPhysics? scrollPhysics = pinching
         ? const NeverScrollableScrollPhysics()
         : null;
 
-    return Listener(
+    final chart = Listener(
       onPointerDown: _pointerDown,
       onPointerMove: _pointerMove,
       onPointerUp: _pointerUp,
@@ -291,24 +292,73 @@ class _TimelineChartState extends ConsumerState<TimelineChart> {
         ),
       ),
     );
+    return Stack(
+      fit: StackFit.passthrough,
+      children: [
+        chart,
+        // Over the header, which is only painted and scrolls sideways; this
+        // stays in view for a screen reader and takes no touches.
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          height: headerHeight,
+          child: Semantics(
+            container: true,
+            label: semantics.summary,
+            child: const SizedBox.expand(),
+          ),
+        ),
+      ],
+    );
   }
 }
 
 /// What a screen reader hears for a row: the title, its parent, done, its
-/// dates as the task has them (a derived bar's as drawn).
+/// dates as the task has them (a derived bar's as drawn) and the relations
+/// drawn as arrows from and to it; for the header, today and the range.
 final class TimelineSemantics {
-  factory of(BuildContext context, {required CalendarDate today}) =>
+  factory of(BuildContext context, {required GanttLayout layout}) =>
       TimelineSemantics._(
         context.l10n,
         MaterialLocalizations.of(context),
-        today,
+        layout,
       );
 
-  const new _(this._l10n, this._material, this._today);
+  new _(this._l10n, this._material, this._layout);
 
   final AppLocalizations _l10n;
   final MaterialLocalizations _material;
-  final CalendarDate _today;
+  final GanttLayout _layout;
+
+  CalendarDate get _today => _layout.today;
+
+  /// Per task id and kind, the titles at the arrows' other ends, in the
+  /// order the arrows are drawn.
+  late final Map<(int, _Relation), List<String>> _related = () {
+    final related = <(int, _Relation), List<String>>{};
+    String titleOf(int taskId) =>
+        _layout.rows[_layout.rowOf(taskId)!].task.title;
+    void add(int taskId, _Relation relation, int otherId) =>
+        related.putIfAbsent((taskId, relation), () => []).add(titleOf(otherId));
+    for (final arrow in _layout.arrows) {
+      final (from, to) = switch (arrow.kind) {
+        GanttArrowKind.blocking => (_Relation.blocks, _Relation.blockedBy),
+        GanttArrowKind.precedes => (_Relation.precedes, _Relation.follows),
+      };
+      add(arrow.fromTaskId, from, arrow.toTaskId);
+      add(arrow.toTaskId, to, arrow.fromTaskId);
+    }
+    return related;
+  }();
+
+  String get summary => _l10n.projectTimelineSummarySemantics(
+    _material.formatFullDate(_today.toDateTime()),
+    _l10n.projectTimelineSpanSemantics(
+      _date(_layout.range.from),
+      _date(_layout.range.to),
+    ),
+  );
 
   String _date(CalendarDate day) => day.year == _today.year
       ? _material.formatMediumDate(day.toDateTime())
@@ -349,8 +399,25 @@ final class TimelineSemantics {
       if (task.done) _l10n.taskDoneSemantics,
       _dates(row),
       if (row.bar.derived) _l10n.projectTimelineDerivedSemantics,
+      for (final relation in _Relation.values)
+        if (_related[(task.id, relation)] case final titles?)
+          relation.line(_l10n, titles.join(', ')),
     ].join('\n');
   }
+}
+
+enum _Relation {
+  blocks,
+  blockedBy,
+  precedes,
+  follows;
+
+  String line(AppLocalizations l10n, String titles) => switch (this) {
+    blocks => l10n.projectTimelineBlocksSemantics(titles),
+    blockedBy => l10n.projectTimelineBlockedBySemantics(titles),
+    precedes => l10n.projectTimelinePrecedesSemantics(titles),
+    follows => l10n.projectTimelineFollowsSemantics(titles),
+  };
 }
 
 /// The chart's height when it shares the screen with notes above it: what

@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -12,6 +11,7 @@ import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/repositories/task_search.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
+import 'package:vikunja_mobile/features/common/presentation/announce.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_note.dart';
@@ -96,13 +96,7 @@ class _SearchPageState extends ConsumerState<SearchPage>
           results.projects.length +
           results.savedFilters.length +
           results.labels.length;
-      unawaited(
-        SemanticsService.sendAnnouncement(
-          View.of(context),
-          l10n.searchResultCount(count),
-          Directionality.of(context),
-        ),
-      );
+      announce(context, l10n.searchResultCount(count));
     });
   }
 
@@ -123,15 +117,25 @@ class _SearchPageState extends ConsumerState<SearchPage>
     final results = query.isEmpty ? null : found ?? _lastResults;
     return Scaffold(
       appBar: AppBar(
-        title: TextField(
-          controller: _query,
-          autofocus: true,
-          textInputAction: TextInputAction.search,
-          decoration: InputDecoration(
-            hintText: l10n.searchHint,
-            border: InputBorder.none,
+        // The field is no heading; it still names the route on Android, as
+        // an app bar's title does, by its label.
+        excludeHeaderSemantics: true,
+        title: Semantics(
+          namesRoute: switch (Theme.of(context).platform) {
+            TargetPlatform.iOS || TargetPlatform.macOS => null,
+            _ => true,
+          },
+          label: l10n.search,
+          child: TextField(
+            controller: _query,
+            autofocus: true,
+            textInputAction: TextInputAction.search,
+            decoration: InputDecoration(
+              hintText: l10n.searchHint,
+              border: InputBorder.none,
+            ),
+            onChanged: (_) => _queryChanged(),
           ),
-          onChanged: (_) => _queryChanged(),
         ),
         actions: [
           if (_query.text.isNotEmpty)

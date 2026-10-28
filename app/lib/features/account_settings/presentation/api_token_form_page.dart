@@ -15,12 +15,14 @@ import 'package:vikunja_mobile/features/account_settings/presentation/account_se
 import 'package:vikunja_mobile/features/account_settings/presentation/one_time_secret_view.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/permission_group_tile.dart';
 import 'package:vikunja_mobile/features/common/presentation/announce.dart';
+import 'package:vikunja_mobile/features/common/presentation/app_bar_text_action.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
 import 'package:vikunja_mobile/features/common/presentation/day_picker.dart';
 import 'package:vikunja_mobile/features/common/presentation/form_parts.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
 import 'package:vikunja_mobile/features/common/presentation/option_sheet.dart';
+import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/projects/presentation/manage/project_confirmations.dart';
 import 'package:vikunja_mobile/features/tasks/application/display_settings.dart';
 
@@ -236,7 +238,7 @@ class _ApiTokenFormPageState extends ConsumerState<ApiTokenFormPage> {
     final secret = _secret;
     if (secret != null) {
       return Scaffold(
-        appBar: AppBar(title: Text(l10n.apiTokenFormTitle)),
+        appBar: AppBar(title: ScreenTitle(l10n.apiTokenFormTitle)),
         body: SafeArea(
           top: false,
           child: OneTimeSecretView(
@@ -256,9 +258,9 @@ class _ApiTokenFormPageState extends ConsumerState<ApiTokenFormPage> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text(l10n.apiTokenFormTitle),
+          title: ScreenTitle(l10n.apiTokenFormTitle),
           actions: [
-            TextButton(
+            AppBarTextAction(
               onPressed: _canCreate ? () => unawaited(_create()) : null,
               child: Text(
                 _saving ? l10n.apiTokenFormCreating : l10n.apiTokenFormCreate,

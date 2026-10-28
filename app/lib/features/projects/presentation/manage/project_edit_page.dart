@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -13,10 +12,13 @@ import 'package:vikunja_mobile/app/router/pushed_pages.dart';
 import 'package:vikunja_mobile/app/theme/app_theme.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/text/html_to_text.dart';
+import 'package:vikunja_mobile/features/common/presentation/announce.dart';
+import 'package:vikunja_mobile/features/common/presentation/app_bar_text_action.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
 import 'package:vikunja_mobile/features/common/presentation/form_parts.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
+import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/projects/presentation/manage/form_parts.dart';
@@ -132,13 +134,8 @@ class _ProjectEditPageState extends ConsumerState<ProjectEditPage> {
       setState(() => _saving = false);
       if (error case VikunjaFailure(code: 3007)) {
         setState(() => _identifierError = l10n.projectIdentifierTaken);
-        unawaited(
-          SemanticsService.sendAnnouncement(
-            View.of(context),
-            l10n.projectIdentifierTaken,
-            Directionality.of(context),
-          ),
-        );
+        Announcer.of(context)
+            .say(l10n.projectIdentifierTaken, onlyIfPlatformAnnounces: true);
         return;
       }
       messenger
@@ -196,9 +193,9 @@ class _ProjectEditPageState extends ConsumerState<ProjectEditPage> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text(l10n.projectEditTitle),
+          title: ScreenTitle(l10n.projectEditTitle),
           actions: [
-            TextButton(
+            AppBarTextAction(
               onPressed: _canSave ? () => unawaited(_save()) : null,
               child: Text(_saving ? l10n.projectSaving : l10n.projectSave),
             ),

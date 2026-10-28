@@ -2,14 +2,16 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
-import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/features/account_settings/application/square_avatar.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_failure.dart';
+import 'package:vikunja_mobile/features/common/presentation/announce.dart';
+import 'package:vikunja_mobile/features/common/presentation/app_bar_text_action.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
+import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 
 final _log = Logger('AvatarCrop');
 
@@ -86,8 +88,7 @@ class _AvatarCropPageState extends State<AvatarCropPage> {
     if (image == null || side == null || _uploading) return;
     final l10n = context.l10n;
     final navigator = Navigator.of(context);
-    final view = View.of(context);
-    final direction = Directionality.of(context);
+    final announcer = Announcer.of(context);
     setState(() {
       _uploading = true;
       _error = null;
@@ -121,7 +122,7 @@ class _AvatarCropPageState extends State<AvatarCropPage> {
       return;
     }
     unawaited(HapticFeedback.heavyImpact());
-    unawaited(SemanticsService.sendAnnouncement(view, error, direction));
+    announcer.say(error);
     setState(() {
       _uploading = false;
       _error = error;
@@ -137,9 +138,9 @@ class _AvatarCropPageState extends State<AvatarCropPage> {
       canPop: !_uploading,
       child: Scaffold(
         appBar: AppBar(
-          title: Text(l10n.avatarCropTitle),
+          title: ScreenTitle(l10n.avatarCropTitle),
           actions: [
-            TextButton(
+            AppBarTextAction(
               onPressed: image == null || _uploading
                   ? null
                   : () => unawaited(_upload()),

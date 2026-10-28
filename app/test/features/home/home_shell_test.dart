@@ -209,6 +209,28 @@ void main() {
       }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
     }
 
+    for (final brightness in Brightness.values) {
+      testWidgets('the inactive iOS tab labels are readable in $brightness', (
+        tester,
+      ) async {
+        tester.platformDispatcher.platformBrightnessTestValue = brightness;
+        addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+        usePhoneSurface(tester);
+        await pumpSignedInApp(tester, sync: data, now: now);
+
+        final bar = tester.widget<CupertinoTabBar>(
+          find.byType(CupertinoTabBar),
+        );
+        expect(
+          bar.inactiveColor,
+          Theme.of(tester.element(find.byType(CupertinoTabBar)))
+              .colorScheme
+              .onSurfaceVariant,
+        );
+        await expectLater(tester, meetsGuideline(textContrastGuideline));
+      }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+    }
+
     testWidgets('a wide window on Android has the rail with every label '
         'beside the content', (tester) async {
       usePhoneSurface(tester, logicalSize: wide);

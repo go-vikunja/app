@@ -39,6 +39,7 @@ class DetailSectionHeader extends StatelessWidget {
                 children: [
                   Semantics(
                     header: true,
+                    headingLevel: 2,
                     child: Text(
                       title,
                       style: theme.textTheme.titleSmall?.copyWith(

@@ -10,6 +10,8 @@ import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/network/network_profile_providers.dart';
 import 'package:vikunja_mobile/features/common/presentation/external_link.dart';
+import 'package:vikunja_mobile/features/common/presentation/motion.dart';
+import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/connection/presentation/browser_leg_hint.dart';
 import 'package:vikunja_mobile/features/connection/presentation/connection_settings_action.dart';
 import 'package:vikunja_mobile/features/onboarding/application/browser_sign_in_method.dart';
@@ -74,11 +76,15 @@ class _ServerOverviewScreenState extends ConsumerState<ServerOverviewScreen> {
         unawaited(HapticFeedback.heavyImpact());
         // The error card is the first item of the list.
         if (_scrollController.hasClients) {
-          _scrollController.animateTo(
-            0,
-            duration: const Duration(milliseconds: 250),
-            curve: Curves.easeOut,
-          );
+          if (reduceMotionOf(context)) {
+            _scrollController.jumpTo(0);
+          } else {
+            _scrollController.animateTo(
+              0,
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeOut,
+            );
+          }
         }
       case SignInIdle() || SignInInProgress():
         break;
@@ -186,7 +192,7 @@ class _ServerOverviewScreenState extends ConsumerState<ServerOverviewScreen> {
                   tooltip: MaterialLocalizations.of(context).backButtonTooltip,
                 )
               : null,
-          title: Text(l10n.overviewTitle),
+          title: ScreenTitle(l10n.overviewTitle),
         ),
         body: SafeArea(
           top: false,

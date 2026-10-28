@@ -92,6 +92,7 @@ class AccountSwitcherSheet extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
             child: Semantics(
               header: true,
+              headingLevel: 1,
               child: Text(
                 l10n.accountsHeading,
                 style: theme.textTheme.headlineSmall,

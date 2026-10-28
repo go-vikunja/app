@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -12,10 +11,13 @@ import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/repositories/saved_filter_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/text/html_to_text.dart';
+import 'package:vikunja_mobile/features/common/presentation/announce.dart';
+import 'package:vikunja_mobile/features/common/presentation/app_bar_text_action.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
 import 'package:vikunja_mobile/features/common/presentation/form_parts.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
+import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/filters/presentation/filter_field.dart';
 import 'package:vikunja_mobile/features/projects/presentation/manage/form_parts.dart';
 import 'package:vikunja_mobile/features/projects/presentation/manage/project_confirmations.dart';
@@ -202,13 +204,7 @@ class _SavedFilterFormPageState extends ConsumerState<SavedFilterFormPage> {
       if (isInvalidSavedFilter(error)) {
         setState(() => _filterError = text);
         // The field lost its focus while disabled.
-        unawaited(
-          SemanticsService.sendAnnouncement(
-            View.of(context),
-            text,
-            Directionality.of(context),
-          ),
-        );
+        announce(context, text);
         return;
       }
       messenger
@@ -239,9 +235,11 @@ class _SavedFilterFormPageState extends ConsumerState<SavedFilterFormPage> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text(_isNew ? l10n.savedFilterNew : l10n.savedFilterEditTitle),
+          title: ScreenTitle(
+            _isNew ? l10n.savedFilterNew : l10n.savedFilterEditTitle,
+          ),
           actions: [
-            TextButton(
+            AppBarTextAction(
               onPressed: _canSave ? () => unawaited(_save()) : null,
               child: Text(
                 _saving

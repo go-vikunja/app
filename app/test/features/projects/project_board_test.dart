@@ -17,6 +17,7 @@ import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
 
+import '../../helpers/announcer_region.dart';
 import '../../helpers/label_user_fakes.dart';
 import '../../helpers/pump_app.dart';
 import '../../helpers/sample_data.dart';
@@ -771,6 +772,68 @@ void main() {
       expect(position.pixels, 280 + 12);
     });
 
+    for (final (name, features) in [
+      ('without reduced motion', null),
+      (
+        "with iOS's Reduce Motion",
+        const FakeAccessibilityFeatures(
+          reduceMotion: true,
+          supportsAnnounce: true,
+        ),
+      ),
+      (
+        "with Android's Remove animations",
+        const FakeAccessibilityFeatures(
+          disableAnimations: true,
+          supportsAnnounce: true,
+        ),
+      ),
+    ]) {
+      testWidgets('$name the board ${features == null ? 'glides' : 'jumps'} '
+          'to the column a drop settles on', (tester) async {
+        if (features != null) {
+          tester.platformDispatcher.accessibilityFeaturesTestValue = features;
+          addTearDown(
+            tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+          );
+        }
+        await pumpBoard(tester, size: const Size(400, 800));
+        final position = tester
+            .state<ScrollableState>(
+              find
+                  .descendant(
+                    of: find.byType(SingleChildScrollView),
+                    matching: find.byType(Scrollable),
+                  )
+                  .first,
+            )
+            .position;
+
+        final from = tester.getCenter(cardOf('Call Anna'));
+        final gesture = await tester.startGesture(from);
+        await tester.pump(const Duration(milliseconds: 600));
+        await gesture.moveTo(Offset(395, from.dy));
+        for (var i = 0; i < 40 && position.pixels < 80; i++) {
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+        await gesture.moveTo(Offset(330, from.dy + 40));
+        for (var i = 0; i < 20; i++) {
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+        expect(position.pixels, lessThan(280 + 12));
+        await gesture.up();
+        await tester.pump();
+
+        if (features == null) {
+          expect(position.pixels, lessThan(280 + 12));
+        } else {
+          expect(position.pixels, 280 + 12);
+        }
+        await tester.pumpAndSettle();
+        expect(position.pixels, 280 + 12);
+      });
+    }
+
     testWidgets('below the last card loaded of a column with more, a card '
         'goes above it', (tester) async {
       storeBoard(
@@ -878,6 +941,21 @@ void main() {
         true,
       ));
       semantics.dispose();
+    });
+
+    testWidgets('without platform announcements, as on Android, a move is '
+        'said by the live region', (tester) async {
+      useLiveRegionAnnouncements(tester);
+      await pumpBoard(tester);
+
+      performAction(tester, 'Call Anna', en.boardMoveTo('Doing'));
+      await tester.pumpAndSettle();
+
+      expect(data.tasks.placements.last.$1, 2);
+      expect(tester.takeAnnouncements(), isEmpty);
+      final region = announcerRegion(tester)!;
+      expect(region.label, en.boardMovedTo('Doing'));
+      expect(region.getSemanticsData().flagsCollection.isLiveRegion, isTrue);
     });
 
     testWidgets('columns of the same title are told apart by their place', (

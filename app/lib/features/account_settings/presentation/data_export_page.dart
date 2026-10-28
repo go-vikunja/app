@@ -15,6 +15,7 @@ import 'package:vikunja_mobile/features/account_settings/presentation/account_se
 import 'package:vikunja_mobile/features/account_settings/presentation/security_list_body.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/web_settings_page_opener.dart';
 import 'package:vikunja_mobile/features/common/presentation/file_size_text.dart';
+import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
 
 final _log = Logger('DataExport');
@@ -95,7 +96,7 @@ class _DataExportPageState extends ConsumerState<DataExportPage> {
     );
     final webAsksPassword = profile?.isLocalUser ?? true;
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.dataExportTitle)),
+      appBar: AppBar(title: ScreenTitle(l10n.dataExportTitle)),
       body: SecurityListBody(
         loading: _loading && !_read,
         loadingLabel: l10n.dataExportLoading,

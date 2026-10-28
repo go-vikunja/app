@@ -72,6 +72,7 @@ class AccountPickerSheet extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(24, 0, 24, 4),
             child: Semantics(
               header: true,
+              headingLevel: 1,
               child: Text(
                 title ??
                     (single

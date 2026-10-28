@@ -86,6 +86,7 @@ class _OptionList<T extends Object> extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
             child: Semantics(
               header: true,
+              headingLevel: 1,
               child: Text(title, style: theme.textTheme.titleMedium),
             ),
           );

@@ -14,6 +14,8 @@ import 'package:vikunja_mobile/features/account_settings/presentation/account_se
 import 'package:vikunja_mobile/features/account_settings/presentation/security_list_body.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/session_labels.dart';
 import 'package:vikunja_mobile/features/common/presentation/announce.dart';
+import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
+import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/confirm_dialog.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/picker_sheet.dart';
@@ -178,7 +180,12 @@ class _SessionsPageState extends ConsumerState<SessionsPage> {
     ];
     final busy = _busy != null;
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.sessionsTitle)),
+      appBar: AppBar(
+        title: ScreenTitle(l10n.sessionsTitle),
+        actions: [
+          RefreshButton(onPressed: _loading ? null : () => unawaited(_load())),
+        ],
+      ),
       body: SecurityListBody(
         loading: _loading && sessions == null,
         loadingLabel: l10n.sessionsLoading,
@@ -413,6 +420,7 @@ class _SessionDetails extends ConsumerWidget {
       children: [
         Semantics(
           header: true,
+          headingLevel: 1,
           child: Text(
             sessionDeviceLine(l10n, device),
             style: theme.textTheme.titleLarge,

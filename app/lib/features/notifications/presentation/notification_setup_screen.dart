@@ -139,6 +139,7 @@ class _NotificationSetupScreenState
                   const SizedBox(height: 20),
                   Semantics(
                     header: true,
+                    headingLevel: 1,
                     child: Text(
                       title,
                       style: theme.textTheme.headlineMedium,

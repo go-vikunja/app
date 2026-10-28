@@ -17,6 +17,7 @@ import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
 import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
+import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/inbox/application/activity_sections.dart';
 import 'package:vikunja_mobile/features/inbox/application/inbox_providers.dart';
@@ -126,7 +127,7 @@ class _InboxScreenState extends ConsumerState<InboxScreen>
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n.inboxTitle),
+        title: ScreenTitle(l10n.inboxTitle),
         actions: [
           RefreshButton(onPressed: refreshing ? null : refresh),
           PopupMenuButton<_Action>(

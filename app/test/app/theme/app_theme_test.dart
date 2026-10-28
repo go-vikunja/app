@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/theme/app_theme.dart';
+import 'package:vikunja_mobile/app/theme/hex_color.dart';
 
 double _contrast(Color a, Color b) {
   final (light, dark) = a.computeLuminance() > b.computeLuminance()
@@ -132,6 +133,102 @@ void main() {
       final fromSystem = AppTheme.light(colorScheme: system)
           .extension<HighlightColors>()!;
       expect(fromSystem.highlight, system.tertiary);
+    });
+  });
+
+  group('contrast by scheme (WCAG 1.4.3 and 1.4.11)', () {
+    const text = 4.5;
+    const component = 3.0;
+    final schemes = {
+      'brand light': AppTheme.light(),
+      'brand dark': AppTheme.dark(),
+      'high-contrast light': AppTheme.highContrastLight(),
+      'high-contrast dark': AppTheme.highContrastDark(),
+    };
+
+    for (final MapEntry(key: name, value: theme) in schemes.entries) {
+      final colors = theme.colorScheme;
+      test('$name keeps text readable', () {
+        for (final (pair, foreground, background) in [
+          ('onSurface on surface', colors.onSurface, colors.surface),
+          (
+            'onSurfaceVariant on surface',
+            colors.onSurfaceVariant,
+            colors.surface,
+          ),
+          (
+            'onSurfaceVariant on surfaceContainerHighest',
+            colors.onSurfaceVariant,
+            colors.surfaceContainerHighest,
+          ),
+          for (final (role, color) in [
+            ('primary', colors.primary),
+            ('tertiary', colors.tertiary),
+            ('error', colors.error),
+          ]) ...[
+            ('$role on surface', color, colors.surface),
+            (
+              '$role on surfaceContainerHighest',
+              color,
+              colors.surfaceContainerHighest,
+            ),
+          ],
+          (
+            'an uncoloured label pill',
+            colors.onSecondaryContainer,
+            colors.secondaryContainer,
+          ),
+        ]) {
+          expect(
+            _contrast(foreground, background),
+            greaterThanOrEqualTo(text),
+            reason: pair,
+          );
+        }
+      });
+
+      test('$name keeps field borders visible', () {
+        expect(
+          _contrast(colors.outline, colors.surfaceContainer),
+          greaterThanOrEqualTo(component),
+        );
+      });
+
+      // The light brand amber is the one exception: it fills the star and
+      // the high-priority flag beside an outline and a name in readable
+      // colours, so it is never the only sign.
+      if (name == 'brand light') {
+        test('$name: the amber highlight is the named exception', () {
+          final highlight = theme.extension<HighlightColors>()!.highlight;
+          expect(
+            _contrast(highlight, colors.surface),
+            inInclusiveRange(1.7, 2.0),
+          );
+        });
+      } else {
+        test('$name: the highlight stands out from the surface', () {
+          final highlight = theme.extension<HighlightColors>()!.highlight;
+          expect(
+            _contrast(highlight, colors.surface),
+            greaterThanOrEqualTo(component),
+          );
+        });
+      }
+    }
+
+    test("a label pill's text is readable on any server colour", () {
+      for (var r = 0; r <= 255; r += 17) {
+        for (var g = 0; g <= 255; g += 17) {
+          for (var b = 0; b <= 255; b += 17) {
+            final pill = Color.fromARGB(255, r, g, b);
+            expect(
+              _contrast(contrastingTextColor(pill), pill),
+              greaterThanOrEqualTo(text),
+              reason: pill.toString(),
+            );
+          }
+        }
+      }
     });
   });
 }

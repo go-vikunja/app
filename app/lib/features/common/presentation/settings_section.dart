@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
+import 'package:vikunja_mobile/features/common/presentation/section_semantics.dart';
 
 /// A group of a settings list: a divider above it (but not above the
 /// first, [dividerAbove] false), the header in the primary colour and
@@ -19,17 +20,19 @@ class SettingsSection extends StatelessWidget {
   final bool dividerAbove;
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      if (dividerAbove) const Divider(height: 1),
-      ListSectionHeader(
-        title: title,
-        trailing: trailing,
-        padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 0),
-      ),
-      ...children,
-      const SizedBox(height: 8),
-    ],
+  Widget build(BuildContext context) => SectionSemantics(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (dividerAbove) const Divider(height: 1),
+        ListSectionHeader(
+          title: title,
+          trailing: trailing,
+          padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 0),
+        ),
+        ...children,
+        const SizedBox(height: 8),
+      ],
+    ),
   );
 }

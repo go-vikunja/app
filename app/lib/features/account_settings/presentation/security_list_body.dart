@@ -90,6 +90,7 @@ class SecurityEmptyNote extends StatelessWidget {
           const SizedBox(height: 12),
           Semantics(
             header: true,
+            headingLevel: 2,
             child: Text(
               title,
               style: theme.textTheme.titleMedium,

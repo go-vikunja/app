@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:cupertino_ui/cupertino_ui.dart';
-import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -34,9 +33,11 @@ import 'package:vikunja_mobile/features/account_settings/presentation/default_pr
 import 'package:vikunja_mobile/features/account_settings/presentation/searchable_option_sheet.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/sign_in_provider_name.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/web_settings_page_opener.dart';
+import 'package:vikunja_mobile/features/common/presentation/announce.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
 import 'package:vikunja_mobile/features/common/presentation/option_sheet.dart';
+import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/common/presentation/settings_section.dart';
 import 'package:vikunja_mobile/features/common/presentation/user_avatar.dart';
 import 'package:vikunja_mobile/features/connection/presentation/browser_leg_hint.dart';
@@ -229,8 +230,7 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
     if (repository == null || _saving != null || changes.isEmpty) return false;
     final l10n = context.l10n;
     final messenger = ScaffoldMessenger.of(context);
-    final view = View.of(context);
-    final direction = Directionality.of(context);
+    final announcer = Announcer.of(context);
     setState(() {
       _saving = field;
       _pending = changes;
@@ -239,13 +239,7 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
     try {
       await repository.update(changes);
       if (mounted) setState(() => _reachable = true);
-      unawaited(
-        SemanticsService.sendAnnouncement(
-          view,
-          l10n.accountSettingsSaved,
-          direction,
-        ),
-      );
+      announcer.say(l10n.accountSettingsSaved);
       return true;
     } on Object catch (error) {
       _log.warning('Saving an account setting failed: ${error.runtimeType}');
@@ -254,8 +248,10 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
       final fieldError = accountSettingsFieldError(l10n, error, field, changes);
       if (fieldError != null) {
         setState(() => _errors[field] = fieldError);
-        unawaited(
-          SemanticsService.sendAnnouncement(view, fieldError, direction),
+        // Only the name shows its error in the field's decoration.
+        announcer.say(
+          fieldError,
+          onlyIfPlatformAnnounces: field == AccountSettingsField.name,
         );
       } else {
         if (error case NetworkFailure(problem: NetworkProblem.unreachable)) {
@@ -364,7 +360,7 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text(l10n.accountSettingsTitle),
+          title: ScreenTitle(l10n.accountSettingsTitle),
           bottom: SavingProgressBar(saving: saving),
         ),
         body: switch ((entry, state)) {

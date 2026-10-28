@@ -14,6 +14,7 @@ import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
 import 'package:vikunja_mobile/features/common/presentation/online_only_fab.dart';
 import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
+import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/sync/application/page_reachability.dart';
 import 'package:vikunja_mobile/features/sync/presentation/offline_notice.dart';
@@ -125,7 +126,7 @@ class _TeamsPageState extends ConsumerState<TeamsPage> with PageReachability {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n.teamsTitle),
+        title: ScreenTitle(l10n.teamsTitle),
         actions: [
           RefreshButton(onPressed: _loading ? null : () => unawaited(_load())),
         ],

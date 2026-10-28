@@ -13,6 +13,7 @@ import 'package:vikunja_mobile/features/account_settings/presentation/account_de
 import 'package:vikunja_mobile/features/account_settings/presentation/web_settings_page_opener.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/account_actions.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/accounts_section.dart';
+import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/common/presentation/settings_section.dart';
 import 'package:vikunja_mobile/features/connection/presentation/browser_leg_hint.dart';
 import 'package:vikunja_mobile/features/connection/presentation/connection_settings_action.dart';
@@ -98,7 +99,7 @@ class AccountTab extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n.tabAccount),
+        title: ScreenTitle(l10n.tabAccount),
         bottom: const SyncProgressBar(),
       ),
       body: SafeArea(

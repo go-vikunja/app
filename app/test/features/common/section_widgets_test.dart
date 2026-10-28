@@ -1,3 +1,4 @@
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -13,6 +14,8 @@ import 'package:vikunja_mobile/features/common/presentation/list_section_header.
 import 'package:vikunja_mobile/features/common/presentation/search_pill.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/common/presentation/settings_section.dart';
+import 'package:vikunja_mobile/features/onboarding/presentation/overview/motd_card.dart';
+import 'package:vikunja_mobile/features/upcoming/presentation/timeline_day.dart';
 
 import '../../helpers/pump_app.dart';
 
@@ -200,6 +203,62 @@ void main() {
     expect(find.text('Theme'), findsOneWidget);
   });
 
+  group('a heading stays a node of its own before a single tappable row, '
+      'which reads after it', () {
+    Widget tile() => ListTile(title: const Text('Add account'), onTap: () {});
+    final sections = <String, (Widget, String)>{
+      'settings section': (
+        SettingsSection(title: 'Accounts', children: [tile()]),
+        'Accounts',
+      ),
+      'section card': (
+        SectionCard(title: 'Accounts', children: [tile()]),
+        'Accounts',
+      ),
+      'Upcoming day': (
+        TimelineDay(
+          day: DateTime(2026, 10, 10),
+          title: 'Accounts',
+          today: false,
+          rows: [tile()],
+        ),
+        'Accounts\n1',
+      ),
+    };
+    for (final MapEntry(key: name, value: (section, heading))
+        in sections.entries) {
+      testWidgets(name, (tester) async {
+        await pump(tester, ListView(children: [section]));
+
+        final nodes = _visitedNodes(tester);
+        final at = nodes.indexWhere((node) => node.label == heading);
+        expect(at, isNonNegative, reason: '$nodes');
+        expect(nodes[at].headingLevel, 2);
+        expect(nodes[at].hasAction(SemanticsAction.tap), isFalse);
+        expect(nodes[at + 1].label, 'Add account');
+        expect(nodes[at + 1].hasAction(SemanticsAction.tap), isTrue);
+        expect(nodes[at + 1].headingLevel, 0);
+      });
+    }
+
+    testWidgets("the server's message, which can be selected", (tester) async {
+      await pump(
+        tester,
+        ListView(children: const [MotdCard(message: 'Down tonight')]),
+      );
+
+      final nodes = _visitedNodes(tester);
+      final heading = nodes.singleWhere((node) => node.headingLevel > 0);
+      expect(heading.label, en.motdHeading);
+      expect(heading.hasAction(SemanticsAction.tap), isFalse);
+      expect(heading.hasAction(SemanticsAction.longPress), isFalse);
+      final message = nodes.indexWhere(
+        (node) => '${node.label}${node.value}'.contains('Down tonight'),
+      );
+      expect(nodes.indexOf(heading), lessThan(message));
+    });
+  });
+
   testWidgets('a section header is a header with its count', (tester) async {
     final semantics = tester.ensureSemantics();
     await pump(tester, const ListSectionHeader(title: 'Overdue', count: 3));
@@ -372,4 +431,24 @@ class _StatefulRow extends StatefulWidget {
 class _StatefulRowState extends State<_StatefulRow> {
   @override
   Widget build(BuildContext context) => Text(widget.label);
+}
+
+/// The nodes with a label or a value that a screen reader visits, in its
+/// order.
+List<SemanticsData> _visitedNodes(WidgetTester tester) {
+  final nodes = <SemanticsData>[];
+  void visit(SemanticsNode node) {
+    if (node.isMergedIntoParent) return;
+    final data = node.getSemanticsData();
+    if (data.label.isNotEmpty || data.value.isNotEmpty) nodes.add(data);
+    node
+        .debugListChildrenInOrder(DebugSemanticsDumpOrder.traversalOrder)
+        .forEach(visit);
+  }
+
+  for (final view in tester.binding.renderViews) {
+    final root = view.owner?.semanticsOwner?.rootSemanticsNode;
+    if (root != null) visit(root);
+  }
+  return nodes;
 }

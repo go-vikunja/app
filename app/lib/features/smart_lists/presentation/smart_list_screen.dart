@@ -18,6 +18,7 @@ import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_note.dart';
 import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
+import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/overview/application/due_date_groups.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/projects/presentation/manage/project_actions.dart';
@@ -317,7 +318,7 @@ class _SmartListScreenState extends ConsumerState<SmartListScreen>
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(title),
+        title: ScreenTitle(title),
         actions: [
           RefreshButton(onPressed: refreshing ? null : refresh),
           if (listed != null) _menu(l10n, listed),

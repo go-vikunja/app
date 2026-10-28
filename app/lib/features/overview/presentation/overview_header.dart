@@ -100,6 +100,7 @@ class _Greeting extends ConsumerWidget {
               child: Semantics(
                 label: l10n.tabOverview,
                 header: true,
+                headingLevel: 1,
                 namesRoute: switch (theme.platform) {
                   TargetPlatform.iOS || TargetPlatform.macOS => null,
                   _ => true,

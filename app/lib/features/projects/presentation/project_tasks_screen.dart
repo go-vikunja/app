@@ -23,6 +23,7 @@ import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_note.dart';
 import 'package:vikunja_mobile/features/common/presentation/option_sheet.dart';
 import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
+import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/projects/application/board_moves.dart';
 import 'package:vikunja_mobile/features/projects/application/list_moves.dart';
 import 'package:vikunja_mobile/features/projects/application/project_access.dart';
@@ -422,7 +423,7 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
     if (project != null) _seen = true;
     if (_seen && project == null && projects.hasValue) {
       return Scaffold(
-        appBar: AppBar(title: Text(l10n.projectUnknownTitle)),
+        appBar: AppBar(title: ScreenTitle(l10n.projectUnknownTitle)),
         body: CenteredScrollView(
           child: EmptyState(
             icon: Icons.search_off,
@@ -614,7 +615,9 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(project?.displayTitle(l10n) ?? l10n.projectUnknownTitle),
+        title: ScreenTitle(
+          project?.displayTitle(l10n) ?? l10n.projectUnknownTitle,
+        ),
         actions: [
           if (project != null &&
               _followable &&

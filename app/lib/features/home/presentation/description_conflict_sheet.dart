@@ -47,6 +47,7 @@ class DescriptionConflictSheet extends StatelessWidget {
         children: [
           Semantics(
             header: true,
+            headingLevel: 1,
             child: Text(
               l10n.syncProblemCompareTitle,
               style: theme.textTheme.titleLarge,
@@ -101,6 +102,7 @@ class _Version extends StatelessWidget {
       children: [
         Semantics(
           header: true,
+          headingLevel: 2,
           child: Text(
             label,
             style: theme.textTheme.titleSmall?.copyWith(color: colors.primary),

@@ -109,6 +109,22 @@ void main() {
       expect(find.byType(ApiTokenFormPage), findsOneWidget);
     });
 
+    testWidgets('the refresh button reads the list again without a pull', (
+      tester,
+    ) async {
+      await harness.pump(tester, location: AppRoutes.accountApiTokens);
+      expect(find.text(en.apiTokensEmptyTitle), findsOneWidget);
+      harness.security.apiTokenList = [
+        fakeApiToken(expiresAt: harness.now.add(const Duration(days: 30))),
+      ];
+
+      await tester.tap(find.byTooltip(en.refresh));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Home Assistant'), findsOneWidget);
+      expect(find.text(en.apiTokensEmptyTitle), findsNothing);
+    });
+
     testWidgets("links to the server's API documentation", (tester) async {
       await harness.pump(tester, location: AppRoutes.accountApiTokens);
 

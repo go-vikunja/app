@@ -47,6 +47,7 @@ class FormSectionTitle extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
       child: Semantics(
         header: true,
+        headingLevel: 2,
         child: Text(
           text,
           style: theme.textTheme.titleSmall?.copyWith(

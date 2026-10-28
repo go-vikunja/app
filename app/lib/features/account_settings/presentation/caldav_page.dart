@@ -21,6 +21,8 @@ import 'package:vikunja_mobile/features/account_settings/presentation/sign_in_pr
 import 'package:vikunja_mobile/features/common/presentation/announce.dart';
 import 'package:vikunja_mobile/features/common/presentation/external_link.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
+import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
+import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/confirm_dialog.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
 
@@ -246,7 +248,12 @@ class _CaldavPageState extends ConsumerState<CaldavPage> {
         );
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.caldavTitle)),
+      appBar: AppBar(
+        title: ScreenTitle(l10n.caldavTitle),
+        actions: [
+          RefreshButton(onPressed: _loading ? null : () => unawaited(_load())),
+        ],
+      ),
       body: SecurityListBody(
         loading: _loading && tokens == null,
         loadingLabel: l10n.caldavTokensLoading,

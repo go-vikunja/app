@@ -20,9 +20,11 @@ import 'package:vikunja_mobile/core/security/privacy_settings.dart';
 import 'package:vikunja_mobile/core/security/screen_protection.dart';
 import 'package:vikunja_mobile/core/share/share_intent_source.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
+import 'package:vikunja_mobile/features/common/presentation/announce.dart';
 import 'package:vikunja_mobile/features/share/presentation/share_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 
+import '../helpers/announcer_region.dart';
 import '../helpers/app_lock_fakes.dart';
 import '../helpers/auth_fakes.dart';
 import '../helpers/notification_ui_fakes.dart';
@@ -313,6 +315,23 @@ void main() {
 
       expect(lockScreen, findsNothing);
       expect(find.text(_belowTheLock), findsOneWidget);
+    });
+
+    testWidgets("hides the announcements' live region while locked; after "
+        'the unlock it is back without the old message', (tester) async {
+      useLiveRegionAnnouncements(tester);
+      await start(tester, settings: _immediately);
+      announce(tester.element(find.byType(Scaffold).first), 'Saved');
+      await tester.pump();
+      expect(announcerRegion(tester)?.label, 'Saved');
+
+      await lockAgain(tester);
+      expect(announcerRegion(tester), isNull);
+
+      await tester.pump(AnnouncerHost.clearAfter);
+      device.finish(DeviceAuthResult.success);
+      await tester.pumpAndSettle();
+      expect(announcerRegion(tester)?.label, '');
     });
   });
 

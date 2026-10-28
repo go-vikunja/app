@@ -4,10 +4,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/network/origin_key.dart';
+import 'package:vikunja_mobile/features/common/presentation/announce.dart';
 import 'package:vikunja_mobile/features/connection/presentation/connection_navigation.dart';
 import 'package:vikunja_mobile/features/connection/presentation/headers_page.dart';
 import 'package:vikunja_mobile/features/connection/presentation/secret_text_field.dart';
 
+import '../../helpers/announcer_region.dart';
 import '../../helpers/auth_fakes.dart';
 import '../../helpers/connection_fakes.dart';
 import '../../helpers/pump_app.dart';
@@ -139,6 +141,36 @@ void main() {
     expect(find.byType(HeadersPage), findsOneWidget);
     expect(await profilesOver(auth).metadataFor(secure), isNull);
   });
+
+  for (final platformAnnounces in [true, false]) {
+    final how = platformAnnounces
+        ? 'where the platform announces'
+        : 'where it cannot, as on Android';
+    testWidgets('$how, a refused value is said once, and once again when '
+        'the same values are saved again', (tester) async {
+      if (!platformAnnounces) useLiveRegionAnnouncements(tester);
+      await pumpHeaders(tester, secure);
+
+      Future<SpokenCount> saveCounting() async {
+        final spoken = SpokenCount(tester, en.connectionHeaderValueEmpty);
+        await tester.ensureVisible(find.text(en.connectionSave));
+        await tester.tap(find.text(en.connectionSave));
+        await spoken.frames();
+        return spoken;
+      }
+
+      final first = await saveCounting();
+      expect(find.text(en.connectionHeaderValueEmpty), findsNWidgets(2));
+      expect(first.times, 1);
+      // The fields' errors, not the announcer, say errors that appear.
+      expect(first.byOtherLiveRegions, platformAnnounces ? 0 : 1);
+
+      final again = await saveCounting();
+      expect(again.times, 1);
+      expect(again.byAnnouncerRegion, platformAnnounces ? 0 : 1);
+      await tester.pump(AnnouncerHost.clearAfter);
+    });
+  }
 
   testWidgets('stored headers come back for editing', (tester) async {
     await pumpHeaders(

@@ -1092,4 +1092,96 @@ void main() {
       expect(viewport.contains(tester.getCenter(heading)), isTrue);
     });
   });
+
+  group('reduced motion', () {
+    for (final (name, features) in [
+      ('without it', null),
+      (
+        "with iOS's Reduce Motion",
+        const FakeAccessibilityFeatures(
+          reduceMotion: true,
+          supportsAnnounce: true,
+        ),
+      ),
+      (
+        "with Android's Remove animations",
+        const FakeAccessibilityFeatures(
+          disableAnimations: true,
+          supportsAnnounce: true,
+        ),
+      ),
+    ]) {
+      testWidgets('$name the sheet ${features == null ? 'glides' : 'jumps'} '
+          'to its full height when the field gets the focus', (tester) async {
+        if (features != null) {
+          tester.platformDispatcher.accessibilityFeaturesTestValue = features;
+          addTearDown(
+            tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+          );
+        }
+        await openDetail(tester, size: const Size(400, 800));
+        final first = tester.getSize(sheet()).height;
+        // The sheet opens at 0.65 of the height it may take and grows to
+        // 0.95 of it.
+        final full = first / 0.65 * 0.95;
+
+        await tester.tap(field());
+        await tester.pump();
+        await tester.pump();
+
+        if (features == null) {
+          expect(tester.getSize(sheet()).height, lessThan(full - 1));
+        } else {
+          expect(tester.getSize(sheet()).height, closeTo(full, 1));
+        }
+        await tester.pumpAndSettle();
+        expect(tester.getSize(sheet()).height, closeTo(full, 1));
+      });
+    }
+
+    testWidgets("with iOS's Reduce Motion the sheet opens at a comment "
+        'without a scroll animation', (tester) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(
+            reduceMotion: true,
+            supportsAnnounce: true,
+          );
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
+      seedComments([
+        for (var id = 1; id <= 30; id++)
+          sampleComment(id: id, html: '<p>Comment number $id</p>'),
+      ]);
+      await pumpApp(tester, size: const Size(400, 800));
+      final context = containerOf(tester)
+          .read(appRouterProvider)
+          .routerDelegate
+          .navigatorKey
+          .currentContext!;
+      unawaited(
+        showTaskDetail(context, task: data.tasks.find(4)!, commentId: 15),
+      );
+      final tile = find.ancestor(
+        of: inSheet(find.text('Comment number 15')),
+        matching: find.byType(CommentTile),
+      );
+      // Frames without time passing: an animation could not move at all.
+      await tester.pump();
+      for (var i = 0; i < 30 && tile.evaluate().isEmpty; i++) {
+        await tester.pump();
+      }
+      await tester.pump();
+
+      final viewport = tester.getRect(
+        find.descendant(of: sheet(), matching: find.byType(ListView)),
+      );
+      final row = tester.getRect(tile);
+      expect(
+        row.top - viewport.top,
+        closeTo(0.1 * (viewport.height - row.height), 1),
+      );
+      await tester.pumpAndSettle();
+    });
+  });
 }

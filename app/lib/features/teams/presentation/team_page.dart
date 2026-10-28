@@ -18,6 +18,7 @@ import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_note.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
 import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
+import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/common/presentation/user_avatar.dart';
 import 'package:vikunja_mobile/features/description_editor/application/description_target.dart';
@@ -398,7 +399,7 @@ class _TeamPageState extends ConsumerState<TeamPage> with PageReachability {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(team?.name ?? l10n.teamsTitle),
+        title: ScreenTitle(team?.name ?? l10n.teamsTitle),
         actions: [
           if (team != null && (guards?.canEdit ?? false))
             IconButton(
@@ -499,13 +500,7 @@ class _TeamView extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Semantics(
-                              header: true,
-                              child: Text(
-                                team.name,
-                                style: theme.textTheme.titleLarge,
-                              ),
-                            ),
+                            Text(team.name, style: theme.textTheme.titleLarge),
                             Text(
                               l10n.teamMemberCount(team.members.length),
                               style: theme.textTheme.bodyMedium?.copyWith(

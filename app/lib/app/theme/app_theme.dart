@@ -25,15 +25,40 @@ abstract final class AppTheme {
     brand: colorScheme == null,
   );
 
+  /// When the platform asks for more contrast: the brand scheme at full
+  /// contrast, or with [colorScheme] (the system's) a scheme from its
+  /// primary, which keeps the user's hue.
+  static ThemeData highContrastLight({ColorScheme? colorScheme}) =>
+      _highContrast(Brightness.light, colorScheme);
+
+  static ThemeData highContrastDark({ColorScheme? colorScheme}) =>
+      _highContrast(Brightness.dark, colorScheme);
+
+  static ThemeData _highContrast(Brightness brightness, ColorScheme? system) =>
+      _build(
+        system == null
+            ? brandScheme(brightness, contrastLevel: 1)
+            : ColorScheme.fromSeed(
+                seedColor: system.primary,
+                brightness: brightness,
+                contrastLevel: 1,
+              ),
+        brand: system == null,
+      );
+
   /// The seed's vibrant tones for the primary roles, its calmer tonal-spot
   /// ones for the secondary roles (the vibrant variant turns them violet)
   /// and an amber tertiary.
-  static ColorScheme brandScheme(Brightness brightness) {
+  static ColorScheme brandScheme(
+    Brightness brightness, {
+    double contrastLevel = 0,
+  }) {
     ColorScheme seeded(Color seed, DynamicSchemeVariant variant) =>
         ColorScheme.fromSeed(
           seedColor: seed,
           brightness: brightness,
           dynamicSchemeVariant: variant,
+          contrastLevel: contrastLevel,
         );
     final blue = seeded(seedColor, DynamicSchemeVariant.vibrant);
     final calm = seeded(seedColor, DynamicSchemeVariant.tonalSpot);

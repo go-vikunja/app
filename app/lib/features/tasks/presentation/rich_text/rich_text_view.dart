@@ -160,6 +160,7 @@ final class _Renderer {
         RichParagraph(:final inlines) => paragraph(inlines, style),
         RichHeading(:final level, :final inlines) => Semantics(
           header: true,
+          headingLevel: level.clamp(1, 6),
           child: paragraph(
             inlines,
             style.copyWith(text: _headingStyle(level, style.text)),

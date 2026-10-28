@@ -20,6 +20,7 @@ import 'package:vikunja_mobile/features/attachments/application/queue_attachment
 import 'package:vikunja_mobile/features/attachments/presentation/attachment_messages.dart';
 import 'package:vikunja_mobile/features/attachments/presentation/attachment_source_items.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
+import 'package:vikunja_mobile/features/common/presentation/section_semantics.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/confirm_dialog.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/attachment_row.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/detail_section_header.dart';
@@ -353,34 +354,36 @@ class _TaskAttachmentsSectionState
     ];
     final canAdd = canChange && !_queueing;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        DetailSectionHeader(
-          title: l10n.taskDetailAttachments,
-          actions: [
-            if (canAdd)
-              PopupMenuButton<AttachmentSource>(
-                tooltip: l10n.attachmentAdd,
-                icon: const Icon(Icons.add),
-                onSelected: (source) => unawaited(_add(source)),
-                itemBuilder: (context) =>
-                    attachmentSourceItems(l10n, AttachmentSource.values),
-              )
-            else
-              const SizedBox(height: kMinInteractiveDimension),
-          ],
-        ),
-        if (rows.isNotEmpty) SectionCard(children: rows),
-        if (_queueing)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: Semantics(
-              label: l10n.attachmentAdd,
-              child: const LinearProgressIndicator(),
-            ),
+    return SectionSemantics(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          DetailSectionHeader(
+            title: l10n.taskDetailAttachments,
+            actions: [
+              if (canAdd)
+                PopupMenuButton<AttachmentSource>(
+                  tooltip: l10n.attachmentAdd,
+                  icon: const Icon(Icons.add),
+                  onSelected: (source) => unawaited(_add(source)),
+                  itemBuilder: (context) =>
+                      attachmentSourceItems(l10n, AttachmentSource.values),
+                )
+              else
+                const SizedBox(height: kMinInteractiveDimension),
+            ],
           ),
-      ],
+          if (rows.isNotEmpty) SectionCard(children: rows),
+          if (_queueing)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Semantics(
+                label: l10n.attachmentAdd,
+                child: const LinearProgressIndicator(),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

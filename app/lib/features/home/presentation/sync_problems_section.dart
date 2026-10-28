@@ -41,6 +41,7 @@ class SyncProblemsSection extends ConsumerWidget {
         children: [
           Semantics(
             header: true,
+            headingLevel: 2,
             child: Text(
               l10n.accountSyncProblems,
               style: theme.textTheme.titleSmall?.copyWith(

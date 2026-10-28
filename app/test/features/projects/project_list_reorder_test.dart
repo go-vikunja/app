@@ -10,6 +10,7 @@ import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/features/projects/presentation/reorder_slot.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
 
+import '../../helpers/announcer_region.dart';
 import '../../helpers/pump_app.dart';
 import '../../helpers/sample_data.dart';
 import '../../helpers/sync_fakes.dart';
@@ -525,6 +526,21 @@ void main() {
       expect(tester.takeAnnouncements(), [
         isAccessibilityAnnouncement(en.movedDown),
       ]);
+    });
+
+    testWidgets('without platform announcements, as on Android, a move is '
+        'said by the live region', (tester) async {
+      useLiveRegionAnnouncements(tester);
+      await pumpProject(tester);
+
+      performAction(tester, 'Charlie', en.moveUp);
+      await tester.pumpAndSettle();
+
+      expect(data.tasks.positions, [(4, 11, 150)]);
+      expect(tester.takeAnnouncements(), isEmpty);
+      final region = announcerRegion(tester)!;
+      expect(region.label, en.movedUp);
+      expect(region.getSemanticsData().flagsCollection.isLiveRegion, isTrue);
     });
 
     testWidgets('are in German', (tester) async {

@@ -223,6 +223,7 @@ class _LockScreen extends ConsumerWidget {
                                 const SizedBox(height: 20),
                                 Semantics(
                                   header: true,
+                                  headingLevel: 1,
                                   namesRoute: true,
                                   child: Text(
                                     l10n.appLockTitle,

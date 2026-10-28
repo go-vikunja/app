@@ -15,6 +15,7 @@ import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/links/external_link_opener.dart';
 import 'package:vikunja_mobile/core/network/network_profile_providers.dart';
 import 'package:vikunja_mobile/core/network/origin_key.dart';
+import 'package:vikunja_mobile/features/common/presentation/motion.dart';
 import 'package:vikunja_mobile/features/connection/application/connection_fix.dart';
 import 'package:vikunja_mobile/features/connection/presentation/connection_navigation.dart';
 import 'package:vikunja_mobile/features/onboarding/application/connect_server_controller.dart';
@@ -264,7 +265,9 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
     if (errorContext == null) return;
     Scrollable.ensureVisible(
       errorContext,
-      duration: const Duration(milliseconds: 250),
+      duration: reduceMotionOf(errorContext)
+          ? Duration.zero
+          : const Duration(milliseconds: 250),
     );
   }
 

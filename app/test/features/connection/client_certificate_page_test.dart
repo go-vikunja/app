@@ -6,9 +6,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/network/origin_key.dart';
+import 'package:vikunja_mobile/features/common/presentation/announce.dart';
 import 'package:vikunja_mobile/features/connection/presentation/client_certificate_page.dart';
 import 'package:vikunja_mobile/features/connection/presentation/connection_navigation.dart';
 
+import '../../helpers/announcer_region.dart';
 import '../../helpers/attachment_picker_fake.dart';
 import '../../helpers/auth_fakes.dart';
 import '../../helpers/connection_fakes.dart';
@@ -130,6 +132,46 @@ void main() {
     expect(find.text(en.connectionFileTooLarge), findsOneWidget);
     expect(picker.maxBytes.last, 64 * 1024);
   });
+
+  for (final platformAnnounces in [true, false]) {
+    final how = platformAnnounces
+        ? 'where the platform announces'
+        : 'where it cannot, as on Android';
+    testWidgets('$how, an error is said once, and once again when the same '
+        'one comes back', (tester) async {
+      if (!platformAnnounces) useLiveRegionAnnouncements(tester);
+      await pumpImport(tester);
+
+      Future<SpokenCount> saveCounting(String error) async {
+        final spoken = SpokenCount(tester, error);
+        await tester.ensureVisible(find.text(en.connectionSave));
+        await tester.tap(find.text(en.connectionSave));
+        await spoken.frames();
+        return spoken;
+      }
+
+      // The file's error is a live region on every platform.
+      final noFile = await saveCounting(en.connectionNoFileChosen);
+      expect(noFile.times, 1);
+      expect(noFile.byOtherLiveRegions, 1);
+      final noFileAgain = await saveCounting(en.connectionNoFileChosen);
+      expect(noFileAgain.times, 1);
+      expect(noFileAgain.byOtherLiveRegions, 0);
+
+      picker.files = [pickedCopyOf('client.p12', directory: directory)];
+      await choose(tester);
+      await tester.enterText(passwordField(), 'not-the-dummy-password');
+      final wrong = await saveCounting(en.connectionWrongPasswordOrUnsupported);
+      expect(wrong.times, 1);
+      expect(wrong.byOtherLiveRegions, platformAnnounces ? 0 : 1);
+      final wrongAgain = await saveCounting(
+        en.connectionWrongPasswordOrUnsupported,
+      );
+      expect(wrongAgain.times, 1);
+      expect(wrongAgain.byOtherLiveRegions, 0);
+      await tester.pump(AnnouncerHost.clearAfter);
+    });
+  }
 
   testWidgets('a revealed password keeps the window out of screenshots '
       'until the page closes', (tester) async {

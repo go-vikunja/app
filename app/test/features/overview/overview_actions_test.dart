@@ -220,7 +220,10 @@ void main() {
   testWidgets('under a screen reader the snackbar waits for the user, and '
       'so does the row', (tester) async {
     tester.platformDispatcher.accessibilityFeaturesTestValue =
-        const FakeAccessibilityFeatures(accessibleNavigation: true);
+        const FakeAccessibilityFeatures(
+          accessibleNavigation: true,
+          supportsAnnounce: true,
+        );
     addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
     await pumpOverview(tester);
 

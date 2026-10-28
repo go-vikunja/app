@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
+import 'package:vikunja_mobile/features/common/presentation/section_semantics.dart';
 
 const _margin = EdgeInsets.symmetric(horizontal: 16);
 const _headerPadding = EdgeInsetsDirectional.fromSTEB(20, 16, 20, 4);
@@ -32,7 +33,7 @@ class SectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final title = this.title;
-    return Column(
+    final card = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (title != null)
@@ -60,6 +61,7 @@ class SectionCard extends StatelessWidget {
         ),
       ],
     );
+    return title == null ? card : SectionSemantics(child: card);
   }
 }
 

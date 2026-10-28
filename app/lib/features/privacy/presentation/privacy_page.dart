@@ -13,6 +13,7 @@ import 'package:vikunja_mobile/features/account_settings/presentation/account_se
 import 'package:vikunja_mobile/features/common/presentation/announce.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_note.dart';
 import 'package:vikunja_mobile/features/common/presentation/option_sheet.dart';
+import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/privacy/application/app_switcher_protection.dart';
 import 'package:vikunja_mobile/features/privacy/presentation/lock_after_texts.dart';
@@ -143,7 +144,7 @@ class _PrivacyPageState extends ConsumerState<PrivacyPage> {
         : l10n.privacyAppLockSubtitle;
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.privacyTitle)),
+      appBar: AppBar(title: ScreenTitle(l10n.privacyTitle)),
       body: SafeArea(
         top: false,
         child: ListView(

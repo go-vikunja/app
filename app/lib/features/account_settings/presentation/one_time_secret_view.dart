@@ -10,6 +10,7 @@ import 'package:vikunja_mobile/app/widgets/adaptive_dialog_action.dart';
 import 'package:vikunja_mobile/core/platform/secure_display.dart';
 import 'package:vikunja_mobile/core/platform/sensitive_clipboard.dart';
 import 'package:vikunja_mobile/features/common/presentation/announce.dart';
+import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 
 final _log = Logger('OneTimeSecret');
 
@@ -137,6 +138,7 @@ class _OneTimeSecretViewState extends ConsumerState<OneTimeSecretView> {
         children: [
           Semantics(
             header: true,
+            headingLevel: 2,
             child: Text(widget.title, style: theme.textTheme.titleLarge),
           ),
           const SizedBox(height: 16),
@@ -235,7 +237,7 @@ class OneTimeSecretPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(pageTitle)),
+    appBar: AppBar(title: ScreenTitle(pageTitle)),
     body: SafeArea(
       top: false,
       child: OneTimeSecretView(secret: secret, title: title, usage: usage),

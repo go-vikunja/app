@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/attachments/attachment_image_providers.dart';
 import 'package:vikunja_mobile/core/attachments/attachment_images.dart';
+import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/rich_text/attachment_image_view.dart';
 
 /// Full screen over everything, on the root navigator, so an account
@@ -54,7 +55,7 @@ class AttachmentImageViewer extends StatelessWidget {
           tooltip: l10n.imageViewerClose,
           icon: const Icon(Icons.close),
         ),
-        title: description.isEmpty ? null : Text(description),
+        title: description.isEmpty ? null : ScreenTitle(description),
       ),
       body: SafeArea(
         child: AttachmentImageLoader(

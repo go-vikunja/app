@@ -253,8 +253,9 @@ enum DueTone {
   }
 }
 
-/// A due date with a calendar icon: in the error colour when overdue,
-/// the primary colour when due later today, muted otherwise.
+/// A due date with a calendar icon: in the primary colour when due later
+/// today, muted otherwise; an overdue one in the error colour and with its
+/// own icon, so that the colour is not its only sign.
 class DueBadge extends StatelessWidget {
   const new({
     required this.text,
@@ -277,7 +278,10 @@ class DueBadge extends StatelessWidget {
       DueTone.later || DueTone.done => colors.onSurfaceVariant,
     };
     return _MetaItem(
-      icon: Icons.calendar_today_outlined,
+      // The home-screen widgets mark an overdue row the same way.
+      icon: tone == DueTone.overdue
+          ? Icons.error_outline
+          : Icons.calendar_today_outlined,
       iconColor: color,
       child: Text(
         text,

@@ -25,6 +25,7 @@ class ConnectHeader extends StatelessWidget {
         const SizedBox(height: 20),
         Semantics(
           header: true,
+          headingLevel: 1,
           child: Text(
             title ?? context.l10n.appTitle,
             style: theme.textTheme.headlineMedium,

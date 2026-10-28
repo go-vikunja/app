@@ -596,6 +596,113 @@ void main() {
     semantics.dispose();
   });
 
+  testWidgets('a blocking arrow is read at both of its ends', (tester) async {
+    await pumpTimeline(tester);
+
+    String label(String title) => rowOf(tester, title).semanticsLabel;
+    expect(
+      label('Blocker'),
+      'Blocker\n'
+      '${en.projectTimelineSpanSemantics('Tue, Oct 27', 'Thu, Oct 29')}\n'
+      '${en.projectTimelineBlocksSemantics('Blocked')}',
+    );
+    expect(
+      label('Blocked'),
+      'Blocked\n'
+      '${en.projectTimelineSpanSemantics('Tue, Nov 3', 'Fri, Nov 6')}\n'
+      '${en.projectTimelineBlockedBySemantics('Blocker')}',
+    );
+  });
+
+  testWidgets('a precedes arrow is read at both ends, several as a list; a '
+      'relation the chart draws no arrow for is not read', (tester) async {
+    data.tasks.all = [
+      for (final task in tasks())
+        if (task.id == 1)
+          sampleTask(
+            id: 1,
+            title: 'Scheduled',
+            start: DateTime(2026, 10, 20, 10),
+            end: DateTime(2026, 10, 25, 10),
+            relatedTasks: {
+              TaskRelationKind.precedes: [stub(11)],
+            },
+          )
+        else
+          task,
+      sampleTask(
+        id: 12,
+        title: 'First step',
+        start: DateTime(2026, 10, 27, 10),
+        end: DateTime(2026, 10, 28, 10),
+        relatedTasks: {
+          TaskRelationKind.precedes: [stub(13), stub(14)],
+        },
+      ),
+      sampleTask(
+        id: 13,
+        title: 'Second step',
+        start: DateTime(2026, 10, 29, 10),
+        end: DateTime(2026, 10, 30, 10),
+      ),
+      sampleTask(
+        id: 14,
+        title: 'Third step',
+        start: DateTime(2026, 10, 29, 10),
+        end: DateTime(2026, 10, 31, 10),
+      ),
+    ];
+    await pumpTimeline(tester);
+
+    String lastLine(String title) =>
+        rowOf(tester, title).semanticsLabel.split('\n').last;
+    expect(
+      lastLine('First step'),
+      en.projectTimelinePrecedesSemantics('Second step, Third step'),
+    );
+    expect(
+      lastLine('Second step'),
+      en.projectTimelineFollowsSemantics('First step'),
+    );
+    expect(
+      lastLine('Third step'),
+      en.projectTimelineFollowsSemantics('First step'),
+    );
+    // "Far away" lies outside the range, so no arrow leads there.
+    expect(
+      rowOf(tester, 'Scheduled').semanticsLabel,
+      'Scheduled\n'
+      '${en.projectTimelineSpanSemantics('Tue, Oct 20', 'Sun, Oct 25')}',
+    );
+  });
+
+  testWidgets('one text above the rows says what day today is and what the '
+      'chart shows, for the header that is only drawn', (tester) async {
+    await pumpTimeline(tester);
+
+    final summary = find.bySemanticsLabel(
+      en.projectTimelineSummarySemantics(
+        'Monday, October 26, 2026',
+        en.projectTimelineSpanSemantics('Sun, Oct 11', 'Sun, Dec 20'),
+      ),
+    );
+    expect(summary, findsOneWidget);
+    final node = tester.getSemantics(summary).getSemanticsData();
+    expect(node.hasAction(SemanticsAction.tap), isFalse);
+    final chart = tester.getRect(find.byType(TimelineChart));
+    final rect = tester.getRect(summary);
+    expect(rect.top, chart.top);
+    expect(rect.width, chart.width);
+    expect(rect.bottom, lessThan(tester.getRect(rowFinder('Scheduled')).top));
+
+    // The header still takes the drag that scrolls the days.
+    final position = horizontalOf(tester);
+    final before = position.pixels;
+    await tester.drag(summary, const Offset(-200, 0));
+    await tester.pumpAndSettle();
+    expect(position.pixels, greaterThan(before));
+  });
+
   testWidgets('a parent hides and shows its subtasks, by its chevron and by '
       "the screen reader's action", (tester) async {
     final semantics = tester.ensureSemantics();
@@ -926,6 +1033,28 @@ void main() {
     await tapShown(tester, find.byTooltip(en.projectTimelineGoToToday));
     expect(position.pixels, closeTo(atToday, 0.5));
     expect(find.byKey(const ValueKey('timeline-today')), findsOneWidget);
+  });
+
+  testWidgets('"Go to today" jumps there under Reduce Motion', (tester) async {
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(
+          reduceMotion: true,
+          supportsAnnounce: true,
+        );
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+    await pumpTimeline(tester);
+
+    final position = horizontalOf(tester);
+    final atToday = position.pixels;
+    position.jumpTo(position.maxScrollExtent);
+    await tester.pumpAndSettle();
+    final button = find.byTooltip(en.projectTimelineGoToToday);
+    await tester.ensureVisible(button);
+    await tester.pumpAndSettle();
+
+    await tester.tap(button);
+    await tester.pump();
+    expect(position.pixels, closeTo(atToday, 0.5));
   });
 
   testWidgets('a range without tasks says so and how to find some', (

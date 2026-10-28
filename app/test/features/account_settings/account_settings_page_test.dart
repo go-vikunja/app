@@ -15,6 +15,7 @@ import 'package:vikunja_mobile/features/account_settings/presentation/avatar_pag
 import 'package:vikunja_mobile/features/home/presentation/reauth_banner.dart';
 
 import '../../helpers/account_settings_fakes.dart';
+import '../../helpers/announcer_region.dart';
 import '../../helpers/auth_fakes.dart';
 import '../../helpers/fakes.dart';
 import '../../helpers/pump_app.dart';
@@ -678,6 +679,68 @@ void main() {
         findsOneWidget,
       );
       expect(find.text(en.accountSettingsDefaultProjectNone), findsOneWidget);
+    });
+
+    group('reach a screen reader', () {
+      const invalid = ValidationFailed(
+        code: 2002,
+        fieldErrors: {
+          'name': ['invalid'],
+        },
+      );
+
+      Future<void> saveName(WidgetTester tester) async {
+        await tester.enterText(
+          find.widgetWithText(TextField, en.accountSettingsName),
+          'Alice',
+        );
+        await tester.testTextInput.receiveAction(TextInputAction.done);
+        await tester.pumpAndSettle();
+      }
+
+      testWidgets('through the platform where it announces', (tester) async {
+        repository().failures['update'] = invalid;
+        await pumpPage(tester);
+
+        await saveName(tester);
+
+        expect(tester.takeAnnouncements(), [
+          isAccessibilityAnnouncement(en.accountSettingsInvalid),
+        ]);
+      });
+
+      testWidgets('without platform announcements, as on Android, a refused '
+          "name through its field's live region alone", (tester) async {
+        useLiveRegionAnnouncements(tester);
+        repository().failures['update'] = invalid;
+        await pumpPage(tester);
+
+        await saveName(tester);
+
+        expect(tester.takeAnnouncements(), isEmpty);
+        expect(announcerRegion(tester)?.label, '');
+        final error = tester
+            .getSemantics(find.text(en.accountSettingsInvalid))
+            .getSemanticsData();
+        expect(error.flagsCollection.isLiveRegion, isTrue);
+      });
+
+      testWidgets('without platform announcements, a refused default '
+          "project, whose error is no live region, through the announcer's "
+          'live region', (tester) async {
+        useLiveRegionAnnouncements(tester);
+        data.projects.all = [sampleProject(id: 1, title: 'Shared')];
+        repository().failures['update'] = const DomainError(400, code: 3017);
+        await pumpPage(tester);
+
+        await tapRow(tester, en.accountSettingsDefaultProject);
+        await choose(tester, 'Shared');
+
+        expect(
+          announcerRegion(tester)?.label,
+          en.accountSettingsDefaultProjectInvalid,
+        );
+      });
     });
 
     testWidgets('a summary time the server refuses', (tester) async {

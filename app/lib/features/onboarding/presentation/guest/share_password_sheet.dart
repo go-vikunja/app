@@ -52,10 +52,11 @@ class _SharePasswordSheetState extends State<SharePasswordSheet> {
     final password = _password.text;
     if (_submitting || password.isEmpty) return;
     final l10n = context.l10n;
-    setState(() {
-      _submitting = true;
-      _wrong = false;
-    });
+    final announcer = Announcer.of(context);
+    // The note stays while the same password is tried again, so that the
+    // field does not say it once more; editing the field removes it.
+    final noteShown = _wrong;
+    setState(() => _submitting = true);
     final outcome = await widget.submit(password);
     if (!mounted) return;
     if (outcome != SharePasswordOutcome.wrong) {
@@ -63,7 +64,9 @@ class _SharePasswordSheetState extends State<SharePasswordSheet> {
       return;
     }
     unawaited(HapticFeedback.heavyImpact());
-    announce(context, l10n.guestPasswordWrong);
+    // Where the platform cannot announce, a note that appears speaks itself
+    // as the field's live region; one that stays does not.
+    announcer.say(l10n.guestPasswordWrong, onlyIfPlatformAnnounces: !noteShown);
     _password.selection = TextSelection(
       baseOffset: 0,
       extentOffset: _password.text.length,

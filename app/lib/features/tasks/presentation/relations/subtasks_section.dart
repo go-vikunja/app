@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
+import 'package:vikunja_mobile/features/common/presentation/section_semantics.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/detail_section_header.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/relations/relation_row.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
@@ -91,55 +92,57 @@ class _SubtasksSectionState extends State<SubtasksSection> {
     final done = subtasks.where((task) => task.done).length;
     final onRemove = widget.onRemove;
     final canAdd = !_adding && _title.text.trim().isNotEmpty;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        DetailSectionHeader(
-          title: l10n.taskDetailSubtasks,
-          trailing: subtasks.isEmpty
-              ? null
-              : Text(l10n.taskDetailSubtasksDone(done, subtasks.length)),
-        ),
-        if (subtasks.isNotEmpty)
-          SectionCard(
-            children: [
-              for (final subtask in subtasks)
-                RelationRow(
-                  key: ValueKey(subtask.id),
-                  task: subtask,
-                  projectTitle: widget.projectTitleOf?.call(subtask),
-                  leading: _doneControl(subtask),
-                  onOpen: () => widget.onOpen(subtask),
-                  onRemove: onRemove == null ? null : () => onRemove(subtask),
-                ),
-            ],
+    return SectionSemantics(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          DetailSectionHeader(
+            title: l10n.taskDetailSubtasks,
+            trailing: subtasks.isEmpty
+                ? null
+                : Text(l10n.taskDetailSubtasksDone(done, subtasks.length)),
           ),
-        if (widget.onAdd != null)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: TextField(
-              controller: _title,
-              focusNode: _focus,
-              textInputAction: TextInputAction.done,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: InputDecoration(
-                labelText: l10n.taskDetailAddSubtask,
-                prefixIcon: const Icon(Icons.subdirectory_arrow_right),
-                suffixIcon: IconButton(
-                  onPressed: canAdd ? () => unawaited(_add()) : null,
-                  tooltip: l10n.taskDetailAddSubtask,
-                  icon: const Icon(Icons.add),
-                ),
-              ),
-              // Keeps the keyboard up for the next subtask; Done on an empty
-              // field closes it.
-              onEditingComplete: () {
-                if (_title.text.trim().isEmpty) _focus.unfocus();
-              },
-              onSubmitted: (_) => unawaited(_add()),
+          if (subtasks.isNotEmpty)
+            SectionCard(
+              children: [
+                for (final subtask in subtasks)
+                  RelationRow(
+                    key: ValueKey(subtask.id),
+                    task: subtask,
+                    projectTitle: widget.projectTitleOf?.call(subtask),
+                    leading: _doneControl(subtask),
+                    onOpen: () => widget.onOpen(subtask),
+                    onRemove: onRemove == null ? null : () => onRemove(subtask),
+                  ),
+              ],
             ),
-          ),
-      ],
+          if (widget.onAdd != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: TextField(
+                controller: _title,
+                focusNode: _focus,
+                textInputAction: TextInputAction.done,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: InputDecoration(
+                  labelText: l10n.taskDetailAddSubtask,
+                  prefixIcon: const Icon(Icons.subdirectory_arrow_right),
+                  suffixIcon: IconButton(
+                    onPressed: canAdd ? () => unawaited(_add()) : null,
+                    tooltip: l10n.taskDetailAddSubtask,
+                    icon: const Icon(Icons.add),
+                  ),
+                ),
+                // Keeps the keyboard up for the next subtask; Done on an empty
+                // field closes it.
+                onEditingComplete: () {
+                  if (_title.text.trim().isEmpty) _focus.unfocus();
+                },
+                onSubmitted: (_) => unawaited(_add()),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

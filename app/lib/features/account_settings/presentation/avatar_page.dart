@@ -20,6 +20,7 @@ import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view
 import 'package:vikunja_mobile/features/common/presentation/initials_avatar.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
 import 'package:vikunja_mobile/features/common/presentation/option_sheet.dart';
+import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/common/presentation/user_avatar.dart';
 import 'package:vikunja_mobile/features/connection/presentation/browser_leg_hint.dart';
 import 'package:vikunja_mobile/features/session/application/sign_in_controller.dart';
@@ -159,7 +160,7 @@ class _AvatarPageState extends ConsumerState<AvatarPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n.avatarTitle),
+        title: ScreenTitle(l10n.avatarTitle),
         bottom: SavingProgressBar(saving: saving),
       ),
       body: switch ((entry, state)) {

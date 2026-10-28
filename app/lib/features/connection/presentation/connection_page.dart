@@ -13,6 +13,7 @@ import 'package:vikunja_mobile/core/network/network_profiles.dart';
 import 'package:vikunja_mobile/core/network/origin_key.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_rows.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
+import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/connection/presentation/certificate_page.dart';
 import 'package:vikunja_mobile/features/connection/presentation/client_certificate_page.dart';
@@ -193,7 +194,7 @@ class _ConnectionOverviewState extends ConsumerState<_ConnectionOverview> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n.connectionTitle),
+        title: ScreenTitle(l10n.connectionTitle),
         bottom: SavingProgressBar(saving: _busy),
       ),
       body: SafeArea(

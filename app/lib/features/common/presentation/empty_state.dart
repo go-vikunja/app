@@ -25,6 +25,7 @@ class EmptyState extends StatelessWidget {
           const SizedBox(height: 16),
           Semantics(
             header: true,
+            headingLevel: 2,
             child: Text(
               title,
               style: theme.textTheme.titleLarge,

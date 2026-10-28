@@ -9,6 +9,7 @@ import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/theme/hex_color.dart';
 import 'package:vikunja_mobile/core/repositories/task_search_providers.dart';
 import 'package:vikunja_mobile/features/common/presentation/initials_avatar.dart';
+import 'package:vikunja_mobile/features/common/presentation/motion.dart';
 import 'package:vikunja_mobile/features/filters/application/filter_check.dart';
 import 'package:vikunja_mobile/features/filters/application/filter_syntax.dart';
 import 'package:vikunja_mobile/features/filters/presentation/filter_error_text.dart';
@@ -187,7 +188,9 @@ class _FilterFieldState extends ConsumerState<FilterField>
       Scrollable.ensureVisible(
         chips,
         alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
-        duration: const Duration(milliseconds: 100),
+        duration: reduceMotionOf(chips)
+            ? Duration.zero
+            : const Duration(milliseconds: 100),
       );
     });
   }

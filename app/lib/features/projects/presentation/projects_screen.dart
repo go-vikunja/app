@@ -16,10 +16,12 @@ import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/account_switcher_button.dart';
+import 'package:vikunja_mobile/features/common/presentation/announce.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
 import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
+import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/projects/application/project_moves.dart';
 import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
@@ -117,7 +119,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
         (openTaskCounts.hasValue || openTaskCounts.hasError);
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n.tabProjects),
+        title: ScreenTitle(l10n.tabProjects),
         actions: [
           const SearchButton(),
           if (!guest)
@@ -314,14 +316,6 @@ class _SectionsState extends ConsumerState<_Sections> {
     super.dispose();
   }
 
-  void _announce(String message) => unawaited(
-    SemanticsService.sendAnnouncement(
-      View.of(context),
-      message,
-      Directionality.of(context),
-    ),
-  );
-
   /// Sends one move at a time, showing it at once, faded until the server
   /// took it, then announcing [moved]; the subprojects of [expand] show. A
   /// failure puts the project back and says why.
@@ -335,7 +329,7 @@ class _SectionsState extends ConsumerState<_Sections> {
     final l10n = context.l10n;
     if (_sending != null) {
       unawaited(HapticFeedback.heavyImpact());
-      _announce(l10n.projectMoveWait);
+      announce(context, l10n.projectMoveWait);
       return;
     }
     final messenger = ScaffoldMessenger.of(context);
@@ -353,7 +347,7 @@ class _SectionsState extends ConsumerState<_Sections> {
       );
       if (!mounted) return;
       unawaited(HapticFeedback.selectionClick());
-      _announce(moved);
+      announce(context, moved);
       if (identical(widget.projects, projectsBefore)) {
         _landed = true;
       } else {

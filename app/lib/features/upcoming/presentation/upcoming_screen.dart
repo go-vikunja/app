@@ -19,6 +19,7 @@ import 'package:vikunja_mobile/features/common/presentation/day_range_picker.dar
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
 import 'package:vikunja_mobile/features/common/presentation/option_sheet.dart';
 import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
+import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/inbox/application/inbox_providers.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
@@ -155,7 +156,7 @@ class _UpcomingScreenState extends ConsumerState<UpcomingScreen>
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n.tabUpcoming),
+        title: ScreenTitle(l10n.tabUpcoming),
         actions: [
           _RangeButton(name: name, dates: dates, onPressed: _chooseRange),
           const SearchButton(),

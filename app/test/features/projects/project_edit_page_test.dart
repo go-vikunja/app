@@ -8,6 +8,7 @@ import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/features/projects/presentation/manage/project_edit_page.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_tasks_screen.dart';
 
+import '../../helpers/announcer_region.dart';
 import '../../helpers/pump_app.dart';
 import '../../helpers/sample_data.dart';
 import '../../helpers/sync_fakes.dart';
@@ -160,6 +161,45 @@ void main() {
     await tester.enterText(field(en.projectIdentifierLabel), 'HOME2');
     await tester.pumpAndSettle();
     expect(find.text(en.projectIdentifierTaken), findsNothing);
+  });
+
+  testWidgets('an identifier in use is announced where the platform '
+      'announces', (tester) async {
+    data.projects.failures['updateProject'] = const DomainError(
+      400,
+      code: 3007,
+    );
+    await pumpEdit(tester, 1);
+    await tester.enterText(field(en.projectIdentifierLabel), 'HOME');
+    await tester.pump();
+    await save(tester);
+
+    expect(tester.takeAnnouncements(), [
+      isAccessibilityAnnouncement(en.projectIdentifierTaken),
+    ]);
+  });
+
+  testWidgets('without platform announcements, as on Android, the '
+      "identifier error is said by the field's live region alone", (
+    tester,
+  ) async {
+    useLiveRegionAnnouncements(tester);
+    data.projects.failures['updateProject'] = const DomainError(
+      400,
+      code: 3007,
+    );
+    await pumpEdit(tester, 1);
+    await tester.enterText(field(en.projectIdentifierLabel), 'HOME');
+    await tester.pump();
+    await save(tester);
+
+    expect(tester.takeAnnouncements(), isEmpty);
+    expect(announcerRegion(tester)?.label, '');
+    final error = tester
+        .getSemantics(find.text(en.projectIdentifierTaken))
+        .getSemanticsData();
+    expect(error.flagsCollection.isLiveRegion, isTrue);
+    expect(error.label, contains(en.projectIdentifierTaken));
   });
 
   testWidgets('the parent picker leaves out the project, its subprojects and '

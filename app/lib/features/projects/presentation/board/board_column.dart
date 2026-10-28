@@ -278,6 +278,7 @@ class _ColumnHeader extends StatelessWidget {
     ].join('\n');
     final heading = Semantics(
       header: true,
+      headingLevel: 2,
       container: true,
       label: spoken,
       customSemanticsActions: actions.isEmpty ? null : actions,

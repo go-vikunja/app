@@ -6,6 +6,7 @@ import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/session_labels.dart';
 
 import '../../helpers/account_security_fakes.dart';
+import '../../helpers/announcer_region.dart';
 import '../../helpers/pump_app.dart';
 import 'security_harness.dart';
 
@@ -116,6 +117,22 @@ void main() {
     expect(find.text(en.sessionsEndOthers), findsNothing);
   });
 
+  testWidgets('without platform announcements, as on Android, the end of '
+      'the other sessions is said by the live region once the dialog closed', (
+    tester,
+  ) async {
+    useLiveRegionAnnouncements(tester);
+    await pumpPage(tester);
+
+    await tester.tap(find.text(en.sessionsEndOthers));
+    await tester.pumpAndSettle();
+    await confirm(tester, en.sessionsEndOthers);
+
+    expect(find.byType(Dialog), findsNothing);
+    expect(tester.takeAnnouncements(), isEmpty);
+    expect(announcerRegion(tester)?.label, en.sessionsEndedOthers(2));
+  });
+
   testWidgets('ending all others that stops halfway says how far it got', (
     tester,
   ) async {
@@ -173,6 +190,20 @@ void main() {
     harness.security.sessionList = harness.security.sessionList.sublist(0, 1);
 
     await tester.fling(find.text(en.sessionsIntro), const Offset(0, 400), 1000);
+    await tester.pumpAndSettle();
+
+    expect(rowOf(firefox), findsNothing);
+    expect(find.text(en.sessionsNoOthers), findsOneWidget);
+  });
+
+  testWidgets('the refresh button reads the list again without a pull', (
+    tester,
+  ) async {
+    await pumpPage(tester);
+    harness.security.sessionList = harness.security.sessionList.sublist(0, 1);
+
+    expect(tester.getSemantics(find.byTooltip(en.refresh)).tooltip, en.refresh);
+    await tester.tap(find.byTooltip(en.refresh));
     await tester.pumpAndSettle();
 
     expect(rowOf(firefox), findsNothing);

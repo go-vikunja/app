@@ -73,6 +73,7 @@ class InviteCard extends StatelessWidget {
                       children: [
                         Semantics(
                           header: true,
+                          headingLevel: 2,
                           child: Text(
                             l10n.inviteHeading(displayHost(serverRoot)),
                             style: theme.textTheme.titleMedium?.copyWith(

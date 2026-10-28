@@ -25,6 +25,7 @@ class ServerHeader extends StatelessWidget {
         Semantics(
           container: true,
           header: true,
+          headingLevel: 2,
           label: host,
           excludeSemantics: true,
           child: Text(

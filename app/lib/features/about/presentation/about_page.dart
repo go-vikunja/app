@@ -7,6 +7,7 @@ import 'package:vikunja_mobile/app/l10n/licence_page_localizations.dart';
 import 'package:vikunja_mobile/app/legal.dart';
 import 'package:vikunja_mobile/core/links/external_link_opener.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_rows.dart';
+import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/home/application/app_version.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_header.dart';
@@ -30,7 +31,7 @@ class AboutPage extends ConsumerWidget {
     final sourceCode = this.sourceCode;
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.aboutTitle)),
+      appBar: AppBar(title: ScreenTitle(l10n.aboutTitle)),
       body: SafeArea(
         top: false,
         child: ListView(
