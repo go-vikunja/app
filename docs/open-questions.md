@@ -102,3 +102,36 @@ The project owner answered Q1–Q15 on 2026-10-09 and took up the deferred Q3 on
 
 - **Asked:** run `sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer`, because the Dart native-asset build hooks ignore `DEVELOPER_DIR`.
 - **Answer:** done. `xcode-select -p` prints the Xcode path, and local iOS builds work. CI was never affected.
+
+## Q16: Community translation platform
+
+**Open**, needed by step 36f.
+
+- **Asked:** which platform the community translates on, and when it is connected.
+- **Options:** Hosted Weblate (Libre plan; the repository prepared in 36f, the project connected in step 37 once the repository is public); Crowdin's open-source plan (commits as a bot, proprietary); self-hosted Weblate; no platform, pull requests only.
+- **Recommendation:** Hosted Weblate. It is libre, keeps each translator's authorship in git, offers contributor agreements, checks ICU messages and also handles the Android and Apple string formats of the widgets and permission texts.
+
+## Q17: Licence path for community translations
+
+**Open**, needed by step 36f.
+
+- **Asked:** how translations come in under the AGPL with the app store permission and the DCO ([D67](decisions.md#d67-agpl-30-or-later-with-an-app-store-permission-contributions-under-the-dco-the-name-and-the-logo-reserved-no-f-droid-the-legal-notices-on-an-about-page-and-the-licence-page-the-source-code-published-before-the-first-store-release)).
+- **Options:** a contributor agreement on the platform that covers the DCO 1.1, the AGPL with the app store permission and "nothing copied from Vikunja", plus a `Signed-off-by` line in the platform's commit template (a narrow DCO-check exemption only for the platform's own add-on commits, if the pilot shows they need it); exempting all platform commits from the DCO check with the agreement only; deciding in step 37.
+- **Recommendation:** the contributor agreement with the sign-off template. Without the permission, translations could not ship in App Store builds (not legal advice).
+
+## Q18: Generated localisation code in git
+
+**Open**, needed by step 36f.
+
+- **Asked:** whether `app/lib/l10n/generated/` (about 210 KB per language) stays committed. Today every commit that changes only an ARB file fails CI's check for stale generated code, so every translation pull request would fail.
+- **Options:** stop committing it (gen-l10n runs on `pub get`, on every build and in every CI job); keep committing it and regenerate on every translation pull request; keep committing it and let a CI bot push the regenerated files to the platform's branch.
+- **Recommendation:** stop committing it.
+
+## Q19: Device setup for the manual TalkBack pass
+
+**Open**, needed by step 36a.
+
+- **Asked:** the manual TalkBack, Switch Access and Accessibility Scanner pass needs a Google Play sign-in on an emulator and the installation of Android Accessibility Suite and Accessibility Scanner. The usual phone emulator has too little space left, and the large phone emulator has no Play.
+- **Options:** now on the Pixel_Tablet emulator (Play image), VoiceOver in the final iOS phase; now on a new phone emulator from the Play image (more disk, a second sign-in); TalkBack and VoiceOver both at the end of the project.
+- **Recommendation:** the Pixel_Tablet emulator now; only the owner can sign in to Play.
+
