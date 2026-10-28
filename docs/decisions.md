@@ -1835,6 +1835,7 @@ ADR-lite. Each entry has a number, a status and the step that took it. A decisio
     - A background run that started before a change finishes with the old settings; the next run repairs it.
     - Switching back to "Show everything" does not bring withdrawn notifications back.
     - A launcher that answers the pin request but shows nothing leaves the excursion open: no lock for up to 10 minutes.
+    - Since 2026-10-28 the activity keeps its engine when Android relaunches it (system colours, contrast, wallpaper): with "Immediately", such a relaunch while the app is in sight (for example the wallpaper changed from the other half of split screen) locks and prompts, as the cold start it replaced did.
     - The Android 7 to 10 paths around the PIN screen are covered by unit tests only.
   - Not built: the iOS device test, which comes at the end of the project (Face ID and the passcode, the cover in the app switcher, `task_locked`'s Done and `authenticationPolicy` asking for the unlock, the redaction in StandBy and of the VoiceOver labels); a native `SceneDelegate` cover on iOS, the fallback should the Flutter cover come too late for the app switcher's snapshot; the diagnostics export (later, not in step 35); the test notification on the Account tab, which ignores the privacy settings (visibility and iOS category); per-account settings; a PIN of the app's own.
   - Found in the acceptance on the Android emulator and fixed:

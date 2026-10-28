@@ -142,6 +142,14 @@ class AppLockController extends _$AppLockController {
   /// The next resume prompts once.
   var _promptPending = false;
 
+  /// Android relaunched the activity and kept the engine: the next resume
+  /// comes without a show.
+  var _detached = false;
+
+  /// The relaunch may have lost the answers the running excursions wait
+  /// for; they end once the app is really back.
+  var _abandonPending = false;
+
   @override
   AppLockState build() {
     _now = ref.watch(clockProvider);
@@ -151,6 +159,7 @@ class AppLockController extends _$AppLockController {
       onHide: _onHide,
       onShow: _onShow,
       onResume: _onResume,
+      onDetach: _onDetach,
     );
     ref.onDispose(() {
       lifecycle.dispose();
@@ -172,6 +181,8 @@ class AppLockController extends _$AppLockController {
     _shownDuringPromptAt = null;
     _promptEndedOutOfSightAt = null;
     _promptOnShow = false;
+    _detached = false;
+    _abandonPending = false;
     if (ref.read(privacySettingsControllerProvider).value case final stored?) {
       _settingsKnown = true;
       _lockAfter = stored.settings.lockAfter;
@@ -370,6 +381,11 @@ class AppLockController extends _$AppLockController {
 
   void _onInactive() {
     _visible = true;
+    // In front of the app, a prompt that is still up will answer.
+    if (_authenticating) {
+      _answerGraceTimer?.cancel();
+      _answerGraceTimer = null;
+    }
     _cover();
   }
 
@@ -410,7 +426,18 @@ class AppLockController extends _$AppLockController {
     return endedAt != null && _now().difference(endedAt) < _promptLoopWindow;
   }
 
+  void _onDetach() {
+    if (_visible) _onHide();
+    _detached = true;
+    _abandonPending = true;
+  }
+
   void _onResume() {
+    if (_detached) {
+      _detached = false;
+      _onShow();
+    }
+    if (_abandonPending) scheduleMicrotask(_abandonIfStillResumed);
     _visible = true;
     _uncover();
     if (_authenticating) {
@@ -418,6 +445,17 @@ class AppLockController extends _$AppLockController {
       return;
     }
     _scheduleAutoPrompt();
+  }
+
+  // Not on the resume of a relaunch under another app's sheet, which is
+  // over within the same lifecycle batch: that excursion still runs.
+  void _abandonIfStillResumed() {
+    if (!ref.mounted || !_abandonPending) return;
+    if (WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) {
+      return;
+    }
+    _abandonPending = false;
+    _excursions.abandon();
   }
 
   void _onExcursionEnded(DateTime startedAt) {

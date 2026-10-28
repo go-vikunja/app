@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/platform/recents_screenshots.dart';
 import 'package:vikunja_mobile/core/platform/secure_display.dart';
+import 'package:vikunja_mobile/core/security/app_excursions.dart';
 import 'package:vikunja_mobile/core/security/app_lock_controller.dart';
 import 'package:vikunja_mobile/core/security/device_authenticator.dart';
 import 'package:vikunja_mobile/core/security/privacy_providers.dart';
@@ -79,8 +80,9 @@ void main() {
     PrivacySettings? settings,
     PreferencesStore? store,
     bool awaitSettings = true,
+    bool resumed = true,
   }) async {
-    if (tester.binding.lifecycleState != AppLifecycleState.resumed) {
+    if (resumed && tester.binding.lifecycleState != AppLifecycleState.resumed) {
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     }
     if (settings != null) await storePrivacySettings(preferences, settings);
@@ -311,6 +313,94 @@ void main() {
 
       expect(lockOf(container).locked, isTrue);
       expect(auth.prompts, 2);
+    });
+
+    testLock('a relaunched activity counts the time out of sight', (
+      tester,
+    ) async {
+      final container = await startUnlocked(tester);
+
+      // Android relaunches a stopped activity only once it is back in sight.
+      leave(tester);
+      now = now.add(const Duration(minutes: 1));
+      lifecycle(tester, const [
+        AppLifecycleState.detached,
+        AppLifecycleState.resumed,
+      ]);
+
+      expect(lockOf(container).locked, isTrue);
+      await pumpPastPromptSettle(tester);
+      expect(auth.prompts, 2);
+      await pumpPastPromptSettle(tester);
+      expect(auth.prompts, 2);
+    });
+
+    testLock('a quick relaunch does not lock', (tester) async {
+      final container = await startUnlocked(tester);
+
+      leave(tester);
+      lifecycle(tester, const [
+        AppLifecycleState.detached,
+        AppLifecycleState.resumed,
+      ]);
+      await pumpPastPromptSettle(tester);
+
+      expect(lockOf(container).locked, isFalse);
+      expect(lockOf(container).covered, isFalse);
+      expect(auth.prompts, 1);
+    });
+
+    testLock('a relaunch that resumes without focus counts the time out of '
+        'sight and prompts once it has the focus', (tester) async {
+      final container = await startUnlocked(tester);
+
+      leave(tester);
+      now = now.add(const Duration(minutes: 1));
+      lifecycle(tester, const [
+        AppLifecycleState.detached,
+        AppLifecycleState.resumed,
+        AppLifecycleState.inactive,
+      ]);
+      await pumpPastPromptSettle(tester);
+
+      expect(lockOf(container).locked, isTrue);
+      expect(auth.prompts, 1);
+
+      lifecycle(tester, const [AppLifecycleState.resumed]);
+      await pumpPastPromptSettle(tester);
+      expect(auth.prompts, 2);
+      await pumpPastPromptSettle(tester);
+      expect(auth.prompts, 2);
+    });
+
+    testLock('with immediately a relaunch in sight locks, as a cold start '
+        'did', (tester) async {
+      final container = await startUnlocked(tester, _immediately);
+
+      lifecycle(tester, const [
+        AppLifecycleState.inactive,
+        AppLifecycleState.hidden,
+        AppLifecycleState.paused,
+        AppLifecycleState.detached,
+        AppLifecycleState.resumed,
+      ]);
+
+      expect(lockOf(container).locked, isTrue);
+      await pumpPastPromptSettle(tester);
+      expect(auth.prompts, 2);
+    });
+
+    testLock('a detach as the first event counts as leaving', (tester) async {
+      // flutter_test starts every test without a lifecycle state.
+      final container = await start(tester, settings: _locked, resumed: false);
+
+      lifecycle(tester, const [AppLifecycleState.detached]);
+      expect(lockOf(container).covered, isTrue);
+
+      lifecycle(tester, const [AppLifecycleState.resumed]);
+      expect(lockOf(container).covered, isFalse);
+      await pumpPastPromptSettle(tester);
+      expect(auth.prompts, 1);
     });
 
     testLock('the lock off never locks', (tester) async {
@@ -661,6 +751,25 @@ void main() {
       expect(lockOf(container).locked, isFalse);
     });
 
+    testLock('is not given up while it stays up across a relaunch', (
+      tester,
+    ) async {
+      final container = await startPrompting(tester);
+
+      leave(tester);
+      lifecycle(tester, const [
+        AppLifecycleState.detached,
+        AppLifecycleState.resumed,
+        AppLifecycleState.inactive,
+      ]);
+      await tester.pump(AppLockController.answerGrace * 2);
+      expect(lockOf(container).authenticating, isTrue);
+
+      auth.finish(DeviceAuthResult.success);
+      await tester.pump();
+      expect(lockOf(container).locked, isFalse);
+    });
+
     testLock('still counts when it answers just after the return', (
       tester,
     ) async {
@@ -747,6 +856,89 @@ void main() {
   });
 
   group('excursions', () {
+    testLock('a relaunch ends the ones whose answers it lost', (tester) async {
+      final container = await startUnlocked(tester, _immediately);
+      final lost = Completer<String>();
+
+      unawaited(controllerOf(container).excursion(() => lost.future));
+      leave(tester);
+      now = now.add(const Duration(minutes: 5));
+      lifecycle(tester, const [
+        AppLifecycleState.detached,
+        AppLifecycleState.resumed,
+      ]);
+      await tester.pump();
+
+      expect(lockOf(container).locked, isFalse);
+      expect(container.read(appExcursionsProvider).active, isFalse);
+
+      lifecycle(tester, const [
+        AppLifecycleState.inactive,
+        AppLifecycleState.hidden,
+      ]);
+      expect(lockOf(container).locked, isTrue);
+      lost.complete('photo.jpg');
+    });
+
+    testLock("a relaunch under another app's sheet keeps them until the app "
+        'is back', (tester) async {
+      final container = await startUnlocked(tester, _immediately);
+      final share = Completer<void>();
+
+      unawaited(controllerOf(container).excursion(() => share.future));
+      lifecycle(tester, const [AppLifecycleState.inactive]);
+      lifecycle(tester, const [
+        AppLifecycleState.hidden,
+        AppLifecycleState.paused,
+        AppLifecycleState.detached,
+        AppLifecycleState.resumed,
+        AppLifecycleState.inactive,
+      ]);
+      await tester.pump();
+      expect(container.read(appExcursionsProvider).active, isTrue);
+      expect(lockOf(container).covered, isFalse);
+
+      lifecycle(tester, const [AppLifecycleState.hidden]);
+      expect(lockOf(container).locked, isFalse);
+
+      lifecycle(tester, const [
+        AppLifecycleState.inactive,
+        AppLifecycleState.resumed,
+      ]);
+      await tester.pump();
+      expect(container.read(appExcursionsProvider).active, isFalse);
+      expect(lockOf(container).locked, isFalse);
+    });
+
+    testLock('only the first resume after a relaunch ends them', (
+      tester,
+    ) async {
+      final container = await startUnlocked(tester);
+      final picker = Completer<String>();
+
+      leave(tester);
+      lifecycle(tester, const [
+        AppLifecycleState.detached,
+        AppLifecycleState.resumed,
+      ]);
+      await tester.pump();
+      final picked = controllerOf(container).excursion(() => picker.future);
+      lifecycle(tester, const [
+        AppLifecycleState.inactive,
+        AppLifecycleState.resumed,
+      ]);
+      await tester.pump();
+      expect(container.read(appExcursionsProvider).active, isTrue);
+
+      leave(tester);
+      now = now.add(const Duration(minutes: 5));
+      comeBack(tester);
+      picker.complete('photo.jpg');
+
+      expect(await picked, 'photo.jpg');
+      expect(lockOf(container).locked, isFalse);
+    });
+
     testLock('leaving for a picker does not lock', (tester) async {
       final container = await startUnlocked(tester, _immediately);
       final picker = Completer<String>();

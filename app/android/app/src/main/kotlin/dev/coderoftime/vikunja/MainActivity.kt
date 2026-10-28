@@ -1,11 +1,9 @@
 package dev.coderoftime.vikunja
 
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.os.Build
 import android.os.Bundle
-import android.os.PersistableBundle
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
@@ -13,10 +11,15 @@ import androidx.activity.OnBackPressedCallback
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.android.FlutterView
 import io.flutter.embedding.engine.FlutterEngine
-import io.flutter.plugin.common.MethodChannel
+import io.flutter.embedding.engine.FlutterEngineCache
+import io.flutter.embedding.engine.FlutterShellArgs
+import io.flutter.embedding.engine.dart.DartExecutor
 
 // A FragmentActivity because local_auth's BiometricPrompt needs one.
 class MainActivity : FlutterFragmentActivity() {
+    private var engineId: String? = null
+    private var windowState = WindowState()
+    private var device: DeviceChannel? = null
     private var shareInbox: ShareInbox? = null
     private var fileActions: FileActionsChannel? = null
     private var documents: DocumentPickerChannel? = null
@@ -50,8 +53,64 @@ class MainActivity : FlutterFragmentActivity() {
             ShareInbox.receive(this, intent)
             intent = ShareInbox.withoutShare(intent)
         }
+        // Before super: a restored FlutterFragment looks its engine up at once.
+        // A state saved before engines were kept restores a fragment with an
+        // engine of its own.
+        engineId = if (savedInstanceState == null) KeptEngines.newId() else savedInstanceState.getString(ENGINE_ID)
+        engineId?.let {
+            keepEngine(it)
+            windowState = KeptEngines.window(it)
+        }
         super.onCreate(savedInstanceState)
         onBackPressedDispatcher.addCallback(this, backWhileLocked)
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        engineId?.let { outState.putString(ENGINE_ID, it) }
+    }
+
+    override fun onDestroy() {
+        val leaving = isFinishing && !isChangingConfigurations
+        super.onDestroy()
+        val id = engineId ?: return
+        if (leaving) {
+            FlutterEngineCache.getInstance().get(id)?.destroy()
+            FlutterEngineCache.getInstance().remove(id)
+            KeptEngines.forget(id)
+        }
+    }
+
+    override fun getCachedEngineId(): String? = engineId
+
+    override fun shouldDestroyEngineWithHost(): Boolean = engineId == null
+
+    private fun keepEngine(id: String) {
+        if (FlutterEngineCache.getInstance().contains(id)) return
+        // What FlutterFragmentActivity does for an engine of its own: the link
+        // that started the app becomes the initial route, and the engine takes
+        // the flags of `flutter run`; here only in debuggable builds, since any
+        // app can start this activity with extras.
+        val debuggable = (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        val args = if (debuggable) FlutterShellArgs.fromIntent(intent).toArray() else null
+        val engine = FlutterEngine(applicationContext, args)
+        val link = intent.data?.takeIf { shouldHandleDeeplinking() }?.toString()
+        engine.navigationChannel.setInitialRoute(link ?: "/")
+        engine.dartExecutor.executeDartEntrypoint(DartExecutor.DartEntrypoint.createDefault())
+        FlutterEngineCache.getInstance().put(id, engine)
+    }
+
+    internal fun applyWindowState() {
+        if (windowState.secure) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        } else {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        }
+        val recents = windowState.recentsScreenshotEnabled
+        if (recents != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            setRecentsScreenshotEnabled(recents)
+        }
+        backWhileLocked.isEnabled = windowState.backMovesTaskToBack
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -87,26 +146,16 @@ class MainActivity : FlutterFragmentActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         val messenger = flutterEngine.dartExecutor.binaryMessenger
-        MethodChannel(messenger, "dev.coderoftime.vikunja/device")
-            .setMethodCallHandler { call, result ->
-                when (call.method) {
-                    "osVersion" -> result.success(Build.VERSION.RELEASE)
-                    "copySensitive" -> copySensitive(call.argument<String>("text"), result)
-                    "setSecure" -> setSecure(call.argument<Boolean>("secure"), result)
-                    "setRecentsScreenshotEnabled" ->
-                        setRecentsScreenshot(call.argument<Boolean>("enabled"), result)
-                    "moveTaskToBack" -> result.success(moveTaskToBack(true))
-                    "setBackMovesTaskToBack" ->
-                        setBackMovesTaskToBack(call.argument<Boolean>("enabled"), result)
-                    else -> result.notImplemented()
-                }
-            }
+        device = DeviceChannel(applicationContext, messenger, windowState, this)
+        applyWindowState()
         shareInbox = ShareInbox(applicationContext, messenger)
         fileActions = FileActionsChannel(this, messenger)
         documents = DocumentPickerChannel(this, messenger)
     }
 
     override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
+        device?.detach()
+        device = null
         shareInbox?.detach()
         shareInbox = null
         fileActions?.detach()
@@ -116,51 +165,6 @@ class MainActivity : FlutterFragmentActivity() {
         super.cleanUpFlutterEngine(flutterEngine)
     }
 
-    private fun copySensitive(text: String?, result: MethodChannel.Result) {
-        if (text == null) {
-            result.error("invalid_arguments", "text is missing", null)
-            return
-        }
-        val clip = ClipData.newPlainText("", text)
-        clip.description.extras = PersistableBundle().apply { putBoolean(EXTRA_IS_SENSITIVE, true) }
-        getSystemService(ClipboardManager::class.java).setPrimaryClip(clip)
-        result.success(null)
-    }
-
-    private fun setSecure(secure: Boolean?, result: MethodChannel.Result) {
-        when (secure) {
-            true -> window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
-            false -> window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
-            null -> {
-                result.error("invalid_arguments", "secure is missing", null)
-                return
-            }
-        }
-        result.success(null)
-    }
-
-    private fun setRecentsScreenshot(enabled: Boolean?, result: MethodChannel.Result) {
-        if (enabled == null) {
-            result.error("invalid_arguments", "enabled is missing", null)
-            return
-        }
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-            result.success(false)
-            return
-        }
-        setRecentsScreenshotEnabled(enabled)
-        result.success(true)
-    }
-
-    private fun setBackMovesTaskToBack(enabled: Boolean?, result: MethodChannel.Result) {
-        if (enabled == null) {
-            result.error("invalid_arguments", "enabled is missing", null)
-            return
-        }
-        backWhileLocked.isEnabled = enabled
-        result.success(null)
-    }
-
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if (fileActions?.onActivityResult(requestCode, resultCode, data) == true) return
         if (documents?.onActivityResult(requestCode, resultCode, data) == true) return
@@ -168,8 +172,6 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     private companion object {
-        // ClipDescription.EXTRA_IS_SENSITIVE from API 33; Android 13 hides the
-        // clipboard preview of a clip marked with it, older versions ignore it.
-        const val EXTRA_IS_SENSITIVE = "android.content.extra.IS_SENSITIVE"
+        const val ENGINE_ID = "dev.coderoftime.vikunja.ENGINE_ID"
     }
 }

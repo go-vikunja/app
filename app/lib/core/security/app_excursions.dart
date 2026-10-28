@@ -19,6 +19,7 @@ final class AppExcursions {
   final _ended = StreamController<DateTime>.broadcast(sync: true);
   var _running = 0;
   DateTime? _startedAt;
+  var _generation = 0;
 
   bool get active => _running > 0;
 
@@ -29,16 +30,26 @@ final class AppExcursions {
   Stream<DateTime> get ended => _ended.stream;
 
   Future<T> run<T>(Future<T> Function() action) async {
+    final generation = _generation;
     if (_running++ == 0) _startedAt = _now();
     try {
       return await action();
     } finally {
-      if (--_running == 0) {
+      if (generation == _generation && --_running == 0) {
         final startedAt = _startedAt!;
         _startedAt = null;
         if (!_ended.isClosed) _ended.add(startedAt);
       }
     }
+  }
+
+  /// Ends the running ones without waiting for them: after Android
+  /// relaunched the activity, a plugin may never answer a call the old one
+  /// was waiting on.
+  void abandon() {
+    _generation++;
+    _running = 0;
+    _startedAt = null;
   }
 
   void dispose() => unawaited(_ended.close());

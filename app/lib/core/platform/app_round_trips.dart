@@ -74,7 +74,16 @@ final class _AwayWatch {
   void _onState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed) {
       _left = true;
-    } else if (_left && !_back.isCompleted) {
+    } else if (_left) {
+      scheduleMicrotask(_completeIfStillResumed);
+    }
+  }
+
+  // The resume of an activity Android relaunched under another app's sheet
+  // is over within the same lifecycle batch (detached, resumed, inactive).
+  void _completeIfStillResumed() {
+    if (_back.isCompleted) return;
+    if (WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
       _back.complete();
     }
   }

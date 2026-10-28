@@ -120,6 +120,26 @@ void main() {
       expect(excursions.active, isFalse);
     });
 
+    testWidgets('a relaunch under its dialog is no return', (tester) async {
+      setUpExcursions(tester);
+
+      await excursions.launchAway(() async => true, opened: (open) => open);
+      step(tester, const [AppLifecycleState.inactive]);
+      step(tester, const [
+        AppLifecycleState.hidden,
+        AppLifecycleState.paused,
+        AppLifecycleState.detached,
+        AppLifecycleState.resumed,
+        AppLifecycleState.inactive,
+      ]);
+      await tester.pump();
+      expect(excursions.active, isTrue);
+
+      step(tester, const [AppLifecycleState.resumed]);
+      await tester.pump();
+      expect(excursions.active, isFalse);
+    });
+
     testWidgets('waits for the return also when the app left before the '
         'launch answered', (tester) async {
       setUpExcursions(tester);

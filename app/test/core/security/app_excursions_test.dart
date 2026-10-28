@@ -64,4 +64,27 @@ void main() {
     expect(excursions.active, isFalse);
     expect(ended, hasLength(1));
   });
+
+  test('abandon ends the running ones, and their late ends count for '
+      'nothing', () async {
+    final lost = Completer<void>();
+    final abandoned = excursions.run(() => lost.future);
+
+    excursions.abandon();
+    expect(excursions.active, isFalse);
+    expect(excursions.startedAt, isNull);
+
+    now = now.add(const Duration(minutes: 1));
+    final next = Completer<void>();
+    final running = excursions.run(() => next.future);
+    lost.complete();
+    await abandoned;
+    expect(excursions.active, isTrue);
+    expect(ended, isEmpty);
+
+    next.complete();
+    await running;
+    expect(excursions.active, isFalse);
+    expect(ended, [DateTime.utc(2026, 10, 27, 9, 1)]);
+  });
 }
